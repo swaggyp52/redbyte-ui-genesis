@@ -30,6 +30,10 @@ export interface WaveformViewerProps {
   selectedSignal?: string | null;
   signalGroups?: Map<string, SignalLaneGroup>;
   ghostSignals?: Array<{ signal: string; label?: string; direction: 'in' | 'out' | 'internal' }>;
+  /** Toggles a lane in the pinned set (pinned lanes sort to the top). */
+  onTogglePinSignal?: (signal: string) => void;
+  /** Hides a lane; the surface offers the restore affordance. */
+  onHideSignal?: (signal: string) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -67,6 +71,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   selectedSignal = null,
   signalGroups,
   ghostSignals,
+  onTogglePinSignal,
+  onHideSignal,
 }) => {
   const LABEL_W = 128;
   const ROW_H = rowHeight;
@@ -415,6 +421,38 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               onMouseLeave={() => onHoverSignal?.(null)}
             >
               <title>{signalRow.signal}</title>
+              {onTogglePinSignal ? (
+                <text
+                  x={4}
+                  y={y + Math.round(ROW_H / 2) + 4}
+                  fontSize="11"
+                  fill={isPinned ? '#fbbf24' : 'rgba(150,170,190,0.5)'}
+                  data-testid={`ide-verify-lane-pin-${toTestId(signalRow.signal)}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onTogglePinSignal(signalRow.signal);
+                  }}
+                >
+                  <title>{isPinned ? `Unpin ${signalRow.signal}` : `Pin ${signalRow.signal} to the top`}</title>
+                  {isPinned ? '★' : '☆'}
+                </text>
+              ) : null}
+              {onHideSignal ? (
+                <text
+                  x={17}
+                  y={y + Math.round(ROW_H / 2) + 4}
+                  fontSize="11"
+                  fill="rgba(150,170,190,0.5)"
+                  data-testid={`ide-verify-lane-hide-${toTestId(signalRow.signal)}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onHideSignal(signalRow.signal);
+                  }}
+                >
+                  <title>{`Hide ${signalRow.signal} for this session`}</title>
+                  ×
+                </text>
+              ) : null}
               {/* Name */}
               <text
                 x={LABEL_W - 8}
@@ -423,7 +461,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 fontSize="11"
                 fill={isFailing ? '#ff9090' : isClockSignal ? 'rgba(251,191,36,0.9)' : 'rgba(180,200,220,0.85)'}
               >
-                {`${isPinned ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
+                {`${isPinned && !onTogglePinSignal ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
                   signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
                 }`}
               </text>

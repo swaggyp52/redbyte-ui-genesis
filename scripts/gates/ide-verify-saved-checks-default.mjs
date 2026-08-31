@@ -20,7 +20,7 @@ const SCREENSHOT_ROOT = process.env.RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR)
   : '';
 
-await runIdeGate('IDE Verify saved checks default to Compare satisfied', async ({ page, baseUrl }) => {
+await runIdeGate('IDE Verify saved checks remain active in unified simulation satisfied', async ({ page, baseUrl }) => {
   const consoleFindings = [];
   page.on('console', (message) => {
     const text = message.text();
@@ -46,20 +46,20 @@ await runIdeGate('IDE Verify saved checks default to Compare satisfied', async (
 
     const before = await readRunModeState(page);
     assert(
-      before.compareAvailable,
-      `${viewport.label}: starter saved checks must make Compare checks available (${JSON.stringify(before)})`
+      before.checkCount > 0,
+      `${viewport.label}: starter saved checks must remain visible in the Checks workspace (${JSON.stringify(before)})`
     );
     assert(
-      before.comparePressed,
-      `${viewport.label}: saved starter checks must arm Compare checks by default, got ${JSON.stringify(before)}`
+      before.scenarioSelected,
+      `${viewport.label}: first-run authoring must remain in Scenario, got ${JSON.stringify(before)}`
     );
     assert(
-      /compare/i.test(before.runLabel),
-      `${viewport.label}: primary Run label must name Compare checks when saved checks are armed, got "${before.runLabel}"`
+      /run simulation/i.test(before.runLabel),
+      `${viewport.label}: the single Run action must remain simulation-oriented, got "${before.runLabel}"`
     );
     assert(
-      /compare.*run|check.*expected.*run/i.test(before.modeExplainer),
-      `${viewport.label}: mode explainer must describe comparison before the first run, got "${before.modeExplainer}"`
+      /evaluates\s+[1-9]\d*\s+optional check/i.test(before.modeExplainer),
+      `${viewport.label}: run explainer must disclose automatic saved-check evaluation, got "${before.modeExplainer}"`
     );
 
     await clickVerifyRun(page);
@@ -70,26 +70,30 @@ await runIdeGate('IDE Verify saved checks default to Compare satisfied', async (
 
     const after = await readRunModeState(page);
     assert(
-      after.comparePressed,
-      `${viewport.label}: Compare checks must remain armed after a Compare PASS, got ${JSON.stringify(after)}`
+      after.checkCount === before.checkCount,
+      `${viewport.label}: saved checks must remain intact after PASS, got ${JSON.stringify(after)}`
     );
     assert(
-      /compare/i.test(after.runLabel),
-      `${viewport.label}: update Run label must remain Compare-oriented after PASS, got "${after.runLabel}"`
+      /run simulation/i.test(after.runLabel),
+      `${viewport.label}: Run must remain a single simulation action after PASS, got "${after.runLabel}"`
     );
 
-    await page.locator('[data-testid="ide-vcb-observe-only"]').first().click();
-    const observe = await readRunModeState(page);
+    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().click();
+    const checks = await readRunModeState(page);
     assert(
-      observe.observePressed && !observe.comparePressed,
-      `${viewport.label}: students must still be able to intentionally switch back to Observe only, got ${JSON.stringify(observe)}`
+      checks.checksSelected,
+      `${viewport.label}: students must be able to open saved checks, got ${JSON.stringify(checks)}`
+    );
+    assert(
+      await page.locator('[data-testid^="ide-stimulus-expected-"]').first().isVisible().catch(() => false),
+      `${viewport.label}: Checks workspace must expose expected-output cells`
     );
 
-    await page.locator('[data-testid="ide-vcb-use-saved-checks"]').first().click();
+    await page.locator('[data-testid="ide-vcb-workspace-scenario"]').first().click();
     const restored = await readRunModeState(page);
     assert(
-      restored.comparePressed,
-      `${viewport.label}: students must be able to re-arm Compare checks after observing, got ${JSON.stringify(restored)}`
+      restored.scenarioSelected && restored.checkCount === before.checkCount,
+      `${viewport.label}: returning to Scenario must preserve saved checks, got ${JSON.stringify(restored)}`
     );
   }
 
@@ -112,14 +116,17 @@ async function openLogicGatesVerify(page, baseUrl, viewportLabel) {
 
 async function readRunModeState(page) {
   return page.evaluate(() => {
-    const observe = document.querySelector('[data-testid="ide-vcb-observe-only"]');
-    const compare = document.querySelector('[data-testid="ide-vcb-use-saved-checks"]');
+    const scenario = document.querySelector('[data-testid="ide-vcb-workspace-scenario"]');
+    const checks = document.querySelector('[data-testid="ide-vcb-workspace-checks"]');
     const run = document.querySelector('[data-testid="ide-vcb-run"]');
     const explainer = document.querySelector('[data-testid="ide-vcb-mode-explainer"]');
+    const checksText = (checks?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    const checkCount = Number.parseInt(checksText.match(/\b(\d+)\b/)?.[1] ?? '0', 10);
     return {
-      observePressed: observe?.getAttribute('aria-pressed') === 'true',
-      comparePressed: compare?.getAttribute('aria-pressed') === 'true',
-      compareAvailable: Boolean(compare) && !(compare instanceof HTMLButtonElement && compare.disabled),
+      scenarioSelected: scenario?.getAttribute('aria-selected') === 'true',
+      checksSelected: checks?.getAttribute('aria-selected') === 'true',
+      checksAvailable: Boolean(checks) && !(checks instanceof HTMLButtonElement && checks.disabled),
+      checkCount: Number.isFinite(checkCount) ? checkCount : 0,
       runLabel: (run?.textContent ?? '').replace(/\s+/g, ' ').trim(),
       modeExplainer: (explainer?.textContent ?? '').replace(/\s+/g, ' ').trim(),
     };

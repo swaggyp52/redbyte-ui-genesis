@@ -3,7 +3,7 @@
 /**
  * Phase 2 Slice 1 — Contract tests for launchpad trio removal.
  *
- * The three fixed stage-status cards (Mapping / Verify / Export launchpad cards)
+ * The three fixed stage-status cards (Board / Simulate / Build & Export launchpad cards)
  * contradict the "current focus + why this is next owns the page" product direction.
  * The dock items already carry stage completion. The hero CTA already carries the
  * "next move." These tests confirm the fixed launchpad dashboard is gone while
@@ -48,8 +48,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     examples: [],
     activeExampleId: null,
     onOpenExample: vi.fn(),
-    primaryCtaLabel: 'Export',
-    primaryCta: { label: 'Export', mode: 'export', code: 'RBP1006' },
+    primaryCtaLabel: 'Build & Export',
+    primaryCta: { label: 'Build & Export', mode: 'export', code: 'RBP1006' },
     onPrimaryCta: vi.fn(),
     onUpdateMappingPin: vi.fn(),
     onAutoSuggestMapping: vi.fn(),

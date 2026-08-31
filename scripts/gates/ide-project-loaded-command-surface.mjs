@@ -48,10 +48,10 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
       await assertCommandConsoleNotCards(page, viewport);
 
       const commandText = await normalizedText(page.locator('[data-testid="ide-project-command-board-v1"]').first());
-      assert(/next:\s*verify/i.test(commandText), `${viewport.label}: command board must name Next: Verify for the loaded starter`);
+      assert(/next:\s*simulate/i.test(commandText), `${viewport.label}: command board must name Next: Simulate for the loaded starter`);
       assert(
         (await page.locator('[data-testid="ide-project-command-action-verify"]:visible').count()) === 1,
-        `${viewport.label}: the sole body primary must expose Verify routing truth`,
+        `${viewport.label}: the sole body primary must expose Simulate routing truth`,
       );
       assert(
         (await page.locator('[data-testid="ide-project-command-action-design"]:visible').count()) === 0,

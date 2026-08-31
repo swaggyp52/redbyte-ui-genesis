@@ -13,12 +13,12 @@ Mode ID: `project`
 
 ## Purpose
 
-Provide an action-first entry plus a useful engineering overview of the loaded student project. The surface must name project identity and goal, recommend one next action, and show current Design, Verify, Map Pins, and Export truth without becoming a second editor for those stages.
+Provide an action-first entry plus a useful engineering overview of the loaded student project. The surface must name project identity and goal, recommend one next action, and show current Design, Simulate, Board & Constraints, and Build & Export truth without becoming a second editor for those stages.
 
 ## Primary Actions (max 3)
 
 1. Start a lab or follow the loaded project's single recommended next action.
-2. Open the owning Design, Verify, Map Pins, or Export surface from the project workspace row.
+2. Open the owning Design, Simulate, Board & Constraints, or Build & Export workspace from the project workspace row.
 3. Open Change Project for Build Fresh, starter, Import/recovery, or existing-work paths; destructive replacement still requires explicit confirmation.
 
 ## Layout
@@ -33,14 +33,14 @@ Provide an action-first entry plus a useful engineering overview of the loaded s
 2. Current-project engineering overview
 - Design row reports node/connection counts, top-level inputs and outputs, and opens Design.
 - Verification row reports current Compare truth and opens Verify.
-- Map Pins row reports the authoritative required-signal assignment count and opens Map Pins; Project never edits mapping.
+- Board & Constraints row reports the authoritative required-signal assignment count and opens Board & Constraints; Project never edits mapping.
 - Export row reports blocked, draft-available, or current-package state and opens Export.
 
 3. Secondary content
 - Open-existing / recent-work recovery after the relevant disclosure is opened.
 - Gannon Pilot Labs 1-5 with build, difficulty, submission, proof-scope, and start controls inside the disclosed lab pack.
 - Starter examples and all-lab browsing inside disclosed catalogs; a loaded project keeps these paths behind `Change Project`.
-- Mapping summaries remain read-only and label-first: board/resource labels appear before package pins, with Map Pins as the editing authority.
+- Mapping summaries remain read-only and label-first: board/resource labels appear before package pins, with Board & Constraints as the editing authority.
 
 4. Supporting detail
 - Project warnings, metrics, status evidence, and bridge/determinism copy stay secondary to the current action.
@@ -56,7 +56,7 @@ Neutral state: no circuit loaded; no mapping/export failure copy before a circui
 
 Show blocking issues as callouts with direct destination action:
 
-1. Missing IO mapping -> `Open Map Pins`
+1. Missing IO mapping -> `Open Board & Constraints`
 2. Missing vectors -> `Add Vectors`
 
 Destructive action guard:
@@ -85,8 +85,8 @@ Destructive action guard:
 ## Unified Workbench v3 RC source authority (2026-07-22)
 
 - Project is no longer an empty chooser after work is loaded. `ide-project-professional-overview` is the stable overview workspace for the student's actual project.
-- The full RedByte-owned flow is visible as Project -> Design -> Verify -> Map Pins -> Export. Import / Recover remains a separate recovery utility.
-- Mapping and package state shown here are projections of their owning authorities; all edits route to Map Pins or Export.
+- The full RedByte-owned flow is visible as Project -> Design -> Simulate -> Board & Constraints -> Build & Export. Import / Recover remains a separate recovery utility.
+- Mapping and package state shown here are projections of their owning authorities; all edits route to Board & Constraints or Build & Export.
 - Historical pre-sequential checkpoint `f4f7ca8f35f79258fe8f2ff6ecbc68600784efb7` passed the earlier 36-file/477-test matrix. Current integrated pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab` passes the touched 20-file/258-test authority matrix, typecheck, unified build, and the current focused release gates. Final reconstructed exact-SHA certification remains pending.
 
 ## Data Contract (RBProject)

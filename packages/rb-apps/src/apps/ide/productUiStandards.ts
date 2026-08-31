@@ -34,9 +34,9 @@ export const PRODUCT_UI_STANDARDS = {
   workObjectDominance: {
     project: 'Project makes the current or starting action dominant.',
     design: 'Design makes the circuit canvas dominant.',
-    verifyBeforeRun: 'Verify makes testbench cases and expected outputs dominant before a run.',
-    verifyAfterRun: 'Verify keeps result and repair beside the authored testbench after a run.',
-    hardware: 'Map Pins keeps the mapping table and board visible together.',
+    verifyBeforeRun: 'Simulate makes testbench cases and expected outputs dominant before a run.',
+    verifyAfterRun: 'Simulate keeps result and repair beside the authored testbench after a run.',
+    hardware: 'Board & Constraints keeps assignments, electrical intent, and the board visible together.',
     export: 'Export makes the readiness and submission decision dominant before package contents.',
     import: 'Import is a utility with one Upload, Review, Apply sequence.',
   },
@@ -62,9 +62,9 @@ export const PROFESSIONAL_CLASSROOM_COPY = {
     'Add inputs and outputs, place a part, then wire ports.',
   exportBlockedTitle: 'No handoff package yet',
   exportBlockedBody:
-    'Resolve the blocker first. Generated file previews appear after the design, Verify state, and mapping support a meaningful handoff.',
+    'Resolve the blocker first. Generated file previews appear after Design, Simulate, and Board & Constraints support a meaningful handoff.',
   hardwareNoSignals:
-    'Add logical inputs and outputs in Design first. Map Pins will list those signals here for Basys3 binding.',
+    'Add logical inputs and outputs in Design first. Board & Constraints will list those signals for Basys3 binding.',
   importUtility:
     'Import is for recovery and restore. It never replaces current work until review and confirmation.',
 } as const;

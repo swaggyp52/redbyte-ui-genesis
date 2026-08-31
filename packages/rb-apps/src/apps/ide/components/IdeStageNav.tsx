@@ -8,6 +8,7 @@ export interface IdeStageNavProps {
   onModeChange: (mode: IdeMode) => void;
   stepsCompleted?: Partial<Record<IdeMode, boolean>>;
   stepsBlocked?: Partial<Record<IdeMode, boolean>>;
+  stageStatus?: Partial<Record<IdeMode, string>>;
 }
 
 const StageGlyph: React.FC<{ mode: Exclude<IdeMode, 'import'>; complete: boolean }> = ({
@@ -69,6 +70,7 @@ export const IdeStageNav: React.FC<IdeStageNavProps> = ({
   onModeChange,
   stepsCompleted,
   stepsBlocked,
+  stageStatus,
 }) => (
   <div className="ide-stage-nav-frame" data-testid="ide-stage-nav">
     <nav className="ide-stage-nav" aria-label="Project workflow stages">
@@ -88,6 +90,7 @@ export const IdeStageNav: React.FC<IdeStageNavProps> = ({
             data-state={state}
             data-stage={stage.id}
             aria-current={isActive ? 'step' : undefined}
+            title={stage.label}
             onClick={() => onModeChange(stage.id)}
           >
             <span className="ide-stage-nav-icon">
@@ -95,7 +98,7 @@ export const IdeStageNav: React.FC<IdeStageNavProps> = ({
             </span>
             <span className="ide-stage-nav-copy">
               <span className="ide-stage-nav-label">{stage.label}</span>
-              <span className="ide-stage-nav-hint">{isActive ? stage.hint : `Step ${stage.step}`}</span>
+              <span className="ide-stage-nav-hint">{stageStatus?.[stage.id] ?? stage.hint}</span>
             </span>
             {isBlocked && !isActive ? (
               <span className="ide-stage-nav-state" aria-label="Blocked">!</span>

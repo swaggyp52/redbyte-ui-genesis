@@ -73,30 +73,82 @@
 }
 
 .ide-root .ide-button.ide-button-secondary:hover:not(:disabled) {
-  color: #ffffff;
-  background: var(--rb-surface-overlay);
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-subtle, var(--rb-surface-2));
   border-color: var(--rb-border-strong);
   transform: none;
 }
 
 .ide-root .ide-button.ide-button-ghost {
-  color: var(--rb-text-secondary);
+  color: var(--rb-text-primary);
   background: transparent;
   border: 1px solid transparent;
 }
 
+.ide-root .ide-button.ide-button-ghost:hover:not(:disabled) {
+  color: var(--rb-action-hover);
+  background: color-mix(in srgb, var(--rb-action) 8%, var(--rb-surface));
+  border-color: color-mix(in srgb, var(--rb-action) 22%, var(--rb-border-default));
+}
+
 .ide-root .ide-button.ide-button-danger {
-  color: #ffdadd;
-  background: var(--rb-state-danger-bg);
-  border: 1px solid var(--rb-error-border);
+  color: #b42332;
+  background: color-mix(in srgb, var(--rb-danger, #cf3f4c) 7%, var(--rb-surface));
+  border: 1px solid #c76872;
+}
+
+.ide-root .ide-button.ide-button-danger:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--rb-danger, #cf3f4c);
+  border-color: var(--rb-danger, #cf3f4c);
 }
 
 .ide-root .ide-button:disabled {
-  color: #84909c;
-  background: #202731;
-  border-color: #333d49;
+  color: var(--rb-text-muted);
+  background: var(--rb-surface-subtle, var(--rb-surface-2));
+  border-color: var(--rb-border-default);
   box-shadow: none;
   opacity: 1;
+  cursor: not-allowed;
+}
+
+.ide-root :is(input, select, textarea) {
+  border-color: var(--rb-border-default);
+  background: var(--rb-surface-raised);
+  color: var(--rb-text-primary);
+}
+
+.ide-root :is(input, select, textarea)::placeholder {
+  color: var(--rb-text-muted);
+  opacity: 1;
+}
+
+.ide-root :is(input, select, textarea):disabled {
+  border-color: var(--rb-border-default);
+  background: var(--rb-surface-subtle, var(--rb-surface-2));
+  color: var(--rb-text-muted);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Dark controls are opt-in and belong only to instrument surfaces. */
+.ide-root :is(.ide-design-canvas-wrap, .ide-verify-oscilloscope-stage, .ide-code-viewer, .ide-export-code-viewer)
+  .ide-button.ide-button-secondary {
+  border-color: #475569;
+  background: #18212d;
+  color: #f2f5f8;
+}
+
+.ide-root :is(.ide-design-canvas-wrap, .ide-verify-oscilloscope-stage, .ide-code-viewer, .ide-export-code-viewer)
+  .ide-button.ide-button-ghost {
+  color: #dbe4ee;
+}
+
+.ide-root :is(.ide-design-canvas-wrap, .ide-verify-oscilloscope-stage, .ide-code-viewer, .ide-export-code-viewer)
+  .ide-button:disabled {
+  border-color: #334155;
+  background: #202a37;
+  color: #9aa9ba;
 }
 
 .ide-root .ide-status-pill {
@@ -119,19 +171,19 @@
 }
 
 .ide-root .ide-status-pill.ide-status-ok {
-  color: #aee0c8;
+  color: #056654;
   background: var(--rb-state-success-bg);
   border-color: var(--rb-success-border);
 }
 
 .ide-root .ide-status-pill.ide-status-warn {
-  color: #f0ca83;
+  color: var(--rb-warning-text, #8a4f09);
   background: var(--rb-state-warning-bg);
   border-color: var(--rb-warning-border);
 }
 
 .ide-root .ide-status-pill.ide-status-error {
-  color: #f2afb5;
+  color: #a92e3a;
   background: var(--rb-state-danger-bg);
   border-color: var(--rb-error-border);
 }

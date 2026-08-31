@@ -60,14 +60,14 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-workspace')).toBeTruthy();
   });
 
-  it('keeps the signal browser stable without collapse or edge toggles', () => {
+  it('keeps signals integrated with the workbench without a separate rail', () => {
     const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
-    const dock = getByTestId('ide-verify-left-dock');
 
-    expect(dock.getAttribute('data-collapsed')).toBe('false');
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
   });
 
   it('keeps the workspace container focused on the paired lab regions without a story banner', () => {

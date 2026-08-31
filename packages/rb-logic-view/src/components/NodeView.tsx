@@ -11,9 +11,21 @@ import { usePrefersReducedMotion } from '../usePrefersReducedMotion';
 type NodeLodBand = 'full' | 'compact' | 'minimal';
 
 function resolveNodeLod(zoom: number): NodeLodBand {
-  if (zoom < 0.70) return 'minimal';
+  // 50% is the lowest authored Design zoom preset. Keep circuit identity
+  // visible there; the minimal band is reserved for free-wheel overview zoom.
+  if (zoom < 0.5) return 'minimal';
   if (zoom < 0.85) return 'compact';
   return 'full';
+}
+
+function compactNodeLabel(label: string, maxCharacters = 18): string {
+  const characters = Array.from(label.trim());
+  if (characters.length <= maxCharacters) return characters.join('');
+  return `${characters.slice(0, maxCharacters - 1).join('')}…`;
+}
+
+function estimateLabelWidth(label: string, fontSize: number): number {
+  return Math.min(144, Math.max(56, Math.round(Array.from(label).length * fontSize * 0.58 + 18)));
 }
 
 export interface ChipMetadata {
@@ -41,6 +53,8 @@ export interface NodeViewProps {
   node: Node;
   camera: Camera;
   presentationZoomMode?: 'dense' | 'classroom';
+  /** Canvas color language. Defaults to 'dark' to preserve legacy rendering. */
+  appearance?: 'light' | 'dark';
   isSelected: boolean;
   isHighlighted?: boolean;
   isMismatchHighlighted?: boolean;
@@ -56,6 +70,7 @@ export interface NodeViewProps {
   ) => void;
   onToggleSwitch?: (nodeId: string) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
+  onNodeContextMenu?: (nodeId: string, clientX: number, clientY: number) => void;
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   signals?: Map<string, LogicDisplayValue>;
   chipMetadata?: ChipMetadata;
@@ -80,6 +95,54 @@ export interface NodeViewProps {
   /** Batch 1: explicit per-port issue severity. */
   issuePortSeverities?: Map<string, 'error' | 'warn'> | null;
 }
+
+interface NodePalette {
+  /** Body fill for logic/gate chips (accent tints live in resolveNodeFill). */
+  body: string;
+  bodyStroke: string;
+  bodyStrokeHover: string;
+  /** Header band across the top of the node. */
+  header: string;
+  headerStroke: string;
+  /** Floating identity nameplate above the node. */
+  nameplate: string;
+  nameplateStroke: string;
+  /** Primary label ink (instance / IO name). */
+  label: string;
+  /** Secondary metadata ink (type · layer, sub labels). */
+  metadata: string;
+  /** Text-halo stroke so labels stay legible over the body. */
+  labelHalo: string;
+}
+
+const DARK_NODE_PALETTE: NodePalette = {
+  body: '#1b2b3f',
+  bodyStroke: '#475569',
+  bodyStrokeHover: '#8b5cf6',
+  header: 'rgba(10, 22, 37, 0.92)',
+  headerStroke: 'rgba(142, 199, 255, 0.3)',
+  nameplate: 'rgba(6, 15, 25, 0.96)',
+  nameplateStroke: 'rgba(103, 232, 249, 0.55)',
+  label: '#f4f8ff',
+  metadata: '#b9cee3',
+  labelHalo: '#07111b',
+};
+
+// Light technical schematic: light card, dark ink, restrained borders. Value
+// and selection color still come from state (resolveNodeFill / stroke), so the
+// node communicates through color rather than decoration.
+const LIGHT_NODE_PALETTE: NodePalette = {
+  body: '#ffffff',
+  bodyStroke: '#cbd5e1',
+  bodyStrokeHover: '#7c3aed',
+  header: '#eef2f7',
+  headerStroke: 'rgba(100, 116, 139, 0.35)',
+  nameplate: '#ffffff',
+  nameplateStroke: 'rgba(100, 116, 139, 0.45)',
+  label: '#0f172a',
+  metadata: '#475569',
+  labelHalo: '#ffffff',
+};
 
 const NODE_COLORS: Record<string, string> = {
   PowerSource: '#4ade80',
@@ -109,6 +172,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   node,
   camera,
   presentationZoomMode = 'dense',
+  appearance = 'dark',
   isSelected,
   isHighlighted = false,
   isMismatchHighlighted = false,
@@ -118,6 +182,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onPortClick,
   onPortClusterClick,
   onNodeDoubleClick,
+  onNodeContextMenu,
   onProbeToggle,
   signals,
   chipMetadata,
@@ -218,13 +283,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const pos = externalDragPosition ?? node.position ?? { x: 0, y: 0 };
   const screenX = pos.x * camera.zoom + camera.x;
   const screenY = pos.y * camera.zoom + camera.y;
+  // Appearance palette. 'dark' reproduces the legacy inline colors exactly so
+  // nothing changes for callers that do not opt in; 'light' renders compact
+  // schematic nodes — light card, dark ink, colored accent header — on the
+  // light technical canvas.
+  const pal = appearance === 'light' ? LIGHT_NODE_PALETTE : DARK_NODE_PALETTE;
   const presentationScale = presentationZoomMode === 'classroom' ? 1.15 : 1;
   const size = 48 * camera.zoom * presentationScale;
   const inlinePortRadius = presentationZoomMode === 'classroom' ? 6.4 : 5;
   const inlinePortGlowRadius = presentationZoomMode === 'classroom' ? 9.5 : 8;
-  const nodeLabelFont = Math.max(11, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
-  const pinAliasFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
-  const pinNameFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
+  const nodeLabelFont = Math.max(12, (presentationZoomMode === 'classroom' ? 14 : 13) * camera.zoom);
+  const pinAliasFont = Math.max(12, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
+  const pinNameFont = Math.max(12, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
   const nodeScale = isDragging ? 1 : isSelected ? 1.03 : isHovered ? 1.018 : 1;
   const nodeCornerRadius = presentationZoomMode === 'classroom' ? 10 : 8;
   const nodeHeaderHeight = Math.max(14, size * (presentationZoomMode === 'classroom' ? 0.3 : 0.28));
@@ -284,6 +354,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!onNodeContextMenu) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onNodeContextMenu(node.id, e.clientX, e.clientY);
+  };
+
   // No longer need global window listener because we have pointer capture!
   const color = NODE_COLORS[node.type] || '#94a3b8';
   const outputSignal = signals?.get(`${node.id}.out`) ?? 0;
@@ -322,12 +399,28 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     node.type !== 'Clock';
   const isChip = !!chipMetadata;
   const authoredChipLabel = isChip ? node.label?.trim() : '';
-  const chipDisplayLabel =
-    authoredChipLabel && authoredChipLabel.length > 0
-      ? authoredChipLabel.length > 11
-        ? `${authoredChipLabel.slice(0, 10)}…`
-        : authoredChipLabel
-      : chipMetadata?.name ?? node.type;
+  const chipLogicalName = authoredChipLabel || chipMetadata?.name || node.type;
+  const chipDisplayLabel = compactNodeLabel(chipLogicalName);
+  const chipLogicalNameFont = Math.min(15, Math.max(12, 13.5 * camera.zoom));
+  const chipMetadataFont = Math.min(14, Math.max(8, 12.5 * camera.zoom));
+  const chipNameplateWidth = estimateLabelWidth(chipDisplayLabel, chipLogicalNameFont);
+  const chipNameplateHeight = 18;
+  const chipTypeLabel = (chipMetadata?.name ?? node.type).toUpperCase();
+  const chipTypeLayerLabel =
+    nodeOutputIsUnknown && (node.type === 'OUTPUT' || node.type === 'Lamp')
+      ? `${chipTypeLabel} · ${nodeOutputValue}`
+      : authoredChipLabel
+        ? chipMetadata?.layer === undefined
+          ? chipTypeLabel
+          : `${chipTypeLabel} · L${chipMetadata.layer}`
+        : chipMetadata?.layer === undefined
+          ? ''
+          : `L${chipMetadata.layer}`;
+  const hasExternalIoIdentity =
+    node.type === 'INPUT' ||
+    node.type === 'Switch' ||
+    node.type === 'OUTPUT' ||
+    node.type === 'Lamp';
   const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
   const diagnosticLabel =
     (diagnosticBadge?.error ?? 0) > 0
@@ -417,6 +510,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         data-node-selected={isSelected ? '1' : '0'}
         data-testid={`node-${node.type}-${node.id}`}
         onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -454,22 +548,31 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         {/* B1: Eval sequence badge — shown on hover when eval order is active */}
         {isHovered && evalSequence != null && (
           <g data-testid={`logic-node-eval-badge-${node.id}`} style={{ pointerEvents: 'none' }}>
-            <rect x={-size / 2} y={-chipHeight / 2 - 14} width={28} height={13} rx={3} fill="#0f172a" stroke="#38bdf8" strokeWidth={1} />
-            <text x={-size / 2 + 14} y={-chipHeight / 2 - 7} textAnchor="middle" dominantBaseline="middle" fill="#38bdf8" fontSize={8} fontWeight="700">
+            <rect x={-size / 2} y={-chipHeight / 2 - 36} width={28} height={13} rx={3} fill="#0f172a" stroke="#38bdf8" strokeWidth={1} />
+            <text x={-size / 2 + 14} y={-chipHeight / 2 - 29.5} textAnchor="middle" dominantBaseline="middle" fill="#38bdf8" fontSize={8} fontWeight="700">
               {`#${evalSequence}`}
             </text>
           </g>
         )}
 
-        {/* Chip body - black box appearance */}
+        {/* Chip body. Light: white card with the type color as its border, so
+            the type is signaled without a saturated fill. Dark: legacy look. */}
         <rect
           className="logic-node-body"
           x={-size / 2}
           y={-chipHeight / 2}
           width={size}
           height={chipHeight}
-          fill={chipColor}
-          stroke={isSelected ? '#3b82f6' : isHovered ? '#8b5cf6' : '#475569'}
+          fill={appearance === 'light' ? pal.body : chipColor}
+          stroke={
+            isSelected
+              ? '#3b82f6'
+              : isHovered
+                ? pal.bodyStrokeHover
+                : appearance === 'light'
+                  ? chipColor
+                  : pal.bodyStroke
+          }
           strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
           rx={nodeCornerRadius}
         />
@@ -496,8 +599,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           width={size}
           height={chipHeaderHeight}
           rx={nodeCornerRadius}
-          fill="rgba(10, 22, 37, 0.92)"
-          stroke="rgba(142, 199, 255, 0.3)"
+          fill={pal.header}
+          stroke={pal.headerStroke}
           strokeWidth={0.8}
         />
         {isMismatchHighlighted && (
@@ -532,7 +635,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               textAnchor="middle"
               dominantBaseline="middle"
               fill={nodeOutputIsUnknown ? '#fde68a' : nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
-              fontSize={8}
+              fontSize={12}
               fontWeight="700"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
@@ -541,41 +644,68 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           </g>
         ) : null}
 
-        {/* Chip label */}
-        {lod !== 'minimal' && (
-          <text
-            className="logic-node-label"
-            data-node-label="1"
-            x={0}
-            y={-chipHeight / 2 + chipHeaderHeight / 2}
-            dominantBaseline="middle"
-            textAnchor="middle"
-            fill="#eaf2ff"
-            fontSize={Math.max(8, 10 * camera.zoom)}
-            fontWeight="600"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
+        {/* Logical instance identity lives outside the narrow status header so
+            authored names cannot collide with output/diagnostic indicators. */}
+        {lod !== 'minimal' && !hasExternalIoIdentity && (
+          <g
+            data-testid={`logic-node-identity-${node.id}`}
+            data-label-role="logical-name"
+            data-full-label={chipLogicalName}
+            style={{ pointerEvents: 'none' }}
           >
-            {chipDisplayLabel}
-          </text>
+            <rect
+              data-testid={`logic-node-identity-plate-${node.id}`}
+              x={-chipNameplateWidth / 2}
+              y={-chipHeight / 2 - 22}
+              width={chipNameplateWidth}
+              height={chipNameplateHeight}
+              rx={5}
+              fill={pal.nameplate}
+              stroke={pal.nameplateStroke}
+              strokeWidth={1}
+            />
+            <text
+              className="logic-node-label"
+              data-node-label="1"
+              x={0}
+              y={-chipHeight / 2 - 13}
+              dominantBaseline="middle"
+              textAnchor="middle"
+              fill={pal.label}
+              fontSize={chipLogicalNameFont}
+              fontWeight="700"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              {chipDisplayLabel}
+            </text>
+          </g>
         )}
 
-        {/* Layer badge */}
-        {lod === 'full' && chipMetadata.layer !== undefined && (
+        {/* Type/layer remains secondary to the authored instance name. Compact
+            zooms retain the identity at a reduced scale without competing with
+            the primary nameplate. */}
+        {lod !== 'minimal' && chipTypeLayerLabel && (
           <text
-            className="logic-node-sub-label"
+            className="logic-node-metadata"
+            data-testid={`logic-node-type-layer-${node.id}`}
+            data-label-role="type-layer"
             x={0}
-            y={chipHeight / 2 + 10}
+            y={chipHeight / 2 - Math.max(6, chipMetadataFont * 0.75)}
             dominantBaseline="middle"
             textAnchor="middle"
-            fill="#8aa8c7"
-            fontSize={Math.max(7, 8 * camera.zoom)}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
+            fill={pal.metadata}
+            fontSize={chipMetadataFont}
+            fontWeight="650"
+            style={{
+              pointerEvents: 'none',
+              userSelect: 'none',
+              paintOrder: 'stroke fill',
+              stroke: pal.labelHalo,
+              strokeWidth: 2.4,
+              strokeLinejoin: 'round',
+            }}
           >
-            {nodeOutputIsUnknown && (node.type === 'OUTPUT' || node.type === 'Lamp')
-              ? `${chipMetadata.name} · ${nodeOutputValue}`
-              : authoredChipLabel
-                ? `${chipMetadata.name} · L${chipMetadata.layer}`
-                : `L${chipMetadata.layer}`}
+            {chipTypeLayerLabel}
           </text>
         )}
 
@@ -1078,6 +1208,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       data-lod={lod}
       data-node-selected={isSelected ? '1' : '0'}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -1145,7 +1276,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         y={-size / 2}
         width={size}
         height={size}
-        fill={resolveNodeFill(node.type, ioKind, isActive, color)}
+        fill={resolveNodeFill(node.type, ioKind, isActive, color, appearance)}
         stroke={isSelected ? '#3b82f6' : color}
         strokeWidth={isSelected ? 3 : 1}
         rx={nodeCornerRadius}
@@ -1173,8 +1304,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         width={size}
         height={nodeHeaderHeight}
         rx={nodeCornerRadius}
-        fill="rgba(10, 22, 37, 0.92)"
-        stroke="rgba(142, 199, 255, 0.3)"
+        fill={pal.header}
+        stroke={pal.headerStroke}
         strokeWidth={0.8}
       />
       {isMismatchHighlighted && (
@@ -1243,8 +1374,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               y={size * 0.36}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill="#9fb6cf"
-              fontSize={Math.max(7, 9 * camera.zoom)}
+              fill={appearance === 'light' ? pal.metadata : '#9fb6cf'}
+              fontSize={Math.max(12, 12 * camera.zoom)}
               fontWeight="600"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
@@ -1271,7 +1402,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           y={-size / 2 + nodeHeaderHeight / 2}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#fff"
+          fill={appearance === 'light' ? pal.label : '#fff'}
           fontSize={nodeLabelFont}
           fontWeight="600"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -1286,7 +1417,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           y={size * 0.38}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#9fb6cf"
+          fill={pal.metadata}
           fontSize={pinAliasFont}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
@@ -1601,6 +1732,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
   return (
     prevProps.node.id === nextProps.node.id &&
     prevProps.node.type === nextProps.node.type &&
+    prevProps.node.label === nextProps.node.label &&
     prevProps.node.position?.x === nextProps.node.position?.x &&
     prevProps.node.position?.y === nextProps.node.position?.y &&
     prevProps.node.rotation === nextProps.node.rotation &&
@@ -1692,8 +1824,23 @@ function resolveNodeFill(
   nodeType: string,
   ioKind: NodeIoPresentation['kind'],
   isActive: boolean,
-  fallbackColor: string
+  fallbackColor: string,
+  appearance: 'light' | 'dark' = 'dark'
 ): string {
+  if (appearance === 'light') {
+    // Light technical: white when idle, a restrained state tint when active,
+    // so the value reads at a glance without a dark card.
+    const idle = '#ffffff';
+    if (nodeType === 'INPUT' || nodeType === 'Switch') {
+      if (ioKind === 'button') return isActive ? '#dbeafe' : idle;
+      if (ioKind === 'clock') return isActive ? '#dbeafe' : idle;
+      return isActive ? '#dcfce7' : idle;
+    }
+    if (nodeType === 'OUTPUT' || nodeType === 'Lamp') {
+      return isActive ? '#dcfce7' : idle;
+    }
+    return isActive ? '#eef2ff' : idle;
+  }
   const inactiveBase = '#162333';
   const activeBase = '#1f3146';
   if (nodeType === 'INPUT' || nodeType === 'Switch') {

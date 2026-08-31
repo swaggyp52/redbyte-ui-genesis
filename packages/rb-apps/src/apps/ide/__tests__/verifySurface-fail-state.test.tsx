@@ -23,7 +23,11 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
-      rows: [{ tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail' }],
+      vectors: [{ id: 'vec-01', tick: 0, inputs: {}, expected: { out_led: 1 }, caseIndex: 0 }],
+      inputsAtTick: { 0: {} },
+      inputsByVectorId: { 'vec-01': {} },
+      signalRoles: { out_led: 'output' },
+      rows: [{ tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01', caseIndex: 0 }],
     } as RuntimeVerifyRun['report'],
     waveform: [],
   };
@@ -45,9 +49,10 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failed|Checks need review/i);
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toHaveAttribute('data-collapsed', 'false');
+    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -95,7 +100,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       fireEvent.click(observe);
       expect(observe.className).toContain('is-active');
     }
-    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failed|Checks need review/i);
+    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
   });

@@ -86,6 +86,7 @@ async function assertPasteHdlRecovery(page, baseUrl, viewport) {
 
 async function assertBlockedSampleRecovery(page, baseUrl, viewport) {
   await openFreshImport(page, baseUrl, `blocked-sample-${viewport.label}`);
+  await openImportExampleDisclosure(page, viewport.label);
 
   const blockedSample = page.locator('[data-testid="ide-import-load-sample-edge-detect"]').first();
   assert(await visible(blockedSample), `${viewport.label}: blocked behavioral sample must be reachable`);
@@ -117,6 +118,15 @@ async function assertBlockedSampleRecovery(page, baseUrl, viewport) {
     !/observed physical board|programmed the board|Vivado build passed|bitstream verified/i.test(bodyText),
     `${viewport.label}: Import must not claim Vivado or hardware proof`
   );
+}
+
+async function openImportExampleDisclosure(page, label) {
+  const disclosure = page.locator('[data-testid="ide-import-example-disclosure"]').first();
+  assert(await visible(disclosure), `${label}: Import must expose the labelled example disclosure`);
+  if ((await disclosure.getAttribute('open')) === null) {
+    await disclosure.locator(':scope > summary').click();
+  }
+  assert((await disclosure.getAttribute('open')) !== null, `${label}: Import example disclosure must expand`);
 }
 
 async function openFreshImport(page, baseUrl, gateLabel) {

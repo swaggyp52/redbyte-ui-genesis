@@ -1,0 +1,214 @@
+/**
+ * Canonical bus grouping over the flat scalar IO rows.
+ *
+ * Declared buses (the first-class model in rb-logic-core) are the grouping
+ * authority: a declaration groups its member rows by node id regardless of
+ * label state. The `Base[N]` label convention — the exact pattern Build &
+ * Export vectorizes — remains as the fallback for undeclared rows, so no
+ * fourth inference heuristic exists and Board grouping stays byte-consistent
+ * with what the VHDL/XDC generators emit.
+ */
+
+import type { BusDeclaration } from '@redbyte/rb-logic-core';
+import { busIsDescending } from '@redbyte/rb-logic-core';
+
+export interface BusGroupableRow {
+  id: string;
+  label: string;
+  direction: 'in' | 'out';
+  pin?: string;
+  /** Boundary node carrying this row; lets declared buses claim their rows. */
+  nodeId?: string;
+}
+
+export interface IoBusMember {
+  rowId: string;
+  label: string;
+  bitIndex: number;
+  pin: string | null;
+}
+
+export interface IoBusGroup {
+  baseName: string;
+  direction: 'in' | 'out';
+  /** Sorted LSB → MSB. */
+  members: IoBusMember[];
+  width: number;
+  msb: number;
+  lsb: number;
+  /** True when bit indices run lsb..msb with no holes. */
+  contiguous: boolean;
+  unmappedCount: number;
+  /** Set when a first-class declaration (not the label fallback) owns this group. */
+  declaredBusId?: string;
+  /** Declared bit order; declared buses may be ascending. */
+  declaredDescending?: boolean;
+}
+
+/** Same shape the export vectorizer accepts: Base[N] with optional suffix. */
+const EXPLICIT_VECTOR_LABEL = /^([A-Za-z_][A-Za-z0-9_]*)\[(\d+)\]/;
+
+export function parseBusMemberLabel(
+  label: string | undefined
+): { baseName: string; bitIndex: number } | null {
+  const trimmed = label?.trim() ?? '';
+  if (trimmed.length === 0) return null;
+  const match = trimmed.match(EXPLICIT_VECTOR_LABEL);
+  if (!match) return null;
+  return { baseName: match[1], bitIndex: Number.parseInt(match[2], 10) };
+}
+
+export function groupIoRowsIntoBuses(
+  rows: readonly BusGroupableRow[],
+  declaredBuses?: readonly BusDeclaration[]
+): IoBusGroup[] {
+  const groups: IoBusGroup[] = [];
+  const claimedRowIds = new Set<string>();
+
+  // Declared buses group first, by node identity — label state is irrelevant.
+  if (declaredBuses && declaredBuses.length > 0) {
+    const rowsByNodeId = new Map<string, BusGroupableRow>();
+    for (const row of rows) {
+      if (row.nodeId) rowsByNodeId.set(row.nodeId, row);
+    }
+    for (const bus of declaredBuses) {
+      const wantDirection = bus.direction === 'input' ? 'in' : 'out';
+      const members: IoBusMember[] = [];
+      for (const bit of bus.bits) {
+        const row = rowsByNodeId.get(bit.nodeId);
+        if (!row || row.direction !== wantDirection) continue;
+        members.push({
+          rowId: row.id,
+          label: row.label,
+          bitIndex: bit.index,
+          pin: row.pin?.trim() ? row.pin.trim() : null,
+        });
+      }
+      if (members.length < 2) continue;
+      members.sort((left, right) => left.bitIndex - right.bitIndex || left.rowId.localeCompare(right.rowId));
+      for (const member of members) claimedRowIds.add(member.rowId);
+      const lsb = members[0].bitIndex;
+      const msb = members[members.length - 1].bitIndex;
+      const indexSet = new Set(members.map((member) => member.bitIndex));
+      groups.push({
+        baseName: bus.name,
+        direction: wantDirection,
+        members,
+        width: members.length,
+        msb,
+        lsb,
+        contiguous: indexSet.size === members.length && msb - lsb + 1 === members.length,
+        unmappedCount: members.filter((member) => member.pin === null).length,
+        declaredBusId: bus.id,
+        declaredDescending: busIsDescending(bus),
+      });
+    }
+  }
+
+  const byKey = new Map<string, { baseName: string; direction: 'in' | 'out'; members: IoBusMember[] }>();
+  const order: string[] = [];
+  for (const row of rows) {
+    if (claimedRowIds.has(row.id)) continue;
+    const parsed = parseBusMemberLabel(row.label);
+    if (!parsed) continue;
+    const key = `${parsed.baseName}:${row.direction}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, { baseName: parsed.baseName, direction: row.direction, members: [] });
+      order.push(key);
+    }
+    byKey.get(key)!.members.push({
+      rowId: row.id,
+      label: row.label,
+      bitIndex: parsed.bitIndex,
+      pin: row.pin?.trim() ? row.pin.trim() : null,
+    });
+  }
+
+  for (const key of order) {
+    const draft = byKey.get(key)!;
+    if (draft.members.length < 2) continue;
+    const members = [...draft.members].sort(
+      (left, right) => left.bitIndex - right.bitIndex || left.rowId.localeCompare(right.rowId)
+    );
+    const lsb = members[0].bitIndex;
+    const msb = members[members.length - 1].bitIndex;
+    const indexSet = new Set(members.map((member) => member.bitIndex));
+    const contiguous =
+      indexSet.size === members.length && msb - lsb + 1 === members.length;
+    groups.push({
+      baseName: draft.baseName,
+      direction: draft.direction,
+      members,
+      width: members.length,
+      msb,
+      lsb,
+      contiguous,
+      unmappedCount: members.filter((member) => member.pin === null).length,
+    });
+  }
+  return groups;
+}
+
+export interface BusAssignmentPreviewEntry {
+  rowId: string;
+  label: string;
+  bitIndex: number;
+  resourceAlias: string;
+  packagePin: string | null;
+  state: 'ok' | 'occupied' | 'unavailable' | 'already-assigned-here';
+  /** Label of the signal currently holding the target resource, when occupied. */
+  occupiedBy?: string;
+}
+
+export interface BusAssignmentPlanInput {
+  group: IoBusGroup;
+  /** Resource alias prefix, e.g. "SW" or "LD". */
+  familyPrefix: string;
+  /** Board index assigned to the LSB (or the MSB when reversed). */
+  startIndex: number;
+  /** When true the MSB takes startIndex and indices descend toward the LSB. */
+  reverse: boolean;
+  /** Resolve an alias like SW3 to its package pin; null = no such resource. */
+  resolveResource: (alias: string) => { packagePin: string } | null;
+  /** Current owner label by package pin, for occupancy checks. */
+  ownerByPin: ReadonlyMap<string, { rowId: string; label: string }>;
+}
+
+export function planBusAssignment(input: BusAssignmentPlanInput): BusAssignmentPreviewEntry[] {
+  const { group, familyPrefix, startIndex, reverse, resolveResource, ownerByPin } = input;
+  const orderedMembers = reverse ? [...group.members].reverse() : group.members;
+  return orderedMembers.map((member, position) => {
+    const resourceAlias = `${familyPrefix}${startIndex + position}`;
+    const resource = resolveResource(resourceAlias);
+    if (!resource) {
+      return {
+        rowId: member.rowId,
+        label: member.label,
+        bitIndex: member.bitIndex,
+        resourceAlias,
+        packagePin: null,
+        state: 'unavailable' as const,
+      };
+    }
+    const owner = ownerByPin.get(resource.packagePin);
+    if (owner && owner.rowId !== member.rowId) {
+      return {
+        rowId: member.rowId,
+        label: member.label,
+        bitIndex: member.bitIndex,
+        resourceAlias,
+        packagePin: resource.packagePin,
+        state: 'occupied' as const,
+        occupiedBy: owner.label,
+      };
+    }
+    return {
+      rowId: member.rowId,
+      label: member.label,
+      bitIndex: member.bitIndex,
+      resourceAlias,
+      packagePin: resource.packagePin,
+      state: owner ? ('already-assigned-here' as const) : ('ok' as const),
+    };
+  });
+}

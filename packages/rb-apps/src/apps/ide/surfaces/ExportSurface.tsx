@@ -75,8 +75,10 @@ import {
 import './export-handoff-workspace-v3.css';
 import {
   deriveBehavioralEvidenceTier,
+  deriveBehavioralEvidenceTierFromResult,
   formatBehavioralEvidenceTier,
 } from '../simulationEvidence';
+import { ExportHistoryPanel } from '../components/ExportHistoryPanel';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'export',
@@ -92,6 +94,8 @@ export interface ExportSurfaceProps {
   verifyLastRun?: RuntimeVerifyRun;
   /** Browser-local evidence for the last package download. */
   lastExport?: ProjectHealthExportResult;
+  /** Bounded ledger of prior generation/download events (newest last). */
+  exportHistory?: ProjectHealthExportResult[];
   /** Structural Design authority. Prior Compare evidence is inconclusive while present. */
   designBlockingIssue?: {
     title: string;
@@ -201,7 +205,7 @@ function makeSteps(): RebuildStep[] {
   return STEP_ORDER.map((s) => ({ id: s.id, label: s.label, state: 'idle' as const }));
 }
 
-/** Clock gate row detail: same timing classification as Verify / Map Pins when hashes align. */
+/** Clock gate row detail: same timing classification as Simulate / Board & Constraints when hashes align. */
 function formatExportClockGateDetail(
   contract: VerifyScheduleContract | undefined,
   baseDetail: string
@@ -237,6 +241,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   verifyResult: persistedVerifyResult,
   verifyLastRun: persistedVerifyLastRun,
   lastExport,
+  exportHistory = [],
   designBlockingIssue,
   designReady = true,
   workflowAuthority,
@@ -336,6 +341,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   );
   const [downloadError, setDownloadError] = useState<string>('');
   const [sessionDownloadEvidence, setSessionDownloadEvidence] = useState<ProjectHealthExportResult>();
+  const [packageValidation, setPackageValidation] = useState<{
+    status: 'ready' | 'blocked';
+    message: string;
+  } | null>(null);
   const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
   const [copyError, setCopyError] = useState(false);
   const [technicalEvidenceOpen, setTechnicalEvidenceOpen] = useState(false);
@@ -523,10 +532,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const isNoRunYet = verifyState === 'not-run';
   const isVerifyStale = verifyState === 'stale';
   const isTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
-  const behavioralEvidenceTier = deriveBehavioralEvidenceTier(
-    verifyLastRun,
-    isVerifyStale || dirtySinceVerify
-  );
+  const behavioralEvidenceIsStale = isVerifyStale || dirtySinceVerify;
+  const behavioralEvidenceTier = verifyLastRun
+    ? deriveBehavioralEvidenceTier(verifyLastRun, behavioralEvidenceIsStale)
+    : deriveBehavioralEvidenceTierFromResult(verifyResult, behavioralEvidenceIsStale);
+  const hasStaleBehavioralEvidence =
+    behavioralEvidenceIsStale && Boolean(verifyLastRun || verifyResult);
   /** True when the previous verify run passed but the circuit has since changed (STALE).
    *  Download is allowed but labeled as previous sealed build - not blocked. */
   const isStaleButPassBefore =
@@ -551,16 +562,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     if (isIncompleteMappingQualified) {
       return 'Checks match, but pin mapping still needs attention before hardware.';
     }
-    if (isVerifyStale) return 'Verification is stale - rerun Verify after design edits.';
+    if (isVerifyStale) return 'Simulation evidence is stale - rerun Simulate after design edits.';
     if (isTraceOnly) return 'Observation-only run — save observed outputs and run Compare checks for trusted export evidence.';
-    if (isStarterScenarioFail) return 'Auto-generated vectors only — author your own checks in Verify for Compare evidence.';
+    if (isStarterScenarioFail) return 'Auto-generated vectors only — author your own checks in Simulate for Compare evidence.';
     if (isNoRunYet) {
-      return 'Verify has not run yet — draft export is available, but no Compare evidence exists.';
+      return 'Simulation has not run yet — draft export is available, but no Compare evidence exists.';
     }
     if (verifyResult?.status === 'fail') {
       return 'Checks differ - saved outputs do not match the live design.';
     }
-    return 'Verify status indeterminate - open Verify for details.';
+    return 'Simulation status indeterminate - open Simulate for details.';
   }, [
     hasVerifyPass,
     isIncompleteMappingQualified,
@@ -626,9 +637,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     [effectivePinsByPortKey, viewModel.pinTable]
   );
   const mappingAuthoritySummary =
-    'Map Pins owns the saved pin binding. Export mirrors that mapping so you can inspect constraints and generated files without editing board state here.';
+    'Board & Constraints owns the saved pin binding. Build & Export mirrors that mapping so you can inspect constraints and generated files without editing board state here.';
   const mappingAuthorityUpdateSummary = recentlyReconciledPins.size > 0
-    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Map Pins.`
+    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Board & Constraints.`
     : '';
 
   const appEnv = (import.meta as ImportMeta & {
@@ -666,7 +677,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       : isIncompleteMappingQualified
         ? 'Pass incomplete - mapping'
       : isVerifyStale
-        ? 'Stale - rerun Verify'
+        ? 'Stale - rerun Simulate'
         : isStarterScenarioFail
           ? 'Starter scenario only'
           : isNoRunYet
@@ -696,14 +707,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : clockDiag
           ? clockDiag.message.slice(0, 55)
           : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
-    const mappingGateActionLabel = mappingTone === 'error' ? 'Open Map Pins' : 'Review mapping';
+    const mappingGateActionLabel = mappingTone === 'error' ? 'Open Board & Constraints' : 'Review mapping';
     return [
       {
         id: 'verify',
-        label: 'Verify',
+        label: 'Simulate',
         tone: verifyTone,
         detail: verifyDetailLabel,
-        actionLabel: verifyBlockedByDesign ? 'Open Design' : verifyResult ? 'Re-run' : 'Run Verify',
+        actionLabel: verifyBlockedByDesign ? 'Open Design' : verifyResult ? 'Re-run' : 'Run Simulate',
         onAction: verifyBlockedByDesign ? onGoToDesign : onOpenVerify ?? undefined,
       },
       {
@@ -789,8 +800,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     },
     {
       id: 'verify',
-      label: 'Verify hash embedded',
-      tooltip: 'A passing Verify run has been completed for this exact circuit. Open Verify, run with assertions enabled, and reach PASS to satisfy this.',
+      label: 'Simulation evidence embedded',
+      tooltip: 'A passing Compare run has been completed for this exact circuit. Open Simulate, run with checks enabled, and reach PASS to satisfy this.',
       pass: hasVerifyPass,
     },
   ], [activeScheduleContract, clockDiag, clockGateIsSoftAdvisory, diagnosticsList, effectiveTimingGuidance.exportTooltip, effectiveTimingGuidance.kind, feedbackDiag, requiredMappedCount, requiredCount, hasVerifyPass, timingStructureOkForHandoff]);
@@ -961,11 +972,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       case 'verify-not-run':
         return 'Expected-output comparison has not run for this circuit yet.';
       case 'verify-stale':
-        return 'The last Verify evidence is stale for the current design, testbench, or mapping.';
+        return 'The last simulation evidence is stale for the current design, testbench, or mapping.';
       case 'assertions-differ':
         return evidenceDiagnostics[0]?.message ?? 'Assertions differ from observed outputs.';
       case 'trace-only':
-        return 'The current Verify evidence is from a trace-only run.';
+        return 'The current simulation evidence is from a trace-only run.';
       case 'mapping-review':
         return 'The latest comparison passed, but mapping review is still incomplete.';
       case 'ready':
@@ -1218,13 +1229,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       if (isStarterFailNow) {
         markStep('clock', 'warn', 'Starter scenario only');
       } else if (isNoRunYetNow) {
-        markStep('clock', 'warn', 'Verify not run yet');
+        markStep('clock', 'warn', 'Simulate not run yet');
       } else if (isVerifyStaleNow) {
-        markStep('clock', 'warn', 'Verify needs rerun');
+        markStep('clock', 'warn', 'Simulate needs rerun');
       } else if (isIncompleteMappingNow) {
         markStep('clock', 'warn', 'Mapping incomplete');
       } else if (isVerifyMismatchNow) {
-        markStep('clock', 'warn', 'Verify mismatch');
+        markStep('clock', 'warn', 'Simulation mismatch');
       } else {
         markStep('clock', 'done');
       }
@@ -1484,15 +1495,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ? 'Draft package - not trusted'
           : 'Needs rebuild';
     const packageDetail = exportTrusted
-      ? 'The current browser-E0 bundle matches Verify and mapping; Vivado build, bitstream, and board behavior remain external.'
+      ? 'The current browser-E0 bundle matches simulation evidence and mapping; Vivado build, bitstream, and board behavior remain external.'
       : handoffTruth.condition === 'export-missing'
-        ? 'Verify and mapping are current enough to build the browser-E0 ZIP; the ZIP is not Vivado or board proof.'
+        ? 'Simulation evidence and mapping are current enough to build the browser-E0 ZIP; the ZIP is not Vivado or board proof.'
       : 'Files may be inspectable, but this is not a current trusted handoff yet.';
 
     return [
       {
         id: 'verify',
-        label: 'Verify evidence',
+        label: 'Simulation evidence',
         status: verifyStatus,
         detail: verifyDetail,
         tone: verifyTone,
@@ -1558,8 +1569,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     switch (handoffTruth.primaryCtaIntent) {
       case 'verify':
         return {
-          owner: 'Verify',
-          label: 'Open Verify',
+          owner: 'Simulate',
+          label: 'Open Simulate',
           action: onOpenVerify,
           testId: 'ide-export-blocked-open-verify',
         };
@@ -1573,8 +1584,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       case 'map-pins':
       default:
         return {
-          owner: 'Map Pins',
-          label: 'Open Mapping',
+          owner: 'Board & Constraints',
+          label: 'Open Board & Constraints',
           action: onGoToHardware ?? onGoToProject,
           testId: 'ide-export-blocked-open-map-pins',
         };
@@ -1596,21 +1607,27 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     },
     {
       id: 'verify',
-      owner: 'Verify',
+      owner: 'Simulate',
       ready: behavioralEvidenceTier === 'validated',
       status: verifyBlockedByDesign
         ? 'Inconclusive - Design blocked'
-        : formatBehavioralEvidenceTier(behavioralEvidenceTier),
+        : hasStaleBehavioralEvidence
+          ? 'Stale - rerun Simulate'
+          : formatBehavioralEvidenceTier(behavioralEvidenceTier),
       detail:
         behavioralEvidenceTier === 'validated'
           ? 'The current simulation completed and all configured optional checks passed.'
-          : behavioralEvidenceTier === 'simulated'
-            ? 'A current simulation trace exists. Optional checks are absent or not all passing.'
-            : 'Run the current scenario in Verify to create behavioral evidence.',
+          : hasStaleBehavioralEvidence
+            ? 'Prior simulation evidence exists, but the design, testbench, or mapping changed. Rerun the current scenario in Simulate before relying on this handoff.'
+            : behavioralEvidenceTier === 'simulated'
+              ? verifyResult?.status === 'fail'
+                ? 'Simulation completed, but one or more expected outputs differ from the observed circuit behavior.'
+                : 'A current simulation trace exists. Optional checks are absent or not all passing.'
+              : 'Run the current scenario in Simulate to create behavioral evidence.',
     },
     {
       id: 'mapping',
-      owner: 'Map Pins',
+      owner: 'Board & Constraints',
       ready: mappingStageReady,
       status: mappingStageReady
         ? 'Ready'
@@ -1620,8 +1637,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       detail: mappingStageReady
         ? mappingPlain
         : unmappedRequiredPorts.length > 0
-          ? 'Open Map Pins to assign one Basys3 resource and package pin to every required signal.'
-          : mappingBlockingDiagnostic?.message ?? 'Open Map Pins to resolve the saved assignment blocker.',
+          ? 'Open Board & Constraints to assign one Basys3 resource and package pin to every required signal.'
+          : mappingBlockingDiagnostic?.message ?? 'Open Board & Constraints to resolve the saved assignment blocker.',
     },
   ];
 
@@ -1635,14 +1652,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       rightDockMode="hidden"
       consoleMode="hidden"
       productSpine={{
-        currentStage: 'Export',
+        currentStage: 'Build & Export',
         nextStage: exportBlocked
           ? blockedRecovery.owner
           : downloadDone
             ? 'Vivado'
             : 'Download package',
         status: formatExportDerivedState(exportTrustAxes.derived),
-        owner: exportBlocked ? blockedRecovery.owner : 'Export',
+        owner: exportBlocked ? blockedRecovery.owner : 'Build & Export',
         title: surfaceStatusTitle,
         detail: surfaceStatusDetail,
       }}
@@ -1652,7 +1669,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ref={surfaceRef}
           className="ide-export-v3 ide-export-readiness-hero"
           data-testid="ide-export-readiness-hero"
-          aria-label="Export package decision and files"
+          aria-label="Build and export package decision and files"
         >
           <section
             className={
@@ -1671,7 +1688,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             data-export-derived-state={exportTrustAxes.derived}
           >
             <div className="ide-export-v3__decision-copy">
-              <p className="ide-surface-block-label">Export</p>
+              <p className="ide-surface-block-label">Build &amp; Export</p>
               <h2>{surfaceStatusTitle}</h2>
               <p className="ide-export-v3__trust-reason">{trustReason}</p>
               <div
@@ -1714,6 +1731,23 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <small>{viewModel.artifacts.length} generated file{viewModel.artifacts.length === 1 ? '' : 's'}</small>
             </div>
             <div className="ide-export-v3__primary" data-testid="ide-export-primary-actions">
+              <IdeButton
+                tone="secondary"
+                onClick={() => setPackageValidation(
+                  exportBlocked
+                    ? {
+                        status: 'blocked',
+                        message: `${viewModel.errors.length || 1} package blocker${viewModel.errors.length === 1 ? '' : 's'} found.`,
+                      }
+                    : {
+                        status: 'ready',
+                        message: `${viewModel.artifacts.length} files structurally valid.`,
+                      }
+                )}
+                testId="ide-export-validate-package"
+              >
+                Validate package
+              </IdeButton>
               {exportBlocked ? (
                 <IdeButton
                   tone="primary"
@@ -1752,6 +1786,21 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   Download draft
                 </IdeButton>
               ) : null}
+              {!exportBlocked && handoffTruth.primaryCtaIntent === 'program-handoff' ? (
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => void handleDownloadExport('kit')}
+                  disabled={downloadDisabled}
+                  testId="ide-export-kit-download-v1"
+                >
+                  Download flat kit
+                </IdeButton>
+              ) : null}
+              {packageValidation ? (
+                <small className={`ide-export-v3__validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
+                  {packageValidation.message} Browser E0 only · Vivado external.
+                </small>
+              ) : null}
             </div>
           </section>
 
@@ -1770,6 +1819,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <code>{currentDownloadEvidence?.packageHash ?? currentDownloadEvidence?.bundleHash ?? 'legacy evidence unavailable'}</code>
             </IdeCallout>
           ) : null}
+
+          {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} /> : null}
 
           <section
             className="ide-export-v3__files"
@@ -1805,6 +1856,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <div>
                         {group.artifacts.length > 0 ? group.artifacts.map((artifact) => {
                           const slug = artifact.path.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                          const availability = formatArtifactAvailability(
+                            artifact.status,
+                            downloadReady,
+                            exportTrusted
+                          );
                           return (
                             <button
                               key={artifact.path}
@@ -1818,7 +1874,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 {formatArtifactGlyph(artifact.path)}
                               </span>
                               <span className="ide-export-v3__file-name">{artifact.path}</span>
-                              <strong>{formatArtifactAvailability(artifact.status, downloadReady, exportTrusted)}</strong>
+                              <strong
+                                className="ide-export-v3__file-availability"
+                                aria-label={availability}
+                                title={availability}
+                              >
+                                <span aria-hidden="true">{artifact.status === 'ready' ? '✓' : '·'}</span>
+                                <span className="ide-export-v3__file-availability-label">{availability}</span>
+                              </strong>
                             </button>
                           );
                         }) : (
@@ -1878,6 +1941,28 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p>No generated package files are available yet.</p>
                 )}
               </article>
+              <aside className="ide-export-v3__handoff" data-testid="ide-export-handoff-inspector" aria-label="Vivado handoff inspector">
+                <header><span>Handoff inspector</span><strong>{formatExportDerivedState(exportTrustAxes.derived)}</strong></header>
+                <dl>
+                  <div><dt>Evidence tier</dt><dd>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</dd></div>
+                  <div><dt>Top module</dt><dd>{topModule}</dd></div>
+                  <div><dt>Target board</dt><dd>{boardTargetLabel}</dd></div>
+                  <div><dt>FPGA part</dt><dd>{vivadoPart}</dd></div>
+                  <div><dt>Ownership</dt><dd>RedByte generated handoff</dd></div>
+                  <div><dt>Warnings</dt><dd>{diagnosticsList.length}</dd></div>
+                </dl>
+                <section>
+                  <span>What to submit</span>
+                  <p>Submit the roles requested by your instructor, commonly <code>top.vhd</code> and <code>top.xdc</code>.</p>
+                </section>
+                <section>
+                  <span>Vivado next</span>
+                  <ol><li>Download and unzip the package.</li><li>Run the included import Tcl or open the generated project.</li><li>Review synthesis and implementation warnings before bitstream generation.</li></ol>
+                </section>
+                <IdeButton tone="primary" onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
+                  {isRebuilding ? 'Building package…' : 'Download package'}
+                </IdeButton>
+              </aside>
             </div>
           </section>
 
@@ -1891,7 +1976,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <p className="ide-surface-block-label">Upstream readiness</p>
                 <h3 id="ide-export-v3-upstream-title">What owns this package state</h3>
               </div>
-              <p>Repair work stays in Design, Verify, or Map Pins.</p>
+              <p>Repair work stays in Design, Simulate, or Board &amp; Constraints.</p>
             </header>
             <div className="ide-export-v3__upstream-rows">
               {upstreamReadinessRows.map((row) => (
@@ -2036,7 +2121,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     <div><dt>RedByte version</dt><dd>{redbyteVersion}</dd></div>
                     <div><dt>Commit</dt><dd>{redbyteCommit}</dd></div>
                     <div><dt>Export hash</dt><dd>{viewModel.exportHash ?? 'pending'}</dd></div>
-                    <div><dt>Verify hash</dt><dd>{verifyResult?.hash ?? 'pending'}</dd></div>
+                    <div><dt>Simulation hash</dt><dd>{verifyResult?.hash ?? 'pending'}</dd></div>
                   </dl>
                   {currentDownloadEvidence ? (
                     <section data-testid="ide-export-download-evidence">
@@ -2067,7 +2152,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           <dd>{formatExportSourceEvidence(undefined, currentDownloadEvidence.sourceCurrentness?.mapping)}</dd>
                         </div>
                         <div>
-                          <dt>Verify source</dt>
+                          <dt>Simulation source</dt>
                           <dd>{formatExportSourceEvidence(currentDownloadEvidence.sourceHashes?.verify, currentDownloadEvidence.sourceCurrentness?.verify)}</dd>
                         </div>
                       </dl>
@@ -2133,7 +2218,7 @@ function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGro
       id: 'constraints',
       label: 'Constraints',
       description:
-        'Board pin and timing constraints aligned to the current Map Pins authority.',
+        'Board pin and timing constraints aligned to the current Board & Constraints authority.',
       artifacts: [],
     },
     {
@@ -2297,7 +2382,7 @@ function buildEvidenceDiagnostics(
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1000',
       message: 'No comparison run found. Export files are still available, but no expected-output evidence has been recorded yet.',
-      fix: 'Open Verify when you want to compare expected outputs against the live design before relying on the package as final hardware evidence.',
+      fix: 'Open Simulate when you want to compare expected outputs against the live design before relying on the package as final hardware evidence.',
       severity: 'warning',
     }));
     return diagnostics;
@@ -2306,15 +2391,15 @@ function buildEvidenceDiagnostics(
   if (dirtySinceVerify) {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1002',
-      message: 'Design, testbench, or mapping changed since the last Verify run. Export files remain available, but that Verify evidence is stale for the current handoff.',
-      fix: 'Open Verify and rerun simulation or compare when you want current evidence for this export.',
+      message: 'Design, testbench, or mapping changed since the last simulation run. Export files remain available, but that evidence is stale for the current handoff.',
+      fix: 'Open Simulate and rerun the scenario or Compare when you want current evidence for this export.',
       severity: 'warning',
     }));
   } else if (verifyState === 'trace') {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1004',
-      message: 'Latest Verify activity recorded a trace-only run. Export files are still available, but expected-output comparison has not been confirmed yet.',
-      fix: 'Open Verify and run Compare checks when you want current evidence for trusted export.',
+      message: 'Latest simulation activity recorded a trace-only run. Export files are still available, but expected-output comparison has not been confirmed yet.',
+      fix: 'Open Simulate and run Compare checks when you want current evidence for trusted export.',
       severity: 'warning',
     }));
   }
@@ -2329,8 +2414,8 @@ function buildEvidenceDiagnostics(
           ? `Latest comparison run differed at tick ${verifyResult.failingTick}. Export files remain available.`
           : 'Latest comparison run differed from observed outputs. Export files remain available.',
       fix: isStarterFail
-        ? 'Author a real test scenario in Verify (not starter vectors) before treating this export as evidence-grade.'
-        : 'Open Verify, inspect the first difference, then rerun Compare when you want refreshed evidence.',
+        ? 'Author a real test scenario in Simulate (not starter vectors) before treating this export as evidence-grade.'
+        : 'Open Simulate, inspect the first difference, then rerun Compare when you want refreshed evidence.',
       severity: 'warning',
     }));
   }
@@ -2374,7 +2459,7 @@ function createEvidenceDiagnostic(input: {
     actions: [
       {
         kind: 'open-mode',
-        label: 'Open Verify',
+        label: 'Open Simulate',
         payload: {
           mode: 'verify',
           filePath: 'verify-report.json',

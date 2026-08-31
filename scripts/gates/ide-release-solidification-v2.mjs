@@ -20,8 +20,8 @@ import {
 } from './_workbenchReconstructionHarness.mjs';
 import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
-// Keep a small rounding allowance for the compact post-run evidence grid.
-const COMPACT_FAIL_EVIDENCE_ALLOWANCE = 8;
+// The persistent status band may consume up to 52px below the post-run evidence grid.
+const MAX_FAIL_EVIDENCE_BOTTOM_GAP = 52;
 
 await runIdeGate('IDE release solidification v2 satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
@@ -126,6 +126,7 @@ async function assertVerifyResultActions(page, baseUrl, viewport) {
   await assertBuildHash(page, `${viewport.label}/Verify compare pass`);
   await assertVerifyActionBand(page, viewport, 'PASS');
 
+  await selectVerifyWorkspace(page, 'checks');
   const target = await pickRenderedExpectedTarget(page);
   const wrongValue = target.value === 0 ? 1 : 0;
   await clickExpectedCellToValue(page, target, wrongValue);
@@ -134,6 +135,7 @@ async function assertVerifyResultActions(page, baseUrl, viewport) {
   assert(isVerifyFail(status), `${viewport.label}: edited expected output should fail, got "${status}"`);
   await assertVerifyActionBand(page, viewport, 'FAIL');
 
+  await selectVerifyWorkspace(page, 'checks');
   await clickExpectedCellToValue(page, target, target.value);
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare mode must remain selectable after expected-output repair`);
   status = await clickRunAndWaitForNewResult(page);
@@ -142,6 +144,7 @@ async function assertVerifyResultActions(page, baseUrl, viewport) {
 }
 
 async function assertVerifyActionBand(page, viewport, label) {
+  await selectVerifyWorkspace(page, 'replay');
   await assertBuildHash(page, `${viewport.label}/Verify ${label}`);
   const metrics = await page.evaluate(() => {
     function box(selector) {
@@ -168,6 +171,7 @@ async function assertVerifyActionBand(page, viewport, label) {
     return {
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
+      studioMode: labGrid?.getAttribute('data-studio-mode') ?? '',
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
       result: box('[data-testid="ide-verify-results-summary"]'),
       stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
@@ -182,10 +186,11 @@ async function assertVerifyActionBand(page, viewport, label) {
 
   assert(metrics.phase === 'post-run', `${viewport.label}/${label}: Verify should be post-run, got "${metrics.phase}"`);
   assert(metrics.workspaceMode === 'split', `${viewport.label}/${label}: Verify should remain split, got "${metrics.workspaceMode}"`);
+  assert(metrics.studioMode === 'replay', `${viewport.label}/${label}: Verify evidence should be shown in Replay, got "${metrics.studioMode}"`);
   assert(metrics.result?.visibleHeight >= 44, `${viewport.label}/${label}: Verify result summary is clipped ${JSON.stringify(metrics.result)}`);
   assert(metrics.result.bottom <= viewport.height - 8, `${viewport.label}/${label}: Verify result summary falls below viewport ${JSON.stringify(metrics.result)}`);
-  assert(metrics.stimulus?.visibleWidth >= 500, `${viewport.label}/${label}: testbench lane became too narrow ${JSON.stringify(metrics.stimulus)}`);
-  assert(metrics.waveform?.visibleWidth >= 500, `${viewport.label}/${label}: waveform lane became too narrow ${JSON.stringify(metrics.waveform)}`);
+  assert(metrics.stimulus?.visibleWidth === 0, `${viewport.label}/${label}: inactive Scenario workspace should not compete with Replay ${JSON.stringify(metrics.stimulus)}`);
+  assert(metrics.waveform?.visibleWidth >= 500, `${viewport.label}/${label}: Replay evidence lane became too narrow ${JSON.stringify(metrics.waveform)}`);
   assert(metrics.labGrid?.extraX <= 8, `${viewport.label}/${label}: Verify lab grid created a horizontal mini-scroll trap ${JSON.stringify(metrics.labGrid)}`);
   assert(metrics.documentOverflowX <= 1, `${viewport.label}/${label}: Verify created root overflow ${metrics.documentOverflowX}px`);
   if (label === 'FAIL') {
@@ -196,13 +201,25 @@ async function assertVerifyActionBand(page, viewport, label) {
     assert(metrics.repairPathCount === 2, `${viewport.label}/${label}: direct failure guidance must expose both repair paths`);
     assert(metrics.retiredFailureSummaryCount === 0, `${viewport.label}/${label}: retired Failure details disclosure must stay removed`);
     assert(
-      metrics.labGrid?.visibleHeight >= viewport.height - 340 - COMPACT_FAIL_EVIDENCE_ALLOWANCE,
+      metrics.labGrid?.bottom >= viewport.height - MAX_FAIL_EVIDENCE_BOTTOM_GAP,
       `${viewport.label}/${label}: fail evidence workspace left too much unused lower viewport ${JSON.stringify(metrics.labGrid)}`
     );
     const firstFail = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();
     await firstFail.scrollIntoViewIfNeeded();
     assert(await visible(firstFail), `${viewport.label}/${label}: direct repair panel must expose the first failing check`);
   }
+}
+
+async function selectVerifyWorkspace(page, mode) {
+  const control = page.locator(`[data-testid="ide-vcb-workspace-${mode}"]`).first();
+  assert(await visible(control), `Verify ${mode} workspace control must be visible`);
+  await control.click();
+  await page.waitForFunction(
+    (expectedMode) =>
+      document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === expectedMode,
+    mode,
+    { timeout: 5000 }
+  );
 }
 
 async function clickRunAndWaitForNewResult(page) {

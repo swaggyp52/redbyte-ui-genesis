@@ -45,7 +45,7 @@ Act as the compiler-like Export handoff station for Basys3 Vivado artifacts whil
 ## Empty State
 
 Headline: `No handoff package yet`
-Primary CTA: the blocker owner's direct action, such as `Open Design`, `Open Verify`, or `Open Map Pins`
+Primary CTA: the blocker owner's direct action, such as `Open Design`, `Open Simulate`, or `Open Board & Constraints`
 Secondary disclosure: `Readiness details`
 
 ## Error State
@@ -86,7 +86,7 @@ A receipt is current only when all of the following agree: download kind, packag
 
 ## Mapping and manifest agreement
 
-The same semantic mapping projection that Map Pins renders is consumed by the generated `top.xdc`, README, EXPECTED_IO, Export rows, and the embedded `project.rbproj.json`. The manifest projection refreshes generated `top.vhd` and `top.xdc` to the exact packaged content before encoding. Sibling files are transport copies; the manifest is the round-trip authority.
+The same semantic mapping projection that Board & Constraints renders is consumed by the generated `top.xdc`, README, EXPECTED_IO, Export rows, and the embedded `project.rbproj.json`. The manifest projection refreshes generated `top.vhd` and `top.xdc` to the exact packaged content before encoding. Sibling files are transport copies; the manifest is the round-trip authority.
 
 Keep identity domains explicit:
 
@@ -112,9 +112,9 @@ For pilot labs, Export must state that the RedByte/Vivado ZIP proves browser-E0 
 
 `ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, opening generated-file inspection must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
 
-`ide:gate:testbench-editor-and-export-confidence-flow` guards the Verify-to-Export confidence path: stale Verify/testbench evidence must show Draft/not-trusted export confidence, current Compare PASS plus current mapping must show current browser-E0 confidence, and Vivado build / board observation must remain external rather than being claimed by the browser.
+`ide:gate:testbench-editor-and-export-confidence-flow` guards the Simulate-to-Export confidence path: stale Simulate/testbench evidence must show Draft/not-trusted export confidence, current Compare PASS plus current mapping must show current browser-E0 confidence, and Vivado build / board observation must remain external rather than being claimed by the browser.
 
-`ide:gate:mapping-preview-package-agreement` is the exact required standalone mapping/package authority gate. It compares Map Pins projection, exact XDC preview, generated package content, canonical manifest HDL/XDC, and manifest-first Import. Run it separately from the uninterrupted 72-step `classroom:gate`; the aggregate does not substitute for this gate.
+`ide:gate:mapping-preview-package-agreement` is the exact required standalone mapping/package authority gate. It compares the Board & Constraints projection, exact XDC preview, generated package content, canonical manifest HDL/XDC, and manifest-first Import. Run it separately from the uninterrupted 72-step `classroom:gate`; the aggregate does not substitute for this gate.
 
 `ide:gate:export-submission-answer-contract` is the required first-viewport submission gate at `1366x768`, `1440x900`, and `1920x1080`.
 

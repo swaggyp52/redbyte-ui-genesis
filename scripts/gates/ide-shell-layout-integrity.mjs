@@ -22,18 +22,14 @@ const MODE_REGIONS = {
     primary: ['[data-testid="ide-design-live-canvas"]'],
     support: [
       ['[data-testid="ide-design-dock-palette"]'],
-      [
-        '[data-testid="ide-design-inspector-canvas-default"]',
-        '[data-testid="ide-design-inspector-selection-details"]',
-        '[data-testid="ide-design-inspector-actions"]',
-      ],
+      ['[data-testid="ide-design-toolbar"]'],
     ],
   },
   verify: {
     primary: ['[data-testid="ide-verify-lab-grid"]'],
     support: [
-      ['[data-testid="ide-verify-left-dock"]'],
-      ['[data-testid="ide-verify-region-waveform"]'],
+      ['[data-testid="ide-verify-signal-shelf"]'],
+      ['[data-testid="ide-verify-region-stimulus"]', '[data-testid="ide-verify-no-circuit-task"]'],
     ],
   },
   hardware: {
@@ -91,6 +87,9 @@ await runIdeGate('IDE shell layout integrity satisfied', async ({ page, baseUrl 
 });
 
 async function assertShellModeIntegrity(page, viewport, mode) {
+  if (mode === 'design') {
+    await clearDesignSelection(page);
+  }
   const state = await readShellModeState(page, mode);
 
   assert(state.currentMode === mode, `${viewport.label}/${mode}: expected active mode ${mode}, got ${state.currentMode}`);
@@ -103,6 +102,7 @@ async function assertShellModeIntegrity(page, viewport, mode) {
   assert(state.mainCount === 1, `${viewport.label}/${mode}: expected one main landmark, got ${state.mainCount}`);
   assert(state.retiredRailCount === 0, `${viewport.label}/${mode}: retired workflow rail returned`);
   assert(state.retiredToggleCount === 0, `${viewport.label}/${mode}: retired dock toggle returned`);
+  assert(state.contextualDockViolationCount === 0, `${viewport.label}/${mode}: empty or retired support dock returned`);
   assert(
     state.modeRoot.visible && state.modeRoot.width > 240 && state.modeRoot.height > 180,
     `${viewport.label}/${mode}: mode root collapsed ${JSON.stringify(state.modeRoot)}`
@@ -126,6 +126,16 @@ async function assertShellModeIntegrity(page, viewport, mode) {
     assert(state.designNodeCount >= 3, `${viewport.label}/design: rendered graph lost nodes (${state.designNodeCount})`);
     assert(state.designVisibleNodeCount >= 3, `${viewport.label}/design: graph nodes not visible (${state.designVisibleNodeCount})`);
   }
+}
+
+async function clearDesignSelection(page) {
+  const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
+  assert(canvas, 'Design canvas must be visible before clearing contextual selection');
+  await page.mouse.click(canvas.x + 12, canvas.y + 12);
+  await page.waitForFunction(() => {
+    const selection = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection;
+    return (selection?.nodes?.size ?? 0) === 0 && (selection?.wires?.size ?? 0) === 0;
+  });
 }
 
 async function readShellModeState(page, mode) {
@@ -197,6 +207,22 @@ async function readShellModeState(page, mode) {
         retiredToggleCount: document.querySelectorAll(
           '[data-testid^="ide-workbench-dock-toggle-"], [data-testid*="dock-collapse"], .ide-workbench-dock-toggle-rail'
         ).length,
+        contextualDockViolationCount: (() => {
+          if (expectedMode === 'verify') {
+            return document.querySelectorAll('[data-testid="ide-left-dock"]').length;
+          }
+          if (expectedMode !== 'design') return 0;
+          const dock = document.querySelector('[data-testid="ide-right-dock"]');
+          if (!dock) return 0;
+          const contextualContent = dock.querySelector(
+            '[data-testid="ide-design-selection-inspector"], ' +
+            '[data-testid="ide-design-multiselect-summary"], ' +
+            '[data-testid="ide-design-focus-inspector"], ' +
+            '[data-testid="ide-design-context-inspector"]'
+          );
+          const idleDefault = dock.querySelector('[data-testid="ide-design-inspector-canvas-default"]');
+          return contextualContent && !idleDefault ? 0 : 1;
+        })(),
         modeRoot: rectJson(document.querySelector(`[data-testid="ide-mode-${expectedMode}"]`)?.getBoundingClientRect?.()),
         focal: firstVisibleRect(regions.primary),
         support: regions.support.map((selectors) => firstRenderedRect(selectors)),

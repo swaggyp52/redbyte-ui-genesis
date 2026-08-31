@@ -150,7 +150,7 @@ If a tracked doc references a generated pack that is missing locally, do not tre
 
 | File | Purpose |
 |------|---------|
-| [course/STUDENT_QUICKSTART.md](./course/STUDENT_QUICKSTART.md) | Current student first-lab quickstart for Project -> Design -> Verify -> Map Pins -> Export |
+| [course/STUDENT_QUICKSTART.md](./course/STUDENT_QUICKSTART.md) | Current student first-lab quickstart for Project -> Design -> Simulate -> Board & Constraints -> Build & Export |
 | [course/INSTRUCTOR_QUICKSTART.md](./course/INSTRUCTOR_QUICKSTART.md) | Current instructor setup/support quickstart and proof-tier boundary |
 | [course/TA_TROUBLESHOOTING_GUIDE.md](./course/TA_TROUBLESHOOTING_GUIDE.md) | Current TA triage guide for setup, RedByte surfaces, Vivado, board, and Import |
 | [course/windows-quickstart.md](./course/windows-quickstart.md) | Current Windows course launcher and doctor reference |
@@ -209,8 +209,8 @@ The manual describes current behavior. The contract describes target-state oblig
 | [ide/00-ide-layout.md](./ide/00-ide-layout.md) | IDE layout contract |
 | [ide/01-project.md](./ide/01-project.md) | Project surface spec |
 | [ide/02-design.md](./ide/02-design.md) | Design surface spec |
-| [ide/03-verify.md](./ide/03-verify.md) | Verify surface spec |
-| [ide/04-export.md](./ide/04-export.md) | Export surface spec |
+| [ide/03-verify.md](./ide/03-verify.md) | Simulate workspace spec (internal id: verify) |
+| [ide/04-export.md](./ide/04-export.md) | Build & Export workspace spec (internal id: export) |
 | [ide/05-import.md](./ide/05-import.md) | Import surface spec |
 | [ide/ui-contract.md](./ide/ui-contract.md) | Pixel-level UI contract |
 | [ide/style-guide.md](./ide/style-guide.md) | Design tokens and component catalog |

@@ -1,360 +1,98 @@
-# RedByte OS Live Preview Deployment Guide
+# RedByte Deployment — Canonical Path
 
-> **⚠️ STALE DOCUMENT** — This file was written for the OS-era v0.1.0-preview (window manager, Files app, etc.).
-> The canonical v1 deployment is described below. The OS-era smoke checklist lower in this file is not applicable.
->
-> **Canonical v1 Build + Deploy:**
-> - Build command: `pnpm build:unified` (node scripts/unified-build.mjs)
-> - Output: `dist/` — root stub (redirects to /os) + `/os/` (IDE playground)
-> - Deploy workflow: `.github/workflows/deploy-cloudflare.yml` (Node 20.19.0, pnpm 10.24.0)
-> - Verify: `https://redbyteapps.dev/os/version.json` → `{ sha, builtAt }`
-> - Node version: 20.19.0 (per CI_CONTRACT.md)
+This is the ONE canonical deployment document for RedByte. Older deployment
+write-ups (`RELEASE.md`, `PRODUCTION_READINESS.md`, `docs/V1_DEPLOYMENT_SUMMARY.md`,
+`scripts/README-deploy.md`, `docs/archive/DEPLOYMENT_*.md`) are historical records
+and must not be followed for current deploys.
 
----
+## Overview
 
-## [Legacy] RedByte OS Live Preview Deployment Guide
+RedByte deploys as a single static artifact to **Cloudflare Pages**
+(project `redbyte-ui-genesis`, custom domain `redbyteapps.dev`) via GitHub
+Actions using `cloudflare/wrangler-action@v3` and `wrangler pages deploy dist`.
+The archived `cloudflare/pages-action@v1` path is retired.
 
-This document outlines the deployment procedure for RedByte OS live preview (v0.1.0-preview) to redbyteapps.dev or any static hosting provider.
+| Path | Content |
+|------|---------|
+| `/` | Root stub that redirects to `/start.html` (Cloudflare `_redirects` sends `/ -> /start.html 302`) |
+| `/start.html` | Public doorway page (copied from `public/start.html`) |
+| `/os/` | The RedByte IDE (built from `apps/playground`) |
+| `/os/version.json` | `{ sha, builtAt }` — full commit SHA, written at build time |
+| `/build.json` | Short (7-char) SHA + build timestamp + env |
 
-## Build Process
-
-### 1. Build Command
-
-```bash
-pnpm build:unified
-```
-
-This builds all workspace packages and creates the production bundle for the playground app.
-
-### 2. Output Directory
-
-```
-apps/playground/dist/
-```
-
-The `dist` directory contains:
-- `index.html` - SPA entry point
-- `assets/` - JS, CSS, and other static assets with content hashes
-
-### 3. Build-time Environment Variables
-
-The build injects the following variables:
-
-- **`__GIT_SHA__`**: Current git commit SHA (first 7 chars displayed in UI)
-  - Injected via Vite `define` plugin at build time
-  - Falls back to `"dev"` in local development
-
-To inject the git SHA during build:
+## Build
 
 ```bash
-# The build system should set this automatically, but you can override:
-export GIT_SHA=$(git rev-parse HEAD) && pnpm -w build
+corepack pnpm build:unified
 ```
 
-## Deployment Configuration
+`scripts/unified-build.mjs` pre-builds workspace packages, builds the
+playground IDE, merges everything into `dist/` (`scripts/merge-dist.mjs`), and
+verifies the artifact (`scripts/verify-dist.mjs`). The commit SHA enters the
+artifact through `GIT_SHA` (CI sets `GIT_SHA=${{ github.sha }}` and
+`VITE_APP_ENV=production`).
 
-### SPA Routing Fallback
+## CI workflows
 
-RedByte OS is a single-page application (SPA). Configure your hosting provider to serve `index.html` for all routes:
+| Workflow | Trigger | Role |
+|----------|---------|------|
+| `.github/workflows/pr-fast-checks.yml` | every pull request | Lean gate: typecheck, CSS audit, doc validation, encoding, start-page contract, build/deploy contract, unified build + dist artifact |
+| `.github/workflows/pr-truth-gates.yml` | PRs into `main`, pushes to `main` | Full Classroom Truth Gates aggregate (~90+ min browser matrix) |
+| `.github/workflows/deploy-cloudflare.yml` | push to `main`, `product/**`, `claude/**`; manual dispatch | Build + deploy + verify |
+| `.github/workflows/nightly.yml` | cron | Heavy nightly suites |
 
-**Netlify**: Create `apps/playground/public/_redirects`:
-```
-/*    /index.html   200
-```
+## Deploy behavior
 
-**Vercel**: Create `vercel.json` in project root:
-```json
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
+- **push to `main`** → production deploy (`--branch=main`) → https://redbyteapps.dev
+- **push to `product/**` or `claude/**`** → preview deploy (`--branch=<ref>`) →
+  unique `*.pages.dev` URL plus a branch-alias URL
+  (e.g. `https://product-redbyte-workbench-v3.redbyte-ui-genesis.pages.dev`)
+- **workflow_dispatch** → deploys the selected ref (production only for `main`)
 
-**Cloudflare Pages**: Built-in SPA support, no configuration needed.
+Every deploy then:
 
-**Generic Static Host**: Configure server to serve `index.html` for 404s with 200 status.
+1. polls `<deployed base>/os/version.json` until `sha` equals the triggering
+   commit (18 × 10 s), and fails the run on mismatch;
+2. runs an HTTP smoke against the deployed base: `/`, `/start.html`
+   (doorway copy), `/os/` (`REDBYTE_OS_IDE` marker), and one hashed
+   `/os/assets/*.js` chunk.
 
-### Cache Headers
+If the Cloudflare credentials are missing, the run reports an explicit
+**SKIPPED — credentials unavailable** job. It never reports a deploy that did
+not happen.
 
-Recommended caching strategy:
+## Secrets
 
-- **`index.html`**: `Cache-Control: public, max-age=0, must-revalidate`
-  - Always fetch fresh to ensure users get latest version
-- **`assets/*`**: `Cache-Control: public, max-age=31536000, immutable`
-  - Content-hashed filenames allow aggressive caching
+Stored as GitHub Actions repository secrets — never in the repo:
 
-Most static hosts (Netlify, Vercel, Cloudflare Pages) apply these headers automatically.
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
 
-### Base Path
+Workflows only presence-check these values; they are never echoed.
 
-RedByte OS is configured for root domain deployment (`/`).
+## Production release rules
 
-If deploying to a subdirectory (e.g., `redbyteapps.dev/preview/`), update `apps/playground/vite.config.ts`:
+Production (`main`) deploys only through the release path:
 
-```typescript
-export default defineConfig({
-  base: '/preview/',  // Add this line
-  // ... rest of config
-});
-```
+1. Product branch green on its exact head (fast checks + relevant gates).
+2. Preview deploy of the exact candidate SHA verified (`/os/version.json`).
+3. PR into `main` green through Classroom Truth Gates.
+4. Merge decision by the owner; the resulting push to `main` deploys production.
+5. Post-deploy verification: `https://redbyteapps.dev/os/version.json` must
+   equal the release SHA; smoke against `/`, `/start.html`, `/os/`.
 
-## Deployment Steps
+Manual smoke against a deployed environment:
 
-### Initial Deployment
-
-1. **Build locally**:
-   ```bash
-   pnpm -w build
-   ```
-
-2. **Verify build output**:
-   - Check `apps/playground/dist/index.html` exists
-   - Check `apps/playground/dist/assets/` contains hashed JS/CSS files
-
-3. **Deploy to hosting provider**:
-   - **Netlify**: Drag `apps/playground/dist` to Netlify drop zone, or use CLI
-   - **Vercel**: `vercel --prod --cwd apps/playground`
-   - **Cloudflare Pages**: Connect GitHub repo or use Wrangler CLI
-   - **Generic**: Upload `apps/playground/dist` contents to web root
-
-4. **Verify SPA fallback**:
-   - Navigate to a non-root route (e.g., `/settings`)
-   - Refresh page - should load correctly, not 404
-
-5. **Run smoke checklist** (see below)
-
-### Continuous Deployment
-
-For automated deployments from GitHub:
-
-1. **Set build command**: `pnpm -w build`
-2. **Set output directory**: `apps/playground/dist`
-3. **Set root directory**: Leave as repo root (needed for monorepo)
-4. **Install command**: `pnpm install` (hosting providers auto-detect pnpm)
-5. **Node version**: 18+ (set via `.nvmrc` or provider settings)
-
-## Rollback Procedure
-
-### Quick Rollback (Re-deploy Previous Build)
-
-1. **Netlify**: Deploy → Deploys → Select previous deploy → "Publish deploy"
-2. **Vercel**: Deployments → Select previous deployment → "Promote to Production"
-3. **Cloudflare Pages**: Deployments → Select previous deployment → "Rollback to this deployment"
-
-### Manual Rollback
-
-1. Checkout previous tagged release:
-   ```bash
-   git checkout v0.1.0-preview  # or previous tag
-   ```
-
-2. Rebuild and deploy:
-   ```bash
-   pnpm -w build
-   # Deploy apps/playground/dist manually
-   ```
-
-### Cache Invalidation
-
-After rollback or urgent fixes:
-
-- **Netlify**: Cache is invalidated automatically on new deploys
-- **Vercel**: No action needed (deploy creates new immutable URL)
-- **Cloudflare**: Caching → Purge Everything (if using CF as CDN)
-- **Generic CDN**: Use provider's cache purge API
-
-## Manual Smoke Checklist
-
-Run this checklist after every deployment to verify critical paths:
-
-### 1. Cold Load (Empty State)
-
-- [ ] Open incognito/private window
-- [ ] Navigate to live preview URL
-- [ ] **Verify**: Desktop loads with no errors
-- [ ] **Verify**: "PREVIEW" badge visible in footer
-- [ ] **Verify**: Version string visible (e.g., `v0.1.0-preview (abc1234)`)
-- [ ] Open browser console (F12)
-- [ ] **Verify**: No errors in console
-
-### 2. Files App - Basic Operations
-
-- [ ] Click "Files" icon on desktop
-- [ ] **Verify**: Files app opens with empty state
-- [ ] Right-click in empty area → New → Text File
-- [ ] **Verify**: "Untitled.txt" created
-- [ ] Double-click "Untitled.txt"
-- [ ] **Verify**: Text Editor opens with empty content
-- [ ] Type "Hello RedByte"
-- [ ] Press Ctrl+S (or Cmd+S)
-- [ ] **Verify**: Content saved (no errors in console)
-- [ ] Close Text Editor window
-- [ ] Refresh page (F5)
-- [ ] **Verify**: "Untitled.txt" still exists
-- [ ] Double-click file again
-- [ ] **Verify**: "Hello RedByte" content persisted
-
-### 3. Window Management
-
-- [ ] Open Files app
-- [ ] Open Settings app (Ctrl+,)
-- [ ] **Verify**: Two windows visible
-- [ ] Click Files window to focus it
-- [ ] **Verify**: Files window brought to front
-- [ ] Press Alt+Tab
-- [ ] **Verify**: Window switcher modal appears
-- [ ] Press Tab to cycle
-- [ ] Press Enter to select
-- [ ] **Verify**: Correct window focused
-- [ ] Press Escape (in window switcher if open)
-- [ ] **Verify**: Modal dismisses
-
-### 4. Settings Persistence
-
-- [ ] Open Settings (Ctrl+,)
-- [ ] Navigate to "File Associations" tab
-- [ ] Add custom association (e.g., `.md` → Text Editor)
-- [ ] Close Settings window
-- [ ] Refresh page (F5)
-- [ ] Open Settings again
-- [ ] **Verify**: Custom file association persisted
-
-### 5. Error Boundary
-
-- [ ] Open browser console (F12)
-- [ ] Run: `throw new Error("Test crash")`
-- [ ] **Verify**: Error boundary UI appears (red border, "Something went wrong")
-- [ ] **Verify**: Error message displayed
-- [ ] Click "Reload Page" button
-- [ ] **Verify**: App reloads and returns to normal state
-
-### 6. Factory Reset
-
-- [ ] Open Settings (Ctrl+,)
-- [ ] Go to "Filesystem Data" tab
-- [ ] Press `F` key
-- [ ] **Verify**: Confirmation prompt appears
-- [ ] Type "RESET" in input
-- [ ] Click "Confirm Factory Reset"
-- [ ] **Verify**: Page reloads
-- [ ] **Verify**: All files deleted (Files app shows empty state)
-- [ ] **Verify**: File associations reset to defaults
-
-### Smoke Test Result
-
-**Date**: _____________
-**Deployed Version**: _____________
-**Tested By**: _____________
-**Result**: ☐ PASS  ☐ FAIL
-
-**Notes/Issues**:
-```
-(Record any issues or unexpected behavior here)
+```bash
+TARGET_URL=https://redbyteapps.dev COMMIT_SHA=<sha> node scripts/verify-deploy.mjs
 ```
 
-## Troubleshooting
+## Cloudflare project notes
 
-### Issue: White screen after deployment
-
-**Cause**: SPA fallback not configured correctly
-
-**Fix**:
-1. Check browser console for 404 errors on route files
-2. Verify `_redirects` or equivalent exists
-3. Test direct navigation to `/settings` (should not 404)
-
-### Issue: Version shows "dev" instead of git SHA
-
-**Cause**: `__GIT_SHA__` not injected at build time
-
-**Fix**:
-1. Check Vite config has `define` plugin (see "Verify production build config" below)
-2. Ensure git is available during build (`git rev-parse HEAD` works)
-3. Rebuild with explicit env var: `export GIT_SHA=$(git rev-parse HEAD) && pnpm -w build`
-
-### Issue: Files not persisting after refresh
-
-**Cause**: localStorage not working or being cleared
-
-**Fix**:
-1. Check browser console for localStorage errors
-2. Verify domain allows localStorage (not `file://` protocol)
-3. Check browser privacy settings (not blocking storage)
-
-### Issue: App loads but features broken
-
-**Cause**: Incorrect base path in build
-
-**Fix**:
-1. Check browser console for 404s on asset files
-2. Verify `apps/playground/vite.config.ts` has correct `base` path
-3. Rebuild with correct base path
-
-## LocalStorage Keys (For Debugging)
-
-RedByte OS uses the following localStorage keys:
-
-- `rb:file-system` - Virtual file system state (files, directories)
-- `rb:file-associations` - Custom file type → app mappings
-- `rb:window-layout` - Window positions and states
-
-To inspect persistence:
-```javascript
-// In browser console
-console.log(localStorage.getItem('rb:file-system'));
-console.log(localStorage.getItem('rb:file-associations'));
-console.log(localStorage.getItem('rb:window-layout'));
-```
-
-To manually trigger factory reset:
-```javascript
-// WARNING: Clears all data
-localStorage.removeItem('rb:file-system');
-localStorage.removeItem('rb:file-associations');
-localStorage.removeItem('rb:window-layout');
-window.location.reload();
-```
-
-## Build Configuration Verification
-
-Before deploying, verify the following in `apps/playground/vite.config.ts`:
-
-1. **Git SHA injection** - Add if missing:
-   ```typescript
-   import { defineConfig } from 'vite';
-
-   const gitSha = process.env.GIT_SHA ||
-                  (await import('child_process'))
-                    .execSync('git rev-parse HEAD')
-                    .toString()
-                    .trim();
-
-   export default defineConfig({
-     define: {
-       __GIT_SHA__: JSON.stringify(gitSha),
-     },
-     // ... rest of config
-   });
-   ```
-
-2. **Base path** - Verify matches deployment location:
-   ```typescript
-   base: '/',  // Root domain
-   // OR
-   base: '/preview/',  // Subdirectory
-   ```
-
-3. **Build output** - Default `dist` is correct for static hosts
-
-## Support
-
-For issues or questions:
-- Check browser console for errors
-- Review this deployment guide
-- Report issues on GitHub: [redbyte-ui repository]
-
----
-
-**Last Updated**: 2025-12-24
-**Version**: v0.1.0-preview
+- Pages project: `redbyte-ui-genesis`; production domain `redbyteapps.dev`.
+- The Cloudflare GitHub App also produces git-integration branch previews
+  (visible as PR comments). The GitHub Actions direct-upload path above is the
+  verified deployment authority; treat bot previews as convenience links.
+- `wrangler.toml` carries the Pages project name and output dir for local
+  `wrangler pages` use; Pages build config in the dashboard is not used by the
+  Actions path.

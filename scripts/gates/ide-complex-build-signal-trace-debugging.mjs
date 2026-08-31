@@ -28,6 +28,13 @@ const VIEWPORTS = [
   { label: '1440x900', width: 1440, height: 900 },
 ];
 
+const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
+  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-overflow-fit'],
+  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
+]);
+
 await mkdir(SCREENSHOT_DIR, { recursive: true });
 
 await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ page, baseUrl }) => {
@@ -61,7 +68,7 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
 
     await renameProject(page, `RB Signal Trace Debug ${viewport.label}`);
     await revealDesignLibrary(page);
-    await exerciseDirectDesignCamera(page);
+    await exerciseDesignCamera(page);
     const nodes = await buildWrongFullAdderSumCircuit(page);
     await capture(page, `${viewport.label}-01-two-stage-wrong-sum.png`);
 
@@ -69,6 +76,7 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
     await assertSurfaceSafe(page, `${viewport.label} Verify startup`);
     const cases = await buildFullAdderSumCases(page);
     await authorInputCases(page, cases);
+    await openExpectedAuthoring(page, cases);
     await authorExpectedCases(page, cases);
     await capture(page, `${viewport.label}-02-full-adder-sum-checks.png`);
 
@@ -251,6 +259,42 @@ async function authorExpectedCases(page, cases) {
       await setExpectedCell(page, fieldId, tick, value);
     }
   }
+}
+
+async function openExpectedAuthoring(page, cases) {
+  const firstOutputId = Object.keys(cases[0]?.expected ?? {})[0];
+  assert(Boolean(firstOutputId), 'complex-build scenario must define at least one expected output');
+  const firstExpectedCell = page.getByTestId(`ide-stimulus-expected-${firstOutputId}-t0`).first();
+  if (await firstExpectedCell.isVisible().catch(() => false)) return;
+
+  const checksWorkspace = page.getByTestId('ide-vcb-workspace-checks').first();
+  if (await checksWorkspace.isVisible().catch(() => false)) {
+    await checksWorkspace.click();
+    await firstExpectedCell.waitFor({ state: 'visible', timeout: 5000 });
+    return;
+  }
+
+  // Compatibility path for the earlier Verify command bar.
+  const authorExpected = page.getByTestId('ide-vcb-author-expected').first();
+  const authoringDiagnostics = await page.locator('[data-testid*="expected"], [data-testid*="vcb"]').evaluateAll((elements) =>
+    elements.slice(0, 40).map((element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return {
+        testId: element.getAttribute('data-testid'),
+        text: element.textContent?.replace(/\s+/g, ' ').trim().slice(0, 120) ?? '',
+        display: style.display,
+        visibility: style.visibility,
+        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        disabled: element instanceof HTMLButtonElement ? element.disabled : null,
+      };
+    })
+  );
+  assert(await authorExpected.isVisible().catch(() => false),
+    `Expected-output authoring action must be visible: ${JSON.stringify(authoringDiagnostics)}`);
+  assert(await authorExpected.isEnabled().catch(() => false), 'Add expected outputs action must be enabled');
+  await authorExpected.click();
+  await firstExpectedCell.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function ensureCaseCount(page, desired) {
@@ -499,45 +543,31 @@ async function clickVisible(page, selector, label) {
   await locator.click();
 }
 
-async function exerciseDirectDesignCamera(page) {
-  const reset = page.getByTestId('ide-design-zoom-reset').first();
-  const zoomOut = page.getByTestId('ide-design-zoom-out').first();
-  const zoomIn = page.getByTestId('ide-design-zoom-in').first();
-  const fit = page.getByTestId('ide-design-fit-circuit-canvas').first();
-
-  for (const [control, label] of [
-    [reset, 'Reset zoom'],
-    [zoomOut, 'Zoom out'],
-    [zoomIn, 'Zoom in'],
-    [fit, 'Fit circuit'],
-  ]) {
-    await control.waitFor({ state: 'visible', timeout: 5000 });
-    assert(await control.isEnabled(), `${label} camera control must be enabled`);
-  }
+async function exerciseDesignCamera(page) {
   assert(
     !(await page.getByTestId('ide-design-view-tools-toggle').first().isVisible().catch(() => false)),
-    'Design camera controls must remain directly available without a View tools disclosure',
+    'Design camera controls must remain available without the obsolete View tools disclosure',
   );
 
-  await reset.click();
+  await clickCanvasTool(page, 'ide-design-zoom-reset', 'Reset zoom');
   await page.waitForTimeout(180);
   const resetCamera = await readDesignCamera(page, 'reset zoom');
 
-  await zoomOut.click();
+  await clickCanvasTool(page, 'ide-design-zoom-out', 'Zoom out');
   const zoomedOut = await waitForDesignZoomChange(page, resetCamera.zoom, 'zoom out');
   assert(
     zoomedOut.zoom < resetCamera.zoom,
     `Zoom out must reduce the live camera zoom (${resetCamera.zoom} -> ${zoomedOut.zoom})`,
   );
 
-  await zoomIn.click();
+  await clickCanvasTool(page, 'ide-design-zoom-in', 'Zoom in');
   const zoomedIn = await waitForDesignZoomChange(page, zoomedOut.zoom, 'zoom in');
   assert(
     zoomedIn.zoom > zoomedOut.zoom,
     `Zoom in must increase the live camera zoom (${zoomedOut.zoom} -> ${zoomedIn.zoom})`,
   );
 
-  await reset.click();
+  await clickCanvasTool(page, 'ide-design-zoom-reset', 'Reset zoom');
   await page.waitForTimeout(180);
   const readyCamera = await readDesignCamera(page, 'camera reset after direct controls');
   assert(
@@ -547,10 +577,8 @@ async function exerciseDirectDesignCamera(page) {
 }
 
 async function fitCenterZoom(page) {
-  const fit = page.getByTestId('ide-design-fit-circuit-canvas').first();
-  await fit.waitFor({ state: 'visible', timeout: 5000 });
   const before = await readDesignCamera(page, 'before Fit circuit');
-  await fit.click();
+  await clickCanvasTool(page, 'ide-design-fit-circuit-canvas', 'Fit circuit');
   await page.waitForFunction(
     (previous) => {
       const camera = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera;
@@ -568,6 +596,30 @@ async function fitCenterZoom(page) {
     { timeout: 5000 },
   );
   await readDesignCamera(page, 'after Fit circuit');
+}
+
+async function clickCanvasTool(page, primaryTestId, label) {
+  let control = page.getByTestId(primaryTestId).first();
+  let overflow = null;
+  let closeOverflow = false;
+
+  if (!(await control.isVisible().catch(() => false))) {
+    const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
+    assert(Boolean(responsiveTestId), `${label}: missing responsive camera mapping for ${primaryTestId}`);
+    overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert(await overflow.isVisible().catch(() => false), `${label}: More tools must be visible`);
+    closeOverflow = (await overflow.getAttribute('open')) === null;
+    if (closeOverflow) await overflow.locator('summary').click();
+    control = page.getByTestId(responsiveTestId).first();
+  }
+
+  await control.waitFor({ state: 'visible', timeout: 5000 });
+  assert(await control.isEnabled(), `${label} camera control must be enabled`);
+  await control.click();
+
+  if (closeOverflow && overflow && (await overflow.getAttribute('open')) !== null) {
+    await overflow.locator('summary').click();
+  }
 }
 
 async function waitForDesignZoomChange(page, previousZoom, label) {

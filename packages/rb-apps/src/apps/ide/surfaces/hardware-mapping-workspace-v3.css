@@ -467,7 +467,7 @@
 .ide-root .ide-hw-v3__board-reference-graphic {
   min-height: 300px;
   padding: 16px;
-  pointer-events: auto;
+  pointer-events: none;
   background:
     linear-gradient(rgba(231, 176, 75, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(231, 176, 75, 0.025) 1px, transparent 1px),
@@ -526,6 +526,18 @@
   outline: none;
 }
 
+@media (max-width: 1400px) {
+  .ide-root .ide-hw-v3__table {
+    min-width: 740px;
+  }
+
+  .ide-root .ide-hw-v3__table th,
+  .ide-root .ide-hw-v3__table td {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
+
 @media (max-width: 1180px) {
   .ide-root .ide-hw-v3__workspace {
     grid-template-columns: 1fr;
@@ -545,3 +557,389 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Milestone B2 — signal list / physical board / assignment inspector. */
+.ide-root .ide-hw-v3 {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  gap: 16px;
+  padding: 20px clamp(20px, 2vw, 32px) 24px;
+  background: var(--rb-app-bg);
+  color: var(--rb-text-primary);
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  grid-auto-rows: max-content;
+}
+
+.ide-root .ide-hw-v3__progress,
+.ide-root .ide-hw-v3__assignments,
+.ide-root .ide-hw-v3__editor,
+.ide-root .ide-hw-v3__board,
+.ide-root .ide-hw-v3__lab,
+.ide-root .ide-hw-v3__after {
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  box-shadow: 0 8px 24px rgba(21, 32, 51, .05);
+}
+
+.ide-root .ide-hw-v3__progress {
+  grid-template-columns: minmax(0, 1fr) auto minmax(260px, 320px);
+  min-height: 104px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--rb-border);
+  background: var(--rb-surface);
+}
+.ide-root .ide-hw-v3__progress h2 { margin: 2px 0 6px; font-size: 22px; }
+.ide-root .ide-hw-v3__progress-copy > strong { color: var(--rb-map-pins); font-size: 12px; }
+.ide-root .ide-hw-v3__metrics { min-width: 300px; border: 1px solid var(--rb-border); background: var(--rb-surface-2); }
+.ide-root .ide-hw-v3__metrics span,
+.ide-root .ide-hw-v3__metrics small { color: var(--rb-text-muted); font-size: 12px; }
+.ide-root .ide-hw-v3__next { border-left: 1px solid var(--rb-border); }
+
+.ide-root .ide-hw-v3__workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 36fr) minmax(430px, 40fr) minmax(280px, 24fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.ide-root .ide-hw-v3__assignments { grid-column: 1; min-width: 0; overflow: hidden; }
+.ide-root .ide-hw-v3__side { display: contents; }
+.ide-root .ide-hw-v3__board { grid-column: 2; grid-row: 1; min-width: 0; order: initial; }
+.ide-root .ide-hw-v3__editor { grid-column: 3; grid-row: 1; min-width: 0; order: initial; }
+.ide-root .ide-hw-v3__section-header { min-height: 68px; padding: 14px 16px; }
+.ide-root .ide-hw-v3__section-header h3 { margin: 2px 0 0; font-size: 17px; }
+
+.ide-root .ide-hw-v3__table-scroll { max-height: 610px; overflow: auto; }
+.ide-root .ide-hw-v3__table { min-width: 0; font-size: 13px; }
+.ide-root .ide-hw-v3__table th,
+.ide-root .ide-hw-v3__table td { padding: 10px 8px; font-size: 13px; }
+.ide-root .ide-hw-v3__table th:nth-child(2),
+.ide-root .ide-hw-v3__table td:nth-child(2),
+.ide-root .ide-hw-v3__table th:nth-child(4),
+.ide-root .ide-hw-v3__table td:nth-child(4) { display: none; }
+.ide-root .ide-hw-v3__mapping-row > th small { font-size: 12px !important; }
+
+.ide-root .ide-hw-v3__board-reference-graphic {
+  min-height: 440px;
+  padding: 18px;
+  pointer-events: auto;
+  background: linear-gradient(var(--rb-canvas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--rb-canvas-grid) 1px, transparent 1px), var(--rb-surface-2);
+  background-size: 24px 24px;
+}
+.ide-root .ide-hw-v3__board-reference-graphic svg { min-height: 380px; }
+.ide-root .ide-hw-v3__field { font-size: 13px; }
+.ide-root .ide-hw-v3__field select { min-height: 40px; font-size: 14px; }
+.ide-root .ide-hw-v3__consequence { color: var(--rb-text-secondary); font-size: 13px; line-height: 1.5; }
+.ide-root .ide-hardware-basys3-binding-chain { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; border-radius: 8px; background: var(--rb-surface-2); }
+.ide-root .ide-hardware-basys3-binding-chain > span[aria-hidden='true'] { display: none; }
+.ide-root .ide-hardware-basys3-binding-chain pre { overflow: auto; font-size: 12px; }
+
+.ide-root .ide-hw-v3 .ide-hw-v3__editor .ide-hardware-basys3-binding-chain {
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+}
+.ide-root .ide-hw-v3 .ide-hw-v3__editor .ide-hardware-basys3-binding-chain :is(small, strong) {
+  color: var(--rb-text-secondary);
+}
+.ide-root .ide-hw-v3 .ide-hw-v3__editor .ide-hardware-basys3-binding-chain pre {
+  border: 1px solid #334155;
+  background: #10161f;
+  color: #f2f5f8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1180px) {
+  .ide-root .ide-hw-v3__workspace { grid-template-columns: minmax(330px, 38fr) minmax(0, 62fr); }
+  .ide-root .ide-hw-v3__board { grid-column: 2; }
+  .ide-root .ide-hw-v3__editor { grid-column: 1 / -1; grid-row: 2; }
+}
+
+@media (max-width: 820px) {
+  .ide-root .ide-hw-v3 { padding: 12px; }
+  .ide-root .ide-hw-v3__progress,
+  .ide-root .ide-hw-v3__workspace { grid-template-columns: minmax(0, 1fr); }
+  .ide-root .ide-hw-v3__assignments,
+  .ide-root .ide-hw-v3__board,
+  .ide-root .ide-hw-v3__editor { grid-column: 1; grid-row: auto; }
+}
+
+/* ── Bus planner: bulk-map Base[N] groups onto SW/LD banks ── */
+.ide-root .ide-hw-bus-planner {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 9px;
+  background: var(--rb-surface-2);
+}
+
+.ide-root .ide-hw-bus-planner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ide-root .ide-hw-bus-planner__header h4 {
+  margin: 0;
+  color: var(--rb-text-primary);
+  font-size: 15px;
+}
+
+.ide-root .ide-hw-bus-planner input[type='number'] {
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-hw-bus-planner__group-pick,
+.ide-root .ide-hw-bus-planner__controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rb-text-secondary);
+  font-size: 12.5px;
+}
+
+.ide-root .ide-hw-bus-planner__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.ide-root .ide-hw-bus-planner__controls input[type='number'] {
+  width: 64px;
+}
+
+.ide-root .ide-hw-bus-planner__warn {
+  color: var(--rb-warning, #b45309);
+  font-size: 12px;
+}
+
+.ide-root .ide-hw-bus-planner__preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ide-root .ide-hw-bus-planner__preview li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-hw-bus-planner__preview li code {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+}
+
+.ide-root .ide-hw-bus-planner__preview li small {
+  color: var(--rb-text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ide-root .ide-hw-bus-planner__preview li[data-state='occupied'] small,
+.ide-root .ide-hw-bus-planner__preview li[data-state='unavailable'] small {
+  color: var(--rb-warning, #b45309);
+  font-weight: 600;
+}
+
+.ide-root .ide-hw-bus-planner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ide-root .ide-hw-bus-planner__blocked {
+  color: var(--rb-warning, #b45309);
+  font-size: 12.5px;
+}
+
+/* ── Virtual Basys3 board (Browser E0) ──────────────────────────────────── */
+.ide-root .rb-vboard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface-2);
+}
+.ide-root .rb-vboard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ide-root .rb-vboard__eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rb-accent);
+}
+.ide-root .rb-vboard__title { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: var(--rb-text); }
+.ide-root .rb-vboard__note { margin: 0; max-width: 320px; font-size: 11.5px; line-height: 1.4; color: var(--rb-text-muted); }
+.ide-root .rb-vboard__readout {
+  padding: 7px 10px;
+  border: 1px solid var(--rb-border-subtle);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--rb-text-secondary);
+}
+.ide-root .rb-vboard__row {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 4px;
+  align-items: end;
+}
+.ide-root .rb-vboard__buttons { grid-template-columns: repeat(5, minmax(0, 56px)); justify-content: start; gap: 8px; margin-top: 4px; }
+
+.ide-root .rb-vboard__led-cell,
+.ide-root .rb-vboard__sw-cell { display: grid; justify-items: center; gap: 4px; }
+.ide-root .rb-vboard__cap { font-size: 9px; color: var(--rb-text-muted); font-variant-numeric: tabular-nums; }
+
+.ide-root .rb-vboard__led {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--rb-border-strong);
+  background: #dfe5ee;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+.ide-root .rb-vboard__led.is-mapped { border-color: #94a3b8; }
+.ide-root .rb-vboard__led.is-on {
+  background: #22c55e;
+  border-color: #16a34a;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.55);
+}
+.ide-root .rb-vboard__led.is-focused { outline: 2px solid var(--rb-accent); outline-offset: 2px; }
+
+.ide-root .rb-vboard__sw {
+  width: 22px; height: 40px; padding: 0;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: 5px;
+  background: #e2e8f0;
+  cursor: pointer;
+  position: relative;
+  display: grid;
+}
+.ide-root .rb-vboard__sw:disabled { opacity: 0.45; cursor: default; }
+.ide-root .rb-vboard__sw.is-mapped { background: #cbd5e1; }
+.ide-root .rb-vboard__sw-knob {
+  width: 100%; height: 50%;
+  border-radius: 4px;
+  background: #64748b;
+  align-self: end;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.ide-root .rb-vboard__sw.is-up .rb-vboard__sw-knob { transform: translateY(-100%); background: var(--rb-accent); }
+.ide-root .rb-vboard__sw.is-focused { outline: 2px solid var(--rb-accent); outline-offset: 2px; }
+.ide-root .rb-vboard__sw:focus-visible { outline: 2px solid var(--rb-focus); outline-offset: 2px; }
+
+.ide-root .rb-vboard__btn {
+  height: 34px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: 6px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ide-root .rb-vboard__btn:disabled { opacity: 0.45; cursor: default; }
+.ide-root .rb-vboard__btn.is-pressed { background: var(--rb-accent); border-color: var(--rb-accent); color: #fff; }
+.ide-root .rb-vboard__btn:focus-visible { outline: 2px solid var(--rb-focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ide-root .rb-vboard__led,
+  .ide-root .rb-vboard__sw-knob { transition: none; }
+}
+
+.ide-root .ide-hw-bus-planner__mapped {
+  font-size: 12.5px;
+  color: var(--rb-text-secondary);
+}
+
+/* ── Pin Planner (electrical assignment table + conflict repair + XDC diff) ── */
+.ide-pin-planner {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  margin: 10px 0;
+}
+.ide-pin-planner-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ide-pin-planner-head h4 { margin: 2px 0 0; font-size: 14px; color: var(--rb-text-primary); }
+.ide-pin-planner-stats { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; color: var(--rb-text-secondary); }
+.ide-pin-planner-stats .is-conflict { color: var(--rb-warning); font-weight: 700; }
+.ide-pin-planner-undo {
+  border: 1px solid var(--rb-border); background: transparent; color: var(--rb-text-secondary);
+  font-size: 11.5px; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+}
+.ide-pin-planner-undo:hover { border-color: var(--rb-border-strong); color: var(--rb-text-primary); }
+
+.ide-pin-planner-conflicts { display: grid; gap: 6px; }
+.ide-pin-planner-conflict {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 7px 9px; border-radius: 7px;
+  border: 1px solid var(--rb-warning); background: color-mix(in srgb, var(--rb-warning) 10%, transparent);
+}
+.ide-pin-planner-conflict-pin { font-family: var(--rb-font-mono); font-weight: 700; color: var(--rb-warning); }
+.ide-pin-planner-conflict-signals { flex: 1 1 auto; font-size: 12px; color: var(--rb-text-primary); }
+.ide-pin-planner-resolve {
+  border: 1px solid var(--rb-warning); background: var(--rb-surface); color: var(--rb-text-primary);
+  font-size: 11.5px; padding: 3px 9px; border-radius: 6px; cursor: pointer;
+}
+
+.ide-pin-planner-table-scroll { overflow-x: auto; }
+.ide-pin-planner-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ide-pin-planner-table th {
+  text-align: left; padding: 5px 8px; color: var(--rb-text-muted);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--rb-border);
+}
+.ide-pin-planner-table td { padding: 5px 8px; border-bottom: 1px solid var(--rb-border-subtle, var(--rb-border)); }
+.ide-pin-planner-row.is-conflict { background: color-mix(in srgb, var(--rb-warning) 8%, transparent); }
+.ide-pin-planner-label code { font-family: var(--rb-font-mono); color: var(--rb-text-primary); }
+.ide-pin-planner-dir { color: var(--rb-text-muted); }
+.ide-pin-planner-pin-input {
+  width: 74px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--rb-border);
+  background: var(--rb-app-bg, var(--rb-surface)); color: var(--rb-text-primary);
+  font-family: var(--rb-font-mono); font-size: 12px; text-transform: uppercase;
+}
+.ide-pin-planner-row.is-conflict .ide-pin-planner-pin-input { border-color: var(--rb-warning); }
+.ide-pin-planner-resource, .ide-pin-planner-iostd { color: var(--rb-text-secondary); }
+.ide-pin-planner-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700;
+}
+.ide-pin-planner-badge.is-ok { background: color-mix(in srgb, var(--rb-accent) 16%, transparent); color: var(--rb-accent); }
+.ide-pin-planner-badge.is-conflict { background: color-mix(in srgb, var(--rb-warning) 18%, transparent); color: var(--rb-warning); }
+.ide-pin-planner-badge.is-issue { background: color-mix(in srgb, var(--rb-warning) 14%, transparent); color: var(--rb-warning); }
+.ide-pin-planner-badge.is-empty { color: var(--rb-text-muted); }
+
+.ide-pin-planner-xdc {
+  border: 1px solid var(--rb-border); border-radius: 8px; padding: 8px 10px; background: var(--rb-app-bg, var(--rb-surface));
+}
+.ide-pin-planner-xdc-title { margin: 0 0 4px; font-size: 11.5px; color: var(--rb-text-secondary); font-weight: 600; }
+.ide-pin-planner-xdc-body { margin: 0; font-family: var(--rb-font-mono); font-size: 11px; white-space: pre-wrap; }
+.ide-pin-planner-xdc-line.is-added { color: var(--rb-accent); }
+.ide-pin-planner-xdc-line.is-removed { color: var(--rb-warning); }

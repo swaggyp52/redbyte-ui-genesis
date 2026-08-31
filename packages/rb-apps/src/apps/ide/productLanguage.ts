@@ -36,7 +36,7 @@ export const PROOF_LANGUAGE = {
 } as const;
 
 export const WORKFLOW_LANGUAGE = {
-  stages: ['Project', 'Design', 'Verify', 'Map Pins', 'Export'],
+  stages: ['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export'],
   importUtility: 'Import / Recovery',
   importBoundary: 'Import is a review-gated utility, not a required workflow stage.',
 } as const;

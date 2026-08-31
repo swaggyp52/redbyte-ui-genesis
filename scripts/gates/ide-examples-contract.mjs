@@ -3,27 +3,45 @@
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
 async function assertProjectRecordVisible(page) {
+  const overview = page.locator('[data-testid="ide-project-professional-overview"]').first();
+  await overview.waitFor({ state: 'visible', timeout: 10000 });
+
   const record = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
   await record.waitFor({ state: 'visible', timeout: 10000 });
-  assert(
-    await record.evaluate((element) => !(element instanceof HTMLDetailsElement)),
-    'project engineering record must be an ordinary visible section, not a disclosure',
-  );
-  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
+  const recordKind = await record.evaluate((element) => ({
+    isDisclosure: element instanceof HTMLDetailsElement,
+    isOpen: element instanceof HTMLDetailsElement ? element.open : true,
+    summary: element.querySelector('summary')?.textContent?.trim() ?? '',
+  }));
+  if (recordKind.isDisclosure) {
+    assert(recordKind.summary === 'Technical details', 'project engineering record disclosure must be labeled Technical details');
+    if (!recordKind.isOpen) {
+      await record.locator('summary').click();
+    }
+  }
+  await page.locator('[data-testid="ide-project-bridge"]').waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function openExamplesBrowserIfCollapsed(page) {
   let browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
   if (!(await browser.isVisible().catch(() => false))) {
-    const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
-    if (await changeProject.isVisible().catch(() => false)) {
-      await changeProject.click();
-    }
-
+    // In the loaded v3 Project workspace the catalog opens via the contextual
+    // "Change project" action, then "Open Starter". The legacy toolbar copy of
+    // change-project lives inside a hidden dock panel, so prefer the visible
+    // contextual action and await the revealed Open Starter instead of
+    // sampling it instantly.
     const openStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
-    if (await openStarter.isVisible().catch(() => false)) {
-      await openStarter.click();
+    if (!(await openStarter.isVisible().catch(() => false))) {
+      const contextChange = page.locator('[data-testid="ide-project-context-change"]').first();
+      const legacyChange = page.locator('[data-testid="ide-project-change-project"]').first();
+      if (await contextChange.isVisible().catch(() => false)) {
+        await contextChange.click();
+      } else if (await legacyChange.isVisible().catch(() => false)) {
+        await legacyChange.click();
+      }
     }
+    await openStarter.waitFor({ state: 'visible', timeout: 10000 });
+    await openStarter.click();
     browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
   }
   await browser.waitFor({ state: 'visible', timeout: 10000 });

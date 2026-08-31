@@ -29,7 +29,7 @@ const SCENARIOS: VerifyScenario[] = [
 
 describe('Testbench-first Verify contracts', () => {
   it('names the student task directly and keeps session context visible without details', () => {
-    const { getByRole, getByTestId, container } = render(
+    const { getByRole, getByTestId, getByText, container } = render(
       <VerifyContextHeader
         projectName="Half Adder"
         stateLabel="Stale"
@@ -39,6 +39,7 @@ describe('Testbench-first Verify contracts', () => {
     );
 
     expect(getByRole('heading', { name: 'Simulation Studio' })).toBeTruthy();
+    expect(getByText('Simulate', { selector: '.ide-verify-job-kicker' })).toBeTruthy();
     expect(getByTestId('ide-verify-context-project').textContent).toBe('Half Adder');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Stale');
     expect(getByTestId('ide-verify-context-scenario').textContent).toContain('Half Adder Cases');

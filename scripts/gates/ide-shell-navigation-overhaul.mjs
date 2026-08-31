@@ -126,7 +126,10 @@ async function assertShellChrome(page, viewport, label) {
   assert(state.overflowX <= 1, `${viewport.label}/${label}: root horizontal overflow ${state.overflowX}px`);
   assert(state.topbar.visible && state.topbar.height <= 56, `${viewport.label}/${label}: top bar too tall/missing ${JSON.stringify(state.topbar)}`);
   assert(!state.ribbon.visible, `${viewport.label}/${label}: proof ribbon must be retired ${JSON.stringify(state.ribbon)}`);
-  assert(!state.statusBar.visible, `${viewport.label}/${label}: duplicate support footer must be retired ${JSON.stringify(state.statusBar)}`);
+  assert(
+    state.statusBar.visible && state.statusBar.height <= 28,
+    `${viewport.label}/${label}: shared status bar must remain visible and compact ${JSON.stringify(state.statusBar)}`
+  );
   assert(state.productSpineCount === 0, `${viewport.label}/${label}: duplicate page product spine is still visible`);
   assert(
     state.stageNav.visible && state.stageNav.height >= 40 && state.stageNav.height <= 60,
@@ -139,15 +142,16 @@ async function assertShellChrome(page, viewport, label) {
   assert(state.retiredRailCount === 0, `${viewport.label}/${label}: retired workflow rail returned`);
   assert(state.retiredToggleCount === 0, `${viewport.label}/${label}: retired dock restore control returned`);
   assert(
-    // Rounded bounding boxes can differ by a few pixels across the two classroom viewports.
-    state.layoutShell.top >= state.stageNav.bottom - 4 && state.layoutShell.top <= state.stageNav.bottom + 4,
+    // The v3 stage track visually overlaps the workspace edge by 8px to avoid a
+    // dead chrome band while keeping labels and controls fully readable.
+    state.layoutShell.top >= state.stageNav.bottom - 10 && state.layoutShell.top <= state.stageNav.bottom + 2,
     `${viewport.label}/${label}: workbench must begin directly under stage navigation (${JSON.stringify({
       stageNav: state.stageNav,
       layoutShell: state.layoutShell,
     })})`
   );
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']),
     `${viewport.label}/${label}: expected one five-stage workflow, got ${JSON.stringify(state.stageLabels)}`
   );
   assert(state.importIsUtility, `${viewport.label}/${label}: Import must be a separate utility, not step 6`);
@@ -181,7 +185,7 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
       };
     };
     const primarySelectors = {
-      project: ['[data-testid="ide-project-professional-overview"]'],
+      project: ['[data-testid="ide-project-command-board-v1"]'],
       design: ['[data-testid="ide-design-live-canvas"]'],
       verify: ['[data-testid="ide-verify-lab-grid"]'],
       hardware: ['[data-testid="ide-hw-map-table"]'],

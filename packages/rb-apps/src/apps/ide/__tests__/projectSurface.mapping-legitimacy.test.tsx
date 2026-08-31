@@ -37,8 +37,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     examples: [],
     activeExampleId: null,
     onOpenExample: vi.fn(),
-    primaryCtaLabel: 'Map Pins',
-    primaryCta: { label: 'Map Pins', mode: 'hardware', code: 'RBP1000' },
+    primaryCtaLabel: 'Board & Constraints',
+    primaryCta: { label: 'Board & Constraints', mode: 'hardware', code: 'RBP1000' },
     onPrimaryCta: vi.fn(),
     onUpdateMappingPin: vi.fn(),
     onAutoSuggestMapping: vi.fn(),
@@ -58,7 +58,7 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
-  it('shows the mapping task and post-verify hint without a duplicate Export strip', () => {
+  it('shows Board & Constraints and the post-simulation hint without a duplicate Build & Export strip', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -80,7 +80,7 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-map-pins-header').textContent).toContain('Board pin mapping');
+    expect(getByTestId('ide-project-map-pins-header').textContent).toContain('Board assignments');
     expect(getByTestId('ide-project-map-pipeline-copy').textContent).toContain('building the Vivado package');
     expect(queryByTestId('ide-project-map-export-alignment')).toBeNull();
     expect(getByTestId('ide-project-mapping-post-verify-hint').textContent).toContain('verified');
@@ -137,7 +137,7 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
     expect(queryByTestId('ide-project-map-req-clk_in')).toBeNull();
   });
 
-  it('keeps Project mapping rows read-only and routes the student to Map Pins', () => {
+  it('keeps Project mapping rows read-only and routes the student to Board & Constraints', () => {
     const onOpenHardware = vi.fn();
     const onUpdateMappingPin = vi.fn();
     const { getByTestId, queryByTestId } = render(

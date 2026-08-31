@@ -42,8 +42,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     examples: [],
     activeExampleId: null,
     onOpenExample: vi.fn(),
-    primaryCtaLabel: 'Verify',
-    primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
+    primaryCtaLabel: 'Simulate',
+    primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1002' },
     onPrimaryCta: vi.fn(),
     onUpdateMappingPin: vi.fn(),
     onAutoSuggestMapping: vi.fn(),
@@ -71,8 +71,8 @@ describe('ProjectSurface technical record contract', () => {
     );
 
     expect(getByTestId('ide-project-identity-strip-title').textContent).toContain('Test Project');
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Verify');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Simulate');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Simulate');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(getByTestId('ide-project-professional-overview')).toBeTruthy();
     expect(queryByTestId('ide-projectx-metrics')).toBeNull();

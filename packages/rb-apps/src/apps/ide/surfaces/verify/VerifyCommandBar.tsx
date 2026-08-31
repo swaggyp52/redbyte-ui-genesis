@@ -90,8 +90,10 @@ export interface VerifyCommandBarProps {
    * (first recovery move + where detail lives).
    */
   readonly failureRecoveryLine?: string;
-  readonly workspaceMode?: 'scenario' | 'replay' | 'checks';
-  readonly onWorkspaceModeChange?: (mode: 'scenario' | 'replay' | 'checks') => void;
+  readonly workspaceMode?: 'scenario' | 'bench' | 'replay' | 'checks' | 'testbench';
+  readonly onWorkspaceModeChange?: (
+    mode: 'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
+  ) => void;
   readonly configuredCheckCount?: number;
   readonly hasReplay?: boolean;
 }
@@ -100,6 +102,7 @@ export interface VerifyCommandBarProps {
 
 export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onRun,
+  runLabel,
   runDisabled,
   runPulsing,
   workspaceMode = 'scenario',
@@ -182,7 +185,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       <div className="ide-vcb-row ide-vcb-row--primary">
         <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
           <div className="ide-vcb-mode-toggle" role="tablist" aria-label="Simulation Studio workspace">
-            {(['scenario', 'replay', 'checks'] as const).map((mode) => (
+            {(['scenario', 'bench', 'replay', 'checks', 'testbench'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -192,13 +195,23 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                 data-testid={`ide-vcb-workspace-${mode}`}
                 aria-selected={workspaceMode === mode}
                 disabled={mode === 'replay' && !hasReplay}
-                title={mode === 'replay' && !hasReplay ? 'Run the simulation to create a replay.' : undefined}
+                title={
+                  mode === 'replay' && !hasReplay
+                    ? 'Run the simulation to create a replay.'
+                    : mode === 'bench'
+                      ? 'Drive inputs and read outputs live — the same state as the Virtual Board.'
+                      : undefined
+                }
               >
                 {mode === 'scenario'
-                  ? 'Scenario'
-                  : mode === 'replay'
-                    ? 'Replay'
-                    : `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`}
+                  ? 'Timeline'
+                  : mode === 'bench'
+                    ? 'Bench'
+                    : mode === 'replay'
+                      ? 'Waveform'
+                      : mode === 'checks'
+                        ? `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`
+                        : 'Testbench'}
               </button>
             ))}
           </div>
@@ -217,7 +230,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             hierarchySurface="verify"
             hierarchyRole="next"
           >
-            Run simulation
+            {runLabel}
           </IdeButton>
         </div>
 

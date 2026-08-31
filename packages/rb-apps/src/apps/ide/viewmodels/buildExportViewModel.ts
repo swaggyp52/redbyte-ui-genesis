@@ -56,6 +56,8 @@ import {
   buildVerifyMappingEvidenceHash,
 } from '../verifyProjectHash';
 import { stableSerialize } from '../../../utils/stableSerialize';
+import { elaborateProjectHierarchy } from '../projectHierarchy';
+import { generateHierarchicalVhdlProject } from '../hierarchicalVhdl';
 
 function getEffectiveIoMapping(project: RBProject): IoMapping | undefined {
   return resolveIoMappingFromProjectFields({
@@ -198,7 +200,11 @@ export function buildExportViewModel(
   activeScenario?: VerifyScenario
 ): ExportViewModel {
   const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario);
-  const flattenedProject = flattenProjectMacros(project);
+  const hierarchyVhdl = generateHierarchicalVhdlProject(project);
+  const flattenedProject = flattenProjectMacros({
+    ...project,
+    circuit: elaborateProjectHierarchy(project.circuit, project.hierarchy),
+  });
   const runtimeBackedTestbench = buildRuntimeBackedTestbench(
     flattenedProject,
     runtimeVerifyRun,
@@ -206,6 +212,28 @@ export function buildExportViewModel(
     verifyAuthority,
   );
   const exportResult = exportProjectAsBasys3(flattenedProject);
+  if (hierarchyVhdl && exportResult.bundle) {
+    exportResult.bundle.topVhd = hierarchyVhdl.topVhd;
+    exportResult.bundle.importedCompanionSources = hierarchyVhdl.moduleSources.map((source) => ({
+      sourcePath: source.path,
+      exportPath: source.path,
+      content: source.text,
+    }));
+    if (exportResult.projectProjection) {
+      exportResult.projectProjection = {
+        ...exportResult.projectProjection,
+        hierarchy: project.hierarchy,
+        hdl: {
+          ...(exportResult.projectProjection.hdl ?? { top: resolveTopEntity(project), sources: [] }),
+          top: resolveTopEntity(project),
+          sources: [
+            { path: 'top.vhd', language: 'vhdl', text: hierarchyVhdl.topVhd },
+            ...hierarchyVhdl.moduleSources.map((source) => ({ path: source.path, language: 'vhdl' as const, text: source.text })),
+          ],
+        },
+      };
+    }
+  }
   const runtimeBackedTestbenchErrors = buildRuntimeBackedTestbenchErrors(
     exportResult.bundle?.topVhd,
     runtimeBackedTestbench,
@@ -562,7 +590,9 @@ function buildArtifacts(
       preview: buildPreview(bundle.topVhd),
       status: blocked ? 'blocked' : 'ready',
       note:
-        bundle.exportMode === 'preserved-import-rtl'
+        project.hierarchy?.modules.length
+          ? `Structural top-level VHDL with ${project.hierarchy.modules.length} reusable project module source${project.hierarchy.modules.length === 1 ? '' : 's'}. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
+          : bundle.exportMode === 'preserved-import-rtl'
           ? `Preserved imported top-level VHDL (multi-file handoff). designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
           : `Synthesizable top-level VHDL. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
     });
@@ -575,7 +605,9 @@ function buildArtifacts(
         content: normalizeArtifactContent(companionHeader + companion.content),
         preview: buildPreview(companion.content),
         status: blocked ? 'blocked' : 'ready',
-        note: 'Preserved imported companion VHDL (package / subsystem).',
+        note: project.hierarchy?.modules.some((module) => companion.content.includes(`entity ${module.name} is`))
+          ? 'Editable native visual module source.'
+          : 'Preserved imported companion VHDL (package / subsystem).',
       });
     }
     // Constraints
@@ -788,9 +820,13 @@ function getExportVectors(
 }
 
 function getProjectCircuitHash(project: RBProject): string {
-  // Runtime Verify hashes the live, unflattened circuit. Export must compare
-  // against that same authority before macro flattening changes its shape.
-  return buildVerifyCircuitEvidenceHash(project.circuit);
+  // Runtime Verify evaluates the elaborated hierarchy. Export must compare
+  // against that same semantic circuit; hashing the parent module shell made
+  // every valid hierarchical run appear stale even when its scenario, mapping,
+  // and circuit were unchanged.
+  return buildVerifyCircuitEvidenceHash(
+    elaborateProjectHierarchy(project.circuit, project.hierarchy)
+  );
 }
 
 function canonicalizeScheduleEvidence(contract: VerifyScheduleContract) {

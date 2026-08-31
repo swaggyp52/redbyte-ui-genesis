@@ -1,0 +1,1890 @@
+/* RedByte Product System v3 — light-first shared workbench palette.
+   This file loads after legacy surface CSS and maps every major IDE token to a
+   concrete resolved palette. Page-specific styles should consume these tokens. */
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] {
+  color-scheme: light;
+  --rb-app-bg: #f3f5f8;
+  --rb-bg: var(--rb-app-bg);
+  --rb-canvas: #f8fafc;
+  --rb-canvas-dark: #10161f;
+  --rb-canvas-dark-panel: #151d28;
+  --rb-canvas-grid: rgba(150, 170, 196, 0.12);
+  --rb-shell: #ffffff;
+  --rb-surface: #ffffff;
+  --rb-surface-1: #ffffff;
+  --rb-surface-2: #f8fafc;
+  --rb-surface-3: #eef2f7;
+  --rb-surface-raised: #ffffff;
+  --rb-surface-overlay: #ffffff;
+  --rb-border: #d6dce5;
+  --rb-border-subtle: #e5e9ef;
+  --rb-border-default: #d6dce5;
+  --rb-border-strong: #b9c2cf;
+  --rb-text: #152033;
+  --rb-text-strong: #101828;
+  --rb-text-primary: #152033;
+  --rb-text-secondary: #4d5a6b;
+  --rb-text-muted: #667386;
+  --rb-action: #2563eb;
+  --rb-accent: #2563eb;
+  --rb-action-hover: #1d4ed8;
+  --rb-action-pressed: #1e40af;
+  --rb-focus: #2563eb;
+  --rb-brand-red: #d84a4a;
+  --rb-project: #d84a4a;
+  --rb-design: #2563eb;
+  --rb-verify: #7c3aed;
+  --rb-map-pins: #b7791f;
+  --rb-export: #07866f;
+  --rb-import: #36688f;
+  --rb-state-success: #07866f;
+  --rb-state-warning: #c87917;
+  --rb-warning-text: #8a4f09;
+  --rb-state-danger: #d13f4a;
+  --rb-state-info: #2563eb;
+  --rb-success: var(--rb-state-success);
+  --rb-warning: var(--rb-state-warning);
+  --rb-danger: var(--rb-state-danger);
+  --rb-info: var(--rb-state-info);
+  --rb-state-success-bg: #e7f7f3;
+  --rb-state-warning-bg: #fff5e6;
+  --rb-state-danger-bg: #fcebed;
+  --rb-state-info-bg: #eaf1ff;
+  --rb-success-bg: var(--rb-state-success-bg);
+  --rb-warning-bg: var(--rb-state-warning-bg);
+  --rb-error-bg: var(--rb-state-danger-bg);
+  --rb-info-bg: var(--rb-state-info-bg);
+  --rb-success-border: #88b69d;
+  --rb-warning-border: #caa75f;
+  --rb-error-border: #d99a92;
+  --rb-info-border: #8bb5c5;
+  --rb-shadow-elevated: 0 10px 26px rgba(49, 41, 32, 0.09);
+  --rb-shadow-float: 0 16px 36px rgba(49, 41, 32, 0.16);
+  --rb-shadow-node: 0 3px 10px rgba(49, 41, 32, 0.14);
+  --ide-bg: var(--rb-bg);
+  --ide-surface-1: var(--rb-surface-1);
+  --ide-surface-2: var(--rb-surface-2);
+  --ide-surface-3: var(--rb-surface-3);
+  --ide-surface-panel: var(--rb-surface-1);
+  --ide-surface-raised: var(--rb-surface-2);
+  --ide-surface-inset: #eee9e1;
+  --ide-surface-code: #f8f6f2;
+  --ide-border: var(--rb-border-default);
+  --ide-border-subtle: var(--rb-border-subtle);
+  --ide-border-strong: var(--rb-border-strong);
+  --ide-text-strong: var(--rb-text-primary);
+  --ide-text-primary: var(--rb-text-primary);
+  --ide-text-muted: var(--rb-text-secondary);
+  --ide-text-secondary: var(--rb-text-secondary);
+  --ide-text-soft: var(--rb-text-muted);
+  --rbp-surface-card: var(--rb-surface-1);
+  --rbp-surface-card-hi: var(--rb-surface-2);
+  --rbp-state-neutral-bg: var(--rb-surface-2);
+  --rb-surface-deep: #eef2f7;
+  --rb-lab-bg-base: #eef2f7;
+  --rb-lab-bg-workbench: #ffffff;
+  --rb-lab-bg-workbench-hi: #f8fafc;
+  --rb-lab-bg-proof: #f5f3ff;
+  --rb-lab-bg-board: #fff9ed;
+  --rb-lab-bg-export: #edf8f5;
+  --rb-lab-bg-inspector: #f8fafc;
+  --rb-lab-border-subtle: rgba(78, 91, 108, 0.22);
+  --rb-lab-border-focus: rgba(8, 123, 131, 0.58);
+  --rb-lab-accent-flow: #2563eb;
+  --rb-lab-accent-proof: #7c3aed;
+  --rb-lab-accent-hardware: #b7791f;
+  --rb-lab-accent-export: #07866f;
+  --rb-lab-state-draft: #626d74;
+  --rb-lab-state-current: #256f4f;
+  --rb-lab-state-stale: #946009;
+  --rb-lab-state-attention: #b9433f;
+  --rb-lab-state-external: #176b87;
+  --rb-lab-depth-1: 0 5px 18px rgba(21, 32, 51, 0.07);
+  --rb-lab-depth-2: 0 14px 34px rgba(21, 32, 51, 0.1);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'],
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] {
+  color-scheme: dark;
+  --rb-app-bg: #11151b;
+  --rb-bg: var(--rb-app-bg);
+  --rb-canvas: #10141b;
+  --rb-canvas-dark: #0d1117;
+  --rb-canvas-dark-panel: #171c24;
+  --rb-canvas-grid: rgba(190, 202, 217, 0.12);
+  --rb-shell: #171c24;
+  --rb-surface: #171c24;
+  --rb-surface-1: #171c24;
+  --rb-surface-2: #1d2430;
+  --rb-surface-3: #252e3c;
+  --rb-surface-raised: #1d2430;
+  --rb-surface-overlay: #252e3c;
+  --rb-border: rgba(190, 202, 217, 0.18);
+  --rb-border-subtle: rgba(190, 202, 217, 0.12);
+  --rb-border-default: rgba(190, 202, 217, 0.22);
+  --rb-border-strong: rgba(190, 202, 217, 0.38);
+  --rb-text: #f2f5f8;
+  --rb-text-strong: #ffffff;
+  --rb-text-primary: #f2f5f8;
+  --rb-text-secondary: #b5bfcc;
+  --rb-text-muted: #8f9aaa;
+  --rb-action: #4f7df3;
+  --rb-accent: #6d8ff5;
+  --rb-action-hover: #7196ff;
+  --rb-action-pressed: #365fca;
+  --rb-focus: #79a0ff;
+  --rb-brand-red: #ef7a68;
+  --rb-project: #ef8272;
+  --rb-design: #69bdd6;
+  --rb-verify: #66c2b6;
+  --rb-map-pins: #e1ad56;
+  --rb-export: #67bd8e;
+  --rb-import: #79add4;
+  --rb-state-success: #5eb889;
+  --rb-state-warning: #e1a74b;
+  --rb-warning-text: #f0c56e;
+  --rb-state-danger: #e2777d;
+  --rb-state-info: #72bfd0;
+  --rb-success: var(--rb-state-success);
+  --rb-warning: var(--rb-state-warning);
+  --rb-danger: var(--rb-state-danger);
+  --rb-info: var(--rb-state-info);
+  --rb-state-success-bg: #173129;
+  --rb-state-warning-bg: #352b19;
+  --rb-state-danger-bg: #392126;
+  --rb-state-info-bg: #1a2b3b;
+  --rb-success-bg: var(--rb-state-success-bg);
+  --rb-warning-bg: var(--rb-state-warning-bg);
+  --rb-error-bg: var(--rb-state-danger-bg);
+  --rb-info-bg: var(--rb-state-info-bg);
+  --rb-success-border: #326c52;
+  --rb-warning-border: #806126;
+  --rb-error-border: #87434b;
+  --rb-info-border: #3f6588;
+  --ide-bg: var(--rb-bg);
+  --ide-surface-1: var(--rb-surface-1);
+  --ide-surface-2: var(--rb-surface-2);
+  --ide-surface-3: var(--rb-surface-3);
+  --ide-surface-panel: var(--rb-surface-1);
+  --ide-surface-raised: var(--rb-surface-2);
+  --ide-surface-inset: #171a18;
+  --ide-surface-code: #101211;
+  --ide-border: var(--rb-border-default);
+  --ide-border-subtle: var(--rb-border-subtle);
+  --ide-border-strong: var(--rb-border-strong);
+  --ide-text-strong: var(--rb-text-primary);
+  --ide-text-primary: var(--rb-text-primary);
+  --ide-text-muted: var(--rb-text-secondary);
+  --ide-text-secondary: var(--rb-text-secondary);
+  --ide-text-soft: var(--rb-text-muted);
+  --rb-surface-deep: #171a18;
+}
+
+:root[data-redbyte-mode='ide'] body {
+  background: var(--rb-bg);
+  color: var(--rb-text-primary);
+}
+
+:root[data-redbyte-mode='ide'] .ide-root {
+  background: var(--rb-bg);
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+:root[data-redbyte-mode='ide'] .ide-root > :is(.ide-top-bar, .ide-surface-column, .ide-status-bar) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:root[data-redbyte-mode='ide'] .ide-root .ide-surface-column {
+  background: var(--rb-bg);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+:root[data-redbyte-mode='ide'] .ide-root .ide-workbench-shell .ide-workbench-main {
+  background: var(--rb-bg);
+}
+
+:root[data-redbyte-mode='ide'] .ide-root .ide-workbench-shell .ide-workbench-workspace {
+  background: var(--rb-canvas);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-left-rail {
+  background: var(--rb-shell);
+  border-color: var(--rb-border-subtle);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='design'] .ide-workbench-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='hardware'] .ide-workbench-workspace {
+  background: var(--rb-canvas);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-panel,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-card,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-export-card,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-hw-card,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-projectx-next,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-projectx-session,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-projectx-examples {
+  border-color: var(--rb-border-subtle);
+  background: var(--rb-surface-1);
+  box-shadow: var(--rb-lab-depth-1);
+}
+
+.ide-root .ide-top-bar,
+.ide-root .ide-stage-nav-frame {
+  background: color-mix(in srgb, var(--rb-shell) 96%, var(--rb-surface-2));
+  border-color: var(--rb-border-subtle);
+}
+
+.ide-root .ide-top-bar {
+  z-index: 50;
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: visible;
+}
+
+.ide-root .ide-stage-nav-frame {
+  z-index: 20;
+}
+
+/* The five product stages must read as navigation, not clipped metadata.
+   The integrated shell deliberately uses the wider desktop rail so
+   Board & Constraints remains fully named. */
+.ide-root .ide-stage-nav {
+  width: min(100%, 1200px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ide-root .ide-status-bar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 0 12px !important;
+  overflow: hidden;
+  border-color: var(--rb-border-subtle) !important;
+  color: var(--rb-text-secondary);
+  background: var(--rb-shell);
+}
+
+.ide-root .ide-status-bar--quiet {
+  justify-content: flex-start;
+}
+
+.ide-root .ide-status-item,
+.ide-root .ide-status-support {
+  flex: 0 0 auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ide-root .ide-status-build {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ide-root .ide-workbench-shell {
+  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 216px) !important;
+  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 252px) !important;
+  --ide-workbench-console-height: var(--rb-workbench-pref-bottom-height, 220px) !important;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The persisted bottom-dock height owns the complete grid track. Legacy chrome
+   capped the console itself at 180px, which left an inert blank strip for every
+   larger preset or keyboard resize. */
+.ide-root .ide-workbench-shell > .ide-workbench-console {
+  height: auto;
+  max-height: none;
+}
+
+.ide-root .ide-workbench-panel-controls {
+  position: relative;
+  z-index: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 0;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--rb-border-subtle);
+  background: var(--rb-surface-2);
+  pointer-events: none;
+}
+
+.ide-root .ide-workbench-panel-controls:empty {
+  display: none;
+}
+
+.ide-root .ide-workbench-main {
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ide-root .ide-workbench-console {
+  grid-row: 3;
+}
+
+.ide-root .ide-workbench-panel-controls button,
+.ide-root .ide-workbench-dock-collapse {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 6px;
+  color: var(--rb-text-secondary);
+  background: color-mix(in srgb, var(--rb-surface-1) 94%, transparent);
+  box-shadow: 0 3px 12px rgba(35, 48, 61, 0.1);
+  font: 600 12px/1.2 inherit;
+  pointer-events: auto;
+}
+
+.ide-root .ide-workbench-dock {
+  position: relative;
+}
+
+.ide-root .ide-workbench-dock-collapse {
+  position: absolute;
+  z-index: 15;
+  top: 8px;
+  width: 26px;
+  padding-inline: 0;
+}
+
+.ide-root .ide-workbench-dock-collapse--left {
+  right: 7px;
+}
+
+.ide-root .ide-workbench-dock-collapse--right {
+  left: 7px;
+}
+
+.ide-root .ide-workbench-dock-collapse--bottom {
+  top: 6px;
+  right: 8px;
+}
+
+.ide-root .ide-workbench-resize-handle {
+  position: absolute;
+  z-index: 16;
+  background: transparent;
+  touch-action: none;
+}
+
+.ide-root .ide-workbench-resize-handle::after {
+  content: '';
+  position: absolute;
+  background: var(--rb-border-default);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ide-root .ide-workbench-resize-handle:hover::after,
+.ide-root .ide-workbench-resize-handle:focus-visible::after {
+  opacity: 1;
+}
+
+.ide-root .ide-workbench-resize-handle--left,
+.ide-root .ide-workbench-resize-handle--right {
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: col-resize;
+}
+
+.ide-root .ide-workbench-resize-handle--left {
+  right: -5px;
+}
+
+.ide-root .ide-workbench-resize-handle--right {
+  left: -5px;
+}
+
+.ide-root .ide-workbench-resize-handle--left::after,
+.ide-root .ide-workbench-resize-handle--right::after {
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+}
+
+.ide-root .ide-workbench-resize-handle--bottom {
+  top: -5px;
+  right: 0;
+  left: 0;
+  height: 9px;
+  cursor: row-resize;
+}
+
+.ide-root .ide-workbench-resize-handle--bottom::after {
+  top: 4px;
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.ide-root .ide-theme-control {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: var(--rb-radius-control);
+  color: var(--rb-text-secondary);
+  background: var(--rb-surface-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ide-root .ide-theme-control select {
+  min-height: 34px;
+  padding: 0 28px 0 4px;
+  border: 0;
+  color: var(--rb-text-primary);
+  background: transparent;
+  font: inherit;
+}
+
+.ide-root .ide-theme-control select:focus-visible {
+  outline-offset: -2px;
+}
+
+.ide-root .ide-command-palette-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: min(14vh, 120px) 18px 24px;
+  background: rgba(28, 36, 45, 0.36);
+  backdrop-filter: blur(3px);
+}
+
+.ide-root .ide-command-palette {
+  display: grid;
+  grid-template-rows: auto auto minmax(160px, 1fr) auto;
+  width: min(680px, calc(100vw - 36px));
+  max-height: min(660px, 72vh);
+  overflow: hidden;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: 12px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-overlay);
+  box-shadow: var(--rb-shadow-float);
+}
+
+.ide-root .ide-command-palette-header,
+.ide-root .ide-command-palette-footer {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 14px;
+  color: var(--rb-text-secondary);
+  font-size: 13px;
+}
+
+.ide-root .ide-command-palette-header label {
+  color: var(--rb-text-primary);
+  font-weight: 700;
+}
+
+.ide-root .ide-command-palette-query {
+  min-height: 52px;
+  margin: 0 12px 10px;
+  padding: 0 14px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 8px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-2);
+  font-size: 17px;
+}
+
+.ide-root .ide-command-palette-results-frame {
+  position: relative;
+  min-height: 160px;
+  overflow: hidden;
+}
+
+.ide-root .ide-command-palette-results {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 4px 8px 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--rb-border-strong) var(--rb-surface-2);
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  border-block: 1px solid var(--rb-border-subtle);
+}
+
+.ide-root .ide-command-palette-results::-webkit-scrollbar {
+  width: 11px;
+}
+
+.ide-root .ide-command-palette-results::-webkit-scrollbar-track {
+  background: var(--rb-surface-2);
+}
+
+.ide-root .ide-command-palette-results::-webkit-scrollbar-thumb {
+  border: 2px solid var(--rb-surface-2);
+  border-radius: 999px;
+  background: var(--rb-border-strong);
+}
+
+.ide-root .ide-command-palette-scroll-cue {
+  position: absolute;
+  z-index: 2;
+  right: 11px;
+  left: 0;
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.ide-root .ide-command-palette-scroll-cue.is-top {
+  top: 0;
+  align-items: flex-start;
+  padding-top: 5px;
+  background: linear-gradient(180deg, var(--rb-surface-overlay) 42%, transparent);
+}
+
+.ide-root .ide-command-palette-scroll-cue.is-bottom {
+  bottom: 0;
+  align-items: flex-end;
+  padding-bottom: 5px;
+  background: linear-gradient(0deg, var(--rb-surface-overlay) 42%, transparent);
+}
+
+.ide-root .ide-command-palette-option {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--rb-text-primary);
+  background: transparent;
+  text-align: left;
+}
+
+.ide-root .ide-command-palette-option.is-active {
+  border-color: color-mix(in srgb, var(--rb-action) 38%, var(--rb-border-default));
+  background: color-mix(in srgb, var(--rb-action) 10%, var(--rb-surface-1));
+}
+
+.ide-root .ide-command-palette-option[aria-disabled='true'] {
+  color: var(--rb-text-muted);
+}
+
+.ide-root .ide-command-palette-option-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.ide-root .ide-command-palette-option-copy small {
+  color: var(--rb-text-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.ide-root .ide-command-palette kbd,
+.ide-root .ide-topbar-action kbd {
+  padding: 2px 5px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 4px;
+  color: var(--rb-text-secondary);
+  background: var(--rb-surface-2);
+  font: 600 11px/1.2 inherit;
+}
+
+.ide-root .ide-command-palette-empty {
+  margin: 26px 12px;
+  color: var(--rb-text-muted);
+  text-align: center;
+}
+
+.ide-root .ide-topbar-menu {
+  position: relative;
+}
+
+.ide-root .ide-topbar-menu > summary {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: var(--rb-radius-control);
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-1);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ide-root .ide-topbar-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ide-root .ide-topbar-menu > summary::after {
+  content: '▾';
+  margin-left: 6px;
+  color: var(--rb-text-muted);
+  font-size: 10px;
+}
+
+.ide-root .ide-topbar-menu-popover {
+  position: absolute;
+  z-index: 200;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  width: min(330px, calc(100vw - 24px));
+  padding: 7px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 9px;
+  background: var(--rb-surface-overlay);
+  box-shadow: var(--rb-shadow-float);
+}
+
+.ide-root .ide-topbar-menu-popover button {
+  display: grid;
+  gap: 2px;
+  min-height: 38px;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--rb-text-primary);
+  background: transparent;
+  text-align: left;
+}
+
+.ide-root .ide-topbar-menu-popover button:hover,
+.ide-root .ide-topbar-menu-popover button:focus-visible,
+.ide-root .ide-topbar-menu-popover button[aria-checked='true'] {
+  background: color-mix(in srgb, var(--rb-action) 10%, var(--rb-surface-1));
+}
+
+.ide-root .ide-topbar-menu-popover button:disabled {
+  color: var(--rb-text-muted);
+  cursor: not-allowed;
+}
+
+.ide-root .ide-topbar-menu-popover small,
+.ide-root .ide-topbar-menu-storage {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ide-root .ide-topbar-menu-heading,
+.ide-root .ide-topbar-menu-storage {
+  padding: 7px 9px;
+}
+
+.ide-root .ide-topbar-menu-heading {
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+}
+
+.ide-root .ide-save-dot--failed {
+  background: var(--rb-state-danger);
+}
+
+@media (max-width: 1500px) {
+  .ide-root .ide-topbar-command kbd,
+  .ide-root .ide-topbar-fact-label,
+  .ide-root .ide-theme-control-label {
+    display: none;
+  }
+
+  /* The stage rail immediately below already names the active workspace.
+     Yield the duplicate breadcrumb before Linux font metrics can push the
+     classroom top bar wider than the viewport on the two longest stages. */
+  .ide-root .ide-mode-breadcrumb {
+    display: none;
+  }
+}
+
+/* Keep the complete command set inside a 1366px classroom viewport even when
+   Linux system-font metrics run wider than Windows. The dot remains an
+   aria-labelled save-state control, and the status bar retains the full text. */
+@media (max-width: 1400px) {
+  .ide-root .ide-save-label {
+    display: none;
+  }
+}
+
+@media (max-width: 1260px) {
+  .ide-root .ide-topbar-command {
+    width: 38px;
+    overflow: hidden;
+    color: transparent;
+  }
+
+  .ide-root .ide-topbar-command::before {
+    content: '⌘';
+    color: var(--rb-text-primary);
+  }
+}
+
+@media (max-width: 1180px) {
+  .ide-root .ide-theme-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .ide-root .ide-theme-control {
+    padding-left: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ide-root *,
+  .ide-root *::before,
+  .ide-root *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Product System v3: IDE-grade Design docks, project browser, and bottom tools. */
+.ide-root .ide-design-dock-stack,
+.ide-root .ide-design-project-browser {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.ide-root .ide-design-dock-stack {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.ide-root .ide-design-dock-tabs {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 5px;
+  gap: 3px;
+  border-bottom: 1px solid var(--rb-border-default);
+  background: var(--rb-surface-1);
+  scrollbar-width: thin;
+}
+
+.ide-root .ide-design-dock-tabs button {
+  flex: 0 0 auto;
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.ide-root .ide-design-dock-tabs button:hover,
+.ide-root .ide-design-dock-tabs button:focus-visible {
+  background: color-mix(in srgb, var(--rb-action) 9%, var(--rb-surface-1));
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-design-dock-tabs button.is-active,
+.ide-root .ide-design-dock-tabs button[aria-selected='true'] {
+  background: color-mix(in srgb, var(--rb-action) 15%, var(--rb-surface-1));
+  color: var(--rb-accent);
+  box-shadow: inset 0 -2px 0 var(--rb-action);
+}
+
+.ide-root .ide-design-project-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  padding: 9px;
+}
+
+.ide-root .ide-design-project-browser .ide-design-subheader h3,
+.ide-root .ide-design-inline-board h3 {
+  margin: 0;
+  color: var(--rb-text-primary);
+  font-size: 13px;
+}
+
+.ide-root .ide-design-project-browser .ide-design-subheader p,
+.ide-root .ide-design-inline-board header p {
+  margin: 3px 0 0;
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ide-root .ide-design-tree,
+.ide-root .ide-design-source-list,
+.ide-root .ide-design-board-binding-list {
+  display: grid;
+  gap: 3px;
+}
+
+.ide-root .ide-design-tree > button,
+.ide-root .ide-design-source-list > button,
+.ide-root .ide-design-board-binding-list > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 7px;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rb-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-root .ide-design-tree > button {
+  padding-inline-start: calc(7px + var(--rb-tree-depth, 0) * 12px);
+}
+
+.ide-root .ide-design-tree > button:hover,
+.ide-root .ide-design-tree > button:focus-visible,
+.ide-root .ide-design-tree > button.is-selected,
+.ide-root .ide-design-source-list > button:hover,
+.ide-root .ide-design-source-list > button:focus-visible,
+.ide-root .ide-design-board-binding-list > button:hover,
+.ide-root .ide-design-board-binding-list > button:focus-visible {
+  border-color: color-mix(in srgb, var(--rb-action) 32%, var(--rb-border-default));
+  background: color-mix(in srgb, var(--rb-action) 8%, var(--rb-surface-1));
+}
+
+.ide-root .ide-design-tree > button span:nth-child(2),
+.ide-root .ide-design-source-list > button span:nth-child(2),
+.ide-root .ide-design-board-binding-list > button span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ide-root .ide-design-tree small,
+.ide-root .ide-design-source-list small,
+.ide-root .ide-design-board-binding-list small,
+.ide-root .ide-design-tree em {
+  color: var(--rb-text-muted);
+  font-size: 10px;
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-root .ide-design-board-binding-list > button {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ide-root .ide-design-board-binding-list code {
+  color: var(--rb-text-secondary);
+  font-size: 10px;
+}
+
+.ide-root .ide-design-inline-board,
+.ide-root .ide-design-properties-panel {
+  display: grid;
+  gap: 12px;
+  padding: 10px;
+}
+
+.ide-root .ide-design-inline-board-field {
+  display: grid;
+  gap: 5px;
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.ide-root .ide-design-inline-board-field select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 6px;
+  padding: 0 4px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+}
+
+/* The compact inspector must show the complete selected alias, package pin,
+   and resource name without forcing students to decode a clipped option. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-inline-board-field select {
+  font-size: 12px !important;
+  font-weight: 650;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-workbench-dock-right {
+  scrollbar-color: var(--rb-border-strong) var(--rb-surface-1);
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-workbench-dock-right::-webkit-scrollbar {
+  width: 10px;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-workbench-dock-right::-webkit-scrollbar-track {
+  background: var(--rb-surface-1);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-workbench-dock-right::-webkit-scrollbar-thumb {
+  border: 2px solid var(--rb-surface-1);
+  border-radius: 999px;
+  background: var(--rb-border-strong);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-inline-board {
+  padding-bottom: 36px;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-inspector-proof-boundary {
+  margin: 0;
+  padding: 10px;
+  border-left: 2px solid #66839a;
+  border-radius: 4px;
+  background: rgba(102, 131, 154, 0.08);
+}
+
+.ide-root .ide-design-inline-board-facts {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--rb-border-default);
+}
+
+.ide-root .ide-design-inline-board-facts > div {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+  padding: 7px 8px;
+  background: var(--rb-surface-1);
+}
+
+.ide-root .ide-design-inline-board-facts dt {
+  color: var(--rb-text-muted);
+  font-size: 10px;
+}
+
+.ide-root .ide-design-inline-board-facts dd {
+  margin: 0;
+  color: var(--rb-text-primary);
+  font: 600 10px/1.35 var(--rb-font-mono, monospace);
+  overflow-wrap: anywhere;
+}
+
+.ide-root .ide-design-bottom-workspace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  background: var(--rb-surface-1);
+}
+
+.ide-root .ide-design-bottom-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 9px 12px;
+}
+
+.ide-root .ide-design-problem-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 5px;
+}
+
+.ide-root .ide-design-problem-list button,
+.ide-root .ide-design-console-readout,
+.ide-root .ide-design-simulation-readout {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 7px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  text-align: left;
+}
+
+.ide-root .ide-design-problem-list button {
+  cursor: pointer;
+}
+
+.ide-root .ide-design-problem-list span,
+.ide-root .ide-design-console-readout span,
+.ide-root .ide-design-console-readout p,
+.ide-root .ide-design-simulation-readout span {
+  margin: 0;
+  color: var(--rb-text-muted);
+  font-size: 11px;
+}
+
+.ide-root .ide-design-toolbar-customize,
+.ide-root .ide-design-toolbar-overflow {
+  position: relative;
+}
+
+.ide-root .ide-design-toolbar-customize > summary,
+.ide-root .ide-design-toolbar-overflow > summary {
+  min-height: 30px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 6px;
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ide-root .ide-design-toolbar-customize > summary::-webkit-details-marker,
+.ide-root .ide-design-toolbar-overflow > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ide-root .ide-design-toolbar-customize-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  width: 230px;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 8px;
+  background: var(--rb-surface-overlay);
+  box-shadow: var(--rb-shadow-float);
+}
+
+.ide-root .ide-design-toolbar-customize-menu label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+}
+
+.ide-root .ide-design-toolbar-customize-subheading {
+  margin-top: 5px;
+  padding-top: 7px;
+  border-top: 1px solid var(--rb-border-subtle);
+  color: var(--rb-text-primary);
+  font-size: 11px;
+}
+
+.ide-root .ide-design-toolbar-group-order {
+  display: grid;
+  gap: 4px;
+}
+
+.ide-root .ide-design-toolbar-group-order-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+}
+
+.ide-root .ide-design-toolbar-group-order-actions {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.ide-root .ide-design-toolbar-group-order-actions button {
+  min-height: 25px;
+  padding: 3px 6px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 5px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-secondary);
+  font: 650 10px/1 inherit;
+}
+
+.ide-root .ide-design-toolbar-group-order-actions button:disabled {
+  opacity: 0.42;
+}
+
+.ide-root .ide-design-toolbar-overflow {
+  display: none;
+}
+
+.ide-root .ide-design-toolbar-overflow-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  width: 190px;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 8px;
+  background: var(--rb-surface-overlay);
+  box-shadow: var(--rb-shadow-float);
+}
+
+/* Linux font metrics can make the utility row wrap a third time at 1440px.
+   Keep camera/layout commands in More tools through laptop widths so the
+   primary circuit canvas begins inside the first workbench viewport. */
+@media (max-width: 1500px) {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-design-toolbar-view-tools,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    [data-testid='ide-design-tool-snap'],
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-design-toolbar-layout {
+    display: none !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-design-toolbar-overflow {
+    display: block;
+  }
+}
+
+@media (max-width: 1420px) {
+  .ide-root .ide-design-toolbar-customize > summary {
+    width: 32px;
+    overflow: hidden;
+    color: transparent;
+  }
+
+  .ide-root .ide-design-toolbar-customize > summary::before {
+    content: '•••';
+    color: var(--rb-text-primary);
+  }
+}
+
+/* Product System v3: restrained course-lab identity and Project Center hierarchy. */
+.ide-root .ide-brand-mark {
+  color: var(--rb-brand-red);
+}
+
+.ide-root .ide-brand-wordmark {
+  color: var(--rb-text-primary);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-top-bar,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-stage-nav-frame {
+  background: var(--rb-shell);
+  box-shadow: 0 1px 0 rgba(75, 65, 54, 0.05);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-identity {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-next {
+  border: 1px solid color-mix(in srgb, var(--rb-action) 42%, var(--rb-border-default));
+  border-left: 3px solid var(--rb-action);
+  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface-1));
+  box-shadow: none;
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-next-state {
+  color: var(--rb-accent);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-next .ide-button {
+  border-color: var(--rb-action);
+  background: var(--rb-action);
+  color: #ffffff;
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-next .ide-button:hover,
+.ide-root .ide-project-v3 .ide-project-v3-next .ide-button:focus-visible {
+  border-color: var(--rb-action-hover);
+  background: var(--rb-action-hover);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-meta {
+  border-color: var(--rb-border-subtle);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-meta > div,
+.ide-root .ide-project-v3 .ide-project-v3-meta > label {
+  border-color: var(--rb-border-subtle);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-workspace {
+  border: 1px solid var(--rb-border-default);
+  background: var(--rb-surface-1);
+  box-shadow: 0 6px 18px rgba(21, 32, 51, 0.05);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-workspace-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rb-border-subtle);
+}
+
+.ide-root .ide-project-v3 .ide-project-evidence-tier {
+  border-color: var(--rb-border-default);
+  background: var(--rb-surface-1);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row {
+  border: 1px solid var(--rb-border-default);
+  border-top-width: 3px;
+  background: var(--rb-surface-1);
+  box-shadow: 0 3px 10px rgba(49, 41, 32, 0.05);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(1) {
+  border-top-color: var(--rb-design);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(2) {
+  border-top-color: var(--rb-verify);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(3) {
+  border-top-color: var(--rb-map-pins);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(4) {
+  border-top-color: var(--rb-export);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(1) .ide-project-v3-stage-name > span {
+  color: var(--rb-design);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(2) .ide-project-v3-stage-name > span {
+  color: var(--rb-verify);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(3) .ide-project-v3-stage-name > span {
+  color: var(--rb-map-pins);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(4) .ide-project-v3-stage-name > span {
+  color: var(--rb-export);
+}
+
+.ide-root .ide-project-v3 .ide-project-v3-recent,
+.ide-root .ide-project-v3 .ide-project-v3-record {
+  border-color: var(--rb-border-default);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-workspace {
+  background: var(--rb-surface-2);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-stage-row,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-stage-row {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+}
+
+/* Loaded Project Center uses the same cool-neutral application plane as every
+   other Studio surface. Decorative haze made project data feel detached. */
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-main {
+  background: var(--rb-app-bg);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-workspace {
+  background: var(--rb-app-bg);
+  box-shadow: none;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-identity {
+  background: transparent;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-next {
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface-1));
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-main,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-main {
+  background: var(--rb-app-bg);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-workspace {
+  background: var(--rb-app-bg);
+  box-shadow: none;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-identity,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-identity {
+  border-color: color-mix(in srgb, var(--rb-border-strong) 68%, var(--rb-border-default));
+  background: var(--rb-surface-1);
+  box-shadow: none;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-next,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-next {
+  background: var(--rb-surface-2);
+  box-shadow: none;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-workspace {
+  border-color: color-mix(in srgb, var(--rb-border-strong) 62%, var(--rb-border-default));
+  background: var(--rb-surface-1);
+  box-shadow: none;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-stage-row,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-stage-row {
+  border-color: #4a534b;
+  background: #1b1f1c;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* Design support panels stay in the application theme. Only the circuit
+   canvas is an instrument surface; this prevents a second navy application
+   from appearing inside Studio Light. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+  background: var(--rb-app-bg);
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-workbench-main, .ide-workbench-dock, .ide-workbench-console, .ide-design-bottom-workspace) {
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+
+/* Dock tabs are workspace navigation, so they remain reachable and readable
+   at the normal 240/300px support-rail widths. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left .ide-design-dock-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  overflow: visible;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-design-dock-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  overflow: visible;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {
+  min-width: 0;
+  min-height: 34px;
+  padding-inline: 4px;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button.is-active,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button[aria-selected='true'] {
+  background: color-mix(in srgb, var(--rb-action) 9%, var(--rb-surface));
+  color: var(--rb-action-hover);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-project-browser .ide-design-subheader h3 {
+  padding-block: 0;
+  color: var(--rb-text-primary);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control {
+  border-color: var(--rb-border-default);
+  background: var(--rb-surface-raised);
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control.is-on {
+  border-color: var(--rb-success);
+  background: color-mix(in srgb, var(--rb-success) 10%, var(--rb-surface));
+  color: #056956;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-problem-list span,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout span,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout p,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-simulation-readout span {
+  color: var(--rb-text-secondary);
+}
+
+/* Put collapse affordances on the dock seam instead of over tab labels. */
+.ide-root .ide-workbench-dock-collapse--left,
+.ide-root .ide-workbench-dock-collapse--right {
+  top: 50%;
+  width: 20px;
+  min-height: 48px;
+  transform: translateY(-50%);
+  border-radius: 6px;
+}
+
+.ide-root .ide-workbench-dock-collapse--left {
+  right: -1px;
+}
+
+.ide-root .ide-workbench-dock-collapse--right {
+  left: -1px;
+}
+
+@media (max-width: 1420px) {
+  .ide-root .ide-design-toolbar-customize > summary {
+    width: auto;
+    min-width: 76px;
+    overflow: visible;
+    color: var(--rb-text-secondary);
+  }
+
+  .ide-root .ide-design-toolbar-customize > summary::before {
+    content: none;
+  }
+}
+
+/* Product System v3: keep legacy dark instrument treatments readable when the
+   surrounding workbench uses the light palette. */
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  [data-ide-mode-marker='verify']
+  :is(.ide-verify-region--header, .ide-verify-signal-shelf, .ide-verify-console-frame) {
+  --rb-text: var(--rb-shell);
+  --rb-text-strong: var(--rb-shell);
+  --rb-text-primary: var(--rb-shell);
+  --rb-text-secondary: color-mix(in srgb, var(--rb-shell) 82%, transparent);
+  --rb-text-muted: color-mix(in srgb, var(--rb-shell) 66%, transparent);
+  --rb-text-1: var(--rb-text-primary);
+  --rb-text-2: var(--rb-text-secondary);
+  --rb-text-3: var(--rb-text-muted);
+  --ide-text-strong: var(--rb-text-primary);
+  --ide-text-primary: var(--rb-text-primary);
+  --ide-text-secondary: var(--rb-text-secondary);
+  --ide-text-muted: var(--rb-text-muted);
+  --ide-text-soft: var(--rb-text-muted);
+  color: var(--rb-text-primary);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  [data-ide-mode-marker='verify']
+  :is(.ide-verify-region--header, .ide-verify-signal-shelf, .ide-verify-console-frame)
+  .ide-button-secondary {
+  color: var(--rb-action-pressed);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  [data-ide-mode-marker='verify']
+  [data-testid='ide-verify-show-all-signals-shelf'] {
+  color: var(--rb-action-pressed);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  [data-ide-mode-marker='verify']
+  .ide-verify-job-kicker {
+  color: color-mix(in srgb, var(--rb-verify) 58%, var(--rb-shell));
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-vcb-mode-toggle {
+  grid-template-columns: repeat(3, minmax(108px, 1fr)) !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-vcb-mode-btn:not(.is-active) {
+  color: #b9c8d5 !important;
+  opacity: 1 !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-vcb-mode-btn.is-active {
+  color: #8edcf0 !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-results-summary[data-kind='observe-done'] .ide-verify-results-summary-state {
+  color: #75d3c4 !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-results-summary[data-kind='observe-done']
+  :is(.ide-verify-results-summary-headline, .ide-verify-results-summary-subline) {
+  color: #c7d6e2 !important;
+}
+
+/* Board & Constraints stays warm and physical in light mode; the legacy
+   planner gradient and dark metric well no longer swallow its labels. */
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-v3[data-testid='ide-hw-board-workspace'] {
+  border-color: var(--rb-border-default);
+  background: var(--rb-canvas);
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-v3__metrics {
+  border-color: color-mix(in srgb, var(--rb-map-pins) 34%, var(--rb-border-default));
+  background: var(--rb-surface-2);
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-v3__metrics > div + div {
+  border-left-color: var(--rb-border-default);
+}
+
+/* Build & Export uses the same theme surfaces as the rest of the workbench.
+   The file browser and code viewer remain distinct without forcing dark-mode
+   backgrounds under light-mode text tokens. */
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3[data-testid='ide-export-readiness-hero'] {
+  border-color: var(--rb-border-default);
+  background: var(--rb-canvas);
+  color: var(--rb-text-primary);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__decision.ide-export-package-inspector-v1,
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__decision.ide-export-package-inspector-v1--draft,
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__decision.ide-export-package-inspector-v1--blocked {
+  border-color: color-mix(in srgb, var(--rb-export) 36%, var(--rb-border-default));
+  background: color-mix(in srgb, var(--rb-surface-1) 94%, var(--rb-export));
+  color: var(--rb-text-primary);
+}
+
+.ide-root
+  [data-ide-mode-marker='export']
+  .ide-export-v3__decision.ide-export-package-inspector-v1--draft
+  [data-testid='ide-export-package-download-v1'] {
+  border-color: var(--rb-border-default) !important;
+  background: var(--rb-surface-2) !important;
+  color: var(--rb-text-primary) !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__file-list {
+  border-right-color: var(--rb-border-default);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview > header {
+  border-bottom-color: var(--rb-border-subtle);
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview > div {
+  background: var(--ide-surface-code);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview pre,
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__code-line {
+  color: var(--rb-text-primary);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__line-number {
+  border-right-color: var(--rb-border-subtle);
+  color: var(--rb-text-muted);
+}
+
+/* A waveform viewport is intentionally scrollable; make that ownership
+   visible instead of letting later lanes appear accidentally cropped. */
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  min-height: 0 !important;
+  max-height: clamp(250px, 34vh, 360px) !important;
+  overflow-x: auto !important;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  scrollbar-color: #3e7188 #101b25;
+  scrollbar-gutter: stable;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll::-webkit-scrollbar-track {
+  background: #101b25;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid #101b25;
+  border-radius: 999px;
+  background: #3e7188;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Examples browser (activated in the Starter catalog): the projectx-era
+   dark-token rules in ide-polish-pass.css are superseded here with the
+   Studio v3 semantic tokens so the browser reads as one product on the
+   light application surface. Includes the guided learning-path strip,
+   which previously had no styles at all.
+   ──────────────────────────────────────────────────────────────────── */
+.ide-root .ide-projectx-examples {
+  display: grid;
+  gap: 12px;
+  padding: 4px 2px 8px;
+}
+
+.ide-root .ide-projectx-examples-title {
+  margin: 0;
+  color: var(--rb-text-primary);
+  font-size: 16px;
+}
+
+.ide-root .ide-projectx-examples-sub {
+  margin: 2px 0 0;
+  color: var(--rb-text-secondary);
+  font-size: 12.5px;
+}
+
+.ide-root .ide-projectx-examples-toggle {
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-secondary);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.ide-root input.ide-projectx-examples-search {
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  padding: 7px 10px;
+}
+
+.ide-root input.ide-projectx-examples-search::placeholder {
+  color: var(--rb-text-muted);
+}
+
+.ide-root .ide-projectx-tag {
+  background: var(--rb-surface-1);
+  border: 1px solid var(--rb-border);
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-tag:hover {
+  background: color-mix(in srgb, var(--rb-action) 8%, var(--rb-surface-1));
+  border-color: color-mix(in srgb, var(--rb-action) 40%, var(--rb-border));
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-projectx-tag.is-active {
+  background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
+  border-color: var(--rb-action);
+  color: var(--rb-action);
+}
+
+.ide-root .ide-projectx-example-card {
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-1);
+}
+
+.ide-root .ide-projectx-example-card:hover {
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface-1));
+  border-color: color-mix(in srgb, var(--rb-action) 35%, var(--rb-border));
+}
+
+.ide-root .ide-projectx-example-card.is-active {
+  border-color: var(--rb-action);
+  box-shadow: 0 0 0 1px var(--rb-action);
+}
+
+.ide-root .ide-projectx-example-card-title {
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-projectx-example-card-concept {
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-example-card-learn {
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-example-card-learn-label {
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-projectx-example-card-tag {
+  background: var(--rb-surface-2);
+  border: 1px solid var(--rb-border);
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-example-path-badge {
+  border: 1px solid color-mix(in srgb, var(--rb-action) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-action) 10%, transparent);
+  color: var(--rb-action);
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.ide-root .ide-projectx-example-card-open-proof {
+  margin: 0;
+  color: var(--rb-warning, #b45309);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Guided learning-path strip: numbered chips joined by arrows. */
+.ide-root .ide-projectx-learning-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: 9px;
+  background: var(--rb-surface-2);
+}
+
+.ide-root .ide-projectx-learning-path-label {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ide-root .ide-projectx-path-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 5px;
+  border: 1px solid var(--rb-border);
+  border-radius: 999px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ide-root .ide-projectx-path-step:hover {
+  border-color: color-mix(in srgb, var(--rb-action) 45%, var(--rb-border));
+  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface-1));
+}
+
+.ide-root .ide-projectx-path-step.is-flagship {
+  border-color: color-mix(in srgb, var(--rb-action) 55%, var(--rb-border));
+}
+
+.ide-root .ide-projectx-path-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
+  color: var(--rb-action);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ide-root .ide-projectx-path-step-warn {
+  color: var(--rb-warning, #b45309);
+}
+
+.ide-root .ide-projectx-path-arrow {
+  color: var(--rb-text-muted);
+}
+
+/* Hidden waveform lanes restore chip (Simulate). */
+.ide-root .ide-verify-hidden-lanes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--rb-border-default, var(--rb-border));
+  border-radius: 999px;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+}
+
+.ide-root .ide-verify-hidden-lanes button {
+  border: 0;
+  background: transparent;
+  color: var(--rb-accent, var(--rb-action));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}

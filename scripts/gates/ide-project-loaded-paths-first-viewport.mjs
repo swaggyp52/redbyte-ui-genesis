@@ -2,7 +2,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { assert, assertBuildFreshReplacementDialog, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, assertBuildFreshReplacementModal, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
@@ -50,12 +50,12 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
     );
     assert(metrics.primaryBox, `${viewport.label}: loaded Project must keep one primary next-stage action`);
     assert(
-      metrics.primaryText.includes('verify'),
-      `${viewport.label}: loaded Logic Gates primary must name Verify as the next incomplete stage (${metrics.primaryText})`
+      metrics.primaryText.includes('simulate'),
+      `${viewport.label}: loaded Logic Gates primary must name Simulate as the next incomplete stage (${metrics.primaryText})`
     );
     assert(
       metrics.hasVerifyPrimaryRoute,
-      `${viewport.label}: loaded Logic Gates primary must expose Verify routing truth`
+      `${viewport.label}: loaded Logic Gates primary must expose Simulate routing truth`
     );
     await revealChangePaths(page);
     await page.locator('[data-testid="ide-project-entry-paths"]').first().scrollIntoViewIfNeeded();
@@ -87,14 +87,8 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
     await revealChangePaths(page);
 
-    let dialogMessage = '';
-    page.once('dialog', async (dialog) => {
-      dialogMessage = dialog.message();
-      await dialog.dismiss();
-    });
     await page.locator('[data-testid="ide-project-path-build-fresh"]').first().click();
-    await page.waitForTimeout(200);
-    assertBuildFreshReplacementDialog(dialogMessage, `${viewport.label}: Build Fresh from loaded Project`);
+    await assertBuildFreshReplacementModal(page, `${viewport.label}: Build Fresh from loaded Project`);
     assert(
       await visible(page.locator('[data-testid="ide-mode-project"]').first()),
       `${viewport.label}: dismissing Build Fresh guard must leave Project mode active`
@@ -146,7 +140,7 @@ async function readMetrics(page) {
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth
       ),
       commandBox: box('[data-testid="ide-project-command-center"]'),
-      changeProjectBox: box('[data-testid="ide-project-change-project"]'),
+      changeProjectBox: box('[data-testid="ide-project-context-change"]') ?? box('[data-testid="ide-project-change-project"]'),
       primaryBox: box('[data-testid="ide-project-command-strip-primary-cta"]'),
       primaryText:
         document
@@ -171,7 +165,7 @@ async function readMetrics(page) {
 async function revealChangePaths(page) {
   const entryPaths = page.locator('[data-testid="ide-project-entry-paths"]').first();
   if (await entryPaths.isVisible().catch(() => false)) return;
-  const trigger = page.locator('[data-testid="ide-project-change-project"]').first();
+  const trigger = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
   assert(await visible(trigger), 'Loaded Project must expose Change Project');
   await trigger.click();
   await entryPaths.waitFor({ state: 'visible', timeout: 10000 });

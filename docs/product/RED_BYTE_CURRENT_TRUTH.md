@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-27
+last_validated: 2026-08-09
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -23,14 +23,27 @@ focused current tests win when prose lags.
 
 Historical RC and product worktrees are not current authority.
 
+## Product System v3 Candidate
+
+- Candidate branch: `product/redbyte-workbench-v3`
+- Draft PR: `#80`
+- Current candidate scope: one integrated Studio shell and persistent project
+  authority across Project, Design, Simulate, Board & Constraints, and Build &
+  Export.
+- Presentation ownership: `unified-workbench-v3.css` plus one surface-specific
+  stylesheet per workbench. The retired `visual-system-v1.css` layer is no
+  longer imported or shipped.
+- Proof boundary: local Browser-E0 screenshots and focused local validation.
+  The candidate is not merged, deployed, Vivado-built, or hardware-proven.
+
 ## Student Flow
 
 ```text
 Project
 -> Design Edit / Live
--> Verify Scenario / Replay / Optional Checks
--> Map Pins
--> Export
+-> Simulate Scenario / Waveform / Replay / Optional Checks
+-> Board & Constraints
+-> Build & Export
 ```
 
 Import / Recover is a separate Upload -> Review -> Apply utility with explicit
@@ -43,10 +56,10 @@ cancel. Vivado and board activity are outside the RedByte-owned stages.
 | Project identity and saved snapshot | Project runtime | One current project; replacement is explicit and cancel-safe. |
 | Circuit structure | Design Edit | Structural/semantic edits stale behavioral proof. |
 | Exploratory values | Design Live | Useful for learning; not saved Verify evidence. |
-| Stimulus and checks | Named Verify scenario | Stimulus always runs; expected-output checks are optional. |
-| Observed trace and Replay | Current Verify run | Read-only evidence; stale after relevant semantic change. |
-| Signal-to-pin mapping | Map Pins | One semantic logical-signal/resource/package-pin/XDC projection. |
-| Generated package | Export | Downloadable and trusted are distinct; download never creates trust. |
+| Stimulus and checks | Named Simulate scenario | Stimulus always runs; expected-output checks are optional. |
+| Observed trace and Replay | Current Simulate run | Read-only evidence; stale after relevant semantic change. |
+| Signal-to-pin mapping | Board & Constraints | Table, selector, and interactive board write one semantic logical-signal/resource/package-pin/XDC projection. |
+| Generated package | Build & Export | Browser structural validation, downloadability, and trust are distinct; download never creates Vivado proof. |
 | Recovery candidate | Import | Active project changes only after explicit Apply. |
 
 ## Supported Sequential Boundary

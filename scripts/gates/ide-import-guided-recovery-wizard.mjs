@@ -42,11 +42,16 @@ await runIdeGate('IDE Import guided recovery wizard satisfied', async ({ page, b
       const sourceActions = [
         '[data-testid="ide-import-zip-browse"]',
         '[data-testid="ide-import-start-secondary"]',
-        '[data-testid="ide-import-load-sample-and-gate"]',
-        '[data-testid="ide-import-load-sample-edge-detect"]',
       ];
       for (const selector of sourceActions) {
         assert(await visible(page.locator(selector).first()), `${viewport.label}: ${selector} must be visible`);
+      }
+      await openImportExampleDisclosure(page, viewport.label);
+      for (const selector of [
+        '[data-testid="ide-import-load-sample-and-gate"]',
+        '[data-testid="ide-import-load-sample-edge-detect"]',
+      ]) {
+        assert(await visible(page.locator(selector).first()), `${viewport.label}: ${selector} must be reachable after opening examples`);
       }
 
       await page.locator('[data-testid="ide-import-start-secondary"]').first().click();
@@ -59,6 +64,7 @@ await runIdeGate('IDE Import guided recovery wizard satisfied', async ({ page, b
       });
 
       await openFreshImport(page, baseUrl, `import-guided-recovery-wizard-${viewport.label}-keyboard`);
+      await openImportExampleDisclosure(page, `${viewport.label}/keyboard`);
       const sample = page.locator('[data-testid="ide-import-load-sample-and-gate"]').first();
       await sample.focus();
       await page.keyboard.press('Enter');
@@ -75,6 +81,15 @@ await runIdeGate('IDE Import guided recovery wizard satisfied', async ({ page, b
   assert(browserProblems.length === 0, `Import wizard browser errors: ${JSON.stringify(browserProblems.slice(0, 8))}`);
   assert(failures.length === 0, `Import wizard failures:\n${failures.join('\n')}`);
 });
+
+async function openImportExampleDisclosure(page, label) {
+  const disclosure = page.locator('[data-testid="ide-import-example-disclosure"]').first();
+  assert(await visible(disclosure), `${label}: Import must expose the labelled example disclosure`);
+  if ((await disclosure.getAttribute('open')) === null) {
+    await disclosure.locator(':scope > summary').click();
+  }
+  assert((await disclosure.getAttribute('open')) !== null, `${label}: Import example disclosure must expand`);
+}
 
 async function openFreshImport(page, baseUrl, gateLabel) {
   await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=${gateLabel}`, { waitUntil: 'domcontentloaded' });

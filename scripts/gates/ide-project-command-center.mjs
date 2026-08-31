@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, assertBuildFreshReplacementDialog, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, assertBuildFreshReplacementModal, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
@@ -146,16 +146,16 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
   );
 
   const continueAction = page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first();
-  assert(/verify/i.test(await text(continueAction)), 'Loaded Logic Gates primary must continue to the next incomplete stage, Verify');
+  assert(/simulate/i.test(await text(continueAction)), 'Loaded Logic Gates primary must continue to the next incomplete stage, Simulate');
   assert(
     await visible(page.locator('[data-testid="ide-project-command-action-verify"]').first()),
-    'Loaded Logic Gates primary must expose Verify routing truth'
+    'Loaded Logic Gates primary must expose Simulate routing truth'
   );
   await continueAction.click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-project-change-project"]').first().click();
+  await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
   assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'Change Project must reveal peer entry paths');
 
   const requiredPaths = [
@@ -179,14 +179,8 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
     assert(expanded === 'false', 'Loaded Project must keep the starter browser collapsed by default');
   }
 
-  let dialogMessage = '';
-  page.once('dialog', async (dialog) => {
-    dialogMessage = dialog.message();
-    await dialog.dismiss();
-  });
   await page.locator('[data-testid="ide-project-path-build-fresh"]').first().click();
-  await page.waitForTimeout(250);
-  assertBuildFreshReplacementDialog(dialogMessage, 'Loaded Project Build Fresh');
+  await assertBuildFreshReplacementModal(page, 'Loaded Project Build Fresh');
   assert(
     await visible(page.locator('[data-testid="ide-mode-project"]').first()),
     'Dismissing the Build Fresh guard must leave the student on Project'

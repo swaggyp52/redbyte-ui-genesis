@@ -10,7 +10,7 @@ import {
   runIdeGate,
   setVerifyRunMode,
 } from './_gateHarness.mjs';
-import { isVerifyFail, isVerifyPass, isVerifyTrace, waitForVerifyResult } from './_verifyStatus.mjs';
+import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const screenshotDir = process.env.RB_VERIFY_EVIDENCE_WORKBENCH_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_EVIDENCE_WORKBENCH_SCREENSHOTS_DIR)
@@ -167,45 +167,40 @@ async function clickRunAndWaitForNewResult(page) {
 
 async function assertWorkbenchGeometry(page, phase) {
   const workspace = await box(page, '[data-testid="ide-verify-workspace"]', `${phase} workspace`);
-  const stimulus = await box(page, '[data-testid="ide-verify-region-stimulus"]', `${phase} stimulus region`);
-  const waveform = await box(page, '[data-testid="ide-verify-region-waveform"]', `${phase} waveform region`);
-  const waveformPreview = await box(page, '[data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-placeholder"]', `${phase} waveform preview`);
-  const editor = await box(page, '[data-testid="ide-verify-add-vector-form"]', `${phase} stimulus editor`);
+  const studioMode = await page.locator('[data-testid="ide-verify-lab-grid"]').first().getAttribute('data-studio-mode');
+  if (studioMode === 'scenario' || studioMode === 'checks') {
+    const stimulus = await box(page, '[data-testid="ide-verify-region-stimulus"]', `${phase} stimulus region`);
+    const editor = await box(page, '[data-testid="ide-verify-add-vector-form"]', `${phase} stimulus editor`);
+    assert(editor.width >= 320, `${phase} stimulus editor must remain readable (width=${editor.width})`);
+    assert(stimulus.width >= Math.min(900, workspace.width * 0.9), `${phase} ${studioMode} must own the authoring workspace (width=${stimulus.width})`);
+    assert(!(await isVisible(page, '[data-testid="ide-verify-region-waveform"]')), `${phase} hidden Replay must not compete with ${studioMode}`);
+    await assertNoMeaningfulOverlap(
+      page,
+      [
+        { selector: '[data-testid="ide-verify-stimulus-header"]', label: 'stimulus header' },
+        { selector: '.ide-verify-run-summary-slot--inline', label: 'testbench summary' },
+        { selector: '[data-testid="ide-stimulus-toolbar"]', label: 'stimulus toolbar' },
+        { selector: '.ide-stimulus-grid-scroll', label: 'stimulus table' },
+      ],
+      `${phase} stimulus evidence stack`,
+    );
+    return;
+  }
 
-  assert(editor.width >= 320, `${phase} stimulus editor must remain readable (width=${editor.width})`);
-  assert(stimulus.width >= 340, `${phase} stimulus evidence pane must keep real width (width=${stimulus.width})`);
-  assert(waveform.width >= 420, `${phase} waveform evidence pane must keep real width (width=${waveform.width})`);
-  const minWaveformPreviewHeight = phase === 'pre-run' ? 120 : 190;
-  assert(
-    waveformPreview.height >= minWaveformPreviewHeight,
-    `${phase} waveform preview must keep usable height (height=${waveformPreview.height}, required=${minWaveformPreviewHeight})`
-  );
-  assert(
-    stimulus.x < waveform.x || stimulus.y < waveform.y,
-    `${phase} stimulus and waveform panes must not occupy the same visual slot`
-  );
-  assert(
-    workspace.width >= stimulus.width && workspace.width >= waveform.width,
-    `${phase} workspace must contain measurable evidence regions`
-  );
-  await assertNoMeaningfulOverlap(
-    page,
-    [
-      { selector: '[data-testid="ide-verify-stimulus-header"]', label: 'stimulus header' },
-      { selector: '.ide-verify-run-summary-slot--inline', label: 'testbench summary' },
-      { selector: '[data-testid="ide-stimulus-toolbar"]', label: 'stimulus toolbar' },
-      { selector: '.ide-stimulus-grid-scroll', label: 'stimulus table' },
-    ],
-    `${phase} stimulus evidence stack`
-  );
+  assert(studioMode === 'replay', `${phase}: expected a Simulation Studio workspace mode, got "${studioMode}"`);
+  const waveform = await box(page, '[data-testid="ide-verify-region-waveform"]', `${phase} waveform region`);
+  const waveformPreview = await box(page, '[data-testid="ide-verify-waveform-preview"]', `${phase} waveform preview`);
+  assert(waveform.width >= Math.min(900, workspace.width * 0.9), `${phase} Replay must own the evidence workspace (width=${waveform.width})`);
+  assert(waveformPreview.height >= 190, `${phase} waveform preview must keep usable height (height=${waveformPreview.height})`);
+  assert(!(await isVisible(page, '[data-testid="ide-verify-region-stimulus"]')), `${phase} hidden authoring canvas must not compete with Replay`);
   await assertNoMeaningfulOverlap(
     page,
     [
       { selector: '[data-testid="ide-verify-scope-header"]', label: 'scope header' },
       { selector: '[data-testid="ide-verify-waveform-bar"]', label: 'waveform transport bar' },
-      { selector: '[data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-placeholder"]', label: 'waveform preview' },
+      { selector: '[data-testid="ide-verify-waveform-preview"]', label: 'waveform preview' },
     ],
-    `${phase} waveform stack`
+    `${phase} waveform stack`,
   );
   await assertNoMeaningfulOverlap(
     page,
@@ -213,7 +208,18 @@ async function assertWorkbenchGeometry(page, phase) {
       { selector: '[data-testid="ide-verify-fail-nav"]', label: 'first mismatch navigation' },
       { selector: '[data-testid="ide-verify-waveform-transport"]', label: 'tick controls' },
     ],
-    `${phase} waveform controls`
+    `${phase} waveform controls`,
+  );
+}
+
+async function selectStudioMode(page, mode) {
+  const tab = page.locator(`[data-testid="ide-vcb-workspace-${mode}"]`).first();
+  assert(await tab.isVisible().catch(() => false), `${mode} workspace tab must be visible`);
+  await tab.click();
+  await page.waitForFunction(
+    (expectedMode) => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === expectedMode,
+    mode,
+    { timeout: 5000 },
   );
 }
 
@@ -232,61 +238,50 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
 
   await ensureVerifyVectorsReady(page);
   await requireVisible(page, '[data-testid="ide-verify-add-vector-form"]', 'first-run stimulus editor');
-  await requireVisible(page, '[data-testid^="ide-stimulus-expected-"]', 'first-run expected-output cells');
-  await requireVisible(page, '[data-testid="ide-vcb-run-mode"]', 'Observe/Compare selector');
-  await requireVisible(page, '[data-testid="ide-verify-waveform-placeholder"]', 'pre-run waveform evidence placeholder');
+  await requireVisible(page, '[data-testid="ide-vcb-run-mode"]', 'Simulation Studio workspace selector');
+  await requireVisible(page, '[data-testid="ide-vcb-run"]', 'unified Run simulation authority');
+  await requireVisible(page, '[data-testid="ide-vcb-workspace-scenario"]', 'Scenario workspace tab');
+  await requireVisible(page, '[data-testid="ide-vcb-workspace-checks"]', 'Checks workspace tab');
 
   const modeCopy = await text(page.locator('[data-testid="ide-vcb-mode-explainer"]'));
   assert(
-    /observed outputs|expected outputs|comparison/i.test(modeCopy),
-    `mode explainer must describe Observe versus Compare, got "${modeCopy}"`
+    /evaluates\s+\d+\s+optional check/i.test(modeCopy),
+    `mode explainer must describe automatic optional-check evaluation, got "${modeCopy}"`
   );
+  await assertWorkbenchGeometry(page, 'pre-run-scenario');
+  await selectStudioMode(page, 'checks');
+  await requireVisible(page, '[data-testid^="ide-stimulus-expected-"]', 'first-run expected-output cells');
   const expectedChecksLabel = page.locator('.ide-stimulus-group-header--asserted .ide-stimulus-group-label').first();
   const expectedChecksText = await text(expectedChecksLabel);
   const expectedChecksTitle = (await expectedChecksLabel.getAttribute('title')) ?? '';
   assert(
     await expectedChecksLabel.isVisible().catch(() => false) &&
-      expectedChecksText === 'Expected · Unset = no check' &&
-      expectedChecksTitle === 'Expected outputs; Unset means no check',
+    expectedChecksText === 'Expected · Unset = no check' &&
+      /Expected outputs; (Unset means no check|empty cells are not compared)/i.test(expectedChecksTitle),
     `visible workbench must label saved checks and explain unset cells, got text="${expectedChecksText}" title="${expectedChecksTitle}"`
   );
   assert(
     !(await isVisible(page, '[data-testid="ide-verify-first-run-collapsed-strip"]')),
     'ready starter vectors must not hide the first-run editor behind a collapsed strip'
   );
-  await assertWorkbenchGeometry(page, 'pre-run');
+  await assertWorkbenchGeometry(page, 'pre-run-checks');
   await capture(page, '01-first-run-editor-visible.png');
 
-  assert(await setVerifyRunMode(page, 'observe'), 'Observe-only mode must be selectable before Compare proof');
+  assert(await setVerifyRunMode(page, 'compare'), 'saved optional checks must be recognized by unified simulation');
   let status = await clickRunAndWaitForNewResult(page);
-  assert(isVerifyTrace(status), `Observe-only run should end as trace evidence, got "${status}"`);
-  assert(!isVerifyPass(status), `Observe-only run must not present as trusted PASS, got "${status}"`);
-  assert(!isVerifyFail(status), `Observe-only run must not present as trusted FAIL, got "${status}"`);
-  await requireVisible(page, '[data-testid="ide-verify-waveform-svg"]', 'Observe-only waveform lanes');
+  assert(isVerifyPass(status), `initial unified simulation should PASS its authored checks, got "${status}"`);
+  await selectStudioMode(page, 'replay');
+  await requireVisible(page, '[data-testid="ide-verify-results-summary"]', 'simulation result summary');
+  const initialResultKind = await page.locator('[data-testid="ide-verify-results-summary"]').first().getAttribute('data-kind');
   assert(
-    !(await isVisible(page, '[data-testid="ide-verify-pass-hero"]')),
-    'Observe-only run must not expose the trusted Compare PASS hero'
+    initialResultKind === 'observe-done' || initialResultKind === 'pass',
+    `simulation result summary must report completed browser evidence, got "${initialResultKind}"`,
   );
-  assert(
-    !(await isVisible(page, '[data-testid="ide-verify-results-summary-open-fail"]')),
-    'Observe-only run must not expose Compare failure repair as proof'
-  );
-  const observeModeCopy = await text(page.locator('[data-testid="ide-vcb-mode-explainer"]'));
-  assert(
-    /observed outputs|no comparison/i.test(observeModeCopy),
-    `Observe-only mode copy must say this records observations without comparison, got "${observeModeCopy}"`
-  );
-  await assertWorkbenchGeometry(page, 'observe-only');
-  await capture(page, '02-observe-only-not-proof.png');
-
-  assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must be selectable for the starter checks');
-  status = await clickRunAndWaitForNewResult(page);
-  assert(isVerifyPass(status), `initial Compare should PASS, got "${status}"`);
-  await requireVisible(page, '[data-testid="ide-verify-pass-hero"]', 'Compare PASS hero');
   await requireVisible(page, '[data-testid="ide-verify-waveform-svg"]', 'post-run waveform lanes');
-  await assertWorkbenchGeometry(page, 'compare-pass');
-  await capture(page, '03-compare-pass-evidence-workbench.png');
+  await assertWorkbenchGeometry(page, 'simulation-pass-replay');
+  await capture(page, '02-simulation-pass-evidence-workbench.png');
 
+  await selectStudioMode(page, 'checks');
   const target = await pickRenderedExpectedTarget(page);
   const wrongValue = target.value === 0 ? 1 : 0;
   await clickExpectedCellToValue(page, target, wrongValue);
@@ -295,24 +290,32 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
     { timeout: 5000 }
   );
 
-  assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected-output edit');
+  assert(await setVerifyRunMode(page, 'compare'), 'authored checks must remain active after expected-output edit');
   status = await clickRunAndWaitForNewResult(page);
-  assert(isVerifyFail(status), `edited expected output should FAIL Compare, got "${status}"`);
-  await assertDirectFailureEvidence(page, 'Compare failure evidence');
+  assert(isVerifyFail(status), `edited expected output should FAIL unified simulation, got "${status}"`);
+  await selectStudioMode(page, 'replay');
+  await assertDirectFailureEvidence(page, 'simulation failure evidence');
   await requireVisible(page, '[data-testid="ide-verify-results-summary-open-fail"]', 'failure primary action');
   await requireVisible(page, '[data-testid="ide-verify-fail-nav-summary"]', 'first mismatch summary');
   const failNav = await text(page.locator('[data-testid="ide-verify-fail-nav-summary"]'));
   assert(/expected/i.test(failNav) && /got/i.test(failNav), `first mismatch summary must show expected and observed values, got "${failNav}"`);
-  await assertWorkbenchGeometry(page, 'compare-fail');
-  await capture(page, '04-compare-fail-first-mismatch.png');
+  await assertWorkbenchGeometry(page, 'simulation-fail-replay');
+  await capture(page, '03-simulation-fail-first-mismatch.png');
 
+  await selectStudioMode(page, 'checks');
   await clickExpectedCellToValue(page, target, target.value);
-  assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected-output repair');
+  assert(await setVerifyRunMode(page, 'compare'), 'authored checks must remain active after expected-output repair');
   status = await clickRunAndWaitForNewResult(page);
-  assert(isVerifyPass(status), `repaired expected output should PASS Compare, got "${status}"`);
-  await requireVisible(page, '[data-testid="ide-verify-pass-hero"]', 'repaired Compare PASS hero');
-  await assertWorkbenchGeometry(page, 'repair-pass');
-  await capture(page, '05-repaired-compare-pass-evidence-workbench.png');
+  assert(isVerifyPass(status), `repaired expected output should PASS unified simulation, got "${status}"`);
+  await selectStudioMode(page, 'replay');
+  await requireVisible(page, '[data-testid="ide-verify-results-summary"]', 'repaired simulation result summary');
+  const repairedResultKind = await page.locator('[data-testid="ide-verify-results-summary"]').first().getAttribute('data-kind');
+  assert(
+    repairedResultKind === 'observe-done' || repairedResultKind === 'pass',
+    `repaired simulation result summary must report completed browser evidence, got "${repairedResultKind}"`,
+  );
+  await assertWorkbenchGeometry(page, 'repair-pass-replay');
+  await capture(page, '04-repaired-simulation-pass-evidence-workbench.png');
 });
 
 async function assertDirectFailureEvidence(page, label) {

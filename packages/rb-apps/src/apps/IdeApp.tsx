@@ -2,6 +2,7 @@
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
 import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from '@redbyte/rb-theme';
 import { analyzeSequentialLogic, type Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import {
@@ -10,7 +11,7 @@ import {
   pushMount,
   type TestVector,
 } from '@redbyte/rb-utils';
-import { decodeRBProject, type RBProject } from '../export/projectFormat';
+import { decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
 import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
 import { buildVerifyDeterminismHash } from './ide/verifyDeterminism';
@@ -18,16 +19,19 @@ import './ide/ide-root.css';
 import './ide/ide-polish-pass.css';
 import './ide/theme/redbyte-theme.css';
 import './ide/theme/redbyte-primitives.css';
+import './ide/product-system-v3.css';
 import './ide/unified-workbench-v3.css';
-import './ide/visual-system-v1.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
-import { IdeStageNav, type IdeMode } from './ide/components/IdeStageNav';
-import { getIdeModeLabel } from './ide/workflowStages';
+import { getIdeModeLabel, type IdeMode } from './ide/workflowStages';
+import { buildTopEntityName, normalizeTopEntityName } from './ide/topEntity';
 import { IdeTopBar } from './ide/components/IdeTopBar';
+import { IdeStatusBar } from './ide/components/IdeStatusBar';
+import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
+import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { deriveProjectOutlineSummary } from './ide/projectOutline';
 import type { DesignCompilerStatus } from './ide/surfaces/DesignSurface';
@@ -77,10 +81,24 @@ import {
 import { deriveIoSignalRoles } from './ide/ioSignalRoles';
 import { deriveTimingGuidance } from './ide/timingGuidance';
 import {
+  createProjectId,
   useProjectRuntime,
   type ProjectIoRow,
   type ProjectTestbenchSnapshot,
 } from './ide/projectRuntime';
+import {
+  TOP_MODULE_ID,
+  elaborateProjectHierarchy,
+  computeModulePath,
+} from './ide/projectHierarchy';
+import {
+  useEngineeringLocation,
+  normalizeLocation,
+  sameLocation,
+  type EngineeringLocation,
+} from './ide/engineeringLocation';
+import { LocationBar, type LocationSegment } from './ide/components/LocationBar';
+import { generateHierarchicalVhdlProject } from './ide/hierarchicalVhdl';
 import {
   FULL_ADDER_LAB_ID,
   FULL_ADDER_SCRATCH_LAB,
@@ -99,12 +117,22 @@ import {
 } from './ide/projectWorkflowAuthority';
 import { resolveBasys3SignalBinding } from '../fpga/boards/basys3/basys3SignalSemantics';
 import {
-  decodePersistedIdeProject,
-  listIdeProjectSnapshots,
-  loadIdeProjectSnapshot,
-  saveIdeProjectSnapshot,
   type PersistedIdeProjectIndexEntry,
 } from './ide/projectPersistence';
+import {
+  projectRepository,
+  type ProjectRepositoryState,
+} from './ide/projectRepository';
+import {
+  createIdeCommandRegistry,
+  IDE_COMMAND_EVENT_NAME,
+  IDE_COMMAND_IDS,
+  type IdeCommand,
+} from './ide/ideCommandRegistry';
+import {
+  workspacePreferencesStore,
+  type WorkspacePresetId,
+} from './ide/workspacePreferences';
 import {
   saveLabSessionMeta,
   loadLabSessionMeta,
@@ -119,6 +147,7 @@ import {
 } from './ide/verifyScenario';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
+import type { HdlSource } from '../fpga/toolchainBackend';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
 import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
 import type { HardwareMappingV2EditOperation } from './ide/hardwareMappingV2EditorModel';
@@ -189,6 +218,16 @@ type IdeImportFidelity = IdeImportMeta['fidelity'];
 
 type IdeCircuitConnection = Circuit['connections'][number];
 
+function cloneProjectHdlSources(project: Pick<RBProject, 'hdl'>): HdlSource[] {
+  return (project.hdl?.sources ?? [])
+    .filter((source) => source.path.trim().length > 0)
+    .map((source) => ({
+      path: source.path,
+      language: source.language,
+      text: source.text,
+    }));
+}
+
 function digestWorkspaceSnapshot(
   project: RBProject,
   scenarios: VerifyScenario[],
@@ -231,7 +270,18 @@ function toDesignWireId(connection: IdeCircuitConnection): string {
   return `${from.nodeId}.${from.portName}-${to.nodeId}.${to.portName}`;
 }
 
+interface IdeShellCommandContext {
+  hasCircuit: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
 export const IdeApp: React.FC = () => {
+  const {
+    variant: themeVariant,
+    resolvedVariant: resolvedThemeVariant,
+    setVariant: setThemeVariant,
+  } = useTheme();
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const activeMode = useMemo(() => normalizeIdeMode(currentMode), [currentMode]);
   const activeModeRef = useRef<IdeMode>(activeMode);
@@ -249,13 +299,20 @@ export const IdeApp: React.FC = () => {
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
-  const fpgaConfigBootstrappedRef = useRef(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
   const hasRestoredRef = useRef(false);
   const [autosaveAvailable, setAutosaveAvailable] = useState(false);
   const isRestoringRef = useRef(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [repositoryState, setRepositoryState] = useState<ProjectRepositoryState>(() =>
+    projectRepository.getState()
+  );
+  const [workspacePreferences, setWorkspacePreferences] = useState(() =>
+    workspacePreferencesStore.getSnapshot()
+  );
+  const [projectHdlSources, setProjectHdlSources] = useState<HdlSource[]>([]);
   // C-1: Debug bridge — frozen circuit state from a verification tick
   const [debugState, setDebugState] = useState<{
     tick: number;
@@ -279,6 +336,12 @@ export const IdeApp: React.FC = () => {
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const [vectorsAreAutoGenerated, setVectorsAreAutoGenerated] = useState(false);
   const [reloadEvidenceStale, setReloadEvidenceStale] = useState(false);
+
+  useEffect(() => projectRepository.subscribe(setRepositoryState), []);
+  useEffect(
+    () => workspacePreferencesStore.subscribe(setWorkspacePreferences),
+    []
+  );
 
   // Dev/test only — causes the named surface to throw once on mount
   useEffect(() => {
@@ -310,11 +373,17 @@ export const IdeApp: React.FC = () => {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== '?') return;
       const tag = (event.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-      event.preventDefault();
-      setShowShortcuts((prev) => !prev);
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select';
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+      if (event.key === '?' && !isEditable) {
+        event.preventDefault();
+        setShowShortcuts((prev) => !prev);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -323,11 +392,10 @@ export const IdeApp: React.FC = () => {
   const projectId = useProjectRuntime((state) => state.projectId);
   const projectName = useProjectRuntime((state) => state.projectName);
   const projectDescription = useProjectRuntime((state) => state.projectDescription);
-  const [fpgaConfig, setFpgaConfig] = useState<IdeFpgaConfig>(() => ({
-    board: 'basys3',
-    top: 'redbyte_top',
-    part: DEFAULT_FPGA_PART,
-  }));
+  // Active top lives in the store as its single writable authority; the shell
+  // only projects it (board/part are fixed for the Basys3 target).
+  const activeTop = useProjectRuntime((state) => state.activeTop);
+  const setActiveTop = useProjectRuntime((state) => state.setActiveTop);
   const [guidedLabViewportToken, setGuidedLabViewportToken] = useState(0);
   const importMeta = useProjectRuntime((state) => state.importMeta);
   const setImportMeta = useProjectRuntime((state) => state.setImportMeta);
@@ -342,10 +410,12 @@ export const IdeApp: React.FC = () => {
   const scenarios = useProjectRuntime((state) => state.scenarios);
   const activeScenarioId = useProjectRuntime((state) => state.activeScenarioId);
   const circuit = useProjectRuntime((state) => state.circuit);
+  const hierarchy = useProjectRuntime((state) => state.hierarchy);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
   const runtimeSim = useProjectRuntime((state) => state.sim);
   const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
+  const exportHistory = useProjectRuntime((state) => state.exportHistory);
   const macros = useProjectRuntime((state) => state.macros);
   const loadExample = useProjectRuntime((state) => state.loadExample);
   const loadFromProject = useProjectRuntime((state) => state.loadFromProject);
@@ -378,8 +448,16 @@ export const IdeApp: React.FC = () => {
   const designRedoDepth = useProjectRuntime((state) => state.designFuture.length);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
+  const createDesignBus = useProjectRuntime((state) => state.createDesignBus);
   const addDesignBoardIo = useProjectRuntime((state) => state.addDesignBoardIo);
   const connectDesignNodes = useProjectRuntime((state) => state.connectDesignNodes);
+  const setActiveModule = useProjectRuntime((state) => state.setActiveModule);
+  const createModuleFromSelection = useProjectRuntime((state) => state.createModuleFromSelection);
+  const placeModuleInstance = useProjectRuntime((state) => state.placeModuleInstance);
+  const updateActiveModuleCircuit = useProjectRuntime((state) => state.updateActiveModuleCircuit);
+  const renameModuleInstance = useProjectRuntime((state) => state.renameModuleInstance);
+  const duplicateModuleDefinition = useProjectRuntime((state) => state.duplicateModuleDefinition);
+  const deleteModuleDefinition = useProjectRuntime((state) => state.deleteModuleDefinition);
   const runRuntimeVerification = useProjectRuntime((state) => state.actions.verify.run);
   const clearRuntimeVerification = useProjectRuntime((state) => state.actions.verify.clear);
   const runRuntimeSim = useProjectRuntime((state) => state.actions.sim.run);
@@ -402,6 +480,17 @@ export const IdeApp: React.FC = () => {
   const saveMacro = useProjectRuntime((state) => state.saveMacro);
   const deleteMacro = useProjectRuntime((state) => state.deleteMacro);
   const instantiateMacro = useProjectRuntime((state) => state.instantiateMacro);
+  const activeDesignCircuit = useMemo(
+    () =>
+      hierarchy.activeModuleId === TOP_MODULE_ID
+        ? circuit
+        : hierarchy.modules.find((module) => module.id === hierarchy.activeModuleId)?.circuit ?? circuit,
+    [circuit, hierarchy],
+  );
+  const simulationCircuit = useMemo(
+    () => elaborateProjectHierarchy(circuit, hierarchy),
+    [circuit, hierarchy],
+  );
   const hasCircuit = circuit.nodes.length > 0;
   const projectOutline = useMemo(
     () =>
@@ -414,12 +503,12 @@ export const IdeApp: React.FC = () => {
     [circuit, macros, customComponents, projectIoRows],
   );
   const hasDff = useMemo(
-    () => deriveHasDff(circuit, verifyLastRun?.schedule),
-    [circuit, verifyLastRun?.schedule]
+    () => deriveHasDff(simulationCircuit, verifyLastRun?.schedule),
+    [simulationCircuit, verifyLastRun?.schedule]
   );
   const verifyMode: VerifyMode = useMemo(
-    () => detectVerifyMode(circuit, verifyLastRun?.schedule),
-    [circuit, verifyLastRun?.schedule]
+    () => detectVerifyMode(simulationCircuit, verifyLastRun?.schedule),
+    [simulationCircuit, verifyLastRun?.schedule]
   );
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
@@ -542,14 +631,13 @@ export const IdeApp: React.FC = () => {
   // DesignSurface mutations now hand the next circuit directly back to runtime,
   // so the shell never re-reads useCircuitStore to decide canonical truth.
   useLayoutEffect(() => {
-    projectRuntimeCircuitToEditorStore(circuit);
-  }, [circuit]);
+    projectRuntimeCircuitToEditorStore(activeDesignCircuit);
+  }, [activeDesignCircuit]);
 
   const applyExample = useCallback(
     (exampleId: string) => {
-      const example = getIdeExampleById(exampleId);
       loadExample(exampleId);
-      setFpgaConfig(buildIdeFpgaConfig({ name: example?.name ?? projectNameRef.current }));
+      setProjectHdlSources([]);
       setImportMeta(null);
       setDiagnosticRouteRequest(null);
       setDesignFocusRequest(null);
@@ -588,25 +676,108 @@ export const IdeApp: React.FC = () => {
   );
   const derivedTopEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const effectiveTopEntityName = useMemo(
-    () => normalizeTopEntityName(fpgaConfig.top, derivedTopEntityName),
-    [derivedTopEntityName, fpgaConfig.top]
+    () => normalizeTopEntityName(activeTop, derivedTopEntityName),
+    [activeTop, derivedTopEntityName]
+  );
+  // Projected snapshot for surfaces that read a bundled fpga config. `top` is
+  // the store's active-top projection — never an independent writable copy.
+  const fpgaConfig = useMemo<IdeFpgaConfig>(
+    () => ({ board: 'basys3', top: effectiveTopEntityName, part: DEFAULT_FPGA_PART }),
+    [effectiveTopEntityName]
   );
   const handleFpgaConfigChange = useCallback(
     (config: { part?: string; top?: string }) => {
-      setFpgaConfig((current) => ({
-        ...current,
-        top:
-          config.top !== undefined
-            ? normalizeTopEntityName(config.top, derivedTopEntityName)
-            : current.top,
-        part:
-          config.part !== undefined
-            ? normalizeFpgaPart(config.part)
-            : current.part,
-      }));
+      // Part is fixed for the Basys3 target; only the active top is editable.
+      if (config.top !== undefined) {
+        setActiveTop(config.top);
+      }
     },
-    [derivedTopEntityName]
+    [setActiveTop]
   );
+  // ── Engineering-location history (Back / Forward / Up) ──────────────────────
+  // Pure UI navigation state over the existing owners (currentMode +
+  // hierarchy.activeModuleId). Never a second authority: Back/Forward/Up only
+  // re-apply {mode, moduleId} through those owners.
+  const activeModuleId = hierarchy.activeModuleId;
+  const locationPast = useEngineeringLocation((state) => state.past);
+  const locationFuture = useEngineeringLocation((state) => state.future);
+  const visitLocation = useEngineeringLocation((state) => state.visit);
+  const backLocation = useEngineeringLocation((state) => state.back);
+  const forwardLocation = useEngineeringLocation((state) => state.forward);
+  const resetLocation = useEngineeringLocation((state) => state.reset);
+  // While applying a Back/Forward, hold the target so the record effect skips
+  // the intermediate (two-phase mode+module) updates until the target is reached.
+  const applyingLocationRef = useRef<EngineeringLocation | null>(null);
+
+  const applyLocation = useCallback(
+    (location: EngineeringLocation | null) => {
+      if (!location) return;
+      applyingLocationRef.current = normalizeLocation(location);
+      setCurrentMode(location.mode);
+      if (location.mode === 'design') {
+        setActiveModule(location.moduleId);
+      }
+    },
+    [setActiveModule]
+  );
+
+  useEffect(() => {
+    const here = normalizeLocation({ mode: activeMode, moduleId: activeModuleId });
+    const target = applyingLocationRef.current;
+    if (target) {
+      if (sameLocation(target, here)) applyingLocationRef.current = null;
+      return; // never record while replaying history
+    }
+    visitLocation(here);
+  }, [activeMode, activeModuleId, visitLocation]);
+
+  useEffect(() => {
+    // A new project identity starts a fresh trail.
+    resetLocation({ mode: activeMode, moduleId: activeModuleId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  const handleNavBack = useCallback(() => {
+    applyLocation(backLocation());
+  }, [applyLocation, backLocation]);
+  const handleNavForward = useCallback(() => {
+    applyLocation(forwardLocation());
+  }, [applyLocation, forwardLocation]);
+
+  const modulePath = useMemo(
+    () => computeModulePath(circuit, hierarchy.modules, activeModuleId),
+    [circuit, hierarchy.modules, activeModuleId]
+  );
+  const canNavUp = activeMode === 'design' && modulePath.length >= 2;
+  const handleNavUp = useCallback(() => {
+    if (activeMode !== 'design' || modulePath.length < 2) return;
+    // Up is a normal navigation to the parent module (recorded, so Back returns).
+    setActiveModule(modulePath[modulePath.length - 2]);
+  }, [activeMode, modulePath, setActiveModule]);
+
+  const locationSegments = useMemo<LocationSegment[]>(() => {
+    const segments: LocationSegment[] = [
+      { key: 'mode', label: getIdeModeLabel(activeMode), kind: 'mode' },
+    ];
+    if (activeMode === 'design') {
+      const modulesById = new Map(hierarchy.modules.map((module) => [module.id, module]));
+      modulePath.forEach((moduleId, index) => {
+        const definition = modulesById.get(moduleId);
+        const label =
+          moduleId === TOP_MODULE_ID
+            ? 'Top'
+            : definition?.displayName || definition?.name || moduleId;
+        segments.push({
+          key: `mod-${moduleId}-${index}`,
+          label,
+          kind: 'module',
+          onSelect: () => setActiveModule(moduleId),
+        });
+      });
+    }
+    return segments;
+  }, [activeMode, modulePath, hierarchy.modules, setActiveModule]);
+
   const handleGenerateBringUpVectors = useCallback(() => {
     generateBringUpVectors();
     setVectorsAreAutoGenerated(true);
@@ -637,6 +808,7 @@ export const IdeApp: React.FC = () => {
       }
 
       replaceWithBlankProject();
+      setProjectHdlSources([]);
       setProjectIdentity({
         projectName: FULL_ADDER_SCRATCH_LAB.title,
         projectDescription: FULL_ADDER_SCRATCH_LAB.assignment,
@@ -646,7 +818,7 @@ export const IdeApp: React.FC = () => {
         scenarioAuthority: 'none',
       });
       setActiveLabTaskId(FULL_ADDER_LAB_ID);
-      setFpgaConfig(buildIdeFpgaConfig({ name: FULL_ADDER_SCRATCH_LAB.shortTitle }));
+      setActiveTop(buildTopEntityName(FULL_ADDER_SCRATCH_LAB.shortTitle));
       setImportMeta(null);
       setDiagnosticRouteRequest(null);
       setDesignFocusRequest(null);
@@ -833,12 +1005,13 @@ export const IdeApp: React.FC = () => {
   }, [applyDebugTickIndex]);
 
   const handleDesignMutation = useCallback((nextCircuit: Circuit) => {
-    applyCircuitMutation(nextCircuit);
+    updateActiveModuleCircuit(nextCircuit);
     setDiagnosticRouteRequest(null);
-  }, [applyCircuitMutation]);
+  }, [updateActiveModuleCircuit]);
 
   const refreshSavedProjects = useCallback(() => {
-    setSavedProjects(listIdeProjectSnapshots());
+    const result = projectRepository.list();
+    setSavedProjects(result.ok ? result.value.projects : []);
   }, []);
 
   const handleApplySuggestions = useCallback(
@@ -861,21 +1034,25 @@ export const IdeApp: React.FC = () => {
 
     const backupTimestamp = new Date().toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, 'Z');
     const backupName = `Backup - ${projectName} - ${backupTimestamp}`;
+    const backupId = `backup-${projectId}-${Date.now().toString(36)}`;
     const backupProject: RBProject = {
       ...exportProjectRef.current,
       name: backupName,
+      meta: {
+        ...(exportProjectRef.current.meta ?? {}),
+        projectId: backupId,
+      },
     };
-    const backupId = `backup-${projectId}-${Date.now().toString(36)}`;
-    const snapshot = saveIdeProjectSnapshot({
+    const checkpoint = projectRepository.checkpoint({
       projectId: backupId,
       projectName: backupName,
       projectHash: digestWorkspaceSnapshot(backupProject, scenarios, activeScenarioId),
       project: backupProject,
       scenarios,
       activeScenarioId,
-    });
+    }, 'Before replacing the active project');
 
-    if (!snapshot) {
+    if (!checkpoint.ok) {
       return { name: null as string | null, failed: true };
     }
 
@@ -900,6 +1077,14 @@ export const IdeApp: React.FC = () => {
         ? { name: null as string | null, failed: false }
         : createRecoveryBackup();
 
+      if (backup.failed) {
+        setLastSavedAt(
+          `Could not load ${sourceLabel} because the current project could not be backed up. Current work was left unchanged.`
+        );
+        refreshSavedProjects();
+        return false;
+      }
+
       try {
         loadFromProject(project, options?.testbenchSnapshot);
       } catch (error) {
@@ -909,7 +1094,7 @@ export const IdeApp: React.FC = () => {
         return false;
       }
 
-      setFpgaConfig(buildIdeFpgaConfig(project));
+      setProjectHdlSources(cloneProjectHdlSources(project));
       setImportMeta(options?.importMeta ?? null);
       pendingImportMetaRef.current = null;
       setSavedProjectHash(options?.savedProjectHash ?? null);
@@ -918,8 +1103,6 @@ export const IdeApp: React.FC = () => {
       let statusMessage = `Loaded ${sourceLabel}.`;
       if (backup.name) {
         statusMessage = `Loaded ${sourceLabel}. Previous work backed up as "${backup.name}".`;
-      } else if (backup.failed) {
-        statusMessage = `Loaded ${sourceLabel}. Previous work could not be backed up.`;
       }
       setLastSavedAt(statusMessage);
 
@@ -985,27 +1168,13 @@ export const IdeApp: React.FC = () => {
       setAutosaveAvailable(false);
     } catch (error) {
       console.warn('Failed to restore autosave:', error);
-      localStorage.removeItem('rb-autosave-circuit');
-      setAutosaveAvailable(false);
-      setLastSavedAt('Autosave restore failed. The saved draft was invalid and was cleared.');
+      // Preserve legacy recovery bytes until the student explicitly dismisses
+      // them. A damaged pre-v3 draft is still evidence that data existed, and
+      // silently deleting it would violate the repository recovery contract.
+      setAutosaveAvailable(true);
+      setLastSavedAt('Legacy autosave restore failed. The stored draft was preserved for recovery or explicit dismissal.');
     }
   }, [handleSafeLoadIntoIde, setLastSavedAt]);
-
-  useEffect(() => {
-    if (fpgaConfigBootstrappedRef.current) return;
-    fpgaConfigBootstrappedRef.current = true;
-    setFpgaConfig((current) => {
-      const next = buildIdeFpgaConfig({ name: projectName });
-      if (
-        current.board === next.board &&
-        current.top === next.top &&
-        current.part === next.part
-      ) {
-        return current;
-      }
-      return next;
-    });
-  }, [projectName]);
 
   useEffect(() => {
     if (activeMode !== 'design') return;
@@ -1052,7 +1221,7 @@ export const IdeApp: React.FC = () => {
   );
   const hdlText = useMemo(() => {
     try {
-      const netlist = netlistFromCircuit(circuit);
+      const netlist = netlistFromCircuit(simulationCircuit);
       const ioMappingForExport = {
         inputs: projectIoRows
           .filter((r) => r.direction === 'in')
@@ -1068,8 +1237,27 @@ export const IdeApp: React.FC = () => {
     } catch {
       return '';
     }
-  }, [circuit, effectiveTopEntityName, projectIoRows]);
+  }, [effectiveTopEntityName, projectIoRows, simulationCircuit]);
   const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
+  const projectIoMapping = useMemo(
+    () => materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
+    [hardwareMappingV2],
+  );
+  const hierarchyHdl = useMemo(
+    () => generateHierarchicalVhdlProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-02-19T00:00:00.000Z',
+      updatedAt: '2026-02-19T00:00:00.000Z',
+      name: projectName,
+      circuit: normalizeProjectCircuit(circuit),
+      hierarchy,
+      ioMapping: projectIoMapping,
+      hdl: { top: effectiveTopEntityName, sources: [] },
+      fpga: { board: fpgaConfig.board, part: fpgaConfig.part, top: effectiveTopEntityName },
+    }),
+    [circuit, effectiveTopEntityName, fpgaConfig.board, fpgaConfig.part, hierarchy, projectIoMapping, projectName],
+  );
 
   const exportProject = useMemo<RBProject>(
     () => ({
@@ -1086,8 +1274,13 @@ export const IdeApp: React.FC = () => {
           {
             path: 'top.vhd',
             language: 'vhdl',
-            text: hdlText,
+            text: hierarchyHdl?.topVhd ?? hdlText,
           },
+          ...(hierarchyHdl?.moduleSources.map((source) => ({
+            path: source.path,
+            language: 'vhdl' as const,
+            text: source.text,
+          })) ?? []),
         ],
       },
       fpga: {
@@ -1099,9 +1292,10 @@ export const IdeApp: React.FC = () => {
           text: xdcText,
         },
       },
-      ioMapping: materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
+      ioMapping: projectIoMapping,
       hardwareMappingV2,
       vectors: authoritativeProjectVectors,
+      hierarchy,
       customComponents: customComponents.length > 0 ? customComponents : undefined,
       macros: macros.length > 0 ? macros : undefined,
       meta: {
@@ -1118,11 +1312,14 @@ export const IdeApp: React.FC = () => {
       activeGuidedLabTask,
       circuit,
       customComponents,
+      hierarchy,
+      hierarchyHdl,
       hdlText,
       macros,
       projectDescription,
       projectId,
       projectIoRows,
+      projectIoMapping,
       hardwareMappingV2,
       projectKind,
       projectName,
@@ -1192,10 +1389,12 @@ export const IdeApp: React.FC = () => {
     scenarioAuthority,
     probedKeys: runtimeSim.probes.map((p) => p.key),
   };
-  const saveState: 'saved' | 'unsaved' | 'autosaving' = useMemo(() => {
-    if (isAutosaving) return 'autosaving';
+  const saveState: 'saved' | 'unsaved' | 'autosaving' | 'saving' | 'save-failed' = useMemo(() => {
+    if (repositoryState.saveState === 'save-failed') return 'save-failed';
+    if (isAutosaving || repositoryState.saveState === 'autosaving') return 'autosaving';
+    if (repositoryState.saveState === 'saving') return 'saving';
     return projectHash === savedProjectHash ? 'saved' : 'unsaved';
-  }, [isAutosaving, projectHash, savedProjectHash]);
+  }, [isAutosaving, projectHash, repositoryState.saveState, savedProjectHash]);
   const isPristineProjectHome = useMemo(
     () =>
       projectKind === 'home' &&
@@ -1231,7 +1430,7 @@ export const IdeApp: React.FC = () => {
   );
 
   const handleSaveProject = useCallback(() => {
-    const snapshot = saveIdeProjectSnapshot({
+    const result = projectRepository.save({
       projectId,
       projectName,
       projectHash,
@@ -1239,7 +1438,11 @@ export const IdeApp: React.FC = () => {
       scenarios,
       activeScenarioId,
     });
-    if (!snapshot) return;
+    if (!result.ok) {
+      setLastSavedAt(`Save failed: ${result.error.message}`);
+      return;
+    }
+    const snapshot = result.value.snapshot;
     setSavedProjectHash(snapshot.projectHash);
     setLastSavedAt(`Saved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
     refreshSavedProjects();
@@ -1266,11 +1469,11 @@ export const IdeApp: React.FC = () => {
       };
       const renamedHash = digestWorkspaceSnapshot(renamedProject, scenarios, activeScenarioId);
       if (followsProjectIdentity) {
-        setFpgaConfig((current) => ({ ...current, top: renamedTop }));
+        setActiveTop(renamedTop);
       }
       setProjectIdentity({ projectName: trimmed });
 
-      const snapshot = saveIdeProjectSnapshot({
+      const saved = projectRepository.save({
         projectId,
         projectName: trimmed,
         projectHash: renamedHash,
@@ -1279,7 +1482,8 @@ export const IdeApp: React.FC = () => {
         activeScenarioId,
       });
 
-      if (snapshot) {
+      if (saved.ok) {
+        const snapshot = saved.value.snapshot;
         setSavedProjectHash(snapshot.projectHash);
         const nextSessionMeta: LabSessionMeta = {
           ...(sessionMetaRef.current ?? {
@@ -1336,7 +1540,7 @@ export const IdeApp: React.FC = () => {
       },
     };
     const nextHash = digestWorkspaceSnapshot(nextProject, scenarios, activeScenarioId);
-    const snapshot = saveIdeProjectSnapshot({
+    const saved = projectRepository.save({
       projectId: nextProjectId,
       projectName,
       projectHash: nextHash,
@@ -1344,7 +1548,11 @@ export const IdeApp: React.FC = () => {
       scenarios,
       activeScenarioId,
     });
-    if (!snapshot) return;
+    if (!saved.ok) {
+      setLastSavedAt(`Save As failed: ${saved.error.message}`);
+      return;
+    }
+    const snapshot = saved.value.snapshot;
     setProjectIdentity({
       projectId: nextProjectId,
       markDirty: false,
@@ -1364,6 +1572,72 @@ export const IdeApp: React.FC = () => {
     setProjectIdentity,
   ]);
 
+  const handleDuplicateProject = useCallback(() => {
+    const duplicateName = `${projectName} Copy`;
+    const duplicateId = createSaveAsProjectId(duplicateName, projectId, savedProjects);
+    const duplicateProject: RBProject = {
+      ...exportProject,
+      name: duplicateName,
+      meta: {
+        ...(exportProject.meta ?? {}),
+        projectId: duplicateId,
+      },
+    };
+    const result = projectRepository.save({
+      projectId: duplicateId,
+      projectName: duplicateName,
+      projectHash: digestWorkspaceSnapshot(duplicateProject, scenarios, activeScenarioId),
+      project: duplicateProject,
+      scenarios,
+      activeScenarioId,
+    });
+    if (!result.ok) {
+      setLastSavedAt(`Duplicate failed: ${result.error.message}`);
+      return;
+    }
+    refreshSavedProjects();
+    setLastSavedAt(`Created local copy "${duplicateName}"`);
+  }, [activeScenarioId, exportProject, projectId, projectName, refreshSavedProjects, savedProjects, scenarios, setLastSavedAt]);
+
+  const handleExportProjectBackup = useCallback(() => {
+    try {
+      const encoded = encodeRBProject(exportProject);
+      const blob = new Blob([encoded], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${buildTopEntityName(projectName)}.rbproj.json`;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setLastSavedAt('Portable project backup downloaded');
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'browser download failed';
+      setLastSavedAt(`Backup failed: ${reason}`);
+    }
+  }, [exportProject, projectName, setLastSavedAt]);
+
+  const handleRecoverProject = useCallback(() => {
+    const checkpoint = repositoryState.recoveryCheckpoint;
+    if (!checkpoint) return;
+    if (!window.confirm(`Restore recovery snapshot from ${formatSavedAtLabel(checkpoint.savedAtIso)}? Current work will not be replaced until you confirm.`)) return;
+    const result = projectRepository.recover(checkpoint);
+    if (!result.ok) {
+      setLastSavedAt(`Recovery failed: ${result.error.message}`);
+      return;
+    }
+    const restored = handleSafeLoadIntoIde(result.value.project, {
+      sourceLabel: 'recovery snapshot',
+      savedProjectHash: result.value.snapshot.projectHash,
+      backupCurrent: true,
+      nextMode: 'project',
+      testbenchSnapshot: {
+        scenarios: result.value.snapshot.scenarios,
+        activeScenarioId: result.value.snapshot.activeScenarioId,
+      },
+    });
+    if (restored) setLastSavedAt(`Recovery restored ${formatSavedAtLabel(result.value.snapshot.savedAtIso)}`);
+  }, [handleSafeLoadIntoIde, repositoryState.recoveryCheckpoint, setLastSavedAt]);
+
   const handleOpenLoadModal = useCallback(() => {
     refreshSavedProjects();
     setLoadModalOpen(true);
@@ -1375,18 +1649,13 @@ export const IdeApp: React.FC = () => {
 
   const handleLoadSavedProject = useCallback(
     (entry: PersistedIdeProjectIndexEntry) => {
-      const snapshot = loadIdeProjectSnapshot(entry.projectId);
-      if (!snapshot) {
-        setLastSavedAt(`Could not load saved project "${entry.projectName}". The snapshot was missing.`);
+      const opened = projectRepository.open(entry.projectId);
+      if (!opened.ok) {
+        setLastSavedAt(`Could not load saved project "${entry.projectName}": ${opened.error.message}`);
         refreshSavedProjects();
         return;
       }
-      const project = decodePersistedIdeProject(snapshot);
-      if (!project) {
-        setLastSavedAt(`Could not load saved project "${entry.projectName}". The snapshot was invalid.`);
-        refreshSavedProjects();
-        return;
-      }
+      const { project, snapshot } = opened.value;
       void handleSafeLoadIntoIde(project, {
         sourceLabel: `saved project "${entry.projectName}"`,
         savedProjectHash: snapshot.projectHash,
@@ -1444,7 +1713,7 @@ export const IdeApp: React.FC = () => {
 
   const handleResetToExample = useCallback(() => {
     resetToActiveExample();
-    setFpgaConfig(buildIdeFpgaConfig({ name: activeExample?.name ?? projectNameRef.current }));
+    setProjectHdlSources([]);
     setImportMeta(null);
     setSavedProjectHash(null);
     setLoadModalOpen(false);
@@ -1471,35 +1740,56 @@ export const IdeApp: React.FC = () => {
       hydratedRuntime.projectId === meta.projectId
         ? structuredClone(hydratedRuntime.projectHealthCore.lastVerify)
         : undefined;
-    const snapshot = loadIdeProjectSnapshot(meta.projectId);
-    if (!snapshot) {
-      clearLabSessionMeta();
-      setLastSavedAt('Previous session could not be restored. Starting from the current project.');
-      return;
-    }
-    const project = decodePersistedIdeProject(snapshot);
-    if (!project) {
-      clearLabSessionMeta();
-      setLastSavedAt('Previous session was invalid and could not be restored.');
-      return;
-    }
     const requestedMode = resolveRequestedIdeMode(window.location.search);
-    const restoredMode = resolveRestoredIdeMode(window.location.search);
-    isRestoringRef.current = true;
-    const restored = handleSafeLoadIntoIde(project, {
-      sourceLabel: `previous session "${project.name}"`,
-      savedProjectHash: snapshot.projectHash,
-      nextMode: restoredMode,
-      backupCurrent: false,
-      testbenchSnapshot: {
-        scenarios: snapshot.scenarios,
-        activeScenarioId: snapshot.activeScenarioId,
-      },
-    });
-    isRestoringRef.current = false;
-    if (!restored) {
+    const restoredMode = requestedMode
+      ? resolveRestoredIdeMode(window.location.search)
+      : normalizeIdeMode(meta.currentMode);
+    const hydratedRuntimeOwnsActiveProject = hydratedRuntime.projectId === meta.projectId;
+    const opened = projectRepository.open(meta.projectId);
+    if (!opened.ok) {
+      if (hydratedRuntimeOwnsActiveProject) {
+        setCurrentMode(restoredMode);
+        setLastSavedAt(
+          `Stored snapshot could not be opened: ${opened.error.message} Current runtime work was kept; use Save As or Import / Recover.`
+        );
+        return;
+      }
       clearLabSessionMeta();
+      setLastSavedAt(`Previous session could not be restored: ${opened.error.message}`);
       return;
+    }
+    const { project, snapshot } = opened.value;
+    let resumedProjectName = project.name;
+
+    if (hydratedRuntimeOwnsActiveProject) {
+      // Zustand writes runtime mutations synchronously, while the repository
+      // snapshot is intentionally debounced. On reload, keep the already-
+      // hydrated runtime as the newest active-project authority instead of
+      // replacing it with a potentially older repository snapshot. The saved
+      // snapshot still supplies FPGA configuration and the saved-hash baseline;
+      // a real runtime delta remains unsaved and is picked up by autosave.
+      resumedProjectName = hydratedRuntime.projectName;
+      setProjectHdlSources(cloneProjectHdlSources(project));
+      setSavedProjectHash(snapshot.projectHash);
+      refreshSavedProjects();
+      setCurrentMode(restoredMode);
+    } else {
+      isRestoringRef.current = true;
+      const restored = handleSafeLoadIntoIde(project, {
+        sourceLabel: `previous session "${project.name}"`,
+        savedProjectHash: snapshot.projectHash,
+        nextMode: restoredMode,
+        backupCurrent: false,
+        testbenchSnapshot: {
+          scenarios: snapshot.scenarios,
+          activeScenarioId: snapshot.activeScenarioId,
+        },
+      });
+      isRestoringRef.current = false;
+      if (!restored) {
+        clearLabSessionMeta();
+        return;
+      }
     }
     if (reloadRun) {
       useProjectRuntime.setState((state) => ({
@@ -1515,20 +1805,18 @@ export const IdeApp: React.FC = () => {
       setReloadEvidenceStale(true);
     }
     if (requestedMode) {
-      setLastSavedAt(`Resumed "${project.name}" and opened ${requestedMode}.`);
+      setLastSavedAt(`Resumed "${resumedProjectName}" and opened ${requestedMode}.`);
       return;
     }
-    if (meta.currentMode !== 'project') {
-      setLastSavedAt(`Resumed "${project.name}" on Project so you can continue from the home view.`);
-    }
+    setLastSavedAt(`Resumed "${resumedProjectName}" in ${getIdeModeLabel(restoredMode)}.`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount only
 
   useEffect(() => {
-    setSavedProjects(listIdeProjectSnapshots());
-    const snapshot = loadIdeProjectSnapshot(projectId);
-    setSavedProjectHash(snapshot?.projectHash ?? null);
-  }, [projectId]);
+    refreshSavedProjects();
+    const opened = projectRepository.open(projectId);
+    setSavedProjectHash(opened.ok ? opened.value.snapshot.projectHash : null);
+  }, [projectId, refreshSavedProjects]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1537,7 +1825,7 @@ export const IdeApp: React.FC = () => {
 
     setIsAutosaving(true);
     const timer = window.setTimeout(() => {
-      const snapshot = saveIdeProjectSnapshot({
+      const saved = projectRepository.autosave({
         projectId,
         projectName,
         projectHash,
@@ -1545,10 +1833,13 @@ export const IdeApp: React.FC = () => {
         scenarios,
         activeScenarioId,
       });
-      if (snapshot) {
+      if (saved.ok) {
+        const snapshot = saved.value.snapshot;
         setSavedProjectHash(snapshot.projectHash);
-        setSavedProjects(listIdeProjectSnapshots());
+        refreshSavedProjects();
         setLastSavedAt(`Autosaved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
+      } else {
+        setLastSavedAt(`Autosave failed: ${saved.error.message}`);
       }
       setIsAutosaving(false);
     }, 700);
@@ -1565,6 +1856,7 @@ export const IdeApp: React.FC = () => {
     scenarios,
     activeScenarioId,
     savedProjectHash,
+    refreshSavedProjects,
     setLastSavedAt,
   ]);
 
@@ -1578,19 +1870,12 @@ export const IdeApp: React.FC = () => {
       }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [activeExampleId, currentMode, projectKind, runtimeSim.probes, scenarioAuthority, sourceExampleId]);
+  }, [activeExampleId, currentMode, projectId, projectKind, runtimeSim.probes, scenarioAuthority, sourceExampleId]);
 
-  // Auto-save full project to localStorage on every circuit change
-  useEffect(() => {
-    if (!hasCircuit) return;
-    try {
-      localStorage.setItem('rb-autosave-circuit', JSON.stringify(exportProject));
-    } catch {
-      // ignore quota errors
-    }
-  }, [exportProject, hasCircuit]);
-
-  // On mount: check if a localStorage autosave exists
+  // Pre-v3 compatibility only: discover the old one-record autosave without
+  // continuing to write a third copy of current project state. New durable
+  // writes go through ProjectRepository; successful restore migrates the old
+  // payload into the active project and removes the legacy record.
   useEffect(() => {
     try {
       const saved = localStorage.getItem('rb-autosave-circuit');
@@ -1601,7 +1886,8 @@ export const IdeApp: React.FC = () => {
         }
       }
     } catch {
-      localStorage.removeItem('rb-autosave-circuit');
+      setAutosaveAvailable(false);
+      setLastSavedAt('Legacy autosave storage could not be read. No stored data was changed.');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1631,8 +1917,8 @@ export const IdeApp: React.FC = () => {
     [exportHasRequiredMappingGap, exportRequiredMappingGapCount, readiness]
   );
   const designDiagnostics = useMemo(
-    () => deriveDesignCompilerDiagnostics(exportProject),
-    [exportProject]
+    () => deriveDesignCompilerDiagnostics({ ...exportProject, circuit: simulationCircuit }),
+    [exportProject, simulationCircuit]
   );
   const liveScheduleContract = useMemo(() => {
     if (!exportProject) return undefined;
@@ -1797,22 +2083,22 @@ export const IdeApp: React.FC = () => {
   const currentVerifyProjectHash = useMemo(
     () =>
       buildCurrentVerifyProjectHash({
-        circuit,
+        circuit: simulationCircuit,
         projectVectors: authoritativeProjectVectors,
         customVectors,
         projectIoRows,
       }),
-    [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
+    [authoritativeProjectVectors, customVectors, projectIoRows, simulationCircuit]
   );
   const currentVerifyReplayHash = useMemo(
     () =>
       buildCurrentVerifyReplayHash({
-        circuit,
+        circuit: simulationCircuit,
         projectVectors: authoritativeProjectVectors,
         customVectors,
         projectIoRows,
       }),
-    [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
+    [authoritativeProjectVectors, customVectors, projectIoRows, simulationCircuit]
   );
   const workflowAuthority = useMemo(
     () =>
@@ -1879,6 +2165,181 @@ export const IdeApp: React.FC = () => {
       workflowAuthority.trustedVerifyCurrent,
     ]
   );
+
+  const replaceWithFreshProjectSafely = useCallback(() => {
+    const backup = hasUnsavedWork
+      ? createRecoveryBackup()
+      : { name: null as string | null, failed: false };
+    if (backup.failed) {
+      setLastSavedAt('Could not start a fresh project because recovery storage failed. Current work was left unchanged.');
+      refreshSavedProjects();
+      return false;
+    }
+    replaceWithBlankProject();
+    setProjectHdlSources([]);
+    if (projectKind === 'import') {
+      clearImportRecoveryUrlState();
+    }
+    setSavedProjectHash(null);
+    setVectorsAreAutoGenerated(false);
+    setCurrentMode('design');
+    if (backup.name) {
+      setLastSavedAt(`Started a fresh project. Previous work backed up as "${backup.name}".`);
+    }
+    return true;
+  }, [createRecoveryBackup, hasUnsavedWork, projectKind, refreshSavedProjects, replaceWithBlankProject, setLastSavedAt]);
+
+  const handleBuildFreshProject = useCallback(() => {
+    if (hasUnsavedWork && !window.confirm('Start a fresh project? A recovery snapshot will be created before current work is replaced.')) return;
+    replaceWithFreshProjectSafely();
+  }, [hasUnsavedWork, replaceWithFreshProjectSafely]);
+
+  const handleApplyWorkspacePreset = useCallback((presetId: WorkspacePresetId) => {
+    workspacePreferencesStore.applyPreset(presetId);
+  }, []);
+
+  const handleResetWorkspace = useCallback(() => {
+    workspacePreferencesStore.reset();
+  }, []);
+
+  const commandContext = useMemo<IdeShellCommandContext>(
+    () => ({
+      hasCircuit,
+      canUndo: designUndoDepth > 0,
+      canRedo: designRedoDepth > 0,
+    }),
+    [designRedoDepth, designUndoDepth, hasCircuit]
+  );
+
+  const commandRegistry = useMemo(() => {
+    const available = { state: 'available' } as const;
+    const requiresCircuit = (context: IdeShellCommandContext) =>
+      context.hasCircuit
+        ? available
+        : { state: 'disabled' as const, reason: 'Create or open a circuit first.' };
+    const designOnly = (context: IdeShellCommandContext) =>
+      context.hasCircuit
+        ? available
+        : { state: 'disabled' as const, reason: 'Open a project with a design first.' };
+    const activeDesignOnly = (context: IdeShellCommandContext) =>
+      !context.hasCircuit
+        ? { state: 'disabled' as const, reason: 'Open a project with a design first.' }
+        : activeMode === 'design'
+          ? available
+          : { state: 'disabled' as const, reason: 'Open Design to use this canvas command.' };
+    const canRunSimulation = () =>
+      !hasCircuit
+        ? { state: 'disabled' as const, reason: 'Open a project with a design first.' }
+        : authoritativeProjectVectors.length + customVectors.length > 0
+        ? available
+        : { state: 'disabled' as const, reason: 'Add at least one scenario vector before running simulation.' };
+    const canOpenReplay = () =>
+      !hasCircuit
+        ? { state: 'disabled' as const, reason: 'Open a project with a design first.' }
+        : (verifyLastRun?.waveform.length ?? 0) > 0
+        ? available
+        : { state: 'disabled' as const, reason: 'Run a simulation before opening circuit replay.' };
+    const invokeDesignAuthority = (commandId: string) => {
+      window.dispatchEvent(new CustomEvent(IDE_COMMAND_EVENT_NAME, { detail: { commandId } }));
+    };
+    const commands: IdeCommand<IdeShellCommandContext>[] = [
+      { id: IDE_COMMAND_IDS.openProjectSurface, title: 'Open Project Center', category: 'navigation', keywords: ['home', 'overview'], shortcut: { key: '1', label: '1' }, execute: () => setCurrentMode('project') },
+      { id: IDE_COMMAND_IDS.openDesignSurface, title: 'Open Design', category: 'navigation', keywords: ['circuit', 'schematic'], shortcut: { key: '2', label: '2' }, execute: () => setCurrentMode('design') },
+      { id: IDE_COMMAND_IDS.openSimulateSurface, title: 'Open Simulate', category: 'navigation', keywords: ['verify', 'testbench', 'waveform'], shortcut: { key: '3', label: '3' }, availability: requiresCircuit, execute: () => setCurrentMode('verify') },
+      { id: IDE_COMMAND_IDS.openBoardSurface, title: 'Open Board & Constraints', category: 'navigation', keywords: ['pins', 'mapping', 'xdc', 'basys3'], shortcut: { key: '4', label: '4' }, availability: requiresCircuit, execute: () => setCurrentMode('hardware') },
+      { id: IDE_COMMAND_IDS.openExportSurface, title: 'Open Build & Export', category: 'navigation', keywords: ['vivado', 'package', 'handoff'], shortcut: { key: '5', label: '5' }, availability: requiresCircuit, execute: () => setCurrentMode('export') },
+      { id: IDE_COMMAND_IDS.openImportRecover, title: 'Import / Recover', category: 'project', keywords: ['restore', 'archive'], execute: () => setCurrentMode('import') },
+      { id: IDE_COMMAND_IDS.saveProject, title: 'Save Project', category: 'project', keywords: ['checkpoint', 'local'], shortcut: { key: 's', modifiers: ['primary'], label: 'Ctrl S' }, execute: handleSaveProject },
+      { id: IDE_COMMAND_IDS.saveProjectAs, title: 'Save Project As...', category: 'project', keywords: ['copy', 'new identity'], execute: handleSaveAsProject },
+      { id: IDE_COMMAND_IDS.duplicateProject, title: 'Duplicate Project', category: 'project', keywords: ['copy', 'clone'], execute: handleDuplicateProject },
+      { id: IDE_COMMAND_IDS.openProject, title: 'Open Existing Project...', category: 'project', keywords: ['recent', 'local'], execute: handleOpenLoadModal },
+      { id: IDE_COMMAND_IDS.buildFreshProject, title: 'Build Fresh Project', category: 'project', keywords: ['blank', 'new'], execute: handleBuildFreshProject },
+      { id: IDE_COMMAND_IDS.restoreRecoverySnapshot, title: 'Restore Recovery Snapshot', category: 'project', keywords: ['backup', 'recover'], availability: () => repositoryState.recoveryAvailable ? available : { state: 'disabled', reason: 'No recovery snapshot is available in this session.' }, execute: handleRecoverProject },
+      { id: IDE_COMMAND_IDS.undoDesignEdit, title: 'Undo Design Edit', category: 'edit', keywords: ['history'], shortcut: { key: 'z', modifiers: ['primary'], label: 'Ctrl Z' }, availability: (context) => context.canUndo ? available : { state: 'disabled', reason: 'There is no design edit to undo.' }, execute: undoProjectEdit },
+      { id: IDE_COMMAND_IDS.redoDesignEdit, title: 'Redo Design Edit', category: 'edit', keywords: ['history'], shortcut: { key: 'y', modifiers: ['primary'], label: 'Ctrl Y' }, availability: (context) => context.canRedo ? available : { state: 'disabled', reason: 'There is no design edit to redo.' }, execute: redoProjectEdit },
+      { id: IDE_COMMAND_IDS.selectDesignTool, title: 'Design Tool: Select', category: 'design', keywords: ['pointer'], availability: designOnly, execute: () => { setCurrentMode('design'); useLogicViewStore.getState().setToolMode('select'); } },
+      { id: IDE_COMMAND_IDS.selectWireTool, title: 'Design Tool: Wire', category: 'design', keywords: ['connect'], availability: designOnly, execute: () => { setCurrentMode('design'); useLogicViewStore.getState().setToolMode('wire'); } },
+      { id: IDE_COMMAND_IDS.arrangeDesign, title: 'Arrange Design', category: 'design', keywords: ['layout', 'organize'], availability: activeDesignOnly, execute: () => invokeDesignAuthority(IDE_COMMAND_IDS.arrangeDesign) },
+      { id: IDE_COMMAND_IDS.fitDesignCanvas, title: 'Fit Design to Canvas', category: 'design', keywords: ['zoom', 'center'], availability: activeDesignOnly, execute: () => invokeDesignAuthority(IDE_COMMAND_IDS.fitDesignCanvas) },
+      { id: IDE_COMMAND_IDS.zoomOutDesignCanvas, title: 'Zoom Out Design Canvas', category: 'design', keywords: ['view'], availability: activeDesignOnly, execute: () => invokeDesignAuthority(IDE_COMMAND_IDS.zoomOutDesignCanvas) },
+      { id: IDE_COMMAND_IDS.zoomInDesignCanvas, title: 'Zoom In Design Canvas', category: 'design', keywords: ['view'], availability: activeDesignOnly, execute: () => invokeDesignAuthority(IDE_COMMAND_IDS.zoomInDesignCanvas) },
+      { id: IDE_COMMAND_IDS.showDesignCanvas, title: 'Design View: Canvas', category: 'design', keywords: ['schematic'], availability: designOnly, execute: () => { workspacePreferencesStore.setDesignView('canvas'); setCurrentMode('design'); } },
+      { id: IDE_COMMAND_IDS.showDesignCode, title: 'Design View: Code', category: 'design', keywords: ['hdl', 'vhdl'], availability: designOnly, execute: () => { workspacePreferencesStore.setDesignView('code'); setCurrentMode('design'); } },
+      { id: IDE_COMMAND_IDS.showDesignSplit, title: 'Design View: Split', category: 'design', keywords: ['canvas code'], availability: designOnly, execute: () => { workspacePreferencesStore.setDesignView('split'); setCurrentMode('design'); } },
+      { id: IDE_COMMAND_IDS.toggleWorkspacePanel, title: 'Toggle Left Workspace Panel', category: 'workspace', keywords: ['dock', 'hide', 'show'], execute: () => { const dock = workspacePreferencesStore.getSnapshot().surfaces[activeMode].docks.left; workspacePreferencesStore.setDock(activeMode, 'left', { visible: !dock.visible }); } },
+      { id: IDE_COMMAND_IDS.resetWorkspaceLayout, title: 'Restore Default Workspace Layout', category: 'workspace', keywords: ['reset', 'panels'], execute: handleResetWorkspace },
+      { id: IDE_COMMAND_IDS.useAuthoringPreset, title: 'Workspace Preset: Authoring', category: 'workspace', keywords: ['layout'], execute: () => handleApplyWorkspacePreset('authoring') },
+      { id: IDE_COMMAND_IDS.useSimulationPreset, title: 'Workspace Preset: Simulation', category: 'workspace', keywords: ['layout', 'waveform'], execute: () => handleApplyWorkspacePreset('simulation') },
+      { id: IDE_COMMAND_IDS.useBoardPreset, title: 'Workspace Preset: Board', category: 'workspace', keywords: ['layout', 'constraints'], execute: () => handleApplyWorkspacePreset('board') },
+      { id: IDE_COMMAND_IDS.useCodePreset, title: 'Workspace Preset: Code', category: 'workspace', keywords: ['layout', 'hdl'], execute: () => handleApplyWorkspacePreset('code') },
+      {
+        id: IDE_COMMAND_IDS.runSimulation,
+        title: 'Run Simulation (Observe)',
+        category: 'simulation',
+        keywords: ['trace', 'scenario', 'observe'],
+        availability: canRunSimulation,
+        execute: () => {
+          handleRunVerification({
+            scenarioId: activeScenario?.id ?? `command-${currentVerifyReplayHash.slice(0, 8)}`,
+            scenarioName: activeScenario?.name ?? 'Workbench scenario',
+            runKind: 'trace',
+            scenarioVersion: activeScenario?.version,
+            deterministicHash: currentVerifyReplayHash,
+            assertionMode: false,
+            vectors: [...authoritativeProjectVectors, ...customVectors],
+            rows: [],
+          });
+          setCurrentMode('verify');
+        },
+      },
+      {
+        id: IDE_COMMAND_IDS.openReplay,
+        title: 'Open Latest Circuit Replay',
+        category: 'simulation',
+        keywords: ['waveform', 'trace', 'design'],
+        availability: canOpenReplay,
+        execute: () => {
+          applyDebugTickIndex(0);
+          setCurrentMode('design');
+        },
+      },
+      { id: IDE_COMMAND_IDS.assignBoardResource, title: 'Open Board Assignment', category: 'board', keywords: ['pin', 'switch', 'led'], availability: requiresCircuit, execute: () => setCurrentMode('hardware') },
+      { id: IDE_COMMAND_IDS.buildExportPackage, title: 'Inspect Export Package', category: 'export', keywords: ['vivado', 'zip', 'handoff'], availability: requiresCircuit, execute: () => setCurrentMode('export') },
+      { id: IDE_COMMAND_IDS.useLightTheme, title: 'Theme: Workbench Light', category: 'theme', keywords: ['appearance'], execute: () => setThemeVariant('light') },
+      { id: IDE_COMMAND_IDS.useDarkTheme, title: 'Theme: Workbench Dark', category: 'theme', keywords: ['appearance'], execute: () => setThemeVariant('dark') },
+      { id: IDE_COMMAND_IDS.useSystemTheme, title: 'Theme: Follow System', category: 'theme', keywords: ['appearance'], execute: () => setThemeVariant('system') },
+      { id: IDE_COMMAND_IDS.openHelp, title: 'Open Help and Keyboard Shortcuts', category: 'help', keywords: ['guide', 'keys'], shortcut: { key: '?', label: '?' }, execute: () => setShowShortcuts(true) },
+    ];
+    return createIdeCommandRegistry(commands);
+  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleSaveAsProject, handleSaveProject, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable;
+      if (isEditable || commandPaletteOpen) return;
+      const primary = event.ctrlKey || event.metaKey;
+      if (primary && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        void commandRegistry.execute(IDE_COMMAND_IDS.saveProject, commandContext);
+        return;
+      }
+      const stageCommand = {
+        '1': IDE_COMMAND_IDS.openProjectSurface,
+        '2': IDE_COMMAND_IDS.openDesignSurface,
+        '3': IDE_COMMAND_IDS.openSimulateSurface,
+        '4': IDE_COMMAND_IDS.openBoardSurface,
+        '5': IDE_COMMAND_IDS.openExportSurface,
+      }[event.key];
+      if (stageCommand && !primary && !event.altKey) {
+        event.preventDefault();
+        void commandRegistry.execute(stageCommand, commandContext);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [commandContext, commandPaletteOpen, commandRegistry]);
 
   const handleProjectPrimaryAction = useCallback(() => {
     setCurrentMode(
@@ -1984,7 +2445,7 @@ export const IdeApp: React.FC = () => {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (projectIdRef.current && exportProjectRef.current) {
-        saveIdeProjectSnapshot({
+        projectRepository.save({
           projectId: projectIdRef.current,
           projectName: projectNameRef.current,
           projectHash: projectHashRef.current,
@@ -2002,6 +2463,14 @@ export const IdeApp: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty: refs provide current values
 
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('manual') === 'control-state-matrix') {
+    return (
+      <div className="ide-root" data-redbyte-mode="ide" data-workbench-theme="studio-light">
+        <StudioControlStateMatrix />
+      </div>
+    );
+  }
+
   return (
     <BoardSignalProvider>
     <div
@@ -2009,6 +2478,7 @@ export const IdeApp: React.FC = () => {
       data-testid="ide-root"
       data-redbyte-mode="ide"
       data-ide-stage={activeMode}
+      data-workbench-theme={resolvedThemeVariant}
     >
       {autosaveAvailable && projectKind === 'home' && !hasCircuit && (
         <div className="ide-autosave-banner" data-testid="ide-autosave-banner">
@@ -2022,7 +2492,35 @@ export const IdeApp: React.FC = () => {
         projectId={projectId}
         boardTarget={fpgaConfig.board}
         saveState={saveState}
+        lastSavedAt={repositoryState.lastSavedAtIso ? formatSavedAtLabel(repositoryState.lastSavedAtIso) : null}
+        storageLabel={repositoryState.storageLocation.label}
+        recoveryAvailable={repositoryState.recoveryAvailable}
         currentMode={activeMode}
+        onModeChange={setCurrentMode}
+        stageStatus={{
+          project: hasCircuit ? 'Loaded' : 'New project',
+          design: `${circuit.nodes.length} component${circuit.nodes.length === 1 ? '' : 's'}`,
+          verify: runtimeSim.running
+            ? 'Running'
+            : projectVerifyState === 'assertions-match'
+              ? 'Current'
+              : projectVerifyState === 'stale'
+                ? 'Stale'
+                : projectVerifyState === 'trace'
+                  ? 'Observed'
+                : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
+                  ? 'Needs review'
+                  : 'Not run',
+          hardware: `${projectIoRows.filter((row) => row.required && row.pin.trim().length > 0).length} / ${projectIoRows.filter((row) => row.required).length} assigned`,
+          export: exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft',
+        }}
+        stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
+        stepsBlocked={{
+          design: Boolean(blockingDesignIssue),
+          verify: !hasCircuit || Boolean(blockingDesignIssue),
+          hardware: !hasCircuit || Boolean(blockingDesignIssue),
+          export: !workflowAuthority.exportAvailable,
+        }}
         buildIdentity={buildIdentity}
         onSave={handleSaveProject}
         onSaveAs={handleSaveAsProject}
@@ -2033,24 +2531,36 @@ export const IdeApp: React.FC = () => {
         onImport={() => setCurrentMode('import')}
         onRenameProject={handleRenameProject}
         onHelp={() => setShowShortcuts(true)}
-      />
-
-      <IdeStageNav
-        currentMode={activeMode}
-        onModeChange={setCurrentMode}
-        stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
-        stepsBlocked={{
-          design: Boolean(blockingDesignIssue),
-          verify: !hasCircuit || Boolean(blockingDesignIssue),
-          hardware: !hasCircuit || Boolean(blockingDesignIssue),
-          export: !workflowAuthority.exportAvailable,
-        }}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onDuplicateProject={handleDuplicateProject}
+        onExportBackup={handleExportProjectBackup}
+        onRecover={handleRecoverProject}
+        activeWorkspacePreset={workspacePreferences.activePresetId}
+        onApplyWorkspacePreset={handleApplyWorkspacePreset}
+        onResetWorkspace={handleResetWorkspace}
+        themeVariant={themeVariant}
+        onThemeChange={setThemeVariant}
       />
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      <IdeCommandPalette
+        open={commandPaletteOpen}
+        registry={commandRegistry}
+        context={commandContext}
+        onClose={() => setCommandPaletteOpen(false)}
+      />
 
       <div className="ide-layout-shell">
         <div className="ide-surface-column">
+        <LocationBar
+          segments={locationSegments}
+          canBack={locationPast.length > 0}
+          canForward={locationFuture.length > 0}
+          canUp={canNavUp}
+          onBack={handleNavBack}
+          onForward={handleNavForward}
+          onUp={handleNavUp}
+        />
         {activeMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project workspace encountered an error">
             <ProjectSurface
@@ -2078,6 +2588,15 @@ export const IdeApp: React.FC = () => {
               projectKind={projectKind}
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}
+              scenarioCount={scenarios.length}
+              activeScenarioName={activeScenario?.name ?? null}
+              activeScenarioEventCount={activeScenario?.vectors.length ?? 0}
+              activeScenarioCheckCount={
+                activeScenario?.vectors.reduce(
+                  (count, vector) => count + Object.keys(vector.expected ?? {}).length,
+                  0
+                ) ?? 0
+              }
               activeExampleId={activeExampleId}
               onOpenExample={handleOpenExample}
               primaryCtaLabel={primaryProjectCta.label}
@@ -2093,15 +2612,7 @@ export const IdeApp: React.FC = () => {
               onOpenImport={() => setCurrentMode('import')}
               guidedLabTask={activeGuidedLabTask ?? FULL_ADDER_SCRATCH_LAB}
               onStartGuidedLab={handleStartGuidedLab}
-              onStartBlankProject={() => {
-                replaceWithBlankProject();
-                setFpgaConfig(buildIdeFpgaConfig({ name: 'Untitled Project' }));
-                if (projectKind === 'import') {
-                  clearImportRecoveryUrlState();
-                }
-                setVectorsAreAutoGenerated(false);
-                setCurrentMode('design');
-              }}
+              onStartBlankProject={replaceWithFreshProjectSafely}
               recentProjects={savedProjects.slice(0, 3)}
               onOpenSavedProjects={handleOpenLoadModal}
               onOpenRecentProject={handleOpenRecentProject}
@@ -2110,10 +2621,12 @@ export const IdeApp: React.FC = () => {
               studentName={studentName}
               onStudentNameChange={setStudentName}
               hasVerifyRun={verifyLastRun !== undefined}
+              runHistory={verifyRunHistory}
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
               outline={projectOutline}
               circuit={circuit}
+              hierarchy={hierarchy}
               onFocusMacro={(macroId, macroName) => {
                 setDesignFocusRequest(
                   createDesignFocusRequest('macro', macroId, macroName)
@@ -2134,7 +2647,7 @@ export const IdeApp: React.FC = () => {
               onFpgaConfigChange={handleFpgaConfigChange}
               onSaveNow={() => {
                 if (!exportProjectRef.current) return;
-                const snap = saveIdeProjectSnapshot({
+                const saved = projectRepository.save({
                   projectId,
                   projectName,
                   projectHash,
@@ -2142,19 +2655,45 @@ export const IdeApp: React.FC = () => {
                   scenarios,
                   activeScenarioId,
                 });
-                if (snap) {
+                if (saved.ok) {
+                  const snap = saved.value.snapshot;
                   setSavedProjectHash(snap.projectHash);
-                  setSavedProjects(listIdeProjectSnapshots());
+                  refreshSavedProjects();
                   setLastSavedAt(`Saved ${new Date(snap.savedAtIso).toLocaleTimeString()}`);
+                } else {
+                  setLastSavedAt(`Save failed: ${saved.error.message}`);
                 }
                 if (sessionMetaRef.current) saveLabSessionMeta(sessionMetaRef.current);
               }}
+              onDuplicateProject={() => {
+                if (!exportProjectRef.current) return;
+                const duplicateName = `${projectName?.trim() || 'Untitled Project'} copy`;
+                const duplicateId = createProjectId(duplicateName);
+                const duplicateProject = {
+                  ...exportProjectRef.current,
+                  name: duplicateName,
+                  meta: { ...(exportProjectRef.current.meta ?? {}), projectId: duplicateId },
+                };
+                const saved = projectRepository.save({
+                  projectId: duplicateId,
+                  projectName: duplicateName,
+                  projectHash,
+                  project: duplicateProject,
+                  scenarios,
+                  activeScenarioId,
+                });
+                if (saved.ok) {
+                  refreshSavedProjects();
+                  setLastSavedAt(`Duplicated as "${duplicateName}" — open it from Open existing.`);
+                } else {
+                  setLastSavedAt(`Duplicate failed: ${saved.error.message}`);
+                }
+              }}
               onRestoreLastSave={() => {
                 if (!window.confirm('Restore the last saved project? Unsaved changes will be lost.')) return;
-                const snap = loadIdeProjectSnapshot(projectId);
-                if (!snap) { window.alert('No saved session found.'); return; }
-                const proj = decodePersistedIdeProject(snap);
-                if (!proj) { window.alert('Saved session could not be decoded.'); return; }
+                const opened = projectRepository.open(projectId);
+                if (!opened.ok) { window.alert(opened.error.message); return; }
+                const { project: proj, snapshot: snap } = opened.value;
                 isRestoringRef.current = true;
                 handleSafeLoadIntoIde(proj, {
                   sourceLabel: 'last saved project',
@@ -2173,16 +2712,19 @@ export const IdeApp: React.FC = () => {
               onResetProject={() => {
                 if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
                 const backup = createRecoveryBackup();
+                if (backup.failed) {
+                  setLastSavedAt('Could not reset the project because recovery storage failed. Current work was left unchanged.');
+                  refreshSavedProjects();
+                  return;
+                }
                 clearLabSessionMeta();
                 resetToActiveExample();
-                setFpgaConfig(buildIdeFpgaConfig({ name: activeExample?.name ?? projectNameRef.current }));
+                setProjectHdlSources([]);
                 setImportMeta(null);
                 setCurrentMode('project');
                 setSavedProjectHash(null);
                 if (backup.name) {
                   setLastSavedAt(`Reset to example. Previous work backed up as "${backup.name}".`);
-                } else if (backup.failed) {
-                  setLastSavedAt('Reset to example. Previous work could not be backed up.');
                 } else {
                   setLastSavedAt('Reset to example');
                 }
@@ -2197,11 +2739,14 @@ export const IdeApp: React.FC = () => {
             >
             <ThrowOnce surface="design" />
             <DesignSurface
+              projectId={projectId}
+              projectName={projectName}
               onCircuitMutated={handleDesignMutation}
-              onRuntimeAddNode={addDesignNode}
-              onRuntimeAddIo={addDesignIo}
-              onRuntimeAddBoardIo={addDesignBoardIo}
-              onRuntimeConnect={connectDesignNodes}
+              onRuntimeAddNode={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignNode : undefined}
+              onRuntimeAddIo={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignIo : undefined}
+              onRuntimeCreateBus={hierarchy.activeModuleId === TOP_MODULE_ID ? createDesignBus : undefined}
+              onRuntimeAddBoardIo={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignBoardIo : undefined}
+              onRuntimeConnect={hierarchy.activeModuleId === TOP_MODULE_ID ? connectDesignNodes : undefined}
               onRuntimeUndo={undoProjectEdit}
               onRuntimeRedo={redoProjectEdit}
               runtimeUndoDepth={designUndoDepth}
@@ -2221,6 +2766,7 @@ export const IdeApp: React.FC = () => {
               viewportSeed={`${projectId}:${guidedLabViewportToken}`}
               starterContext={activeStarterContext ?? undefined}
               ioRows={projectIoRows}
+              onSetMappingPin={handleMappingPinChange}
               onGoToHardware={() => setCurrentMode('hardware')}
               onGoToImport={() => setCurrentMode('import')}
               onGoToProject={() => setCurrentMode('project')}
@@ -2229,6 +2775,14 @@ export const IdeApp: React.FC = () => {
               designFocusRequest={designFocusRequest}
               onClearDesignFocus={() => setDesignFocusRequest(null)}
               topEntityName={effectiveTopEntityName}
+              hierarchy={hierarchy}
+              onOpenModule={setActiveModule}
+              onCreateModuleFromSelection={createModuleFromSelection}
+              onPlaceModuleInstance={placeModuleInstance}
+              onRenameModuleInstance={renameModuleInstance}
+              onDuplicateModuleDefinition={duplicateModuleDefinition}
+              onDeleteModuleDefinition={deleteModuleDefinition}
+              hdlSources={projectHdlSources}
               onSaveAsComponent={addCustomComponent}
               customComponentTypes={customComponents.map((c) => ({ type: c.name, title: c.name, description: c.description ?? '' }))}
               customComponentDefs={customComponents}
@@ -2262,12 +2816,13 @@ export const IdeApp: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'verify' ? (
-          <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Simulate workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="verify" />}
             >
             <VerifySurface
-              circuitGraph={circuit}
+              circuitGraph={simulationCircuit}
+              buses={circuit.buses ?? []}
               deterministicHash={currentVerifyReplayHash}
               projectName={projectName}
               board={fpgaConfig?.board ?? 'Basys3'}
@@ -2348,11 +2903,14 @@ export const IdeApp: React.FC = () => {
               guidedLabTask={activeGuidedLabTask}
               guidedLabDesignChecklist={fullAdderLabDesignChecklist}
               onCreateGuidedLabTruthTable={handleCreateFullAdderTruthTable}
+              generatedTestbenchSource={
+                exportViewModel.artifacts.find((artifact) => artifact.path === 'testbench.vhd')?.content
+              }
             />
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'hardware' ? (
-          <ErrorBoundary fallbackTitle="Map Pins workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Board & Constraints workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="hardware" />}
             >
@@ -2360,6 +2918,7 @@ export const IdeApp: React.FC = () => {
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
+              declaredBuses={circuit.buses}
               mappingProjection={exportViewModel.mappingProjection}
               missingRequiredPortsFromExport={exportRequiredMappingGapCount}
               expectedIoRows={hardwareExpectedIoRows}
@@ -2393,7 +2952,7 @@ export const IdeApp: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'export' ? (
-          <ErrorBoundary fallbackTitle="Export workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Build & Export workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="export" />}
             >
@@ -2402,6 +2961,7 @@ export const IdeApp: React.FC = () => {
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
               lastExport={projectHealthCore.lastExport}
+              exportHistory={exportHistory}
               designBlockingIssue={blockingDesignIssue ?? undefined}
               designReady={workflowAuthority.designReady}
               workflowAuthority={workflowAuthority}
@@ -2443,6 +3003,29 @@ export const IdeApp: React.FC = () => {
         )}
         </div>
       </div>
+
+      <IdeStatusBar
+        mode={activeMode}
+        determinismHash={determinismHash}
+        gateStatus={blockingDesignIssue ? 'fail' : designCompilerStatus.warningCount > 0 ? 'warn' : 'pass'}
+        storageState={saveState === 'save-failed' ? 'Save failed' : saveState === 'saved' ? 'Saved locally' : saveState}
+        problemsCount={designCompilerStatus.errorCount + designCompilerStatus.warningCount}
+        simulationState={
+          runtimeSim.running
+            ? 'Running'
+            : projectVerifyState === 'assertions-match'
+              ? 'Compare current'
+              : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
+                ? 'Needs repair'
+                : projectVerifyState === 'stale'
+                  ? 'Stale'
+                  : projectVerifyState === 'trace'
+                    ? 'Observed'
+                    : 'Not run'
+        }
+        boardState={effectiveReadiness.hasIoMapping ? 'Assignments ready' : `${effectiveReadiness.missingRequiredCount} missing`}
+        packageState={exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft'}
+      />
 
       <input
         ref={importFileInputRef}
@@ -2593,30 +3176,6 @@ function normalizeProjectCircuit(circuit: RBProject['circuit']): RBProject['circ
   };
 }
 
-function buildTopEntityName(projectName: string): string {
-  const normalized = projectName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  const base = normalized.length > 0 ? normalized : 'redbyte_top';
-  return /^[a-z]/.test(base) ? base : `rb_${base}`;
-}
-
-function normalizeTopEntityName(value: string | undefined, fallbackTopEntity: string): string {
-  const fallback = fallbackTopEntity.trim().length > 0 ? fallbackTopEntity : 'redbyte_top';
-  const normalized = (value ?? '')
-    .trim()
-    .replace(/[^A-Za-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  if (normalized.length === 0) return fallback;
-  return /^[A-Za-z_]/.test(normalized) ? normalized : `rb_${normalized}`;
-}
-
-function normalizeFpgaPart(value: string | undefined): string {
-  const trimmed = (value ?? '').trim();
-  return trimmed.length > 0 ? trimmed : DEFAULT_FPGA_PART;
-}
 
 function findFullAdderLabSignal(label: string): GuidedLabSignal | null {
   const normalized = normalizeSignalKey(label);
@@ -2673,17 +3232,6 @@ function nextGuidedLabNodeId(circuit: Circuit, label: string): string {
   }
   return `${base}_${Date.now().toString(36)}`;
 }
-
-function buildIdeFpgaConfig(project: Partial<Pick<RBProject, 'name' | 'hdl' | 'fpga'>>): IdeFpgaConfig {
-  const projectName = (project.name ?? '').trim();
-  const fallbackTop = buildTopEntityName(projectName);
-  return {
-    board: 'basys3',
-    top: normalizeTopEntityName(project.hdl?.top ?? project.fpga?.top, fallbackTop),
-    part: normalizeFpgaPart(project.fpga?.part),
-  };
-}
-
 
 function buildConstraintText(
   ioRows: Array<{

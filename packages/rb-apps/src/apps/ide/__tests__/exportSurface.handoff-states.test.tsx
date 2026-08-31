@@ -132,7 +132,7 @@ describe('ExportSurface handoff states', () => {
 
   // ── Advisory state ───────────────────────────────────────────────────────────
 
-  it('advisory: readiness hero shows a draft when Verify has not run', () => {
+  it('advisory: readiness hero shows a draft when Simulate has not run', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -152,7 +152,7 @@ describe('ExportSurface handoff states', () => {
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
   });
 
-  it('advisory: Verify repair stays primary while a structurally valid draft remains downloadable', () => {
+  it('advisory: Simulate repair stays primary while a structurally valid draft remains downloadable', () => {
     const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <ExportSurface
@@ -164,7 +164,7 @@ describe('ExportSurface handoff states', () => {
     );
     const actions = getByTestId('ide-export-primary-actions');
     expect(actions.querySelectorAll('button')).toHaveLength(2);
-    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect((getByTestId('ide-export-draft-download-v1') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(getByTestId('ide-export-package-build-v1'));
@@ -182,7 +182,8 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Draft export available');
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare FAIL');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Simulated');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('expected outputs differ');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('draft');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
@@ -211,14 +212,14 @@ describe('ExportSurface handoff states', () => {
     }
     const actions = getByTestId('ide-export-primary-actions');
     expect(actions.querySelectorAll('button')).toHaveLength(1);
-    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Mapping');
+    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Board & Constraints');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
 
   // ── Provenance rows ───────────────────────────────────────────────────────────
 
-  it('readiness details show Not run when verifyResult is absent', () => {
+  it('readiness details show a draft Simulate state when no result exists', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -226,10 +227,33 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Draft');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Run the current scenario in Simulate');
   });
 
-  it('readiness details show current Compare PASS when verify passed and not stale', () => {
+  it('keeps stale behavioral currentness distinct from the draft evidence tier', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="current-design-hash"
+        verifyResult={passVerify}
+        dirtySinceVerify={true}
+        workflowAuthority={makeAuthority({
+          verifyResult: passVerify,
+          dirtySinceVerify: true,
+          exportHash: 'current-design-hash',
+        })}
+      />
+    );
+
+    expect(getByTestId('ide-export-simulation-evidence-tier').textContent).toContain('Draft');
+    const verifyReadiness = getByTestId('ide-export-upstream-verify');
+    expect(verifyReadiness.textContent).toContain('Stale - rerun Simulate');
+    expect(verifyReadiness.textContent).toContain('Prior simulation evidence exists');
+    expect(verifyReadiness.textContent).not.toContain('create behavioral evidence');
+  });
+
+  it('readiness details show validated simulation evidence when Compare passed and is current', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -239,7 +263,8 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'abc999' })}
       />
     );
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Current Compare PASS');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Validated');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('optional checks passed');
   });
 
   it('shows a truthful rebuild action when export hash predates the current design hash', () => {

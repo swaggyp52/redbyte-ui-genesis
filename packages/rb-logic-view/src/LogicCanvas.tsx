@@ -65,6 +65,9 @@ export interface LogicCanvasProps {
   onNodeDiagnosticBadgeClick?: (nodeId: string) => void;
   ioPresentationMap?: Record<string, NodeIoPresentation>;
   presentationZoomMode?: 'dense' | 'classroom';
+  /** Canvas color language. 'dark' (default) preserves the legacy look; 'light'
+   *  renders professional schematic nodes on the light technical canvas. */
+  appearance?: 'light' | 'dark';
   onUndo?: () => void;
   onRedo?: () => void;
   /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
@@ -79,6 +82,10 @@ export interface LogicCanvasProps {
     clientX: number;
     clientY: number;
   }) => void;
+  /** Right-click on a node body. Client coordinates are viewport-relative to the page. */
+  onNodeContextMenu?: (input: { nodeId: string; clientX: number; clientY: number }) => void;
+  /** Right-click on empty canvas (not a node, port, or wire). */
+  onCanvasContextMenu?: (input: { clientX: number; clientY: number }) => void;
   /** B1: Node IDs in topological evaluation order. When set, each node gets an evalSequence badge on hover. */
   nodeEvalOrder?: string[] | null;
   /** B1: Node IDs whose outputs changed on the last sim tick. Rendered with isHighlighted when set. */
@@ -126,7 +133,11 @@ const BUILTIN_PORT_NAMES: Record<string, string[]> = {
   Counter4Bit: ['CLK', 'Q0', 'Q1', 'Q2', 'Q3'],
 };
 
-const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+/**
+ * Canonical fit-zoom step table shared with the Design surface toolbar so
+ * both zoom paths snap to the same levels.
+ */
+export const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
 
 function snapFitZoom(rawZoom: number): number {
   return FIT_ZOOM_STEPS.reduce((closest, candidate) =>
@@ -197,12 +208,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onNodeDiagnosticBadgeClick,
   ioPresentationMap,
   presentationZoomMode = 'dense',
+  appearance = 'dark',
   onUndo,
   onRedo,
   onPortClick,
   onConnectionRejected,
   onPlacementCancel,
   onWireContextMenu,
+  onNodeContextMenu,
+  onCanvasContextMenu,
   nodeEvalOrder,
   changedNodeIds,
   nodeIssueSeverities,
@@ -238,6 +252,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const startWire = useLogicViewStore((state) => state.startWire);
   const endWire = useLogicViewStore((state) => state.endWire);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
+  const selectMultiple = useLogicViewStore((state) => state.selectMultiple);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const setEditingState = useLogicViewStore((state) => state.setEditingState);
@@ -405,6 +420,34 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     [circuit.connections, visibleNodeIds]
   );
 
+  /** Output ports driving two or more loads, rendered as junction dots. */
+  const fanoutJunctions = React.useMemo(() => {
+    const loadsBySource = new Map<string, number>();
+    for (const connection of circuit.connections) {
+      const { fromNodeId, fromPortName } = resolveConnectionEndpoints(connection);
+      const sourceKey = `${fromNodeId}.${fromPortName}`;
+      loadsBySource.set(sourceKey, (loadsBySource.get(sourceKey) ?? 0) + 1);
+    }
+    if (loadsBySource.size === 0) return [];
+    const nodeById = new Map(circuit.nodes.map((node) => [node.id, node]));
+    const junctions: { key: string; screenX: number; screenY: number; active: boolean }[] = [];
+    for (const [sourceKey, loadCount] of loadsBySource) {
+      if (loadCount < 2) continue;
+      const separator = sourceKey.indexOf('.');
+      const nodeId = sourceKey.slice(0, separator);
+      if (!visibleNodeIds.has(nodeId)) continue;
+      const node = nodeById.get(nodeId);
+      if (!node?.position) continue;
+      junctions.push({
+        key: sourceKey,
+        screenX: (node.position.x + 24) * camera.zoom + camera.x,
+        screenY: node.position.y * camera.zoom + camera.y,
+        active: (renderSignals.get(sourceKey) ?? 0) === 1,
+      });
+    }
+    return junctions.sort((a, b) => a.key.localeCompare(b.key));
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, renderSignals, visibleNodeIds]);
+
   // Invariant: controlled mode requires onCircuitChange callback
   if (import.meta.env.DEV) {
     if (externalCircuit && !onCircuitChange) {
@@ -542,12 +585,21 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     onClearSelection: clearSelection,
     onMarqueeChange: (marquee) => setEditingState({ marquee }),
     onMarqueeCommit: (nodeIds, addToSelection) => {
+      // Wires whose BOTH endpoints sit inside the marquee join the selection,
+      // so boxing a subcircuit grabs its internal wiring too.
+      const boxedNodes = new Set(nodeIds);
+      const containedWireIds = circuit.connections
+        .map((conn) => {
+          const { fromNodeId, toNodeId } = resolveConnectionEndpoints(conn);
+          return boxedNodes.has(fromNodeId) && boxedNodes.has(toNodeId) ? toWireId(conn) : null;
+        })
+        .filter((wireId): wireId is string => wireId !== null);
       if (addToSelection) {
-        const existing = Array.from(selection.nodes);
-        const merged = Array.from(new Set([...existing, ...nodeIds]));
-        selectMultipleNodes(merged);
+        const mergedNodes = Array.from(new Set([...Array.from(selection.nodes), ...nodeIds]));
+        const mergedWires = Array.from(new Set([...Array.from(selection.wires), ...containedWireIds]));
+        selectMultiple(mergedNodes, mergedWires);
       } else {
-        selectMultipleNodes(nodeIds);
+        selectMultiple(nodeIds, containedWireIds);
       }
       setEditingState({ marquee: undefined });
     },
@@ -1205,6 +1257,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const selectionCountLabel = `${selection.nodes.size} selected`;
   const activeDragDelta = canvasInput.dragState.dragDelta ?? { x: 0, y: 0 };
   const showSelectionBounds = Boolean(selectionBoundsScreen) && selection.nodes.size > 0;
+  // A single selected node already has an outline, canvas focus, and inspector
+  // authority. Its redundant count pill can overlap an INPUT/Switch toggle.
+  // Keep the count only when it communicates actual multi-selection state.
+  const showSelectionCountBadge = selection.nodes.size > 1;
   const showSelectionGhost =
     showSelectionBounds && interactionMode === 'draggingNode' && selection.nodes.size > 1;
   const selectionBadgeLayout = React.useMemo(() => {
@@ -1559,7 +1615,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         onPointerMove={handlePointerMoveForWirePreview}
         onPointerUp={canvasInput.onPointerUp}
         onPointerCancel={canvasInput.onPointerCancel}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (!onCanvasContextMenu) return;
+          const target = e.target as Element | null;
+          // Node and wire right-clicks own their menus; only empty canvas fires here.
+          if (target?.closest('[data-node-id], [data-port-id], [data-wire-id]')) return;
+          onCanvasContextMenu({ clientX: e.clientX, clientY: e.clientY });
+        }}
       >
         {/* Grid — stable container prevents SVG reconciliation mismatch */}
         <g key="grid-layer">
@@ -1624,6 +1687,26 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               />
             );
           })}
+        </g>
+
+        {/* Fanout junctions — a driver feeding two or more loads gets a solid
+            dot at its output port, so fanout reads differently from a mere
+            crossing of independent wires. */}
+        <g key="fanout-junction-layer">
+          {fanoutJunctions.map((junction) => (
+            <circle
+              key={junction.key}
+              cx={junction.screenX}
+              cy={junction.screenY}
+              r={Math.max(2.5, Math.min(5, 3.2 * camera.zoom))}
+              className="logic-fanout-junction"
+              fill={junction.active ? '#34d399' : '#8aa6c3'}
+              stroke="#0b1622"
+              strokeWidth={1}
+              pointerEvents="none"
+              data-testid={`logic-fanout-junction-${junction.key}`}
+            />
+          ))}
         </g>
 
         {/* Wire Preview — stable container */}
@@ -1824,6 +1907,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               node={node}
               camera={camera}
               presentationZoomMode={presentationZoomMode}
+              appearance={appearance}
               isSelected={selection.nodes.has(node.id)}
               isHighlighted={node.id === highlightedNodeId || (tracedNodeIds?.has(node.id) ?? false) || (changedNodeIds?.has(node.id) ?? false)}
               isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
@@ -1833,6 +1917,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onPortClusterClick={handlePortClusterClick}
               onToggleSwitch={handleToggleSwitch}
               onNodeDoubleClick={onNodeDoubleClick}
+              onNodeContextMenu={
+                onNodeContextMenu
+                  ? (nodeId, clientX, clientY) => onNodeContextMenu({ nodeId, clientX, clientY })
+                  : undefined
+              }
               onProbeToggle={onProbeToggle}
               signals={renderSignals}
               chipMetadata={getChipMetadata?.(node.type, node)}
@@ -1920,31 +2009,33 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 pointerEvents="none"
               />
             ) : null}
-            <g data-testid="logic-selection-count-badge">
-              <rect
-                x={selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6}
-                y={selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24}
-                width={96}
-                height={18}
-                rx={9}
-                fill="rgba(9, 16, 24, 0.92)"
-                stroke="rgba(142, 199, 255, 0.65)"
-                strokeWidth={1}
-                pointerEvents="none"
-              />
-              <text
-                x={(selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6) + 48}
-                y={(selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24) + 12}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#d9efff"
-                fontFamily="IBM Plex Mono, Consolas, monospace"
-                fontSize={10}
-                pointerEvents="none"
-              >
-                {selectionCountLabel}
-              </text>
-            </g>
+            {showSelectionCountBadge ? (
+              <g data-testid="logic-selection-count-badge">
+                <rect
+                  x={selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6}
+                  y={selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24}
+                  width={96}
+                  height={18}
+                  rx={9}
+                  fill="rgba(9, 16, 24, 0.92)"
+                  stroke="rgba(142, 199, 255, 0.65)"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                />
+                <text
+                  x={(selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6) + 48}
+                  y={(selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24) + 12}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#d9efff"
+                  fontFamily="IBM Plex Mono, Consolas, monospace"
+                  fontSize={10}
+                  pointerEvents="none"
+                >
+                  {selectionCountLabel}
+                </text>
+              </g>
+            ) : null}
             {interactionMode === 'draggingNode' ? (
               <g data-testid="logic-selection-delta">
                 <rect
@@ -2147,7 +2238,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#f8fafc"
-                      fontSize={Math.max(8, 9 * camera.zoom)}
+                      fontSize={Math.max(12, 12 * camera.zoom)}
                       fontWeight="700"
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >
@@ -2179,7 +2270,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                             ? '#22c55e'
                             : '#9ca3af'
                     }
-                    fontSize={Math.max(8, 10 * camera.zoom)}
+                    fontSize={Math.max(12, 12 * camera.zoom)}
                     fontWeight="700"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
                   >
@@ -2233,7 +2324,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="#9af0c9"
-                    fontSize={Math.max(10, 11 * camera.zoom)}
+                    fontSize={Math.max(12, 12 * camera.zoom)}
                     fontWeight="750"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
                   >
@@ -2242,10 +2333,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   {pinAlias && pinAlias !== ioLabel ? (
                     <text
                       x={0}
-                      y={size / 2 + 19}
+                      y={size * 0.75 + 18}
                       textAnchor="middle"
                       fill="#7f8b9e"
-                      fontSize={Math.max(7, 8 * camera.zoom)}
+                      fontSize={Math.max(12, 12 * camera.zoom)}
                       fontWeight="600"
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >

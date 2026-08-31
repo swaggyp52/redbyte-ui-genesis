@@ -1052,7 +1052,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 : 'blocked',
         detail:
           showVerifyResetNotice
-            ? 'Project replaced; rerun Verify'
+            ? 'Project replaced; rerun Simulate'
             : pendingApplyProject
               ? 'Confirm project replacement'
               : detectedBehavioralConstructs.length > 0
@@ -2728,11 +2728,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           {showVerifyResetNotice ? (
             <IdeCallout tone="success" title="Project replaced" testId="ide-import-verify-reset-notice">
               <p className="ide-copy ide-copy--flush">
-                The reviewed import is now the active project. Run Verify again because prior evidence belongs to the replaced design.
+                The reviewed import is now the active project. Run Simulate again because prior evidence belongs to the replaced design.
               </p>
               <div className="ide-inline-actions">
                 {onGoToDesign ? <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-open-design">Open Design</IdeButton> : null}
-                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Verify</IdeButton> : null}
+                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Simulate</IdeButton> : null}
               </div>
             </IdeCallout>
           ) : null}
@@ -2788,7 +2788,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               ) : null}
 
               {tab === 'upload' && !zipInspection ? (
-                <details className="ide-import-v3__samples">
+                <details className="ide-import-v3__samples" data-testid="ide-import-example-disclosure">
                   <summary>No ZIP available? Try an example</summary>
                   <div>
                     <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">
@@ -2971,7 +2971,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     ) : null}
                     {onGoToExport ? (
                       <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-import-go-to-export">
-                        Open Export
+                        Open Build &amp; Export
                       </IdeButton>
                     ) : null}
                   </div>

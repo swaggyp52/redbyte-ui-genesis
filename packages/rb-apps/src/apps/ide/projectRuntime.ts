@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Circuit, CompositeNodeDef, SimulationModel } from '@redbyte/rb-logic-core';
+import type { Circuit, CompositeNodeDef, Node, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
+import { BusValidationError, createBusBoundary } from '@redbyte/rb-logic-core';
 import type { HardwareMappingDocumentV2, IoMapping, TestVector } from '@redbyte/rb-utils';
 import {
   applyMaterializedPinToHardwareMappingV2,
@@ -64,6 +65,7 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
+import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity } from './topEntity';
 import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
 import { normalizeGuidedLabTaskId } from './labTaskDefinition';
 import {
@@ -130,6 +132,22 @@ import {
   resolveVerifyTick0Meaning,
   type VerifyClockPolicy,
 } from './verifyClockPolicy';
+import {
+  TOP_MODULE_ID,
+  createEmptyProjectHierarchy,
+  createModuleFromSelection as createNativeModuleFromSelection,
+  elaborateProjectHierarchy,
+  hierarchyCycleModules,
+  moduleUsageCount,
+  normalizeProjectHierarchy,
+  placeModuleInstance as placeNativeModuleInstance,
+  readInstanceName,
+  rederiveModulePortRefs,
+  toCompositeDefinition,
+  type CreateModuleInput,
+  type CreateModuleResult,
+  type ProjectHierarchyDocument,
+} from './projectHierarchy';
 
 export type { IdeImportMeta } from './projectImportMeta';
 
@@ -315,6 +333,11 @@ export interface ProjectRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  /**
+   * The active HDL top-entity name. This store is its single writable owner;
+   * surfaces project it (never hold their own copy). Set via {@link setActiveTop}.
+   */
+  activeTop: string;
   projectKind: ProjectKind;
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
@@ -333,12 +356,15 @@ export interface ProjectRuntimeState {
   activeScenarioId: string;
   customVectors: CustomTestVector[];
   circuit: Circuit;
+  hierarchy: ProjectHierarchyDocument;
   designPast: DesignHistorySnapshot[];
   designFuture: DesignHistorySnapshot[];
   maxDesignHistory: number;
   designRevision: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  /** Bounded, newest-last ledger of package generation/download events. */
+  exportHistory: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
@@ -372,6 +398,18 @@ export interface ProjectRuntimeState {
   redoProjectEdit: () => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
   addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  /**
+   * Create a first-class bus boundary: one labeled member node per bit plus
+   * the declaration that owns them, with an IO row per member so Board and
+   * Simulate see the bits immediately. Returns the created bus id, or an
+   * error message when the name/width is rejected.
+   */
+  createDesignBus: (input: {
+    name: string;
+    direction: 'input' | 'output';
+    width: number;
+    position?: { x: number; y: number };
+  }) => { ok: true; busId: string } | { ok: false; error: string };
   addDesignBoardIo: (input: {
     alias: string;
     direction: 'in' | 'out';
@@ -398,6 +436,12 @@ export interface ProjectRuntimeState {
     activeExampleId?: string | null;
     markDirty?: boolean;
   }) => void;
+  /**
+   * Set the active HDL top-entity. Empty/whitespace resets to the name-derived
+   * default. The candidate is normalized to a valid HDL identifier. Returns
+   * whether the requested name was a usable identifier (empty → reset → ok).
+   */
+  setActiveTop: (name: string) => { ok: boolean; error?: string };
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -419,6 +463,17 @@ export interface ProjectRuntimeState {
   ) => MacroInstantiationResult | null;
   customComponents: CompositeNodeDef[];
   addCustomComponent: (def: CompositeNodeDef) => void;
+  setActiveModule: (moduleId: string) => void;
+  createModuleFromSelection: (input: CreateModuleInput) => CreateModuleResult | null;
+  placeModuleInstance: (
+    moduleId: string,
+    position: { x: number; y: number },
+    instanceName?: string,
+  ) => Node | null;
+  updateActiveModuleCircuit: (circuit: Circuit) => void;
+  renameModuleInstance: (nodeId: string, instanceName: string) => void;
+  duplicateModuleDefinition: (moduleId: string) => string | null;
+  deleteModuleDefinition: (moduleId: string) => boolean;
 }
 
 interface PersistedRuntimeState {
@@ -426,6 +481,8 @@ interface PersistedRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  /** Single authority for the active HDL top-entity name (see {@link topEntity}). */
+  activeTop?: string;
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
@@ -439,12 +496,14 @@ interface PersistedRuntimeState {
   activeScenarioId?: string;
   customVectors: CustomTestVector[];
   circuit: Circuit;
+  hierarchy?: ProjectHierarchyDocument;
   designPast?: DesignHistorySnapshot[];
   designFuture?: DesignHistorySnapshot[];
   maxDesignHistory?: number;
   designRevision?: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  exportHistory?: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   macros: MacroDefinition[];
@@ -459,9 +518,12 @@ interface DesignHistorySnapshot {
   hardwareMappingV2?: HardwareMappingDocumentV2;
   projectVectors?: TestVector[];
   macroInsertionCounts: Record<string, number>;
+  hierarchy?: ProjectHierarchyDocument;
 }
 
 interface RuntimeSeedState extends PersistedRuntimeState {
+  activeTop: string;
+  exportHistory: ProjectHealthExportResult[];
   scenarios: VerifyScenario[];
   activeScenarioId: string;
   designPast: DesignHistorySnapshot[];
@@ -501,9 +563,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
           step: () => {
             set((state) => {
-              const model = buildSimulationModelForCircuit(state.circuit);
+              const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
+              const model = buildSimulationModelForCircuit(simulationCircuit);
               const result = advanceSimulationStateFromModel(
-                state.circuit,
+                simulationCircuit,
                 model,
                 state.projectIoRows,
                 {
@@ -521,9 +584,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             const boundedTicks = Math.max(0, Math.min(512, Math.floor(ticks)));
             if (boundedTicks === 0) return;
             set((state) => {
-              const model = buildSimulationModelForCircuit(state.circuit);
+              const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
+              const model = buildSimulationModelForCircuit(simulationCircuit);
               const result = advanceSimulationStateFromModel(
-                state.circuit,
+                simulationCircuit,
                 model,
                 state.projectIoRows,
                 {
@@ -539,9 +603,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
           reset: () => {
             set((state) => {
-              const model = buildSimulationModelForCircuit(state.circuit);
+              const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
+              const model = buildSimulationModelForCircuit(simulationCircuit);
               const result = resetSimulationStateFromModel(
-                state.circuit,
+                simulationCircuit,
                 model,
                 state.projectIoRows,
                 {
@@ -572,9 +637,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 ...state.sim.inputs,
                 [normalizedNodeId]: bit,
               };
-              const model = buildSimulationModelForCircuit(state.circuit);
+              const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
+              const model = buildSimulationModelForCircuit(simulationCircuit);
               const result = recomputeSimulationStateFromModel(
-                state.circuit,
+                simulationCircuit,
                 model,
                 state.projectIoRows,
                 {
@@ -591,7 +657,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   model,
                   undefined,
                   {
-                    ...buildBlockedRuntimeSnapshotFromModel(state.circuit, model, nextInputs),
+                    ...buildBlockedRuntimeSnapshotFromModel(simulationCircuit, model, nextInputs),
                     lastAction: 'input',
                   }
                 ),
@@ -607,9 +673,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 ...state.sim.inputs,
                 [normalizedNodeId]: nextValue as 0 | 1,
               };
-              const model = buildSimulationModelForCircuit(state.circuit);
+              const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
+              const model = buildSimulationModelForCircuit(simulationCircuit);
               const result = recomputeSimulationStateFromModel(
-                state.circuit,
+                simulationCircuit,
                 model,
                 state.projectIoRows,
                 {
@@ -626,7 +693,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   model,
                   undefined,
                   {
-                    ...buildBlockedRuntimeSnapshotFromModel(state.circuit, model, nextInputs),
+                    ...buildBlockedRuntimeSnapshotFromModel(simulationCircuit, model, nextInputs),
                     lastAction: 'input',
                   }
                 ),
@@ -783,8 +850,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         });
         const loadedProjectName = restoredIdentity.projectName;
         const loadedProjectDescription = restoredIdentity.projectDescription;
-        // Register any custom components from the project
-        for (const def of (project.customComponents ?? [])) {
+        const hierarchy = normalizeProjectHierarchy(project.hierarchy, project.customComponents ?? []);
+        const hierarchyComponents = hierarchy.modules.map(toCompositeDefinition);
+        // Register the hierarchy projection used by the existing simulation registry.
+        for (const def of hierarchyComponents) {
           try {
             registerCompositeNode(def);
           } catch (e) {
@@ -799,6 +868,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectName: loadedProjectName,
           projectDescription: loadedProjectDescription,
           lastSavedAt: `Imported: ${loadedProjectName || 'project'}`,
+          activeTop: resolveActiveTopEntity(
+            project.hdl?.top ?? project.fpga?.top,
+            loadedProjectName
+          ),
           projectKind,
           sourceExampleId,
           scenarioAuthority,
@@ -812,19 +885,24 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           activeScenarioId: repairedTestbench.activeScenarioId,
           customVectors: [],
           circuit,
+          hierarchy,
           designPast: [],
           designFuture: [],
           designRevision: 0,
           verifyLastRun: undefined,
           verifyRunHistory: [],
-          sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
+          exportHistory: [],
+          sim: initializeSimulationStateForCircuit(
+            elaborateProjectHierarchy(circuit, hierarchy),
+            projectIoRows,
+          ),
           projectHealthCore: {
             dirtySinceVerify: true,
             dirtySinceExport: true,
           },
           macros: project.macros ?? [],
           macroInsertionCounts: {},
-          customComponents: project.customComponents ?? [],
+          customComponents: hierarchyComponents,
         });
       },
       setMappingPin: (rowId, pin) => {
@@ -863,11 +941,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             .map(([rowId, pin]) => [rowId.trim(), pin.trim()] as const)
             .filter(([rowId]) => rowId.length > 0);
           if (updateEntries.length === 0) return {};
-          const updateById = new Map(updateEntries);
-          const nextRows = cloneIoRows(state.projectIoRows).map((row) =>
-            updateById.has(row.id) ? { ...row, pin: updateById.get(row.id) ?? '' } : row
-          );
-          const nextDoc = buildHardwareMappingV2FromProjectIoRows(nextRows);
+          // Route every row through the same structured-mapping authority as
+          // setMappingPin. Rebuilding the document from flat rows here would
+          // flatten structured (bus/slice/group) entries on every bulk write.
+          const { hardwareMappingV2: synchronizedCurrentDoc } =
+            deriveAuthoritativeHardwareState(state.circuit, state.hardwareMappingV2);
+          let nextDoc = structuredClone(synchronizedCurrentDoc);
+          for (const [rowId, pin] of updateEntries) {
+            nextDoc = applyScalarResourceMetadata(
+              applyMaterializedPinToHardwareMappingV2(nextDoc, rowId, pin),
+              rowId,
+              pin
+            );
+          }
           const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
             state.circuit,
             nextDoc
@@ -1412,6 +1498,63 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           );
         });
       },
+      createDesignBus: ({ name, direction, width, position }) => {
+        const state = get();
+        const left = Math.max(0, Math.floor(width) - 1);
+        let result: { ok: true; busId: string } | { ok: false; error: string };
+        let nextState: ProjectRuntimeState | null = null;
+        try {
+          const created = createBusBoundary(state.circuit, {
+            name,
+            direction,
+            left,
+            right: 0,
+            position: position ? { x: roundToMill(position.x), y: roundToMill(position.y) } : undefined,
+          });
+          const rowDirection = direction === 'input' ? 'in' : 'out';
+          const rowPort = direction === 'input' ? 'out' : 'in';
+          const nextIoRows = cloneIoRows(state.projectIoRows);
+          for (const member of created.memberNodes) {
+            const rowId = getNextIoRowId(nextIoRows, normalizeBoardRowId(member.label ?? member.id));
+            nextIoRows.push({
+              id: rowId,
+              nodeId: member.id,
+              port: rowPort,
+              label: member.label ?? member.id,
+              direction: rowDirection,
+              pin: '',
+              required: true,
+            });
+          }
+          nextState = {
+            ...state,
+            ...commitDesignSnapshot(
+              state,
+              {
+                circuit: created.circuit,
+                projectIoRows: nextIoRows,
+                hardwareMappingV2: undefined,
+                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+              },
+              {
+                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                  -state.maxDesignHistory
+                ),
+                designFuture: [],
+              }
+            ),
+          };
+          result = { ok: true, busId: created.bus.id };
+        } catch (error) {
+          if (error instanceof BusValidationError) {
+            result = { ok: false, error: error.message };
+          } else {
+            throw error;
+          }
+        }
+        if (nextState) set(nextState);
+        return result;
+      },
       addDesignBoardIo: ({ alias, direction, kind, position }) => {
         set((state) => {
           const normalizedAlias = normalizeAliasToken(alias);
@@ -1566,6 +1709,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       runVerification: (input) => {
         let runtimeRun: RuntimeVerifyRun | undefined;
         set((state) => {
+          const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
           const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
           const scenarioName =
@@ -1575,7 +1719,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             : Number.isFinite(input.scenarioVersion)
               ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
               : undefined;
-          const circuitHash = buildVerifyCircuitEvidenceHash(state.circuit);
+          const circuitHash = buildVerifyCircuitEvidenceHash(simulationCircuit);
           const ioMapping = toIoMapping(state.projectIoRows);
           const mappingEvidenceHash = buildVerifyMappingEvidenceHash(
             resolveIoMappingFromProjectFields({
@@ -1584,7 +1728,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             }) ?? ioMapping
           );
           const verifyContext = buildDeterministicVerifyContext(
-            state.circuit,
+            simulationCircuit,
             ioMapping
           );
           const scheduleContract = input.scheduleContract
@@ -1594,7 +1738,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const clockPolicy =
             input.clockPolicy ??
             detectVerifyClockPolicy({
-              circuit: state.circuit,
+              circuit: simulationCircuit,
               ioRows: state.projectIoRows,
               scheduleContract,
             });
@@ -1640,7 +1784,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const deterministicResult =
             deterministicVectors.length > 0
               ? runDeterministicVerifyFromModel(
-                  state.circuit,
+                  simulationCircuit,
                   model,
                   state.projectIoRows,
                   deterministicVectors,
@@ -1726,7 +1870,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // while buildCurrentVerifyProjectHash strips them — causing a permanent stale loop
           // whenever vectors carried an `id` (e.g., after inserting a clock pattern).
           const projectHash = buildCurrentVerifyProjectHash({
-            circuit: state.circuit,
+            circuit: simulationCircuit,
             projectVectors: state.projectVectors,
             customVectors: state.customVectors,
             projectIoRows: state.projectIoRows,
@@ -1868,8 +2012,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       recordVerification: (result) => {
         set((state) => {
+          const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
           const scheduleContract = buildDeterministicVerifyContext(
-            state.circuit,
+            simulationCircuit,
             toIoMapping(state.projectIoRows)
           ).schedule;
           const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
@@ -1926,6 +2071,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             lastExport: result,
             dirtySinceExport: result.status === 'ok' ? false : state.projectHealthCore.dirtySinceExport,
           },
+          // Append every generation/download event to the bounded history so
+          // the package workspace can compare successive packages and show
+          // provenance. lastExport stays the single "current" pointer.
+          exportHistory: [...state.exportHistory, result].slice(-20),
         }));
       },
       setProjectIdentity: (input) => {
@@ -1969,6 +2118,29 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               : state.projectHealthCore,
           };
         });
+      },
+      setActiveTop: (name) => {
+        const trimmed = name.trim();
+        if (trimmed.length === 0) {
+          // Empty resets to the name-derived default (a valid, deliberate choice).
+          set((state) => ({
+            activeTop: buildTopEntityName(state.projectName),
+            projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+          }));
+          return { ok: true };
+        }
+        if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
+          return {
+            ok: false,
+            error:
+              'Top entity must start with a letter and use only letters, digits, or underscores (max 64 characters).',
+          };
+        }
+        set((state) => ({
+          activeTop: normalizeTopEntityName(trimmed, buildTopEntityName(state.projectName)),
+          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+        }));
+        return { ok: true };
       },
       startBlankProject: () => {
         set((state) => {
@@ -2113,16 +2285,278 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       customComponents: [],
       addCustomComponent: (def) => {
         registerCompositeNode(def);
-        set((state) => ({
-          customComponents: [
-            ...state.customComponents.filter((c) => c.name !== def.name),
+        set((state) => {
+          const hierarchy = normalizeProjectHierarchy(undefined, [
+            ...state.customComponents.filter((component) => component.name !== def.name),
             def,
-          ],
-        }));
+          ]);
+          return {
+            hierarchy,
+            customComponents: hierarchy.modules.map(toCompositeDefinition),
+          };
+        });
+      },
+      setActiveModule: (moduleId) => {
+        set((state) => {
+          const requested = moduleId.trim();
+          if (
+            requested !== TOP_MODULE_ID &&
+            !state.hierarchy.modules.some((module) => module.id === requested)
+          ) {
+            return state;
+          }
+          return {
+            hierarchy: { ...cloneProjectHierarchy(state.hierarchy), activeModuleId: requested },
+          };
+        });
+      },
+      createModuleFromSelection: (input) => {
+        let created: CreateModuleResult | null = null;
+        set((state) => {
+          const activeModuleId = state.hierarchy.activeModuleId;
+          try {
+            if (activeModuleId === TOP_MODULE_ID) {
+              created = createNativeModuleFromSelection(state.circuit, state.hierarchy, input);
+              const customComponents = created.hierarchy.modules.map(toCompositeDefinition);
+              for (const definition of customComponents) registerCompositeNode(definition);
+              return commitDesignSnapshot(
+                state,
+                {
+                  circuit: cloneCircuit(created.circuit),
+                  hierarchy: cloneProjectHierarchy(created.hierarchy),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                  macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory,
+                  ),
+                  designFuture: [],
+                },
+              );
+            }
+            // Nested: create the child module from the ACTIVE module's circuit,
+            // then write the instance-replaced circuit back into the active
+            // module AND re-derive its port internal-refs so the parent's ports
+            // now resolve through the new child instance (not the extracted
+            // nodes). The top circuit is untouched — a module-definition edit.
+            const activeModule = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+            if (!activeModule) return state;
+            created = createNativeModuleFromSelection(activeModule.circuit, state.hierarchy, input);
+            const updatedCircuit = created.circuit;
+            const nowIso = new Date().toISOString();
+            const hierarchy: ProjectHierarchyDocument = {
+              ...cloneProjectHierarchy(created.hierarchy),
+              activeModuleId,
+              modules: created.hierarchy.modules.map((module) =>
+                module.id === activeModuleId
+                  ? rederiveModulePortRefs({
+                      ...cloneModuleDefinition(module),
+                      circuit: cloneCircuit(updatedCircuit),
+                      updatedAt: nowIso,
+                    })
+                  : cloneModuleDefinition(module),
+              ),
+            };
+            if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+              created = null;
+              return state;
+            }
+            const customComponents = hierarchy.modules.map(toCompositeDefinition);
+            for (const definition of customComponents) registerCompositeNode(definition);
+            return commitModuleDefinitionSnapshot(state, hierarchy);
+          } catch {
+            created = null;
+            return state;
+          }
+        });
+        return created;
+      },
+      placeModuleInstance: (moduleId, position, instanceName) => {
+        let placed: Node | null = null;
+        set((state) => {
+          const definition = state.hierarchy.modules.find((module) => module.id === moduleId);
+          if (!definition) return state;
+          const activeModuleId = state.hierarchy.activeModuleId;
+          try {
+            // Top-level placement: the instance drops into the project's top circuit.
+            if (activeModuleId === TOP_MODULE_ID) {
+              const result = placeNativeModuleInstance(state.circuit, definition, position, instanceName);
+              placed = result.instance;
+              return commitDesignSnapshot(
+                state,
+                {
+                  circuit: result.circuit,
+                  hierarchy: cloneProjectHierarchy(state.hierarchy),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                  macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory,
+                  ),
+                  designFuture: [],
+                },
+              );
+            }
+            // Nested placement: the instance drops into the currently-edited module
+            // definition's own circuit, so a module can contain another module.
+            const active = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+            if (!active) return state;
+            const result = placeNativeModuleInstance(active.circuit, definition, position, instanceName);
+            const hierarchy: ProjectHierarchyDocument = {
+              ...cloneProjectHierarchy(state.hierarchy),
+              modules: state.hierarchy.modules.map((module) =>
+                module.id === activeModuleId
+                  ? { ...module, circuit: cloneCircuit(result.circuit), updatedAt: new Date().toISOString() }
+                  : cloneModuleDefinition(module),
+              ),
+            };
+            // Reject a placement that would make a module instantiate itself
+            // directly or indirectly. The project stays valid and unchanged.
+            if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+              placed = null;
+              return state;
+            }
+            placed = result.instance;
+            const customComponents = hierarchy.modules.map(toCompositeDefinition);
+            for (const registered of customComponents) registerCompositeNode(registered);
+            return commitModuleDefinitionSnapshot(state, hierarchy);
+          } catch {
+            placed = null;
+            return state;
+          }
+        });
+        return placed;
+      },
+      updateActiveModuleCircuit: (nextCircuit) => {
+        set((state) => {
+          const activeModuleId = state.hierarchy.activeModuleId;
+          if (activeModuleId === TOP_MODULE_ID) {
+            return commitDesignSnapshot(
+              state,
+              {
+                circuit: cloneCircuit(nextCircuit),
+                hierarchy: cloneProjectHierarchy(state.hierarchy),
+                projectIoRows: cloneIoRows(state.projectIoRows),
+                hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+              },
+              {
+                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                  -state.maxDesignHistory,
+                ),
+                designFuture: [],
+              },
+            );
+          }
+          const active = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+          if (!active) return state;
+          const hierarchy: ProjectHierarchyDocument = {
+            ...cloneProjectHierarchy(state.hierarchy),
+            modules: state.hierarchy.modules.map((module) =>
+              module.id === activeModuleId
+                ? { ...module, circuit: cloneCircuit(nextCircuit), updatedAt: new Date().toISOString() }
+                : cloneModuleDefinition(module),
+            ),
+          };
+          // Reject an edit that would make a module instantiate itself directly
+          // or indirectly. The project stays valid and unchanged on rejection.
+          if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+            return state;
+          }
+          const customComponents = hierarchy.modules.map(toCompositeDefinition);
+          for (const definition of customComponents) registerCompositeNode(definition);
+          return commitModuleDefinitionSnapshot(state, hierarchy);
+        });
+      },
+      renameModuleInstance: (nodeId, requestedName) => {
+        set((state) => {
+          const nextName = requestedName.trim();
+          if (!/^[A-Za-z][A-Za-z0-9_]{0,47}$/.test(nextName)) return state;
+          if (
+            state.circuit.nodes.some(
+              (node) => node.id !== nodeId && readInstanceName(node).toLowerCase() === nextName.toLowerCase(),
+            )
+          ) return state;
+          const circuit = cloneCircuit(state.circuit);
+          const node = circuit.nodes.find((entry) => entry.id === nodeId);
+          if (!node || !node.config?.moduleDefinitionId) return state;
+          node.label = nextName;
+          node.config = { ...(node.config ?? {}), instanceName: nextName, label: nextName };
+          return commitDesignSnapshot(
+            state,
+            {
+              circuit,
+              hierarchy: cloneProjectHierarchy(state.hierarchy),
+              projectIoRows: cloneIoRows(state.projectIoRows),
+              hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+              macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+            },
+            {
+              designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(-state.maxDesignHistory),
+              designFuture: [],
+            },
+          );
+        });
+      },
+      duplicateModuleDefinition: (moduleId) => {
+        let duplicatedId: string | null = null;
+        set((state) => {
+          const source = state.hierarchy.modules.find((module) => module.id === moduleId);
+          if (!source) return state;
+          let suffix = 2;
+          let displayName = `${source.displayName} Copy`;
+          while (state.hierarchy.modules.some((module) => module.displayName === displayName)) {
+            displayName = `${source.displayName} Copy ${suffix++}`;
+          }
+          const name = displayName.replace(/[^A-Za-z0-9]+/g, '');
+          duplicatedId = `module-${name.toLowerCase()}`;
+          const duplicate = {
+            ...cloneModuleDefinition(source),
+            id: duplicatedId,
+            name,
+            displayName,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          const hierarchy = {
+            ...cloneProjectHierarchy(state.hierarchy),
+            modules: [...state.hierarchy.modules.map(cloneModuleDefinition), duplicate],
+          };
+          const customComponents = hierarchy.modules.map(toCompositeDefinition);
+          for (const definition of customComponents) registerCompositeNode(definition);
+          return { hierarchy, customComponents, lastSavedAt: `Duplicated module: ${displayName}` };
+        });
+        return duplicatedId;
+      },
+      deleteModuleDefinition: (moduleId) => {
+        let deleted = false;
+        set((state) => {
+          if (moduleUsageCount(state.circuit, moduleId) > 0) return state;
+          if (!state.hierarchy.modules.some((module) => module.id === moduleId)) return state;
+          deleted = true;
+          const hierarchy = {
+            ...cloneProjectHierarchy(state.hierarchy),
+            activeModuleId:
+              state.hierarchy.activeModuleId === moduleId ? TOP_MODULE_ID : state.hierarchy.activeModuleId,
+            modules: state.hierarchy.modules.filter((module) => module.id !== moduleId).map(cloneModuleDefinition),
+          };
+          return {
+            hierarchy,
+            customComponents: hierarchy.modules.map(toCompositeDefinition),
+            lastSavedAt: 'Deleted unused module definition',
+          };
+        });
+        return deleted;
       },
     }),
     {
       name: STORAGE_KEY,
+      // Keep the existing persistence envelope version: hierarchy is an additive,
+      // optional field normalized by mergePersistedRuntimeState for legacy saves.
       version: 5,
       merge: (persistedState, currentState) =>
         mergePersistedRuntimeState(persistedState, currentState as ProjectRuntimeState),
@@ -2131,6 +2565,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectName: state.projectName,
         projectDescription: state.projectDescription,
         lastSavedAt: state.lastSavedAt,
+        activeTop: state.activeTop,
         projectKind: state.projectKind,
         sourceExampleId: state.sourceExampleId,
         scenarioAuthority: state.scenarioAuthority,
@@ -2150,6 +2585,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         activeScenarioId: state.activeScenarioId,
         customVectors: [...(state.customVectors ?? [])],
         circuit: cloneCircuit(state.circuit),
+        hierarchy: cloneProjectHierarchy(state.hierarchy),
         designPast: cloneDesignHistoryPast(state.designPast, state.maxDesignHistory),
         designFuture: cloneDesignHistoryFuture(state.designFuture, state.maxDesignHistory),
         maxDesignHistory: state.maxDesignHistory,
@@ -2158,6 +2594,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
         verifyRunHistory: state.verifyRunHistory.slice(-50),
+        exportHistory: state.exportHistory.slice(-20),
         sim: cloneSimState(state.sim),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
@@ -2222,6 +2659,7 @@ export function mergePersistedRuntimeState(
       customComponents: Array.isArray(candidate.customComponents)
         ? candidate.customComponents
         : currentState.customComponents,
+      hierarchy: candidate.hierarchy ?? currentState.hierarchy,
       meta: {
         projectId:
           typeof candidate.projectId === 'string' && candidate.projectId.trim().length > 0
@@ -2235,6 +2673,13 @@ export function mergePersistedRuntimeState(
   }
 
   const circuit = cloneCircuit(normalizedProject.circuit);
+  const hierarchy = normalizeProjectHierarchy(
+    normalizedProject.hierarchy,
+    normalizedProject.customComponents ?? [],
+  );
+  const customComponents = hierarchy.modules.map(toCompositeDefinition);
+  for (const definition of customComponents) registerCompositeNode(definition);
+  const elaboratedCircuit = elaborateProjectHierarchy(circuit, hierarchy);
   const legacyProjectIoRows = ioRowsFromProject(normalizedProject);
   const {
     hardwareMappingV2,
@@ -2250,7 +2695,7 @@ export function mergePersistedRuntimeState(
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
   const verifyRunHistory = invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory);
   const restoredVerifyProjectHash = buildCurrentVerifyProjectHash({
-    circuit,
+    circuit: elaboratedCircuit,
     projectVectors,
     projectIoRows,
   });
@@ -2259,7 +2704,7 @@ export function mergePersistedRuntimeState(
     !invalidateVerifyTrust &&
     Boolean(latestVerifyLedgerEntry) &&
     latestVerifyLedgerEntry?.projectHash !== restoredVerifyProjectHash;
-  const sim = normalizePersistedSimState(candidate.sim, circuit, projectIoRows);
+  const sim = normalizePersistedSimState(candidate.sim, elaboratedCircuit, projectIoRows);
   const maxDesignHistory = normalizePersistedMaxDesignHistory(
     candidate.maxDesignHistory,
     currentState.maxDesignHistory
@@ -2429,6 +2874,10 @@ export function mergePersistedRuntimeState(
       typeof candidate.lastSavedAt === 'string' && candidate.lastSavedAt.trim().length > 0
         ? candidate.lastSavedAt.trim()
         : currentState.lastSavedAt,
+    activeTop:
+      typeof candidate.activeTop === 'string' && candidate.activeTop.trim().length > 0
+        ? candidate.activeTop
+        : resolveActiveTopEntity(undefined, restoredIdentity.projectName),
     projectKind: restoredProjectKind,
     sourceExampleId: persistedSourceExampleId,
     scenarioAuthority: detachedScenarioAuthority,
@@ -2445,12 +2894,16 @@ export function mergePersistedRuntimeState(
     activeScenarioId,
     customVectors: detachedCustomVectors,
     circuit,
+    hierarchy,
     designPast,
     designFuture,
     maxDesignHistory,
     designRevision,
     verifyLastRun: detachedVerifyLastRun,
     verifyRunHistory: detachedVerifyRunHistory,
+    exportHistory: Array.isArray(candidate.exportHistory)
+      ? (candidate.exportHistory as ProjectHealthExportResult[]).slice(-20)
+      : [],
     sim: {
       ...sim,
       probes: normalizeScenarioProbes(
@@ -2480,7 +2933,7 @@ export function mergePersistedRuntimeState(
         : detachedProjectHealthCore,
     macros: normalizedProject.macros ?? [],
     macroInsertionCounts: normalizeMacroInsertionCounts(candidate.macroInsertionCounts),
-    customComponents: normalizedProject.customComponents ?? [],
+    customComponents,
   };
 }
 
@@ -2583,11 +3036,13 @@ function createEmptyProjectState(
   const projectIoRows: ProjectIoRow[] = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
   const projectVectors: TestVector[] = [];
   const defaultScenario = createDefaultScenario(projectVectors);
+  const projectName = input.projectName ?? 'Untitled Project';
   return {
     projectId: input.projectId ?? createProjectId('blank'),
-    projectName: input.projectName ?? 'Untitled Project',
+    projectName,
     projectDescription: '',
     lastSavedAt: input.lastSavedAt ?? 'Project home',
+    activeTop: buildTopEntityName(projectName),
     projectKind: input.projectKind ?? 'home',
     sourceExampleId: null,
     scenarioAuthority: 'none',
@@ -2601,12 +3056,14 @@ function createEmptyProjectState(
     activeScenarioId: defaultScenario.id,
     customVectors: [],
     circuit,
+    hierarchy: createEmptyProjectHierarchy(),
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    exportHistory: [],
     sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
     projectHealthCore: {
       dirtySinceVerify: false,
@@ -2638,6 +3095,7 @@ function stateFromExample(
     projectName: example.name,
     projectDescription: example.summary,
     lastSavedAt: 'Seeded example',
+    activeTop: resolveActiveTopEntity(undefined, example.name),
     projectKind: 'example',
     sourceExampleId: example.id,
     scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
@@ -2651,12 +3109,14 @@ function stateFromExample(
     activeScenarioId: DEFAULT_SCENARIO_ID,
     customVectors: [],
     circuit,
+    hierarchy: createEmptyProjectHierarchy(),
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    exportHistory: [],
     sim,
     projectHealthCore: {
       dirtySinceVerify: false,
@@ -2945,6 +3405,44 @@ function cloneCircuit(circuit: Circuit): Circuit {
   return {
     nodes: circuit.nodes.map((node) => ({ ...node })),
     connections: circuit.connections.map((connection) => ({ ...connection })),
+    // Declared buses are part of the circuit; a shallow clone that dropped
+    // them would erase first-class vectors on every design edit.
+    ...(circuit.buses
+      ? { buses: circuit.buses.map((bus) => ({ ...bus, bits: bus.bits.map((bit) => ({ ...bit })) })) }
+      : {}),
+  };
+}
+
+function cloneModuleDefinition(
+  module: ProjectHierarchyDocument['modules'][number],
+): ProjectHierarchyDocument['modules'][number] {
+  return {
+    ...module,
+    ports: module.ports.map((port) => ({
+      ...port,
+      ...(port.range ? { range: { ...port.range } } : {}),
+      sourceBoundary: {
+        internalRefs: port.sourceBoundary.internalRefs.map((ref) => ({ ...ref })),
+        // Preserve vector per-bit boundary refs; dropping them would erase the
+        // vector identity of a module port on any hierarchy edit.
+        ...(port.sourceBoundary.bits
+          ? {
+              bits: port.sourceBoundary.bits.map((bit) => ({
+                index: bit.index,
+                internalRefs: bit.internalRefs.map((ref) => ({ ...ref })),
+              })),
+            }
+          : {}),
+      },
+    })),
+    circuit: cloneCircuit(module.circuit),
+  };
+}
+
+function cloneProjectHierarchy(hierarchy: ProjectHierarchyDocument): ProjectHierarchyDocument {
+  return {
+    ...hierarchy,
+    modules: hierarchy.modules.map(cloneModuleDefinition),
   };
 }
 
@@ -2955,6 +3453,7 @@ function cloneMacroInsertionCounts(value: Record<string, number>): Record<string
 function cloneDesignHistorySnapshot(snapshot: DesignHistorySnapshot): DesignHistorySnapshot {
   return {
     circuit: cloneCircuit(snapshot.circuit),
+    hierarchy: snapshot.hierarchy ? cloneProjectHierarchy(snapshot.hierarchy) : undefined,
     projectIoRows: cloneIoRows(snapshot.projectIoRows),
     hardwareMappingV2: snapshot.hardwareMappingV2
       ? structuredClone(snapshot.hardwareMappingV2)
@@ -2987,11 +3486,12 @@ function cloneDesignHistoryFuture(
 function createDesignHistorySnapshot(
   state: Pick<
     ProjectRuntimeState,
-    'circuit' | 'hardwareMappingV2' | 'projectIoRows' | 'projectVectors' | 'macroInsertionCounts'
+    'circuit' | 'hierarchy' | 'hardwareMappingV2' | 'projectIoRows' | 'projectVectors' | 'macroInsertionCounts'
   >
 ): DesignHistorySnapshot {
   return {
     circuit: cloneCircuit(state.circuit),
+    hierarchy: cloneProjectHierarchy(state.hierarchy),
     projectIoRows: cloneIoRows(state.projectIoRows),
     hardwareMappingV2: structuredClone(state.hardwareMappingV2),
     projectVectors: cloneVectors(state.projectVectors),
@@ -3772,6 +4272,8 @@ function commitDesignSnapshot(
 ): Pick<
   ProjectRuntimeState,
   | 'circuit'
+  | 'hierarchy'
+  | 'customComponents'
   | 'hardwareMappingV2'
   | 'projectIoRows'
   | 'projectVectors'
@@ -3792,6 +4294,9 @@ function commitDesignSnapshot(
   | 'projectHealthCore'
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
+  const nextHierarchy = snapshot.hierarchy
+    ? cloneProjectHierarchy(snapshot.hierarchy)
+    : cloneProjectHierarchy(state.hierarchy);
   const snapshotHardwareMappingV2 =
     snapshot.hardwareMappingV2 !== undefined
       ? structuredClone(snapshot.hardwareMappingV2)
@@ -3799,8 +4304,14 @@ function commitDesignSnapshot(
   const { hardwareMappingV2: nextHardwareMappingV2, projectIoRows: nextIoRows } =
     deriveAuthoritativeHardwareState(nextCircuit, snapshotHardwareMappingV2);
   const designBehaviorChanged =
-    buildDesignBehaviorFingerprint(state.circuit, state.projectIoRows) !==
-    buildDesignBehaviorFingerprint(nextCircuit, nextIoRows);
+    buildDesignBehaviorFingerprint(
+      elaborateProjectHierarchy(state.circuit, state.hierarchy),
+      state.projectIoRows,
+    ) !==
+    buildDesignBehaviorFingerprint(
+      elaborateProjectHierarchy(nextCircuit, nextHierarchy),
+      nextIoRows,
+    );
   const isDetachingFromExample =
     designBehaviorChanged && state.projectKind === 'example' && Boolean(state.activeExampleId);
   const reconciledTestbench = reconcileTestbenchAfterDesignChange({
@@ -3825,6 +4336,8 @@ function commitDesignSnapshot(
   const nextProjectDescription = state.projectDescription;
   return {
     circuit: nextCircuit,
+    hierarchy: nextHierarchy,
+    customComponents: nextHierarchy.modules.map(toCompositeDefinition),
     hardwareMappingV2: nextHardwareMappingV2,
     projectIoRows: nextIoRows,
     projectVectors: reconciledTestbench.projectVectors,
@@ -3837,7 +4350,11 @@ function commitDesignSnapshot(
     // intentionally advance this counter just like forward edits.
     designRevision: state.designRevision + 1,
     sim: designBehaviorChanged
-      ? initializeSimulationStateForCircuit(nextCircuit, nextIoRows, state.sim)
+      ? initializeSimulationStateForCircuit(
+          elaborateProjectHierarchy(nextCircuit, nextHierarchy),
+          nextIoRows,
+          state.sim,
+        )
       : cloneSimState(state.sim),
     projectName: nextProjectName,
     projectDescription: nextProjectDescription,
@@ -3856,6 +4373,29 @@ function commitDesignSnapshot(
       dirtySinceExport: designBehaviorChanged ? true : state.projectHealthCore.dirtySinceExport,
     },
   };
+}
+
+function commitModuleDefinitionSnapshot(
+  state: ProjectRuntimeState,
+  hierarchy: ProjectHierarchyDocument,
+): ReturnType<typeof commitDesignSnapshot> {
+  return commitDesignSnapshot(
+    state,
+    {
+      circuit: cloneCircuit(state.circuit),
+      hierarchy: cloneProjectHierarchy(hierarchy),
+      projectIoRows: cloneIoRows(state.projectIoRows),
+      hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+      projectVectors: cloneVectors(state.projectVectors),
+      macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+    },
+    {
+      designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+        -state.maxDesignHistory,
+      ),
+      designFuture: [],
+    },
+  );
 }
 
 function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
@@ -4698,7 +5238,7 @@ function compareText(left: string, right: string): number {
   return 0;
 }
 
-function createProjectId(seed: string): string {
+export function createProjectId(seed: string): string {
   const normalizedSeed = normalizeBoardRowId(seed).replace(/_/g, '-');
   const suffix = Date.now().toString(36).slice(-6);
   return `rb-${normalizedSeed}-${suffix}`;

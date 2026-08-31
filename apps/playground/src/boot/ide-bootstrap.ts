@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { IdeApp, registerAllApps } from '@redbyte/rb-apps';
+import { ThemeProvider } from '@redbyte/rb-theme';
 import { initializeStoreInstrumentation, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import '../index.css';
 
@@ -142,7 +143,11 @@ export async function bootstrapIDE() {
         React.createElement(
           IDECrashBoundary,
           null,
-          React.createElement(IdeApp, null)
+          React.createElement(
+            ThemeProvider,
+            null,
+            React.createElement(IdeApp, null)
+          )
         )
       )
     );

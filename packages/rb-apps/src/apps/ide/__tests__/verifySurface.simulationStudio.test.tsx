@@ -17,6 +17,11 @@ const vectors = [
   { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: {} },
 ];
 
+const vectorsWithChecks = [
+  { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+  { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+];
+
 function makeTraceRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'scenario',
@@ -88,9 +93,26 @@ describe('Verify Simulation Studio', () => {
 
     expect(view.getByTestId('ide-verify-results-summary-headline').textContent).toBe('Simulation complete');
     expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('No checks configured');
+    expect(view.getByTestId('ide-verify-summary-status').textContent).toBe('Simulation complete · No checks configured');
     expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
     expect(view.getByTestId('ide-vcb-workspace-replay').getAttribute('aria-selected')).toBe('true');
     expect(view.getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
+  });
+
+  it('distinguishes authored checks from checks that an observation run did not evaluate', () => {
+    const view = render(
+      <VerifySurface
+        {...baseProps}
+        vectors={vectorsWithChecks}
+        lastRun={makeTraceRun()}
+        onGoToDesign={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-vcb-workspace-checks').textContent).toBe('Checks 2');
+    expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('Checks not evaluated');
+    expect(view.getByTestId('ide-verify-summary-status').textContent).toContain('Checks not evaluated');
+    expect(view.getByTestId('ide-verify-run-announcer').textContent).toContain('Checks not evaluated');
   });
 
   it('moves expected-output authoring into the optional Checks workspace', () => {

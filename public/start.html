@@ -6,7 +6,7 @@
     <title>RedByte | Digital Logic and FPGA Workbench</title>
     <meta
       name="description"
-      content="RedByte is a professional browser workbench for designing, verifying, mapping, and exporting Basys3 digital logic projects."
+      content="RedByte is a browser workbench for digital logic engineering: design circuits, simulate and observe behavior, map Basys3 resources, and build a Vivado-ready handoff package."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <style>
@@ -25,6 +25,7 @@
         --action-hover: #2b5f92;
         --focus: #1f5f9a;
         --success: #287453;
+        --observed: #1f7a72;
         --warning: #9a6518;
         --mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
         --sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
@@ -142,8 +143,8 @@
       h1 {
         max-width: 780px;
         margin: 0;
-        font-size: clamp(38px, 5.2vw, 64px);
-        line-height: 1.04;
+        font-size: clamp(36px, 5vw, 58px);
+        line-height: 1.06;
         letter-spacing: -0.04em;
       }
 
@@ -155,12 +156,19 @@
         line-height: 1.55;
       }
 
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        margin-top: 26px;
+      }
+
       .primary-action {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         min-height: 44px;
-        margin-top: 26px;
         padding: 0 20px;
         border: 1px solid #4c83b8;
         border-radius: 6px;
@@ -173,6 +181,26 @@
 
       .primary-action:hover {
         background: var(--action-hover);
+      }
+
+      .secondary-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid #47596a;
+        border-radius: 6px;
+        background: transparent;
+        color: #dbe4ec;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .secondary-action:hover {
+        border-color: #6d839a;
+        color: #ffffff;
       }
 
       .hero-boundary {
@@ -240,7 +268,7 @@
       }
 
       .workflow-step {
-        min-height: 88px;
+        min-height: 96px;
         padding: 14px;
         background: var(--surface-muted);
       }
@@ -265,6 +293,62 @@
         color: var(--text-secondary);
         font-size: 13px;
         line-height: 1.35;
+      }
+
+      .observe-note {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        margin-top: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface-muted);
+      }
+
+      .observe-note strong {
+        color: var(--observed);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      .observe-note p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+
+      .gallery {
+        margin-top: 18px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .gallery figure {
+        margin: 0;
+      }
+
+      .gallery img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+      }
+
+      .gallery figcaption {
+        margin-top: 8px;
+        color: var(--text-secondary);
+        font-size: 13px;
       }
 
       .details-grid {
@@ -378,7 +462,8 @@
           padding: 30px;
         }
 
-        .workflow-steps {
+        .workflow-steps,
+        .gallery-grid {
           grid-template-columns: 1fr;
         }
 
@@ -406,11 +491,12 @@
         }
 
         h1 {
-          font-size: 38px;
+          font-size: 36px;
         }
 
         .hero,
         .workflow,
+        .gallery,
         .info-panel {
           padding: 22px;
         }
@@ -425,7 +511,9 @@
           <span>RedByte</span>
         </div>
         <nav class="top-links" aria-label="Start resources">
+          <a href="#workflow-title">Workflow</a>
           <a href="#run-locally">Run locally</a>
+          <a href="https://github.com/swaggyp52/redbyte-ui-genesis/tree/main/docs">Documentation</a>
           <a href="https://github.com/swaggyp52/redbyte-ui-genesis">Repository</a>
         </nav>
       </header>
@@ -433,12 +521,16 @@
       <section class="hero" aria-labelledby="redbyte-title">
         <div>
           <p class="eyebrow">Digital logic and FPGA coursework</p>
-          <h1 id="redbyte-title">A focused engineering workbench from circuit to handoff.</h1>
+          <h1 id="redbyte-title">Visual digital-logic engineering from circuit to FPGA handoff.</h1>
           <p class="lede">
-            RedByte is a digital logic and FPGA workbench. Design a circuit, check its behavior,
-            map Basys3 pins, and prepare a clear Vivado package without hiding the proof boundary.
+            RedByte is a digital logic and FPGA workbench. Build circuits, experiment live, inspect
+            waveforms, map Basys3 resources, and prepare a Vivado-ready engineering package without
+            hiding the proof boundary.
           </p>
-          <a class="primary-action" href="/os/" data-testid="redbyte-open-ide">Open IDE</a>
+          <div class="hero-actions">
+            <a class="primary-action" href="/os/" data-testid="redbyte-open-ide">Open RedByte</a>
+            <a class="secondary-action" href="https://github.com/swaggyp52/redbyte-ui-genesis/tree/main/docs">View documentation</a>
+          </div>
         </div>
         <aside class="hero-boundary" aria-label="Product boundary">
           <strong>Browser scope: E0</strong>
@@ -455,11 +547,36 @@
           <p>One job at a time, from setup through submission files.</p>
         </div>
         <div class="workflow-steps">
-          <article class="workflow-step"><span>01</span><strong>Project</strong><p>Choose a lab, starter, or saved project.</p></article>
-          <article class="workflow-step"><span>02</span><strong>Design</strong><p>Build and inspect the circuit.</p></article>
-          <article class="workflow-step"><span>03</span><strong>Verify</strong><p>Compare expected and observed behavior.</p></article>
-          <article class="workflow-step"><span>04</span><strong>Map Pins</strong><p>Assign design signals to Basys3 resources.</p></article>
-          <article class="workflow-step"><span>05</span><strong>Export</strong><p>Prepare the browser-E0 handoff package.</p></article>
+          <article class="workflow-step"><span>01</span><strong>Project</strong><p>Choose a lab, starter, or saved project and steer it from one operating center.</p></article>
+          <article class="workflow-step"><span>02</span><strong>Design</strong><p>Build the circuit on a canvas-first workbench with reusable modules.</p></article>
+          <article class="workflow-step"><span>03</span><strong>Simulate</strong><p>Drive inputs and observe the circuit. Compare against expectations only when you choose to.</p></article>
+          <article class="workflow-step"><span>04</span><strong>Board &amp; Constraints</strong><p>Assign design signals to real Basys3 resources and inspect the constraints.</p></article>
+          <article class="workflow-step"><span>05</span><strong>Build &amp; Export</strong><p>Build and inspect the Vivado-ready handoff package.</p></article>
+        </div>
+        <div class="observe-note">
+          <strong>Observed</strong>
+          <p>
+            Simulation is observe-first: a run records observed behavior even with zero checks.
+            Expected-output checks are optional and explicit. Author them when you need formal
+            pass/fail evidence, not before.
+          </p>
+        </div>
+      </section>
+
+      <section class="gallery" aria-labelledby="gallery-title">
+        <div class="section-heading">
+          <h2 id="gallery-title">Visual engineering</h2>
+          <p>Current workbench captures from the deployed application.</p>
+        </div>
+        <div class="gallery-grid">
+          <figure>
+            <img src="/media/redbyte-design-workbench.png" alt="RedByte Design workbench showing a half adder circuit with component library, board-mapped outputs, and the five-stage navigator" width="1440" height="900" loading="lazy" />
+            <figcaption>Design: canvas-first authoring with the component library and inline Basys3 mapping.</figcaption>
+          </figure>
+          <figure>
+            <img src="/media/redbyte-simulate-waveform.png" alt="RedByte Simulate workspace showing observed waveform lanes, scenario explorer, and check authoring for a half adder" width="1440" height="900" loading="lazy" />
+            <figcaption>Simulate: observed waveform truth, scenario authoring, and explicit checks.</figcaption>
+          </figure>
         </div>
       </section>
 
@@ -468,7 +585,8 @@
           <h2 id="product-role-title">Built for engineering work</h2>
           <p>
             RedByte is not a toy simulator and not a Vivado replacement. It is the browser workbench
-            for supported digital logic design, verification, mapping, and package preparation.
+            for supported digital logic design, observed simulation, Basys3 resource assignment, and
+            package preparation.
           </p>
           <div class="evidence-line">
             <strong>E0</strong>
@@ -484,7 +602,7 @@
           </p>
           <div class="evidence-line">
             <strong>Flow</strong>
-            <p><code>Project -&gt; Design -&gt; Verify -&gt; Map Pins -&gt; Export -&gt; Vivado</code></p>
+            <p><code>Project -&gt; Design -&gt; Simulate -&gt; Board &amp; Constraints -&gt; Build &amp; Export -&gt; Vivado</code></p>
           </div>
         </section>
       </div>

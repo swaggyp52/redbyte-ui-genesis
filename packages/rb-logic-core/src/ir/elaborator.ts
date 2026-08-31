@@ -32,6 +32,7 @@ import {
 import type {
   CircuitIR,
   ElaborationResult,
+  IRBusPort,
   IRDiagnostic,
   IRFeatures,
   IRNet,
@@ -41,6 +42,7 @@ import type {
   IRPrimitive,
   IRPrimitiveType,
 } from './circuitIR';
+import { busIndices, busWidth } from '../bus';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -507,6 +509,46 @@ export function elaborateCircuit(
     }
   }
 
+  // ─── Pass 1b: Declared bus resolution ──────────────────────────────────────
+  // A declared bus becomes an IRBusPort only when every declared bit resolves
+  // to a boundary port of the matching kind; anything else is diagnosed as
+  // IR007 (width mismatch) and falls back to the scalar members, so every
+  // backend still emits legal output.
+
+  const portById = new Map(ports.map(p => [p.id, p]));
+  const buses: IRBusPort[] = [];
+  for (const declaration of circuit?.buses ?? []) {
+    const wantKind: IRPortKind = declaration.direction === 'input' ? 'input' : 'output';
+    const bitsByIndex = new Map(declaration.bits.map(bit => [bit.index, bit.nodeId]));
+    const resolved: IRBusPort['bits'] = [];
+    let complete = true;
+    for (const index of busIndices(declaration)) {
+      const nodeId = bitsByIndex.get(index);
+      const port = nodeId ? portById.get(nodeId) : undefined;
+      if (!port || port.kind !== wantKind) {
+        diagnostics.push({
+          code: 'IR007',
+          severity: 'warning',
+          message: `Bus ${declaration.name}[${declaration.left}:${declaration.right}] is missing bit ${declaration.name}[${index}]${port ? ` (node is ${port.kind}, expected ${wantKind})` : ''}; exporting its bits as scalars`,
+          nodeId: nodeId ?? undefined,
+        });
+        complete = false;
+        continue;
+      }
+      resolved.push({ index, portId: port.id });
+    }
+    if (!complete) continue;
+    buses.push({
+      id: declaration.id,
+      name: declaration.name,
+      kind: wantKind,
+      left: declaration.left,
+      right: declaration.right,
+      signalType: { width: busWidth(declaration) },
+      bits: resolved,
+    });
+  }
+
   // ─── Pass 2–3: Net construction ────────────────────────────────────────────
 
   const { nets, multiDriverRecords } = buildNets(normedConns, nodeMap);
@@ -688,6 +730,7 @@ export function elaborateCircuit(
     outputs,
     clocks,
     resets,
+    ...(buses.length > 0 ? { buses } : {}),
     primitives,
     nets,
     diagnostics,

@@ -150,6 +150,37 @@ export interface IRNet {
 }
 
 // ---------------------------------------------------------------------------
+// IR Bus port (declared vector over boundary ports)
+// ---------------------------------------------------------------------------
+
+/** One bit of an IR bus: the boundary IRPort carrying a declared index. */
+export interface IRBusPortBit {
+  /** Declared bit index (e.g. 2 for A[2]). */
+  index: number;
+  /** IRPort id (== sourceNodeId for boundary nodes). */
+  portId: string;
+}
+
+/**
+ * A declared vector port at the design boundary. Present only when every
+ * declared bit resolves to a boundary IRPort of the matching kind —
+ * incomplete declarations are diagnosed (IR007) and fall back to their
+ * scalar members so every backend still emits legal output.
+ */
+export interface IRBusPort {
+  /** Declaration id from the source circuit. */
+  id: string;
+  /** HDL-safe base name, e.g. "A" for A[3:0]. */
+  name: string;
+  kind: 'input' | 'output';
+  /** Declaration order: left=3,right=0 → (3 downto 0); left<right → (0 to 3). */
+  left: number;
+  right: number;
+  signalType: IRSignalType;
+  bits: IRBusPortBit[];
+}
+
+// ---------------------------------------------------------------------------
 // IR Diagnostic
 // ---------------------------------------------------------------------------
 
@@ -212,6 +243,14 @@ export interface CircuitIR {
   outputs: IRPort[];
   clocks: IRPort[];
   resets: IRPort[];
+
+  /**
+   * Declared vector ports fully resolved against `ports`. Optional and
+   * additive: absent (or empty) for scalar-only circuits, so existing
+   * consumers and hashes are untouched. Excluded from irHash by
+   * construction (the hash covers primitives + nets only).
+   */
+  buses?: IRBusPort[];
 
   // Internal elements
   primitives: IRPrimitive[];

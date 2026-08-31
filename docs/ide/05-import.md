@@ -13,7 +13,7 @@ Mode ID: `import`
 
 ## Purpose
 
-Import RedByte export ZIPs, Vivado ZIPs, HDL, and XDC safely with explicit fidelity, diagnostics, and Basys3 mapping guidance. Import is a utility path, not the main Project -> Design -> Verify -> Map Pins -> Export spine.
+Import RedByte export ZIPs, Vivado ZIPs, HDL, and XDC safely with explicit fidelity, diagnostics, and Basys3 mapping guidance. Import is a utility path, not the main Project -> Design -> Simulate -> Board & Constraints -> Build & Export spine.
 
 ## Primary Actions (max 3)
 
@@ -93,7 +93,7 @@ Show deterministic diagnostics:
 - Arbitrary behavioral/process HDL remains partial or blocked. Import must not imply that unsupported behavioral code becomes an editable RedByte schematic.
 - The active project remains unchanged until explicit Apply confirmation. Cancel and all parse/archive failure paths preserve the active project.
 - Focused source gates: `ide:gate:zip-import-recovery-contract` and the Import review/apply recovery gate. Both pass on integrated pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab`, alongside the touched 20-file/258-test authority matrix. Historical `f4f7ca8f3` passed the earlier 36-file/477-test matrix; the final reconstructed exact-SHA release run is still required.
-- Cross-surface authority requirement: run `ide:gate:mapping-preview-package-agreement` as a standalone gate outside the uninterrupted 72-step `classroom:gate`. It is the exact proof that Map Pins, package bytes, the embedded manifest, and manifest-first recovery agree; the aggregate does not substitute for it.
+- Cross-surface authority requirement: run `ide:gate:mapping-preview-package-agreement` as a standalone gate outside the uninterrupted 72-step `classroom:gate`. It is the exact proof that Board & Constraints mapping, package bytes, the embedded manifest, and manifest-first recovery agree; the aggregate does not substitute for it.
 
 ## Data Contract (RBProject)
 

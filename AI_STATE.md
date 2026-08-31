@@ -1,5 +1,224 @@
 # AI State
 
+## Change Log 2026-08-28 (Production convergence + release engineering, cloud session)
+
+**Subsystem:** Deployment pipeline, CI lanes, public doorway, README, docs
+vocabulary, production error experience. Branch
+`claude/redbyte-production-convergence-ynz291` on top of
+`origin/product/redbyte-workbench-v3` @ `ab5c1e02`.
+
+**Changes:** Replaced the archived `cloudflare/pages-action@v1` deploy with
+`cloudflare/wrangler-action@v3` (`wrangler pages deploy dist`): main pushes
+deploy production to redbyteapps.dev, `product/**`/`claude/**` pushes deploy
+SHA-verified previews, missing credentials produce an explicit SKIPPED job.
+Added `pr-fast-checks.yml` (typecheck, CSS audit, doc/encoding/start-page/build
+contracts, no-solution + golden-export gates, unified build + artifact).
+Rebuilt `public/start.html` and `README.md` on the v3 observe-first model with
+real exact-SHA screenshots (`public/media/`); updated the three coupled
+contracts (`rb-public-start-page.test.mjs`, `verify-deploy.mjs`,
+`rb-build-deploy-contract.test.mjs`) in the same change. Converged stale
+Verify/Map Pins/Export vocabulary across course docs, labs, Gannon handoff,
+canonical specs, and CLAUDE.md; bannered seven OS-era root docs and three
+historical deployment docs; `DEPLOYMENT.md` is now the one canonical deploy
+doc. Hardened production error experience: boot-chunk load failure now renders
+a visible reload panel, `classroomModeStore`/`fileSystemStore` storage access
+is guarded, stale error-boundary titles renamed. Pinned `wrangler` ^4.127.1 as
+a devDependency. Deleted the dead root `index.html`.
+
+**Known failures at this head:** `pr-truth-gates` fails in its first gate,
+`ide:gate:examples-contract` (instant-visibility race against the collapsed v3
+examples disclosure; fixed in this branch). `rc:d0:project-determinism-gate`
+fails at pristine `ab5c1e02` (committed baseline hash stale; deliberately NOT
+re-baselined, excluded from the PR fast lane, awaiting explained drift). PWA:
+not supported (no manifest/service worker); the Product Manual offline claim
+was corrected.
+
+**Evidence boundary:** Validation in a Linux cloud container on Node 22.22.2
+(pin is 20.19.0; CI runs the pin): typecheck, CSS audit, rb:doc:validate 29/29,
+encoding, start-page + build contracts, golden Basys3 export gates, unified
+build + dist verification, and a full built-bundle Half Adder journey
+(starter -> Design -> Simulate run -> Board & Constraints -> 9-file package)
+with zero console errors. Desktop-local head `65e1ff872` remains unpushed and
+unreachable from cloud; nothing here claims it.
+
+## Change Log 2026-08-09 (Product System v3 integrated Studio reconstruction)
+
+**Subsystem:** Shared shell and the Project, Design, Simulate, Board &
+Constraints, and Build & Export workspaces on the Product System v3 candidate.
+
+**Product reconstruction:** `IdeTopBar` now owns the only five-stage navigator,
+project identity, board/save state, Commands, Save, and one overflow menu.
+Project is a source explorer, live circuit overview, and contextual next-action
+workspace instead of a duplicated stage dashboard. Design keeps the circuit
+canvas dominant with compact module/mode and command rows, contextual Inspector,
+inline wire guidance, and top-module-only board labels. Simulate keeps scenario
+selection, authoring, a lane-sized waveform, optional checks, and failure repair
+in one continuous workbench. Board clicks and the inspector selector now commit
+through the same mapping callback. Build & Export adds explicit Browser-E0
+structural validation while keeping Vivado proof external. The obsolete
+`visual-system-v1.css` presentation layer was removed.
+
+**Evidence boundary:** Two normal browser flows and two visual-review cycles are
+recorded under the ignored `.redbyte/product-immersion/studio-reconstruction/`
+path at 1366x768 and 1440x900, 100% browser zoom, Studio Light and Studio Dark.
+Bounded local validation covers typecheck, CSS ownership, focused interaction
+tests, unified build, current-doc validation, encoding, and diff hygiene. This
+is Browser-E0 evidence only and does not claim merge, deployment, Vivado,
+synthesis, implementation, bitstream, Basys3 programming, or physical behavior.
+
+## Change Log 2026-08-08 (Visual Quality Recovery: Studio UI Foundation Freeze)
+
+**Subsystem:** Shared Studio component states and the visible Project, Design,
+Simulate, Board & Constraints, and Build & Export composition on the Product
+System v3 candidate.
+
+**Product repair:** Studio Light now uses one cool-neutral support system with
+graphite text, explicit primary/secondary/ghost/disabled/danger states, and
+charcoal reserved for the circuit, waveform, and code instruments. Project is
+an intrinsic three-region workspace without the overlapping hero/recent-project
+composition. Design has one compact module row, one command bar, light support
+docks, contextual inspector, closed-by-default bottom dock, and a more legible
+graph. Simulate uses a compact scenario explorer, lane-sized waveform, readable
+instrument controls, and a light surrounding workbench. Board and Export now
+share the same typography, control states, spacing, and pane hierarchy. A
+development-only real-component state matrix supports visual review without
+shipping a student-facing gallery.
+
+**Review and validation boundary:** Exactly two full-resolution Browser-E0
+review cycles produced eight final captures and seven before/after composites
+under the ignored `.redbyte/product-immersion/ui-quality-recovery/` path at
+1440x900 and 1366x768, 100% browser zoom, Studio Light, and Dark canvas. Local
+typecheck, IDE CSS audit, unified build (349 transformed modules, 132.9 seconds),
+the focused graph-label contract, and `git diff --check` pass under Node 24.15.0
+/ pnpm 10.24.0; the repository pin remains Node 20.19.0. The bounded six-file
+selection also recorded five legacy presentation-contract failures describing
+retired Design headers/dock behavior and a removed Simulate title; the rejected
+UI was not restored. This work is local-only pending user visual review and does
+not claim push, merge, deployment, Vivado, bitstream, Basys3, or release proof.
+
+## Change Log 2026-08-08 (Milestone C.1: workbench geometry stabilization)
+
+**Subsystem:** Product System v3 Project, Simulate, and Build & Export visual
+composition on draft PR #80.
+
+**Product repair:** Simulate now uses one compact command row and one
+context-aware run/rerun authority. Timeline and Checks retain the scenario
+explorer, while Waveform and Testbench release both support rails and own the
+full workplane. Scenario management no longer overlays documents, eight Full
+Adder events fit without horizontal scrolling at 1366x768 and 1440x900, and
+the accepted work modes use the panel body as the single vertical scroll owner
+instead of nesting scroll traps inside the explorer, editor, and inspector.
+Failure/stale/pass presentation now uses the correct semantic tone. Project
+uses intrinsic workbench height with a larger circuit preview. Build & Export
+shows complete source names, compact availability marks, and intrinsically
+sized source, preview, and handoff panes.
+
+**Evidence and bounded validation:** Ignored Browser-E0 evidence under
+`.redbyte/product-immersion/milestone-c1-geometry/` records exact 1366x768 and
+1440x900 Studio Light captures for Timeline, Waveform, Project, and Build &
+Export. Workspace typecheck, the IDE CSS audit, the focused single-run-authority
+test, the unified build (347 transformed modules, 130.9 seconds), and
+`git diff --check` pass under Node 24.15.0 / pnpm 10.24.0; the repository pin
+remains Node 20.19.0. One bounded four-file legacy selection was stopped after
+19.1 seconds with 12 stale presentation-contract failures, including old
+literal `Run simulation` and duplicate primary-status expectations; the
+accepted C.1 composition was not reverted and no broad aggregate or remote
+check watch ran. This remains Browser-E0 only and does not claim merge,
+deployment, Vivado, bitstream, or Basys3 proof.
+
+## Change Log 2026-08-08 (Milestone C: Scenario + Testbench Composer)
+
+**Subsystem:** Persisted Simulate scenarios, event/check authoring, real circuit
+evaluation, waveform/failure inspection, generated testbench projection, and
+Project / Build & Export integration on the Product System v3 candidate.
+
+**Product implementation:** Simulate now uses one scenario explorer and four
+work lenses: Timeline, Waveform, Checks, and Testbench. Timeline directly adds,
+duplicates, deletes, selects, and retimes stable-ID events; input changes at one
+tick are authored together and duplicate ticks are rejected. Checks cycles only
+observable outputs through Unset / 0 / 1. Scenario create, duplicate, rename,
+delete confirmation, selection, events, checks, probes, and policy remain owned
+by the existing persisted project runtime. The Testbench lens renders the exact
+`testbench.vhd` artifact produced by Build & Export rather than a second source.
+Project Center now exposes the active scenario and generated simulation source.
+Export freshness now hashes the elaborated hierarchy, matching Runtime Verify,
+so a current hierarchical run is no longer mislabeled stale.
+
+**Browser evidence and boundary:** The bounded `Full Adder Exhaustive` workflow
+under `docs/release/evidence/milestone-c/` covers all eight input combinations,
+16 passing optional checks, a deliberate `SUM` mismatch with expected/observed
+and stimulus context, repair, rerun recovery, current generated-testbench
+provenance, reload persistence, reload staleness, and 1440x900 plus 1366x768
+geometry. This remains Browser-E0 evidence. It does not claim Vivado, synthesis,
+implementation, bitstream, Basys3, deployment, merge, or release proof.
+
+## Change Log 2026-08-08 (Milestone B2: RedByte Studio workbench reconstruction)
+
+**Subsystem:** Shared product shell and the Project, Design, Simulate, Board &
+Constraints, and Build & Export workspaces on the Product System v3 candidate.
+
+**Product reconstruction:** Studio Light now uses cool neutral application
+surfaces, readable workflow typography, concise live stage status, and a 48px
+product bar plus 44px stage bar. Studio Dark uses neutral charcoal. The Design
+canvas remains independently configurable and defaults to Dark canvas. Project
+is a full-width project center with an interactive source explorer, useful live
+circuit preview, and one context rail. Design uses one 44px command bar, a
+project hierarchy tree, light support docks, larger graph labels, and a dominant
+instrument canvas. Simulate is a scenario / waveform / inspector workstation.
+Board & Constraints connects the signal list, interactive Basys3 board, mapping
+editor, and generated XDC consequence. Build & Export connects a grouped source
+tree, readable code viewer, and Vivado handoff inspector across the workplane.
+The accepted Milestone B1 hierarchy, simulation, mapping, and package authority
+are unchanged.
+
+**Evidence and bounded validation:** Six exact `1440x900` final captures and
+five before/after comparisons are stored under
+`docs/release/evidence/milestone-b2/`. A normal browser walkthrough completed
+Project -> Design top -> HalfAdder -> top -> Simulate -> Board & Constraints ->
+Build & Export; the laptop check had no root horizontal overflow and retained a
+single-row 44px Design command bar, while the desktop check used the full
+workplane. Under local Node 24.15.0, typecheck, IDE CSS audit, unified build
+(135.4 seconds), and `git diff --check` passed. The repo remains pinned to Node
+20.19.0. The bounded six-file focused Vitest selection surfaced 39 historical
+Verify/Export copy and retired-work-object expectations (including `Verify`,
+`Map Pins`, and legacy PASS-hero wording); per the milestone contract these are
+recorded as legacy test debt and the accepted v3 UI was not reverted. No full
+Vitest, full Playwright, Classroom Truth Gates, remote check watch, Vivado,
+bitstream, Basys3 programming, deployment, merge, or release proof ran.
+
+## Change Log 2026-08-08 (Milestone B1: native visual hierarchy)
+
+**Subsystem:** Project hierarchy, reusable visual modules, hierarchical Design and
+Simulate inspection, inline board constraints, multi-source VHDL export, and the
+student workbench visual system.
+
+**Product repair:** Students can now turn a connected top-level selection into a
+named native visual module with explicit named ports, replace the selection with
+an instance, reuse and rename additional instances, open the module source, edit
+its visual layout, and return through a persistent `full_adder / HalfAdder`
+breadcrumb. Project Center exposes the real project explorer and module
+hierarchy. Design renders module-specific port names, supports direct
+definition-open affordances, keeps board assignment owned by the top module,
+and persists canvas appearance and density choices. The simulator elaborates
+module-to-module connections into stable `instance.internal` signal paths, and
+the signal shelf can reveal internal `ha0.*` and `ha1.*` evidence. Build & Export
+emits a structural `top.vhd` plus one VHDL source per reusable module while
+retaining the existing XDC, testbench, project, and README roles.
+
+**Evidence and validation boundary:** One bounded browser flow created and reused
+`HalfAdder`, rewired the Full Adder as two module instances, edited and reloaded
+the module source, ran all eight simulation cases with passing optional checks,
+inspected internal signals, confirmed inline `SW0 / V17` assignment, and exposed
+a 10-file downloadable E0 package containing `top.vhd` and `half_adder.vhd`.
+The six exact-size captures are under
+`docs/release/evidence/milestone-b1/`. Focused Vitest passes 3 files / 8 tests;
+workspace typecheck, the IDE CSS audit (zero warnings and errors), the unified
+build (347 transformed modules), and `git diff --check` pass under Node 24.15.0.
+The repository remains pinned to Node 20.19.0, so the runtime mismatch is
+reported rather than treated as pinned-runtime proof. No broad test aggregate,
+Playwright suite, Vivado execution, bitstream, physical Basys3 observation,
+deployment, or E1/E2/E3 authority is claimed.
+
 ## Change Log 2026-07-27 (Stable Preview - Browser-E0 consolidation)
 
 **Subsystem:** canonical source, scenario authority, root development entrypoint,
@@ -7736,6 +7955,196 @@ This left an unresolved contradiction with the locked product direction (`Import
 - Import now reads as a utility/action rather than a peer workflow stage.
 - Project and Design now provide clearer, more coherent user-facing entry points aligned with the locked RedByte product direction.
 - This closes the immediate Import demotion contradiction without broad route or subsystem refactors.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-08-08 (Milestone A remote blank-authoring gate recovery)
+
+**Current truth**
+
+- The first remote Classroom Truth Gates run for Milestone A reached the
+  authoritative `ide:gate:authoring-depth-release-safety` path and exposed a
+  real blank-canvas regression: Design retained individual placement actions,
+  but the product-manual quick start for a usable input/output boundary was no
+  longer reachable.
+- Design now presents two deliberately prioritized quick starts: **Add
+  input/output pins** creates one logical input and one logical output, while
+  **Build AND starter** creates a small wired example. A separate compact
+  **Place individually** row preserves direct Input, Output, and Gate placement
+  without making those lower-level actions compete with the recommended path.
+- On classroom-height viewports, the post-boundary **Next on canvas** strip now
+  anchors to the top of the live canvas instead of rendering below the browser
+  viewport. Its actions remain interactive while the rest of the guidance does
+  not intercept placed nodes.
+
+**Validation and evidence**
+
+- The focused blank-state component suite passes 5/5 tests; workspace
+  typecheck and the IDE CSS audit pass with no audit warnings or errors.
+- The rebuilt unified distribution passes with 344 transformed modules and a
+  verified artifact.
+- `ide:gate:design-workbench-v1` passes in 40.4 seconds, preserving direct
+  input/output/gate placement and the established canvas hierarchy.
+- `ide:gate:authoring-depth-release-safety` passes end to end in 861 seconds at
+  both required classroom viewports, including blank authoring, reload,
+  starter editing, Simulate, Board & Constraints, Build & Export, and Import.
+- Targeted 1366x768 Browser-E0 captures show the full 228px blank card, all
+  five actions, zero root-axis overflow, and the complete 79.4px post-boundary
+  strip inside the viewport. Evidence remains local under
+  `.redbyte/product-immersion/workbench-v3-milestone-a/`.
+
+**Proof boundary**
+
+- This closes the browser-workflow regression only. It does not claim Vivado
+  synthesis or implementation, bitstream generation, Basys3 programming,
+  physical observation, deployment, production readiness, or university
+  certification.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-08-08 (Milestone A responsive Design gate alignment)
+
+**Current truth**
+
+- The exact remote Milestone A candidate passed the full blank-authoring and
+  release-safety path, then exposed a stale responsive assumption in
+  `ide:gate:design-canvas-zoom-integrity`: at 1366px the product intentionally
+  moves camera controls into the visible **More tools** menu, while the gate
+  still tried to click the hidden desktop copies after looking for an older
+  **View** disclosure.
+- The gate now resolves each camera action through the control source that is
+  actually visible: the inline desktop controls, the compatible historical
+  disclosure, or the responsive overflow menu. Camera finiteness, rendered
+  node and wire visibility, resize behavior, mode transitions, and reload
+  assertions are unchanged.
+- The adjacent direct-workbench gate now applies the same responsive truth. It
+  proves compact **More tools** availability and interaction at 1366px, direct
+  inline camera controls at 1440px, and a closed transient menu after every
+  action while retaining canvas dominance and graph-overlap checks.
+- The cross-surface stability gate uses that same visible-control resolution
+  before continuing through Simulate reload, Board & Constraints, and the
+  return to Design; it no longer blocks on a deliberately hidden desktop host.
+- The later complex-build signal-trace scenario also resolves reset, zoom, and
+  fit through the visible responsive source, so its deliberate wrong-circuit
+  diagnosis remains testable at both required widths.
+- That scenario now enters optional-check authorship through the student-facing
+  **Checks** workspace (or the compatible earlier **Add expected outputs**
+  action) before editing expected cells, preserving the intended
+  observation-first Simulate workflow instead of bypassing it.
+- The Design correctness gate now selects each real input or output before
+  reading the contextual Inspector and toggles inputs through the selected
+  input control. It no longer requires the retired always-visible idle I/O
+  inspector, while preserving immediate combinational truth-table checks.
+- The palette-build contract uses the same contextual input controls after
+  placing and wiring its XOR circuit, while continuing to prove output truth,
+  no combinational tick advance, and unique board-resource placement.
+- Verify reality and saved-check gates now follow the Simulation Studio
+  contract: **Scenario / Replay / Checks**, one **Run simulation** authority,
+  and automatic evaluation of authored optional checks. They no longer require
+  retired Observe/Compare toggles or reject the clearer **Scenario ready** state.
+- Post-run signal visibility is asserted through the integrated Simulate shelf,
+  not the retired collapsible left-dock rail.
+- Simulation layout, post-run usability, evidence-workbench, and laptop
+  authoring gates now switch deliberately between **Scenario**, **Checks**, and
+  **Replay**. Each workspace owns the full authoring or evidence canvas instead
+  of reviving the retired simultaneous editor/waveform split.
+- At compact replay widths a failing simulation no longer traps repair actions
+  in a nested 500px failure scroller. The outer panel body is the single scroll
+  authority, keeping **Use observed** and **Open Design** visible and
+  hit-testable above the waveform controls.
+- Export E2E proof follows the unified simulation/check contract and reads the
+  grouped v3 artifact browser by its actual filename element. Preview/ZIP byte
+  parity excludes visible line-number chrome while retaining exact generated
+  source comparison.
+- Blank Design authoring is direct again: **Add input**, **Add output**, and
+  **Place gate** arm real canvas placement without redundant one-click circuit
+  generators. Release safety now places two inputs, an output, and an AND gate
+  through the same student controls, and the partial-authoring guide is
+  top-anchored through 960px-high laptop viewports so its actions stay visible.
+
+**Proof boundary**
+
+- This aligns browser regression evidence with the existing responsive product
+  contract. It does not change circuit behavior, claim hardware or Vivado
+  execution, or broaden the Stable Preview - Browser-E0 evidence level.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-08-08 (Milestone A compact-shell and release-tail closeout)
+
+**Current truth**
+
+- Exact remote Classroom Truth Gates on `43d4f22c5` reproduced a 74px root
+  overflow only in Linux Chromium at the effective `1093x614` 125%-stress
+  viewport. The one-column application grid could expand to Linux font
+  min-content width even though the same Design camera/stress path passed on
+  Windows.
+- The v3 root, top bar, surface column, workbench shell, and main workspace now
+  use bounded grid tracks and explicit `min-width: 0` ownership. The fix shrinks
+  the real layout instead of relying on document scrolling, while internal work
+  surfaces retain their own deliberate overflow behavior.
+- Exact remote run `31248497062` proved that root repair: Design Workbench v1,
+  nested-scroll, root-overflow, and every earlier classroom gate passed. It then
+  exposed a later Linux-only 1440px toolbar wrap in workbench reconstruction:
+  the utility row grew by 40px and pushed the circuit canvas to 362px from the
+  viewport top, beyond the 330px first-workbench ceiling.
+- Camera and layout commands now move into the existing **More tools**
+  disclosure through 1500px, while Canvas / Code / Split remain direct. This
+  prevents a third toolbar row under wider Linux font metrics and gives that
+  height back to the primary circuit canvas instead of weakening the gate.
+- Exact remote run `31252037982` then passed the repaired reconstruction gate
+  plus the remaining Design, Simulate, Board, release-solidification, visual,
+  and ZIP recovery tail before exposing two stale Import recovery expectations:
+  they tried to click example buttons while the labelled example disclosure was
+  still closed. The recovery workflow and wizard now open that real student
+  control before proving the structural and blocked examples are reachable.
+- Exact remote run `31255768115` passed the complete 93-minute classroom loop,
+  both repaired Import recovery gates, the determinism/parity tail, and every
+  no-solution lab guard. The outer Golden Basys3 export then exposed stale
+  switch/AND and ALU expected ZIP hashes after the branch's cumulative export
+  content changes. The shared ZIP builder already uses a fixed UTC timestamp,
+  normalized newlines, lexical entry order, STORE compression, and DOS platform
+  metadata; both golden hashes are refreshed from the current deterministic
+  artifacts and rechecked under separate New York and UTC Node processes.
+- Board & Constraints keeps the assignment table primary at laptop widths. The
+  Basys3 graphic is again a labelled non-interactive reference; the selected
+  signal resource selector is the sole assignment authority described by the
+  product manual. Compact table spacing keeps the action column reachable.
+- Import keeps a concise example disclosure visible on the empty first look;
+  opening it exposes a structural sample beneath the primary ZIP and Paste HDL
+  paths without adding permanent button clutter.
+
+**Gate alignment and validation**
+
+- Release-readiness helpers open the contextual Design Inspector by selecting
+  a real node. The coexistence gate measures the documented selected-context
+  `62%` canvas share across Library, Canvas, and Inspector and accepts the
+  current 280px contextual Inspector.
+- Simulate release and nested-scroll gates now switch deliberately among
+  Scenario, Replay, and Checks. Post-run evidence is measured in Replay while
+  expected-output edits occur in Checks; the inactive workspace must not
+  compete for layout.
+- Board first-viewport proof follows the table-first v3 hierarchy and verifies
+  that the selected-signal editor and signal/resource/pin/XDC chain remain
+  reachable below the secondary board reference.
+- Pinned Node `20.19.0` local proof passes the exact Design Workbench v1
+  camera/stress gate, root/cropping/action-density regression group, Simulate
+  task plane, Board hierarchy and obstruction gates, release-readiness visual
+  contract, release solidification v1/v2, Browser-E0 packaging boundary,
+  workspace utilization/visual finish, and all four ZIP/import recovery gates.
+  Focused Hardware mapping tests pass `16/16`; the playground build transforms
+  344 modules. The 1500px toolbar follow-up additionally passes workbench
+  reconstruction, Design direct workbench, Design Workbench v1, camera zoom
+  integrity, the 491-second stability overhaul, dual tool windows, Library
+  cropping, tool-window coexistence, and no-cropped-controls proof. Exact-HEAD
+  remote required-check proof is still pending for the golden export follow-up
+  candidate.
+
+**Proof boundary**
+
+- This remains Stable Preview - Browser-E0 evidence on draft PR #80. It is not
+  merged, deployed, live, Vivado-certified, bitstream-proven, or physically
+  observed on a Basys3 board.
 
 - **Attribution**: Connor Angiel
 
@@ -37722,5 +38131,165 @@ Key details:
 - `ide-root.css` still carries legacy layout debt, and `ide-polish-pass.css` remains an overlay rather than a pruned canonical replacement.
 - Verify’s `ScenarioBuilderPanel` still runs denser than the rest of the surface, and Hardware / Export still need a follow-on density pass.
 - Snapshot-style regression coverage should be added before any serious CSS pruning or overlay collapse work.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-08-01 (Product System v3 light-first theme foundation)
+
+**Subsystem**
+
+- IDE bootstrap, shared visual tokens, and top-bar theme control
+
+**What changed**
+
+- Mounted the existing shared theme provider at IDE bootstrap and added a Light / Dark / System selector to the shared top bar.
+- Added a prepaint theme resolver in the playground document so the persisted choice is applied before React renders; new users resolve to Workbench Light.
+- Added the final Product System v3 token layer that maps legacy IDE variables onto a coherent light or dark palette and gives the Project workspace a genuine light work surface.
+- Kept System responsive to operating-system color-scheme changes and retained reduced-motion behavior.
+
+**Validation**
+
+- `corepack pnpm exec vitest run packages/rb-theme/src/__tests__/applyTheme.test.ts` -> PASS (`2 passed`).
+- `corepack pnpm -s typecheck` -> PASS.
+- Real Edge session at `1440x900` -> Light rendered before interaction; Dark persisted through reload; browser console had zero errors.
+- `git diff --check` -> PASS.
+
+**Proof boundary / remaining**
+
+- This proves browser theme selection, prepaint application, and reload persistence only. It does not prove every legacy surface has completed light-theme contrast review; that evidence is captured later in Milestone A.
+
+- **Attribution**: Connor Angiel
+
+## Change Log 2026-08-01 (Product System v3 Milestone A draft candidate)
+
+**Subsystem**
+
+- Shared IDE shell, project lifecycle and persistence facade, command system,
+  Project Center, configurable Design workbench, component metadata, Basys3
+  board profile/projection, and student-visible workflow language
+
+**Source truth**
+
+- `main` and `origin/main` remain at
+  `57c8a94abd15d1810bf1f85eadf751c116ffbaa6`, the released **Stable Preview -
+  Browser-E0** lane.
+- Milestone A is implemented only on `product/redbyte-workbench-v3` in draft PR
+  [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80). It is not
+  merged, deployed, live, or release-certified. Bounded local validation is
+  complete; exact-HEAD Browser-E0 delivery identifies the draft candidate, and
+  user visual acceptance remains the merge gate.
+
+**What changed**
+
+- Reframed the visible workbench spine as `Project -> Design -> Simulate ->
+  Board & Constraints -> Build & Export`, while retaining compatible internal
+  route IDs. `Import / Recover` remains a separate reviewed utility and Vivado
+  remains an external handoff.
+- Added the warm light-first and complementary dark visual identities, prepaint
+  theme persistence, one shared shell, grouped command palette, versioned
+  workspace preferences, presets, keyboard-accessible dock visibility and
+  resizing, toolbar visibility/group ordering, classroom overflow, and reset.
+- Rebuilt Project as a live Project Center over project, source, simulation,
+  mapping, package, storage, recent-project, and recovery state rather than a
+  decorative dashboard.
+- Reworked Design around Canvas / Code / Split views; Components, Hierarchy,
+  Sources, and Board left tabs; Inspector, Properties, and Constraints right
+  tabs; and Problems, Console, and Simulation bottom tabs. Current hierarchy
+  and source projections are inspect-oriented and do not claim nested editing.
+- Added a versioned component-definition facade over current support/runtime
+  truth and explicitly keeps unsupported RegisterBus and StateBank behavior
+  outside the active simulation/export boundary.
+- Added a versioned Basys3 profile/provenance facade and semantic compatibility
+  projection. Inline Design assignment and Board & Constraints now read and
+  mutate the same mapping authority, with resource class, package pin, I/O
+  standard, clock status, and conflict context.
+- Formalized project access through `ProjectRepository` and fail-closed recovery
+  behavior while retaining the existing versioned browser-storage backing.
+- Made stage transitions synchronously reset the shared surface and workspace
+  scroll owners, so returning from a long stage opens the next primary work
+  object at its top without changing persisted dock geometry or project state.
+- Kept observation runs and optional checks semantically distinct: when authored
+  checks exist but a trace-only run does not evaluate them, Simulate now reports
+  `Checks not evaluated`; `No checks configured` is reserved for scenarios with
+  zero authored checks.
+- Hardened the shared top bar for Linux classroom font metrics: at 1400px and
+  below the duplicate save-state text yields to its labelled status dot and the
+  persistent status bar, keeping every command inside the 1366px root viewport.
+- Aligned the classroom workspace gates with the implemented v3 hierarchy:
+  Design keeps its Inspector contextual until an object is selected, while
+  Simulate keeps signals in the integrated workbench shelf instead of a
+  separate rail. At 1500px and below the duplicate top-bar stage breadcrumb
+  now yields to the fully named stage rail, containing the longer Board &
+  Constraints and Build & Export routes under Linux font metrics without
+  clipping commands or hiding surface overflow.
+- Finished the warm Project Center hierarchy by removing the legacy violet
+  tint, separating the loaded light/dark workspace layers, and letting the
+  recommendation card size to its useful content instead of stretching into
+  an empty column. The blank-project start path retains its separate welcome
+  treatment.
+- Tightened the cross-surface proof contract: selection-owned Design traces no
+  longer duplicate the status story, passive Split view does not create an
+  empty runtime band, incoming Verify/debug repair focus remains authoritative
+  even while a wire stays selected, compact camera actions remain reachable
+  through **More tools**, Simulate signal selection exposes semantic pressed
+  state from the first through last lane, and repaired expected values must
+  reappear visibly in Checks before the testbench flow can pass.
+- Build & Export now names stale prior simulation evidence explicitly and
+  routes the student back to Simulate rather than presenting that evidence as
+  merely absent or current.
+- Removed the legacy whole-dock opacity transition from Design so changing
+  Components / Hierarchy / Sources / Board I/O cannot dim the supporting rail
+  or leave stale compositor tiles over the primary toolbar. Board & Constraints
+  now labels the logical signal, generated artifact port, physical board
+  resource, and package pin as separate identity domains; a zero-unassigned
+  summary now says that all required mappings are assigned.
+
+**Evidence and validation boundary**
+
+- Implementation-time focused tests cover theme selection, repository and
+  lifecycle behavior, workspace preferences, command registry/palette, shared
+  shell and keyboard resizing, Project projections, component definitions,
+  board profile/projection, mapping workflows, and visible stage grammar.
+- The ignored local evidence area
+  `.redbyte/product-immersion/workbench-v3-milestone-a/` is reserved for the 12
+  required captures and machine-readable Browser-E0 record. The delivery
+  sequence regenerates that pack from the final candidate commit; earlier
+  captures in the ignored directory are not exact-candidate authority.
+- The bounded Node 20.19.0 closeout passed 40 changed/new focused test files
+  with 287/287 tests, workspace typecheck, the IDE CSS audit, and the unified
+  build with 344 transformed modules plus a verified distributable. Canonical
+  docs, encoding, and whitespace checks complete the same record.
+- The final visual-proof hardening additionally passes the focused Hardware
+  mapping suite (16/16), the Design Workbench v1 browser gate at both required
+  viewports, and the student-loop browser contract with explicit artifact-port
+  labeling.
+- The 12-capture pack is generated after this final documentation commit so
+  its Browser-E0 record identifies the exact candidate SHA. The full release
+  aggregate is deliberately outside this milestone.
+- The existing remote Classroom Truth Gates workflow is not a Milestone A local
+  gate, but its directly affected Project and shell assertions now follow the v3
+  information hierarchy and visible language. They require the always-visible
+  Project Center overview, inspect the engineering record through the accessible
+  `Technical details` disclosure, expect `Simulate`, `Board & Constraints`, and
+  `Build & Export`, exercise the in-workspace Build Fresh recovery modal instead
+  of the retired native browser prompt, and recognize that the unified Simulate
+  run records observations while evaluating any authored optional checks.
+
+**Proof boundary / remaining**
+
+- Browser captures prove only visible layout and their asserted interactions;
+  focused tests and builds prove only the software paths they exercise.
+- The repository facade still uses the current browser-storage backing rather
+  than IndexedDB. Corrupt indexes now rebuild from valid durable snapshots with
+  bounded rollback coverage; recovery-candidate/session signaling and complete
+  portable backup of workspace-local multi-scenario documents need further
+  hardening.
+- Nested modules, buses/named nets, code-backed module editing,
+  parameters/generics, multiple constraint sets, broader board resources, and
+  deeper compatibility analysis remain future work.
+- No Milestone A evidence proves Vivado E1, bitstream E2, physical-board E3,
+  production readiness, or unsupervised classroom reliability.
+- **Milestone B - Hierarchical Design and Component Depth** is next but not
+  started and requires separate authorization.
 
 - **Attribution**: Connor Angiel

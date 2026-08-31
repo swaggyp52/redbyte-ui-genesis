@@ -143,8 +143,8 @@ async function assertDesignDirectManipulation(page, viewport) {
   });
 
   assert(
-    metrics.supportDockPolicy === 'stable',
-    `${viewport.label}: Design must use the stable v3 support-dock policy ${JSON.stringify(metrics)}`
+    metrics.supportDockPolicy === 'persistent-configurable',
+    `${viewport.label}: Design must use the persistent configurable v3 support-dock policy ${JSON.stringify(metrics)}`
   );
   assert(
     metrics.libraryDock?.visibleWidth >= 180 && metrics.libraryDock?.visibleWidth <= 230,
@@ -163,7 +163,7 @@ async function assertDesignDirectManipulation(page, viewport) {
     metrics.canvas && metrics.libraryDock && metrics.dock &&
       metrics.canvas.visibleWidth /
         (metrics.libraryDock.visibleWidth + metrics.canvas.visibleWidth + metrics.dock.visibleWidth) + 0.005 >=
-        (viewport.width >= 1440 ? 0.66 : 0.64),
+        0.62,
     `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify({ library: metrics.libraryDock, canvas: metrics.canvas, inspector: metrics.dock })}`
   );
   assert(
@@ -216,7 +216,8 @@ async function assertVerifyFailRepairPass(page, viewport) {
   let status = await clickRunAndReadStatus(page);
   assert(isVerifyPass(status), `${viewport.label}: Verify should pass saved checks, got "${status}"`);
   assert(await visible(page.locator('[data-testid="ide-verify-region-waveform"]').first()), `${viewport.label}: Verify waveform region missing`);
-  assert(await visible(page.locator('[data-testid="ide-verify-region-stimulus"]').first()), `${viewport.label}: Verify stimulus region missing`);
+  assert(await visible(page.locator('[data-testid="ide-vcb-workspace-scenario"]').first()), `${viewport.label}: Scenario authoring tab missing after replay`);
+  await openChecksWorkspace(page, viewport.label);
 
   const target = await pickExpectedCell(page);
   await clickExpectedCellToValue(page, target, target.value === 0 ? 1 : 0);
@@ -224,12 +225,20 @@ async function assertVerifyFailRepairPass(page, viewport) {
   status = await clickRunAndReadStatus(page);
   assert(isVerifyFail(status), `${viewport.label}: edited expected output should FAIL Compare, got "${status}"`);
 
+  await openChecksWorkspace(page, viewport.label);
   await clickExpectedCellToValue(page, target, target.value);
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare must remain selectable after expected repair`);
   status = await clickRunAndReadStatus(page);
   assert(isVerifyPass(status), `${viewport.label}: repaired expected output should PASS Compare, got "${status}"`);
 
   await assertNoRootOverflow(page, `${viewport.label}/Verify`);
+}
+
+async function openChecksWorkspace(page, label) {
+  const checksTab = page.locator('[data-testid="ide-vcb-workspace-checks"]').first();
+  assert(await visible(checksTab), `${label}: optional Checks workspace must remain reachable`);
+  await checksTab.click();
+  await page.locator('[data-testid="ide-verify-region-stimulus"]').first().waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function clickRunAndReadStatus(page) {
@@ -323,8 +332,10 @@ async function assertExportHandoff(page, viewport) {
   assert(await visible(upstream), `${viewport.label}: Export upstream readiness ownership missing`);
   assert(await visible(fileBrowser), `${viewport.label}: Export v3 package file browser missing`);
   const text = ((await page.locator('[data-testid="ide-mode-export"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+  const simulationReadiness = ((await page.locator('[data-testid="ide-export-upstream-verify"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
   assert(/E0/i.test(text), `${viewport.label}: Export must state E0 package boundary`);
-  assert(/Verify|Compare/i.test(text), `${viewport.label}: Export must carry Verify state forward`);
+  assert(/Simulate/i.test(simulationReadiness), `${viewport.label}: Export must carry Simulate ownership forward`);
+  assert(/Validated|Simulated|Draft|Not run|Inconclusive/i.test(simulationReadiness), `${viewport.label}: Export must carry simulation evidence state forward`);
   assert(/Pin|Mapping|Basys3/i.test(text), `${viewport.label}: Export must carry pin mapping context forward`);
   assert(
     !/E1\s+(ready|passed|complete)|E2\s+(ready|passed|complete)|E3\s+(ready|passed|complete)|board observed/i.test(text),

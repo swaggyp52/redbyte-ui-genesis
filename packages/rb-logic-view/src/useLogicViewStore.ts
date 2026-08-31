@@ -87,6 +87,8 @@ export interface LogicViewState {
   selectWire: (wireId: string, addToSelection?: boolean) => void;
   clearSelection: () => void;
   selectMultipleNodes: (nodeIds: string[], syncToGlobal?: boolean) => void;
+  /** Replace the whole selection atomically with the given nodes AND wires. */
+  selectMultiple: (nodeIds: string[], wireIds: string[], syncToGlobal?: boolean) => void;
 
   // Tool mode (legacy, kept for toolbar compatibility)
   toolMode: ToolMode;
@@ -272,6 +274,33 @@ function createLogicViewStore() {
           selection: {
             nodes: newNodes,
             wires: new Set(),
+          },
+        };
+      }),
+
+    selectMultiple: (nodeIds, wireIds, syncToGlobal = true) =>
+      set((state) => {
+        const newNodes = new Set(nodeIds);
+        const newWires = new Set(wireIds);
+
+        if (
+          setsEqual(newNodes, safeSet<string>(state.selection.nodes)) &&
+          setsEqual(newWires, safeSet<string>(state.selection.wires))
+        ) {
+          return state;
+        }
+
+        if (syncToGlobal && globalViewStateStore) {
+          queueMicrotask(() => {
+            globalViewStateStore.getState().selectNodes(nodeIds, false);
+            globalViewStateStore.getState().selectWires(wireIds, false);
+          });
+        }
+
+        return {
+          selection: {
+            nodes: newNodes,
+            wires: newWires,
           },
         };
       }),

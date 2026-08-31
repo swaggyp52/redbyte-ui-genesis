@@ -78,6 +78,9 @@ async function proveDesignWorkbenchAtViewport(page, baseUrl, viewport) {
   await loadStarterDesign(page, baseUrl, 'logic-gates', `logic-gates-${viewport.label}`);
   await capture(page, viewport, '02-logic-gates-starter');
   await checkOrCaptureOnly('Logic Gates starter', () => assertGraphWorkbench(page, viewport, 'Logic Gates starter'));
+  await checkOrCaptureOnly('Hierarchy toolbar ownership', () =>
+    assertHierarchyToolbarOwnership(page, viewport)
+  );
   await checkOrCaptureOnly('Logic Gates boundary actions', () =>
     assertDesignBoundaryActions(page, 'Logic Gates starter')
   );
@@ -175,7 +178,17 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
   await assertCameraTransitionState(page, viewport, 'Final Code to Split', 'split', worldCenterAnchor);
   await assertMovedNodePosition(page, movedNode);
   await assertSelectionState(page, { node: true });
-  const centerSelection = page.locator('[data-testid="ide-design-center-selection-canvas"]:visible').first();
+  const compactToolbar = viewport.width <= 1500;
+  if (compactToolbar) {
+    const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert(await overflow.isVisible().catch(() => false), 'Split selected-node action must expose More tools');
+    if ((await overflow.getAttribute('open')) === null) {
+      await overflow.locator('summary').click();
+    }
+  }
+  const centerSelection = page.locator(
+    `[data-testid="${compactToolbar ? 'ide-design-overflow-center-selection' : 'ide-design-center-selection-canvas'}"]:visible`,
+  ).first();
   assert(await centerSelection.isEnabled().catch(() => false), 'Split selected-node Center Selection must be enabled');
   await centerSelection.click();
   await page
@@ -189,6 +202,7 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
     await waitForDesignWorkbench(page);
     await assertMovedNodePosition(page, movedNode);
+    await clickDesignView(page, 'canvas');
     await setCanvasZoom125(page);
     const resumedBaseline = await assertCameraTransitionState(page, viewport, 'Persisted Canvas baseline', 'canvas');
     await clickDesignView(page, 'hdl');
@@ -206,8 +220,20 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
 }
 
 async function setCanvasZoom125(page) {
-  const reset = page.locator('[data-testid="ide-design-zoom-reset"]:visible').first();
-  const zoomIn = page.locator('[data-testid="ide-design-zoom-in"]:visible').first();
+  const directReset = page.locator('[data-testid="ide-design-zoom-reset"]:visible').first();
+  if (!(await directReset.isVisible().catch(() => false))) {
+    const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert(await overflow.isVisible().catch(() => false), 'Camera stress must expose direct controls or More tools');
+    if ((await overflow.getAttribute('open')) === null) {
+      await overflow.locator('summary').click();
+    }
+  }
+  const reset = page.locator(
+    '[data-testid="ide-design-zoom-reset"]:visible, [data-testid="ide-design-overflow-reset"]:visible',
+  ).first();
+  const zoomIn = page.locator(
+    '[data-testid="ide-design-zoom-in"]:visible, [data-testid="ide-design-overflow-zoom-in"]:visible',
+  ).first();
   await reset.waitFor({ state: 'visible', timeout: 5000 });
   await zoomIn.waitFor({ state: 'visible', timeout: 5000 });
   await reset.click();
@@ -369,7 +395,90 @@ async function waitForDesignWorkbench(page) {
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-toolbar"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-right-dock"]', { timeout: 15000 });
+}
+
+async function assertHierarchyToolbarOwnership(page, viewport) {
+  await page.getByTestId('ide-design-left-tab-hierarchy').click();
+  await page.locator('[data-testid^="ide-design-hierarchy-row-"]').first().waitFor({
+    state: 'visible',
+    timeout: 5000,
+  });
+  await page.waitForFunction(() => {
+    const toolbar = document.querySelector('[data-testid="ide-design-toolbar"]');
+    return toolbar instanceof HTMLElement && toolbar.scrollLeft === 0;
+  }, undefined, { timeout: 2000 });
+
+  const ownership = await page.evaluate(() => {
+    const toolbar = document.querySelector('[data-testid="ide-design-toolbar"]');
+    if (!(toolbar instanceof HTMLElement)) return null;
+    const leftDock = document.querySelector('[data-testid="ide-left-dock"]');
+    const leftDockStyle = leftDock instanceof HTMLElement ? getComputedStyle(leftDock) : null;
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const ids = [
+      'ide-design-tool-select',
+      'ide-design-tool-wire',
+      'ide-design-view-canvas',
+      'ide-design-view-hdl',
+      'ide-design-view-split',
+    ];
+    return {
+      scrollLeft: toolbar.scrollLeft,
+      scrollWidth: toolbar.scrollWidth,
+      clientWidth: toolbar.clientWidth,
+      leftDockOpacity: leftDockStyle?.opacity ?? null,
+      leftDockTransitionDuration: leftDockStyle?.transitionDuration ?? null,
+      leftDockAnimationCount: leftDock instanceof HTMLElement ? leftDock.getAnimations().length : -1,
+      controls: ids.map((id) => {
+        const control = document.querySelector(`[data-testid="${id}"]`);
+        if (!(control instanceof HTMLElement)) return { id, present: false };
+        const rect = control.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        const style = getComputedStyle(control);
+        return {
+          id,
+          present: true,
+          visible: rect.width > 1 && rect.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
+          withinToolbar:
+            rect.left >= toolbarRect.left - 1 &&
+            rect.right <= toolbarRect.right + 1 &&
+            rect.top >= toolbarRect.top - 1 &&
+            rect.bottom <= toolbarRect.bottom + 1,
+          withinViewport:
+            rect.left >= 0 &&
+            rect.right <= window.innerWidth &&
+            rect.top >= 0 &&
+            rect.bottom <= window.innerHeight,
+          pointerHit: Boolean(hit && control.contains(hit)),
+          rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+        };
+      }),
+    };
+  });
+
+  assert(ownership, `${viewport.label}: hierarchy toolbar is missing`);
+  assert(ownership.scrollLeft === 0, `${viewport.label}: hierarchy toolbar retained scrollLeft=${ownership.scrollLeft}`);
+  assert(
+    ownership.scrollWidth <= ownership.clientWidth + 1,
+    `${viewport.label}: hierarchy toolbar still owns horizontal overflow ${JSON.stringify(ownership)}`
+  );
+  assert(
+    ownership.leftDockOpacity === '1' && ownership.leftDockTransitionDuration === '0s' && ownership.leftDockAnimationCount === 0,
+    `${viewport.label}: hierarchy left dock still animates as one dimmed compositor layer ${JSON.stringify(ownership)}`
+  );
+  const blocked = ownership.controls.filter(
+    (control) =>
+      !control.present ||
+      !control.visible ||
+      !control.withinToolbar ||
+      !control.withinViewport ||
+      !control.pointerHit
+  );
+  assert(
+    blocked.length === 0,
+    `${viewport.label}: hierarchy hid or obstructed primary toolbar controls ${JSON.stringify(blocked)}`
+  );
+
+  await page.getByTestId('ide-design-left-tab-components').click();
 }
 
 async function assertBlankCanvasStart(page, viewport, label) {
@@ -380,10 +489,13 @@ async function assertBlankCanvasStart(page, viewport, label) {
   assert(metrics.editorNodes === 0, `${label}: expected blank editor nodes, got ${metrics.editorNodes}`);
   assert(metrics.emptyState.visible, `${label}: blank canvas empty state must be visible`);
   assert(metrics.emptyState.inCanvas, `${label}: blank canvas start path must live inside the canvas`);
-  assert(metrics.emptyAddIo.visible, `${label}: blank canvas must expose Add boundary I/O`);
-  assert(metrics.emptyAddAnd.visible, `${label}: blank canvas must expose a starter gate path`);
+  assert(
+    metrics.emptyAddInput.visible && metrics.emptyAddOutput.visible,
+    `${label}: blank canvas must expose direct input and output placement`,
+  );
+  assert(metrics.emptyPlaceGate.visible, `${label}: blank canvas must expose a starter gate path`);
   assert(metrics.palette.visible, `${label}: Library must be visible by default`);
-  assert(metrics.inspector.visible, `${label}: Inspector must remain visible by default`);
+  assert(!metrics.inspector.visible, `${label}: empty Inspector must yield to the blank canvas`);
   assert(!metrics.leftToggle.visible && !metrics.rightToggle.visible, `${label}: stable rails must not expose restore toggles`);
   assertWorkbenchHierarchy(metrics, viewport, label, { expectGraph: false });
   assert(
@@ -499,20 +611,25 @@ function assertWorkbenchHierarchy(metrics, viewport, label, options) {
     metrics.rootOverflowX <= 2,
     `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`
   );
-  assert(
-    metrics.canvasControls.visible,
-    `${label}: fit/center/zoom canvas controls must remain visible`
-  );
+  if (viewport.width <= 1500) {
+    assert(!metrics.canvasControls.visible, `${label}: compact toolbar must yield the direct camera group`);
+    assert(metrics.toolbarOverflow.visible, `${label}: compact toolbar must expose More tools`);
+  } else {
+    assert(metrics.canvasControls.visible, `${label}: fit/center/zoom canvas controls must remain visible`);
+    assert(!metrics.toolbarOverflow.visible, `${label}: wide toolbar must keep camera controls direct`);
+  }
   assert(metrics.toolbar.visible, `${label}: toolbar must remain visible`);
   if (options.requireRails !== false) {
     assert(
       metrics.palette.visible || metrics.leftToggle.visible,
       `${label}: Library rail must remain visible or restorable`
     );
-    assert(
-      metrics.inspector.visible || metrics.rightToggle.visible,
-      `${label}: Inspector rail must remain visible or restorable`
-    );
+    const hasSelection = metrics.selection.nodes.length > 0 || metrics.selection.wires.length > 0;
+    if (hasSelection) {
+      assert(metrics.inspector.visible, `${label}: selected object must expose the contextual Inspector`);
+    } else {
+      assert(!metrics.inspector.visible, `${label}: idle Design must reserve Inspector width for the canvas`);
+    }
   }
   if (options.expectGraph) {
     assert(
@@ -616,18 +733,32 @@ async function proveZoomFitCenter(page, viewport) {
   await clickDesignView(page, 'canvas');
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
   await selectFirstVisibleNode(page);
-  const zoomOut = page.locator('[data-testid="ide-design-zoom-out"]:visible').first();
-  const zoomIn = page.locator('[data-testid="ide-design-zoom-in"]:visible').first();
-  const fit = page.locator('[data-testid="ide-design-fit-circuit-canvas"]:visible').first();
-  const reset = page.locator('[data-testid="ide-design-zoom-reset"]:visible').first();
-  const center = page.locator('[data-testid="ide-design-center-selection-canvas"]:visible').first();
-  for (const control of [zoomOut, zoomIn, fit, reset, center]) {
-    assert(await control.isVisible().catch(() => false), 'Canvas zoom, fit, reset, and center controls must remain directly visible');
+  const compactToolbar = viewport.width <= 1500;
+  if (compactToolbar) {
+    const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert(await overflow.isVisible().catch(() => false), 'Compact toolbar must expose More tools');
+    if ((await overflow.getAttribute('open')) === null) {
+      await overflow.locator('summary').click();
+    }
   }
-  assert(
-    !(await page.locator('[data-testid="ide-design-view-tools-toggle"]:visible').first().isVisible().catch(() => false)),
-    'Canvas controls must not be hidden behind a View tools disclosure',
-  );
+  const zoomOut = page.locator(
+    `[data-testid="${compactToolbar ? 'ide-design-overflow-zoom-out' : 'ide-design-zoom-out'}"]:visible`,
+  ).first();
+  const zoomIn = page.locator(
+    `[data-testid="${compactToolbar ? 'ide-design-overflow-zoom-in' : 'ide-design-zoom-in'}"]:visible`,
+  ).first();
+  const fit = page.locator(
+    `[data-testid="${compactToolbar ? 'ide-design-overflow-fit' : 'ide-design-fit-circuit-canvas'}"]:visible`,
+  ).first();
+  const reset = page.locator(
+    `[data-testid="${compactToolbar ? 'ide-design-overflow-reset' : 'ide-design-zoom-reset'}"]:visible`,
+  ).first();
+  const center = page.locator(
+    `[data-testid="${compactToolbar ? 'ide-design-overflow-center-selection' : 'ide-design-center-selection-canvas'}"]:visible`,
+  ).first();
+  for (const control of [zoomOut, zoomIn, fit, reset, center]) {
+    assert(await control.isVisible().catch(() => false), 'Canvas zoom, fit, reset, and center controls must remain reachable');
+  }
   await reset.click();
   await zoomOut.click();
   await assertGraphWorkbench(page, viewport, 'direct zoom out');
@@ -916,14 +1047,16 @@ async function readWorkbenchMetrics(page) {
     const logicCanvas = getRect('[data-testid="logic-canvas-svg"]');
     const toolbar = getRect('[data-testid="ide-design-toolbar"]');
     const canvasControls = getRect('[data-testid="ide-design-canvas-view-tools"]');
+    const toolbarOverflow = getRect('[data-testid="ide-design-toolbar-overflow"]');
     const palette = getRect('[data-testid="ide-design-dock-palette"]');
     const inspector = getRect('[data-testid="ide-right-dock"]');
     const leftToggle = getRect('[data-testid="ide-workbench-dock-toggle-left"]');
     const rightToggle = getRect('[data-testid="ide-workbench-dock-toggle-right"]');
     const hdlPane = getRect('[data-testid="ide-design-hdl-pane"]');
     const emptyState = getRect('[data-testid="ide-design-empty-state"]');
-    const emptyAddIo = getRect('[data-testid="ide-design-empty-add-io"]');
-    const emptyAddAnd = getRect('[data-testid="ide-design-empty-add-and"]');
+    const emptyAddInput = getRect('[data-testid="ide-design-empty-add-input"]');
+    const emptyAddOutput = getRect('[data-testid="ide-design-empty-add-output"]');
+    const emptyPlaceGate = getRect('[data-testid="ide-design-empty-place-gate"]');
     const statusAddIo = getRect('[data-testid="ide-design-status-add-io"]');
     const paletteInput = getRect('[data-testid="ide-design-palette-input"]');
     const paletteOutput = getRect('[data-testid="ide-design-palette-output"]');
@@ -1010,14 +1143,16 @@ async function readWorkbenchMetrics(page) {
           : null,
       toolbar: rectJson(toolbar),
       canvasControls: rectJson(canvasControls),
+      toolbarOverflow: rectJson(toolbarOverflow),
       palette: rectJson(palette),
       inspector: rectJson(inspector),
       leftToggle: rectJson(leftToggle),
       rightToggle: rectJson(rightToggle),
       hdlPane: rectJson(hdlPane),
       emptyState: { ...rectJson(emptyState), inCanvas: inRect(emptyState, liveCanvas) },
-      emptyAddIo: rectJson(emptyAddIo),
-      emptyAddAnd: rectJson(emptyAddAnd),
+      emptyAddInput: rectJson(emptyAddInput),
+      emptyAddOutput: rectJson(emptyAddOutput),
+      emptyPlaceGate: rectJson(emptyPlaceGate),
       statusAddIo: rectJson(statusAddIo),
       paletteInput: rectJson(paletteInput),
       paletteOutput: rectJson(paletteOutput),

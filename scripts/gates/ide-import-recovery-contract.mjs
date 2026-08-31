@@ -61,7 +61,7 @@ async function openImportFromProject(page) {
 
   const importPath = page.locator('[data-testid="ide-project-path-import-recover"]').first();
   if (!(await visible(importPath))) {
-    const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+    const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
     assert(await visible(changeProject), 'Loaded Project must expose Change Project before replacement/recovery paths');
     await changeProject.click();
   }
@@ -263,7 +263,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await openMode(page, 'project');
   const loadedProject = page.locator('[data-testid="ide-project-command-center"]').first();
   assert(await visible(loadedProject), 'Loaded Project must keep command center visible');
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
   assert(await visible(changeProject), 'Loaded Project must expose Change Project');
   await changeProject.click();
   assert(
@@ -379,8 +379,8 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   const applyNotice = page.locator('[data-testid="ide-import-verify-reset-notice"]').first();
   if (await visible(applyNotice)) {
     assert(
-      /project replaced|run verify again/i.test(await text(applyNotice)),
-      'Apply must confirm replacement and reset prior Verify authority'
+      /project replaced|run simulate again/i.test(await text(applyNotice)),
+      'Apply must confirm replacement and reset prior Simulate authority'
     );
     await page.locator('[data-testid="ide-import-open-design"]').click();
   }
@@ -395,12 +395,12 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await openMode(page, 'verify');
   assert(
     !(await visible(page.locator('[data-testid="ide-verify-pass-hero"]').first())),
-    'Imported prior Verify PASS must not be treated as current trusted proof'
+    'Imported prior Simulate PASS must not be treated as current trusted proof'
   );
   const verifyText = await text(page.locator('[data-testid="ide-mode-verify"]').first());
   assert(
-    /run|verify|saved checks|vectors/i.test(verifyText),
-    'Imported project Verify state must require a fresh run or review'
+    /run|simulate|saved checks|vectors/i.test(verifyText),
+    'Imported project Simulate state must require a fresh run or review'
   );
   assertNoHardwareOverclaim(verifyText);
   await screenshotIfRequested(page, 'imported-project-verify-state-1366x768');

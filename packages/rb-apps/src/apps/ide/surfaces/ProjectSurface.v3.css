@@ -766,7 +766,7 @@
 .ide-project-v3-header {
   grid-template-columns: minmax(0, 2fr) minmax(300px, 0.86fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
   padding: 0;
   border: 0;
 }
@@ -779,7 +779,11 @@
   border: 1px solid var(--rb-border);
   border-radius: 12px;
   background:
-    radial-gradient(circle at 88% 18%, rgba(139, 124, 255, 0.12), transparent 30%),
+    radial-gradient(
+      circle at 88% 18%,
+      color-mix(in srgb, var(--rb-project) 12%, transparent),
+      transparent 30%
+    ),
     var(--rb-surface-1);
   box-shadow: var(--rb-shadow-elevated);
 }
@@ -801,14 +805,19 @@
 
 .ide-project-v3-next {
   grid-template-columns: 1fr;
-  align-content: center;
+  align-content: start;
+  align-self: start;
   gap: 12px;
-  min-height: 100%;
+  min-height: 0;
   padding: 22px;
-  border: 1px solid rgba(139, 124, 255, 0.36);
+  border: 1px solid color-mix(in srgb, var(--rb-action) 36%, var(--rb-border));
   border-radius: 12px;
   background:
-    linear-gradient(150deg, rgba(139, 124, 255, 0.16), transparent 54%),
+    linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--rb-action) 16%, transparent),
+      transparent 54%
+    ),
     var(--rb-surface-2);
   box-shadow: var(--rb-shadow-elevated);
 }
@@ -895,7 +904,7 @@
 
 .ide-project-v3-preview-node text {
   fill: var(--rb-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-anchor: middle;
 }
@@ -1004,3 +1013,379 @@
 .ide-root .ide-project-evidence-tier.is-validated strong {
   color: var(--rb-success);
 }
+
+/* Milestone B2 — Project Center owns the full workplane. */
+.ide-project-v3 {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  padding: 20px clamp(20px, 2vw, 32px) 24px;
+  gap: 16px;
+  background: var(--rb-app-bg);
+  color: var(--rb-text-primary);
+  font-size: 14px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.ide-project-v3-command-board,
+.ide-project-v3-workspace,
+.ide-project-v3-recent {
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  box-shadow: 0 8px 24px rgba(21, 32, 51, 0.06);
+}
+.ide-project-v3-command-board {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ide-project-v3-command-board { min-height: 0; padding: 0; overflow: hidden; }
+.ide-project-v3-header {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 18px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+}
+.ide-project-v3-meta { display: none; }
+.ide-project-v3-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  gap: 6px;
+}
+.ide-project-v3-facts > span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 5px 9px;
+  gap: 6px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-surface-2);
+}
+.ide-project-v3-facts small { color: var(--rb-text-muted); font-size: 12px; }
+.ide-project-v3-facts strong { color: var(--rb-text-primary); font-size: 13px; font-weight: 700; }
+/* Set Active Top — actionable Overview control over fpgaConfig.top */
+.ide-project-active-top-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--rb-text-primary);
+  font: inherit;
+}
+.ide-project-active-top-value:hover strong { text-decoration: underline; }
+.ide-project-active-top-pencil { color: var(--rb-text-muted); font-size: 11px; }
+.ide-project-active-top-edit { display: inline-flex; align-items: center; gap: 4px; }
+.ide-project-active-top-edit .ide-text-input { width: 150px; padding: 3px 6px; font-size: 12px; }
+.ide-project-active-top-error { margin: 6px 0 0; color: var(--rb-danger, #c0392b); font-size: 12px; }
+.ide-project-v3-title,
+.ide-project-v3-title-button,
+.ide-project-v3-title-input { font-size: clamp(22px, 2vw, 26px); line-height: 1.15; }
+.ide-project-v3-description,
+.ide-project-v3-goal,
+.ide-project-v3-source { max-width: 80ch; font-size: 14px; line-height: 1.45; }
+.ide-project-v3-goal { margin-top: 6px; }
+
+.ide-project-v3-next {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 6px;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--rb-action) 28%, var(--rb-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface));
+}
+.ide-project-v3-next h2 { display: none; }
+.ide-project-v3-next-reason { grid-column: 1; margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.35; }
+.ide-project-v3-next-state { grid-column: 1; color: var(--rb-action); font-size: 12px; letter-spacing: .04em; text-transform: none; }
+.ide-project-v3-next .ide-button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: auto;
+  min-width: 130px;
+  min-height: 40px;
+  margin: 0;
+}
+
+.ide-project-v3-identity { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.ide-project-v3-toolbar { display: none; }
+.ide-project-v3-workspace { height: auto; min-height: 0; padding: 0; overflow: hidden; }
+.ide-project-v3-workspace-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .65fr) auto; align-items: center; gap: 16px; margin: 0; padding: 12px 18px; border-bottom: 1px solid var(--rb-border); background: var(--rb-surface-2); }
+.ide-project-v3-workspace-header h2 { margin: 2px 0 0; font-size: 18px; }
+.ide-project-v3-workspace-header > p { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+.ide-project-evidence-tier { min-width: 190px; padding: 8px 10px; }
+
+.ide-project-workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(236px, 260px) minmax(440px, 1fr) minmax(276px, 304px);
+  height: clamp(420px, calc(100dvh - 400px), 560px);
+  min-height: 420px;
+}
+
+.ide-project-explorer,
+.ide-project-design-overview,
+.ide-project-v3-stage-table { min-width: 0; padding: 18px; }
+
+.ide-project-explorer {
+  gap: 4px;
+  overflow: auto;
+  border-right: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
+  max-height: none;
+}
+.ide-project-explorer > header { margin-bottom: 6px; }
+.ide-project-explorer > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
+.ide-project-explorer-heading { margin: 12px 8px 4px; color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-explorer-group { display: none; }
+.ide-project-explorer > button { min-height: 44px; padding: 8px 10px; font-size: 14px; }
+.ide-project-explorer > button small { margin-top: 2px; font-size: 12px; line-height: 1.35; }
+.ide-project-explorer > header {
+  display: grid;
+  gap: 2px;
+}
+.ide-project-explorer > button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
+  text-align: left;
+}
+.ide-project-explorer > button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.ide-project-explorer > button strong,
+.ide-project-explorer > button small {
+  display: block;
+  min-width: 0;
+}
+
+/* Derived design compilation order for the generated VHDL package. */
+.ide-project-compile-order {
+  margin: 2px 8px 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface-1);
+}
+.ide-project-compile-order > span {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ide-project-compile-order ol {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+.ide-project-compile-order li {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--rb-text-primary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ide-project-compile-order li code {
+  display: inline-block;
+  min-width: 14px;
+  color: var(--rb-text-muted);
+}
+.ide-project-compile-order li small {
+  color: var(--rb-text-muted);
+  font-family: inherit;
+}
+
+.ide-project-design-overview { display: grid; grid-template-rows: auto auto minmax(220px, 1fr) auto; align-content: stretch; gap: 10px; max-height: none; overflow: auto; border-right: 1px solid var(--rb-border); }
+.ide-project-design-overview > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
+.ide-project-design-overview h3 { font-size: 20px; }
+.ide-project-design-overview > p { font-size: 14px; line-height: 1.5; }
+.ide-project-design-overview .ide-project-v3-circuit-preview { min-height: 220px; height: 100%; margin: 0; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface-2); }
+.ide-project-design-overview .ide-project-v3-circuit-preview svg { height: 100%; min-height: 180px; }
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption {
+  border-color: var(--rb-border);
+  background: var(--rb-surface-2);
+}
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption span { color: var(--rb-text-secondary); }
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption strong { color: var(--rb-text-primary); }
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: 6px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface);
+  font: 650 13px/1 var(--rb-font-ui);
+}
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption button:hover {
+  border-color: var(--rb-action);
+  color: var(--rb-action);
+}
+.ide-project-interface-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--rb-border); }
+.ide-project-interface-strip > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; min-height: 76px; padding: 12px; border-right: 1px solid var(--rb-border); }
+.ide-project-interface-strip > div:last-child { border-right: 0; }
+.ide-project-interface-strip > div small { grid-column: 1 / -1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-project-interface-strip span,
+.ide-project-interface-strip small { font-size: 12px; }
+.ide-project-interface-strip strong { font-size: 20px; }
+
+.ide-project-v3-stage-table { max-height: none; overflow: auto; background: var(--rb-surface-2); }
+.ide-project-v3-stage-table > :not(.ide-project-context-panel) { display: none; }
+.ide-project-context-panel { display: grid; align-content: start; gap: 12px; }
+.ide-project-context-section { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface); }
+.ide-project-context-section > span { color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-context-section > strong { font-size: 15px; line-height: 1.35; }
+.ide-project-context-section > p,
+.ide-project-context-section > small { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+.ide-project-context-section.is-highlighted { border-color: var(--rb-action); box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-action) 18%, transparent); }
+.ide-project-context-next {
+  border-color: color-mix(in srgb, var(--rb-action) 34%, var(--rb-border));
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface));
+}
+.ide-project-context-next > span { color: var(--rb-action); }
+.ide-project-context-next h3 { margin: 0; color: var(--rb-text-primary); font-size: 18px; line-height: 1.25; }
+.ide-project-context-next .ide-button { width: 100%; min-height: 40px; }
+.ide-project-context-actions .ide-button { width: 100%; min-height: 36px; }
+
+.ide-project-v3-recent {
+  padding: 12px 16px;
+}
+
+.ide-project-v3-recent > header {
+  margin-bottom: 8px;
+}
+
+.ide-project-v3-recent-list button {
+  min-height: 52px;
+  padding: 8px 12px;
+}
+
+@media (max-width: 1180px) {
+  .ide-project-workbench-grid { grid-template-columns: 220px minmax(420px, 1fr) minmax(250px, 286px); }
+  .ide-project-context-panel { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 820px) {
+  .ide-project-v3 { padding: 12px; }
+  .ide-project-v3-header,
+  .ide-project-v3-workspace-header,
+  .ide-project-workbench-grid { grid-template-columns: minmax(0, 1fr); }
+  .ide-project-context-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ide-project-interface-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Top-level buses in the Project explorer — first-class vector signals. */
+.ide-project-buses {
+  margin: 2px 8px 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface-1);
+}
+.ide-project-buses > span {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ide-project-buses ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+}
+.ide-project-buses li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ide-project-buses li code {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--rb-accent, #2563eb);
+}
+.ide-project-buses li small {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ── Runs document (verifyRunHistory projection) ──────────────────────────── */
+.ide-project-context-runs { padding: 0; border: 0; background: transparent; }
+.ide-project-runs {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+}
+.ide-project-runs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ide-project-runs-head span { color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-runs-head strong { font-size: 12px; color: var(--rb-text-secondary, var(--rb-text-muted)); font-weight: 600; }
+.ide-project-runs-empty { margin: 0; font-size: 12.5px; color: var(--rb-text-muted); line-height: 1.5; }
+.ide-project-runs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ide-project-run-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-app-bg, var(--rb-surface));
+}
+.ide-project-run-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.ide-project-run-badge.is-pass { background: color-mix(in srgb, var(--rb-success) 16%, transparent); color: var(--rb-success); }
+.ide-project-run-badge.is-fail { background: color-mix(in srgb, var(--rb-danger) 16%, transparent); color: var(--rb-danger); }
+.ide-project-run-body { display: grid; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.ide-project-run-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ide-project-run-line strong { font-size: 12.5px; color: var(--rb-text-primary, inherit); }
+.ide-project-run-time { font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-run-failure { margin: 0; font-size: 11.5px; color: var(--rb-danger); }
+.ide-project-run-failure code { font-family: var(--rb-font-mono); font-size: 11px; }
+.ide-project-run-changes { margin: 0; font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-run-changes.is-unchanged { opacity: 0.75; }
+.ide-project-runs-open {
+  justify-self: start;
+  border: 1px solid var(--rb-border);
+  background: transparent;
+  color: var(--rb-action);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ide-project-runs-open:hover { background: var(--rb-surface-subtle, var(--rb-surface)); }

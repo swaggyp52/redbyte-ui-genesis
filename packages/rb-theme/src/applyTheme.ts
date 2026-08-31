@@ -3,10 +3,11 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 export type ThemeVariant = 'dark' | 'light' | 'midnight' | 'system';
+export type ResolvedThemeVariant = Exclude<ThemeVariant, 'system'>;
 
-function resolveThemeVariant(variant: ThemeVariant): 'dark' | 'light' | 'midnight' {
+export function resolveThemeVariant(variant: ThemeVariant): ResolvedThemeVariant {
   if (variant === 'system') {
-    if (typeof window === 'undefined') return 'dark';
+    if (typeof window === 'undefined') return 'light';
     return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
   return variant;
@@ -22,16 +23,13 @@ export function applyTheme(root: HTMLElement, variant: ThemeVariant): void {
 
   const resolved = resolveThemeVariant(variant);
 
-  // The CSS in os-tokens.css uses [data-theme="light"] and [data-theme="midnight"].
-  // Default (:root) is dark, so we remove the attribute for dark theme.
-  if (resolved === 'dark') {
-    root.removeAttribute('data-theme');
-  } else {
-    root.setAttribute('data-theme', resolved);
-  }
+  root.setAttribute('data-theme', resolved);
 
-  // Legacy attribute for components that check this
+  // Keep the selected value separate from the resolved palette. This lets the
+  // workbench say "System" while CSS still receives a concrete light/dark value.
   root.setAttribute('data-rb-theme', resolved);
+  root.setAttribute('data-rb-theme-setting', variant);
+  root.style.colorScheme = resolved === 'light' ? 'light' : 'dark';
 
   try {
     localStorage.setItem('rb-theme-variant', variant);

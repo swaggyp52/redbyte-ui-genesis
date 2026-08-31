@@ -10,11 +10,11 @@ export interface Basys3BoardViewProps {
 }
 
 const BTN_DEFS = [
-  { cx: 155, cy: 135, alias: 'BTNC', label: 'C' },
-  { cx: 155, cy: 108, alias: 'BTNU', label: 'U' },
-  { cx: 155, cy: 162, alias: 'BTND', label: 'D' },
-  { cx: 128, cy: 135, alias: 'BTNL', label: 'L' },
-  { cx: 182, cy: 135, alias: 'BTNR', label: 'R' },
+  { cx: 155, cy: 135, alias: 'BTNC', label: 'C', labelX: 155, labelY: 139 },
+  { cx: 155, cy: 108, alias: 'BTNU', label: 'U', labelX: 155, labelY: 89 },
+  { cx: 155, cy: 162, alias: 'BTND', label: 'D', labelX: 155, labelY: 185 },
+  { cx: 128, cy: 135, alias: 'BTNL', label: 'L', labelX: 101, labelY: 139 },
+  { cx: 182, cy: 135, alias: 'BTNR', label: 'R', labelX: 209, labelY: 139 },
 ];
 
 // AN3 = leftmost digit, AN0 = rightmost (Basys3 convention)
@@ -40,6 +40,31 @@ function isAllowed(alias: string, allowedAliases?: Set<string>): boolean {
   return !allowedAliases || allowedAliases.has(alias);
 }
 
+type ResourceVisualState = 'selected' | 'mapped' | 'available' | 'idle' | 'unavailable';
+
+function resourceVisualState(
+  alias: string,
+  mappedAliases: Set<string>,
+  highlightedAlias?: string | null,
+  allowedAliases?: Set<string>,
+  assignmentMode = false
+): ResourceVisualState {
+  if (!isAllowed(alias, allowedAliases)) return 'unavailable';
+  if (alias === highlightedAlias) return 'selected';
+  if (mappedAliases.has(alias)) return 'mapped';
+  return assignmentMode ? 'available' : 'idle';
+}
+
+function resourceClassName(state: ResourceVisualState): string {
+  return [
+    styles.resource,
+    state === 'selected' ? styles.resourceSelected : '',
+    state === 'mapped' ? styles.resourceMapped : '',
+    state === 'unavailable' ? styles.resourceUnavailable : '',
+    state === 'selected' ? 'map-hl' : '',
+  ].filter(Boolean).join(' ');
+}
+
 function regionFill(
   alias: string,
   mappedAliases: Set<string>,
@@ -47,11 +72,12 @@ function regionFill(
   allowedAliases?: Set<string>,
   assignmentMode = false
 ): string {
-  if (!isAllowed(alias, allowedAliases)) return 'rgba(255,255,255,0.05)';
-  if (alias === highlightedAlias) return 'rgba(56,189,248,0.85)';
-  if (mappedAliases.has(alias))   return 'rgba(61,186,110,0.8)';
-  if (assignmentMode) return 'rgba(56,189,248,0.22)';
-  return 'rgba(255,255,255,0.12)';
+  const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
+  if (state === 'unavailable') return 'rgba(100,116,139,0.14)';
+  if (state === 'selected') return 'rgba(245,158,11,0.94)';
+  if (state === 'mapped') return 'rgba(34,197,94,0.86)';
+  if (state === 'available') return 'rgba(56,189,248,0.3)';
+  return 'rgba(148,163,184,0.26)';
 }
 
 function regionStroke(
@@ -61,11 +87,27 @@ function regionStroke(
   allowedAliases?: Set<string>,
   assignmentMode = false
 ): string {
-  if (!isAllowed(alias, allowedAliases)) return 'rgba(255,255,255,0.08)';
-  if (alias === highlightedAlias) return '#38bdf8';
-  if (mappedAliases.has(alias))   return 'rgba(61,186,110,0.9)';
-  if (assignmentMode) return 'rgba(56,189,248,0.58)';
-  return 'rgba(255,255,255,0.2)';
+  const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
+  if (state === 'unavailable') return 'rgba(100,116,139,0.34)';
+  if (state === 'selected') return '#fff7d6';
+  if (state === 'mapped') return '#86efac';
+  if (state === 'available') return '#7dd3fc';
+  return '#94a3b8';
+}
+
+function regionStrokeWidth(
+  alias: string,
+  mappedAliases: Set<string>,
+  highlightedAlias?: string | null,
+  allowedAliases?: Set<string>,
+  assignmentMode = false,
+  compact = false
+): number {
+  const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
+  if (state === 'selected') return compact ? 2.2 : 3.2;
+  if (state === 'mapped') return compact ? 1.5 : 2;
+  if (state === 'available') return compact ? 1.1 : 1.5;
+  return compact ? 0.8 : 1;
 }
 
 function labelFill(
@@ -75,10 +117,12 @@ function labelFill(
   allowedAliases?: Set<string>,
   assignmentMode = false
 ): string {
-  if (!isAllowed(alias, allowedAliases)) return 'rgba(255,255,255,0.1)';
-  if (alias === highlightedAlias || mappedAliases.has(alias)) return 'rgba(180,230,220,0.7)';
-  if (assignmentMode) return 'rgba(186,235,255,0.64)';
-  return 'rgba(255,255,255,0.2)';
+  const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
+  if (state === 'unavailable') return '#64748b';
+  if (state === 'selected') return '#fff7d6';
+  if (state === 'mapped') return '#bbf7d0';
+  if (state === 'available') return '#e0f2fe';
+  return '#cbd5e1';
 }
 
 function boardCursor(alias: string, allowedAliases?: Set<string>): React.CSSProperties {
@@ -101,7 +145,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
     <svg
       data-testid="ide-hw-board-map"
       className={styles.board}
-      viewBox="0 0 620 260"
+      viewBox="0 -48 620 308"
       preserveAspectRatio="xMidYMid meet"
       width="100%"
     >
@@ -115,31 +159,42 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         </linearGradient>
         <style>{`
           @keyframes mapHlPulse { 0%,100%{opacity:0.65} 50%{opacity:1} }
-          .map-hl { animation: mapHlPulse 900ms ease-in-out infinite; }
+          .map-hl { animation: mapHlPulse 1200ms ease-in-out infinite; }
+          @media (prefers-reduced-motion: reduce) { .map-hl { animation: none; } }
         `}</style>
       </defs>
 
+      {/* The clock is a first-class assignment resource, not an overlay on
+          the LED bank. Keep it in a dedicated reference strip so its alias,
+          package pin, and frequency remain readable at the native board zoom. */}
+      <rect x="10" y="-42" width="600" height="36" rx="8" ry="8"
+        fill="#09192e" stroke="rgba(94,234,212,0.36)" strokeWidth="1.5" />
+      <text x="26" y="-19" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10"
+        fill="#93a9c3" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
+        SYSTEM CLOCK
+      </text>
+
       {/* Board body */}
-      <rect x="10" y="10" width="600" height="240" rx="8" ry="8" fill="#0b1b3a" />
+      <rect x="10" y="10" width="600" height="240" rx="8" ry="8" fill="#0b203d" />
       <rect x="10" y="10" width="600" height="240" rx="8" ry="8" fill="url(#mapPcbGrid)" opacity="0.9" />
       <rect x="10" y="10" width="600" height="240" rx="8" ry="8"
-        fill="none" stroke="rgba(0,160,80,0.14)" strokeWidth="1.5" />
+        fill="none" stroke="rgba(94,234,212,0.36)" strokeWidth="1.5" />
 
       {/* Section dividers */}
       <line x1="18" y1="55" x2="602" y2="55" stroke="rgba(0,200,100,0.07)" strokeWidth="1" />
       <line x1="18" y1="175" x2="602" y2="175" stroke="rgba(0,200,100,0.07)" strokeWidth="1" />
 
       {/* Silkscreen labels */}
-      <text x="18" y="14" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" letterSpacing="1" style={{ pointerEvents: 'none' }}>
-        {'LD15                                                    LD0'}
+      <text x="20" y="23" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9"
+        fill="#93a9c3" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
+        LED OUTPUTS
       </text>
-      <text x="18" y="192" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" letterSpacing="1" style={{ pointerEvents: 'none' }}>
-        {'SW15                                                    SW0'}
+      <text x="20" y="185" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9"
+        fill="#93a9c3" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
+        SLIDE SWITCH INPUTS
       </text>
-      <text x="18" y="118" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" style={{ pointerEvents: 'none' }}>BTN</text>
+      <text x="20" y="118" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9"
+        fill="#93a9c3" style={{ pointerEvents: 'none' }}>BUTTONS</text>
 
       {/* === 100 MHz oscillator / system clock === */}
       <g
@@ -148,34 +203,31 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
       >
         <rect
           data-testid="ide-hw-map-clock"
-          x="248"
-          y="24"
-          width="124"
-          height="30"
+          data-resource-state={resourceVisualState('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+          x="322"
+          y="-37"
+          width="272"
+          height="26"
           rx="6"
           fill={regionFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
           stroke={regionStroke('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-          strokeWidth={'CLK100MHZ' === highlightedAlias ? '2.4' : assignmentMode && isAllowed('CLK100MHZ', allowedAliases) ? '1.6' : '1'}
-          className={'CLK100MHZ' === highlightedAlias ? 'map-hl' : undefined}
+          strokeWidth={regionStrokeWidth('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+          className={resourceClassName(resourceVisualState('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode))}
         />
         <rect
           data-testid="ide-hw-map-clock-hit"
-          x="240"
-          y="18"
-          width="140"
-          height="42"
+          x="314"
+          y="-44"
+          width="288"
+          height="38"
           rx="8"
           fill="transparent"
         />
-        <text x="310" y="36" fontFamily="IBM Plex Mono, monospace" fontSize="8"
+        <text data-testid="ide-hw-map-clock-alias" data-board-alias="CLK100MHZ" data-board-alias-kind="clock"
+          x="458" y="-24" className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace" fontSize="13"
           fill={labelFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
           textAnchor="middle" style={{ pointerEvents: 'none' }}>
-          CLK100MHZ
-        </text>
-        <text x="310" y="47" fontFamily="IBM Plex Mono, monospace" fontSize="6.5"
-          fill={labelFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-          textAnchor="middle" style={{ pointerEvents: 'none' }}>
-          W5 100MHz
+          CLK100MHZ · W5 · 100 MHz
         </text>
       </g>
 
@@ -184,20 +236,20 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         fill="url(#mapChipGrad)" stroke="rgba(0,180,150,0.22)" strokeWidth="1.5" />
       <rect x="242" y="82" width="136" height="96" rx="4" ry="4"
         fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-      <text x="310" y="117" fontFamily="IBM Plex Mono, monospace" fontSize="8"
-        fill="rgba(0,180,150,0.35)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+      <text x="310" y="117" className={styles.secondaryLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10"
+        fill="#5eead4" textAnchor="middle" style={{ pointerEvents: 'none' }}>
         ARTIX-7
       </text>
-      <text x="310" y="130" fontFamily="IBM Plex Mono, monospace" fontSize="6.5"
-        fill="rgba(0,180,150,0.22)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+      <text x="310" y="132" className={styles.secondaryLabel} fontFamily="IBM Plex Mono, monospace" fontSize="8.5"
+        fill="#6fa9aa" textAnchor="middle" style={{ pointerEvents: 'none' }}>
         XC7A35T-1CPG236C
       </text>
 
       {/* === 7-Segment Display === */}
       <rect x="396" y="72" width="144" height="118" rx="6" ry="6"
         fill="rgba(0,0,0,0.55)" stroke="rgba(255,200,0,0.25)" strokeWidth="1" />
-      <text x="468" y="83" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(255,200,0,0.55)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+      <text x="468" y="86" className={styles.secondaryLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9.5"
+        fill="#f9cf74" textAnchor="middle" style={{ pointerEvents: 'none' }}>
         7-SEG
       </text>
 
@@ -212,6 +264,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             <rect
               key={`${an}-${seg.alias}`}
               data-testid={`ide-hw-map-seg-${seg.alias.toLowerCase()}-${an.toLowerCase()}`}
+              data-resource-state={resourceVisualState(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               x={cx + seg.dx}
               y={cy + seg.dy}
               width={seg.w}
@@ -219,9 +272,9 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               rx={seg.rx}
               fill={regionFill(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               stroke={regionStroke(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-              strokeWidth={assignmentMode && isAllowed(seg.alias, allowedAliases) ? '0.9' : '0.5'}
+              strokeWidth={regionStrokeWidth(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, true)}
               style={boardCursor(seg.alias, allowedAliases)}
-              className={seg.alias === highlightedAlias ? 'map-hl' : undefined}
+              className={resourceClassName(resourceVisualState(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode))}
               onClick={() => selectAllowed(seg.alias, allowedAliases, onSelectAlias)}
             />
           ))}
@@ -229,20 +282,22 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
           {/* Decimal point */}
           <circle
             data-testid={`ide-hw-map-dp-${an.toLowerCase()}`}
+            data-resource-state={resourceVisualState('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
             cx={cx + 14}
             cy={cy + 15}
             r={3}
             fill={regionFill('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
             stroke={regionStroke('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-            strokeWidth={assignmentMode && isAllowed('DP', allowedAliases) ? '0.9' : '0.5'}
+            strokeWidth={regionStrokeWidth('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, true)}
             style={boardCursor('DP', allowedAliases)}
-            className={'DP' === highlightedAlias ? 'map-hl' : undefined}
+            className={resourceClassName(resourceVisualState('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode))}
             onClick={() => selectAllowed('DP', allowedAliases, onSelectAlias)}
           />
 
           {/* Digit-enable (AN) region */}
           <rect
             data-testid={`ide-hw-map-${an.toLowerCase()}`}
+            data-resource-state={resourceVisualState(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
             x={cx - 14}
             y={cy + 22}
             width={28}
@@ -250,16 +305,19 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             rx={3}
             fill={regionFill(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
             stroke={regionStroke(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-            strokeWidth={assignmentMode && isAllowed(an, allowedAliases) ? '1.2' : '0.8'}
+            strokeWidth={regionStrokeWidth(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, true)}
             style={boardCursor(an, allowedAliases)}
-            className={an === highlightedAlias ? 'map-hl' : undefined}
+            className={resourceClassName(resourceVisualState(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode))}
             onClick={() => selectAllowed(an, allowedAliases, onSelectAlias)}
           />
           <text
             x={cx}
-            y={cy + 31}
+            y={cy + 32}
+            data-board-alias={an}
+            data-board-alias-kind="display-enable"
+            className={styles.aliasLabel}
             fontFamily="IBM Plex Mono, monospace"
-            fontSize="6"
+            fontSize="9.5"
             fill={labelFill(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
             textAnchor="middle"
             style={{ pointerEvents: 'none' }}
@@ -275,15 +333,17 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         const alias = `LD${idx}`;
         const cx = 10 + 20 + i * 36 + 18;
         const cy = 40;
+        const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
         return (
           <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
             <circle
               data-testid={`ide-hw-map-ld-${idx}`}
+              data-resource-state={state}
               cx={cx} cy={cy} r={7}
               fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-              strokeWidth={alias === highlightedAlias ? '2.4' : assignmentMode && isAllowed(alias, allowedAliases) ? '1.6' : '1'}
-              className={alias === highlightedAlias ? 'map-hl' : undefined}
+              strokeWidth={regionStrokeWidth(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+              className={resourceClassName(state)}
             />
             {/* expanded hitbox */}
             <circle
@@ -293,7 +353,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               r={16}
               fill="transparent"
             />
-            <text x={cx} y={58} fontSize={7} fontFamily="IBM Plex Mono, monospace"
+            <text data-testid={`ide-hw-map-ld-${idx}-alias`} data-board-alias={alias} data-board-alias-kind="led"
+              x={cx} y={65} fontSize={12} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
               fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               textAnchor="middle" style={{ pointerEvents: 'none' }}>
               {alias}
@@ -303,31 +364,36 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
       })}
 
       {/* === Buttons === */}
-      {BTN_DEFS.map(({ cx, cy, alias, label }) => (
-        <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
-          <circle
-            data-testid={`ide-hw-map-btn-${label.toLowerCase()}`}
-            cx={cx} cy={cy} r={9}
-            fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-            stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-            strokeWidth={alias === highlightedAlias ? '2.4' : assignmentMode && isAllowed(alias, allowedAliases) ? '1.6' : '1'}
-            className={alias === highlightedAlias ? 'map-hl' : undefined}
-          />
-          {/* expanded hitbox */}
-          <circle
-            data-testid={`ide-hw-map-btn-${label.toLowerCase()}-hit`}
-            cx={cx}
-            cy={cy}
-            r={18}
-            fill="transparent"
-          />
-          <text x={cx} y={cy + 22} fontSize={7} fontFamily="IBM Plex Mono, monospace"
-            fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-            textAnchor="middle" style={{ pointerEvents: 'none' }}>
-            {alias}
-          </text>
-        </g>
-      ))}
+      {BTN_DEFS.map(({ cx, cy, alias, label, labelX, labelY }) => {
+        const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
+        return (
+          <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
+            <circle
+              data-testid={`ide-hw-map-btn-${label.toLowerCase()}`}
+              data-resource-state={state}
+              cx={cx} cy={cy} r={9}
+              fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+              stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+              strokeWidth={regionStrokeWidth(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+              className={resourceClassName(state)}
+            />
+            {/* expanded hitbox */}
+            <circle
+              data-testid={`ide-hw-map-btn-${label.toLowerCase()}-hit`}
+              cx={cx}
+              cy={cy}
+              r={18}
+              fill="transparent"
+            />
+            <text data-testid={`ide-hw-map-btn-${label.toLowerCase()}-alias`} data-board-alias={alias} data-board-alias-kind="button"
+              x={labelX} y={labelY} fontSize={11} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
+              fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+              textAnchor="middle" style={{ pointerEvents: 'none' }}>
+              {alias}
+            </text>
+          </g>
+        );
+      })}
 
       {/* === Switches === */}
       {Array.from({ length: 16 }, (_, i) => {
@@ -338,21 +404,24 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         const trackY = 188;
         const trackW = 14;
         const trackH = 22;
+        const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode);
         return (
           <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
             <rect
               data-testid={`ide-hw-map-sw-${idx}`}
+              data-resource-state={state}
               x={trackX} y={trackY} width={trackW} height={trackH} rx={4}
               fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
-              strokeWidth={alias === highlightedAlias ? '2.4' : assignmentMode && isAllowed(alias, allowedAliases) ? '1.6' : '1'}
-              className={alias === highlightedAlias ? 'map-hl' : undefined}
+              strokeWidth={regionStrokeWidth(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+              className={resourceClassName(state)}
             />
             {/* expanded hitbox */}
             <rect data-testid={`ide-hw-map-sw-${idx}-hit`}
               x={trackX - 11} y={trackY - 8} width={trackW + 22} height={trackH + 16}
               rx={6} fill="transparent" />
-            <text x={centerX} y={220} fontSize={7} fontFamily="IBM Plex Mono, monospace"
+            <text data-testid={`ide-hw-map-sw-${idx}-alias`} data-board-alias={alias} data-board-alias-kind="switch"
+              x={centerX} y={230} fontSize={12} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"
               fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               style={{ pointerEvents: 'none' }}>

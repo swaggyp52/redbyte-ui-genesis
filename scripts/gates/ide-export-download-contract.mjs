@@ -88,6 +88,6 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   assert(/Vivado/i.test(readmePreview ?? ''), 'README preview must retain downstream Vivado guidance');
 
   const checklist = await page.locator('[data-testid="ide-export-upstream-readiness"]').first().textContent();
-  assert(/Pin mapping|Map Pins/i.test(checklist ?? ''), 'readiness details must retain mapping status');
+  assert(/Board & Constraints/i.test(checklist ?? ''), 'readiness details must retain Board & Constraints status');
 });
 

@@ -10,6 +10,13 @@ const VIEWPORTS = [
   { width: 1440, height: 900, label: '1440x900' },
 ];
 
+const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
+  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-overflow-fit'],
+  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
+]);
+
 const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR)
   : null;
@@ -41,24 +48,24 @@ await runIdeGate('IDE workbench stability overhaul satisfied', async ({ page, ba
     await loadStarterProject(page, { exactExampleId: 'logic-gates' });
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
     await page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 15000 });
-    await page.waitForSelector('[data-testid="ide-design-canvas-view-tools"]', { timeout: 15000 });
+    await waitForCameraAccess(page);
     await capture(page, viewport, '02-design-loaded');
     await assertCleanWorkbench(page, viewport, 'Design after starter load');
     await assertDirectDesignControls(page, viewport);
 
-    await page.locator('[data-testid="ide-design-zoom-reset"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-reset');
     await page.waitForTimeout(200);
     const resetZoom = await readZoomIndicator(page);
 
-    await page.locator('[data-testid="ide-design-zoom-out"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-out');
     const zoomedOut = await waitForZoomChange(page, resetZoom);
     await assertCleanWorkbench(page, viewport, 'Design after direct zoom out');
 
-    await page.locator('[data-testid="ide-design-zoom-in"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-in');
     await waitForZoomChange(page, zoomedOut);
     await assertCleanWorkbench(page, viewport, 'Design after direct zoom in');
 
-    await page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first().click();
+    await clickCanvasTool(page, 'ide-design-fit-circuit-canvas');
     await page.waitForTimeout(200);
     await assertCleanWorkbench(page, viewport, 'Design after direct fit');
 
@@ -112,6 +119,7 @@ async function assertCleanWorkbench(page, viewport, label) {
 }
 
 async function assertDirectDesignControls(page, viewport) {
+  const usesResponsiveTools = viewport.width <= 1500;
   const state = await page.evaluate(() => {
     const isVisible = (element) => {
       if (!(element instanceof HTMLElement)) return false;
@@ -121,6 +129,7 @@ async function assertDirectDesignControls(page, viewport) {
     };
     const byTestId = (testId) => document.querySelector(`[data-testid="${testId}"]`);
     const host = byTestId('ide-design-canvas-view-tools');
+    const overflow = byTestId('ide-design-toolbar-overflow');
     const toolbar = byTestId('ide-design-toolbar');
     return {
       toggleVisible: isVisible(byTestId('ide-design-view-tools-toggle')),
@@ -129,6 +138,9 @@ async function assertDirectDesignControls(page, viewport) {
       hostOpen: host?.getAttribute('data-open') === 'true',
       hostInsideToolbar: Boolean(host && toolbar?.contains(host)),
       controlsVisible: isVisible(byTestId('ide-design-canvas-controls')),
+      overflowVisible: isVisible(overflow),
+      overflowOpen: overflow?.hasAttribute('open') ?? false,
+      overflowInsideToolbar: Boolean(overflow && toolbar?.contains(overflow)),
       directControls: Object.fromEntries(
         [
           'ide-design-zoom-out',
@@ -138,17 +150,76 @@ async function assertDirectDesignControls(page, viewport) {
           'ide-design-center-selection-canvas',
         ].map((testId) => [testId, isVisible(byTestId(testId))])
       ),
+      responsiveControls: Object.fromEntries(
+        [
+          'ide-design-overflow-zoom-out',
+          'ide-design-overflow-zoom-in',
+          'ide-design-overflow-fit',
+          'ide-design-overflow-reset',
+        ].map((testId) => [testId, Boolean(byTestId(testId))])
+      ),
     };
   });
 
   assert(!state.toggleVisible, `${viewport.label}: canvas controls must not be hidden behind a view-tools toggle`);
   assert(!state.presetsVisible, `${viewport.label}: obsolete zoom preset strip must remain absent`);
-  assert(state.hostVisible, `${viewport.label}: direct canvas view-tools host must remain visible`);
-  assert(state.hostOpen, `${viewport.label}: direct canvas view-tools host must remain open`);
   assert(state.hostInsideToolbar, `${viewport.label}: direct canvas view tools must remain inside the Design toolbar`);
-  assert(state.controlsVisible, `${viewport.label}: direct canvas controls must remain visible`);
-  for (const [testId, visible] of Object.entries(state.directControls)) {
-    assert(visible, `${viewport.label}: direct canvas control ${testId} must remain visible`);
+  if (usesResponsiveTools) {
+    assert(!state.hostVisible, `${viewport.label}: desktop camera host must yield at classroom width`);
+    assert(!state.controlsVisible, `${viewport.label}: hidden desktop controls must not occupy classroom toolbar space`);
+    assert(state.overflowVisible, `${viewport.label}: More tools must expose responsive camera controls`);
+    assert(!state.overflowOpen, `${viewport.label}: responsive camera menu must close after each action`);
+    assert(state.overflowInsideToolbar, `${viewport.label}: More tools must remain inside the Design toolbar`);
+    for (const [testId, visible] of Object.entries(state.directControls)) {
+      assert(!visible, `${viewport.label}: desktop canvas control ${testId} must not compete with More tools`);
+    }
+    for (const [testId, present] of Object.entries(state.responsiveControls)) {
+      assert(present, `${viewport.label}: responsive canvas control ${testId} must remain available`);
+    }
+  } else {
+    assert(state.hostVisible, `${viewport.label}: direct canvas view-tools host must remain visible`);
+    assert(state.hostOpen, `${viewport.label}: direct canvas view-tools host must remain open`);
+    assert(state.controlsVisible, `${viewport.label}: direct canvas controls must remain visible`);
+    assert(!state.overflowVisible, `${viewport.label}: desktop toolbar must not duplicate camera controls in More tools`);
+    for (const [testId, visible] of Object.entries(state.directControls)) {
+      assert(visible, `${viewport.label}: direct canvas control ${testId} must remain visible`);
+    }
+  }
+}
+
+async function waitForCameraAccess(page) {
+  await page.waitForFunction(() => {
+    const visible = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 1 && rect.height > 1;
+    };
+    return visible(document.querySelector('[data-testid="ide-design-canvas-view-tools"]')) ||
+      visible(document.querySelector('[data-testid="ide-design-toolbar-overflow"]'));
+  }, undefined, { timeout: 15000 });
+}
+
+async function clickCanvasTool(page, primaryTestId) {
+  const primary = page.locator(`[data-testid="${primaryTestId}"]`).first();
+  if (await primary.isVisible().catch(() => false)) {
+    await primary.click();
+    return;
+  }
+
+  const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
+  assert(Boolean(responsiveTestId), `missing responsive camera mapping for ${primaryTestId}`);
+  const overflow = page.locator('[data-testid="ide-design-toolbar-overflow"]').first();
+  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: More tools must be visible`);
+  const wasOpen = (await overflow.getAttribute('open')) !== null;
+  if (!wasOpen) await overflow.locator('summary').click();
+
+  const responsive = page.locator(`[data-testid="${responsiveTestId}"]`).first();
+  await responsive.waitFor({ state: 'visible', timeout: 5000 });
+  await responsive.click();
+
+  if (!wasOpen && (await overflow.getAttribute('open')) !== null) {
+    await overflow.locator('summary').click();
   }
 }
 

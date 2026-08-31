@@ -4650,6 +4650,121 @@ details[open] summary .details-arrow {
   pointer-events: none;
 }
 
+/* Bus word lanes — vector readout above the waveform (dark instrument strip) */
+.ide-verify-bus-words {
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid rgba(56,189,248,0.16);
+  background: linear-gradient(180deg, rgba(6,16,30,0.9), rgba(3,8,16,0.9));
+  font-family: var(--ide-font-mono, ui-monospace, monospace);
+}
+.ide-verify-bus-words-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ide-verify-bus-words-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(120,180,230,0.7);
+}
+.ide-verify-bus-words-hint {
+  font-size: 9px;
+  color: rgba(120,180,230,0.45);
+}
+.ide-verify-bus-words-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ide-verify-bus-word-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 132px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(56,189,248,0.18);
+  background: rgba(4,12,24,0.66);
+}
+.ide-verify-bus-word-lane.is-output {
+  border-color: rgba(46,196,182,0.24);
+}
+.ide-verify-bus-word-id {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-verify-bus-word-id code {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(180,210,240,0.92);
+}
+.is-output .ide-verify-bus-word-id code {
+  color: rgba(150,224,214,0.92);
+}
+.ide-verify-bus-word-dir {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(120,170,215,0.55);
+}
+.ide-verify-bus-word-value {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.ide-verify-bus-word-value strong {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: rgba(120,215,255,0.98);
+}
+.is-output .ide-verify-bus-word-value strong {
+  color: rgba(94,234,212,0.98);
+}
+.ide-verify-bus-word-value[data-known='false'] strong {
+  color: rgba(251,191,36,0.95);
+}
+.ide-verify-bus-word-detail {
+  font-size: 9px;
+  color: rgba(150,185,220,0.62);
+}
+.ide-verify-bus-word-strip {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  max-width: 260px;
+}
+.ide-verify-bus-word-cell {
+  flex: 0 0 auto;
+  min-width: 16px;
+  padding: 1px 3px;
+  border: 1px solid rgba(56,189,248,0.14);
+  border-radius: 3px;
+  background: rgba(8,18,32,0.7);
+  color: rgba(150,190,225,0.75);
+  font-family: var(--ide-font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.ide-verify-bus-word-cell.is-selected {
+  border-color: rgba(56,189,248,0.85);
+  background: rgba(56,189,248,0.2);
+  color: rgba(200,230,255,0.98);
+}
+.ide-verify-bus-word-cell.is-unknown {
+  color: rgba(251,191,36,0.85);
+  border-color: rgba(251,191,36,0.3);
+}
+
 /* ── Verify result chips ── */
 .ide-verify-chip {
   display: inline-flex;
@@ -12532,23 +12647,6 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 14px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-workspace > .ide-panel > .ide-panel-body::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 220px;
-  background:
-    linear-gradient(180deg, rgba(12, 28, 45, 0.34), transparent 85%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(77, 110, 144, 0.04) 0,
-      rgba(77, 110, 144, 0.04) 1px,
-      transparent 1px,
-      transparent 72px
-    );
-  pointer-events: none;
-}
-
 [data-ide-mode-marker='project'] .ide-project-identity-strip {
   position: relative;
   z-index: 1;
@@ -19346,21 +19444,21 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(214, 228, 242, 0.96);
+  color: var(--rb-text-secondary);
 }
 
 .ide-design-inspector-structure-hint {
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
-  color: rgba(182, 200, 218, 0.82);
+  color: var(--rb-text-muted);
 }
 
 .ide-design-inspector-next-step {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(194, 211, 229, 0.88);
+  color: var(--rb-text-secondary);
 }
 
 .ide-design-inspector-status {
@@ -19404,8 +19502,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   min-width: 0;
   padding: 10px 11px;
   border-radius: 10px;
-  border: 1px solid rgba(74, 97, 123, 0.4);
-  background: rgba(8, 15, 24, 0.72);
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
 }
 
 .ide-design-inspector-meta-label {
@@ -19413,25 +19511,25 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(142, 171, 204, 0.64);
+  color: var(--rb-text-muted);
 }
 
 .ide-design-inspector-meta-value {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 13px;
-  color: #f7fbff;
+  color: var(--rb-text-primary);
 }
 
 .ide-design-inspector-facts {
   gap: 8px;
   margin-top: 6px;
   padding-top: 10px;
-  border-top: 1px solid rgba(74, 97, 123, 0.22);
+  border-top: 1px solid var(--rb-border);
 }
 
 .ide-design-inspector-facts code {
-  color: #f7fbff;
+  color: var(--rb-text-primary);
 }
 
 .ide-design-inspector-section-stack {
@@ -19446,8 +19544,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 8px;
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(64, 88, 114, 0.35);
-  background: rgba(8, 14, 24, 0.64);
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
 }
 
 .ide-design-inspector-action-grid {
@@ -19474,7 +19572,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 3px;
   padding: 10px 11px;
   border-radius: 8px;
-  background: rgba(9, 16, 26, 0.82);
+  background: var(--rb-surface-2);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -21921,11 +22019,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 /* Inspector section title: quieter */
 [data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.09em !important;
-  color: rgba(100, 150, 195, 0.6) !important;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-secondary);
 }
 
 /* ── Diagnostics drawer: hidden unless it has actual content ── */
@@ -22301,31 +22399,41 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   opacity: 1 !important;
 }
 
-/* ── Circuit nodes: stronger presence + interaction glow ── */
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-body {
+/* ── Circuit nodes: dark canvas gets a stronger presence + interaction glow.
+   Scoped to the dark appearance so the light technical canvas keeps the
+   professional schematic fills the renderer paints via SVG attributes. ── */
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg .logic-node-body {
   fill: #0c1b2b !important;
   stroke: rgba(110,162,205,0.68) !important;
   stroke-width: 1.2 !important;
   transition: stroke 150ms ease, filter 150ms ease !important;
 }
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-header {
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg .logic-node-header {
   fill: rgba(7,15,26,0.96) !important;
   stroke: rgba(120,180,230,0.32) !important;
 }
-/* Hover: node lights up */
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-id]:hover {
+/* Hover: node lights up (dark canvas only) */
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-id]:hover {
   filter: drop-shadow(0 0 5px rgba(56,189,248,0.35)) !important;
 }
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
   stroke: rgba(100,180,255,0.88) !important;
 }
-/* Selected: distinct emphasis glow */
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] {
+/* Selected: distinct emphasis glow (dark canvas only) */
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-selected='1'] {
   filter: drop-shadow(0 0 8px rgba(46,196,182,0.5)) !important;
 }
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
   stroke: rgba(46,196,182,0.92) !important;
   stroke-width: 1.6 !important;
+}
+/* Light technical canvas: restrained hover/selection, no neon drop-shadow. */
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+  stroke: #7c3aed !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+  stroke: #2563eb !important;
+  stroke-width: 1.8 !important;
 }
 
 /* ── Wires: higher contrast, hover emphasis ── */
@@ -23656,7 +23764,6 @@ select:focus-visible {
 
 /* ── 9. Section title consistency across all surfaces ──────── */
 .ide-panel-section-title,
-.ide-inspector-title,
 .ide-workbench-placeholder-header h3,
 .ide-workbench-console-header h4 {
   font-size: 9px !important;
@@ -23828,27 +23935,6 @@ button:disabled,
 }
 
 /* Labels: clearly secondary */
-.ide-verify-zoom-label {
-  font-size: 9px !important;
-  opacity: 0.42 !important;
-  letter-spacing: 0.05em !important;
-  text-transform: uppercase !important;
-}
-
-/* Zoom/range buttons: compact */
-.ide-verify-zoom-btn {
-  font-size: 10px !important;
-  padding: 2px 7px !important;
-  min-height: 22px !important;
-  border-radius: 4px !important;
-  opacity: 0.72 !important;
-  transition: opacity 100ms ease, background 100ms ease !important;
-}
-.ide-verify-zoom-btn:hover {
-  opacity: 1 !important;
-  background: rgba(56,189,248,0.1) !important;
-}
-
 /* Cursor controls: left-border separation */
 .ide-verify-cursor-controls {
   border-left: 1px solid rgba(56,189,248,0.08) !important;
@@ -24483,9 +24569,18 @@ button:disabled,
 }
 
 /* ── Design palette: compact drawer, not sprawling panel ───── */
-/* Hide verbose descriptions — glyph + title only */
+/* The subtitle line carries the compact port interface (e.g. "a, b → out"),
+   kept to one ellipsized line; verbose prose lives in the card tooltip. */
 [data-ide-mode-marker='design'] .ide-palette-card-subtitle {
-  display: none !important;
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+[data-ide-mode-marker='design'] .ide-design-component-tile-title {
+  text-wrap: balance;
 }
 [data-ide-mode-marker='design'] .ide-palette-card {
   padding: 6px 8px !important;
@@ -24652,30 +24747,31 @@ button:disabled,
 
 /* ── A4. Waveform controls bar: tighter, cleaner ─────────────── */
 .ide-verify-zoom-label {
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  opacity: 0.38 !important;
-  margin-right: 2px !important;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 1;
+  margin-right: 2px;
 }
 .ide-verify-zoom-btn {
-  font-size: 11px !important;
-  min-height: 24px !important;
-  padding: 2px 8px !important;
-  border-radius: 4px !important;
-  background: rgba(30,41,59,0.6) !important;
-  border: 1px solid rgba(56,189,248,0.1) !important;
-  color: rgba(148,163,184,0.8) !important;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #202a37;
+  border: 1px solid #526173;
+  color: #f2f5f8;
+  opacity: 1;
 }
 .ide-verify-zoom-btn:hover {
-  background: rgba(30,41,59,0.9) !important;
-  color: rgba(186,230,253,0.95) !important;
+  background: #2b3848;
+  color: #ffffff;
 }
 .ide-verify-zoom-btn.is-active {
-  background: rgba(56,189,248,0.12) !important;
-  border-color: rgba(56,189,248,0.35) !important;
-  color: rgba(186,230,253,0.95) !important;
+  background: #2b3848;
+  border-color: #93a4b8;
+  color: #ffffff;
 }
 
 /* ── A4. Scope header: unified instrument band ───────────────── */
@@ -31078,17 +31174,14 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-selection-warnings {
   padding: 16px !important;
   border-radius: 16px !important;
-  border: 1px solid rgba(79, 114, 145, 0.18) !important;
-  background:
-    linear-gradient(180deg, rgba(10, 18, 30, 0.92), rgba(7, 13, 22, 0.96)) !important;
+  border: 1px solid var(--rb-border) !important;
+  background: var(--rb-surface) !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-identity-card,
 [data-ide-mode-marker='design'] .ide-design-inspector-empty-card,
 [data-ide-mode-marker='design'] .ide-design-replay-context-card {
-  box-shadow:
-    0 18px 32px rgba(1, 6, 12, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
+  box-shadow: var(--rb-shadow-panel) !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-identity-row {
@@ -31107,7 +31200,7 @@ button:disabled,
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(79, 114, 145, 0.2);
+  border-top: 1px solid var(--rb-border);
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-header,
@@ -31123,11 +31216,11 @@ button:disabled,
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(222, 236, 249, 0.92);
+  color: var(--rb-text-primary);
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-kicker {
-  color: rgba(130, 165, 198, 0.78);
+  color: var(--rb-text-muted);
   font-size: 10px;
 }
 
@@ -31139,9 +31232,9 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-row {
   min-width: 0;
   padding: 7px 8px;
-  border: 1px solid rgba(79, 114, 145, 0.18);
+  border: 1px solid var(--rb-border);
   border-radius: 10px;
-  background: rgba(7, 13, 22, 0.72);
+  background: var(--rb-surface-2);
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-label {
@@ -31149,7 +31242,7 @@ button:disabled,
   align-items: center;
   gap: 6px;
   min-width: 0;
-  color: rgba(220, 232, 245, 0.86);
+  color: var(--rb-text-secondary);
   font-size: 11px;
 }
 
@@ -31159,16 +31252,16 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-label strong {
-  color: rgba(239, 247, 255, 0.94);
+  color: var(--rb-text-primary);
   letter-spacing: 0.03em;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-label span {
-  color: rgba(156, 182, 207, 0.8);
+  color: var(--rb-text-secondary);
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-label code {
-  color: rgba(125, 211, 252, 0.9);
+  color: var(--rb-action);
   font-size: 10px;
 }
 
@@ -31179,15 +31272,15 @@ button:disabled,
   min-width: 24px;
   min-height: 24px;
   border-radius: 999px;
-  border: 1px solid rgba(125, 211, 252, 0.25);
-  background: rgba(14, 27, 43, 0.92);
-  color: rgba(239, 247, 255, 0.96);
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-3);
+  color: var(--rb-text-primary);
   font-weight: 800;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-proof-boundary {
   margin: 0;
-  color: rgba(190, 210, 230, 0.78);
+  color: var(--rb-text-secondary);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -31623,31 +31716,31 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-inspector-subtitle {
   font-size: 13px !important;
-  color: rgba(150, 190, 225, 0.72) !important;
+  color: var(--rb-text-secondary) !important;
   line-height: 1.4 !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-next-step {
   font-size: 13px !important;
-  color: rgba(150, 190, 225, 0.72) !important;
+  color: var(--rb-text-secondary) !important;
   line-height: 1.5 !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-live-summary .ide-kv-row > span:first-child {
-  color: rgba(130, 165, 200, 0.72) !important;
+  color: var(--rb-text-secondary) !important;
   font-size: 12px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-live-summary .ide-kv-row > span:last-child,
 [data-ide-mode-marker='design'] .ide-design-live-summary .ide-kv-row > code {
-  color: rgba(200, 228, 255, 0.88) !important;
+  color: var(--rb-text-primary) !important;
   font-size: 12px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-identity-card strong[data-testid='ide-design-inspector-identity-title'] {
   font-size: 14px !important;
   font-weight: 700 !important;
-  color: rgba(228, 244, 255, 0.96) !important;
+  color: var(--rb-text-primary) !important;
   line-height: 1.25 !important;
 }
 
@@ -31660,11 +31753,11 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 9px !important;
-  letter-spacing: 0.12em !important;
-  font-weight: 800 !important;
-  color: rgba(120, 160, 200, 0.6) !important;
-  text-transform: uppercase !important;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  font-weight: 750;
+  color: var(--rb-text-secondary);
+  text-transform: none;
 }
 
 /* ── Verify: Signal rail — compact overhaul ──────────────────────────────── */

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { assert, ensureVerifyVectorsReady, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { selectFirstVisibleDesignNode } from './_workbenchReconstructionHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function clickVerifyRun(page) {
@@ -38,15 +39,14 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   }
 
-  const designInspector = page.locator('[data-testid="ide-design-inspector-canvas-default"]').first();
-  const designSelectionInspector = page.locator('[data-testid="ide-design-selection-inspector"]').first();
-  const designContextInspector = page.locator('[data-testid="ide-design-context-inspector"]').first();
-  const designInspectorVisible = await designInspector.isVisible().catch(() => false);
-  const designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
-  const designContextVisible = await designContextInspector.isVisible().catch(() => false);
   assert(
-    designInspectorVisible || designSelectionVisible || designContextVisible,
-    'design surface must render stable inspector content after starter load',
+    (await page.locator('[data-testid="ide-right-dock"]').count()) === 0,
+    'idle Design must keep the empty Inspector out of the circuit workspace',
+  );
+  await selectFirstVisibleDesignNode(page);
+  assert(
+    await page.locator('[data-testid="ide-design-selection-inspector"]').first().isVisible().catch(() => false),
+    'selecting a circuit object must reveal its contextual Design Inspector',
   );
 
   // 2. Verify: generate basics -> run -> PASS/FAIL banner
@@ -155,6 +155,13 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const hardwarePanel = page.locator('[data-testid="ide-hardware-panel"]').first();
   assert(await visible(hardwarePanel), 'hardware panel must be visible');
 
+  const firstMappedSignal = page.locator('[data-testid^="ide-hw-map-row-signal-"]').first();
+  await firstMappedSignal.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    /Artifact port:/i.test((await firstMappedSignal.textContent()) ?? ''),
+    'Board & Constraints must label artifact-port identity separately from the logical signal and physical resource',
+  );
+
   const afterMappingTools = page.locator('[data-testid="ide-hw-after-mapping-tools"]').first();
   await afterMappingTools.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -164,33 +171,70 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     'hardware mode toggle must be visible',
   );
 
-  // 4b. Hardware — proof mode must surface the Program handoff contract.
-  // After switching to Proof tab, the IDE must render one of:
-  //   ide-hardware-program-handoff-cta  — when verify PASS + export CURRENT (happy path)
-  //   ide-hardware-readiness-callout    — when prerequisites are still missing (callout in console)
-  //   ide-hardware-command-strip        — always present, encodes current status + next action
-  // All three encode the Build → Verify → Export → Program trust chain.
-  await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
-  await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { state: 'visible', timeout: 5000 });
+  // 4b. Hardware — after clicking Pre-flight, require proof-only active-mode
+  // evidence. The readiness callout is an alternative only when it names an
+  // unmet prerequisite. The always-present command strip and workflow ribbon
+  // cannot prove transition.
+  const proofModeButton = page.locator('[data-testid="ide-hw-mode-btn-proof"]').first();
+  await proofModeButton.click();
+  await page.waitForFunction(() => {
+    const isVisibleElement = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(element);
+      return element.getClientRects().length > 0 && style.visibility !== 'hidden';
+    };
+    const proofButton = document.querySelector('[data-testid="ide-hw-mode-btn-proof"]');
+    const proofVerdict = document.querySelector('[data-testid="ide-hw-proof-verdict"]');
+    const proofDock = document.querySelector('[data-testid="ide-hw-proof-dock"]');
+    const proofStage = document.querySelector('[data-testid="ide-hw-board-chrome-stage"]');
+    const readinessCallout = document.querySelector('[data-testid="ide-hardware-readiness-callout"]');
+    const readinessText = readinessCallout?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    const proofSpecificState =
+      proofButton?.getAttribute('aria-selected') === 'true' &&
+      (isVisibleElement(proofVerdict) ||
+        isVisibleElement(proofDock) ||
+        (isVisibleElement(proofStage) && /Pre-flight/i.test(proofStage.textContent ?? '')));
+    const explicitPrerequisite =
+      isVisibleElement(readinessCallout) &&
+      !/^E0 handoff ready\b/i.test(readinessText) &&
+      /blocked|cannot|different|incomplete|locked|missing|must|needs?|not run|required|repair|re-?run|stale/i.test(
+        readinessText,
+      );
+    return proofButton?.getAttribute('aria-selected') === 'true' &&
+      (proofSpecificState || explicitPrerequisite);
+  }, undefined, { timeout: 5000 });
 
-  const hasProgramCta = await page
-    .locator('[data-testid="ide-hardware-program-handoff-cta"]')
+  const proofModeSelected = (await proofModeButton.getAttribute('aria-selected')) === 'true';
+  const hasProofVerdict = await page
+    .locator('[data-testid="ide-hw-proof-verdict"]')
     .first()
     .isVisible()
     .catch(() => false);
-  const hasReadinessCallout = await page
-    .locator('[data-testid="ide-hardware-readiness-callout"]')
+  const hasProofDock = await page
+    .locator('[data-testid="ide-hw-proof-dock"]')
     .first()
     .isVisible()
     .catch(() => false);
-  const hasCommandStrip = await page
-    .locator('[data-testid="ide-hardware-command-strip"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
+  const proofStage = page.locator('[data-testid="ide-hw-board-chrome-stage"]').first();
+  const hasProofStage =
+    (await proofStage.isVisible().catch(() => false)) &&
+    /Pre-flight/i.test((await proofStage.textContent().catch(() => '')) ?? '');
+  const readinessCallout = page.locator('[data-testid="ide-hardware-readiness-callout"]').first();
+  const readinessCalloutVisible = await readinessCallout.isVisible().catch(() => false);
+  const readinessText = ((await readinessCallout.textContent().catch(() => '')) ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const hasExplicitPrerequisite =
+    readinessCalloutVisible &&
+    !/^E0 handoff ready\b/i.test(readinessText) &&
+    /blocked|cannot|different|incomplete|locked|missing|must|needs?|not run|required|repair|re-?run|stale/i.test(
+      readinessText,
+    );
   assert(
-    hasProgramCta || hasReadinessCallout || hasCommandStrip,
-    'proof mode must show either the program handoff CTA or a prerequisite blocker — ' +
-    'the Build → Verify → Export → Program path must be represented',
+    proofModeSelected &&
+      (hasProofVerdict || hasProofDock || hasProofStage || hasExplicitPrerequisite),
+    'Pre-flight must become active with proof-specific workspace evidence, or show an explicit ' +
+      `prerequisite blocker; selected=${proofModeSelected}, verdict=${hasProofVerdict}, ` +
+      `dock=${hasProofDock}, stage=${hasProofStage}, readiness="${readinessText}"`,
   );
 });

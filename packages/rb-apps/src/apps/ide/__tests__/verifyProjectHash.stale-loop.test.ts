@@ -29,6 +29,10 @@ import {
 import type { RBProject } from '../../../export/projectFormat';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { buildClockHelperVectors } from '../clockAuthority';
+import {
+  createEmptyProjectHierarchy,
+  createModuleFromSelection,
+} from '../projectHierarchy';
 import { deriveVerifyCurrent, deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 import { useProjectRuntime } from '../projectRuntime';
 import {
@@ -306,6 +310,79 @@ describe('verify stale-loop regression — id-bearing vectors', () => {
     expect(run.evidence?.circuitHash).toBeTruthy();
     expect(expectedIo.source).toBe('verify-run');
     expect(expectedIo.verifyHash).toBe(run.deterministicHash);
+    expect(viewModel.exportedScenario?.isStaleComparedToLastPass).toBe(false);
+    expect(viewModel.artifacts.find((artifact) => artifact.path === 'testbench.vhd')?.note)
+      .toContain('verified PASS');
+  });
+
+  it('keeps a just-completed hierarchical run current in generated testbench provenance', () => {
+    const hierarchyFixture = createModuleFromSelection(
+      {
+        nodes: [
+          { id: 'a_node', type: 'INPUT', label: 'A', position: { x: 0, y: 0 } },
+          { id: 'b_node', type: 'INPUT', label: 'B', position: { x: 0, y: 120 } },
+          { id: 'xor_node', type: 'XOR', label: 'XOR', position: { x: 200, y: 40 } },
+          { id: 'and_node', type: 'AND', label: 'AND', position: { x: 380, y: 40 } },
+          { id: 'out_node', type: 'OUTPUT', label: 'Y', position: { x: 580, y: 40 } },
+        ],
+        connections: [
+          { from: { nodeId: 'a_node', portName: 'out' }, to: { nodeId: 'xor_node', portName: 'a' } },
+          { from: { nodeId: 'b_node', portName: 'out' }, to: { nodeId: 'xor_node', portName: 'b' } },
+          { from: { nodeId: 'xor_node', portName: 'out' }, to: { nodeId: 'and_node', portName: 'a' } },
+          { from: { nodeId: 'b_node', portName: 'out' }, to: { nodeId: 'and_node', portName: 'b' } },
+          { from: { nodeId: 'and_node', portName: 'out' }, to: { nodeId: 'out_node', portName: 'in' } },
+        ],
+      },
+      createEmptyProjectHierarchy(),
+      {
+        moduleName: 'LogicStage',
+        instanceName: 'logic0',
+        selectedNodeIds: ['xor_node', 'and_node'],
+        nowIso: '2026-08-08T17:00:00.000Z',
+      }
+    );
+    const project: RBProject = {
+      ...buildCombinationalFixture(),
+      name: 'Hierarchy Verify Freshness',
+      circuit: hierarchyFixture.circuit,
+      hierarchy: hierarchyFixture.hierarchy,
+      ioMapping: {
+        inputs: [
+          { id: 'a', nodeId: 'a_node', port: 'out', label: 'A', pin: 'SW0' },
+          { id: 'b', nodeId: 'b_node', port: 'out', label: 'B', pin: 'SW1' },
+        ],
+        outputs: [{ id: 'y', nodeId: 'out_node', port: 'in', label: 'Y', pin: 'LD0' }],
+      },
+      vectors: [
+        { id: 'case-0', tick: 0, inputs: { a: 0, b: 0 }, expected: { y: 0 } },
+        { id: 'case-1', tick: 1, inputs: { a: 0, b: 1 }, expected: { y: 1 } },
+      ],
+    };
+    useProjectRuntime.getState().loadFromProject(project);
+
+    const state = useProjectRuntime.getState();
+    const scenario = state.scenarios.find((entry) => entry.id === state.activeScenarioId)!;
+    const vectors = materializeScenarioVectors(scenario);
+    const run = state.runVerification({
+      scenarioId: scenario.id,
+      scenarioName: scenario.name,
+      scenarioVersion: scenario.version,
+      scenarioContentHash: computeScenarioContentHash(scenario),
+      scenarioStimulusHash: computeExecutionStimulusHash(vectors),
+      deterministicHash: 'hierarchy-export-currentness',
+      assertionMode: true,
+      vectors,
+      rows: [],
+      ranAtIso: '2026-08-08T17:05:00.000Z',
+    });
+    const projectedProject: RBProject = {
+      ...project,
+      circuit: state.circuit,
+      hierarchy: state.hierarchy,
+      vectors,
+    };
+    const viewModel = buildExportViewModel(projectedProject, run, scenario);
+
     expect(viewModel.exportedScenario?.isStaleComparedToLastPass).toBe(false);
     expect(viewModel.artifacts.find((artifact) => artifact.path === 'testbench.vhd')?.note)
       .toContain('verified PASS');

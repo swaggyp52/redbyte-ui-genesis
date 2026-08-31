@@ -26,6 +26,31 @@ export function assertBuildFreshReplacementDialog(message, label = 'Build Fresh 
   assert(/local saved projects stay available/i.test(message), `${label} must say local saved projects stay available, got "${message}"`);
 }
 
+export async function assertBuildFreshReplacementModal(page, label = 'Build Fresh replacement modal') {
+  const dialog = page.locator('[data-testid="ide-project-build-fresh-dialog"]').first();
+  await dialog.waitFor({ state: 'visible', timeout: 5000 });
+
+  const dialogText = (await dialog.innerText()).replace(/\s+/g, ' ').trim();
+  assert(/start a new blank project/i.test(dialogText), `${label} must name the blank-project action, got "${dialogText}"`);
+  assert(
+    /current project will remain unchanged until you confirm/i.test(dialogText),
+    `${label} must keep the current project unchanged before confirmation, got "${dialogText}"`
+  );
+  assert(
+    /save or download a backup/i.test(dialogText),
+    `${label} must offer a save or download recovery path, got "${dialogText}"`
+  );
+
+  const cancel = dialog.locator('[data-testid="ide-project-build-fresh-cancel"]').first();
+  const confirm = dialog.locator('[data-testid="ide-project-build-fresh-confirm"]').first();
+  assert(await visible(cancel), `${label} must expose Cancel`);
+  assert(await visible(confirm), `${label} must expose Start blank project`);
+  assert(/start blank project/i.test(await confirm.innerText()), `${label} confirm action must name the result`);
+
+  await cancel.click();
+  await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+}
+
 export async function loadStarterProject(page, options = {}) {
   const { preferredLabStarterTestId, exactExampleId } = options;
 
@@ -107,16 +132,31 @@ async function loadExactExample(page, exampleId) {
 }
 
 async function openStarterCatalogIfPresent(page) {
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  // The loaded v3 Project workspace exposes "Change project" as a contextual
+  // action (ide-project-context-change); the legacy toolbar copy can sit in a
+  // hidden dock panel. Prefer whichever is actually visible, and await the
+  // revealed Open Starter action instead of sampling it instantly.
+  const legacyChange = page.locator('[data-testid="ide-project-change-project"]').first();
+  const contextChange = page.locator('[data-testid="ide-project-context-change"]').first();
   const initialCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-  if (
-    (await changeProject.isVisible().catch(() => false)) &&
-    !(await initialCatalog.isVisible().catch(() => false))
-  ) {
-    await clickLocatorElement(changeProject);
-    const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
-    if (await courseStarter.isVisible().catch(() => false)) {
-      await clickLocatorElement(courseStarter);
+  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const catalogAlreadyVisible =
+    (await initialCatalog.isVisible().catch(() => false)) ||
+    (await examplesDisclosure.isVisible().catch(() => false));
+  if (!catalogAlreadyVisible) {
+    let changeProject = null;
+    if (await contextChange.isVisible().catch(() => false)) {
+      changeProject = contextChange;
+    } else if (await legacyChange.isVisible().catch(() => false)) {
+      changeProject = legacyChange;
+    }
+    if (changeProject) {
+      await clickLocatorElement(changeProject);
+      const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
+      await courseStarter.waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
+      if (await courseStarter.isVisible().catch(() => false)) {
+        await clickLocatorElement(courseStarter);
+      }
     }
   }
 
@@ -256,14 +296,29 @@ export async function setVerifyRunMode(page, mode) {
       : '[data-testid="ide-vcb-observe-only"]';
   const button = page.locator(selector).first();
   const isVisible = await button.isVisible().catch(() => false);
-  if (!isVisible) return false;
-  const isDisabled = await button.isDisabled().catch(() => true);
-  if (isDisabled) return false;
-  const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
-  if (!isPressed) {
-    await button.click();
+  if (isVisible) {
+    const isDisabled = await button.isDisabled().catch(() => true);
+    if (isDisabled) return false;
+    const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
+    if (!isPressed) {
+      await button.click();
+    }
+    return true;
   }
-  return true;
+
+  // Product System v3 has one simulation authority: every run records observed
+  // values and automatically evaluates any authored optional checks. Preserve
+  // older gate intent without requiring the retired Observe / Compare toggle.
+  const simulationBar = page.locator(
+    '[data-testid="ide-verify-command-bar"][data-run-mode="simulation"]'
+  ).first();
+  if (!(await simulationBar.isVisible().catch(() => false))) return false;
+  if (mode === 'observe') return true;
+
+  const simulationText = ((await simulationBar.textContent().catch(() => '')) ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /checks\s+[1-9]\d*|evaluates\s+[1-9]\d*\s+optional check/i.test(simulationText);
 }
 
 export async function saveObservedOutputs(page) {

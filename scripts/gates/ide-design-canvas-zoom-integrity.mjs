@@ -21,6 +21,13 @@ const CANVAS_VIEW_TOOL_IDS = new Set([
   'ide-design-center-selection-canvas',
 ]);
 
+const RESPONSIVE_CANVAS_VIEW_TOOL_IDS = new Map([
+  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
+  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
+  ['ide-design-center-selection-canvas', 'ide-design-overflow-center-selection'],
+]);
+
 const screenshotDir = process.env.RB_DESIGN_CANVAS_ZOOM_INTEGRITY_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_DESIGN_CANVAS_ZOOM_INTEGRITY_SCREENSHOTS_DIR)
   : null;
@@ -111,27 +118,48 @@ async function loadLogicGatesDesign(page, baseUrl) {
 }
 
 async function clickUniqueTestId(page, testId) {
-  if (CANVAS_VIEW_TOOL_IDS.has(testId)) {
-    await openCanvasViewTools(page);
-  }
-  const locator = page.locator(`[data-testid="${testId}"]`);
+  const locator = CANVAS_VIEW_TOOL_IDS.has(testId)
+    ? await resolveCanvasViewTool(page, testId)
+    : page.locator(`[data-testid="${testId}"]`);
   const count = await locator.count();
   assert(count === 1, `expected one [data-testid="${testId}"], found ${count}`);
   await locator.click({ force: true });
   await page.waitForTimeout(180);
 }
 
-async function openCanvasViewTools(page) {
+async function resolveCanvasViewTool(page, testId) {
+  const primary = page.locator(`[data-testid="${testId}"]`);
+  if (await primary.isVisible().catch(() => false)) return primary;
+
+  // Older Design layouts disclosed the canonical camera controls behind a
+  // dedicated View toggle. Keep exercising that path when it is present.
   const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
-  if (!(await toggle.isVisible().catch(() => false))) return;
-  const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
-  if (!expanded) {
-    await toggle.click();
+  if (await toggle.isVisible().catch(() => false)) {
+    const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
+    if (!expanded) {
+      await toggle.click();
+    }
+    await page.waitForFunction(() => {
+      const tools = document.querySelector('[data-testid="ide-design-canvas-view-tools"]');
+      return tools?.getAttribute('data-open') === 'true';
+    }, undefined, { timeout: 5000 });
+    if (await primary.isVisible().catch(() => false)) return primary;
   }
-  await page.waitForFunction(() => {
-    const tools = document.querySelector('[data-testid="ide-design-canvas-view-tools"]');
-    return tools?.getAttribute('data-open') === 'true';
-  }, undefined, { timeout: 5000 });
+
+  // Product System v3 moves camera controls into the visible More tools menu
+  // at classroom widths so the circuit canvas remains the dominant surface.
+  const responsiveTestId = RESPONSIVE_CANVAS_VIEW_TOOL_IDS.get(testId);
+  const overflow = page.locator('[data-testid="ide-design-toolbar-overflow"]');
+  if (responsiveTestId && await overflow.isVisible().catch(() => false)) {
+    if ((await overflow.getAttribute('open')) === null) {
+      await overflow.locator('summary').click();
+    }
+    const responsive = page.locator(`[data-testid="${responsiveTestId}"]`);
+    await responsive.waitFor({ state: 'visible', timeout: 5000 });
+    return responsive;
+  }
+
+  return primary;
 }
 
 async function selectFirstVisibleNode(page) {
