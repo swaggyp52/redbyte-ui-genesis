@@ -411,6 +411,7 @@ export const IdeApp: React.FC = () => {
   const activeScenarioId = useProjectRuntime((state) => state.activeScenarioId);
   const circuit = useProjectRuntime((state) => state.circuit);
   const hierarchy = useProjectRuntime((state) => state.hierarchy);
+  const sourceModel = useProjectRuntime((state) => state.sourceModel);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
   const runtimeSim = useProjectRuntime((state) => state.sim);
@@ -2622,6 +2623,7 @@ export const IdeApp: React.FC = () => {
               onStudentNameChange={setStudentName}
               hasVerifyRun={verifyLastRun !== undefined}
               runHistory={verifyRunHistory}
+              sourceModel={sourceModel}
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
               outline={projectOutline}

@@ -17,6 +17,8 @@ import { ExamplesBrowser } from '../components/ProjectSurfacePrimitives';
 import type { ProjectOutlineSummary } from '../projectOutline';
 import type { RuntimeSimState, VerifyRunLedgerEntry } from '../projectRuntime';
 import { ProjectRunsList } from '../components/ProjectRunsList';
+import { ProjectSourceFiles } from '../components/ProjectSourceFiles';
+import type { ProjectSourceModel } from '../projectSourceModel';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { LAB_STARTERS } from '../labStarters';
@@ -145,6 +147,8 @@ export interface ProjectSurfaceProps {
   onStudentNameChange?: (name: string) => void;
   hasVerifyRun?: boolean;
   runHistory?: VerifyRunLedgerEntry[];
+  /** First-class source/fileset authority (imported HDL, constraints, scripts). */
+  sourceModel?: ProjectSourceModel;
   fpgaConfig?: { part: string; top: string; board: string };
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
@@ -202,6 +206,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onRenameProject,
   hasVerifyRun = false,
   runHistory = [],
+  sourceModel,
   fpgaConfig,
   importFidelity,
   onFpgaConfigChange,
@@ -564,6 +569,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               missingRequiredRows={missingRequiredRows}
               hasVerifyRun={hasVerifyRun}
               runHistory={runHistory}
+              sourceModel={sourceModel}
               onOpenHardware={onOpenHardware}
               exportSummary={exportSummary}
               exportPackageCurrent={exportPackageCurrent}
@@ -707,6 +713,7 @@ interface LoadedProjectOverviewProps {
   missingRequiredRows: ProjectMappingRow[];
   hasVerifyRun: boolean;
   runHistory: VerifyRunLedgerEntry[];
+  sourceModel?: ProjectSourceModel;
   onOpenHardware: () => void;
   exportSummary: string;
   exportPackageCurrent: boolean;
@@ -789,6 +796,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   missingRequiredRows,
   hasVerifyRun,
   runHistory,
+  sourceModel,
   onOpenHardware,
   exportSummary,
   exportPackageCurrent,
@@ -1138,6 +1146,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
                 </ul>
               </div>
             ) : null}
+            {sourceModel ? <ProjectSourceFiles sourceModel={sourceModel} /> : null}
             {(outline?.macros.length ?? 0) > 0 ? <p className="ide-project-explorer-heading">Reusable Components</p> : null}
             {(outline?.macros ?? []).map((macro) => (
               <button key={macro.id} type="button" onClick={() => onFocusMacro?.(macro.id, macro.name)}>

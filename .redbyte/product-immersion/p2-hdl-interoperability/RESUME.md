@@ -68,6 +68,20 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-4 visible — source authority rendered in the Project explorer.**
+  New presentational `components/ProjectSourceFiles.tsx`: a read-only projection
+  of the store's `sourceModel`, grouped by fileset, each file badged with its
+  language capability tier (VHDL/Verilog → "reconstructable", XDC → "read-only",
+  Tcl → "preserved") plus the derived compile order. Threaded `sourceModel`
+  through `ProjectSurfaceProps` → `LoadedProjectOverview` and fed from the store
+  in `IdeApp`, mirroring the P1 `runHistory` plumbing. Styled in
+  `ProjectSurface.v3.css`. 2 component tests + a browser journey
+  (`source-files-journey.mjs`, PASS at 1440×900): loading an HDL-bearing project
+  populates the authority and the explorer shows the sources with honest tiers.
+  Regression-free (the 8 pre-existing projectSurface baseline reds are identical
+  on the clean base; +2 new passing tests); 0 new tsc errors; build green.
+  Note: the explorer (hence the Source files section) renders only when
+  `hasCircuit` — an import with no reconstructed circuit is a P2-5 concern.
 - **P2-2/P2-4 store wiring — source model is now a live persisted authority.**
   Threaded `sourceModel: ProjectSourceModel` through `useProjectRuntime`
   (state + `PersistedRuntimeState` + `RuntimeSeedState`), mirroring the P1
