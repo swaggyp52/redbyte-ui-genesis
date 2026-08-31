@@ -128,6 +128,7 @@ import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { ManualBench } from './verify/ManualBench';
 import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
+import { SimulationProviderBar } from '../components/SimulationProviderBar';
 import type { ProviderWaveform } from '../simulationProvider';
 import { DEFAULT_VCD_ANALYZER_CONFIG, type VcdAnalyzerConfig } from '../vcdAnalyzer';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
@@ -598,6 +599,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
+  // Which simulation provider is the current run-of-record (Chapter D).
+  const [activeSimProvider, setActiveSimProvider] = useState<'browser-logic' | 'imported-vcd'>('browser-logic');
   const [createCheckDialogOpen, setCreateCheckDialogOpen] = useState(false);
   const createCheckTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -7187,6 +7190,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             }
           />
         ) : null}
+        {/* ── Simulation provider selection + run provenance (Chapter D) ── */}
+        <SimulationProviderBar
+          hasImportedWaveform={!!importedWaveform}
+          importedProvider={importedWaveform?.provider}
+          activeProvider={activeSimProvider}
+          onSelectProvider={setActiveSimProvider}
+          nativeRunLabel={
+            simulationEvidenceSummary
+              ? simulationEvidenceSummary.simulationLabel
+              : lastRun
+                ? 'Browser-logic run recorded'
+                : null
+          }
+        />
         {/* ── Imported waveform Analyzer: external VCD evidence, replayed but never
              executed. Independent of the native verify run and its modes. ── */}
         <VcdAnalyzerPanel
@@ -7195,6 +7212,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onImportVcd={onImportVcd ?? (() => {})}
           onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
           onClear={onClearImportedWaveform ?? (() => {})}
+          isActiveProvider={activeSimProvider === 'imported-vcd'}
         />
       </IdePanel>
     </IdeSurfaceLayout>

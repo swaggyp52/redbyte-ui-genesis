@@ -44,6 +44,13 @@ export interface VcdAnalyzerPanelProps {
   readonly onConfigChange: (patch: Partial<VcdAnalyzerConfig>) => void;
   /** Clear the imported waveform. */
   readonly onClear: () => void;
+  /**
+   * Whether the imported-VCD provider is the currently selected simulation
+   * provider. When false, the Analyzer stays readable but shows a muted "not the
+   * active provider" strip so the current run-of-record is never ambiguous.
+   * Defaults to true (the Analyzer is self-contained without a provider bar).
+   */
+  readonly isActiveProvider?: boolean;
 }
 
 export const VcdAnalyzerPanel: React.FC<VcdAnalyzerPanelProps> = ({
@@ -54,6 +61,7 @@ export const VcdAnalyzerPanel: React.FC<VcdAnalyzerPanelProps> = ({
   onImportVcd,
   onConfigChange,
   onClear,
+  isActiveProvider = true,
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -72,10 +80,17 @@ export const VcdAnalyzerPanel: React.FC<VcdAnalyzerPanelProps> = ({
 
   return (
     <section
-      className="ide-vcd-analyzer"
+      className={`ide-vcd-analyzer${isActiveProvider ? '' : ' is-inactive-provider'}`}
       data-testid="ide-vcd-analyzer"
+      data-active-provider={isActiveProvider ? 'true' : 'false'}
       aria-label="Imported waveform Analyzer"
     >
+      {waveform && !isActiveProvider ? (
+        <div className="ide-vcd-analyzer-inactive" data-testid="ide-vcd-analyzer-inactive">
+          Imported VCD is not the active provider — select it in the provider bar to make this
+          the current view.
+        </div>
+      ) : null}
       <header className="ide-vcd-analyzer-head">
         <div className="ide-vcd-analyzer-identity">
           <span className="ide-vcd-analyzer-title">Imported waveform Analyzer</span>

@@ -3959,3 +3959,84 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
 .ide-vcd-change-value { color: #7dd3fc; }
 .ide-vcd-change-more { color: #64748b; font-size: 10px; }
 .ide-vcd-signal-timeline em { color: #475569; font-style: normal; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Simulation provider bar (Chapter D) — provider selection + run provenance.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ide-sim-provider-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 12px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  min-width: 0;
+}
+
+.ide-sim-provider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-sim-provider-title { font-size: 13px; font-weight: 650; }
+.ide-sim-provider-active {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rb-verify);
+}
+
+.ide-sim-provider-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ide-sim-provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ide-sim-provider-chip.is-active { border-color: var(--rb-verify); background: color-mix(in srgb, var(--rb-verify) 12%, var(--rb-surface-2)); }
+.ide-sim-provider-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ide-sim-provider-tier {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.ide-sim-provider-tier.is-browser-e0 { background: color-mix(in srgb, var(--rb-success) 18%, transparent); color: var(--rb-success); }
+.ide-sim-provider-tier.is-imported-external { background: color-mix(in srgb, #a855f7 18%, transparent); color: #7e22ce; }
+
+.ide-sim-provider-provenance {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--rb-text-muted);
+  border-left: 2px solid var(--rb-border-strong);
+  padding-left: 8px;
+}
+.ide-sim-provider-provenance strong { color: var(--rb-text-secondary); }
+.ide-sim-provider-hint { color: var(--rb-warning, #b45309); }
+
+/* Analyzer de-emphasis when Imported VCD is not the active provider. */
+.ide-vcd-analyzer.is-inactive-provider { opacity: 0.72; }
+.ide-vcd-analyzer-inactive {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-muted);
+  font-size: 11px;
+}

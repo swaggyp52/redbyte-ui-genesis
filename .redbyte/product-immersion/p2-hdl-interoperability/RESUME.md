@@ -7,35 +7,35 @@
 
 ## Canonical state (update every chapter)
 
-- **CURRENT HEAD:** `efd12f246` (Chapters A+B pushed) + local Chapter-C commit
-  (constraint sets), pushed after this chapter closes.
+- **CURRENT HEAD:** `f2a3346fc` (Chapters A–C pushed) + local Chapter-D commit
+  (provider bar), pushed after this chapter closes.
 - **CURRENT BRANCH:** `claude/redbyte-product-core-convergence-n3pi6t`
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A (VCD Analyzer), B
-  (cross-probe), C (constraint sets) **done**; Chapter D (provider selection) next.
-- **CURRENT ACCEPTANCE JOURNEY:** `constraint-sets-journey.mjs` — PASS at 1440×900 and
-  1366×768 (seed-from-import → activate → rename → reload-persist → remove-with-fallback →
-  no h-overflow).
-- **ACTIVE IMPLEMENTATION:** Chapter D — simulation-provider selection + run provenance UI
-  in Simulate (Browser Logic vs Imported VCD; every run states its provider + evidence tier).
-- **NEXT THREE TASKS:** (1) provider selection + provenance [D]; (2) native/imported parity —
-  one workbench grammar [E]; (3) complex imported-project Playwright journey [F].
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–D **done**; Chapter E
+  (native/imported parity) next.
+- **CURRENT ACCEPTANCE JOURNEY:** `sim-provider-journey.mjs` — PASS at 1440×900 and
+  1366×768 (Browser Logic default → Imported disabled → load VCD enables it → select
+  Imported becomes run-of-record with honest imported-external provenance → switch back
+  de-emphasizes the Analyzer → no h-overflow).
+- **ACTIVE IMPLEMENTATION:** Chapter E — native/imported parity: one workbench grammar,
+  no ImportedProjectSurface / VCDApp / second app; imported projects flow the same
+  Project→Design→Simulate→Board→Export spine.
+- **NEXT THREE TASKS:** (1) native/imported parity [E]; (2) complex imported-project
+  Playwright journey [F]; (3) project-format migration UX [G].
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
-- **LAST BROWSER PROOF:** `constraint-sets-journey.mjs` — PASS at 1440×900 and 1366×768.
-  Screenshots under `evidence/chapter-c/` (local/ignored). Chapters A/B journeys still PASS.
-- **LAST VALIDATION:** Chapter C — 9 constraint vitest green under pinned Node 20.x
-  (constraintSets store 4, ConstraintSetsPanel 5) + source-model regression clean; unified
-  `@redbyte/rb-apps` build green; 0 new tsc errors. Also corrected `promoteToolchainInput`
-  to place imported XDC/Tcl in their natural filesets (was forcing `design`). Pre-existing
-  baseline reds unchanged.
-- **LAST PUSH:** `48c64b2c7..efd12f246` (Chapter B). Chapter C push pending at chapter close.
-- **DIRTY FILES:** Chapter C working set (projectRuntime.ts, projectSourceModel.ts,
-  ConstraintSetsPanel.tsx, +2 tests, HardwareSurface.tsx, IdeApp.tsx, hardware CSS,
-  constraint-sets-journey.mjs) — about to be committed.
+- **LAST BROWSER PROOF:** `sim-provider-journey.mjs` — PASS at 1440×900 and 1366×768.
+  Screenshots under `evidence/chapter-d/` (local/ignored). Chapters A/B/C journeys still PASS.
+- **LAST VALIDATION:** Chapter D — 8 vitest green under pinned Node 20.x
+  (SimulationProviderBar 3, VcdAnalyzerPanel 5 incl. the additive `isActiveProvider`);
+  unified `@redbyte/rb-apps` build green; 0 new tsc errors. Pre-existing baseline reds unchanged.
+- **LAST PUSH:** `efd12f246..f2a3346fc` (Chapter C). Chapter D push pending at chapter close.
+- **DIRTY FILES:** Chapter D working set (SimulationProviderBar.tsx, VcdAnalyzerPanel.tsx,
+  simulationProviderBar.test.tsx, VerifySurface.tsx, verify CSS, sim-provider-journey.mjs)
+  — about to be committed.
 
 ## Program
 
@@ -108,6 +108,19 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter D (UI integration) — simulation-provider selection + run provenance.**
+  New `components/SimulationProviderBar.tsx` mounted in the Simulate surface:
+  two provider chips over the existing `simulationProvider` model — Browser Logic
+  (Browser-E0, executes the browser model) and Imported VCD (imported-external,
+  replayed/never executed) — with the Imported chip disabled until a VCD is
+  loaded, the active provider named as the run-of-record, and a provenance line
+  stating the active provider's honest evidence label + tier note. Selection is
+  local surface state; the imported provider uses the waveform's own descriptor
+  (no double-labeling). `VcdAnalyzerPanel` gained an additive `isActiveProvider`
+  (default true) that shows a muted "not the active provider" strip + dims the
+  Analyzer when Browser Logic is the run-of-record. 3 component tests (+5
+  Analyzer tests still green). Proof: `sim-provider-journey.mjs` PASS at 1440×900
+  and 1366×768. Unified build green; 0 new tsc errors.
 - **Chapter C (UI integration) — constraint sets live in Board & Constraints.**
   The pure `constraintSets` model (P2-7) is now a persisted store authority with
   a real Board & Constraints UI.
