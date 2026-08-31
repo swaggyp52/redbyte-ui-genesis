@@ -25,6 +25,25 @@ import {
   normalizeProjectHierarchy,
   type ProjectHierarchyDocument,
 } from '../apps/ide/projectHierarchy';
+import {
+  isEmptyProjectSourceModel,
+  normalizeProjectSourceModel,
+  promoteToolchainInput,
+  type ProjectSourceModel,
+} from '../apps/ide/projectSourceModel';
+import {
+  CURRENT_PROJECT_FORMAT_VERSION,
+  migrateRBProjectDocument,
+} from './projectFormatMigrations';
+
+export {
+  CURRENT_PROJECT_FORMAT_VERSION,
+  detectRBProjectFormatVersion,
+  migrateRBProjectDocument,
+  RB_PROJECT_FORMAT_MIGRATIONS,
+  type RBProjectFormatMigration,
+  type RBProjectMigrationResult,
+} from './projectFormatMigrations';
 
 export interface RBFpgaConstraints {
   type: 'xdc';
@@ -92,6 +111,14 @@ export interface RBProject {
   customComponents?: CompositeNodeDef[];
   /** Native visual module authority. `circuit` remains the top-module graph. */
   hierarchy?: ProjectHierarchyDocument;
+  /**
+   * First-class source / fileset authority (HDL + constraints + scripts). When
+   * present it is the single source-of-truth for text sources; the legacy `hdl`
+   * toolchain input remains a projection for existing export consumers. Absent
+   * on projects that have not adopted the source model — {@link deriveSourceModel}
+   * bridges from `hdl` in that case.
+   */
+  sourceModel?: ProjectSourceModel;
   meta?: {
     appVersion?: string;
     gitCommit?: string;
@@ -355,6 +382,13 @@ export const encodeRBProject = (project: RBProject) => {
     hierarchy: project.hierarchy
       ? normalizeProjectHierarchy(project.hierarchy, project.customComponents ?? [])
       : undefined,
+    // Emit the source model only when it carries content, so projects that have
+    // not adopted it stay byte-identical (golden export path untouched).
+    sourceModel: (() => {
+      if (!project.sourceModel) return undefined;
+      const model = normalizeProjectSourceModel(project.sourceModel);
+      return isEmptyProjectSourceModel(model) ? undefined : model;
+    })(),
     meta: project.meta
       ? {
           ...project.meta,
@@ -365,73 +399,108 @@ export const encodeRBProject = (project: RBProject) => {
   return stableStringify(normalized);
 };
 
+/**
+ * The effective source model for a project: the first-class `sourceModel` when
+ * present and non-empty, otherwise a projection promoted from the legacy `hdl`
+ * toolchain input. Always returns a (possibly empty) model, never undefined, so
+ * callers can treat sources uniformly regardless of when the project was made.
+ */
+export const deriveSourceModel = (project: RBProject): ProjectSourceModel => {
+  if (project.sourceModel && !isEmptyProjectSourceModel(project.sourceModel)) {
+    return normalizeProjectSourceModel(project.sourceModel);
+  }
+  return promoteToolchainInput(project.hdl);
+};
+
 export const normalizeRBProject = (value: unknown): RBProject => {
   if (!isRecord(value)) {
     throw new Error('Invalid project: not an object');
   }
-  if (value.kind !== 'rb-project' || value.version !== 1) {
+  // Detect the document's format version and upgrade it to the current version
+  // through the ordered migration ladder. This is a no-op for a document already
+  // at the current version, so current-version documents normalize unchanged
+  // (and the byte-identical golden export path is untouched).
+  const doc: Record<string, any> = migrateRBProjectDocument(value).document;
+  if (doc.kind !== 'rb-project' || doc.version !== CURRENT_PROJECT_FORMAT_VERSION) {
     throw new Error('Invalid project: unsupported kind or version');
   }
 
-  const name = readRequiredString(value.name);
+  const name = readRequiredString(doc.name);
   if (!name) {
     throw new Error('Invalid project: name is required');
   }
 
-  if (!isRecord(value.circuit)) {
+  if (!isRecord(doc.circuit)) {
     throw new Error('Invalid project: circuit is missing');
   }
-  if (!Array.isArray(value.circuit.nodes) || !Array.isArray(value.circuit.connections)) {
+  if (!Array.isArray(doc.circuit.nodes) || !Array.isArray(doc.circuit.connections)) {
     throw new Error('Invalid project: circuit must include nodes and connections arrays');
   }
 
   return {
-    ...value,
+    ...doc,
     kind: 'rb-project',
     version: 1,
-    createdAt: readOptionalString(value.createdAt) ?? '1970-01-01T00:00:00.000Z',
-    updatedAt: readOptionalString(value.updatedAt) ?? '1970-01-01T00:00:00.000Z',
+    createdAt: readOptionalString(doc.createdAt) ?? '1970-01-01T00:00:00.000Z',
+    updatedAt: readOptionalString(doc.updatedAt) ?? '1970-01-01T00:00:00.000Z',
     name,
-    description: readOptionalString(value.description) ?? undefined,
-    circuit: normalizeProjectCircuit(value.circuit as Circuit, { synthesizeBuses: true }),
-    probes: normalizeProbes(Array.isArray(value.probes) ? value.probes : undefined),
-    hdl: normalizeHdl(isRecord(value.hdl) ? (value.hdl as ToolchainProjectInput) : undefined),
-    fpga: isRecord(value.fpga) ? { ...(value.fpga as RBFpgaConfig) } : undefined,
-    layout: isRecord(value.layout)
+    description: readOptionalString(doc.description) ?? undefined,
+    circuit: normalizeProjectCircuit(doc.circuit as Circuit, { synthesizeBuses: true }),
+    probes: normalizeProbes(Array.isArray(doc.probes) ? doc.probes : undefined),
+    hdl: normalizeHdl(isRecord(doc.hdl) ? (doc.hdl as ToolchainProjectInput) : undefined),
+    fpga: isRecord(doc.fpga) ? { ...(doc.fpga as RBFpgaConfig) } : undefined,
+    layout: isRecord(doc.layout)
       ? {
-          ...(value.layout as NonNullable<RBProject['layout']>),
-          dock: isRecord(value.layout.dock)
-            ? { ...(value.layout.dock as NonNullable<NonNullable<RBProject['layout']>['dock']>) }
+          ...(doc.layout as NonNullable<RBProject['layout']>),
+          dock: isRecord(doc.layout.dock)
+            ? { ...(doc.layout.dock as NonNullable<NonNullable<RBProject['layout']>['dock']>) }
             : undefined,
         }
       : undefined,
-    oscilloscope: isRecord(value.oscilloscope)
-      ? { ...(value.oscilloscope as NonNullable<RBProject['oscilloscope']>) }
+    oscilloscope: isRecord(doc.oscilloscope)
+      ? { ...(doc.oscilloscope as NonNullable<RBProject['oscilloscope']>) }
       : undefined,
-    recorder: isRecord(value.recorder)
-      ? { ...(value.recorder as NonNullable<RBProject['recorder']>) }
+    recorder: isRecord(doc.recorder)
+      ? { ...(doc.recorder as NonNullable<RBProject['recorder']>) }
       : undefined,
-    ioMapping: normalizeIoMapping(isRecord(value.ioMapping) ? (value.ioMapping as IoMapping) : undefined),
+    ioMapping: normalizeIoMapping(isRecord(doc.ioMapping) ? (doc.ioMapping as IoMapping) : undefined),
     hardwareMappingV2: normalizeHardwareMappingV2(
-      isRecord(value.hardwareMappingV2) ? (value.hardwareMappingV2 as HardwareMappingDocumentV2) : undefined
+      isRecord(doc.hardwareMappingV2) ? (doc.hardwareMappingV2 as HardwareMappingDocumentV2) : undefined
     ),
-    vectors: normalizeVectors(Array.isArray(value.vectors) ? value.vectors as TestVector[] : undefined),
-    traceMetadata: isRecord(value.traceMetadata)
-      ? { ...(value.traceMetadata as TraceMetadata) }
+    vectors: normalizeVectors(Array.isArray(doc.vectors) ? doc.vectors as TestVector[] : undefined),
+    traceMetadata: isRecord(doc.traceMetadata)
+      ? { ...(doc.traceMetadata as TraceMetadata) }
       : undefined,
-    submodules: normalizeSubmodules(Array.isArray(value.submodules) ? value.submodules as SubmoduleEntry[] : undefined),
-    macros: normalizeMacros(Array.isArray(value.macros) ? value.macros as MacroDefinition[] : undefined),
-    labSpec: isRecord(value.labSpec) ? { ...(value.labSpec as LabSpecV1) } : undefined,
-    customComponents: Array.isArray(value.customComponents)
-      ? value.customComponents.filter(isCompositeNodeDef)
+    submodules: normalizeSubmodules(Array.isArray(doc.submodules) ? doc.submodules as SubmoduleEntry[] : undefined),
+    macros: normalizeMacros(Array.isArray(doc.macros) ? doc.macros as MacroDefinition[] : undefined),
+    labSpec: isRecord(doc.labSpec) ? { ...(doc.labSpec as LabSpecV1) } : undefined,
+    customComponents: Array.isArray(doc.customComponents)
+      ? doc.customComponents.filter(isCompositeNodeDef)
       : undefined,
-    hierarchy: normalizeProjectHierarchy(
-      value.hierarchy,
-      Array.isArray(value.customComponents)
-        ? value.customComponents.filter(isCompositeNodeDef)
-        : [],
-    ),
-    meta: isRecord(value.meta) ? { ...(value.meta as NonNullable<RBProject['meta']>) } : undefined,
+    // Attach a hierarchy only when the document actually carries one, or when
+    // legacy customComponents must be promoted into modules. A project with
+    // neither leaves `hierarchy` undefined — matching encodeRBProject, which
+    // emits `hierarchy` only when present. Without this, decode synthesized an
+    // empty hierarchy for hierarchy-less projects, so re-encoding gained a
+    // `hierarchy` field and encode∘decode was not idempotent. Keeping the guard
+    // on the decode side leaves the byte-identical encode path untouched.
+    hierarchy: (() => {
+      const legacyDefinitions = Array.isArray(doc.customComponents)
+        ? doc.customComponents.filter(isCompositeNodeDef)
+        : [];
+      if (!isRecord(doc.hierarchy) && legacyDefinitions.length === 0) {
+        return undefined;
+      }
+      return normalizeProjectHierarchy(doc.hierarchy, legacyDefinitions);
+    })(),
+    // Attach the source model only when the document carries a non-empty one,
+    // mirroring encodeRBProject so encode∘decode stays idempotent.
+    sourceModel: (() => {
+      if (!isRecord(doc.sourceModel)) return undefined;
+      const model = normalizeProjectSourceModel(doc.sourceModel);
+      return isEmptyProjectSourceModel(model) ? undefined : model;
+    })(),
+    meta: isRecord(doc.meta) ? { ...(doc.meta as NonNullable<RBProject['meta']>) } : undefined,
   };
 };
 

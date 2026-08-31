@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-08-28
+last_validated: 2026-08-31
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -87,6 +87,54 @@ accepted.
 - Boundary: the unpushed desktop head `65e1ff872` remains desktop-only;
   this lane never rewrites `product/redbyte-workbench-v3`. Desktop
   reconciliation is one merge of this branch.
+
+### P2 HDL / Vivado interoperability lane (2026-08-31, cloud session) — COMPLETE
+
+- Branch: `claude/redbyte-product-core-convergence-n3pi6t`. **Consolidated** —
+  PR #82 (P1 — Operational Workbench Convergence) was **merged into
+  `product/redbyte-workbench-v3`** with a merge-commit
+  (`bd70c4cf088b5c5402d7eb535b66209616b35c4f`, no history rewrite, no force-push,
+  no production deploy) and auto-closed. The product base preserved the P1 head
+  `597337b` as an ancestor, so **PR #84's diff collapsed to P2-only**.
+- **PR #84** ([#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84)) —
+  **open, draft, mergeable, NOT merged**; head
+  `803e2dfd08dd2a94cb3a3034d763e4b35fe2f6dc`; base `product/redbyte-workbench-v3`
+  @ `bd70c4c`. Left for Connor to review/merge via the GitHub UI. No production
+  deploy.
+- **CI (verified green at head `803e2dfd0`):** PR Fast Checks run #77 completed
+  SUCCESS — "Typecheck, contracts, unified build" SUCCESS, "Preview deploy"
+  SUCCESS, "Cloudflare Pages" SUCCESS, "Check deploy credentials" SUCCESS; the
+  credentials-gated deploy step SKIPPED honestly.
+- **P2 delivered — data + authority foundation (Phase 1):** versioned,
+  migration-safe project format + corpus; first-class source/fileset model
+  (single store authority, auto-populates for imports); language capability
+  matrix + `SourceRange` diagnostics (Tcl never executed); source-backed module
+  tiers + bidirectional cross-probe + parameters; import review-before-apply
+  contract; simulation-provider architecture + bounded VCD reader; deterministic
+  Vivado digital-twin snapshot envelope + multiple constraint sets; scale proof;
+  P3 data-contract readiness report (report only, no auth).
+- **P2 delivered — UI integration (Phase 2, Chapters A–H, all browser-proven at
+  1440×900 and 1366×768):** (A) imported-VCD Analyzer live in Simulate; (B)
+  source↔visual cross-probe in the Project explorer with honest quality tiers;
+  (C) named constraint sets in Board & Constraints; (D) simulation-provider
+  selection + run provenance; (E) native/imported parity (one workbench grammar,
+  no second app); (F) 23-step complex imported-project journey (no store
+  injection); (G) honest project-format migration UX; (H) accessibility + scale
+  hardening (bounded rendering, one main landmark, keyboard, reduced-motion,
+  effective 200%). Two writable store authorities added (`importedWaveform`,
+  `constraintSets`); everything else user-visible is a derived read-model.
+- Proof: Browser-E0 only. At closeout, 91 new/related vitest green across 17
+  files under pinned Node 20.19.0; both classroom golden Basys3 export gates
+  byte-identical; unified `@redbyte/rb-apps` build green; 0 new tsc errors per
+  slice; eight real-UI Playwright journeys passing. Continuation point:
+  `.redbyte/product-immersion/p2-hdl-interoperability/RESUME.md`.
+- **Format v2 — gated:** `FORMAT_V2_SIGNOFF.md` (root) is prepared and **awaiting
+  Connor's explicit approval**. Format version stays **1**; both classroom golden
+  SHAs are byte-identical. Not implemented in this lane.
+- **Next program:** RedByte P2.5 — Operational Classroom Workbench Convergence
+  (turn the P1/P2 capability into a coherent, classroom-usable workbench; not P3
+  cloud, not format-v2). Branch: `claude/redbyte-operational-workbench-convergence-*`,
+  stacked on PR #84 until it merges.
 
 ## Candidate Product Truth
 
@@ -175,9 +223,15 @@ HDL, board, or hardware support beyond the documented boundaries.
 
 ## Next Authorized Endpoint
 
-Complete user visual and interaction review of the integrated Studio candidate
-and stop. Do not begin another feature area until the 1366x768 and 1440x900
-workbench evidence and both normal-use flows have been reviewed.
+The P2 HDL/Vivado interoperability baseline is **complete** (PR #84, P2-only,
+open/draft/mergeable/unmerged, CI green at `803e2dfd0`). The authorized next
+program is **RedByte P2.5 — Operational Classroom Workbench Convergence**: turn
+the P1/P2 capability into a coherent, practical, classroom-usable workbench
+(Project start/resume, the Design↔Simulate repair loop, Board & Export as real
+workspaces, the five Gannon pilot labs). This is **not** P3 cloud work, **not**
+the format-v2 migration (still gated behind `FORMAT_V2_SIGNOFF.md`), and **not**
+another feature-breadth campaign. Do not merge PR #84, push to `main`/product, or
+deploy production without Connor's explicit approval.
 
 ## Start
 

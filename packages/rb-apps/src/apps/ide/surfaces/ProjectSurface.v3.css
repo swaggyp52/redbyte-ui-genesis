@@ -1389,3 +1389,232 @@
   cursor: pointer;
 }
 .ide-project-runs-open:hover { background: var(--rb-surface-subtle, var(--rb-surface)); }
+
+/* Source files — first-class source/fileset authority projection */
+.ide-project-sources {
+  margin: 4px 8px 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface-1);
+}
+.ide-project-sources-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-project-sources-head > span {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ide-project-sources-head > strong { font-size: 11px; color: var(--rb-text); }
+.ide-project-sources-top { margin: 4px 0 0; font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-sources-top code { font-size: 11px; }
+.ide-project-sources-group { margin-top: 4px; }
+.ide-project-sources-group .ide-project-explorer-heading { margin: 4px 0 2px; }
+.ide-project-sources-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.ide-project-source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.ide-project-source-path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-project-source-path code { font-size: 11px; }
+.ide-project-source-tier {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border);
+  color: var(--rb-text-muted);
+  background: var(--rb-surface);
+}
+.ide-project-source-tier.is-ok { color: var(--rb-success, #1a7f37); border-color: var(--rb-success, #1a7f37); }
+.ide-project-source-tier.is-warn { color: var(--rb-warning, #9a6700); border-color: var(--rb-warning, #9a6700); }
+.ide-project-source-lib { flex: 0 0 auto; font-size: 10px; color: var(--rb-text-muted); }
+.ide-project-sources-compile {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--rb-border);
+}
+.ide-project-sources-compile > span {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ide-project-sources-compile ol { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.ide-project-sources-compile li { font-size: 11px; color: var(--rb-text); }
+.ide-project-sources-compile li code {
+  display: inline-block;
+  min-width: 16px;
+  margin-right: 4px;
+  color: var(--rb-text-muted);
+  font-size: 10px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Source ↔ visual cross-probe (Chapter B)
+   Studio-Light chrome in the Project explorer. Every element carries an honest
+   quality tier so a coarse or missing link is never mistaken for a precise one.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ide-crossprobe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  min-width: 0;
+}
+
+.ide-crossprobe-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ide-crossprobe-title { font-size: 12px; font-weight: 650; }
+.ide-crossprobe-count { font-size: 11px; color: var(--rb-text-muted); }
+
+.ide-crossprobe-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ide-crossprobe-badge {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.ide-crossprobe-badge.is-exact { background: color-mix(in srgb, var(--rb-success) 18%, transparent); color: var(--rb-success); border-color: var(--rb-success); }
+.ide-crossprobe-badge.is-partial { background: color-mix(in srgb, var(--rb-warning, #d97706) 16%, transparent); color: var(--rb-warning, #b45309); border-color: var(--rb-warning, #d97706); }
+.ide-crossprobe-badge.is-ambiguous { background: color-mix(in srgb, #a855f7 16%, transparent); color: #7e22ce; border-color: #a855f7; }
+.ide-crossprobe-badge.is-stale { background: color-mix(in srgb, var(--rb-text-muted) 16%, transparent); color: var(--rb-text-secondary); border-color: var(--rb-border-strong); }
+.ide-crossprobe-badge.is-unavailable { background: var(--rb-surface-2); color: var(--rb-text-muted); border-color: var(--rb-border-strong); }
+
+.ide-crossprobe-selection {
+  margin: 0;
+  font-size: 11px;
+  color: var(--rb-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ide-crossprobe-selection code { font-family: var(--rb-font-mono); }
+
+.ide-crossprobe-clear {
+  padding: 1px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ide-crossprobe-panes {
+  /* The explorer aside is narrow, so the two probe directions stack. */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ide-crossprobe-pane {
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.ide-crossprobe-pane-head {
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-secondary);
+  margin-bottom: 4px;
+}
+
+.ide-crossprobe-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+
+.ide-crossprobe-row.is-depth-1 { padding-left: 12px; }
+.ide-crossprobe-row.is-selected { background: color-mix(in srgb, var(--rb-action, #2563eb) 12%, transparent); border-radius: 6px; }
+
+.ide-crossprobe-row-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 4px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--rb-text-primary);
+  min-width: 0;
+}
+
+.ide-crossprobe-row-btn:hover { background: var(--rb-surface-2); border-radius: 6px; }
+
+.ide-crossprobe-row-kind {
+  flex: 0 0 auto;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-muted);
+  width: 56px;
+}
+
+.ide-crossprobe-row-name {
+  font-family: var(--rb-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+}
+
+.ide-crossprobe-row-loc {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--rb-text-muted);
+  font-family: var(--rb-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+}
+
+.ide-crossprobe-source-group { padding: 2px 0; }
+.ide-crossprobe-source-name { font-family: var(--rb-font-mono); font-size: 11px; color: var(--rb-text-secondary); padding: 2px 4px; }
+.ide-crossprobe-empty { font-size: 11px; color: var(--rb-text-muted); padding: 6px 4px; }
+
+/* Bounded-render hint (Chapter H). */
+.ide-project-source-more { font-size: 10px; color: var(--rb-text-muted); font-style: italic; padding: 2px 4px; }

@@ -11,6 +11,7 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { HardwareBusPlanner } from '../components/HardwareBusPlanner';
+import { ConstraintSetsPanel, type ConstraintSetsPanelProps } from '../components/ConstraintSetsPanel';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
@@ -234,6 +235,8 @@ export interface HardwareSurfaceProps {
   guidedLabTask?: GuidedLabTaskDefinition | null;
   guidedLabHardwareChecklist?: FullAdderLabHardwareChecklist | null;
   onApplyGuidedLabMapping?: () => void;
+  /** Named XDC constraint sets (Vivado constrs_N), one active. */
+  constraintSets?: ConstraintSetsPanelProps;
 }
 
 /** Convert a raw signal key like "ld[5]" or "sw3" into a human label like "LED LD5" / "Switch SW3". */
@@ -405,6 +408,7 @@ function resolveInitialHardwareMode(input: {
 
 export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName,
+  constraintSets,
   expectedBehavior,
   mappingRows,
   declaredBuses,
@@ -3447,6 +3451,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         </div>
         )}
+        {/* ── Constraint sets: named XDC sets (Vivado constrs_N), one active ── */}
+        {constraintSets ? <ConstraintSetsPanel {...constraintSets} /> : null}
         {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
         {hardwareWorkflowRibbon}
       </IdePanel>

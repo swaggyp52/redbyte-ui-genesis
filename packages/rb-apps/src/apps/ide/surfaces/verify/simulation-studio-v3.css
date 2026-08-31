@@ -3600,3 +3600,447 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
 .ide-manual-bench-sequence-link:hover {
   color: #9fd6ef;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Imported VCD Analyzer (Chapter A)
+   External waveform evidence, replayed but never executed. Studio-Light chrome
+   for the application surface; the waveform zone is a dark instrument.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ide-vcd-analyzer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--rb-border);
+  border-radius: 12px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-family: var(--rb-font-sans);
+  min-width: 0;
+}
+
+.ide-vcd-analyzer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ide-vcd-analyzer-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ide-vcd-analyzer-title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.ide-vcd-analyzer-provider {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rb-text-secondary);
+}
+
+.ide-vcd-analyzer-evidence {
+  font-size: 11px;
+  color: var(--rb-text-muted);
+}
+
+.ide-vcd-analyzer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-vcd-analyzer-load,
+.ide-vcd-analyzer-clear,
+.ide-vcd-analyzer-clear-selection {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ide-vcd-analyzer-load {
+  border-color: var(--rb-verify);
+  color: var(--rb-verify);
+}
+
+.ide-vcd-analyzer-load:hover,
+.ide-vcd-analyzer-clear:hover,
+.ide-vcd-analyzer-clear-selection:hover {
+  filter: brightness(1.04);
+}
+
+.ide-vcd-analyzer-honesty {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rb-text-muted);
+  border-left: 2px solid var(--rb-border-strong);
+  padding-left: 8px;
+}
+
+.ide-vcd-analyzer-error {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--rb-danger);
+  background: color-mix(in srgb, var(--rb-danger) 12%, transparent);
+  color: var(--rb-danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ide-vcd-analyzer-empty {
+  padding: 18px;
+  border: 1px dashed var(--rb-border-strong);
+  border-radius: 10px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.ide-vcd-analyzer-empty p { margin: 4px 0; }
+.ide-vcd-analyzer-empty code { font-family: var(--rb-font-mono); }
+
+.ide-vcd-analyzer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--rb-text-secondary);
+}
+
+.ide-vcd-analyzer-source { font-family: var(--rb-font-mono); }
+
+.ide-vcd-analyzer-body {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  grid-template-areas:
+    'signals waveform'
+    'signals measurements';
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.ide-vcd-analyzer-signals { grid-area: signals; }
+.ide-vcd-analyzer-waveform-zone { grid-area: waveform; }
+.ide-vcd-analyzer-measurements { grid-area: measurements; }
+
+@media (max-width: 900px) {
+  .ide-vcd-analyzer-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'signals' 'waveform' 'measurements';
+  }
+}
+
+.ide-vcd-analyzer-zone {
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.ide-vcd-analyzer-zone-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-secondary);
+}
+
+.ide-vcd-analyzer-zone-head small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  color: var(--rb-text-muted);
+}
+
+.ide-vcd-analyzer-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+}
+
+.ide-vcd-analyzer-signal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ide-vcd-analyzer-signal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 6px;
+}
+
+.ide-vcd-analyzer-signal-row.is-pinned { background: var(--rb-surface-2); }
+
+.ide-vcd-analyzer-signal-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ide-vcd-analyzer-signal-name {
+  font-family: var(--rb-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-vcd-analyzer-signal-pick small { color: var(--rb-text-muted); }
+
+.ide-vcd-analyzer-radix {
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-size: 11px;
+}
+
+.ide-vcd-analyzer-signal-empty { padding: 8px 4px; font-size: 12px; color: var(--rb-text-muted); }
+
+.ide-vcd-analyzer-cursor-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--rb-text-secondary);
+}
+
+.ide-vcd-analyzer-cursor { width: 140px; max-width: 40vw; accent-color: var(--rb-verify); }
+
+.ide-vcd-analyzer-cursor-value {
+  width: 62px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-size: 11px;
+}
+
+.ide-vcd-analyzer-measure-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ide-vcd-analyzer-measure-table th,
+.ide-vcd-analyzer-measure-table td {
+  text-align: left;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--rb-border-subtle);
+}
+
+.ide-vcd-analyzer-measure-table thead th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-muted);
+}
+
+.ide-vcd-analyzer-measure-table th[scope='row'] code { font-family: var(--rb-font-mono); }
+.ide-vcd-analyzer-measure-table th[scope='row'] small { color: var(--rb-text-muted); margin-left: 3px; }
+
+.ide-vcd-analyzer-measure-value {
+  font-family: var(--rb-font-mono);
+  font-weight: 650;
+  color: var(--rb-verify);
+}
+
+/* ── WAVEFORM zone: the existing VcdWaveformView, as a dark instrument ── */
+.ide-vcd-analyzer-waveform-zone .ide-vcd-waveform {
+  background: var(--rb-canvas-dark, #0a0f18);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #cbd5e1;
+  overflow-x: auto;
+}
+
+.ide-vcd-waveform-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.ide-vcd-evidence { font-size: 10px; color: #64748b; margin: 0 0 6px; }
+
+.ide-vcd-notes {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 10px;
+  color: var(--rb-warning, #fbbf24);
+}
+
+.ide-vcd-signals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.ide-vcd-signal {
+  display: grid;
+  grid-template-columns: minmax(80px, 140px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.ide-vcd-signal-name code { font-family: var(--rb-font-mono); color: #e2e8f0; }
+.ide-vcd-signal-name small { color: #64748b; margin-left: 3px; }
+
+.ide-vcd-signal-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+
+.ide-vcd-change {
+  display: inline-flex;
+  gap: 3px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.12);
+  font-family: var(--rb-font-mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.ide-vcd-change-time { color: #64748b; }
+.ide-vcd-change-value { color: #7dd3fc; }
+.ide-vcd-change-more { color: #64748b; font-size: 10px; }
+.ide-vcd-signal-timeline em { color: #475569; font-style: normal; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Simulation provider bar (Chapter D) — provider selection + run provenance.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ide-sim-provider-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 12px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  min-width: 0;
+}
+
+.ide-sim-provider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-sim-provider-title { font-size: 13px; font-weight: 650; }
+.ide-sim-provider-active {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rb-verify);
+}
+
+.ide-sim-provider-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ide-sim-provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ide-sim-provider-chip.is-active { border-color: var(--rb-verify); background: color-mix(in srgb, var(--rb-verify) 12%, var(--rb-surface-2)); }
+.ide-sim-provider-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ide-sim-provider-tier {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.ide-sim-provider-tier.is-browser-e0 { background: color-mix(in srgb, var(--rb-success) 18%, transparent); color: var(--rb-success); }
+.ide-sim-provider-tier.is-imported-external { background: color-mix(in srgb, #a855f7 18%, transparent); color: #7e22ce; }
+
+.ide-sim-provider-provenance {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--rb-text-muted);
+  border-left: 2px solid var(--rb-border-strong);
+  padding-left: 8px;
+}
+.ide-sim-provider-provenance strong { color: var(--rb-text-secondary); }
+.ide-sim-provider-hint { color: var(--rb-warning, #b45309); }
+
+/* Analyzer de-emphasis when Imported VCD is not the active provider. */
+.ide-vcd-analyzer.is-inactive-provider { opacity: 0.72; }
+.ide-vcd-analyzer-inactive {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-muted);
+  font-size: 11px;
+}
+
+/* Bounded-render hints (Chapter H). */
+.ide-vcd-analyzer-signal-more,
+.ide-vcd-analyzer-measure-more { font-size: 10px; color: var(--rb-text-muted); padding: 4px 6px; font-style: italic; }

@@ -127,6 +127,10 @@ import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping 
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { ManualBench } from './verify/ManualBench';
+import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
+import { SimulationProviderBar } from '../components/SimulationProviderBar';
+import type { ProviderWaveform } from '../simulationProvider';
+import { DEFAULT_VCD_ANALYZER_CONFIG, type VcdAnalyzerConfig } from '../vcdAnalyzer';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
 import { TickReadoutStrip } from './verify/TickReadoutStrip';
 import { VerifyLabSequencerPanel } from './verify/VerifyLabSequencerPanel';
@@ -310,6 +314,17 @@ export interface VerifySurfaceProps {
   generatedTestbenchSource?: string;
   /** First-class bus declarations from the authoring circuit, for word lanes. */
   buses?: readonly BusDeclaration[];
+  // ─── Imported VCD Analyzer ─────────────────────────────────────────────────
+  /** Imported external waveform evidence, or null when nothing is loaded. */
+  importedWaveform?: ProviderWaveform | null;
+  /** Analyzer view configuration (pinned signals, radix, cursor, filter). */
+  vcdAnalyzerConfig?: VcdAnalyzerConfig;
+  /** Emit a chosen `.vcd` file's name + text to be parsed and stored. */
+  onImportVcd?: (fileName: string, text: string) => void;
+  /** Patch the Analyzer view configuration. */
+  onVcdAnalyzerConfigChange?: (patch: Partial<VcdAnalyzerConfig>) => void;
+  /** Clear the imported waveform. */
+  onClearImportedWaveform?: () => void;
 }
 
 // ─── SVG WaveformViewer (extracted to verify/WaveformInstrument.tsx) ─────────
@@ -426,6 +441,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   circuitGraph,
   generatedTestbenchSource,
   buses,
+  importedWaveform = null,
+  vcdAnalyzerConfig,
+  onImportVcd,
+  onVcdAnalyzerConfigChange,
+  onClearImportedWaveform,
 }) => {
   const gradingBlockedByDesign = Boolean(designBlockingIssue);
   // Preserve observation traces, but revoke checked PASS/FAIL presentation
@@ -579,6 +599,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
+  // Which simulation provider is the current run-of-record (Chapter D).
+  const [activeSimProvider, setActiveSimProvider] = useState<'browser-logic' | 'imported-vcd'>('browser-logic');
   const [createCheckDialogOpen, setCreateCheckDialogOpen] = useState(false);
   const createCheckTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -7168,6 +7190,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             }
           />
         ) : null}
+        {/* ── Simulation provider selection + run provenance (Chapter D) ── */}
+        <SimulationProviderBar
+          hasImportedWaveform={!!importedWaveform}
+          importedProvider={importedWaveform?.provider}
+          activeProvider={activeSimProvider}
+          onSelectProvider={setActiveSimProvider}
+          nativeRunLabel={
+            simulationEvidenceSummary
+              ? simulationEvidenceSummary.simulationLabel
+              : lastRun
+                ? 'Browser-logic run recorded'
+                : null
+          }
+        />
+        {/* ── Imported waveform Analyzer: external VCD evidence, replayed but never
+             executed. Independent of the native verify run and its modes. ── */}
+        <VcdAnalyzerPanel
+          waveform={importedWaveform}
+          config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
+          onImportVcd={onImportVcd ?? (() => {})}
+          onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
+          onClear={onClearImportedWaveform ?? (() => {})}
+          isActiveProvider={activeSimProvider === 'imported-vcd'}
+        />
       </IdePanel>
     </IdeSurfaceLayout>
   );

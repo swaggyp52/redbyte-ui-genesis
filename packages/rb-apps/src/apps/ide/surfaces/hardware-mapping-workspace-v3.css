@@ -943,3 +943,149 @@
 .ide-pin-planner-xdc-body { margin: 0; font-family: var(--rb-font-mono); font-size: 11px; white-space: pre-wrap; }
 .ide-pin-planner-xdc-line.is-added { color: var(--rb-accent); }
 .ide-pin-planner-xdc-line.is-removed { color: var(--rb-warning); }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Constraint sets (Chapter C) — named XDC sets, one active. Board & Constraints.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ide-constraint-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  min-width: 0;
+}
+
+.ide-constraint-sets-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-constraint-sets-title { font-size: 13px; font-weight: 650; }
+.ide-constraint-sets-count { font-size: 11px; color: var(--rb-text-muted); }
+
+.ide-constraint-sets-note { margin: 0; font-size: 11px; color: var(--rb-text-muted); line-height: 1.45; }
+.ide-constraint-sets-note code { font-family: var(--rb-font-mono); }
+
+.ide-constraint-sets-error {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--rb-danger);
+  background: color-mix(in srgb, var(--rb-danger) 12%, transparent);
+  color: var(--rb-danger);
+  font-size: 12px;
+}
+
+.ide-constraint-sets-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--rb-border-strong);
+  border-radius: 8px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.ide-constraint-sets-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.ide-constraint-set-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+  min-width: 0;
+}
+.ide-constraint-set-row.is-active { border-color: var(--rb-success); background: color-mix(in srgb, var(--rb-success) 6%, var(--rb-surface)); }
+
+.ide-constraint-set-activate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.ide-constraint-set-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rb-border-strong); }
+.ide-constraint-set-dot.is-on { background: var(--rb-success); }
+.ide-constraint-set-active-tag { color: var(--rb-success); }
+
+.ide-constraint-set-name {
+  font-weight: 600;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ide-constraint-set-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+}
+.ide-constraint-set-pins { font-size: 11px; color: var(--rb-text-muted); font-family: var(--rb-font-mono); flex: 0 0 auto; }
+
+.ide-constraint-set-ops { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.ide-constraint-set-ops button,
+.ide-constraint-sets-add-btn {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ide-constraint-set-remove { color: var(--rb-danger); }
+
+.ide-constraint-sets-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ide-constraint-sets-add-name {
+  flex: 1 1 160px;
+  min-width: 0;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+}
+.ide-constraint-sets-add-btn { border-color: var(--rb-action, #2563eb); color: var(--rb-action, #2563eb); }
+.ide-constraint-sets-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ide-constraint-sets-preview { font-size: 11px; color: var(--rb-text-secondary); }
+.ide-constraint-sets-preview summary { cursor: pointer; }
+.ide-constraint-sets-xdc {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--rb-canvas-dark, #0a0f18);
+  color: #cbd5e1;
+  font-family: var(--rb-font-mono);
+  font-size: 11px;
+  white-space: pre;
+}
