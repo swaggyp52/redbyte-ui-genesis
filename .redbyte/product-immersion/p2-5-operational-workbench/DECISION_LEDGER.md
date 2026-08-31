@@ -2,6 +2,46 @@
 
 Decisions and their evidence. Newest first.
 
+## D-5 — Slice 3: the Compare repair loop now shows a real verdict (the #1 usability defect)
+
+**Discovered (probe):** Running the Full Adder's 16 saved checks rendered
+"Simulation complete" / `data-kind='observe-done'` with **no pass/fail verdict and
+no pass-hero — for BOTH a correct AND a deliberately broken circuit.** The central
+classroom activity (Compare, inspect the mismatch, repair, re-run) gave the
+student no verdict. This is the concrete core of Connor's "technically broad but
+not practically useful."
+
+**Root cause:** `VerifySurface.tsx` (~L5932) hardcoded the `VerifyResultsSummary`
+`kind` to `'observe-done'` (unless stale) and the headline to "Simulation
+complete" — never reading the compare verdict, even though the run *did* evaluate
+the checks (store state was `pass`) and the `VerifyResultsSummary` component
+already fully supports `kind: 'pass' | 'fail' | 'stale' | 'observe-done'` and
+renders `ide-verify-pass-hero` for `'pass'`.
+
+**Fix (landed):** feed the already-computed session verdict into the call site —
+`sessionShowsAssertionMatch → 'pass'` ("Compare passed — outputs match
+expectations"), `sessionSignalsAssertionFailure → 'fail'` ("Compare failed —
+outputs differ"), else `'observe-done'`, with `stale` still taking precedence.
+One localized call-site change; no run-engine, format, store, or golden change.
+
+**Proof:** `compare-verdict-journey.mjs` drives the real UI through
+PASS → (break a gate in Design) → FAIL → (undo) → PASS and asserts the verdict +
+pass-hero each time, at 1440×900 and 1366×768, 0px overflow. Vitest: the verify
+suites go **30 → 26 failed (+4 fixed, 0 regressions)** — it fixes the recorded
+`ide-verify-pass-hero` baseline-red ("pass run evidence as the primary proof
+block") plus three "marks PASS stale" board-clock tests. Two `workstation` tests
+that asserted the *old* masking behavior (a passing compare reading "Simulation
+complete"; a failing compare rendering `observe-done`) were demonstrably obsolete
+and updated to the correct verdicts. Both classroom golden Basys3 export gates
+byte-identical (2/2 green).
+
+**This is the core of Journey A** (failure → repair → PASS) proven end-to-end.
+Remaining Journey-A tail (map → trusted export → inspect HDL/XDC/testbench →
+download → reload) is now unblocked and is the next increment. Secondary Simulate
+gaps still open: the row-level `ide-verify-mismatch-list` did not populate for the
+gate-deletion break in the probe (verdict is correct; the detailed mismatch table
+needs its own pass) — recorded for the Slice-3 follow-on.
+
 ## D-4 — Baseline reds are redder than Slice 0 recorded (18 pre-existing failures found)
 
 While validating Slice 2 (stash-compare on 4 Project/IdeApp suites), 18 failures

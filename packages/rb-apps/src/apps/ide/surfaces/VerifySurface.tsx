@@ -5934,12 +5934,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 kind={
                   runProofIsStale
                     ? 'stale'
-                    : 'observe-done'
+                    : sessionShowsAssertionMatch
+                      ? 'pass'
+                      : sessionSignalsAssertionFailure
+                        ? 'fail'
+                        : 'observe-done'
                 }
                 headline={
                   runProofIsStale
                     ? 'Simulation evidence is stale'
-                    : simulationEvidenceSummary?.simulationLabel ?? 'Simulation complete'
+                    : sessionShowsAssertionMatch
+                      ? lastRun.qualification === 'incomplete-mapping'
+                        ? 'Compare passed — outputs match (some pins unmapped)'
+                        : 'Compare passed — outputs match expectations'
+                      : sessionSignalsAssertionFailure
+                        ? 'Compare failed — outputs differ from expectations'
+                        : simulationEvidenceSummary?.simulationLabel ?? 'Simulation complete'
                 }
                 subline={
                   runProofIsStale

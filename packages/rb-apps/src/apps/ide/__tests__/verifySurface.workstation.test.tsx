@@ -424,9 +424,12 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(view.queryByTestId('ide-verify-session-guidance')).toBeNull();
+    // A passing compare run now shows the real verdict (not the old observe-only
+    // "Simulation complete"); the point of this test is that it is NOT stale.
     expect(view.getByTestId('ide-verify-results-summary').textContent).toContain(
-      'Simulation complete'
+      'Compare passed'
     );
+    expect(view.getByTestId('ide-verify-results-summary').textContent).not.toContain('stale');
     expect(view.getByTestId('ide-verify-summary-status').textContent).toContain(
       'Checks passing'
     );
@@ -1316,7 +1319,10 @@ describe('VerifySurface workstation controls', () => {
         onOpenProjectVectors={vi.fn()}
       />
     );
-    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
+    // The last run was a failing compare, so the summary now reflects that
+    // verdict rather than masking it as an observe-only run; the repair panel
+    // stays available to fix it.
+    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('fail');
     expect(view.getByTestId('ide-verify-repair-panel')).toBeTruthy();
     expect(view.queryByTestId('ide-vcb-save-expected')).toBeNull();
   });
