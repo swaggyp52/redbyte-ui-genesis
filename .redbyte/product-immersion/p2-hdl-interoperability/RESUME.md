@@ -68,6 +68,23 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-3 delivered — language capability matrix + diagnostics/range model.**
+  - `apps/ide/sourceDiagnostics.ts` (committed first): the repo's first
+    `SourceRange`/`SourcePosition` model — there was none; existing diagnostics
+    carried line/column *points* only. Offset↔position conversion, containment,
+    stable total-ordering sort, summary, formatting. 11 tests.
+  - `apps/ide/languageCapability.ts`: honest `LANGUAGE_CAPABILITIES` matrix
+    (VHDL/Verilog/SystemVerilog = structural-subset available; XDC = read-only
+    available; Tcl = opaque-preserved, **never executed**; VCD = read-only
+    planned; unknown = unsupported), reconciled against a full audit of the real
+    parsers (`vhdlImport`/`verilogImport`/`xdcImport`/`hdlToCircuit`/
+    `importCompiler`/`ImportSurface`). `capabilityFor`, `isReconstructable`,
+    `neverExecuted`, `capabilityForFile`, `summarizeModelCapabilities`. 12 tests.
+  - Findings recorded in IMPORT_CAPABILITY_MATRIX.md, incl. the range-integration
+    gaps to close in P2-5 (parsers emit first-match points; `XdcPinEntry.line`
+    and the behavioral scan are dropped before diagnostics).
+  - Proof (pinned Node 20.19.0): 35 tests green; 0 tsc errors in new modules.
+    Pure logic — no runtime/format wiring, so no golden or persistence risk.
 - **P2-2 delivered (format layer) — first-class source/fileset model.**
   New `apps/ide/projectSourceModel.ts`: `ProjectSourceModel` (files with
   `SourceLanguage` × `FilesetKind` × `library`, optional `topEntity`), pure
