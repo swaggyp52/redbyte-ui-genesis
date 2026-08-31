@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Circuit, CompositeNodeDef, Node, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
+import { BusValidationError, createBusBoundary } from '@redbyte/rb-logic-core';
 import type { HardwareMappingDocumentV2, IoMapping, TestVector } from '@redbyte/rb-utils';
 import {
   applyMaterializedPinToHardwareMappingV2,
@@ -64,6 +65,7 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
+import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity } from './topEntity';
 import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
 import { normalizeGuidedLabTaskId } from './labTaskDefinition';
 import {
@@ -135,10 +137,12 @@ import {
   createEmptyProjectHierarchy,
   createModuleFromSelection as createNativeModuleFromSelection,
   elaborateProjectHierarchy,
+  hierarchyCycleModules,
   moduleUsageCount,
   normalizeProjectHierarchy,
   placeModuleInstance as placeNativeModuleInstance,
   readInstanceName,
+  rederiveModulePortRefs,
   toCompositeDefinition,
   type CreateModuleInput,
   type CreateModuleResult,
@@ -329,6 +333,11 @@ export interface ProjectRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  /**
+   * The active HDL top-entity name. This store is its single writable owner;
+   * surfaces project it (never hold their own copy). Set via {@link setActiveTop}.
+   */
+  activeTop: string;
   projectKind: ProjectKind;
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
@@ -354,6 +363,8 @@ export interface ProjectRuntimeState {
   designRevision: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  /** Bounded, newest-last ledger of package generation/download events. */
+  exportHistory: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
@@ -387,6 +398,18 @@ export interface ProjectRuntimeState {
   redoProjectEdit: () => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
   addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  /**
+   * Create a first-class bus boundary: one labeled member node per bit plus
+   * the declaration that owns them, with an IO row per member so Board and
+   * Simulate see the bits immediately. Returns the created bus id, or an
+   * error message when the name/width is rejected.
+   */
+  createDesignBus: (input: {
+    name: string;
+    direction: 'input' | 'output';
+    width: number;
+    position?: { x: number; y: number };
+  }) => { ok: true; busId: string } | { ok: false; error: string };
   addDesignBoardIo: (input: {
     alias: string;
     direction: 'in' | 'out';
@@ -413,6 +436,12 @@ export interface ProjectRuntimeState {
     activeExampleId?: string | null;
     markDirty?: boolean;
   }) => void;
+  /**
+   * Set the active HDL top-entity. Empty/whitespace resets to the name-derived
+   * default. The candidate is normalized to a valid HDL identifier. Returns
+   * whether the requested name was a usable identifier (empty → reset → ok).
+   */
+  setActiveTop: (name: string) => { ok: boolean; error?: string };
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -452,6 +481,8 @@ interface PersistedRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  /** Single authority for the active HDL top-entity name (see {@link topEntity}). */
+  activeTop?: string;
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
@@ -472,6 +503,7 @@ interface PersistedRuntimeState {
   designRevision?: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  exportHistory?: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   macros: MacroDefinition[];
@@ -490,6 +522,8 @@ interface DesignHistorySnapshot {
 }
 
 interface RuntimeSeedState extends PersistedRuntimeState {
+  activeTop: string;
+  exportHistory: ProjectHealthExportResult[];
   scenarios: VerifyScenario[];
   activeScenarioId: string;
   designPast: DesignHistorySnapshot[];
@@ -834,6 +868,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectName: loadedProjectName,
           projectDescription: loadedProjectDescription,
           lastSavedAt: `Imported: ${loadedProjectName || 'project'}`,
+          activeTop: resolveActiveTopEntity(
+            project.hdl?.top ?? project.fpga?.top,
+            loadedProjectName
+          ),
           projectKind,
           sourceExampleId,
           scenarioAuthority,
@@ -853,6 +891,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           designRevision: 0,
           verifyLastRun: undefined,
           verifyRunHistory: [],
+          exportHistory: [],
           sim: initializeSimulationStateForCircuit(
             elaborateProjectHierarchy(circuit, hierarchy),
             projectIoRows,
@@ -902,11 +941,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             .map(([rowId, pin]) => [rowId.trim(), pin.trim()] as const)
             .filter(([rowId]) => rowId.length > 0);
           if (updateEntries.length === 0) return {};
-          const updateById = new Map(updateEntries);
-          const nextRows = cloneIoRows(state.projectIoRows).map((row) =>
-            updateById.has(row.id) ? { ...row, pin: updateById.get(row.id) ?? '' } : row
-          );
-          const nextDoc = buildHardwareMappingV2FromProjectIoRows(nextRows);
+          // Route every row through the same structured-mapping authority as
+          // setMappingPin. Rebuilding the document from flat rows here would
+          // flatten structured (bus/slice/group) entries on every bulk write.
+          const { hardwareMappingV2: synchronizedCurrentDoc } =
+            deriveAuthoritativeHardwareState(state.circuit, state.hardwareMappingV2);
+          let nextDoc = structuredClone(synchronizedCurrentDoc);
+          for (const [rowId, pin] of updateEntries) {
+            nextDoc = applyScalarResourceMetadata(
+              applyMaterializedPinToHardwareMappingV2(nextDoc, rowId, pin),
+              rowId,
+              pin
+            );
+          }
           const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
             state.circuit,
             nextDoc
@@ -1451,6 +1498,63 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           );
         });
       },
+      createDesignBus: ({ name, direction, width, position }) => {
+        const state = get();
+        const left = Math.max(0, Math.floor(width) - 1);
+        let result: { ok: true; busId: string } | { ok: false; error: string };
+        let nextState: ProjectRuntimeState | null = null;
+        try {
+          const created = createBusBoundary(state.circuit, {
+            name,
+            direction,
+            left,
+            right: 0,
+            position: position ? { x: roundToMill(position.x), y: roundToMill(position.y) } : undefined,
+          });
+          const rowDirection = direction === 'input' ? 'in' : 'out';
+          const rowPort = direction === 'input' ? 'out' : 'in';
+          const nextIoRows = cloneIoRows(state.projectIoRows);
+          for (const member of created.memberNodes) {
+            const rowId = getNextIoRowId(nextIoRows, normalizeBoardRowId(member.label ?? member.id));
+            nextIoRows.push({
+              id: rowId,
+              nodeId: member.id,
+              port: rowPort,
+              label: member.label ?? member.id,
+              direction: rowDirection,
+              pin: '',
+              required: true,
+            });
+          }
+          nextState = {
+            ...state,
+            ...commitDesignSnapshot(
+              state,
+              {
+                circuit: created.circuit,
+                projectIoRows: nextIoRows,
+                hardwareMappingV2: undefined,
+                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+              },
+              {
+                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                  -state.maxDesignHistory
+                ),
+                designFuture: [],
+              }
+            ),
+          };
+          result = { ok: true, busId: created.bus.id };
+        } catch (error) {
+          if (error instanceof BusValidationError) {
+            result = { ok: false, error: error.message };
+          } else {
+            throw error;
+          }
+        }
+        if (nextState) set(nextState);
+        return result;
+      },
       addDesignBoardIo: ({ alias, direction, kind, position }) => {
         set((state) => {
           const normalizedAlias = normalizeAliasToken(alias);
@@ -1967,6 +2071,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             lastExport: result,
             dirtySinceExport: result.status === 'ok' ? false : state.projectHealthCore.dirtySinceExport,
           },
+          // Append every generation/download event to the bounded history so
+          // the package workspace can compare successive packages and show
+          // provenance. lastExport stays the single "current" pointer.
+          exportHistory: [...state.exportHistory, result].slice(-20),
         }));
       },
       setProjectIdentity: (input) => {
@@ -2010,6 +2118,29 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               : state.projectHealthCore,
           };
         });
+      },
+      setActiveTop: (name) => {
+        const trimmed = name.trim();
+        if (trimmed.length === 0) {
+          // Empty resets to the name-derived default (a valid, deliberate choice).
+          set((state) => ({
+            activeTop: buildTopEntityName(state.projectName),
+            projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+          }));
+          return { ok: true };
+        }
+        if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
+          return {
+            ok: false,
+            error:
+              'Top entity must start with a letter and use only letters, digits, or underscores (max 64 characters).',
+          };
+        }
+        set((state) => ({
+          activeTop: normalizeTopEntityName(trimmed, buildTopEntityName(state.projectName)),
+          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+        }));
+        return { ok: true };
       },
       startBlankProject: () => {
         set((state) => {
@@ -2182,27 +2313,59 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       createModuleFromSelection: (input) => {
         let created: CreateModuleResult | null = null;
         set((state) => {
-          if (state.hierarchy.activeModuleId !== TOP_MODULE_ID) return state;
+          const activeModuleId = state.hierarchy.activeModuleId;
           try {
-            created = createNativeModuleFromSelection(state.circuit, state.hierarchy, input);
-            const customComponents = created.hierarchy.modules.map(toCompositeDefinition);
+            if (activeModuleId === TOP_MODULE_ID) {
+              created = createNativeModuleFromSelection(state.circuit, state.hierarchy, input);
+              const customComponents = created.hierarchy.modules.map(toCompositeDefinition);
+              for (const definition of customComponents) registerCompositeNode(definition);
+              return commitDesignSnapshot(
+                state,
+                {
+                  circuit: cloneCircuit(created.circuit),
+                  hierarchy: cloneProjectHierarchy(created.hierarchy),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                  macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory,
+                  ),
+                  designFuture: [],
+                },
+              );
+            }
+            // Nested: create the child module from the ACTIVE module's circuit,
+            // then write the instance-replaced circuit back into the active
+            // module AND re-derive its port internal-refs so the parent's ports
+            // now resolve through the new child instance (not the extracted
+            // nodes). The top circuit is untouched — a module-definition edit.
+            const activeModule = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+            if (!activeModule) return state;
+            created = createNativeModuleFromSelection(activeModule.circuit, state.hierarchy, input);
+            const updatedCircuit = created.circuit;
+            const nowIso = new Date().toISOString();
+            const hierarchy: ProjectHierarchyDocument = {
+              ...cloneProjectHierarchy(created.hierarchy),
+              activeModuleId,
+              modules: created.hierarchy.modules.map((module) =>
+                module.id === activeModuleId
+                  ? rederiveModulePortRefs({
+                      ...cloneModuleDefinition(module),
+                      circuit: cloneCircuit(updatedCircuit),
+                      updatedAt: nowIso,
+                    })
+                  : cloneModuleDefinition(module),
+              ),
+            };
+            if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+              created = null;
+              return state;
+            }
+            const customComponents = hierarchy.modules.map(toCompositeDefinition);
             for (const definition of customComponents) registerCompositeNode(definition);
-            return commitDesignSnapshot(
-              state,
-              {
-                circuit: cloneCircuit(created.circuit),
-                hierarchy: cloneProjectHierarchy(created.hierarchy),
-                projectIoRows: cloneIoRows(state.projectIoRows),
-                hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
-                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
-              },
-              {
-                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
-                  -state.maxDesignHistory,
-                ),
-                designFuture: [],
-              },
-            );
+            return commitModuleDefinitionSnapshot(state, hierarchy);
           } catch {
             created = null;
             return state;
@@ -2213,28 +2376,54 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       placeModuleInstance: (moduleId, position, instanceName) => {
         let placed: Node | null = null;
         set((state) => {
-          if (state.hierarchy.activeModuleId !== TOP_MODULE_ID) return state;
           const definition = state.hierarchy.modules.find((module) => module.id === moduleId);
           if (!definition) return state;
+          const activeModuleId = state.hierarchy.activeModuleId;
           try {
-            const result = placeNativeModuleInstance(state.circuit, definition, position, instanceName);
+            // Top-level placement: the instance drops into the project's top circuit.
+            if (activeModuleId === TOP_MODULE_ID) {
+              const result = placeNativeModuleInstance(state.circuit, definition, position, instanceName);
+              placed = result.instance;
+              return commitDesignSnapshot(
+                state,
+                {
+                  circuit: result.circuit,
+                  hierarchy: cloneProjectHierarchy(state.hierarchy),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                  macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory,
+                  ),
+                  designFuture: [],
+                },
+              );
+            }
+            // Nested placement: the instance drops into the currently-edited module
+            // definition's own circuit, so a module can contain another module.
+            const active = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+            if (!active) return state;
+            const result = placeNativeModuleInstance(active.circuit, definition, position, instanceName);
+            const hierarchy: ProjectHierarchyDocument = {
+              ...cloneProjectHierarchy(state.hierarchy),
+              modules: state.hierarchy.modules.map((module) =>
+                module.id === activeModuleId
+                  ? { ...module, circuit: cloneCircuit(result.circuit), updatedAt: new Date().toISOString() }
+                  : cloneModuleDefinition(module),
+              ),
+            };
+            // Reject a placement that would make a module instantiate itself
+            // directly or indirectly. The project stays valid and unchanged.
+            if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+              placed = null;
+              return state;
+            }
             placed = result.instance;
-            return commitDesignSnapshot(
-              state,
-              {
-                circuit: result.circuit,
-                hierarchy: cloneProjectHierarchy(state.hierarchy),
-                projectIoRows: cloneIoRows(state.projectIoRows),
-                hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
-                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
-              },
-              {
-                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
-                  -state.maxDesignHistory,
-                ),
-                designFuture: [],
-              },
-            );
+            const customComponents = hierarchy.modules.map(toCompositeDefinition);
+            for (const registered of customComponents) registerCompositeNode(registered);
+            return commitModuleDefinitionSnapshot(state, hierarchy);
           } catch {
             placed = null;
             return state;
@@ -2273,6 +2462,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 : cloneModuleDefinition(module),
             ),
           };
+          // Reject an edit that would make a module instantiate itself directly
+          // or indirectly. The project stays valid and unchanged on rejection.
+          if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+            return state;
+          }
           const customComponents = hierarchy.modules.map(toCompositeDefinition);
           for (const definition of customComponents) registerCompositeNode(definition);
           return commitModuleDefinitionSnapshot(state, hierarchy);
@@ -2371,6 +2565,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectName: state.projectName,
         projectDescription: state.projectDescription,
         lastSavedAt: state.lastSavedAt,
+        activeTop: state.activeTop,
         projectKind: state.projectKind,
         sourceExampleId: state.sourceExampleId,
         scenarioAuthority: state.scenarioAuthority,
@@ -2399,6 +2594,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
         verifyRunHistory: state.verifyRunHistory.slice(-50),
+        exportHistory: state.exportHistory.slice(-20),
         sim: cloneSimState(state.sim),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
@@ -2678,6 +2874,10 @@ export function mergePersistedRuntimeState(
       typeof candidate.lastSavedAt === 'string' && candidate.lastSavedAt.trim().length > 0
         ? candidate.lastSavedAt.trim()
         : currentState.lastSavedAt,
+    activeTop:
+      typeof candidate.activeTop === 'string' && candidate.activeTop.trim().length > 0
+        ? candidate.activeTop
+        : resolveActiveTopEntity(undefined, restoredIdentity.projectName),
     projectKind: restoredProjectKind,
     sourceExampleId: persistedSourceExampleId,
     scenarioAuthority: detachedScenarioAuthority,
@@ -2701,6 +2901,9 @@ export function mergePersistedRuntimeState(
     designRevision,
     verifyLastRun: detachedVerifyLastRun,
     verifyRunHistory: detachedVerifyRunHistory,
+    exportHistory: Array.isArray(candidate.exportHistory)
+      ? (candidate.exportHistory as ProjectHealthExportResult[]).slice(-20)
+      : [],
     sim: {
       ...sim,
       probes: normalizeScenarioProbes(
@@ -2833,11 +3036,13 @@ function createEmptyProjectState(
   const projectIoRows: ProjectIoRow[] = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
   const projectVectors: TestVector[] = [];
   const defaultScenario = createDefaultScenario(projectVectors);
+  const projectName = input.projectName ?? 'Untitled Project';
   return {
     projectId: input.projectId ?? createProjectId('blank'),
-    projectName: input.projectName ?? 'Untitled Project',
+    projectName,
     projectDescription: '',
     lastSavedAt: input.lastSavedAt ?? 'Project home',
+    activeTop: buildTopEntityName(projectName),
     projectKind: input.projectKind ?? 'home',
     sourceExampleId: null,
     scenarioAuthority: 'none',
@@ -2858,6 +3063,7 @@ function createEmptyProjectState(
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    exportHistory: [],
     sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
     projectHealthCore: {
       dirtySinceVerify: false,
@@ -2889,6 +3095,7 @@ function stateFromExample(
     projectName: example.name,
     projectDescription: example.summary,
     lastSavedAt: 'Seeded example',
+    activeTop: resolveActiveTopEntity(undefined, example.name),
     projectKind: 'example',
     sourceExampleId: example.id,
     scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
@@ -2909,6 +3116,7 @@ function stateFromExample(
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    exportHistory: [],
     sim,
     projectHealthCore: {
       dirtySinceVerify: false,
@@ -3197,6 +3405,11 @@ function cloneCircuit(circuit: Circuit): Circuit {
   return {
     nodes: circuit.nodes.map((node) => ({ ...node })),
     connections: circuit.connections.map((connection) => ({ ...connection })),
+    // Declared buses are part of the circuit; a shallow clone that dropped
+    // them would erase first-class vectors on every design edit.
+    ...(circuit.buses
+      ? { buses: circuit.buses.map((bus) => ({ ...bus, bits: bus.bits.map((bit) => ({ ...bit })) })) }
+      : {}),
   };
 }
 
@@ -3207,8 +3420,19 @@ function cloneModuleDefinition(
     ...module,
     ports: module.ports.map((port) => ({
       ...port,
+      ...(port.range ? { range: { ...port.range } } : {}),
       sourceBoundary: {
         internalRefs: port.sourceBoundary.internalRefs.map((ref) => ({ ...ref })),
+        // Preserve vector per-bit boundary refs; dropping them would erase the
+        // vector identity of a module port on any hierarchy edit.
+        ...(port.sourceBoundary.bits
+          ? {
+              bits: port.sourceBoundary.bits.map((bit) => ({
+                index: bit.index,
+                internalRefs: bit.internalRefs.map((ref) => ({ ...ref })),
+              })),
+            }
+          : {}),
       },
     })),
     circuit: cloneCircuit(module.circuit),
@@ -5014,7 +5238,7 @@ function compareText(left: string, right: string): number {
   return 0;
 }
 
-function createProjectId(seed: string): string {
+export function createProjectId(seed: string): string {
   const normalizedSeed = normalizeBoardRowId(seed).replace(/_/g, '-');
   const suffix = Date.now().toString(36).slice(-6);
   return `rb-${normalizedSeed}-${suffix}`;

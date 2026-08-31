@@ -274,8 +274,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-featured-security-lock')).toBeNull();
     // Security lock example appears as a regular example card, not a featured panel
     expect(getByTestId('ide-project-landing-example-23_lab8-fsm-lock-starter-basys3')).toBeTruthy();
-    // Project Command Center: starters remain visible without making the surface course-first.
-    expect(getByTestId('ide-project-start-column').textContent).toContain('Course starters');
+    // Project Command Center: the examples browser (search + tags + learning
+    // path) owns the starter column without making the surface course-first.
+    expect(getByTestId('ide-project-start-column').textContent).toContain('Examples & starters');
     expect(getByTestId('ide-project-start-column').textContent).not.toContain('Other starting points');
   });
 

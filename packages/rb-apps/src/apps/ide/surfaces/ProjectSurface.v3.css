@@ -1075,6 +1075,23 @@
 }
 .ide-project-v3-facts small { color: var(--rb-text-muted); font-size: 12px; }
 .ide-project-v3-facts strong { color: var(--rb-text-primary); font-size: 13px; font-weight: 700; }
+/* Set Active Top — actionable Overview control over fpgaConfig.top */
+.ide-project-active-top-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--rb-text-primary);
+  font: inherit;
+}
+.ide-project-active-top-value:hover strong { text-decoration: underline; }
+.ide-project-active-top-pencil { color: var(--rb-text-muted); font-size: 11px; }
+.ide-project-active-top-edit { display: inline-flex; align-items: center; gap: 4px; }
+.ide-project-active-top-edit .ide-text-input { width: 150px; padding: 3px 6px; font-size: 12px; }
+.ide-project-active-top-error { margin: 6px 0 0; color: var(--rb-danger, #c0392b); font-size: 12px; }
 .ide-project-v3-title,
 .ide-project-v3-title-button,
 .ide-project-v3-title-input { font-size: clamp(22px, 2vw, 26px); line-height: 1.15; }
@@ -1161,6 +1178,46 @@
   min-width: 0;
 }
 
+/* Derived design compilation order for the generated VHDL package. */
+.ide-project-compile-order {
+  margin: 2px 8px 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface-1);
+}
+.ide-project-compile-order > span {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ide-project-compile-order ol {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+.ide-project-compile-order li {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--rb-text-primary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ide-project-compile-order li code {
+  display: inline-block;
+  min-width: 14px;
+  color: var(--rb-text-muted);
+}
+.ide-project-compile-order li small {
+  color: var(--rb-text-muted);
+  font-family: inherit;
+}
+
 .ide-project-design-overview { display: grid; grid-template-rows: auto auto minmax(220px, 1fr) auto; align-content: stretch; gap: 10px; max-height: none; overflow: auto; border-right: 1px solid var(--rb-border); }
 .ide-project-design-overview > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
 .ide-project-design-overview h3 { font-size: 20px; }
@@ -1238,3 +1295,97 @@
   .ide-project-context-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ide-project-interface-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Top-level buses in the Project explorer — first-class vector signals. */
+.ide-project-buses {
+  margin: 2px 8px 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface-1);
+}
+.ide-project-buses > span {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.ide-project-buses ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+}
+.ide-project-buses li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.ide-project-buses li code {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--rb-accent, #2563eb);
+}
+.ide-project-buses li small {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ── Runs document (verifyRunHistory projection) ──────────────────────────── */
+.ide-project-context-runs { padding: 0; border: 0; background: transparent; }
+.ide-project-runs {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+}
+.ide-project-runs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ide-project-runs-head span { color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-runs-head strong { font-size: 12px; color: var(--rb-text-secondary, var(--rb-text-muted)); font-weight: 600; }
+.ide-project-runs-empty { margin: 0; font-size: 12.5px; color: var(--rb-text-muted); line-height: 1.5; }
+.ide-project-runs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ide-project-run-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-app-bg, var(--rb-surface));
+}
+.ide-project-run-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.ide-project-run-badge.is-pass { background: color-mix(in srgb, var(--rb-success) 16%, transparent); color: var(--rb-success); }
+.ide-project-run-badge.is-fail { background: color-mix(in srgb, var(--rb-danger) 16%, transparent); color: var(--rb-danger); }
+.ide-project-run-body { display: grid; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.ide-project-run-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ide-project-run-line strong { font-size: 12.5px; color: var(--rb-text-primary, inherit); }
+.ide-project-run-time { font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-run-failure { margin: 0; font-size: 11.5px; color: var(--rb-danger); }
+.ide-project-run-failure code { font-family: var(--rb-font-mono); font-size: 11px; }
+.ide-project-run-changes { margin: 0; font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-run-changes.is-unchanged { opacity: 0.75; }
+.ide-project-runs-open {
+  justify-self: start;
+  border: 1px solid var(--rb-border);
+  background: transparent;
+  color: var(--rb-action);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ide-project-runs-open:hover { background: var(--rb-surface-subtle, var(--rb-surface)); }

@@ -120,9 +120,13 @@ import {
   type VerifyStateTone,
 } from './verify/VerifySurfacePrimitives';
 import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
+import { BusWordLanesPanel } from './verify/BusWordLanesPanel';
+import { assembleBusWordLanes } from '../sim/busWordLanes';
+import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
+import { ManualBench } from './verify/ManualBench';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
 import { TickReadoutStrip } from './verify/TickReadoutStrip';
 import { VerifyLabSequencerPanel } from './verify/VerifyLabSequencerPanel';
@@ -304,6 +308,8 @@ export interface VerifySurfaceProps {
   };
   /** Canonical generated simulation source from the export view model. */
   generatedTestbenchSource?: string;
+  /** First-class bus declarations from the authoring circuit, for word lanes. */
+  buses?: readonly BusDeclaration[];
 }
 
 // ─── SVG WaveformViewer (extracted to verify/WaveformInstrument.tsx) ─────────
@@ -419,6 +425,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
   generatedTestbenchSource,
+  buses,
 }) => {
   const gradingBlockedByDesign = Boolean(designBlockingIssue);
   // Preserve observation traces, but revoke checked PASS/FAIL presentation
@@ -581,9 +588,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [onSignalSelected]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
-  const [studioMode, setStudioMode] = useState<'scenario' | 'replay' | 'checks' | 'testbench'>(
-    () => lastRun ? 'replay' : 'scenario'
-  );
+  const [studioMode, setStudioMode] = useState<
+    'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
+  >(() => (lastRun ? 'replay' : 'scenario'));
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -2773,6 +2780,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       tickWindowCenter ?? selectedTick ?? allWaveformTicks[0] ?? 0
     );
   }, [allWaveformTicks, focusedFailureTick, tickZoom, tickWindowCenter, selectedTick]);
+  // First-class bus word lanes: collapse member bit rows into observed words
+  // over the same tick window the waveform shows. Assembled from the full
+  // timeline (not the filtered/hidden lane view) so a bus word stays complete
+  // even when a member lane is hidden or de-prioritized.
+  const busWordLanes = useMemo(
+    () => assembleBusWordLanes(buses ?? [], signalTimeline, zoomedTicks),
+    [buses, signalTimeline, zoomedTicks]
+  );
   const runVectorCount = lastRun?.report.vectors?.length ?? effectiveNextRunVectors.length;
   const waveformWindowLabel = useMemo(
     () => formatTickWindowLabel(allWaveformTicks, zoomedTicks, tickZoom),
@@ -5763,7 +5778,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {studioMode === 'testbench' ? (
+        {studioMode === 'bench' ? (
+          <ManualBench
+            onOpenVirtualBoard={onGoToHardware}
+            onOpenAnalyzer={lastRun ? () => setStudioMode('replay') : undefined}
+            onAddToSequence={onAppendScenarioStep}
+          />
+        ) : studioMode === 'testbench' ? (
           <ScenarioTestbenchPreview
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             source={generatedTestbenchSource}
@@ -5782,6 +5803,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             observedValuesByTick={testbenchObservedValuesByTick}
           />
         )}
+        {studioMode !== 'bench' ? (
         <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-table-disclosure">
           <summary>Open detailed event table</summary>
           <ScenarioBuilderPanel
@@ -5836,6 +5858,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           showExpectedLanes={studioMode === 'checks'}
           />
         </details>
+        ) : null}
         </VerifyStimulusRegion>
 
         <VerifyWaveformRegion>
@@ -6378,6 +6401,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 data-testid="ide-verify-waveform-preview"
                 data-verify-trace-only={isTraceOnly ? '1' : '0'}
               >
+                <BusWordLanesPanel
+                  lanes={busWordLanes}
+                  selectedTick={selectedTick}
+                  onSelectTick={setSelectedTick}
+                />
                 <div
                   className="ide-verify-waveform-scroll"
                   ref={waveformScrollRef}
@@ -6398,6 +6426,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     });
                   }}
                 >
+                {hiddenSignals.length > 0 ? (
+                  <div className="ide-verify-hidden-lanes" data-testid="ide-verify-hidden-lanes">
+                    <span>
+                      {hiddenSignals.length} lane{hiddenSignals.length === 1 ? '' : 's'} hidden
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHiddenSignals([])}
+                      data-testid="ide-verify-hidden-lanes-restore"
+                    >
+                      Show all
+                    </button>
+                  </div>
+                ) : null}
                 <WaveformViewer
                   signals={displaySignalTimeline}
                   ticks={zoomedTicks}
@@ -6417,6 +6459,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   signalGroups={laneGroupBySignal}
                   onHoverSignal={handleSignalHover}
                   selectedSignal={selectedSignal}
+                  onTogglePinSignal={(signal) =>
+                    setPinnedSignalOrder((previous) =>
+                      previous.includes(signal)
+                        ? previous.filter((entry) => entry !== signal)
+                        : [...previous, signal]
+                    )
+                  }
+                  onHideSignal={(signal) =>
+                    setHiddenSignals((previous) =>
+                      previous.includes(signal) ? previous : [...previous, signal]
+                    )
+                  }
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Board & Constraints'

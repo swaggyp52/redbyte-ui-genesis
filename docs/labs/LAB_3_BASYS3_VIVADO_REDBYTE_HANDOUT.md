@@ -134,9 +134,9 @@ This step configures the hardware pin mapping. You must do this before submissio
 | AN[2] | Output | V4 | Disable (drive high = off) |
 | AN[3] | Output | W4 | Disable (drive high = off) |
 
-#### Step 4 — Enter Test Vectors in Verify Surface
+#### Step 4 — Enter Test Vectors in the Simulate Workspace
 
-1. Go to Verify surface.
+1. Open the Simulate workspace.
 2. For each decimal digit 0-9, enter one test vector row:
    - Input columns: B3, B2, B1, B0
    - Expected output columns: CA, CB, CC, CD, CE, CF, CG
@@ -242,7 +242,7 @@ If any row FAILS:
 2. **Lab Report (due next class period):**
    - Completed truth table (final version)
    - All 7 K-map diagrams with simplified expressions
-   - Screenshot of RedByte Verify surface showing all 10 rows PASS
+   - Screenshot of the RedByte Simulate workspace showing all 10 rows PASS
    - Basys3 pin assignment table (copy from Step 4 above, with your hand-filled values)
    - Observation: list at least 3 digits you verified working on the board (with switch positions)
 
@@ -255,7 +255,7 @@ If any row FAILS:
 - [ ] Truth table complete and correct for all 10 digits
 - [ ] K-maps filled correctly and expressions minimized
 - [ ] RedByte circuit implements correct decode logic
-- [ ] Verify PASS on all 10 digit test vectors
+- [ ] Simulate checks PASS on all 10 digit test vectors
 - [ ] Basys3 preset applied (submission gate: `basys3-profile`)
 - [ ] Submission ZIP exported and submitted
 - [ ] Hardware: 3 or more digits verified on Basys3 board
@@ -274,7 +274,7 @@ double-click the output node, and verify the label matches exactly.
 
 **"The board programs successfully but the display shows the wrong digit."**
 Check your truth table for that specific digit. Verify the K-map expression was
-entered correctly into the gate network. Compare expected vs. actual in the Verify FAIL row.
+entered correctly into the gate network. Compare expected vs. actual in the failing Simulate check row.
 
 **"The display is completely dark."**
 AN[0] must be driven LOW (logic 0) to enable the rightmost digit anode.

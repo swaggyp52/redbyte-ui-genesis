@@ -78,6 +78,7 @@ import {
   deriveBehavioralEvidenceTierFromResult,
   formatBehavioralEvidenceTier,
 } from '../simulationEvidence';
+import { ExportHistoryPanel } from '../components/ExportHistoryPanel';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'export',
@@ -93,6 +94,8 @@ export interface ExportSurfaceProps {
   verifyLastRun?: RuntimeVerifyRun;
   /** Browser-local evidence for the last package download. */
   lastExport?: ProjectHealthExportResult;
+  /** Bounded ledger of prior generation/download events (newest last). */
+  exportHistory?: ProjectHealthExportResult[];
   /** Structural Design authority. Prior Compare evidence is inconclusive while present. */
   designBlockingIssue?: {
     title: string;
@@ -238,6 +241,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   verifyResult: persistedVerifyResult,
   verifyLastRun: persistedVerifyLastRun,
   lastExport,
+  exportHistory = [],
   designBlockingIssue,
   designReady = true,
   workflowAuthority,
@@ -1782,6 +1786,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   Download draft
                 </IdeButton>
               ) : null}
+              {!exportBlocked && handoffTruth.primaryCtaIntent === 'program-handoff' ? (
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => void handleDownloadExport('kit')}
+                  disabled={downloadDisabled}
+                  testId="ide-export-kit-download-v1"
+                >
+                  Download flat kit
+                </IdeButton>
+              ) : null}
               {packageValidation ? (
                 <small className={`ide-export-v3__validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
                   {packageValidation.message} Browser E0 only · Vivado external.
@@ -1805,6 +1819,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <code>{currentDownloadEvidence?.packageHash ?? currentDownloadEvidence?.bundleHash ?? 'legacy evidence unavailable'}</code>
             </IdeCallout>
           ) : null}
+
+          {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} /> : null}
 
           <section
             className="ide-export-v3__files"

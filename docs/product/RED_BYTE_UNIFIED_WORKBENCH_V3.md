@@ -8,6 +8,10 @@ role: Unified Workbench v3 product and acceptance contract
 
 # RedByte Unified Workbench v3
 
+> **SUPERSEDED.** This is the v2-RC-era workbench contract. The current product
+> contract is `docs/product/RED_BYTE_V3_PRODUCT_SYSTEM.md` (five workspaces:
+> Project / Design / Simulate / Board & Constraints / Build & Export).
+
 ## Program boundary
 
 Unified Workbench v3 replaces RedByte's disclosure-and-rail interaction architecture with one stable engineering-workspace grammar. It is a Browser-E0 product reconstruction based on preserved local checkpoint `14429ed61f5a1bc90a796b0bdf646633668381c3`.

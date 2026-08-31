@@ -1,0 +1,87 @@
+# PR Fast Checks - lean pull-request pipeline
+#
+# Bounded, fast validation for every pull request: install, typecheck, CSS
+# ownership audit, current-doc validation, encoding hygiene, public start-page
+# contract, build/deploy contract, and the unified production build (with the
+# dist/ verifier). Uploads the built dist/ as an artifact for inspection.
+#
+# The expensive Classroom Truth Gates aggregate (~90+ min browser matrix) stays
+# reserved for pull requests into main and pushes to main
+# (.github/workflows/pr-truth-gates.yml). Do not duplicate it here.
+
+name: PR Fast Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pr-fast-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-checks:
+    name: Typecheck, contracts, unified build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -s typecheck
+
+      - name: IDE CSS ownership audit
+        run: pnpm -s css:audit:ide
+
+      - name: Current-doc validation
+        run: pnpm -s rb:doc:validate
+
+      - name: Encoding hygiene
+        run: pnpm -s rb:encoding:check
+
+      - name: Public start-page contract
+        run: pnpm -s rb:site:start:test
+
+      - name: Build/deploy contract
+        run: pnpm -s rb:build:contract:test
+
+      - name: Gate - No solution Lab 4
+        run: pnpm -s ci:no-solution:lab4
+
+      # rc:d0:project-determinism-gate is excluded for now: its committed baseline
+      # hash is stale at the current branch head (pre-existing red, tracked in
+      # docs/ACTIVE_WORK.md). Re-add once the baseline drift is explained and fixed.
+      - name: Gate - Golden Basys3 export determinism
+        run: |
+          pnpm -s rc:e1:golden-basys3-export-gate
+          pnpm -s rc:e1:golden-basys3-alu-export-gate
+
+      - name: Unified build + dist verification
+        run: pnpm -s build:unified
+        env:
+          VITE_APP_ENV: production
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redbyte-dist-${{ github.event.pull_request.head.sha || github.sha }}
+          path: dist/
+          retention-days: 7

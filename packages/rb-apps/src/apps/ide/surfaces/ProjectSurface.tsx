@@ -13,8 +13,10 @@ import {
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import { IdeButton, IdeModal, IdePanel } from '../components/IdePrimitives';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
+import { ExamplesBrowser } from '../components/ProjectSurfacePrimitives';
 import type { ProjectOutlineSummary } from '../projectOutline';
-import type { RuntimeSimState } from '../projectRuntime';
+import type { RuntimeSimState, VerifyRunLedgerEntry } from '../projectRuntime';
+import { ProjectRunsList } from '../components/ProjectRunsList';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { LAB_STARTERS } from '../labStarters';
@@ -26,7 +28,24 @@ import type { IoSignalRole } from '../ioSignalRoles';
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { ProjectHierarchyDocument } from '../projectHierarchy';
+import { busRangeLabel } from '@redbyte/rb-logic-core';
+import type { ProjectHierarchyDocument, ModulePort } from '../projectHierarchy';
+import { modulePortWidth } from '../projectHierarchy';
+
+/** Compact interface signature for a module, e.g. "A[1:0], B → SUM[3:0]". */
+function modulePortSignature(ports: readonly ModulePort[]): string {
+  const label = (port: ModulePort): string => {
+    const width = modulePortWidth(port);
+    if (width <= 1) return port.name;
+    const range = port.range ?? { left: width - 1, right: 0 };
+    return `${port.name}[${range.left}:${range.right}]`;
+  };
+  const ins = ports.filter((p) => p.direction === 'input').map(label);
+  const outs = ports.filter((p) => p.direction === 'output').map(label);
+  const left = ins.length > 0 ? ins.join(', ') : '—';
+  const right = outs.length > 0 ? outs.join(', ') : '—';
+  return `${left} → ${right}`;
+}
 import {
   deriveBehavioralEvidenceTierFromResult,
   formatBehavioralEvidenceTier,
@@ -117,6 +136,7 @@ export interface ProjectSurfaceProps {
   runtimeSim?: RuntimeSimState;
   onGoToHardware?: () => void;
   onSaveNow?: () => void;
+  onDuplicateProject?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
   saveState?: 'saved' | 'unsaved' | 'autosaving' | 'saving' | 'save-failed';
@@ -124,6 +144,7 @@ export interface ProjectSurfaceProps {
   studentName?: string;
   onStudentNameChange?: (name: string) => void;
   hasVerifyRun?: boolean;
+  runHistory?: VerifyRunLedgerEntry[];
   fpgaConfig?: { part: string; top: string; board: string };
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
@@ -174,11 +195,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenRecentProject,
   diagnosticRouteRequest,
   onSaveNow,
+  onDuplicateProject,
   onRestoreLastSave,
   onResetProject,
   saveState = 'saved',
   onRenameProject,
   hasVerifyRun = false,
+  runHistory = [],
   fpgaConfig,
   importFidelity,
   onFpgaConfigChange,
@@ -540,6 +563,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               requiredRows={requiredRows}
               missingRequiredRows={missingRequiredRows}
               hasVerifyRun={hasVerifyRun}
+              runHistory={runHistory}
               onOpenHardware={onOpenHardware}
               exportSummary={exportSummary}
               exportPackageCurrent={exportPackageCurrent}
@@ -548,6 +572,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               recentProjects={recentProjects}
               onOpenRecentProject={onOpenRecentProject}
               onSaveNow={onSaveNow}
+              onDuplicateProject={onDuplicateProject}
               onRestoreLastSave={onRestoreLastSave}
               onResetProject={onResetProject}
               determinismHash={determinismHash}
@@ -681,6 +706,7 @@ interface LoadedProjectOverviewProps {
   requiredRows: ProjectMappingRow[];
   missingRequiredRows: ProjectMappingRow[];
   hasVerifyRun: boolean;
+  runHistory: VerifyRunLedgerEntry[];
   onOpenHardware: () => void;
   exportSummary: string;
   exportPackageCurrent: boolean;
@@ -689,6 +715,7 @@ interface LoadedProjectOverviewProps {
   recentProjects: NonNullable<ProjectSurfaceProps['recentProjects']>;
   onOpenRecentProject?: (projectId: string) => void;
   onSaveNow?: () => void;
+  onDuplicateProject?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
   determinismHash: string;
@@ -761,6 +788,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   requiredRows,
   missingRequiredRows,
   hasVerifyRun,
+  runHistory,
   onOpenHardware,
   exportSummary,
   exportPackageCurrent,
@@ -769,6 +797,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   recentProjects,
   onOpenRecentProject,
   onSaveNow,
+  onDuplicateProject,
   onRestoreLastSave,
   onResetProject,
   determinismHash,
@@ -822,6 +851,24 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
     ...(outline?.customComponents.map((component) => component.name) ?? []),
   ];
   const resolvedTopModule = fpgaConfig?.top?.trim() || topModuleName.trim() || 'No top module';
+  // Set Active Top: a validated, first-class Overview command over the existing
+  // fpgaConfig.top authority (persisted as fpga.top; survives save/reload).
+  const [topEditing, setTopEditing] = useState(false);
+  const [topDraft, setTopDraft] = useState(resolvedTopModule);
+  const [topError, setTopError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!topEditing) setTopDraft(resolvedTopModule);
+  }, [resolvedTopModule, topEditing]);
+  const commitActiveTop = useCallback(() => {
+    const trimmed = topDraft.trim();
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
+      setTopError('Top must be a valid HDL identifier (letter, then letters/digits/underscore).');
+      return;
+    }
+    if (trimmed !== resolvedTopModule) onFpgaConfigChange?.({ top: trimmed });
+    setTopError(null);
+    setTopEditing(false);
+  }, [topDraft, resolvedTopModule, onFpgaConfigChange]);
   const simulationSourceLabel = hasVectors
     ? scenarioAuthority === 'starter'
       ? 'Starter scenario vectors'
@@ -890,7 +937,38 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             </p>
           ) : null}
           <div className="ide-project-v3-facts" data-testid="ide-project-professional-facts">
-            <span><small>Top</small><strong>{resolvedTopModule}</strong></span>
+            <span className="ide-project-active-top" data-testid="ide-project-active-top">
+              <small>Top</small>
+              {topEditing && onFpgaConfigChange ? (
+                <span className="ide-project-active-top-edit">
+                  <input
+                    className="ide-text-input"
+                    value={topDraft}
+                    autoFocus
+                    data-testid="ide-project-active-top-input"
+                    aria-label="Active top entity"
+                    onChange={(event) => { setTopDraft(event.currentTarget.value); setTopError(null); }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') commitActiveTop();
+                      if (event.key === 'Escape') { setTopEditing(false); setTopError(null); }
+                    }}
+                  />
+                  <IdeButton tone="primary" onClick={commitActiveTop} testId="ide-project-active-top-confirm">Set</IdeButton>
+                  <IdeButton tone="ghost" onClick={() => { setTopEditing(false); setTopError(null); }}>Cancel</IdeButton>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="ide-project-active-top-value"
+                  data-testid="ide-project-set-active-top"
+                  onClick={() => { if (onFpgaConfigChange) setTopEditing(true); }}
+                  title={onFpgaConfigChange ? 'Set the active top entity' : undefined}
+                >
+                  <strong>{resolvedTopModule}</strong>
+                  {onFpgaConfigChange ? <span aria-hidden="true" className="ide-project-active-top-pencil">✎</span> : null}
+                </button>
+              )}
+            </span>
             <span><small>Target</small><strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong></span>
             <span><small>Design</small><strong>{designNodeCount} components · {reusableModuleNames.length + 1} modules</strong></span>
             <span title={simulationSourceDetail}><small>Simulation</small><strong>{projectVerifyState === 'trace' ? 'Observed' : health.lastVerify && !health.dirtySinceVerify ? 'Current' : health.dirtySinceVerify ? 'Stale' : 'Not run'} · {scenarioCount} scenarios</strong></span>
@@ -898,6 +976,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <span><small>Storage</small><strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong></span>
             {fidelityLabel ? <span data-testid="ide-project-import-fidelity"><small>Import</small><strong>{fidelityLabel}</strong></span> : null}
           </div>
+          {topError ? (
+            <p className="ide-project-active-top-error" role="alert" data-testid="ide-project-active-top-error">{topError}</p>
+          ) : null}
         </div>
       </header>
 
@@ -919,6 +1000,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <div>
             {onOpenSavedProjects ? (
               <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">Open existing</IdeButton>
+            ) : null}
+            {onDuplicateProject ? (
+              <IdeButton tone="ghost" onClick={onDuplicateProject} testId="ide-session-duplicate">Duplicate project</IdeButton>
             ) : null}
             {onResetProject ? (
               <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">Reset project</IdeButton>
@@ -994,14 +1078,66 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <header><span>Project explorer</span><strong>{projectName}</strong></header>
             <p className="ide-project-explorer-heading">Design Sources</p>
             <button type="button" className="is-active" onClick={onOpenDesign}>
-              <span aria-hidden="true">◇</span><span><strong>{resolvedTopModule}</strong><small>Top visual module</small></span>
+              <span aria-hidden="true">◇</span><span><strong>{resolvedTopModule}</strong><small>Top visual module · authored</small></span>
             </button>
-            {(hierarchy?.modules ?? []).map((module) => (
-              <button key={module.id} type="button" onClick={() => onFocusCustomComponent?.(module.name)}>
-                <span aria-hidden="true">▣</span>
-                <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · visual source</small></span>
-              </button>
-            ))}
+            {(hierarchy?.modules ?? []).map((module) => {
+              const instanceCount = (circuit?.nodes ?? []).filter(
+                (node) =>
+                  (node.config as Record<string, unknown> | undefined)?.moduleDefinitionId === module.id ||
+                  node.type === module.name
+              ).length;
+              return (
+                <button key={module.id} type="button" onClick={() => onFocusCustomComponent?.(module.name)}>
+                  <span aria-hidden="true">▣</span>
+                  <span>
+                    <strong>{module.displayName}</strong>
+                    <small data-testid={`ide-project-module-ports-${module.id}`}>
+                      {modulePortSignature(module.ports)} · {instanceCount} instance{instanceCount === 1 ? '' : 's'}
+                    </small>
+                  </span>
+                </button>
+              );
+            })}
+            {(hierarchy?.modules.length ?? 0) > 0 ? (
+              <div
+                className="ide-project-compile-order"
+                data-testid="ide-project-compile-order"
+                aria-label="Design compilation order"
+              >
+                <span>Compile order</span>
+                <ol>
+                  {(hierarchy?.modules ?? []).map((module, index) => (
+                    <li key={module.id}>
+                      <code>{index + 1}</code> {module.name}.vhd
+                    </li>
+                  ))}
+                  <li>
+                    <code>{(hierarchy?.modules.length ?? 0) + 1}</code> {resolvedTopModule}.vhd
+                    <small>
+                      {' '}
+                      — instantiates {(hierarchy?.modules ?? []).map((module) => module.displayName).join(', ')}
+                    </small>
+                  </li>
+                </ol>
+              </div>
+            ) : null}
+            {(circuit?.buses?.length ?? 0) > 0 ? (
+              <div
+                className="ide-project-buses"
+                data-testid="ide-project-buses"
+                aria-label="Top-level buses"
+              >
+                <span>Buses</span>
+                <ul>
+                  {(circuit?.buses ?? []).map((bus) => (
+                    <li key={bus.id}>
+                      <code>{busRangeLabel(bus)}</code>
+                      <small>{bus.direction === 'input' ? 'input' : 'output'} · {Math.abs(bus.left - bus.right) + 1} bits</small>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {(outline?.macros.length ?? 0) > 0 ? <p className="ide-project-explorer-heading">Reusable Components</p> : null}
             {(outline?.macros ?? []).map((macro) => (
               <button key={macro.id} type="button" onClick={() => onFocusMacro?.(macro.id, macro.name)}>
@@ -1020,7 +1156,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <span aria-hidden="true">◇</span><span><strong>{activeScenarioName ?? 'Scenario workspace'}</strong><small>{activeScenarioEventCount} events · {activeScenarioCheckCount} {activeScenarioCheckCount === 1 ? 'check' : 'checks'}</small></span>
             </button>
             <button type="button" onClick={onOpenVerify}>
-              <span aria-hidden="true">ƒ</span><span><strong>testbench.vhd</strong><small>{hasVectors ? 'Generated from the active scenario' : 'Add events to generate simulation source'}</small></span>
+              <span aria-hidden="true">ƒ</span><span><strong>testbench.vhd</strong><small>{hasVectors ? 'Generated from the active scenario · read-only' : 'Add events to generate simulation source'}</small></span>
             </button>
             <p className="ide-project-explorer-heading">Constraints</p>
             <button type="button" onClick={onOpenHardware}>
@@ -1034,7 +1170,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             ) : null}
           </aside>
 
-          <main className="ide-project-design-overview" data-testid="ide-project-design-overview">
+          <section aria-label="Design overview" className="ide-project-design-overview" data-testid="ide-project-design-overview">
             <header>
               <div><span>DESIGN OVERVIEW</span><h3>{resolvedTopModule}</h3></div>
               <IdeButton tone="secondary" onClick={onOpenDesign} testId="ide-project-overview-open-design-primary">Open in Design</IdeButton>
@@ -1047,7 +1183,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <div><span>Components</span><strong>{designNodeCount}</strong><small>{designConnectionCount} wires</small></div>
               <div><span>Modules</span><strong>{(hierarchy?.modules.length ?? 0) + 1}</strong><small>{[resolvedTopModule, ...(hierarchy?.modules ?? []).map((module) => module.displayName)].join(', ')}</small></div>
             </div>
-          </main>
+          </section>
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
           <div className="ide-project-context-panel">
@@ -1075,6 +1211,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <span>Recent activity</span>
               <strong>{recentActivity.label}</strong>
               <p>{recentActivity.detail}</p>
+            </section>
+            <section className="ide-project-context-section ide-project-context-runs">
+              <ProjectRunsList runs={runHistory} onOpenVerify={onOpenVerify} />
             </section>
             <section className="ide-project-context-section ide-project-context-actions">
               <span>Project actions</span>
@@ -1428,27 +1567,23 @@ const StarterCatalog: React.FC<{
       </button>
     ) : null}
     <div className="ide-project-v3-starter-list" data-testid="ide-project-start-column">
-      <div className="ide-project-v3-starter-heading">Course starters</div>
-      {examples.map((example) => (
-        <button
-          key={example.id}
-          type="button"
-          className={activeExampleId === example.id ? 'is-active' : ''}
-          onClick={() => onOpenExample(example.id)}
-          data-testid={`ide-project-landing-example-${example.id}`}
-        >
-          <span
-            className={activeExampleId === example.id ? 'is-active' : ''}
-            data-testid={`ide-projectx-example-${example.id}`}
-          >
-            <strong className="ide-projectx-example-card-title">{example.name}</strong>
-            <small>{example.concept}</small>
-          </span>
-          <span className="ide-project-v3-starter-action" data-testid={`ide-project-load-start-${example.id}`}>
-            Load &amp; Design -&gt;
-          </span>
-        </button>
-      ))}
+      <ExamplesBrowser
+        examples={examples.map((example) => ({
+          id: example.id,
+          name: example.name,
+          concept: example.concept,
+          expectedBehavior: example.expectedBehavior,
+          course: example.course,
+          lab: example.lab,
+          tags: example.tags,
+          learningPathOrder: example.learningPath?.order,
+          flagship: example.learningPath?.flagship,
+          openProof: example.learningPath?.openProof,
+        }))}
+        activeExampleId={activeExampleId}
+        onLoad={onOpenExample}
+        testId="ide-project-examples-browser"
+      />
       {LAB_STARTERS.map((starter) => (
         <button
           key={starter.id}

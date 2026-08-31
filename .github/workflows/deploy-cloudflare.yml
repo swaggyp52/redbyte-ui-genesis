@@ -1,8 +1,21 @@
-# Cloudflare Pages Deployment - Unified RedByte site
+# Cloudflare Pages Deployment - unified RedByte site (root doorway + /os IDE)
 #
-# Deploys unified dist/ output (root site + /os app) to redbyteapps.dev when:
-# - Pushed to main branch
-# Uses Cloudflare Pages Direct Upload API for full control over build process.
+# Modern deployment path: cloudflare/wrangler-action@v3 + `wrangler pages deploy dist`.
+# This replaces the archived cloudflare/pages-action@v1, which Cloudflare has
+# deprecated in favor of Wrangler-based CI deploys.
+#
+# Behavior:
+# - push to main        -> PRODUCTION deploy (--branch=main) -> https://redbyteapps.dev
+# - push to product/**  -> PREVIEW deploy (--branch=<ref>)   -> unique + branch-alias *.pages.dev URLs
+# - push to claude/**   -> PREVIEW deploy
+# - workflow_dispatch   -> deploys the selected ref (production only when it is main)
+#
+# Every deploy then:
+# 1. polls <deployed base>/os/version.json until its sha equals the triggering commit;
+# 2. runs an HTTP smoke against the deployed URL (doorway, IDE shell, hashed asset).
+#
+# Missing Cloudflare credentials produce an explicit "SKIPPED - credentials
+# unavailable" job instead of a green job that pretends it deployed.
 
 name: Deploy to Cloudflare Pages
 
@@ -10,18 +23,23 @@ on:
   push:
     branches:
       - main
+      - 'product/**'
+      - 'claude/**'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  deploy:
-    name: Build unified site and deploy to CF Pages
+  preflight:
+    name: Check deploy credentials
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
+    outputs:
+      has_secrets: ${{ steps.check.outputs.has_secrets }}
     steps:
       - name: Check Cloudflare secrets
-        id: cf_secrets
+        id: check
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -30,63 +48,95 @@ jobs:
             echo "has_secrets=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_secrets=false" >> "$GITHUB_OUTPUT"
-            echo "Cloudflare secrets missing; deployment steps will be skipped."
           fi
 
+  deploy:
+    name: ${{ github.ref == 'refs/heads/main' && 'Production deploy' || 'Preview deploy' }}
+    needs: preflight
+    if: needs.preflight.outputs.has_secrets == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      deployments: write
+    steps:
       - name: Checkout code
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 10.24.0
 
       - name: Setup Node.js
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20.19.0'
           cache: 'pnpm'
 
       - name: Install dependencies
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build unified deploy bundle
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
         run: pnpm -s build:unified
         env:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
 
-      - name: Deploy to Cloudflare Pages (Production)
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
-        uses: cloudflare/pages-action@v1
+      # The unified build runs on the repo-pinned Node 20.19.0 above. Wrangler
+      # v4 (lockfile-pinned) requires Node >= 22, so switch the job's Node for
+      # the deploy/verify steps only — the built dist/ is already final.
+      - name: Switch to Node 22 for Wrangler
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve deploy target
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "mode=production" >> "$GITHUB_OUTPUT"
+            echo "pages_branch=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=preview" >> "$GITHUB_OUTPUT"
+            echo "pages_branch=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy dist/ with Wrangler
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: redbyte-ui-genesis
-          directory: dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+          command: pages deploy dist --project-name=redbyte-ui-genesis --branch=${{ steps.target.outputs.pages_branch }} --commit-hash=${{ github.sha }}
 
       - name: Verify deployed SHA
-        if: steps.cf_secrets.outputs.has_secrets == 'true'
+        id: verify
         env:
+          MODE: ${{ steps.target.outputs.mode }}
           EXPECTED_SHA: ${{ github.sha }}
-          VERSION_URL: https://redbyteapps.dev/os/version.json
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
           set -euo pipefail
-          echo "Checking deployed version at ${VERSION_URL}"
+          if [ "${MODE}" = "production" ]; then
+            base="https://redbyteapps.dev"
+          else
+            base="${DEPLOY_URL}"
+          fi
+          if [ -z "${base}" ]; then
+            echo "::error::No deployment URL available for SHA verification."
+            exit 1
+          fi
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+          version_url="${base}/os/version.json"
+          echo "Checking deployed version at ${version_url}"
           for i in {1..18}; do
-            payload="$(curl -fsSL "${VERSION_URL}" || true)"
+            payload="$(curl -fsSL "${version_url}" || true)"
             if [ -n "${payload}" ]; then
               deployed_sha="$(node -e "const data=JSON.parse(process.argv[1]); process.stdout.write(data.sha || '')" "${payload}")"
               echo "Attempt ${i}: deployed sha=${deployed_sha}"
               if [ "${deployed_sha}" = "${EXPECTED_SHA}" ]; then
-                echo "✅ Deployed SHA matches triggering commit"
+                echo "Deployed SHA matches triggering commit."
                 exit 0
               fi
             else
@@ -94,9 +144,60 @@ jobs:
             fi
             sleep 10
           done
-          echo "❌ Deployment verification failed: expected ${EXPECTED_SHA} at ${VERSION_URL}"
+          echo "::error::Deployment verification failed: expected ${EXPECTED_SHA} at ${version_url}"
           exit 1
 
-      - name: Skip deploy summary
-        if: steps.cf_secrets.outputs.has_secrets != 'true'
-        run: echo "Skipping deploy and SHA verification because Cloudflare secrets are not configured."
+      - name: Post-deploy smoke
+        env:
+          BASE: ${{ steps.verify.outputs.base }}
+        run: |
+          set -euo pipefail
+          echo "Smoke against ${BASE}"
+          curl -fsSL "${BASE}/" > /dev/null
+          # Capture before grepping: grep -q exiting early would break the pipe
+          # and fail the pipeline under pipefail even on healthy content.
+          start_page="$(curl -fsSL "${BASE}/start.html")"
+          printf '%s' "${start_page}" | grep -q "RedByte" || { echo "::error::start.html missing RedByte doorway content"; exit 1; }
+          os_index="$(curl -fsSL "${BASE}/os/")"
+          echo "${os_index}" | grep -q "REDBYTE_OS_IDE" || { echo "::error::/os/ missing REDBYTE_OS_IDE marker"; exit 1; }
+          asset_path="$(printf '%s' "${os_index}" | grep -o '/os/assets/[^"]*\.js' | head -1 || true)"
+          if [ -n "${asset_path}" ]; then
+            curl -fsSL -o /dev/null "${BASE}${asset_path}" || { echo "::error::IDE asset ${asset_path} unreachable"; exit 1; }
+            echo "IDE asset reachable: ${asset_path}"
+          else
+            echo "::warning::No hashed /os/assets/*.js reference found in /os/ index."
+          fi
+          echo "Post-deploy smoke passed."
+
+      - name: Deploy summary
+        env:
+          MODE: ${{ steps.target.outputs.mode }}
+          BASE: ${{ steps.verify.outputs.base }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+        run: |
+          {
+            echo "## Cloudflare Pages deploy"
+            echo ""
+            echo "- Mode: ${MODE}"
+            echo "- Commit: ${GITHUB_SHA}"
+            echo "- Verified base: ${BASE}"
+            echo "- Deployment URL: ${DEPLOY_URL:-n/a}"
+            echo "- Branch alias URL: ${ALIAS_URL:-n/a}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-skipped:
+    name: SKIPPED - credentials unavailable
+    needs: preflight
+    if: needs.preflight.outputs.has_secrets != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report skipped deployment
+        run: |
+          echo "::warning::Deployment SKIPPED - Cloudflare credentials (CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID) are not configured. Nothing was deployed."
+          {
+            echo "## Cloudflare Pages deploy: SKIPPED"
+            echo ""
+            echo "Cloudflare credentials are unavailable in this repository."
+            echo "No build was produced and no deployment happened for ${GITHUB_SHA}."
+          } >> "$GITHUB_STEP_SUMMARY"

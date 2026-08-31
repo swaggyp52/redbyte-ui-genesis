@@ -8,9 +8,10 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
-import { getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
+import { busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
+  FIT_ZOOM_STEPS,
   LogicCanvas,
   describePortRefForStudents,
   describeWireRejectionForStudents,
@@ -67,6 +68,7 @@ import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import type { HdlSource } from '../../../fpga/toolchainBackend';
+import { deriveSemanticZoomTier, type SemanticZoomTier } from '../semanticZoom';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import {
   getBasys3BoardResource,
@@ -126,6 +128,7 @@ import {
   type ComponentDefinitionCategory,
   type ComponentDesignPaletteSection,
 } from '../componentDefinitions';
+import { deriveLibraryCardFacts } from '../componentLibraryPresentation';
 import {
   DESIGN_TOOLBAR_COMMAND_GROUPS,
   IDE_COMMAND_IDS,
@@ -205,6 +208,12 @@ export interface DesignSurfaceProps {
   onCircuitMutated?: (circuit: Circuit) => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  onRuntimeCreateBus?: (input: {
+    name: string;
+    direction: 'input' | 'output';
+    width: number;
+    position?: { x: number; y: number };
+  }) => { ok: true; busId: string } | { ok: false; error: string };
   onRuntimeAddBoardIo?: (input: {
     alias: string;
     direction: 'in' | 'out';
@@ -354,6 +363,14 @@ interface PaletteItem {
   sequentialTier?: 'registers' | 'timing' | 'legacy';
   /** Optional badge on the palette card (e.g. Native / Legacy). */
   paletteBadge?: string;
+  /** Compact interface line rendered on the card (e.g. "A, B → Y"). */
+  portSummary?: string;
+  /** One port per line, surfaced through the card tooltip. */
+  interfaceDetail?: string;
+  /** Support chip when the part is not fully simulatable + exportable. */
+  capabilityBadge?: string | null;
+  /** Tooltip explanation for the capability chip. */
+  capabilityTitle?: string | null;
 }
 
 interface BoardIoPaletteItem {
@@ -406,6 +423,8 @@ const DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS: readonly {
 const CANVAS_PLACEMENT_BLOCK_SELECTOR =
   '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
 
+const LIBRARY_COLLAPSED_SECTIONS_KEY = 'rb.ide.design.libraryCollapsed.v1';
+
 function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
   if (!target) return false;
   return Boolean(
@@ -418,6 +437,7 @@ function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
 }
 
 function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
+  const facts = deriveLibraryCardFacts(definition);
   return {
     type: definition.runtimeType,
     title: definition.displayName,
@@ -428,6 +448,10 @@ function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
     searchTerms: [...definition.searchTerms],
     sequentialTier: definition.designPalette.sequentialTier,
     paletteBadge: definition.designPalette.badge,
+    portSummary: facts.portSummary,
+    interfaceDetail: facts.interfaceDetail,
+    capabilityBadge: facts.capabilityBadge,
+    capabilityTitle: facts.capabilityTitle,
   };
 }
 
@@ -517,8 +541,6 @@ const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filte
 const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filter(
   (item) => item.direction === 'out'
 );
-
-const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
 
 function tokenizePaletteQuery(value: string): string[] {
   return value
@@ -844,6 +866,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onCircuitMutated,
   onRuntimeAddNode,
   onRuntimeAddIo,
+  onRuntimeCreateBus,
   onRuntimeAddBoardIo,
   onRuntimeConnect,
   onRuntimeUndo,
@@ -986,6 +1009,58 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [circuit, topEntityName, ioRows]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
+  /**
+   * Collapsed library sections persist per browser so a student's rail
+   * arrangement survives reloads. Storage failures degrade to all-open.
+   */
+  const [collapsedLibrarySections, setCollapsedLibrarySections] = useState<ReadonlySet<string>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(LIBRARY_COLLAPSED_SECTIONS_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+      } catch {
+        return new Set<string>();
+      }
+    }
+  );
+  const toggleLibrarySection = useCallback((sectionId: string) => {
+    setCollapsedLibrarySections((previous) => {
+      const next = new Set(previous);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      try {
+        localStorage.setItem(LIBRARY_COLLAPSED_SECTIONS_KEY, JSON.stringify([...next]));
+      } catch {
+        // Storage-denied environments simply lose collapse persistence.
+      }
+      return next;
+    });
+  }, []);
+  /** Keyboard navigation between library cards: Arrow/Home/End roving focus. */
+  const handleLibraryRailKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const cards = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        'button.ide-palette-card, button.ide-design-resource-tile'
+      )
+    ).filter((card) => !card.disabled);
+    if (cards.length === 0) return;
+    const activeIndex = cards.findIndex((card) => card === document.activeElement);
+    event.preventDefault();
+    const nextIndex =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? cards.length - 1
+          : event.key === 'ArrowDown'
+            ? Math.min(cards.length - 1, activeIndex + 1)
+            : Math.max(0, activeIndex - 1);
+    cards[nextIndex]?.focus();
+  }, []);
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [canvasHostElement, setCanvasHostElement] = useState<HTMLDivElement | null>(null);
@@ -998,7 +1073,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [paneRowSize, setPaneRowSize] = useState({ width: 0, height: 0 });
-  const presentationZoom: 'dense' | 'classroom' = 'dense';
+  // Model-driven semantic zoom: the canvas density tier follows the camera —
+  // zoom out to read the whole design (legible `classroom`), zoom in to edit
+  // closely (compact `dense`). Hysteresis (previous tier) prevents flicker.
+  const semanticZoomTierRef = useRef<SemanticZoomTier>('dense');
+  const presentationZoom: SemanticZoomTier = deriveSemanticZoomTier(
+    camera.zoom,
+    semanticZoomTierRef.current,
+  );
+  semanticZoomTierRef.current = presentationZoom;
   const [diagnosticsDialogOpen, setDiagnosticsDialogOpen] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [wireFeedback, setWireFeedback] = useState<string | null>(null);
@@ -1100,6 +1183,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
   const [wireContextMenu, setWireContextMenu] = useState<DesignWireContextMenuState | null>(null);
+  const [nodeContextMenu, setNodeContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState<{ x: number; y: number } | null>(null);
+  /** True when the label editor should float over the node on the canvas
+   * (double-click, F2, context menu) instead of the inspector row. */
+  const [renameOnCanvas, setRenameOnCanvas] = useState(false);
   const lastTracedPortRef = useRef<string | null>(null);
   const previousToolModeRef = useRef(toolMode);
   const previousHasSelectionRef = useRef(false);
@@ -1580,112 +1668,102 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     deleteSelection();
   }, [deleteSelection, handleCopy, selection.nodes]);
 
-  const handleAlignSelection = useCallback((edge: 'left' | 'top') => {
-    if (selection.nodes.size < 2) return;
-    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
-    if (selectedNodes.length < 2) return;
+  const applySelectionPositions = useCallback(
+    (positionById: Map<string, { x: number; y: number }>, toast: string) => {
+      let didChange = false;
+      const next = {
+        ...circuit,
+        nodes: circuit.nodes.map((node) => {
+          const target = positionById.get(node.id);
+          if (!target) return node;
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          if (current.x === target.x && current.y === target.y) return node;
+          didChange = true;
+          return { ...node, position: target };
+        }),
+      };
+      if (!didChange) return;
+      updateCircuit(next, { skipHistory: true, enforceLimits: true });
+      setActionToast(toast);
+      emitCircuitMutation(next);
+    },
+    [circuit, emitCircuitMutation, updateCircuit]
+  );
 
-    const targetCoordinate =
-      edge === 'left'
-        ? Math.min(...selectedNodes.map((node) => node.position?.x ?? 0))
-        : Math.min(...selectedNodes.map((node) => node.position?.y ?? 0));
+  const handleAlignSelection = useCallback(
+    (edge: 'left' | 'right' | 'h-center' | 'top' | 'bottom' | 'v-center') => {
+      if (selection.nodes.size < 2) return;
+      const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+      if (selectedNodes.length < 2) return;
 
-    let didChange = false;
-    const next = {
-      ...circuit,
-      nodes: circuit.nodes.map((node) => {
-        if (!selection.nodes.has(node.id)) return node;
-        const currentPosition = {
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        };
-        const nextPosition =
-          edge === 'left'
-            ? { x: targetCoordinate, y: currentPosition.y }
-            : { x: currentPosition.x, y: targetCoordinate };
+      const axis = edge === 'left' || edge === 'right' || edge === 'h-center' ? 'x' : 'y';
+      const coordinates = selectedNodes.map((node) => node.position?.[axis] ?? 0);
+      const minimum = Math.min(...coordinates);
+      const maximum = Math.max(...coordinates);
+      const target =
+        edge === 'left' || edge === 'top'
+          ? minimum
+          : edge === 'right' || edge === 'bottom'
+            ? maximum
+            : (minimum + maximum) / 2;
 
-        if (
-          currentPosition.x === nextPosition.x &&
-          currentPosition.y === nextPosition.y
-        ) {
-          return node;
-        }
+      const positionById = new Map(
+        selectedNodes.map((node) => {
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          return [node.id, axis === 'x' ? { x: target, y: current.y } : { x: current.x, y: target }] as const;
+        })
+      );
+      const edgeLabel =
+        edge === 'h-center' ? 'horizontal center' : edge === 'v-center' ? 'vertical center' : edge;
+      applySelectionPositions(
+        new Map(positionById),
+        `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edgeLabel}.`
+      );
+    },
+    [applySelectionPositions, circuit.nodes, selection.nodes]
+  );
 
-        didChange = true;
-        return {
-          ...node,
-          position: nextPosition,
-        };
-      }),
-    };
+  const handleDistributeSelection = useCallback(
+    (axis: 'horizontal' | 'vertical') => {
+      if (selection.nodes.size < 3) return;
+      const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+      if (selectedNodes.length < 3) return;
 
-    if (!didChange) return;
+      const key = axis === 'horizontal' ? 'x' : 'y';
+      const secondary = axis === 'horizontal' ? 'y' : 'x';
+      const sortedNodes = [...selectedNodes].sort((left, right) => {
+        const primaryDelta = (left.position?.[key] ?? 0) - (right.position?.[key] ?? 0);
+        if (primaryDelta !== 0) return primaryDelta;
+        const secondaryDelta = (left.position?.[secondary] ?? 0) - (right.position?.[secondary] ?? 0);
+        if (secondaryDelta !== 0) return secondaryDelta;
+        return left.id.localeCompare(right.id);
+      });
 
-    updateCircuit(next, { skipHistory: true, enforceLimits: true });
-    setActionToast(
-      `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edge}.`
-    );
-    emitCircuitMutation(next);
-  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+      const first = sortedNodes[0]?.position?.[key] ?? 0;
+      const last = sortedNodes[sortedNodes.length - 1]?.position?.[key] ?? 0;
+      const step = (last - first) / (sortedNodes.length - 1);
+      const positionById = new Map(
+        sortedNodes.map((node, index) => {
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          const distributed = first + step * index;
+          return [
+            node.id,
+            key === 'x' ? { x: distributed, y: current.y } : { x: current.x, y: distributed },
+          ] as const;
+        })
+      );
+      applySelectionPositions(
+        new Map(positionById),
+        `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} ${axis === 'horizontal' ? 'horizontally' : 'vertically'}.`
+      );
+    },
+    [applySelectionPositions, circuit.nodes, selection.nodes]
+  );
 
-  const handleDistributeSelectionHorizontally = useCallback(() => {
-    if (selection.nodes.size < 3) return;
-    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
-    if (selectedNodes.length < 3) return;
-
-    const sortedNodes = [...selectedNodes].sort((left, right) => {
-      const leftX = left.position?.x ?? 0;
-      const rightX = right.position?.x ?? 0;
-      if (leftX !== rightX) return leftX - rightX;
-      const leftY = left.position?.y ?? 0;
-      const rightY = right.position?.y ?? 0;
-      if (leftY !== rightY) return leftY - rightY;
-      return left.id.localeCompare(right.id);
-    });
-
-    const leftmostX = sortedNodes[0]?.position?.x ?? 0;
-    const rightmostX = sortedNodes[sortedNodes.length - 1]?.position?.x ?? 0;
-    const step = (rightmostX - leftmostX) / (sortedNodes.length - 1);
-    const distributedXById = new Map(
-      sortedNodes.map((node, index) => [node.id, leftmostX + step * index])
-    );
-
-    let didChange = false;
-    const next = {
-      ...circuit,
-      nodes: circuit.nodes.map((node) => {
-        if (!selection.nodes.has(node.id)) return node;
-        const targetX = distributedXById.get(node.id);
-        if (typeof targetX !== 'number') return node;
-
-        const currentPosition = {
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        };
-
-        if (currentPosition.x === targetX) {
-          return node;
-        }
-
-        didChange = true;
-        return {
-          ...node,
-          position: {
-            x: targetX,
-            y: currentPosition.y,
-          },
-        };
-      }),
-    };
-
-    if (!didChange) return;
-
-    updateCircuit(next, { skipHistory: true, enforceLimits: true });
-    setActionToast(
-      `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} horizontally.`
-    );
-    emitCircuitMutation(next);
-  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+  const handleDistributeSelectionHorizontally = useCallback(
+    () => handleDistributeSelection('horizontal'),
+    [handleDistributeSelection]
+  );
 
   const handleNudgeSelection = useCallback((dx: number, dy: number) => {
     if (selection.nodes.size === 0) return;
@@ -2109,6 +2187,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     ]
   );
 
+  // Bus authoring dialog: create a first-class vector boundary (A[3:0]) as
+  // one durable action. Members land on the canvas and gain IO rows for Board.
+  const [busDialog, setBusDialog] = useState<{
+    direction: 'input' | 'output';
+    name: string;
+    width: number;
+    error: string | null;
+  } | null>(null);
+  const openBusDialog = useCallback((direction: 'input' | 'output') => {
+    setBusDialog({ direction, name: '', width: 4, error: null });
+  }, []);
+  const submitBusDialog = useCallback(() => {
+    if (!busDialog || !onRuntimeCreateBus) {
+      setBusDialog(null);
+      return;
+    }
+    const center = {
+      x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+      y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+    };
+    const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+    const outcome = onRuntimeCreateBus({
+      name: busDialog.name.trim(),
+      direction: busDialog.direction,
+      width: busDialog.width,
+      position: { x: basePosition.x, y: basePosition.y },
+    });
+    if (outcome.ok) {
+      setBusDialog(null);
+      setActionToast(
+        `Created ${busDialog.name.trim()}[${Math.max(0, busDialog.width - 1)}:0] ${busDialog.direction} bus.`
+      );
+    } else {
+      setBusDialog({ ...busDialog, error: outcome.error });
+    }
+  }, [busDialog, onRuntimeCreateBus, canvasSize.width, canvasSize.height, camera.x, camera.y, camera.zoom, editorCircuit]);
+
   const addIoPins = useCallback(() => {
     if (onRuntimeAddIo) {
       const center = {
@@ -2299,6 +2414,92 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const rect = canvasHostRef.current.getBoundingClientRect();
     updatePlacementGhost(rect.left + rect.width / 2, rect.top + rect.height / 2);
   }, [activeInsertionMacro, canvasSize.height, canvasSize.width, pendingPlacement, updatePlacementGhost]);
+
+  /**
+   * Palette drag-to-place. A press on a library card starts a potential drag;
+   * moving past the threshold arms the same pendingPlacement pipeline the
+   * click path uses, the ghost follows the pointer, and releasing over the
+   * canvas commits through commitPendingPlacement (Shift keeps placing).
+   * Releasing anywhere else cancels. A press-and-release without movement
+   * stays a plain click, so the click-to-arm flow is unchanged.
+   */
+  const paletteDragRef = useRef<{
+    spec:
+      | { kind: 'node'; nodeType: string; label: string }
+      | { kind: 'board-io'; entry: BoardIoPaletteItem; label: string };
+    startX: number;
+    startY: number;
+    armed: boolean;
+  } | null>(null);
+
+  const beginPaletteCardDrag = useCallback(
+    (
+      event: React.PointerEvent,
+      spec:
+        | { kind: 'node'; nodeType: string; label: string }
+        | { kind: 'board-io'; entry: BoardIoPaletteItem; label: string }
+    ) => {
+      if (event.button !== 0 || isReplayMode) return;
+      paletteDragRef.current = {
+        spec,
+        startX: event.clientX,
+        startY: event.clientY,
+        armed: false,
+      };
+    },
+    [isReplayMode]
+  );
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      const drag = paletteDragRef.current;
+      if (!drag) return;
+      if (!drag.armed) {
+        if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
+        drag.armed = true;
+        if (drag.spec.kind === 'node') {
+          beginNodePlacement(drag.spec.nodeType);
+        } else {
+          beginBoardIoPlacement(drag.spec.entry);
+        }
+      }
+      updatePlacementGhost(event.clientX, event.clientY);
+    };
+    const handleUp = (event: PointerEvent) => {
+      const drag = paletteDragRef.current;
+      paletteDragRef.current = null;
+      if (!drag?.armed) return;
+      const host = canvasHostRef.current;
+      const rect = host?.getBoundingClientRect();
+      const overCanvas =
+        rect != null &&
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      const releaseTarget =
+        typeof document.elementFromPoint === 'function'
+          ? (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)
+          : null;
+      if (overCanvas && !isCanvasPlacementBlocked(releaseTarget)) {
+        commitPendingPlacement(event.clientX, event.clientY, { keepPlacing: event.shiftKey });
+      } else {
+        cancelPendingPlacement('cancel');
+      }
+    };
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    return () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+  }, [
+    beginBoardIoPlacement,
+    beginNodePlacement,
+    cancelPendingPlacement,
+    commitPendingPlacement,
+    updatePlacementGhost,
+  ]);
 
   const setSelectMode = useCallback(() => {
     cancelActivePlacement('tool');
@@ -2548,6 +2749,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const zoomOut = useCallback(() => {
     zoomCamera(-120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
+
+  /** Return to 100% while keeping the world point at the viewport center fixed. */
+  const zoomTo100 = useCallback(() => {
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+    const worldX = (centerX - camera.x) / camera.zoom;
+    const worldY = (centerY - camera.y) / camera.zoom;
+    setCamera({ x: centerX - worldX, y: centerY - worldY, zoom: 1 });
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, setCamera]);
 
   useEffect(() => {
     const onIdeCommand = (event: Event) => {
@@ -3305,20 +3515,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     emitCircuitMutation();
     setEditingLabelNodeId(null);
     setLabelDraft('');
+    setRenameOnCanvas(false);
   }, [editingLabelNodeId, emitCircuitMutation, labelDraft, updateNode]);
 
   const cancelNodeLabel = useCallback(() => {
     setEditingLabelNodeId(null);
     setLabelDraft('');
+    setRenameOnCanvas(false);
   }, []);
 
   const handleLabelKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') { e.preventDefault(); commitNodeLabel(); }
     if (e.key === 'Escape') { e.preventDefault(); cancelNodeLabel(); }
   }, [commitNodeLabel, cancelNodeLabel]);
-  const beginNodeLabelEdit = useCallback((node: Node) => {
+  const beginNodeLabelEdit = useCallback((node: Node, location: 'inspector' | 'canvas' = 'inspector') => {
     setEditingLabelNodeId(node.id);
     setLabelDraft(node.label ?? '');
+    setRenameOnCanvas(location === 'canvas');
   }, []);
   const liveIoSignals = useMemo(() => {
     const inputRows = editorCircuit.nodes
@@ -3799,6 +4012,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => flattenDesignHierarchy(designHierarchy.root),
     [designHierarchy]
   );
+  /** Which instance a definition was entered through, for breadcrumb context. */
+  const [drilledInstance, setDrilledInstance] = useState<{ moduleId: string; instanceName: string } | null>(null);
+  const activeModuleKey = hierarchy?.activeModuleId ?? TOP_MODULE_ID;
+  useEffect(() => {
+    setDrilledInstance((current) =>
+      current && current.moduleId !== activeModuleKey ? null : current
+    );
+  }, [activeModuleKey]);
+
+  /**
+   * Per-hierarchy-location camera memory: leaving a module stores its camera,
+   * returning restores it, and a first visit frames the module's content.
+   */
+  const moduleCameraMemoryRef = useRef(new Map<string, { x: number; y: number; zoom: number }>());
+  const lastCameraLocationRef = useRef<string | null>(null);
+  const restoreCameraForLocationRef = useRef<() => void>(() => {});
+  restoreCameraForLocationRef.current = () => {
+    const stored = moduleCameraMemoryRef.current.get(activeModuleKey);
+    if (stored) {
+      setCamera(stored);
+    } else {
+      fitToCircuit();
+    }
+  };
+  useEffect(() => {
+    const previous = lastCameraLocationRef.current;
+    if (previous !== null && previous !== activeModuleKey) {
+      moduleCameraMemoryRef.current.set(previous, useLogicViewStore.getState().camera);
+      restoreCameraForLocationRef.current();
+    }
+    lastCameraLocationRef.current = activeModuleKey;
+  }, [activeModuleKey]);
+
   const activeNativeModule = useMemo(
     () => hierarchy?.modules.find((module) => module.id === hierarchy.activeModuleId) ?? null,
     [hierarchy],
@@ -3882,11 +4128,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         setActiveRightDockTab('inspector');
         return;
       }
+      // Native module rows can actually enter the definition; only legacy
+      // composite rows without a module counterpart stay inspect-only.
+      const nativeModule = componentType
+        ? hierarchy?.modules.find(
+            (module) => module.name === componentType || module.displayName === componentType
+          )
+        : undefined;
+      if (nativeModule && onOpenModule) {
+        onOpenModule(nativeModule.id);
+        return;
+      }
       setPaletteQuery(componentType ?? '');
       setActiveLeftDockTab('components');
       setActionToast('Opened the matching custom definition in Components. Nested definitions remain inspect-only.');
     },
-    [clearSelection, selectMultipleNodes, setDesignView]
+    [clearSelection, hierarchy, onOpenModule, selectMultipleNodes, setDesignView]
   );
   const preferredNodeTracePort = useMemo(() => {
     if (!selectedNode) return null;
@@ -4285,7 +4542,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : 'ok');
   const renderNodeLabelEditor = (node: Node) => (
     <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
-      {editingLabelNodeId === node.id ? (
+      {editingLabelNodeId === node.id && !renameOnCanvas ? (
         <div className="ide-design-label-editor-row">
           <input
             className="ide-text-input ide-design-label-input"
@@ -4458,10 +4715,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   ]);
 
   useEffect(() => {
-    if (!wireContextMenu) return;
-    const handlePointerDown = () => setWireContextMenu(null);
+    if (!wireContextMenu && !nodeContextMenu && !canvasContextMenu) return;
+    const closeAllMenus = () => {
+      setWireContextMenu(null);
+      setNodeContextMenu(null);
+      setCanvasContextMenu(null);
+    };
+    const handlePointerDown = () => closeAllMenus();
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setWireContextMenu(null);
+      if (event.key === 'Escape') closeAllMenus();
     };
     window.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
@@ -4469,7 +4731,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [wireContextMenu]);
+  }, [canvasContextMenu, nodeContextMenu, wireContextMenu]);
 
   useEffect(() => {
     if (!isPlacementMode) return;
@@ -4651,6 +4913,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
 
+      // F2: rename the single selected node in place on the canvas.
+      if (event.key === 'F2' && !isTextInput && !event.defaultPrevented) {
+        const liveSelection = useLogicViewStore.getState().selection;
+        if (liveSelection.nodes.size === 1) {
+          const nodeId = [...liveSelection.nodes][0];
+          const liveNode = useCircuitStore.getState().circuit.nodes.find((n) => n.id === nodeId);
+          if (liveNode) {
+            event.preventDefault();
+            beginNodeLabelEdit(liveNode as Node, 'canvas');
+          }
+        }
+        return;
+      }
+
+      // S: select tool — advertised by the toolbar tooltip. W stays canvas-scoped
+      // inside CanvasHost; S has no canvas binding, so the surface owns it.
+      if (
+        event.key.toLowerCase() === 's' &&
+        !isTextInput &&
+        !event.defaultPrevented &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        setSelectMode();
+        return;
+      }
+
       // Escape: clear selection globally (idempotent — safe even if CanvasHost also fires)
       if (event.key === 'Escape' && !isTextInput) {
         clearSelection();
@@ -4660,7 +4951,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, snapToGrid, toggleSnapToGrid]);
+  }, [beginNodeLabelEdit, beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -4712,7 +5003,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     filteredBoardGroups.length > 0;
 
   const renderNodePaletteCard = (
-    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'>,
+    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'> &
+      Partial<Pick<PaletteItem, 'portSummary' | 'interfaceDetail' | 'capabilityBadge' | 'capabilityTitle'>>,
     options?: {
       badge?: string;
       className?: string;
@@ -4722,15 +5014,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   ) => {
     const isPending = pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
+    const tooltip =
+      options?.title ??
+      [
+        `${item.title} - ${item.subtitle}`,
+        item.interfaceDetail || null,
+        item.capabilityTitle || null,
+        'Click to arm placement, or drag onto the canvas.',
+      ]
+        .filter(Boolean)
+        .join('\n');
     return (
       <button
         key={item.type}
         type="button"
         className={`ide-palette-card${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
         onClick={options?.onClick ?? (() => beginNodePlacement(item.type))}
+        onPointerDown={
+          options?.onClick
+            ? undefined
+            : (event) => beginPaletteCardDrag(event, { kind: 'node', nodeType: item.type, label: item.title })
+        }
         data-testid={options?.testId ?? `ide-design-palette-${item.type.toLowerCase()}`}
         aria-pressed={isPending}
-        title={options?.title ?? `${item.title} - ${item.subtitle}`}
+        title={tooltip}
       >
         <span className="ide-design-component-tile-glyph" aria-hidden="true">
           {item.glyph}
@@ -4738,15 +5045,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         <span className="ide-palette-card-body">
             <span className="ide-palette-card-title-row">
             <span className="ide-design-component-tile-title">{item.title}</span>
+            {item.capabilityBadge ? (
+              <span className="ide-palette-card-cap" title={item.capabilityTitle ?? undefined}>
+                {item.capabilityBadge}
+              </span>
+            ) : null}
             {options?.badge || item.paletteBadge ? (
               <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
             ) : null}
           </span>
-          <span className="ide-palette-card-subtitle">{item.subtitle}</span>
+          <span className="ide-palette-card-subtitle">
+            {item.portSummary ? (
+              <span className="ide-palette-card-ports">{item.portSummary}</span>
+            ) : (
+              item.subtitle
+            )}
+          </span>
         </span>
       </button>
     );
   };
+  /** A search always shows every match, regardless of collapsed sections. */
+  const librarySectionOpen = useCallback(
+    (sectionId: string): boolean => paletteHasQuery || !collapsedLibrarySections.has(sectionId),
+    [collapsedLibrarySections, paletteHasQuery]
+  );
+  const renderLibrarySectionToggle = (sectionId: string, label: string) => (
+    <button
+      type="button"
+      className="ide-palette-section-toggle"
+      aria-expanded={librarySectionOpen(sectionId)}
+      aria-label={`${librarySectionOpen(sectionId) ? 'Collapse' : 'Expand'} ${label}`}
+      onClick={() => toggleLibrarySection(sectionId)}
+      disabled={paletteHasQuery}
+      data-testid={`ide-design-library-toggle-${sectionId}`}
+    >
+      <span aria-hidden="true">{librarySectionOpen(sectionId) ? '▾' : '▸'}</span>
+    </button>
+  );
   const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
     PALETTE_SECTION_ORDER;
   const selectedNodeInspectorModel = selectedNode
@@ -5182,6 +5518,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
+          {(() => {
+            const membership = busForNode(editorCircuit, selectedNode.id);
+            if (!membership) return null;
+            return (
+              <div className="ide-kv-row" data-testid="ide-design-selection-bus">
+                <span>Bus</span>
+                <span>
+                  <code>{busRangeLabel(membership.bus)}</code> · bit {membership.index}
+                </span>
+              </div>
+            );
+          })()}
           <div className="ide-kv-row">
             <span>Reference</span>
             <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
@@ -5247,6 +5595,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           {selectedNativeModule ? (
             <div className="ide-design-inspector-action-group" data-testid="ide-design-module-instance-actions">
               <span className="ide-design-inspector-group-label">Module instance</span>
+              <p className="ide-design-instance-identity" data-testid="ide-design-instance-identity">
+                <strong>{readInstanceName(selectedNode) || selectedNode.label || selectedNode.id}</strong>
+                <span> : {selectedNativeModule.displayName}</span>
+              </p>
               <div className="ide-design-inspector-action-grid">
                 <IdeButton
                   tone="primary"
@@ -5396,21 +5748,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </div>
           <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-arrange-group">
-            <span className="ide-design-inspector-group-label">Arrange</span>
-            <div className="ide-design-inspector-action-grid">
+            <span className="ide-design-inspector-group-label">Align</span>
+            <div className="ide-design-inspector-action-grid ide-design-align-grid">
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('left')} testId="ide-design-align-left-btn">
-                Align left
+                Left
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('h-center')} testId="ide-design-align-hcenter-btn">
+                Center
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('right')} testId="ide-design-align-right-btn">
+                Right
               </IdeButton>
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('top')} testId="ide-design-align-top-btn">
-                Align top
+                Top
               </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('v-center')} testId="ide-design-align-vcenter-btn">
+                Middle
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('bottom')} testId="ide-design-align-bottom-btn">
+                Bottom
+              </IdeButton>
+            </div>
+            <span className="ide-design-inspector-group-label">Distribute</span>
+            <div className="ide-design-inspector-action-grid">
               <IdeButton
                 tone="ghost"
                 onClick={handleDistributeSelectionHorizontally}
                 disabled={selection.nodes.size < 3}
                 testId="ide-design-distribute-horizontal-btn"
               >
-                Distribute horizontally
+                Horizontally
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={() => handleDistributeSelection('vertical')}
+                disabled={selection.nodes.size < 3}
+                testId="ide-design-distribute-vertical-btn"
+              >
+                Vertically
               </IdeButton>
             </div>
           </div>
@@ -6255,7 +6630,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 onClick={() => setActiveLeftDockTab(tab)}
                 data-testid={`ide-design-left-tab-${tab}`}
               >
-                {tab === 'components' ? 'Components' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+                {tab === 'components' ? 'Library' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
               </button>
             ))}
           </div>
@@ -6265,6 +6640,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div>
                 <h3>Component Library</h3>
               </div>
+              {onRuntimeCreateBus ? (
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => openBusDialog('input')}
+                  testId="ide-design-library-new-bus"
+                >
+                  New bus…
+                </IdeButton>
+              ) : null}
             </header>
             <div className="ide-design-palette-toolbar">
               <input
@@ -6284,28 +6668,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               )}
             </div>
 
-            <div className="ide-design-palette-sections">
+            <div className="ide-design-palette-sections" onKeyDown={handleLibraryRailKeyDown}>
               {commonPaletteItems.length > 0 ? (
                 <section
                   className="ide-palette-section ide-palette-section--common"
                   data-testid="ide-design-palette-section-common"
+                  data-collapsed={librarySectionOpen('common') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
                       <h4>Common</h4>
                       <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
+                      {renderLibrarySectionToggle('common', 'Common')}
                     </div>
-                    <p className="ide-palette-section-copy">
-                      Start here for most combinational and first sequential circuits.
-                    </p>
+                    {librarySectionOpen('common') ? (
+                      <p className="ide-palette-section-copy">
+                        Start here for most combinational and first sequential circuits.
+                      </p>
+                    ) : null}
                   </header>
-                  <div className="ide-palette-card-list">
-                    {commonPaletteItems.map((item) =>
-                      renderNodePaletteCard(item, {
-                        testId: `ide-design-common-${item.type.toLowerCase()}`,
-                      })
-                    )}
-                  </div>
+                  {librarySectionOpen('common') ? (
+                    <div className="ide-palette-card-list">
+                      {commonPaletteItems.map((item) =>
+                        renderNodePaletteCard(item, {
+                          testId: `ide-design-common-${item.type.toLowerCase()}`,
+                        })
+                      )}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
               {/* Board Resources — first: primary destination for board-aware work */}
@@ -6313,7 +6703,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--board"
                   data-testid="ide-design-palette-section-board"
-                  data-collapsed="false"
+                  data-collapsed={librarySectionOpen('board') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6321,8 +6711,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                     <div className="ide-palette-section-meta">
                       <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                      {renderLibrarySectionToggle('board', boardPaletteSection.title)}
                     </div>
                   </header>
+                  {librarySectionOpen('board') ? (
                   <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
                       {filteredBoardGroups.map((group) => (
                         <div
@@ -6354,6 +6746,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                   className={`ide-design-resource-tile${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
                                   type="button"
                                   onClick={() => beginBoardIoPlacement(entry)}
+                                  onPointerDown={(event) =>
+                                    beginPaletteCardDrag(event, {
+                                      kind: 'board-io',
+                                      entry,
+                                      label: entry.alias,
+                                    })
+                                  }
                                   data-testid={testId}
                                   disabled={isPlaced}
                                   title={
@@ -6371,24 +6770,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ))}
                   </div>
+                  ) : null}
                 </section>
               ) : null}
 
               {/* Inputs & Outputs — second: generic pins for abstract designs */}
               {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section ide-palette-section--io" data-testid="ide-design-palette-section-io">
+                <section
+                  className="ide-palette-section ide-palette-section--io"
+                  data-testid="ide-design-palette-section-io"
+                  data-collapsed={librarySectionOpen('io') ? 'false' : 'true'}
+                >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
                       <h4>{ioPaletteSection.title}</h4>
                       <span className="ide-palette-section-count">
                         {filteredPaletteByCategory.io.length}
                       </span>
+                      {renderLibrarySectionToggle('io', ioPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
+                    {librarySectionOpen('io') ? (
+                      <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
+                    ) : null}
                   </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
-                  </div>
+                  {librarySectionOpen('io') ? (
+                    <div className="ide-palette-card-list">
+                      {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6397,6 +6806,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--logic"
                   data-testid="ide-design-palette-section-logic"
+                  data-collapsed={librarySectionOpen('logic') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6404,12 +6814,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span className="ide-palette-section-count">
                         {filteredPaletteByCategory.logic.length}
                       </span>
+                      {renderLibrarySectionToggle('logic', logicPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
+                    {librarySectionOpen('logic') ? (
+                      <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
+                    ) : null}
                   </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
-                  </div>
+                  {librarySectionOpen('logic') ? (
+                    <div className="ide-palette-card-list">
+                      {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6418,6 +6833,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--sequential"
                   data-testid="ide-design-palette-section-sequential"
+                  data-collapsed={librarySectionOpen('sequential') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6425,10 +6841,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span className="ide-palette-section-count">
                         {filteredPaletteByCategory.sequential.length}
                       </span>
+                      {renderLibrarySectionToggle('sequential', sequentialPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
+                    {librarySectionOpen('sequential') ? (
+                      <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
+                    ) : null}
                   </header>
-                  {SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
+                  {librarySectionOpen('sequential') ? SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
                     const items = filteredPaletteByCategory[subsection.key];
                     if (!items || items.length === 0) return null;
                     return (
@@ -6445,11 +6864,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       </div>
                     );
-                  })}
-                  <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
-                    Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
-                    type — useful for counters and multi-bit state.
-                  </p>
+                  }) : null}
+                  {librarySectionOpen('sequential') ? (
+                    <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
+                      Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
+                      type — useful for counters and multi-bit state.
+                    </p>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6460,6 +6881,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--reusable"
                   data-testid="ide-design-palette-section-reusable"
+                  data-collapsed={librarySectionOpen('reusable') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6469,11 +6891,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           filteredCustomComponents.length +
                           filteredMacros.length}
                       </span>
+                      {renderLibrarySectionToggle('reusable', reusablePaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
+                    {librarySectionOpen('reusable') ? (
+                      <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
+                    ) : null}
                   </header>
 
-                  {filteredPaletteByCategory.components.length > 0 ? (
+                  {librarySectionOpen('reusable') && filteredPaletteByCategory.components.length > 0 ? (
                     <div
                       className="ide-palette-subsection"
                       data-testid="ide-design-palette-built-in-blocks"
@@ -6495,7 +6920,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                   ) : null}
 
-                  {filteredCustomComponents.length > 0 ? (
+                  {librarySectionOpen('reusable') && filteredCustomComponents.length > 0 ? (
                     <div className="ide-palette-subsection" data-testid="ide-palette-group-custom">
                       <div className="ide-palette-subsection-header">
                         <div>
@@ -6516,8 +6941,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 <span className="ide-palette-card-title-row"><strong>{item.title}</strong><span className="ide-palette-card-badge">Project</span></span>
                                 <span className="ide-palette-card-subtitle">{definition ? `${definition.ports.length} ports · editable visual source` : item.description || 'Custom reusable block.'}</span>
                                 <span className="ide-native-component-card-actions">
-                                  {definition && isEditingTopModule && onPlaceModuleInstance ? (
-                                    <button type="button" onClick={() => {
+                                  {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
+                                    <button type="button" data-testid={`ide-design-palette-place-${definition.id}`} onClick={() => {
                                       const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
                                       onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
                                     }}>Place instance</button>
@@ -6532,14 +6957,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                   ) : null}
 
-                  <MacroLibraryPanel
-                    macros={filteredMacros}
-                    totalMacroCount={macros.length}
-                    searchQuery={paletteQuery}
-                    activeMacroId={activeMacroInsertionId}
-                    onSelectMacro={handleSelectMacro}
-                    onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
-                  />
+                  {librarySectionOpen('reusable') ? (
+                    <MacroLibraryPanel
+                      macros={filteredMacros}
+                      totalMacroCount={macros.length}
+                      searchQuery={paletteQuery}
+                      activeMacroId={activeMacroInsertionId}
+                      onSelectMacro={handleSelectMacro}
+                      onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
+                    />
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6575,10 +7002,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span><strong>{topEntityName || 'top'}</strong><small>Top module · board I/O owner</small></span>
                   </button>
                   {hierarchy.modules.map((module) => {
-                    const usageCount = moduleUsageCount(
-                      hierarchy.activeModuleId === TOP_MODULE_ID ? editorCircuit : { nodes: [], connections: [] },
-                      module.id,
-                    );
+                    // Usage is counted in the circuit currently on the canvas
+                    // (top OR an open module definition), so nested instances count too.
+                    const usageCount = moduleUsageCount(editorCircuit, module.id);
                     return (
                       <article key={module.id} className={hierarchy.activeModuleId === module.id ? 'is-active' : ''}>
                         <button type="button" onClick={() => onOpenModule?.(module.id)} data-testid={`ide-design-open-module-${module.id}`}>
@@ -6586,9 +7012,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · {usageCount} instance{usageCount === 1 ? '' : 's'}</small></span>
                         </button>
                         <div className="ide-native-module-actions">
-                          {isEditingTopModule && onPlaceModuleInstance ? (
+                          {onPlaceModuleInstance && module.id !== hierarchy.activeModuleId ? (
                             <button
                               type="button"
+                              data-testid={`ide-design-place-module-${module.id}`}
+                              title={isEditingTopModule ? 'Place an instance in the top design' : 'Place an instance inside the open module'}
                               onClick={() => {
                                 const center = {
                                   x: (canvasSize.width / 2 - camera.x) / camera.zoom,
@@ -6597,6 +7025,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 onPlaceModuleInstance(module.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
                               }}
                             >Use</button>
+                          ) : null}
+                          {isEditingTopModule && usageCount > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const instanceIds = editorCircuit.nodes
+                                  .filter(
+                                    (node) =>
+                                      node.config?.moduleDefinitionId === module.id ||
+                                      node.type === module.name
+                                  )
+                                  .map((node) => node.id);
+                                selectMultipleNodes(instanceIds, false);
+                                setActionToast(
+                                  `Selected ${instanceIds.length} ${module.displayName} instance${instanceIds.length === 1 ? '' : 's'}.`
+                                );
+                              }}
+                              data-testid={`ide-design-select-instances-${module.id}`}
+                            >Instances</button>
                           ) : null}
                           {onDuplicateModuleDefinition ? <button type="button" onClick={() => onDuplicateModuleDefinition(module.id)}>Duplicate</button> : null}
                           {onDeleteModuleDefinition ? <button type="button" disabled={usageCount > 0} onClick={() => onDeleteModuleDefinition(module.id)}>Delete</button> : null}
@@ -6989,7 +7436,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <>
                         <span aria-hidden="true">/</span>
                         <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
-                          {activeNativeModule.displayName}
+                          {drilledInstance?.moduleId === activeNativeModule.id ? (
+                            <span data-testid="ide-design-breadcrumb-instance">
+                              {drilledInstance.instanceName}
+                              <span className="ide-design-breadcrumb-of"> : {activeNativeModule.displayName}</span>
+                            </span>
+                          ) : (
+                            activeNativeModule.displayName
+                          )}
                         </button>
                       </>
                     ) : null}
@@ -7342,6 +7796,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Zoom −
                       </IdeButton>
                       ) : null}
+                      <button
+                        type="button"
+                        className="ide-design-zoom-readout"
+                        onClick={zoomTo100}
+                        title="Current zoom — click to return to 100%"
+                        data-testid="ide-design-zoom-readout"
+                      >
+                        {Math.round(camera.zoom * 100)}%
+                      </button>
                       {toolbarVisible(IDE_COMMAND_IDS.zoomInDesignCanvas) ? (
                       <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
                         Zoom +
@@ -8264,6 +8727,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       circuit={editorCircuit}
                       width={canvasSize.width}
                       height={canvasSize.height}
+                      appearance={canvasAppearance === 'dark' ? 'dark' : 'light'}
                       showToolbar={false}
                       showHud={false}
                       getChipMetadata={getChipMetadata}
@@ -8316,10 +8780,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           (module) => module.id === moduleDefinitionId || module.name === node.type,
                         );
                         if (nativeModule && onOpenModule) {
+                          setDrilledInstance({
+                            moduleId: nativeModule.id,
+                            instanceName: readInstanceName(node) || node.label || node.id,
+                          });
                           onOpenModule(nativeModule.id);
                           return;
                         }
-                        beginNodeLabelEdit(node);
+                        beginNodeLabelEdit(node, 'canvas');
                       }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
                       changedNodeIds={changedNodeIds}
@@ -8342,6 +8810,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           y: Math.max(12, Math.min(rect.height - 132, clientY - rect.top)),
                           wireId,
                           signalKey,
+                        });
+                      }}
+                      onNodeContextMenu={({ nodeId, clientX, clientY }) => {
+                        if (isReplayMode || !canvasViewportRef.current) return;
+                        const rect = canvasViewportRef.current.getBoundingClientRect();
+                        // Right-click adopts the node into the selection, the standard
+                        // precondition for the selection-based menu actions below.
+                        selectMultipleNodes([nodeId], false);
+                        setNodeContextMenu({
+                          x: Math.max(12, Math.min(rect.width - 188, clientX - rect.left)),
+                          y: Math.max(12, Math.min(rect.height - 190, clientY - rect.top)),
+                          nodeId,
+                        });
+                      }}
+                      onCanvasContextMenu={({ clientX, clientY }) => {
+                        if (isReplayMode || !canvasViewportRef.current) return;
+                        const rect = canvasViewportRef.current.getBoundingClientRect();
+                        setCanvasContextMenu({
+                          x: Math.max(12, Math.min(rect.width - 188, clientX - rect.left)),
+                          y: Math.max(12, Math.min(rect.height - 168, clientY - rect.top)),
                         });
                       }}
                     />
@@ -8379,6 +8867,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <IdeButton tone="secondary" onClick={() => beginNodePlacement('OUTPUT')} testId="ide-design-empty-add-output">
                             Add output
                           </IdeButton>
+                          {onRuntimeCreateBus ? (
+                            <IdeButton tone="secondary" onClick={() => openBusDialog('input')} testId="ide-design-empty-add-bus">
+                              Add bus
+                            </IdeButton>
+                          ) : null}
                           <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-empty-place-gate">
                             Place gate
                           </IdeButton>
@@ -8499,6 +8992,180 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </button>
                       </div>
                     ) : null}
+                    {nodeContextMenu ? (() => {
+                      const menuNode = editorCircuit.nodes.find((n) => n.id === nodeContextMenu.nodeId);
+                      if (!menuNode) return null;
+                      const moduleDefinitionId = typeof menuNode.config?.moduleDefinitionId === 'string'
+                        ? menuNode.config.moduleDefinitionId
+                        : null;
+                      const nativeModule = hierarchy?.modules.find(
+                        (module) => module.id === moduleDefinitionId || module.name === menuNode.type,
+                      );
+                      return (
+                        <div
+                          className="ide-design-wire-context-menu"
+                          data-testid="ide-design-node-context-menu"
+                          data-blocks-canvas-placement="1"
+                          data-blocks-macro-placement="1"
+                          style={{ left: nodeContextMenu.x, top: nodeContextMenu.y }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          {nativeModule && onOpenModule ? (
+                            <button
+                              type="button"
+                              className="ide-design-wire-context-menu-item"
+                              onClick={() => {
+                                setDrilledInstance({
+                                  moduleId: nativeModule.id,
+                                  instanceName:
+                                    readInstanceName(menuNode) || menuNode.label || menuNode.id,
+                                });
+                                onOpenModule(nativeModule.id);
+                                setNodeContextMenu(null);
+                              }}
+                              data-testid="ide-design-node-menu-open-module"
+                            >
+                              Open {nativeModule.displayName} definition
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              beginNodeLabelEdit(menuNode, 'canvas');
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-rename"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              handleDuplicate();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-duplicate"
+                          >
+                            Duplicate
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              handleCopy();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-copy"
+                          >
+                            Copy
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              deleteSelection();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      );
+                    })() : null}
+                    {canvasContextMenu ? (
+                      <div
+                        className="ide-design-wire-context-menu"
+                        data-testid="ide-design-canvas-context-menu"
+                        data-blocks-canvas-placement="1"
+                        data-blocks-macro-placement="1"
+                        style={{ left: canvasContextMenu.x, top: canvasContextMenu.y }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handlePaste();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={!clipboard}
+                          data-testid="ide-design-canvas-menu-paste"
+                        >
+                          Paste
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handleSelectAll();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={editorCircuit.nodes.length === 0}
+                          data-testid="ide-design-canvas-menu-select-all"
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            fitToCircuit();
+                            setCanvasContextMenu(null);
+                          }}
+                          data-testid="ide-design-canvas-menu-fit"
+                        >
+                          Fit view
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handleArrangeCircuit();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={editorCircuit.nodes.length < 2}
+                          data-testid="ide-design-canvas-menu-arrange"
+                        >
+                          Arrange circuit
+                        </button>
+                      </div>
+                    ) : null}
+                    {renameOnCanvas && editingLabelNodeId ? (() => {
+                      const renameNode = editorCircuit.nodes.find((n) => n.id === editingLabelNodeId);
+                      if (!renameNode) return null;
+                      const screenX = (renameNode.position?.x ?? renameNode.x ?? 0) * camera.zoom + camera.x;
+                      const screenY = (renameNode.position?.y ?? renameNode.y ?? 0) * camera.zoom + camera.y;
+                      return (
+                        <div
+                          className="ide-design-canvas-rename"
+                          data-testid="ide-design-canvas-rename"
+                          data-blocks-canvas-placement="1"
+                          data-blocks-macro-placement="1"
+                          style={{
+                            left: Math.max(8, Math.min(canvasSize.width - 168, screenX - 80)),
+                            top: Math.max(8, Math.min(canvasSize.height - 40, screenY + 34)),
+                          }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            className="ide-text-input ide-design-canvas-rename-input"
+                            type="text"
+                            value={labelDraft}
+                            onChange={(e) => setLabelDraft(e.target.value)}
+                            onKeyDown={handleLabelKeyDown}
+                            onBlur={commitNodeLabel}
+                            autoFocus
+                            placeholder="Signal or part name…"
+                            aria-label={`Rename ${nodeTypeLabel(renameNode.type)}`}
+                            data-testid="ide-design-canvas-rename-input"
+                            maxLength={32}
+                          />
+                        </div>
+                      );
+                    })() : null}
                   </div>
                 </section>
               </div>
@@ -8777,6 +9444,103 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 testId="ide-design-create-module-confirm"
               >
                 Create and replace selection
+              </IdeButton>
+            </>
+          }
+        />
+      ) : null}
+      {busDialog ? (
+        <IdeModal
+          title="Create bus"
+          testId="ide-design-create-bus-dialog"
+          onClose={() => setBusDialog(null)}
+          body={
+            <div className="ide-module-create-dialog">
+              <p className="ide-copy">
+                A bus is a declared vector signal — one identity that carries several
+                bits (for example <code>A[3:0]</code>). Bits appear on the canvas and
+                map to the board as a group.
+              </p>
+              <div className="ide-module-create-fields">
+                <label>
+                  <span>Direction</span>
+                  <select
+                    value={busDialog.direction}
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current
+                          ? { ...current, direction: event.target.value as 'input' | 'output', error: null }
+                          : current
+                      )
+                    }
+                    data-testid="ide-design-create-bus-direction"
+                  >
+                    <option value="input">Input</option>
+                    <option value="output">Output</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Name</span>
+                  <input
+                    value={busDialog.name}
+                    placeholder="A"
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current ? { ...current, name: event.target.value, error: null } : current
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        submitBusDialog();
+                      }
+                    }}
+                    data-testid="ide-design-create-bus-name"
+                  />
+                </label>
+                <label>
+                  <span>Width (bits)</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={32}
+                    value={busDialog.width}
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current
+                          ? {
+                              ...current,
+                              width: Math.max(2, Math.min(32, Number.parseInt(event.target.value, 10) || 2)),
+                              error: null,
+                            }
+                          : current
+                      )
+                    }
+                    data-testid="ide-design-create-bus-width"
+                  />
+                </label>
+              </div>
+              <p className="ide-copy ide-copy--flush" data-testid="ide-design-create-bus-preview">
+                Creates <code>{(busDialog.name.trim() || 'A')}[{Math.max(1, busDialog.width - 1)}:0]</code>{' '}
+                — {busDialog.width} {busDialog.direction} bit{busDialog.width === 1 ? '' : 's'}.
+              </p>
+              {busDialog.error ? (
+                <IdeCallout tone="error" testId="ide-design-create-bus-error">
+                  {busDialog.error}
+                </IdeCallout>
+              ) : null}
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={() => setBusDialog(null)}>Cancel</IdeButton>
+              <IdeButton
+                tone="primary"
+                onClick={submitBusDialog}
+                disabled={busDialog.name.trim().length === 0}
+                testId="ide-design-create-bus-confirm"
+              >
+                Create bus
               </IdeButton>
             </>
           }

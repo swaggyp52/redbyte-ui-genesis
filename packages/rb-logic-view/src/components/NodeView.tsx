@@ -53,6 +53,8 @@ export interface NodeViewProps {
   node: Node;
   camera: Camera;
   presentationZoomMode?: 'dense' | 'classroom';
+  /** Canvas color language. Defaults to 'dark' to preserve legacy rendering. */
+  appearance?: 'light' | 'dark';
   isSelected: boolean;
   isHighlighted?: boolean;
   isMismatchHighlighted?: boolean;
@@ -68,6 +70,7 @@ export interface NodeViewProps {
   ) => void;
   onToggleSwitch?: (nodeId: string) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
+  onNodeContextMenu?: (nodeId: string, clientX: number, clientY: number) => void;
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   signals?: Map<string, LogicDisplayValue>;
   chipMetadata?: ChipMetadata;
@@ -92,6 +95,54 @@ export interface NodeViewProps {
   /** Batch 1: explicit per-port issue severity. */
   issuePortSeverities?: Map<string, 'error' | 'warn'> | null;
 }
+
+interface NodePalette {
+  /** Body fill for logic/gate chips (accent tints live in resolveNodeFill). */
+  body: string;
+  bodyStroke: string;
+  bodyStrokeHover: string;
+  /** Header band across the top of the node. */
+  header: string;
+  headerStroke: string;
+  /** Floating identity nameplate above the node. */
+  nameplate: string;
+  nameplateStroke: string;
+  /** Primary label ink (instance / IO name). */
+  label: string;
+  /** Secondary metadata ink (type · layer, sub labels). */
+  metadata: string;
+  /** Text-halo stroke so labels stay legible over the body. */
+  labelHalo: string;
+}
+
+const DARK_NODE_PALETTE: NodePalette = {
+  body: '#1b2b3f',
+  bodyStroke: '#475569',
+  bodyStrokeHover: '#8b5cf6',
+  header: 'rgba(10, 22, 37, 0.92)',
+  headerStroke: 'rgba(142, 199, 255, 0.3)',
+  nameplate: 'rgba(6, 15, 25, 0.96)',
+  nameplateStroke: 'rgba(103, 232, 249, 0.55)',
+  label: '#f4f8ff',
+  metadata: '#b9cee3',
+  labelHalo: '#07111b',
+};
+
+// Light technical schematic: light card, dark ink, restrained borders. Value
+// and selection color still come from state (resolveNodeFill / stroke), so the
+// node communicates through color rather than decoration.
+const LIGHT_NODE_PALETTE: NodePalette = {
+  body: '#ffffff',
+  bodyStroke: '#cbd5e1',
+  bodyStrokeHover: '#7c3aed',
+  header: '#eef2f7',
+  headerStroke: 'rgba(100, 116, 139, 0.35)',
+  nameplate: '#ffffff',
+  nameplateStroke: 'rgba(100, 116, 139, 0.45)',
+  label: '#0f172a',
+  metadata: '#475569',
+  labelHalo: '#ffffff',
+};
 
 const NODE_COLORS: Record<string, string> = {
   PowerSource: '#4ade80',
@@ -121,6 +172,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   node,
   camera,
   presentationZoomMode = 'dense',
+  appearance = 'dark',
   isSelected,
   isHighlighted = false,
   isMismatchHighlighted = false,
@@ -130,6 +182,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onPortClick,
   onPortClusterClick,
   onNodeDoubleClick,
+  onNodeContextMenu,
   onProbeToggle,
   signals,
   chipMetadata,
@@ -230,6 +283,11 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const pos = externalDragPosition ?? node.position ?? { x: 0, y: 0 };
   const screenX = pos.x * camera.zoom + camera.x;
   const screenY = pos.y * camera.zoom + camera.y;
+  // Appearance palette. 'dark' reproduces the legacy inline colors exactly so
+  // nothing changes for callers that do not opt in; 'light' renders compact
+  // schematic nodes — light card, dark ink, colored accent header — on the
+  // light technical canvas.
+  const pal = appearance === 'light' ? LIGHT_NODE_PALETTE : DARK_NODE_PALETTE;
   const presentationScale = presentationZoomMode === 'classroom' ? 1.15 : 1;
   const size = 48 * camera.zoom * presentationScale;
   const inlinePortRadius = presentationZoomMode === 'classroom' ? 6.4 : 5;
@@ -294,6 +352,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     if (!isSwitch && onNodeDoubleClick) {
       onNodeDoubleClick(node.id);
     }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!onNodeContextMenu) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onNodeContextMenu(node.id, e.clientX, e.clientY);
   };
 
   // No longer need global window listener because we have pointer capture!
@@ -445,6 +510,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         data-node-selected={isSelected ? '1' : '0'}
         data-testid={`node-${node.type}-${node.id}`}
         onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -489,15 +555,24 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           </g>
         )}
 
-        {/* Chip body - black box appearance */}
+        {/* Chip body. Light: white card with the type color as its border, so
+            the type is signaled without a saturated fill. Dark: legacy look. */}
         <rect
           className="logic-node-body"
           x={-size / 2}
           y={-chipHeight / 2}
           width={size}
           height={chipHeight}
-          fill={chipColor}
-          stroke={isSelected ? '#3b82f6' : isHovered ? '#8b5cf6' : '#475569'}
+          fill={appearance === 'light' ? pal.body : chipColor}
+          stroke={
+            isSelected
+              ? '#3b82f6'
+              : isHovered
+                ? pal.bodyStrokeHover
+                : appearance === 'light'
+                  ? chipColor
+                  : pal.bodyStroke
+          }
           strokeWidth={isSelected ? 3 : isHovered ? 2.5 : 2}
           rx={nodeCornerRadius}
         />
@@ -524,8 +599,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           width={size}
           height={chipHeaderHeight}
           rx={nodeCornerRadius}
-          fill="rgba(10, 22, 37, 0.92)"
-          stroke="rgba(142, 199, 255, 0.3)"
+          fill={pal.header}
+          stroke={pal.headerStroke}
           strokeWidth={0.8}
         />
         {isMismatchHighlighted && (
@@ -585,8 +660,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               width={chipNameplateWidth}
               height={chipNameplateHeight}
               rx={5}
-              fill="rgba(6, 15, 25, 0.96)"
-              stroke="rgba(103, 232, 249, 0.55)"
+              fill={pal.nameplate}
+              stroke={pal.nameplateStroke}
               strokeWidth={1}
             />
             <text
@@ -596,7 +671,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               y={-chipHeight / 2 - 13}
               dominantBaseline="middle"
               textAnchor="middle"
-              fill="#f4f8ff"
+              fill={pal.label}
               fontSize={chipLogicalNameFont}
               fontWeight="700"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -618,14 +693,14 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             y={chipHeight / 2 - Math.max(6, chipMetadataFont * 0.75)}
             dominantBaseline="middle"
             textAnchor="middle"
-            fill="#b9cee3"
+            fill={pal.metadata}
             fontSize={chipMetadataFont}
             fontWeight="650"
             style={{
               pointerEvents: 'none',
               userSelect: 'none',
               paintOrder: 'stroke fill',
-              stroke: '#07111b',
+              stroke: pal.labelHalo,
               strokeWidth: 2.4,
               strokeLinejoin: 'round',
             }}
@@ -1133,6 +1208,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       data-lod={lod}
       data-node-selected={isSelected ? '1' : '0'}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -1200,7 +1276,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         y={-size / 2}
         width={size}
         height={size}
-        fill={resolveNodeFill(node.type, ioKind, isActive, color)}
+        fill={resolveNodeFill(node.type, ioKind, isActive, color, appearance)}
         stroke={isSelected ? '#3b82f6' : color}
         strokeWidth={isSelected ? 3 : 1}
         rx={nodeCornerRadius}
@@ -1228,8 +1304,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         width={size}
         height={nodeHeaderHeight}
         rx={nodeCornerRadius}
-        fill="rgba(10, 22, 37, 0.92)"
-        stroke="rgba(142, 199, 255, 0.3)"
+        fill={pal.header}
+        stroke={pal.headerStroke}
         strokeWidth={0.8}
       />
       {isMismatchHighlighted && (
@@ -1298,7 +1374,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               y={size * 0.36}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill="#9fb6cf"
+              fill={appearance === 'light' ? pal.metadata : '#9fb6cf'}
               fontSize={Math.max(12, 12 * camera.zoom)}
               fontWeight="600"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -1326,7 +1402,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           y={-size / 2 + nodeHeaderHeight / 2}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#fff"
+          fill={appearance === 'light' ? pal.label : '#fff'}
           fontSize={nodeLabelFont}
           fontWeight="600"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -1341,7 +1417,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           y={size * 0.38}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#9fb6cf"
+          fill={pal.metadata}
           fontSize={pinAliasFont}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
@@ -1748,8 +1824,23 @@ function resolveNodeFill(
   nodeType: string,
   ioKind: NodeIoPresentation['kind'],
   isActive: boolean,
-  fallbackColor: string
+  fallbackColor: string,
+  appearance: 'light' | 'dark' = 'dark'
 ): string {
+  if (appearance === 'light') {
+    // Light technical: white when idle, a restrained state tint when active,
+    // so the value reads at a glance without a dark card.
+    const idle = '#ffffff';
+    if (nodeType === 'INPUT' || nodeType === 'Switch') {
+      if (ioKind === 'button') return isActive ? '#dbeafe' : idle;
+      if (ioKind === 'clock') return isActive ? '#dbeafe' : idle;
+      return isActive ? '#dcfce7' : idle;
+    }
+    if (nodeType === 'OUTPUT' || nodeType === 'Lamp') {
+      return isActive ? '#dcfce7' : idle;
+    }
+    return isActive ? '#eef2ff' : idle;
+  }
   const inactiveBase = '#162333';
   const activeBase = '#1f3146';
   if (nodeType === 'INPUT' || nodeType === 'Switch') {

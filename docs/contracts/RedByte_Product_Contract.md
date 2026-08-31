@@ -61,7 +61,7 @@ RedByte must enable a user to:
 The five RedByte-owned student stages are:
 
 ```text
-Project -> Design -> Verify -> Map Pins -> Export
+Project -> Design -> Simulate -> Board & Constraints -> Build & Export
 ```
 
 Vivado build, board programming, and physical observation are downstream proof tiers after Export. Import / Recover is a utility, not a sixth stage.
@@ -75,7 +75,7 @@ Draft export is allowed when the design is structurally exportable. Trusted expo
 | Draft design | A circuit exists, but downstream proof may be missing or stale. |
 | Simulated | The design has been observed in the simulator without necessarily comparing expected outputs. |
 | Testbench configured | Stimulus and expected output checks exist for the current intent. |
-| Compare passed | Current observed outputs match current expected outputs. This is the Verify proof used for trusted handoff. |
+| Compare passed | Current observed outputs match current expected outputs. This is the Simulate proof used for trusted handoff. |
 | Pins mapped | Required top-level ports are bound to board resources/package pins. |
 | Draft export | A structurally valid Vivado package exists or can be generated, but trusted proof is missing or stale. |
 | Trusted export | Current Compare PASS, mapping, and export bundle agree for the same project state. |
@@ -272,7 +272,7 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 
 | Area | What must be proven | Evidence type | Status |
 |---|---|---|---|
-| Combinational path | Design -> Verify -> Export -> Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven for matrix rows; keep per-row E1/E2/E3 truth in certification matrix |
+| Combinational path | Design -> Simulate -> Build & Export -> Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven for matrix rows; keep per-row E1/E2/E3 truth in certification matrix |
 | Sequential path | Rising-edge single-clock path works end-to-end | runtime + Vivado validation | proven for matrix rows; board observation remains per-row |
 | Sequential boundaries | Falling-edge-triggered capture, multi-clock domains, and unsupported reset modes are blocked or warned | code inspection + runtime | enforced for known boundary rows; keep regression coverage current |
 | Design-time feedback | Driver conflicts, loops, floating drivers caught during design | runtime | implemented; still needs periodic runtime audit |

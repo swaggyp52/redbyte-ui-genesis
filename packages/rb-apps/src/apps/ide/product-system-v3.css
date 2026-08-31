@@ -1441,11 +1441,14 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {
   min-width: 0;
-  min-height: 38px;
-  padding-inline: 8px;
+  min-height: 34px;
+  padding-inline: 4px;
   color: var(--rb-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button.is-active,
@@ -1678,4 +1681,210 @@
   border: 2px solid #101b25;
   border-radius: 999px;
   background: #3e7188;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+   Examples browser (activated in the Starter catalog): the projectx-era
+   dark-token rules in ide-polish-pass.css are superseded here with the
+   Studio v3 semantic tokens so the browser reads as one product on the
+   light application surface. Includes the guided learning-path strip,
+   which previously had no styles at all.
+   ──────────────────────────────────────────────────────────────────── */
+.ide-root .ide-projectx-examples {
+  display: grid;
+  gap: 12px;
+  padding: 4px 2px 8px;
+}
+
+.ide-root .ide-projectx-examples-title {
+  margin: 0;
+  color: var(--rb-text-primary);
+  font-size: 16px;
+}
+
+.ide-root .ide-projectx-examples-sub {
+  margin: 2px 0 0;
+  color: var(--rb-text-secondary);
+  font-size: 12.5px;
+}
+
+.ide-root .ide-projectx-examples-toggle {
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-secondary);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.ide-root input.ide-projectx-examples-search {
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  padding: 7px 10px;
+}
+
+.ide-root input.ide-projectx-examples-search::placeholder {
+  color: var(--rb-text-muted);
+}
+
+.ide-root .ide-projectx-tag {
+  background: var(--rb-surface-1);
+  border: 1px solid var(--rb-border);
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-tag:hover {
+  background: color-mix(in srgb, var(--rb-action) 8%, var(--rb-surface-1));
+  border-color: color-mix(in srgb, var(--rb-action) 40%, var(--rb-border));
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-projectx-tag.is-active {
+  background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
+  border-color: var(--rb-action);
+  color: var(--rb-action);
+}
+
+.ide-root .ide-projectx-example-card {
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-1);
+}
+
+.ide-root .ide-projectx-example-card:hover {
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface-1));
+  border-color: color-mix(in srgb, var(--rb-action) 35%, var(--rb-border));
+}
+
+.ide-root .ide-projectx-example-card.is-active {
+  border-color: var(--rb-action);
+  box-shadow: 0 0 0 1px var(--rb-action);
+}
+
+.ide-root .ide-projectx-example-card-title {
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-projectx-example-card-concept {
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-example-card-learn {
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-example-card-learn-label {
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-projectx-example-card-tag {
+  background: var(--rb-surface-2);
+  border: 1px solid var(--rb-border);
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-projectx-example-path-badge {
+  border: 1px solid color-mix(in srgb, var(--rb-action) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-action) 10%, transparent);
+  color: var(--rb-action);
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.ide-root .ide-projectx-example-card-open-proof {
+  margin: 0;
+  color: var(--rb-warning, #b45309);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Guided learning-path strip: numbered chips joined by arrows. */
+.ide-root .ide-projectx-learning-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: 9px;
+  background: var(--rb-surface-2);
+}
+
+.ide-root .ide-projectx-learning-path-label {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ide-root .ide-projectx-path-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 5px;
+  border: 1px solid var(--rb-border);
+  border-radius: 999px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ide-root .ide-projectx-path-step:hover {
+  border-color: color-mix(in srgb, var(--rb-action) 45%, var(--rb-border));
+  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface-1));
+}
+
+.ide-root .ide-projectx-path-step.is-flagship {
+  border-color: color-mix(in srgb, var(--rb-action) 55%, var(--rb-border));
+}
+
+.ide-root .ide-projectx-path-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
+  color: var(--rb-action);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ide-root .ide-projectx-path-step-warn {
+  color: var(--rb-warning, #b45309);
+}
+
+.ide-root .ide-projectx-path-arrow {
+  color: var(--rb-text-muted);
+}
+
+/* Hidden waveform lanes restore chip (Simulate). */
+.ide-root .ide-verify-hidden-lanes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--rb-border-default, var(--rb-border));
+  border-radius: 999px;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+}
+
+.ide-root .ide-verify-hidden-lanes button {
+  border: 0;
+  background: transparent;
+  color: var(--rb-accent, var(--rb-action));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }

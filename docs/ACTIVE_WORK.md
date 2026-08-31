@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-08-09
+last_validated: 2026-08-28
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -41,6 +41,52 @@ imported_by: CLAUDE.md
 Do not describe candidate behavior as current `main` behavior. Do not merge the
 candidate or begin the next milestone until this composer slice is reviewed and
 accepted.
+
+### Production convergence lane (2026-08-28, cloud session)
+
+- Branch: `claude/redbyte-production-convergence-ynz291` (based on
+  `origin/product/redbyte-workbench-v3` @ `ab5c1e02`), targeting the product
+  branch via draft PR.
+- Delivered: modernized Cloudflare deployment
+  (`cloudflare/wrangler-action@v3` + `wrangler pages deploy`; main = production,
+  `product/**`/`claude/**` = SHA-verified previews; explicit SKIPPED when
+  credentials absent), new `pr-fast-checks.yml` PR lane, rebuilt
+  `public/start.html` doorway and `README.md` on the v3 observe-first model,
+  docs vocabulary convergence (course/handoff/labs/canonical specs), one
+  canonical `DEPLOYMENT.md`, boot-chunk failure fallback, storage-guarded
+  stores, wrangler pinned as devDependency, dead root `index.html` removed.
+- Known red at this head: `pr-truth-gates` dies in its FIRST gate
+  (`ide:gate:examples-contract` races the collapsed v3 examples disclosure —
+  fix in this lane); `rc:d0:project-determinism-gate` baseline hash is stale at
+  `ab5c1e02` (pre-existing; excluded from the PR fast lane until the drift is
+  explained; do not silently re-baseline).
+- Boundary: the newer desktop-local head `65e1ff872` is NOT on origin and is
+  unreachable from cloud sessions. Desktop must push
+  `product/redbyte-workbench-v3` before PR #80 can advance to it; nothing in
+  this lane rewrites that branch.
+
+### Core product build lane (2026-08-29, cloud session)
+
+- Branch: `claude/redbyte-desktop-build-m5ryqw` (base `513b003cc` = v3 +
+  all of PR #81, which was strictly ahead of v3 — a pure fast-forward
+  union), delivered via draft PR
+  [#82](https://github.com/swaggyp52/redbyte-ui-genesis/pull/82) into the
+  product branch. Merging #82 also resolves #81.
+- Delivered: single-main landmark contract; Design library rail rebuilt on
+  the component registry (port lines, capability chips, drag-to-place,
+  collapse persistence, keyboard nav); full align/distribute; S hotkey;
+  unified zoom steps + % readout; node/canvas context menus; on-canvas
+  rename; fanout junction dots; marquee wire adoption; instance-aware
+  breadcrumbs + per-module camera memory; Project sources view with derived
+  compile order; Duplicate project; ExamplesBrowser activation (search/tags/
+  learning path); Board bulk bus mapping over the canonical `Base[N]`
+  convention; flat Vivado kit download; waveform lane pin/hide controls.
+- Proof: Browser-E0 only (vitest contracts + Playwright captures at
+  1440×900/1366×768). No Vivado/bitstream/board claims. Golden export SHAs
+  untouched. See root `RESUME.md` for the commit ledger and next queue.
+- Boundary: the unpushed desktop head `65e1ff872` remains desktop-only;
+  this lane never rewrites `product/redbyte-workbench-v3`. Desktop
+  reconciliation is one merge of this branch.
 
 ## Candidate Product Truth
 

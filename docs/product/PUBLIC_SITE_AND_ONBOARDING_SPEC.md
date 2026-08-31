@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-03
+last_validated: 2026-08-28
 owner: Connor Angiel
 used_by_claude: true
 role: spec for the public website and first-run in-app onboarding — what to say, what to show, what not to claim
@@ -17,7 +17,7 @@ role: spec for the public website and first-run in-app onboarding — what to sa
 ### Required content (ground these in actual product state)
 
 **What RedByte is:**
-RedByte is a browser-based educational IDE for designing, verifying, and exporting digital logic circuits to the Digilent Basys3 FPGA board. It gives students a structured workflow — design visually, verify against test scenarios, map to board pins, export a Vivado-ready project — without requiring prior HDL experience or a professional EDA background.
+RedByte is a browser-based educational IDE for designing, simulating, and exporting digital logic circuits to the Digilent Basys3 FPGA board. It gives students a structured workflow — design visually, simulate and observe circuit behavior (with optional expected-output checks), map to board pins, export a Vivado-ready project — without requiring prior HDL experience or a professional EDA background.
 
 **Who it is for:**
 University students in digital logic and computer architecture courses that use the Basys3 board and AMD Vivado. Individual learners who want a real, connected-to-hardware environment for exploring digital logic.
@@ -26,10 +26,10 @@ University students in digital logic and computer architecture courses that use 
 A complete Vivado Kit ZIP (VHDL, XDC, testbench, TCL, README) that opens and synthesizes in AMD Vivado 2024.2 without modification. For supported circuit types.
 
 **What "supported circuit types" means:**
-Combinational circuits and rising-edge single-clock sequential circuits. Falling-edge clocking, multi-clock designs, and active-low reset are explicitly out of scope and are blocked at verification and export.
+Combinational circuits and rising-edge single-clock sequential circuits. Falling-edge clocking, multi-clock designs, and active-low reset are explicitly out of scope and are blocked at simulation and export.
 
 **What it requires:**
-For design and verification only: a modern browser, no installation. For the hardware path: AMD Vivado 2024.2 and a Digilent Basys3 FPGA board.
+For design and simulation only: a modern browser, no installation. For the hardware path: AMD Vivado 2024.2 and a Digilent Basys3 FPGA board.
 
 ### What must not appear on the website (not yet true or not yet stable)
 
@@ -51,8 +51,8 @@ For design and verification only: a modern browser, no installation. For the har
 |---------|---------|
 | Hero | Headline, subheadline, "Open the IDE" CTA (no installation), supporting line about Vivado output |
 | What it does | 3–4 sentence honest product description |
-| The workflow | Visual or text representation of Project → Design → Verify → Map Pins → Export |
-| Screenshots or GIF | At least one per major surface (Design, Verify, Export). Must show current UI, not mockups. |
+| The workflow | Visual or text representation of Project → Design → Simulate → Board & Constraints → Build & Export. Step copy matches `public/start.html`; the Simulate step reads "Drive inputs and observe the circuit. Compare against expectations only when you choose to." |
+| Screenshots or GIF | At least one per major surface (Design, Simulate, Build & Export). Must show current UI, not mockups. |
 | Who it's for | Students + individual learners; honest about the Basys3 requirement for hardware path |
 | Known limitations / scope | Supported circuit types; Basys3 only; Vivado required for hardware |
 | GitHub link | Repo link |
@@ -80,9 +80,9 @@ These must be captured from the **live running product** at current UI state, no
 | Asset | What it shows | Priority |
 |-------|--------------|---------|
 | Design surface screenshot | A real circuit (e.g., `signal-tour` 4-switch → 4-LED) with wiring visible | High |
-| Verify surface screenshot | A passing Compare result with waveform panel visible | High |
+| Simulate workspace screenshot | Observed waveform truth with optional checks visible | High |
 | Export surface screenshot | Trusted Export state with 8-step Vivado checklist | High |
-| Map Pins screenshot | Basys3 board visualization with pins mapped | Medium |
+| Board & Constraints screenshot | Basys3 board visualization with pins mapped | Medium |
 | Project surface screenshot | Project home with the workflow rail | Low |
 | Demo GIF or video | 30–60 second walkthrough of the full student path | High (post-launch) |
 
@@ -122,9 +122,9 @@ This is **higher priority than the public website.** A student opening RedByte f
 | Workflow rail shows numbered steps with active state | High | Present; numeric badge may need honest "step N of 5" framing |
 | Each surface has a one-line "What you do here" context line | High | Partially implemented in some surfaces |
 | Export surface explains Draft vs. Trusted inline | High | Present (trust hero block added) |
-| Verify surface explains what Compare means | Medium | Present (explainer block added) |
+| Simulate workspace explains what Compare means | Medium | Present (explainer block added) |
 | Empty waveform panel has a "Run to see waveform" placeholder | Medium | Added in recent cleanup pass |
-| Map Pins surface explains the board diagram without a 3-step guide after mapping is complete | Medium | Known friction (F-H2) |
+| Board & Constraints workspace explains the board diagram without a 3-step guide after mapping is complete | Medium | Known friction (F-H2) |
 
 **Explicitly out of scope for v1 onboarding:**
 - Interactive tutorial overlay or guided tour

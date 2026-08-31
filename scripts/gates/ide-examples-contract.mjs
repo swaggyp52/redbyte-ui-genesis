@@ -25,15 +25,23 @@ async function assertProjectRecordVisible(page) {
 async function openExamplesBrowserIfCollapsed(page) {
   let browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
   if (!(await browser.isVisible().catch(() => false))) {
-    const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
-    if (await changeProject.isVisible().catch(() => false)) {
-      await changeProject.click();
-    }
-
+    // In the loaded v3 Project workspace the catalog opens via the contextual
+    // "Change project" action, then "Open Starter". The legacy toolbar copy of
+    // change-project lives inside a hidden dock panel, so prefer the visible
+    // contextual action and await the revealed Open Starter instead of
+    // sampling it instantly.
     const openStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
-    if (await openStarter.isVisible().catch(() => false)) {
-      await openStarter.click();
+    if (!(await openStarter.isVisible().catch(() => false))) {
+      const contextChange = page.locator('[data-testid="ide-project-context-change"]').first();
+      const legacyChange = page.locator('[data-testid="ide-project-change-project"]').first();
+      if (await contextChange.isVisible().catch(() => false)) {
+        await contextChange.click();
+      } else if (await legacyChange.isVisible().catch(() => false)) {
+        await legacyChange.click();
+      }
     }
+    await openStarter.waitFor({ state: 'visible', timeout: 10000 });
+    await openStarter.click();
     browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
   }
   await browser.waitFor({ state: 'visible', timeout: 10000 });

@@ -132,16 +132,31 @@ async function loadExactExample(page, exampleId) {
 }
 
 async function openStarterCatalogIfPresent(page) {
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  // The loaded v3 Project workspace exposes "Change project" as a contextual
+  // action (ide-project-context-change); the legacy toolbar copy can sit in a
+  // hidden dock panel. Prefer whichever is actually visible, and await the
+  // revealed Open Starter action instead of sampling it instantly.
+  const legacyChange = page.locator('[data-testid="ide-project-change-project"]').first();
+  const contextChange = page.locator('[data-testid="ide-project-context-change"]').first();
   const initialCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-  if (
-    (await changeProject.isVisible().catch(() => false)) &&
-    !(await initialCatalog.isVisible().catch(() => false))
-  ) {
-    await clickLocatorElement(changeProject);
-    const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
-    if (await courseStarter.isVisible().catch(() => false)) {
-      await clickLocatorElement(courseStarter);
+  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const catalogAlreadyVisible =
+    (await initialCatalog.isVisible().catch(() => false)) ||
+    (await examplesDisclosure.isVisible().catch(() => false));
+  if (!catalogAlreadyVisible) {
+    let changeProject = null;
+    if (await contextChange.isVisible().catch(() => false)) {
+      changeProject = contextChange;
+    } else if (await legacyChange.isVisible().catch(() => false)) {
+      changeProject = legacyChange;
+    }
+    if (changeProject) {
+      await clickLocatorElement(changeProject);
+      const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
+      await courseStarter.waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
+      if (await courseStarter.isVisible().catch(() => false)) {
+        await clickLocatorElement(courseStarter);
+      }
     }
   }
 
