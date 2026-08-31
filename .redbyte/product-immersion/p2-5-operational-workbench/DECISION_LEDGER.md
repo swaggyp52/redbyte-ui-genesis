@@ -19,8 +19,22 @@ largest block is a test-harness gap, not a product defect:
   triaged (loaded-overview `ide-project-open-map-pins`, mojibake-suffix, mapping
   inline). Pre-existing (same count with Slice 2 stashed). Recorded for Slice 7.
 
+**Landed this checkpoint (`ideApp.labday-wiring` 13 → 4):** (1) wrapped every
+`<IdeApp/>` render in `<ThemeProvider>` — restored 7 tests that only crashed on
+the missing provider; (2) replaced the removed-testid reads
+`getByTestId('ide-topbar-mode-label')` with an `activeModeText()` helper that
+reads the current authority (the active stage-nav button, `aria-current="step"`) —
+restored 2 more. Both are correct baseline-red repairs (harness + stale testid),
+not skips. **Remaining 4 are genuine product-triage, deferred to Slice 7, NOT
+fixed:** FPGA part edit not propagating to the Vivado export script (`xc7a100…`
+expected, `xc7a35…` Basys3 default emitted — real defect *or* an intentionally
+Basys3-locked flow; decide with evidence), structural-blocker dominance, scenario
+provenance through Verify/Export/Hardware, and starter-compare detach. These need
+per-test product investigation and must not be papered over.
+
 Rule reaffirmed: never treat a pre-existing baseline as my regression; fix the
-harness where the "failure" is only a missing provider; product-triage the rest.
+harness where the "failure" is only a missing provider or a removed testid;
+product-triage the rest, honestly, in Slice 7.
 
 ## D-3 — Slice 2 Project landing: one dominant action, subordinate alternatives, no giant hero
 

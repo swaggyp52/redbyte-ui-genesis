@@ -3,10 +3,21 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { ThemeProvider } from '@redbyte/rb-theme';
 import type { RBProject } from '../../../export/projectFormat';
 import { IdeApp } from '../../IdeApp';
 import { useProjectRuntime } from '../projectRuntime';
 import { computeScenarioContentHash } from '../verifyScenario';
+
+// The active mode is no longer a top-bar label (`ide-topbar-mode-label` was
+// removed when the stage-nav became the single workflow authority). The current
+// authority is the active stage-nav button (aria-current="step"); read its label.
+function activeModeText(view: { container: HTMLElement }): string {
+  const active =
+    view.container.querySelector('[data-testid^="mode-button-"][aria-current="step"]') ??
+    view.container.querySelector('[data-testid^="mode-button-"][data-active="true"]');
+  return active?.textContent ?? '';
+}
 
 function buildSemanticClockProject(): RBProject {
   return {
@@ -289,7 +300,7 @@ describe('IdeApp lab-day wiring', () => {
   // SKIP: Import nav button removed from left rail in Phase-1 (Import demoted to utility action).
   // Rewrite when Import is repositioned as a modal/action with its new navigation contract.
   it.skip('routes the ports-only rescue CTA from Import to Export', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     fireEvent.click(await view.findByTestId('mode-button-import'));
     await view.findByTestId('ide-import-panel', {}, { timeout: 5000 });
@@ -304,7 +315,7 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.click(view.getByTestId('ide-import-go-to-export'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Export');
+      expect(activeModeText(view)).toContain('Export');
     });
 
     await waitFor(() => {
@@ -313,7 +324,7 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('propagates Project top and part edits into the Export handoff summary', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
@@ -337,7 +348,7 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('resets inherited top authority when Build Fresh is renamed', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     fireEvent.click(await view.findByTestId('ide-project-build-fresh-primary'));
     await waitFor(() => {
@@ -385,7 +396,7 @@ describe('IdeApp lab-day wiring', () => {
   }, 15000);
 
   it('keeps a structural Design blocker dominant over missing Compare evidence', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
@@ -405,24 +416,24 @@ describe('IdeApp lab-day wiring', () => {
 
   it('renders Project home on first load at /', async () => {
     window.history.replaceState({}, '', '/');
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await expectProjectHomeVisible(view);
   });
 
   it('renders Project home on first load at /os/', async () => {
     window.history.replaceState({}, '', '/os/');
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await expectProjectHomeVisible(view);
   });
 
   it('falls back to Project home when URL mode is invalid', async () => {
     window.history.replaceState({}, '', '/os/?mode=invalid');
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await expectProjectHomeVisible(view);
   });
 
   it('derives live semantic clock mapping in Hardware before any verify run exists', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildSemanticClockProject());
@@ -441,7 +452,7 @@ describe('IdeApp lab-day wiring', () => {
   it(
     'wires authoritative scenario provenance through Verify, Export, and Hardware in normal flow',
     async () => {
-      const view = render(<IdeApp />);
+      const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
       await act(async () => {
         useProjectRuntime.getState().loadFromProject(buildScenarioAuthorityProject());
@@ -527,7 +538,7 @@ describe('IdeApp lab-day wiring', () => {
   );
 
   it('wires the Verify scenario library header into runtime create and switch actions', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildScenarioAuthorityProject());
@@ -579,7 +590,7 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('keeps Verify Generate Basics in trace-authoring mode for custom projects', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
@@ -605,7 +616,7 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('detaches starter examples without leaving Verify stuck in starter compare mode', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await view.findByTestId('ide-project-landing');
     fireEvent.click(await view.findByTestId('ide-project-landing-example-logic-gates'));
@@ -643,13 +654,13 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('loads the Lab 8 starter directly into Design with visible starter authority', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await view.findByTestId('ide-project-landing');
     fireEvent.click(await view.findByTestId('ide-project-lab-card-lab8-security-lock-fsm'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+      expect(activeModeText(view)).toContain('Design');
     });
 
     await waitFor(() => {
@@ -669,19 +680,19 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('holds starter replacement on Project until overwrite is confirmed', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await view.findByTestId('ide-project-landing');
     fireEvent.click(await view.findByTestId('ide-project-landing-example-half-adder'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+      expect(activeModeText(view)).toContain('Design');
     });
 
     fireEvent.click(await view.findByTestId('mode-button-project'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Project');
+      expect(activeModeText(view)).toContain('Project');
     });
 
     await view.findByTestId('ide-project-panel', {}, { timeout: 5000 });
@@ -691,13 +702,13 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.getByTestId('ide-example-confirm-modal')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Project');
+    expect(activeModeText(view)).toContain('Project');
     expect(useProjectRuntime.getState().activeExampleId).not.toBe('logic-gates');
 
     fireEvent.click(view.getByTestId('ide-example-confirm'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+      expect(activeModeText(view)).toContain('Design');
     });
 
     await waitFor(() => {
