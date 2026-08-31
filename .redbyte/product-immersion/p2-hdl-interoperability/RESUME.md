@@ -13,17 +13,15 @@
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–D **done**; Chapter E
-  (native/imported parity) next.
-- **CURRENT ACCEPTANCE JOURNEY:** `sim-provider-journey.mjs` — PASS at 1440×900 and
-  1366×768 (Browser Logic default → Imported disabled → load VCD enables it → select
-  Imported becomes run-of-record with honest imported-external provenance → switch back
-  de-emphasizes the Analyzer → no h-overflow).
-- **ACTIVE IMPLEMENTATION:** Chapter E — native/imported parity: one workbench grammar,
-  no ImportedProjectSurface / VCDApp / second app; imported projects flow the same
-  Project→Design→Simulate→Board→Export spine.
-- **NEXT THREE TASKS:** (1) native/imported parity [E]; (2) complex imported-project
-  Playwright journey [F]; (3) project-format migration UX [G].
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–E **done**; Chapter F
+  (complex imported-project journey) next.
+- **CURRENT ACCEPTANCE JOURNEY:** `parity-journey.mjs` — PASS at 1440×900 and 1366×768
+  (imported project walks Project→Design→Simulate→Board→Export in ONE shell — single
+  `<main>`, no second app — with imported artifacts in every shared surface).
+- **ACTIVE IMPLEMENTATION:** Chapter F — a complex imported-project Playwright journey
+  (real user actions, no store mutation to bypass them).
+- **NEXT THREE TASKS:** (1) complex imported-project Playwright journey [F];
+  (2) project-format migration UX [G]; (3) accessibility + scale hardening [H].
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
@@ -108,6 +106,19 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter E (parity proof) — one workbench grammar for native and imported.**
+  Verified there is **no second app**: no `ImportedProjectSurface`, `VCDApp`, or
+  second workbench root anywhere in the source. Parity already held (imported
+  projects load through the same `loadFromProject` path and flow the same
+  surfaces); this chapter proves and locks it. New `parity-journey.mjs` loads an
+  imported project (VHDL + XDC + circuit) and walks all five stages via the same
+  `mode-button-*` controls, asserting each stage's `ide-mode-*` marker, that the
+  imported artifacts appear in the **shared** surfaces (source files + cross-probe
+  in Project, provider bar + VCD Analyzer in Simulate, constraint sets in Board),
+  and that there is exactly **one** `.ide-workbench-shell` and one `<main>`
+  landmark at every stage with no horizontal overflow. PASS at 1440×900 and
+  1366×768. No source change — parity is a property of the existing single
+  workbench, now under test.
 - **Chapter D (UI integration) — simulation-provider selection + run provenance.**
   New `components/SimulationProviderBar.tsx` mounted in the Simulate surface:
   two provider chips over the existing `simulationProvider` model — Browser Logic
