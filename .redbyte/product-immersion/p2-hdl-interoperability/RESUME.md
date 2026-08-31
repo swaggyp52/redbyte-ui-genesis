@@ -68,6 +68,18 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-7 (model layer) — deterministic Vivado digital-twin snapshot envelope.**
+  `fpga/vivado/vivadoDigitalTwin.ts`: a versioned (`schemaVersion 1.0`),
+  deterministic envelope for a Vivado result produced **entirely outside
+  RedByte** — part, top, tool version, utilization, timing summary, and
+  content-hashed artifact refs. `generatedBy` is a constant `'external'`; there
+  is no code path that stamps it as in-browser work. `buildVivadoDigitalTwin`
+  (sorted/deduped artifacts, omitted-when-absent optionals), `normalize`,
+  `serialize` (byte-stable via stableStringify — no wall-clock; external
+  generation time is a data field), `validate`, and
+  `vivadoSnapshotEvidenceLabel` (always "generated outside RedByte; no
+  in-browser synthesis"). 7 tests; 0 tsc errors. Constraint-set + package
+  round-trip and the import-side ingestion of a snapshot are the follow-ons.
 - **P2-6 (model layer) — simulation provider architecture + VCD reader.**
   - `apps/ide/vcdImport.ts`: bounded IEEE-1364 VCD reader (`$timescale`,
     `$scope`/`$upscope`, `$var`, `$enddefinitions`; scalar/vector/real value
