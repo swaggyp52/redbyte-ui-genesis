@@ -68,6 +68,22 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-6 (model layer) — simulation provider architecture + VCD reader.**
+  - `apps/ide/vcdImport.ts`: bounded IEEE-1364 VCD reader (`$timescale`,
+    `$scope`/`$upscope`, `$var`, `$enddefinitions`; scalar/vector/real value
+    changes) → `VcdWaveform` with per-signal timelines, `endTime`, and
+    range-carrying diagnostics. Never throws; malformed lines degrade to
+    diagnostics. `signalTimeline`/`signalByReference`/`valueAtTime`. 5 tests.
+  - `apps/ide/simulationProvider.ts`: `SimulationProviderInfo` with honest
+    evidence tiers — `BROWSER_LOGIC_PROVIDER` (Browser-E0, executes the browser
+    logic model only) and `importedVcdProvider` (imported-external, executes
+    nothing). `waveformFromVcd` adapts a VCD into a neutral `ProviderWaveform`
+    tagged with its tier; `evidenceCaption`, `providersComparable`. **No provider
+    fabricates execution.** 5 tests.
+  - Analyzer UI wiring (provider selection + rendering the imported waveform with
+    its evidence caption) is the follow-on; VCD stays `planned` in the capability
+    matrix until that user-facing path lands.
+  - Proof (pinned Node 20.19.0): 10 tests green; 0 tsc errors. Pure logic.
 - **P2-4 visible — source authority rendered in the Project explorer.**
   New presentational `components/ProjectSourceFiles.tsx`: a read-only projection
   of the store's `sourceModel`, grouped by fileset, each file badged with its

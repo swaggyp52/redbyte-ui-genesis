@@ -18,4 +18,27 @@ evidence tier. RedByte never claims a provider did work it did not do.
   is shown wherever results are presented.
 - Imported providers are read-only with respect to project source.
 
-_(Filled in during P2-6.)_
+## Implemented (P2-6, model layer)
+
+Code authority: `packages/rb-apps/src/apps/ide/simulationProvider.ts` +
+`vcdImport.ts`.
+
+- `SimulationProviderInfo` carries `evidenceTier` (`browser-e0` |
+  `imported-external`), `evidenceLabel`, `executesInBrowser`, `external`.
+- `BROWSER_LOGIC_PROVIDER` — Browser-E0, executes the browser logic model only
+  (never Vivado/hardware). `importedVcdProvider(name)` — imported external
+  evidence, `executesInBrowser: false`.
+- `parseVcd(text)` — bounded IEEE-1364 VCD reader (`$timescale`, `$scope`/
+  `$upscope`, `$var`, `$enddefinitions`; scalar + vector + real value changes)
+  → `VcdWaveform` with per-signal timelines, `endTime`, and range-carrying
+  diagnostics (never throws; malformed lines degrade to diagnostics).
+- `waveformFromVcd(vcd, name)` adapts a parsed VCD into a neutral
+  `ProviderWaveform` the Analyzer consumes, tagged imported-external.
+- Query helpers: `signalTimeline`, `signalByReference`, `valueAtTime`,
+  `evidenceCaption`, `providersComparable` (cross-tier compare allowed, each
+  side's tier always shown).
+
+10 unit tests. **No provider fabricates execution.** UI wiring — the waveform
+Analyzer selecting a provider and rendering the imported waveform with its
+evidence caption — is the follow-on; VCD stays `planned` in the language
+capability matrix until that user-facing path lands.
