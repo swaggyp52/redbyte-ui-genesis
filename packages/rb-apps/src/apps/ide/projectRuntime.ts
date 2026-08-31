@@ -21,6 +21,12 @@ import {
   normalizeProjectSourceModel,
   type ProjectSourceModel,
 } from './projectSourceModel';
+import type { ProviderWaveform } from './simulationProvider';
+import {
+  DEFAULT_VCD_ANALYZER_CONFIG,
+  normalizeVcdAnalyzerConfig,
+  type VcdAnalyzerConfig,
+} from './vcdAnalyzer';
 import { stableSerialize } from '../../utils/stableSerialize';
 import {
   buildDeterministicVerifyContext,
@@ -378,6 +384,19 @@ export interface ProjectRuntimeState {
   /** Bounded, newest-last ledger of package generation/download events. */
   exportHistory: ProjectHealthExportResult[];
   sim: RuntimeSimState;
+  /**
+   * Imported external waveform (VCD) evidence for the Simulate Analyzer. This
+   * store is its single writable owner. Null until a `.vcd` is imported. It is
+   * *evidence generated outside RedByte* — never in-browser execution. Set via
+   * {@link setImportedWaveform}.
+   */
+  importedWaveform: ProviderWaveform | null;
+  /**
+   * Analyzer view configuration for the imported waveform (pinned signals, radix,
+   * cursor, filter). Persisted so the Analyzer restores across reloads. Patched
+   * via {@link setVcdAnalyzerConfig}.
+   */
+  vcdAnalyzer: VcdAnalyzerConfig;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
   loadExample: (exampleId: string) => void;
@@ -456,6 +475,13 @@ export interface ProjectRuntimeState {
   setActiveTop: (name: string) => { ok: boolean; error?: string };
   /** Replace the source/fileset model. The store is its single writable owner. */
   setSourceModel: (model: ProjectSourceModel) => void;
+  /**
+   * Replace the imported waveform evidence (from a parsed VCD), or clear it with
+   * null. Clears the Analyzer selection so the new waveform starts fresh.
+   */
+  setImportedWaveform: (waveform: ProviderWaveform | null) => void;
+  /** Patch the imported-waveform Analyzer view configuration. */
+  setVcdAnalyzerConfig: (patch: Partial<VcdAnalyzerConfig>) => void;
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -520,6 +546,8 @@ interface PersistedRuntimeState {
   verifyRunHistory: VerifyRunLedgerEntry[];
   exportHistory?: ProjectHealthExportResult[];
   sim: RuntimeSimState;
+  importedWaveform?: ProviderWaveform | null;
+  vcdAnalyzer?: VcdAnalyzerConfig;
   projectHealthCore: ProjectHealthCore;
   macros: MacroDefinition[];
   macroInsertionCounts: Record<string, number>;
@@ -539,6 +567,8 @@ interface DesignHistorySnapshot {
 interface RuntimeSeedState extends PersistedRuntimeState {
   activeTop: string;
   sourceModel: ProjectSourceModel;
+  importedWaveform: ProviderWaveform | null;
+  vcdAnalyzer: VcdAnalyzerConfig;
   exportHistory: ProjectHealthExportResult[];
   scenarios: VerifyScenario[];
   activeScenarioId: string;
@@ -906,6 +936,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // promotes them into the first-class source authority. Native/example
           // projects with no sources yield an empty model.
           sourceModel: deriveSourceModel(project),
+          // Imported waveform evidence is tied to the previous context — a new
+          // project load starts the Analyzer empty.
+          importedWaveform: null,
+          vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
           designPast: [],
           designFuture: [],
           designRevision: 0,
@@ -2168,6 +2202,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
         }));
       },
+      setImportedWaveform: (waveform) => {
+        // Imported evidence is a distinct concern from the native sim; it does
+        // not touch dirty-since-export. A new waveform resets the Analyzer view
+        // so stale pins/cursor from a prior file never carry over.
+        set(() => ({
+          importedWaveform: waveform,
+          vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
+        }));
+      },
+      setVcdAnalyzerConfig: (patch) => {
+        set((state) => ({
+          vcdAnalyzer: normalizeVcdAnalyzerConfig({ ...state.vcdAnalyzer, ...patch }),
+        }));
+      },
       startBlankProject: () => {
         set((state) => {
           if (state.projectKind === 'blank' || state.projectKind === 'custom') return state;
@@ -2623,6 +2671,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         verifyRunHistory: state.verifyRunHistory.slice(-50),
         exportHistory: state.exportHistory.slice(-20),
         sim: cloneSimState(state.sim),
+        importedWaveform: state.importedWaveform ? structuredClone(state.importedWaveform) : null,
+        vcdAnalyzer: normalizeVcdAnalyzerConfig(state.vcdAnalyzer),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
           lastExport: state.projectHealthCore.lastExport,
@@ -2939,6 +2989,13 @@ export function mergePersistedRuntimeState(
         detachedScenarios.find((scenario) => scenario.id === activeScenarioId)?.probes
       ).map((entry) => ({ key: entry.key, label: entry.label ?? entry.key })),
     },
+    // Imported waveform + Analyzer config survive reload (external evidence held
+    // in browser-local state, never in the exported project format).
+    importedWaveform:
+      candidate.importedWaveform && typeof candidate.importedWaveform === 'object'
+        ? structuredClone(candidate.importedWaveform as ProviderWaveform)
+        : null,
+    vcdAnalyzer: normalizeVcdAnalyzerConfig(candidate.vcdAnalyzer),
     projectHealthCore:
       hasRestoredVerifyTrustWithoutLedger ||
       hasRestoredVerifyProjectHashMismatch ||
@@ -3087,6 +3144,8 @@ function createEmptyProjectState(
     circuit,
     hierarchy: createEmptyProjectHierarchy(),
     sourceModel: createEmptyProjectSourceModel(),
+    importedWaveform: null,
+    vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
@@ -3141,6 +3200,8 @@ function stateFromExample(
     circuit,
     hierarchy: createEmptyProjectHierarchy(),
     sourceModel: createEmptyProjectSourceModel(),
+    importedWaveform: null,
+    vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,

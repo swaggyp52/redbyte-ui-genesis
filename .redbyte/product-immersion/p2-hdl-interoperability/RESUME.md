@@ -7,31 +7,37 @@
 
 ## Canonical state (update every chapter)
 
-- **CURRENT HEAD:** `675c68257` (== `origin/claude/redbyte-product-core-convergence-n3pi6t`)
+- **CURRENT HEAD:** local Chapter-A commit (imported-VCD Analyzer); pushed after this
+  chapter closes. Base: `675c68257`.
 - **CURRENT BRANCH:** `claude/redbyte-product-core-convergence-n3pi6t`
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
-  P2-only diff — 54 files — targeting `product/redbyte-workbench-v3` @ `bd70c4c`;
-  base `mergeable_state: clean`). PR #82 (P1) merged into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration (authorities → user-visible surfaces).
-  Phase 1 (data + authority foundation) landed.
-- **CURRENT ACCEPTANCE JOURNEY:** Chapter A — imported-VCD Analyzer browser journey in
-  the real Simulate surface at 1440×900 and 1366×768 (not yet written).
-- **ACTIVE IMPLEMENTATION:** Chapter A — mount `vcdImport` + `simulationProvider` +
-  `VcdWaveformView` into the Simulate surface as a real three-zone Analyzer with honest
-  provider identity. Reconnaissance of the Simulate surface in flight.
-- **NEXT THREE TASKS:** (1) mount VCD Analyzer + close its browser journey [A];
-  (2) source↔visual cross-probe UI [B]; (3) constraint-set UI in Project + Board [C].
+  P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
+  into product and closed.
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapter A (VCD Analyzer) **done**;
+  Chapter B (cross-probe) next.
+- **CURRENT ACCEPTANCE JOURNEY:** `vcd-analyzer-journey.mjs` — PASS at 1440×900 and
+  1366×768 (mount → real file load → three zones → cursor/radix/pin/search → reload
+  persistence → honest error → no h-overflow).
+- **ACTIVE IMPLEMENTATION:** Chapter B — mount `sourceCrossProbe` as a live source↔visual
+  cross-probe UI (module↔source, instance↔instantiation, port↔declaration, …) with link
+  quality tiers.
+- **NEXT THREE TASKS:** (1) source↔visual cross-probe UI [B]; (2) constraint-set UI in
+  Project + Board & Constraints [C]; (3) simulation-provider selection + run provenance [D].
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
-- **LAST BROWSER PROOF:** `source-files-journey.mjs` — PASS at 1440×900 (P2-4 visible:
-  Project explorer source files with honest tiers). Chapter A journey pending.
-- **LAST VALIDATION:** per-slice focused vitest green under pinned Node 20.19.0; both
-  classroom golden Basys3 export gates byte-identical; unified `@redbyte/rb-apps` build
-  green; 0 new tsc errors per slice. (Re-run at each Chapter close.)
-- **LAST PUSH:** `881957b4e..675c68257` → `origin/claude/redbyte-product-core-convergence-n3pi6t`
-  (product merged into P2 branch, content-neutral; HEAD == origin).
-- **DIRTY FILES:** none (tree clean at `675c68257`).
+- **LAST BROWSER PROOF:** `vcd-analyzer-journey.mjs` — PASS at 1440×900 and 1366×768.
+  Screenshots under `evidence/chapter-a/` (local/ignored).
+- **LAST VALIDATION:** Chapter A — 34 new/related vitest green under pinned Node 20.x
+  (vcdAnalyzer 15, panel 5, importedWaveform store 7, provider/import/view 7); unified
+  `@redbyte/rb-apps` build green (VerifySurface bundle + dts compiled); 0 new tsc errors.
+  Pre-existing baseline reds unchanged (4 verify-surface suites / 8 tests fail identically
+  on the clean base).
+- **LAST PUSH:** `881957b4e..675c68257` (product merged into P2 branch). Chapter A push
+  pending at chapter close.
+- **DIRTY FILES:** Chapter A working set (vcdAnalyzer.ts, VcdAnalyzerPanel.tsx, +tests,
+  simulationProvider.ts, projectRuntime.ts, IdeApp.tsx, VerifySurface.tsx, verify CSS,
+  vcd-analyzer-journey.mjs) — about to be committed.
 
 ## Program
 
@@ -104,6 +110,38 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter A (UI integration) — imported-VCD Analyzer live in the Simulate surface.**
+  The existing VCD reader + provider model + `VcdWaveformView` (previously
+  consumer-less) are now integrated into the real Simulate surface — no second
+  parser, no second store.
+  - New pure view model `apps/ide/vcdAnalyzer.ts`: `VcdAnalyzerConfig` (pinned
+    signals, per-signal radix, cursor, filter) + tolerant normalizer;
+    `formatVcdValue` (bin/hex/dec/signed; reals pass through; x/z never fabricate
+    a number); `analyzerMeasurements` (value-at-cursor per visible signal);
+    selection/filter/clamp helpers. 15 tests.
+  - New `components/VcdAnalyzerPanel.tsx`: three-zone Analyzer (SIGNALS with
+    search + pin + radix, WAVEFORM = the existing `VcdWaveformView` over the
+    visible signals + a measurement cursor, MEASUREMENTS table), honest provider
+    identity ("Provider: Imported VCD" + "generated outside RedByte" + an explicit
+    "executes nothing / never runs imported HDL or Tcl" note), empty + error
+    states. 5 component tests.
+  - Store authority (single owner): `importedWaveform: ProviderWaveform | null` +
+    `vcdAnalyzer: VcdAnalyzerConfig` on `useProjectRuntime`, with
+    `setImportedWaveform` / `setVcdAnalyzerConfig` actions, persisted via
+    partialize + restored via `mergePersistedRuntimeState` (survives reload),
+    seeded in the empty/example constructors, and reset on project load. 7 store
+    tests. `simulationProvider.ProviderWaveform` gained an optional
+    `timescaleLabel` (metadata only).
+  - Wiring: `IdeApp` subscribes + binds the setters and parses a chosen `.vcd`
+    via the existing `parseVcd` → `waveformFromVcd`; `VerifySurface` renders the
+    panel as an independent region (any verify mode). Studio-Light chrome, dark
+    instrument waveform; responsive (single column < 900px).
+  - Proof: `packages/rb-e2e/vcd-analyzer-journey.mjs` — PASS at 1440×900 and
+    1366×768, driving the real file input (no store injection): mount → load →
+    three zones → cursor measurement (data=0xA @ t=5) → radix→dec (10) → pin/search
+    → reload preserves waveform + config → unusable file → honest error → no
+    horizontal overflow. Unified build green; 0 new tsc errors; goldens untouched
+    (no export-format change).
 - **P2-6 (UI component) — VCD waveform view.**
   `components/VcdWaveformView.tsx`: the core imported-VCD Analyzer display over a
   `ProviderWaveform` (from `waveformFromVcd`) — the honest evidence caption

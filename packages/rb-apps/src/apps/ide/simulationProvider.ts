@@ -79,6 +79,8 @@ export interface ProviderWaveform {
   endTime: number;
   /** Non-fatal issues from producing this waveform (e.g. VCD parse diagnostics). */
   notes: string[];
+  /** Human timescale (e.g. "1ns"), when the source declared one. Metadata only. */
+  timescaleLabel?: string;
 }
 
 /**
@@ -101,7 +103,8 @@ export function waveformFromVcd(vcd: VcdWaveform, sourceName: string): ProviderW
   const notes = vcd.diagnostics
     .filter((diagnostic) => diagnostic.severity !== 'info')
     .map((diagnostic) => diagnostic.message);
-  return { provider, signals, changes, endTime: vcd.endTime, notes };
+  const timescaleLabel = vcd.timescale ? `${vcd.timescale.magnitude}${vcd.timescale.unit}` : undefined;
+  return { provider, signals, changes, endTime: vcd.endTime, notes, timescaleLabel };
 }
 
 /**
