@@ -7,36 +7,46 @@
 
 ## Canonical state (update every chapter)
 
-- **CURRENT HEAD:** `f2a3346fc` (Chapters A–C pushed) + local Chapter-D commit
-  (provider bar), pushed after this chapter closes.
+> **P2 BASELINE COMPLETE.** This file is now the P2 continuation record only. Active
+> development has moved to **P2.5 — Operational Classroom Workbench Convergence** on a
+> separate branch; its own RESUME lives under
+> `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+
+- **CURRENT HEAD (P2 branch):** `803e2dfd0` (== `origin`; the P2 truth-correction commit
+  lands on top of it and becomes the P2.5 branch point).
 - **CURRENT BRANCH:** `claude/redbyte-product-core-convergence-n3pi6t`
-- **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
-  P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
-  into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration **complete**: Chapters A–H + the
-  format-v2 sign-off artifact all landed and pushed. Final closeout next.
+- **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) —
+  **open, draft, mergeable, NOT merged**; P2-only diff; head `803e2dfd0`; base
+  `product/redbyte-workbench-v3` @ `bd70c4c`. PR #82 (P1) merged into product (`bd70c4c`)
+  and closed.
+- **CURRENT PHASE:** P2 Phase 2 (UI integration) **COMPLETE** — Chapters A–H + the
+  format-v2 sign-off artifact all landed and pushed. Continuation is the P2.5 program.
 - **CURRENT ACCEPTANCE JOURNEY:** `complex-import-journey.mjs` — PASS (23 real-UI steps,
-  no store injection): import a multi-file project through the real file input, then
-  walk the whole spine exercising source files, bidirectional cross-probe, provider
-  selection, the VCD Analyzer (cursor/radix/search/pin), constraint sets (seed/activate/
-  rename), and export — one shell, no overflow, no page errors.
-- **ACTIVE IMPLEMENTATION:** none — closeout. (Post-signoff: the v2 format bump, only if
-  Connor approves via `FORMAT_V2_SIGNOFF.md`.)
-- **NEXT THREE TASKS:** (1) final closeout report; (2) await Connor's format-v2 decision;
-  (3) the remaining pre-existing P2 depth items (import review-before-apply program end-to-
-  end, parameter/generic depth) as a later slice.
-- **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
-  it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
-  removal proceeds without sign-off.)
-- **LAST BROWSER PROOF:** `sim-provider-journey.mjs` — PASS at 1440×900 and 1366×768.
-  Screenshots under `evidence/chapter-d/` (local/ignored). Chapters A/B/C journeys still PASS.
-- **LAST VALIDATION:** Chapter D — 8 vitest green under pinned Node 20.x
-  (SimulationProviderBar 3, VcdAnalyzerPanel 5 incl. the additive `isActiveProvider`);
-  unified `@redbyte/rb-apps` build green; 0 new tsc errors. Pre-existing baseline reds unchanged.
-- **LAST PUSH:** `efd12f246..f2a3346fc` (Chapter C). Chapter D push pending at chapter close.
-- **DIRTY FILES:** Chapter D working set (SimulationProviderBar.tsx, VcdAnalyzerPanel.tsx,
-  simulationProviderBar.test.tsx, VerifySurface.tsx, verify CSS, sim-provider-journey.mjs)
-  — about to be committed.
+  no store injection). Seven more journeys (`vcd-analyzer`, `crossprobe`,
+  `constraint-sets`, `sim-provider`, `parity`, `migration`, `a11y-scale`) PASS at
+  1440×900 / 1366×768.
+- **ACTIVE IMPLEMENTATION:** none on this branch — P2 is closed. New work is on the P2.5
+  branch.
+- **NEXT THREE TASKS:** (1) P2.5 operational-workbench convergence (Project/Design/
+  Simulate repair loop, Board/Export, five Gannon labs); (2) await Connor's decisions
+  (merge PR #84; format-v2 via `FORMAT_V2_SIGNOFF.md`); (3) complete the remaining P2
+  model→UI paths (import review end-to-end, hand-authored source persistence,
+  parameters/generics, Vivado digital-twin ingestion) inside P2.5 where the student uses them.
+- **BLOCKERS:** none. Format v1→v2 remains gated behind `FORMAT_V2_SIGNOFF.md` (Connor's
+  decision); format version stays 1, both classroom goldens byte-identical.
+- **LAST CI (verified green at `803e2dfd0`):** PR Fast Checks run #77 SUCCESS — "Typecheck,
+  contracts, unified build" SUCCESS, "Preview deploy" SUCCESS, "Cloudflare Pages" SUCCESS,
+  "Check deploy credentials" SUCCESS; credentials-gated deploy step SKIPPED honestly.
+- **LAST BROWSER PROOF:** eight real-UI journeys PASS (see BROWSER_JOURNEYS.md). Screenshots
+  under `evidence/chapter-{a,b,c,d,g}/` (local/ignored) — appearance only, not workflow proof.
+- **LAST VALIDATION (closeout):** 91 new/related vitest green across 17 files under pinned
+  Node 20.19.0; both classroom golden Basys3 export gates byte-identical; unified
+  `@redbyte/rb-apps` build green; 0 new tsc errors per slice. Pre-existing baseline reds
+  (4 verify-surface suites / 8 tests) unchanged — **still not root-caused** (carried into
+  P2.5 Slice 7).
+- **LAST PUSH:** `fa7099d50..803e2dfd0` (Chapter F). This truth-correction commit is the next.
+- **DIRTY FILES:** none at `803e2dfd0`. This correction touches only control docs
+  (`docs/ACTIVE_WORK.md`, this RESUME, `VISUAL_JURY.md`) — no product code.
 
 ## Program
 
