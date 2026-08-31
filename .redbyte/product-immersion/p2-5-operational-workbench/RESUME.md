@@ -6,27 +6,41 @@
 
 ## Canonical state
 
-- **CURRENT HEAD:** local (P2.5 baseline + Simulate density fix); pushed at first
-  checkpoint. **Branch point:** `f8899a462` (the P2 truth-correction commit).
+- **CURRENT HEAD:** `1c5c4745e` (Slice 3 compare-verdict fix) — pushed through
+  `359adc098` (Slice 1); Slices 2/2.5/3 commits push next.
+  **Branch point:** `f8899a462` (the P2 truth-correction commit).
 - **CURRENT BRANCH:** `claude/redbyte-operational-workbench-convergence-w9k2r4`
   (created from the corrected P2 head; PR #84 remains the immutable P2 review).
-- **CURRENT PR:** P2.5 draft — opened after the baseline commit, **targeting
+- **CURRENT PR:** #85, P2.5 draft, **targeting
   `claude/redbyte-product-core-convergence-n3pi6t`** (temporarily stacked on PR
   #84; retarget to `product/redbyte-workbench-v3` once #84 merges).
-- **CURRENT PHASE:** Slice 0 (baseline + immersion) done; Slice 3 density fix
-  landed as the first high-impact increment. Slice 1 (shell/geometry) and Slice 2
-  (Project) next.
-- **CURRENT ACCEPTANCE JOURNEY:** Journey A (Full Adder failure→repair→PASS→
-  mapping→trusted export) — not yet written; it is the first-checkpoint gate.
+- **CURRENT PHASE:** first checkpoint delivered — Slice 0 (baseline) · Slice 1
+  (shell status authority) · Slice 2 (Project landing hierarchy) · Slice 3
+  headline (Compare verdict now visible) · labday baseline-red repair (13→4).
+  Commit ledger: `359adc098` (Slice 1) → `49abc102f` (Slice 2) → `02dc9e147`
+  (labday) → `1c5c4745e` (Slice 3 compare verdict).
+- **CURRENT ACCEPTANCE JOURNEY:** Journey A CORE proven —
+  `compare-verdict-journey.mjs` drives PASS→break→FAIL→undo→PASS through the real
+  UI at both viewports. The tail (map → trusted export → inspect HDL/XDC/testbench
+  → download → reload) is unblocked and is the next increment to a full Journey A.
 - **BLOCKERS:** none. Format v2 stays gated behind `FORMAT_V2_SIGNOFF.md`; format
-  version 1; both classroom goldens byte-identical. PR #84 not merged.
-- **LAST VALIDATION:** `vcdAnalyzerPanel` 5/5 green under pinned Node 20.19.0;
-  five analyzer-touching journeys PASS (`vcd-analyzer`, `sim-provider`,
-  `complex-import`, `a11y-scale`, `parity`) at 1440×900/1366×768; unified build
-  green. Both classroom goldens untouched (no export/format change).
-- **LAST PUSH:** none yet on this branch (baseline commit pending).
-- **DIRTY FILES:** P2.5 immersion docs + `VcdAnalyzerPanel.tsx` (compact empty
-  state) + its test + verify CSS + `vcd-analyzer-journey.mjs` — about to commit.
+  version 1; both classroom goldens byte-identical (2/2 green). PR #84 not merged.
+- **LAST VALIDATION:** shell-status-authority, project-landing, compare-verdict
+  journeys PASS at 1440×900/1366×768 (0px overflow); verify suites 30→26 failed
+  (+4, 0 regressions); labday 13→4; both classroom golden export gates green.
+- **LAST PUSH:** `359adc098` (Slice 1). Slices 2/2.5/3 committed locally, push
+  pending.
+- **DIRTY FILES:** none (all committed); RESUME/BROWSER_JOURNEYS doc refresh in
+  flight.
+
+## Known redder-than-recorded baseline (pre-existing, not P2.5)
+
+Slice 0 recorded only ~8 verify reds. Real pre-existing baseline is larger:
+verify suites ~30 (now 26 after the Slice-3 fix); `ideApp.labday-wiring` was 13
+(now 4 after the harness/stale-testid repair); `projectSurface.submission` 4 +
+`continuity` 1. All reproduced with P2.5 changes stashed. Remaining reds are the
+Slice-7 disposition backlog — product-triage the real ones, update only
+demonstrably-obsolete assertions, never blanket-skip.
 
 ## Program (do not lose Connor's intent)
 

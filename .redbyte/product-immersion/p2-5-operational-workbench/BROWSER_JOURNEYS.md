@@ -18,13 +18,24 @@ being claimed. Run against `pnpm --filter @redbyte/playground dev` on
 | `a11y-scale-journey.mjs` | one main landmark, 500-signal bounding, keyboard, reduced-motion, effective 200% | 1440×900, 1366×768 |
 | `complex-import-journey.mjs` | 23-step real-UI import spine, no store injection | 1440×900 |
 
-## P2.5 acceptance journeys (to write)
+## P2.5 slice proofs (landed this checkpoint)
 
-- **Journey A** — Full Adder native lab: start → objective clear → Design edit →
-  Compare authored → intentional FAIL → inspect mismatch → navigate to Design/
-  source context → repair → return + rerun → PASS → map → trusted export →
-  inspect HDL/XDC/testbench → download → reload preserves state. One shell, one
-  main, no overflow, no page errors. **1440×900 + 1366×768.** *(first-checkpoint gate)*
+| Journey | Proves | Viewports |
+|---|---|---|
+| `shell-status-authority-journey.mjs` | Slice 1 — footer is support-context only; the stage-nav is the single per-stage status authority; no overflow | 1440×900, 1366×768 |
+| `project-landing-proof.mjs` | Slice 2 — one dominant primary over a subordinate alternatives cluster; no restating summary; no overflow | 1440×900, 1366×768 |
+| `compare-verdict-journey.mjs` | Slice 3 — the Compare repair loop shows a real verdict: PASS (pass-hero) → break gate → FAIL → undo → PASS | 1440×900, 1366×768 |
+
+## P2.5 acceptance journeys
+
+- **Journey A** — Full Adder native lab. **CORE PROVEN** by
+  `compare-verdict-journey.mjs`: start → Compare PASS (visible pass-hero) →
+  Design edit (delete a gate) → intentional FAIL (visible "Compare failed") →
+  repair (undo) → rerun → PASS, one shell/one main, no overflow, no page errors,
+  1440×900 + 1366×768. **Tail still to wire into a single end-to-end Journey A:**
+  map → trusted export → inspect HDL/XDC/testbench → download → reload preserves
+  state. The tail selectors are all known (see `signature-journey.mjs`); it was
+  unblocked by the Slice-3 verdict fix and is the next increment.
 - **Journey B** — 2-bit counter: CLK100MHZ as board clock, deterministic
   sequential verify, waveform, Compare, map + clock, package, free-running-clock
   testbench, Browser-E0 boundary.
