@@ -77,12 +77,14 @@ async function run(width, height) {
   // ① The Analyzer is mounted in Simulate, empty, with honest provider identity.
   const analyzer = page.getByTestId('ide-vcd-analyzer');
   if (await analyzer.count() === 0) fail('VCD Analyzer not mounted in the Simulate surface');
-  if (await page.getByTestId('ide-vcd-analyzer-empty').count() === 0) fail('Analyzer empty state missing before load');
+  // Native default: collapsed to a compact affordance (not the full/empty Analyzer).
+  if (await page.getByTestId('ide-vcd-analyzer-compact').count() === 0) fail('Analyzer should collapse to a compact affordance before load');
+  if (await page.getByTestId('ide-vcd-analyzer-signals').count() !== 0) fail('Analyzer zones should not render before a VCD is loaded');
   const provider = (await page.getByTestId('ide-vcd-analyzer-provider').textContent())?.trim();
   if (!provider?.includes('Imported VCD')) fail(`provider identity not shown: ${provider}`);
-  const honesty = (await page.getByTestId('ide-vcd-analyzer-honesty').textContent()) ?? '';
-  if (!honesty.includes('executes nothing')) fail(`honesty note missing: ${honesty}`);
-  console.log(`[${width}×${height}] ① Analyzer mounted, empty, provider = ${provider}`);
+  const compactNote = (await page.getByTestId('ide-vcd-analyzer-compact').textContent()) ?? '';
+  if (!compactNote.includes('never executed')) fail(`compact honesty note missing: ${compactNote}`);
+  console.log(`[${width}×${height}] ① Analyzer compact affordance, provider = ${provider}`);
 
   // ② Load a real .vcd through the actual file input (no store injection).
   await page.getByTestId('ide-vcd-analyzer-file-input').setInputFiles(vcdPath);

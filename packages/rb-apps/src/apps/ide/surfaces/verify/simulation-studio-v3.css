@@ -4044,3 +4044,23 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
 /* Bounded-render hints (Chapter H). */
 .ide-vcd-analyzer-signal-more,
 .ide-vcd-analyzer-measure-more { font-size: 10px; color: var(--rb-text-muted); padding: 4px 6px; font-style: italic; }
+
+/* Compact imported-VCD affordance for a native project with no waveform (P2.5). */
+.ide-vcd-analyzer--compact {
+  padding: 8px 12px;
+  margin-top: 10px;
+}
+.ide-vcd-analyzer-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ide-vcd-analyzer-compact .ide-vcd-analyzer-provider { flex: 0 0 auto; }
+.ide-vcd-analyzer-compact-note {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--rb-text-muted);
+}
+.ide-vcd-analyzer-compact .ide-vcd-analyzer-load { flex: 0 0 auto; }

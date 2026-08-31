@@ -77,6 +77,47 @@ export const VcdAnalyzerPanel: React.FC<VcdAnalyzerPanelProps> = ({
 
   const showError = !!parseError || (!!waveform && waveform.signals.length === 0);
 
+  // Native default: with no imported waveform (and no error), the imported-VCD
+  // apparatus collapses to a single compact affordance so it never dominates a
+  // native project. It expands to the full three-zone Analyzer only once a VCD
+  // is actually loaded.
+  if (!waveform && !showError) {
+    return (
+      <section
+        className="ide-vcd-analyzer ide-vcd-analyzer--compact"
+        data-testid="ide-vcd-analyzer"
+        data-active-provider="false"
+        data-compact="true"
+        aria-label="Imported waveform (external, optional)"
+      >
+        <div className="ide-vcd-analyzer-compact" data-testid="ide-vcd-analyzer-compact">
+          <span className="ide-vcd-analyzer-provider" data-testid="ide-vcd-analyzer-provider">
+            Provider: Imported VCD
+          </span>
+          <span className="ide-vcd-analyzer-compact-note">
+            Optional external waveform evidence — replayed, never executed.
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".vcd,.txt,text/plain"
+            hidden
+            data-testid="ide-vcd-analyzer-file-input"
+            onChange={handleFileSelected}
+          />
+          <button
+            type="button"
+            className="ide-vcd-analyzer-load"
+            data-testid="ide-vcd-analyzer-load"
+            onClick={openFilePicker}
+          >
+            Load .vcd file
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className={`ide-vcd-analyzer${isActiveProvider ? '' : ' is-inactive-provider'}`}
