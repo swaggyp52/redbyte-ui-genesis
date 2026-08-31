@@ -33,4 +33,39 @@ context → decision → rationale → reversibility.
 - **Reversibility.** Fully reversible: P2 shares the P1 commits; merging #82 later
   collapses the P2 diff automatically.
 
+## D-003 — Decode attaches a hierarchy only when the document carries one
+
+- **Context.** `normalizeRBProject` (decode) unconditionally synthesized a default
+  hierarchy (`{activeModuleId:'top', modules:[], ...}`) via `normalizeProjectHierarchy`,
+  while `encodeRBProject` emits `hierarchy` only when present. A hierarchy-less
+  project therefore gained a `hierarchy` field on decode, so `encode∘decode` was not
+  idempotent — the canonical round-trip-safety defect P2-1 exists to close.
+- **Decision.** On decode, attach a hierarchy only when the document actually carries
+  one, or when legacy `customComponents` must be promoted into modules; otherwise
+  leave `hierarchy` undefined, mirroring encode. The guard lives on the decode side,
+  so the byte-identical encode path (golden export gates) is untouched.
+- **Rationale.** Symmetric encode/decode is the definition of a round-trip-safe
+  format. This restored three previously-red gates (`export-reimport-roundtrip`,
+  `rbproject-roundtrip-gate`, `project-determinism-gate`) to green against their
+  *committed* goldens — i.e. the goldens were correct and the code had drifted; this
+  is a correctness restoration, not a re-baseline.
+- **Reversibility.** Reversible; `RBProject.hierarchy` is already optional and encode
+  already produced hierarchy-less projects, so consumers already tolerate undefined.
+
+## D-004 — Vivado folder round-trip constraint asymmetry deferred to P2-5/P2-7
+
+- **Context.** `ide-vivado-project-folder-contract` asserts a Vivado project-folder
+  export re-imports to the exact same normalized project. It stays red because the
+  folder import reconstructs `fpga.constraints.text` from the emitted `top.xdc`,
+  whereas the embedded `project.rbproj.json` manifest carried no constraints. The
+  RBProject codec itself round-trips (manifest decode∘encode is idempotent — proven);
+  the asymmetry is in the Vivado import/export contract.
+- **Decision.** Classify as a cross-subsystem fidelity gap and defer to P2-5 (Import
+  program: "manifest is authoritative" semantics) and P2-7 (constraint-set model).
+  Do not re-baseline, do not alter the RBProject codec to paper over it, do not widen
+  P2-1's blast radius.
+- **Rationale.** The correct fix is a deliberate import-semantics + constraint-set
+  design decision, not a format-versioning concern. Pre-existing at the branch base.
+- **Reversibility.** N/A (no change made); the gate remains as a tracked P2-5/P2-7 target.
+
 <!-- Newer decisions appended below. -->

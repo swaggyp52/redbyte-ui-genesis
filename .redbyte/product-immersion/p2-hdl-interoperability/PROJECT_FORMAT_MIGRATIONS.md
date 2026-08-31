@@ -18,11 +18,21 @@ authority (`packages/rb-logic-core`); this doc tracks intent and the corpus.
 
 ## Migration registry
 
-| From | To | Summary | Test |
-|------|----|---------|------|
-| v0 (legacy, no version tag) | v1 | Wrap the P1 persisted/serialized shape in the explicit versioned envelope; normalize connection refs (nested shape only). | _(P2-1)_ |
+| From | To | id | Summary | Test |
+|------|----|----|---------|------|
+| v0 (legacy, no version tag) | v1 | `v0-to-v1-stamp-envelope` | Stamp the explicit `rb-project` / `version:1` envelope onto a pre-versioned, project-shaped document. Legacy coordinate/connection/`Base[N]`-bus shapes are already tolerated by `normalizeRBProject`, so no other structural change is needed. | `export/__tests__/projectFormatMigrations.test.ts` |
 
-_(rows appended as the format grows: source model, filesets, imported snapshots, …)_
+**Landed (P2-1).** `CURRENT_PROJECT_FORMAT_VERSION = 1`. The ladder is a no-op for
+current-version documents (encode output byte-identical → golden gates untouched) and
+rejects a document whose version exceeds the ceiling with an honest "newer than
+supported" error. The round-trip invariant `decode(encode(p)) ≡ normalize(p)` and
+deterministic re-encode are proven for the corpus; a decode/encode hierarchy
+asymmetry (D-003) that broke idempotency for hierarchy-less projects was fixed here,
+restoring three previously-red round-trip/determinism gates against their committed
+goldens.
+
+_(rows appended as the format grows: v1 -> v2 source/fileset model in P2-2, filesets,
+imported snapshots, …)_
 
 ## Migration corpus
 

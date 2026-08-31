@@ -68,5 +68,32 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
-- _(pending)_ P2-1 starting: versioned project format contract.
+- **P2-1 delivered — versioned round-trip-safe project format + migration corpus.**
+  New `export/projectFormatMigrations.ts`: `CURRENT_PROJECT_FORMAT_VERSION`, an
+  ordered append-only migration ladder (`v0 -> v1` stamps the envelope onto a
+  pre-versioned document), `detectRBProjectFormatVersion`, and
+  `migrateRBProjectDocument` (no-op at current version; rejects newer-than-supported
+  with an honest message). Wired into `normalizeRBProject` at its choke point so
+  legacy documents load and current-version documents normalize unchanged (goldens
+  byte-identical). Corpus fixtures under `export/__tests__/fixtures/project-format/`.
+  14 new migration tests + refined the version-2 assertion in
+  `rbproject-roundtrip-ide`.
+  - **Bonus round-trip fix (D-003):** decode was synthesizing an *empty* hierarchy
+    for hierarchy-less projects, so encode∘decode was not idempotent. Made decode
+    attach a hierarchy only when the document carries one (or has legacy
+    customComponents to promote), mirroring encode. This restored **three**
+    previously-red gates to green with the committed goldens untouched:
+    `export-reimport-roundtrip`, `rbproject-roundtrip-gate`, `project-determinism-gate`.
+  - **Classified (D-004):** `ide-vivado-project-folder-contract` (folder round-trip)
+    stays red — the Vivado *folder* import reconstructs `fpga.constraints.text` from
+    the emitted `top.xdc`, which the manifest didn't carry. Cross-subsystem fidelity
+    gap, deferred to P2-5/P2-7 (manifest-authoritative import + constraint-set model).
+    Pre-existing at branch base; not an RBProject-codec issue.
+  - Proof (pinned Node 20.19.0): migrations (14), decode (2), roundtrip-ide (11),
+    export-reimport (7), rbproject-roundtrip-gate, project-determinism-gate, both
+    classroom golden Basys3 gates byte-identical, persistence (33) — all green.
+    tsc adds 0 new errors in touched files (13 pre-existing baseline remain in
+    untouched functions). `@redbyte/rb-apps` build green. Pre-existing baseline
+    reds unrelated to this slice: `projectRuntime.history-authority` (7),
+    `verifyCommandBar.actionRowHierarchy` (4) — identical on the clean branch base.
 - `597337b` P2 branch point (P1 candidate head; see PR #82).

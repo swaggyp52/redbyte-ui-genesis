@@ -245,8 +245,12 @@ describe('RBProject roundtrip serialization (IDE)', () => {
       'Invalid project: unsupported kind or version'
     );
 
+    // A document from a newer RedByte (format version above the supported
+    // ceiling) is rejected with an honest, actionable message rather than the
+    // generic "unsupported" throw — the versioned-format contract can tell the
+    // difference between "wrong kind" and "made by a newer version".
     expect(() => decodeRBProject('{"kind":"rb-project","version":2}')).toThrow(
-      'Invalid project: unsupported kind or version'
+      /format version 2 is newer than supported/
     );
 
     expect(() => decodeRBProject('null')).toThrow('Invalid project: not an object');
