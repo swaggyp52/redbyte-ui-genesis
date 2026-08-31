@@ -15,6 +15,8 @@ import {
   type ParsedIdeSubmission,
 } from '../../../export/parseIdeSubmission';
 import type { IdeExampleIoRow } from '../examplesCatalog';
+import { ImportReviewPanel } from '../components/ImportReviewPanel';
+import { buildImportReviewPlan, type ImportSourceInput } from '../importReview';
 import { unifyImportDiagnostics } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -913,6 +915,23 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   }, [pendingApplyImportResult, detectedBehavioralConstructs, effectiveReconstructionLevel]);
 
   const hasImportBlocker = importBlockerReasons.length > 0;
+
+  // Review-before-apply plan: what applying this import would do (sources →
+  // fileset/tier/action, blockers, confirmation), computed from the parsed
+  // import. Import always reviews before replacing, so hasCurrentProject is true.
+  const importReviewPlan = useMemo(() => {
+    if (!parsedHdl) return null;
+    const sources: ImportSourceInput[] = [];
+    const topPath = zipInspection?.detectedTopPath ?? `top.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
+    sources.push({
+      path: topPath,
+      language: parsedHdl.lang === 'vhdl' ? 'vhdl' : 'verilog',
+      reconstruction: effectiveReconstructionLevel,
+    });
+    const xdcPath = zipInspection?.detectedXdcPath ?? (xdcText.trim() ? 'top.xdc' : undefined);
+    if (xdcPath) sources.push({ path: xdcPath, language: 'xdc' });
+    return buildImportReviewPlan({ sources, hasCurrentProject: true, blockers: importBlockerReasons });
+  }, [parsedHdl, zipInspection, effectiveReconstructionLevel, xdcText, importBlockerReasons]);
 
   const commitPreview = useMemo(() => {
     if (!pendingApplyProject || !parsedHdl) return null;
@@ -3055,6 +3074,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   <strong>{commitPreview.removedPortNames.length > 0 ? commitPreview.removedPortNames.join(', ') : 'None'}</strong>
                 </div>
               </div>
+
+              <ImportReviewPanel plan={importReviewPlan} />
 
               {hasImportBlocker ? (
                 <IdeCallout tone="error" title="Replacement blocked" testId="ide-import-behavioral-blocker">

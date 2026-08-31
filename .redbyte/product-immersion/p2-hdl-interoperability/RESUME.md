@@ -68,6 +68,18 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-5 (UI) — import review-before-apply panel wired into ImportSurface.**
+  New `components/ImportReviewPanel.tsx` (read-only projection of an
+  `ImportReviewPlan`: apply kind, per-source fileset/tier/action, blockers,
+  Tcl-never-executed flag, and the standing invariants line). Wired into
+  `ImportSurface` — an `importReviewPlan` `useMemo` built from `parsedHdl` +
+  `xdcText` + `effectiveReconstructionLevel` + `importBlockerReasons`, rendered
+  inside the pending-apply review block above the blocker callout. Styled in
+  `import-recovery-workspace-v3.css`. Proof: 2 component tests + 28 ImportSurface
+  suite tests green (no regression); type-clean; build green. The end-to-end
+  browser journey is deferred — Import is a utility action, not a `mode-button-*`,
+  so driving it needs the utility-entry path; the mount sits inside the existing,
+  already-rendering pending-apply block.
 - **P2-4 (model layer) — module parameters / generics.**
   `apps/ide/moduleParameters.ts`: represent declared parameters (name, kind,
   default) and instance bindings, and resolve the effective value
