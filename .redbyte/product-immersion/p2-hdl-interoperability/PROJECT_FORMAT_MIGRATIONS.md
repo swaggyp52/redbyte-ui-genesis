@@ -31,8 +31,21 @@ asymmetry (D-003) that broke idempotency for hierarchy-less projects was fixed h
 restoring three previously-red round-trip/determinism gates against their committed
 goldens.
 
-_(rows appended as the format grows: v1 -> v2 source/fileset model in P2-2, filesets,
-imported snapshots, …)_
+### Pending (P2-8): v1 -> v2 — promote to a first-class source model
+
+The source/fileset model landed in **P2-2 as an additive optional field**
+(`RBProject.sourceModel`), which is non-breaking, so the current version stays 1
+and no golden drifts. The **breaking** step — making `sourceModel` authoritative
+and retiring the legacy `hdl` toolchain input — is deferred to legacy removal
+(P2-8). Its migration body already exists and is tested: `promoteToolchainInput`
+converts `hdl.sources[]` into design-fileset files in the `work` library. When
+that bump lands it will be:
+
+| From | To | id | Summary | Test |
+|------|----|----|---------|------|
+| v1 | v2 | `v1-to-v2-promote-source-model` | Populate `sourceModel` from `hdl` via `promoteToolchainInput`; retire `hdl`. Requires deliberate updates to format-hash goldens (`rbproject-roundtrip-gate`, submission-bundle SHAs) with documented rationale — the classroom Basys3 HDL-kit goldens do not embed the format version and are expected to stay byte-identical. | _(P2-8)_ |
+
+_(rows appended as the format grows: filesets, imported snapshots, …)_
 
 ## Migration corpus
 

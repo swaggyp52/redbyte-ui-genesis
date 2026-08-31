@@ -68,6 +68,31 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-2 delivered (format layer) — first-class source/fileset model.**
+  New `apps/ide/projectSourceModel.ts`: `ProjectSourceModel` (files with
+  `SourceLanguage` × `FilesetKind` × `library`, optional `topEntity`), pure
+  deterministic helpers — `detectSourceLanguage`, `defaultFilesetForLanguage`,
+  `sourceIdFromPath` (no random ids), `addSourceFile`, `promoteToolchainInput`
+  (legacy `hdl` → design fileset/work library — the seed for the eventual v1→v2
+  breaking migration), `deriveCompileOrder` (design→simulation, deterministic;
+  dependency-aware ordering deferred to P2-3), `listLibraries`, `filesByFileset`,
+  `validateProjectSourceModel`, `normalizeProjectSourceModel` (tolerant, stable
+  sort). 15 unit tests.
+  - **Format integration:** added optional `RBProject.sourceModel`, persisted
+    through encode/decode **symmetrically and only when non-empty**, so every
+    existing project (and every golden fixture) stays byte-identical — zero
+    format drift, no version bump. `deriveSourceModel(project)` returns the
+    first-class model when present, else a projection promoted from legacy `hdl`,
+    so callers treat sources uniformly. 7 format-integration tests.
+  - **Decision (see PROJECT_FORMAT_MIGRATIONS):** `sourceModel` is additive =
+    non-breaking, so no version bump. The v1→v2 *breaking* migration (make
+    `sourceModel` authoritative, retire `hdl`) is deferred to legacy removal
+    (P2-8) with deliberate golden updates; `promoteToolchainInput` is already the
+    migration body, staged and tested.
+  - Proof (pinned Node 20.19.0): 95 tests green across source model + format +
+    round-trip + determinism + both classroom golden Basys3 gates (byte-identical)
+    + persistence; 0 new tsc errors (13 pre-existing baseline unchanged);
+    Browser-E0 boundary untouched.
 - **P2-1 delivered — versioned round-trip-safe project format + migration corpus.**
   New `export/projectFormatMigrations.ts`: `CURRENT_PROJECT_FORMAT_VERSION`, an
   ordered append-only migration ladder (`v0 -> v1` stamps the envelope onto a

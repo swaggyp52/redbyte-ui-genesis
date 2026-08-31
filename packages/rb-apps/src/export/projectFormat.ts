@@ -26,6 +26,12 @@ import {
   type ProjectHierarchyDocument,
 } from '../apps/ide/projectHierarchy';
 import {
+  isEmptyProjectSourceModel,
+  normalizeProjectSourceModel,
+  promoteToolchainInput,
+  type ProjectSourceModel,
+} from '../apps/ide/projectSourceModel';
+import {
   CURRENT_PROJECT_FORMAT_VERSION,
   migrateRBProjectDocument,
 } from './projectFormatMigrations';
@@ -105,6 +111,14 @@ export interface RBProject {
   customComponents?: CompositeNodeDef[];
   /** Native visual module authority. `circuit` remains the top-module graph. */
   hierarchy?: ProjectHierarchyDocument;
+  /**
+   * First-class source / fileset authority (HDL + constraints + scripts). When
+   * present it is the single source-of-truth for text sources; the legacy `hdl`
+   * toolchain input remains a projection for existing export consumers. Absent
+   * on projects that have not adopted the source model — {@link deriveSourceModel}
+   * bridges from `hdl` in that case.
+   */
+  sourceModel?: ProjectSourceModel;
   meta?: {
     appVersion?: string;
     gitCommit?: string;
@@ -368,6 +382,13 @@ export const encodeRBProject = (project: RBProject) => {
     hierarchy: project.hierarchy
       ? normalizeProjectHierarchy(project.hierarchy, project.customComponents ?? [])
       : undefined,
+    // Emit the source model only when it carries content, so projects that have
+    // not adopted it stay byte-identical (golden export path untouched).
+    sourceModel: (() => {
+      if (!project.sourceModel) return undefined;
+      const model = normalizeProjectSourceModel(project.sourceModel);
+      return isEmptyProjectSourceModel(model) ? undefined : model;
+    })(),
     meta: project.meta
       ? {
           ...project.meta,
@@ -376,6 +397,19 @@ export const encodeRBProject = (project: RBProject) => {
       : undefined,
   };
   return stableStringify(normalized);
+};
+
+/**
+ * The effective source model for a project: the first-class `sourceModel` when
+ * present and non-empty, otherwise a projection promoted from the legacy `hdl`
+ * toolchain input. Always returns a (possibly empty) model, never undefined, so
+ * callers can treat sources uniformly regardless of when the project was made.
+ */
+export const deriveSourceModel = (project: RBProject): ProjectSourceModel => {
+  if (project.sourceModel && !isEmptyProjectSourceModel(project.sourceModel)) {
+    return normalizeProjectSourceModel(project.sourceModel);
+  }
+  return promoteToolchainInput(project.hdl);
 };
 
 export const normalizeRBProject = (value: unknown): RBProject => {
@@ -458,6 +492,13 @@ export const normalizeRBProject = (value: unknown): RBProject => {
         return undefined;
       }
       return normalizeProjectHierarchy(doc.hierarchy, legacyDefinitions);
+    })(),
+    // Attach the source model only when the document carries a non-empty one,
+    // mirroring encodeRBProject so encode∘decode stays idempotent.
+    sourceModel: (() => {
+      if (!isRecord(doc.sourceModel)) return undefined;
+      const model = normalizeProjectSourceModel(doc.sourceModel);
+      return isEmptyProjectSourceModel(model) ? undefined : model;
     })(),
     meta: isRecord(doc.meta) ? { ...(doc.meta as NonNullable<RBProject['meta']>) } : undefined,
   };
