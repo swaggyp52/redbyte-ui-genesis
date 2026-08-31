@@ -98,12 +98,13 @@ accepted.
   `597337b` as an ancestor, so **PR #84's diff collapsed to P2-only**.
 - **PR #84** ([#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84)) —
   **open, draft, mergeable, NOT merged**; head
-  `803e2dfd08dd2a94cb3a3034d763e4b35fe2f6dc`; base `product/redbyte-workbench-v3`
-  @ `bd70c4c`. Left for Connor to review/merge via the GitHub UI. No production
-  deploy.
-- **CI (verified green at head `803e2dfd0`):** PR Fast Checks run #77 completed
-  SUCCESS — "Typecheck, contracts, unified build" SUCCESS, "Preview deploy"
-  SUCCESS, "Cloudflare Pages" SUCCESS, "Check deploy credentials" SUCCESS; the
+  `f8899a46255d1dc44a89fb11b60b62ab78be1183` (advanced from `803e2dfd0` by the P2
+  truth-correction commit; this head is also the P2.5 branch point and PR #85's
+  base SHA); base `product/redbyte-workbench-v3` @ `bd70c4c`. Left for Connor to
+  review/merge via the GitHub UI. No production deploy.
+- **CI (verified green at head `f8899a462`):** PR Fast Checks completed SUCCESS —
+  "Typecheck, contracts, unified build" SUCCESS, "Preview deploy" SUCCESS,
+  "Cloudflare Pages" SUCCESS, "Check deploy credentials" SUCCESS; the
   credentials-gated deploy step SKIPPED honestly.
 - **P2 delivered — data + authority foundation (Phase 1):** versioned,
   migration-safe project format + corpus; first-class source/fileset model
@@ -135,6 +136,44 @@ accepted.
   (turn the P1/P2 capability into a coherent, classroom-usable workbench; not P3
   cloud, not format-v2). Branch: `claude/redbyte-operational-workbench-convergence-*`,
   stacked on PR #84 until it merges.
+
+### P2.5 Operational Classroom Workbench lane (2026-08-31, cloud session) — IN FLIGHT
+
+- **Branch:** `claude/redbyte-operational-workbench-convergence-w9k2r4` (branch
+  point `f8899a462` = PR #84 head). **PR #85**
+  ([#85](https://github.com/swaggyp52/redbyte-ui-genesis/pull/85)) — open, draft,
+  mergeable, NOT merged; base `claude/redbyte-product-core-convergence-n3pi6t`
+  (temporarily stacked on PR #84; **retarget to `product/redbyte-workbench-v3`
+  only after #84 merges — never before, and never by an autonomous session**).
+- **Checkpoint (six commits on the branch point):** `8a5cbef74` Slice 0 baseline
+  + imported-VCD demotion → `359adc098` Slice 1 (one per-stage status authority;
+  footer de-duped) → `49abc102f` Slice 2 (Project landing hierarchy) → `02dc9e147`
+  (labday harness/stale-testid repair, 13→4) → `1c5c4745e` Slice 3 (Compare shows
+  a real PASS/FAIL verdict) → the first documentation-refresh commit.
+- **Exact proof boundary (Browser-E0, honest):** browser-proven so far are the
+  three slice journeys (shell-status-authority, project-landing, compare-verdict)
+  at 1440×900 and 1366×768, 0px overflow. The compare-verdict journey proves ONLY
+  the **verdict transition** (PASS → deliberately-broken FAIL → undo/rerun PASS)
+  and currently uses forbidden store actions — it is a focused verdict proof, not
+  a full Journey A. Failure diagnosis (mismatch rows), source/Design tracing,
+  scenario preservation, Board mapping, trusted export, download, and reload are
+  **UNPROVEN**. No Vivado/synthesis/timing/bitstream/hardware claim.
+- **Remaining acceptance work:** a UI-only Full Adder Journey A (zero store
+  actions); real failure diagnosis (runnable mismatch vs structural failure);
+  Board & Export convergence + the FPGA-part authority decision; the baseline-red
+  disposition (verify ~26, labday 4, `projectSurface.submission` 4 + `continuity`
+  1); and the five-lab / import / persistence journeys.
+- **Validation caveat:** the branch was built and validated under the repo pin
+  (Node 20.19.0) in a Linux cloud session. The desktop clone runs **Node 24.15.0**
+  (no pinned Node installed); golden SHAs drift under Node 24, so golden-gate
+  re-verification is not faithful from the desktop until Node 20.19.0 is present.
+  CI: PR Fast Checks run #81 SUCCESS at `b952d46b`; PR #84 head `f8899a462` green.
+- **Boundary:** format version stays **1** (v2 gated behind `FORMAT_V2_SIGNOFF.md`);
+  both classroom goldens byte-identical; one writable authority per concern; no
+  second store/parser/app/shell; no cloud/auth; **do not merge or retarget PR #84
+  or PR #85, push to `main`/product, or deploy production.**
+- Continuation point:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 
 ## Candidate Product Truth
 
@@ -224,14 +263,15 @@ HDL, board, or hardware support beyond the documented boundaries.
 ## Next Authorized Endpoint
 
 The P2 HDL/Vivado interoperability baseline is **complete** (PR #84, P2-only,
-open/draft/mergeable/unmerged, CI green at `803e2dfd0`). The authorized next
-program is **RedByte P2.5 — Operational Classroom Workbench Convergence**: turn
-the P1/P2 capability into a coherent, practical, classroom-usable workbench
-(Project start/resume, the Design↔Simulate repair loop, Board & Export as real
-workspaces, the five Gannon pilot labs). This is **not** P3 cloud work, **not**
-the format-v2 migration (still gated behind `FORMAT_V2_SIGNOFF.md`), and **not**
-another feature-breadth campaign. Do not merge PR #84, push to `main`/product, or
-deploy production without Connor's explicit approval.
+open/draft/mergeable/unmerged, CI green at `f8899a462`). **RedByte P2.5 —
+Operational Classroom Workbench Convergence** is now **in flight** (PR #85, six
+commits on the `f8899a462` branch point; see the P2.5 lane above): turn the P1/P2
+capability into a coherent, practical, classroom-usable workbench (Project
+start/resume, the Design↔Simulate repair loop, Board & Export as real workspaces,
+the five Gannon pilot labs). This is **not** P3 cloud work, **not** the format-v2
+migration (still gated behind `FORMAT_V2_SIGNOFF.md`), and **not** another
+feature-breadth campaign. Do not merge or retarget PR #84 or PR #85, push to
+`main`/product, or deploy production without Connor's explicit approval.
 
 ## Start
 

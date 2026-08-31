@@ -19,8 +19,10 @@ and code. "Well-designed" is NOT claimed — that is the P2.5 outcome to earn.
   loads. (`simulate-1440x900.png` → `simulate-after-fix-1440x900.png`.)
 - **[open] Provider bar** — still a full-width band on a native project; honest but
   could merge with the compact VCD affordance into one "Simulation provider" strip.
-- **[open] Duplicate status** — Simulate state shown in header stage-nav ("Not
-  run"), the provider card, and the footer ("Simulation: Not run").
+- **[partially fixed — Slice 1]** Duplicate status — the **footer** copy
+  ("Simulation: Not run") was removed (Slice 1: footer is support-context only,
+  proven by `shell-status-authority-journey.mjs`). Still open: Simulate state
+  appears in both the header stage-nav and the provider card.
 - **[open] The waveform (the real instrument) is behind a tab** while less-central
   panels take prime space. Slice 3 should make the waveform + Run + Observe/Compare
   the dominant objects.
@@ -31,18 +33,21 @@ and code. "Well-designed" is NOT claimed — that is the P2.5 outcome to earn.
   top ~25%, pushing the actual board visual down.
 - **[open] Board diagram cramped/cut off** in the narrow middle column — it is the
   valuable conceptual object and should be more prominent + fully visible.
-- **[open] "Mapping complete" repeated 4×** (header sub-label, stat trio, "MAPPING
-  COMPLETE" banner, footer).
+- **[open, reduced to 3× by Slice 1]** "Mapping complete" repeated — the **footer**
+  copy was removed (Slice 1); still repeated in the header sub-label, the stat
+  trio, and the "MAPPING COMPLETE" banner. Consolidate in Slice 4.
 - **[open] Constraint-sets panel permanently expanded** at the bottom (advanced;
   should collapse to active-set + consequence, management behind disclosure).
 
 ### Project — moderate (Slice 2)
-- **[open] Hero heading** "Start your digital-logic project" + **5 peer action
-  buttons** (Start a Lab / Build Fresh / Open Starter / Import Project / Open
-  Existing). One dominant action wanted; secondary paths visually secondary.
+- **[FIXED — Slice 2]** Hero heading + **5 peer action buttons** → the landing now
+  leads with one dominant "Start a Lab" card over a single subordinate
+  alternatives cluster; the giant hero and the narration line are gone
+  (`49abc102f`, proven by `project-landing-proof.mjs` at both viewports).
 - **[open] Large empty region** below the small RECENT card at 1440×900.
-- **[open] Duplicate status** — header stage sub-labels + footer status bar repeat
-  Simulation/Board/Package state.
+- **[FIXED — Slice 1]** Duplicate status — the footer status bar no longer repeats
+  Simulation/Board/Package state; the header stage-nav is the single per-stage
+  authority (`shell-status-authority-journey.mjs`).
 
 ### Design — healthy (light touch in Slice 3)
 - Canvas is the dominant object; clean toolbar; library rail ~220px, collapsible;
@@ -59,9 +64,10 @@ and code. "Well-designed" is NOT claimed — that is the P2.5 outcome to earn.
 
 ## Cross-surface
 
-- **Duplicate status system:** the header stage-navigator carries a sub-status per
-  stage AND the footer status bar repeats much of it. Slice 1 should pick one
-  home for truthful save/readiness status.
+- **Duplicate status system — [RESOLVED, Slice 1]:** the footer status bar no
+  longer repeats the header stage-navigator's per-stage status; the stage-nav is
+  the single per-stage authority and the footer is support-context only
+  (checks / storage / problems). Proven by `shell-status-authority-journey.mjs`.
 - **Consistent shell** otherwise: one header, one stage nav, one footer, one main
   landmark, no overflow.
 

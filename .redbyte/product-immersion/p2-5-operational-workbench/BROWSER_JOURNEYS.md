@@ -28,14 +28,20 @@ being claimed. Run against `pnpm --filter @redbyte/playground dev` on
 
 ## P2.5 acceptance journeys
 
-- **Journey A** — Full Adder native lab. **CORE PROVEN** by
-  `compare-verdict-journey.mjs`: start → Compare PASS (visible pass-hero) →
-  Design edit (delete a gate) → intentional FAIL (visible "Compare failed") →
-  repair (undo) → rerun → PASS, one shell/one main, no overflow, no page errors,
-  1440×900 + 1366×768. **Tail still to wire into a single end-to-end Journey A:**
-  map → trusted export → inspect HDL/XDC/testbench → download → reload preserves
-  state. The tail selectors are all known (see `signature-journey.mjs`); it was
-  unblocked by the Slice-3 verdict fix and is the next increment.
+- **Journey A** — Full Adder native lab. **NOT YET PROVEN as a student journey.**
+  What is earned so far, by `compare-verdict-journey.mjs`, is narrower than a
+  Journey-A claim: **the Compare verdict transition** — a run presents PASS
+  (visible pass-hero), a deliberately changed design presents FAIL (visible
+  "Compare failed"), and undo + rerun returns to PASS — one shell / one main, no
+  overflow, no page errors, at 1440×900 and 1366×768. That script also drives the
+  runtime store directly (`loadExample`, `autoSuggestMapping`, a store gate-lookup
+  to choose the delete target, and a force-click), which the acceptance contract
+  forbids; it stands as a **focused verdict proof**, not Journey A. Still UNPROVEN
+  through the UI: first-use → Start a Lab → Lab 3 selection; authoring a check; a
+  runnable wrong-logic edit; concrete case/tick/signal/expected/observed mismatch
+  evidence; Trace-in-Design; scenario preservation across the repair loop;
+  stale-then-current proof; Board mapping; trusted export; HDL/XDC/testbench
+  inspection; browser download; reload/resume. Those are the next increment.
 - **Journey B** — 2-bit counter: CLK100MHZ as board clock, deterministic
   sequential verify, waveform, Compare, map + clock, package, free-running-clock
   testbench, Browser-E0 boundary.

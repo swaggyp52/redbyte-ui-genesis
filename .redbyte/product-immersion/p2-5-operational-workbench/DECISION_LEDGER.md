@@ -166,7 +166,10 @@ goldens untouched. Five analyzer journeys still pass.
 
 ## Baseline-red disposition (Slice 7 — recorded now, fixed later)
 
-Reproduced at the branch point under pinned Node 20.20.x. Four suites / 8 tests.
+Reproduced at the branch point under the repo-pinned runtime (Node 20.19.0, per
+`.nvmrc` and `BROWSER_JOURNEYS.md` — a prior draft of this line said "20.20.x",
+which matched no installed runtime and is corrected here; not re-verifiable from
+the current desktop, which runs Node 24.15.0). Four suites / 8 tests.
 **Not yet fixed** — recorded here with a provisional root cause; each will be
 product-fixed or its stale assertion updated with evidence during Slice 7 (or
 sooner where a slice touches the surface).

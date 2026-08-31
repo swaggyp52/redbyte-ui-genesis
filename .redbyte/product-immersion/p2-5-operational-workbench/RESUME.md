@@ -6,32 +6,54 @@
 
 ## Canonical state
 
-- **CURRENT HEAD:** `1c5c4745e` (Slice 3 compare-verdict fix) — pushed through
-  `359adc098` (Slice 1); Slices 2/2.5/3 commits push next.
-  **Branch point:** `f8899a462` (the P2 truth-correction commit).
-- **CURRENT BRANCH:** `claude/redbyte-operational-workbench-convergence-w9k2r4`
+> The live branch HEAD is whatever `git rev-parse HEAD` / the PR reports — this
+> file does NOT hardcode a self-referential "current HEAD" that goes stale the
+> moment the next commit lands. The fields below name durable anchors only.
+
+- **CONTINUATION BRANCH:** `claude/redbyte-operational-workbench-convergence-w9k2r4`
   (created from the corrected P2 head; PR #84 remains the immutable P2 review).
-- **CURRENT PR:** #85, P2.5 draft, **targeting
+- **CURRENT PR:** #85 — P2.5 draft, open, mergeable, **targeting
   `claude/redbyte-product-core-convergence-n3pi6t`** (temporarily stacked on PR
-  #84; retarget to `product/redbyte-workbench-v3` once #84 merges).
-- **CURRENT PHASE:** first checkpoint delivered — Slice 0 (baseline) · Slice 1
-  (shell status authority) · Slice 2 (Project landing hierarchy) · Slice 3
-  headline (Compare verdict now visible) · labday baseline-red repair (13→4).
-  Commit ledger: `359adc098` (Slice 1) → `49abc102f` (Slice 2) → `02dc9e147`
-  (labday) → `1c5c4745e` (Slice 3 compare verdict).
-- **CURRENT ACCEPTANCE JOURNEY:** Journey A CORE proven —
-  `compare-verdict-journey.mjs` drives PASS→break→FAIL→undo→PASS through the real
-  UI at both viewports. The tail (map → trusted export → inspect HDL/XDC/testbench
-  → download → reload) is unblocked and is the next increment to a full Journey A.
-- **BLOCKERS:** none. Format v2 stays gated behind `FORMAT_V2_SIGNOFF.md`; format
-  version 1; both classroom goldens byte-identical (2/2 green). PR #84 not merged.
-- **LAST VALIDATION:** shell-status-authority, project-landing, compare-verdict
-  journeys PASS at 1440×900/1366×768 (0px overflow); verify suites 30→26 failed
-  (+4, 0 regressions); labday 13→4; both classroom golden export gates green.
-- **LAST PUSH:** `359adc098` (Slice 1). Slices 2/2.5/3 committed locally, push
-  pending.
-- **DIRTY FILES:** none (all committed); RESUME/BROWSER_JOURNEYS doc refresh in
-  flight.
+  #84; retarget to `product/redbyte-workbench-v3` only AFTER #84 merges — never
+  before, and never by this session).
+- **BRANCH POINT:** `f8899a462` — the P2 truth-correction commit = PR #84 head =
+  PR #85 base SHA.
+- **LAST VERIFIED PRODUCT COMMIT:** `1c5c4745e` (Slice 3 compare-verdict fix).
+  GitHub reports **six** commits on the branch point (not five):
+  `8a5cbef74` Slice 0 baseline + imported-VCD demotion → `359adc098` Slice 1
+  shell status authority → `49abc102f` Slice 2 Project landing → `02dc9e147`
+  labday harness/stale-testid repair → `1c5c4745e` Slice 3 Compare verdict →
+  the first documentation-refresh commit (docs only).
+- **CURRENT PHASE:** first checkpoint delivered — Slices 0–3 + labday baseline-red
+  repair (13→4). The real UI-driven Journey A, Board (Slice 4), and Export are the
+  next work.
+- **CURRENT ACCEPTANCE PROOF (honest, narrow):** `compare-verdict-journey.mjs`
+  proves ONLY the Compare verdict transition — a run presents PASS, a deliberately
+  changed design presents FAIL, and undo + rerun returns to PASS — at 1440×900 and
+  1366×768, 0px overflow. It does NOT prove failure diagnosis, mismatch rows,
+  source/Design tracing, scenario preservation, mapping, trusted export, download,
+  or reload. It also currently drives the runtime store directly (`loadExample`,
+  `autoSuggestMapping`, store gate-lookup, force-click), which the P2.5 acceptance
+  contract forbids. Replacing it with a genuine student-driven journey is required.
+- **BLOCKERS:** none on the branch itself. Format v2 stays gated behind
+  `FORMAT_V2_SIGNOFF.md`; format version 1; both classroom goldens byte-identical
+  (last verified 2/2 green under the pinned runtime). PR #84 not merged; do not
+  merge or retarget.
+- **LAST VALIDATION (pinned runtime, cloud session):** shell-status-authority,
+  project-landing, compare-verdict journeys PASS at both viewports (0px overflow);
+  verify suites 30→26 failed (+4, 0 regressions); labday 13→4; both classroom
+  golden export gates byte-identical. CI: PR Fast Checks run #81 SUCCESS at the
+  checkpoint head (`b952d46b`); PR #84 head `f8899a462` also green.
+- **RUNTIME CAVEAT:** this branch was built and validated in a Linux cloud session
+  under the repo pin (Node 20.19.0, chromium at `/opt/pw-browsers/chromium`). The
+  desktop clone currently runs **Node 24.15.0** with no pinned Node installed;
+  golden SHAs are known to drift under Node 24, so golden-gate re-verification is
+  NOT faithful from the desktop until Node 20.19.0 is available.
+- **NEXT REQUIRED JOURNEY:** a UI-only Full Adder acceptance journey (zero store
+  actions) — Project → Start a Lab → Design → author a check → Compare PASS →
+  runnable wrong-logic edit → FAIL with a concrete mismatch → Trace in Design →
+  repair → PASS → Board mapping → trusted export → download → reload.
+- **DIRTY FILES:** none.
 
 ## Known redder-than-recorded baseline (pre-existing, not P2.5)
 
@@ -80,11 +102,15 @@ Import/Recover is a utility. Vivado is external (Browser-E0).
   1366px-fit pair with the footer Storage pill; the Board chip is product
   identity, not duplication) and the two-stylesheet CSS merge was DEFERRED as a
   visual-regression-prone change needing headed review. See DECISION_LEDGER D-2.
-- **Slice 2 — Project:** NEXT. Hero + 5 peer actions + duplicated status.
-- **Remaining:** Slices 1–2, 3 (Design/Simulate repair loop + Journey A), 4
-  (Board consolidation + Export readiness), 5 (import review E2E, hand-authored
-  source persistence, parameters, Vivado twin ingestion), 6 (five Gannon labs),
-  7 (baseline-red disposition + state audit). Journeys A–E.
+- **Slice 2 — Project landing:** DONE (`49abc102f`, browser-proven both
+  viewports). Leads with one dominant "Start a Lab" over a subordinate
+  alternatives cluster; the giant hero and narration line are gone. Open
+  remainder: the empty region below RECENT and the loaded-overview consolidation.
+- **Remaining:** Slice 3 follow-on (real failure diagnosis — mismatch rows vs
+  structural failure; a UI-only Journey A), 4 (Board consolidation + Export
+  readiness + FPGA-part authority), 5 (import review E2E, hand-authored source
+  persistence, parameters, Vivado twin ingestion), 6 (five Gannon labs), 7
+  (baseline-red disposition + state audit). Journeys A–E.
 
 ## Ledger (newest first)
 
