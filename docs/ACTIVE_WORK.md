@@ -88,6 +88,40 @@ accepted.
   this lane never rewrites `product/redbyte-workbench-v3`. Desktop
   reconciliation is one merge of this branch.
 
+### P2 HDL / Vivado interoperability lane (2026-08-31, cloud session)
+
+- Branch: `claude/redbyte-product-core-convergence-n3pi6t` (base `597337b` =
+  the P1 candidate head, i.e. `product/redbyte-workbench-v3` + all of PR #82),
+  delivered via draft PR
+  [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) into the
+  product branch. Stacked on the P1 candidate, so once #82 lands #84's diff
+  collapses to just the P2 work.
+- **P1 closeout:** PR #82 body rewritten to final P1 truth (the landed
+  operational-workbench work was still listed as "remainder"); focused P1
+  suites + unified build re-proven green under pinned Node 20.19.0. **PR #82
+  was NOT merged** — this session's branch scope forbids pushing to the
+  protected product base and #82 is a draft; it is left for Connor to
+  merge/close via the GitHub UI. No production deploy.
+- **P2 delivered (data + authority foundation):** versioned, migration-safe
+  project format + corpus (P2-1, which also repaired 3 pre-existing round-trip
+  gates against their committed goldens); first-class source/fileset model,
+  persisted in the format and wired as a live store authority that
+  auto-populates for imported projects, and **rendered in the Project explorer
+  with honest capability tiers** (P2-2/P2-4, browser-proven); language
+  capability matrix + diagnostics/source-range model (P2-3); source-backed
+  module tiers + bidirectional cross-probe (P2-4); simulation provider
+  architecture + bounded VCD reader with honest evidence tiers (P2-6, model
+  layer); deterministic Vivado digital-twin snapshot envelope (P2-7, model
+  layer); and a P3 cloud control-plane data-contract readiness **report** (no
+  auth built).
+- Proof: Browser-E0 only. ~215 vitest tests + one Playwright journey
+  (`source-files-journey.mjs`, 1440×900). Both classroom golden Basys3 export
+  gates byte-identical throughout; 0 new tsc errors per slice. Continuation
+  point: `.redbyte/product-immersion/p2-hdl-interoperability/RESUME.md`.
+- Remaining P2: import review-before-apply program (P2-5); the VCD Analyzer +
+  cross-probe UI wiring; parameter/generic depth; constraint sets + package
+  round-trip; reference project, scale/a11y hardening, legacy removal (P2-8).
+
 ## Candidate Product Truth
 
 The candidate's student-visible workbench spine is:
