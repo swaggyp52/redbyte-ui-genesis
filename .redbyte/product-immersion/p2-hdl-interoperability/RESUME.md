@@ -68,6 +68,13 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-6 (UI component) — VCD waveform view.**
+  `components/VcdWaveformView.tsx`: the core imported-VCD Analyzer display over a
+  `ProviderWaveform` (from `waveformFromVcd`) — the honest evidence caption
+  (imported-external tier, "generated outside RedByte"), each signal with its
+  width, and a compact per-signal value-change timeline; renders nothing without
+  a waveform. 2 component tests; 0 tsc errors. Wiring a VCD file input + mounting
+  it in a surface is the follow-on.
 - **P2-5 (UI) — import review-before-apply panel wired into ImportSurface.**
   New `components/ImportReviewPanel.tsx` (read-only projection of an
   `ImportReviewPlan`: apply kind, per-source fileset/tier/action, blockers,
