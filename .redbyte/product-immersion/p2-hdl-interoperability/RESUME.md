@@ -106,6 +106,19 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Format v2 sign-off artifact + legacy-removal posture.**
+  New root `FORMAT_V2_SIGNOFF.md`: the single sign-off-gated item, prepared for
+  Connor's decision (exact change, the two affected classroom golden SHAs and how
+  to regenerate them, the already-tested `promoteToolchainInput` migration body,
+  round-trip guarantees, rollback options incl. a dual-emit bridge, user-data
+  risk, and a recommended decision to land v2 as its own reviewed change — never
+  bundled into P2's UI work). **Not implemented; format version stays 1 and both
+  goldens byte-identical on this branch.** Legacy-removal posture: the primary
+  legacy is the `hdl` ↔ `sourceModel` duplication, which is *exactly* what the
+  gated v2 bump retires — so it is not deleted here (that is the gated change).
+  P2-C already made a real non-breaking correction in this area
+  (`promoteToolchainInput` natural filesets). No speculative dead-code deletions
+  were made, to keep every P2 commit regression-free.
 - **Chapter E (parity proof) — one workbench grammar for native and imported.**
   Verified there is **no second app**: no `ImportedProjectSurface`, `VCDApp`, or
   second workbench root anywhere in the source. Parity already held (imported
