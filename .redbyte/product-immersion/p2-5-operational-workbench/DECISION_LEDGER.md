@@ -2,6 +2,55 @@
 
 Decisions and their evidence. Newest first.
 
+## D-4 — Baseline reds are redder than Slice 0 recorded (18 pre-existing failures found)
+
+While validating Slice 2 (stash-compare on 4 Project/IdeApp suites), 18 failures
+reproduced **identically with my changes stashed** — so pre-existing, not mine.
+Slice 0 recorded only the 4 verify suites; it missed these. Root cause of the
+largest block is a test-harness gap, not a product defect:
+
+- **`ideApp.labday-wiring` (13 tests): `useTheme must be used within ThemeProvider`.**
+  Commit `77145258b` (light-first theme identity) added a `useTheme()` call at
+  `IdeApp.tsx:289`; the suite renders `<IdeApp />` bare at 10+ sites and was never
+  wrapped in `<ThemeProvider>`. Present at `8a5cbef74` (before all P2.5 code).
+  Disposition: **fix the harness** (wrap the renders) — a clean baseline-red
+  repair, not a product change or a skip.
+- **`projectSurface.submission` (4) + `projectSurface.continuity` (1):** to be
+  triaged (loaded-overview `ide-project-open-map-pins`, mojibake-suffix, mapping
+  inline). Pre-existing (same count with Slice 2 stashed). Recorded for Slice 7.
+
+Rule reaffirmed: never treat a pre-existing baseline as my regression; fix the
+harness where the "failure" is only a missing provider; product-triage the rest.
+
+## D-3 — Slice 2 Project landing: one dominant action, subordinate alternatives, no giant hero
+
+**Decision (landed):** The no-circuit landing (`ProjectLanding`) leads with one
+dominant primary card ("Start a Lab" + a one-line rationale) and demotes the four
+alternatives (Open Starter / Import Project / Open Existing / Build Fresh) into a
+single subordinate cluster — instead of five peer buttons in a flat wrap row. The
+hero h1 shrinks from `clamp(…, 2.7rem)` to `clamp(…, 1.9rem)` (Connor: "no giant
+heroes"); the `.ide-project-v3-welcome` reserved-and-centered 220px band becomes a
+top-aligned, tighter block (reclaims the top empty band); and the restating
+summary line ("Start a Lab is the recommended course path…") is removed — the
+hierarchy is now shown, not narrated.
+
+**Why:** Connor's first-impression complaint ("hero + 5 peer buttons; one dominant
+action wanted; secondary paths visually secondary") plus his explicit dislikes
+(giant heroes, flat/empty). The change executes his stated preferences directly;
+it is not a speculative redesign. `project-landing-proof.mjs` proves it at
+1440×900 + 1366×768 (dominant primary 68px vs subordinate 36px; no summary line;
+0px overflow); `projectSurface.unifiedOverviewV3` (asserts the landing buttons) and
+the `projectSurface.continuity` landing assertions stay green.
+
+**Honest remaining gap (flagged for visual review, NOT yet fixed):** the empty
+region *below* the RECENT card at 1440×900 persists — the fresh-project landing
+lacks content to fill 900px. Filling it well (e.g., an inline compact lab-pack
+preview) is a design-judgment call better made with Connor's eyes on it than
+guessed while he is away. Recorded as the remaining Slice-2 item.
+
+**Boundary honored:** landing testids/labels preserved (tests unbroken); no
+format/golden/store change; no new tabs; surface not emptied.
+
 ## D-2 — Slice 1 shell: one per-stage status authority; several audit items rejected on verification
 
 **Decision (landed):** The footer status bar (`IdeStatusBar`) no longer renders

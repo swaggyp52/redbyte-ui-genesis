@@ -199,12 +199,53 @@
 }
 
 .ide-project-v3-toolbar,
-.ide-project-v3-actions,
-.ide-project-v3-launch {
+.ide-project-v3-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+/* Landing start actions: one dominant primary card + a subordinate cluster. */
+.ide-project-v3-launch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px 16px;
+}
+
+.ide-project-v3-launch-primary.ide-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  flex: 0 1 340px;
+  min-height: 62px;
+  padding: 12px 18px;
+  text-align: left;
+}
+
+.ide-project-v3-launch-primary.ide-button > strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ide-project-v3-launch-primary.ide-button > small {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.ide-project-v3-launch-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 8px;
+}
+
+.ide-project-v3-launch-secondary .ide-button-secondary {
+  font-size: 13px;
 }
 
 .ide-project-v3-more-actions {
@@ -557,23 +598,21 @@
 
 .ide-project-v3-welcome {
   display: grid;
-  gap: 18px;
-  min-height: 220px;
-  align-content: center;
-  padding: 24px 0;
+  gap: 16px;
+  align-content: start;
+  padding: 18px 0 20px;
   border-bottom: 1px solid var(--rb-border, #415066);
 }
 
 .ide-project-v3-welcome h1 {
   max-width: 760px;
-  margin: 3px 0 8px;
+  margin: 2px 0 6px;
   color: var(--rb-text-strong, #f8fafc);
-  font-size: clamp(1.75rem, 3vw, 2.7rem);
-  line-height: 1.1;
+  font-size: clamp(1.5rem, 2vw, 1.9rem);
+  line-height: 1.15;
 }
 
-.ide-project-v3-welcome > div:first-child > p:last-child,
-.ide-project-v3-start-summary {
+.ide-project-v3-welcome-copy > p:last-child {
   max-width: 72ch;
   margin: 0;
   color: var(--rb-text-muted, #aeb9c7);

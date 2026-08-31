@@ -1,0 +1,63 @@
+// P2.5 Slice 2 proof — the no-circuit Project landing. Clears storage so the
+// student sees the first-launch landing, then captures it at both viewports and
+// asserts: one dominant primary ("Start a Lab"), a single subordinate cluster of
+// alternatives, the old restating summary line is gone, and no overflow.
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const fail = (m) => { throw new Error(m); };
+const OUT = '/tmp/claude-0/-home-user-redbyte-ui-genesis/b4914bef-2a1a-55cb-97de-096a331aef03/scratchpad';
+
+async function run(width, height) {
+  const context = await browser.newContext({ viewport: { width, height } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
+
+  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.evaluate(() => { try { localStorage.clear(); } catch {} });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+
+  // Landing renders only with no circuit. Ensure we are on the Project stage.
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(300);
+
+  const landing = page.getByTestId('ide-project-landing');
+  if (await landing.count() === 0) fail('Project landing not shown on fresh load');
+
+  // ① One dominant primary action.
+  const primary = page.getByTestId('ide-project-start-a-lab-primary');
+  if (await primary.count() === 0) fail('Start a Lab primary missing');
+  if (!((await primary.textContent()) ?? '').includes('Start a Lab')) fail('primary label wrong');
+  if (await primary.getAttribute('data-product-priority') !== 'primary') fail('primary not marked priority');
+
+  // ② The alternatives are one subordinate cluster, not peer buttons.
+  const secondary = page.locator('.ide-project-v3-launch-secondary');
+  if (await secondary.count() === 0) fail('subordinate cluster missing');
+  for (const t of ['ide-project-open-starter-primary', 'ide-project-import-primary', 'ide-project-open-existing-primary', 'ide-project-build-fresh-primary']) {
+    if (await secondary.getByTestId(t).count() === 0) fail(`alternative not in the subordinate cluster: ${t}`);
+  }
+
+  // ③ The old restating summary line is gone (hierarchy is shown, not narrated).
+  if (await page.getByTestId('ide-project-start-summary').count() !== 0) fail('restating start-summary line should be removed');
+
+  // ④ The primary sits above the fold and is visibly the largest action.
+  const primaryBox = await primary.boundingBox();
+  const anAltBox = await secondary.getByTestId('ide-project-import-primary').boundingBox();
+  if (!primaryBox || !anAltBox) fail('could not measure action geometry');
+  if (primaryBox.height <= anAltBox.height) fail(`primary (${primaryBox.height}px) should be taller than an alternative (${anAltBox.height}px)`);
+
+  // ⑤ No horizontal overflow.
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  if (overflow > 1) fail(`horizontal overflow at ${width}×${height}: ${overflow}px`);
+
+  await page.screenshot({ path: `${OUT}/slice2-project-landing-${width}x${height}.png` });
+  if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
+  await context.close();
+  console.log(`[${width}×${height}] PASS — dominant primary (${Math.round(primaryBox.height)}px) over subordinate cluster (${Math.round(anAltBox.height)}px), no summary line, overflow ${overflow}px`);
+}
+
+await run(1440, 900);
+await run(1366, 768);
+await browser.close();
+console.log('\nPASS — Slice 2 Project landing: one dominant action + subordinate alternatives.');

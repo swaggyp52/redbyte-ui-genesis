@@ -1455,31 +1455,37 @@ const ProjectLanding: React.FC<{
 }) => (
   <div className="ide-project-v3-landing" data-testid="ide-project-landing">
     <section className="ide-project-v3-welcome" data-testid="ide-project-start-hub">
-      <div>
+      <div className="ide-project-v3-welcome-copy">
         <p className="ide-surface-block-label">Project</p>
         <h1 data-testid="ide-project-launch-title">Start your digital-logic project</h1>
         <p>Choose a course lab, continue local work, import a design, or begin with a blank canvas.</p>
       </div>
+      {/*
+        One dominant action (Start a Lab, the recommended course path); the
+        alternatives are a single clearly-subordinate cluster rather than five
+        peer buttons. The hierarchy is now shown, so the old restating summary
+        line is gone.
+      */}
       <div className="ide-project-v3-launch" data-testid="ide-project-primary-actions">
         <button
           type="button"
-          className="ide-button ide-button-primary"
+          className="ide-button ide-button-primary ide-project-v3-launch-primary"
           onClick={onOpenLabCatalog}
           data-testid="ide-project-start-a-lab-primary"
           data-product-priority="primary"
         >
-          Start a Lab
+          <strong>Start a Lab</strong>
+          <small>Recommended course path — pick a Gannon lab and open its live circuit.</small>
         </button>
-        <button type="button" className="ide-button ide-button-secondary" onClick={onStartBlankProject} data-testid="ide-project-build-fresh-primary">Build Fresh</button>
-        <button type="button" className="ide-button ide-button-secondary" onClick={onOpenStarterCatalog} data-testid="ide-project-open-starter-primary">Open Starter</button>
-        <button type="button" className="ide-button ide-button-secondary" onClick={onOpenImport} data-testid="ide-project-import-primary">Import Project</button>
-        {onOpenSavedProjects ? (
-          <button type="button" className="ide-button ide-button-secondary" onClick={onOpenSavedProjects} data-testid="ide-project-open-existing-primary">Open Existing</button>
-        ) : null}
+        <div className="ide-project-v3-launch-secondary" role="group" aria-label="Other ways to start">
+          <button type="button" className="ide-button ide-button-secondary" onClick={onOpenStarterCatalog} data-testid="ide-project-open-starter-primary">Open Starter</button>
+          <button type="button" className="ide-button ide-button-secondary" onClick={onOpenImport} data-testid="ide-project-import-primary">Import Project</button>
+          {onOpenSavedProjects ? (
+            <button type="button" className="ide-button ide-button-secondary" onClick={onOpenSavedProjects} data-testid="ide-project-open-existing-primary">Open Existing</button>
+          ) : null}
+          <button type="button" className="ide-button ide-button-secondary" onClick={onStartBlankProject} data-testid="ide-project-build-fresh-primary">Build Fresh</button>
+        </div>
       </div>
-      <p className="ide-project-v3-start-summary" data-testid="ide-project-start-summary">
-        Start a Lab is the recommended course path. Every alternative remains directly available.
-      </p>
     </section>
 
     <RecentProjects
