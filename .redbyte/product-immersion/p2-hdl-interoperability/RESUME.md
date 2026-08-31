@@ -7,35 +7,35 @@
 
 ## Canonical state (update every chapter)
 
-- **CURRENT HEAD:** `48c64b2c7` (Chapter A pushed) + local Chapter-B commit (cross-probe),
-  pushed after this chapter closes.
+- **CURRENT HEAD:** `efd12f246` (Chapters A+B pushed) + local Chapter-C commit
+  (constraint sets), pushed after this chapter closes.
 - **CURRENT BRANCH:** `claude/redbyte-product-core-convergence-n3pi6t`
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A (VCD Analyzer) + B
-  (cross-probe) **done**; Chapter C (constraint sets) next.
-- **CURRENT ACCEPTANCE JOURNEY:** `crossprobe-journey.mjs` — PASS at 1440×900 and
-  1366×768 (panel mounted → 5-tier legend → module↔source Exact → bidirectional
-  design↔source highlight → no h-overflow).
-- **ACTIVE IMPLEMENTATION:** Chapter C — constraint-set UI in Project + Board &
-  Constraints (mount `constraintSets` model; named sets, exactly one active).
-- **NEXT THREE TASKS:** (1) constraint-set UI [C]; (2) simulation-provider selection +
-  run provenance [D]; (3) native/imported parity — one workbench grammar [E].
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A (VCD Analyzer), B
+  (cross-probe), C (constraint sets) **done**; Chapter D (provider selection) next.
+- **CURRENT ACCEPTANCE JOURNEY:** `constraint-sets-journey.mjs` — PASS at 1440×900 and
+  1366×768 (seed-from-import → activate → rename → reload-persist → remove-with-fallback →
+  no h-overflow).
+- **ACTIVE IMPLEMENTATION:** Chapter D — simulation-provider selection + run provenance UI
+  in Simulate (Browser Logic vs Imported VCD; every run states its provider + evidence tier).
+- **NEXT THREE TASKS:** (1) provider selection + provenance [D]; (2) native/imported parity —
+  one workbench grammar [E]; (3) complex imported-project Playwright journey [F].
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
-- **LAST BROWSER PROOF:** `crossprobe-journey.mjs` — PASS at 1440×900 and 1366×768.
-  Screenshots under `evidence/chapter-b/` (local/ignored). Chapter A:
-  `vcd-analyzer-journey.mjs` still PASS.
-- **LAST VALIDATION:** Chapter B — 18 cross-probe vitest green under pinned Node 20.x
-  (sourceCrossProbe 6, crossProbeBuilder 7, crossProbePanel 5); unified `@redbyte/rb-apps`
-  build green; 0 new tsc errors. Also repaired a pre-existing NUL byte in
-  `sourceCrossProbe.ts:101` (git had it as binary). Pre-existing baseline reds unchanged.
-- **LAST PUSH:** `675c68257..48c64b2c7` (Chapter A). Chapter B push pending at chapter close.
-- **DIRTY FILES:** Chapter B working set (sourceCrossProbe.ts, crossProbeBuilder.ts,
-  CrossProbePanel.tsx, +3 tests, IdeApp.tsx, ProjectSurface.tsx, ProjectSurface.v3.css,
-  crossprobe-journey.mjs) — about to be committed.
+- **LAST BROWSER PROOF:** `constraint-sets-journey.mjs` — PASS at 1440×900 and 1366×768.
+  Screenshots under `evidence/chapter-c/` (local/ignored). Chapters A/B journeys still PASS.
+- **LAST VALIDATION:** Chapter C — 9 constraint vitest green under pinned Node 20.x
+  (constraintSets store 4, ConstraintSetsPanel 5) + source-model regression clean; unified
+  `@redbyte/rb-apps` build green; 0 new tsc errors. Also corrected `promoteToolchainInput`
+  to place imported XDC/Tcl in their natural filesets (was forcing `design`). Pre-existing
+  baseline reds unchanged.
+- **LAST PUSH:** `48c64b2c7..efd12f246` (Chapter B). Chapter C push pending at chapter close.
+- **DIRTY FILES:** Chapter C working set (projectRuntime.ts, projectSourceModel.ts,
+  ConstraintSetsPanel.tsx, +2 tests, HardwareSurface.tsx, IdeApp.tsx, hardware CSS,
+  constraint-sets-journey.mjs) — about to be committed.
 
 ## Program
 
@@ -108,6 +108,32 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter C (UI integration) — constraint sets live in Board & Constraints.**
+  The pure `constraintSets` model (P2-7) is now a persisted store authority with
+  a real Board & Constraints UI.
+  - Store: `constraintSets: ConstraintSetsDocument` on `useProjectRuntime`
+    (single owner) + `addConstraintSet` / `removeConstraintSet` /
+    `renameConstraintSet` / `setActiveConstraintSet` actions (error-returning),
+    persisted via partialize + restored via merge, reset/seeded on project load —
+    **imported XDC files seed one set each**. 4 store tests.
+  - `components/ConstraintSetsPanel.tsx`: list of named sets with the active tag,
+    per-set parsed pin counts (bounded XDC reader), activate / inline-rename /
+    remove, "Capture current pins as set" (seeded from the live generated XDC),
+    and an active-set XDC preview. Honest copy: RedByte organizes constraint text,
+    never runs Vivado or programs a board. 5 component tests.
+  - Wiring: mounted in `HardwareSurface` (Board & Constraints) below the mapping
+    work area; IdeApp threads the store doc + live `xdcText` + the four actions.
+  - **Correctness fix:** `promoteToolchainInput` now places each imported source
+    in its language's natural fileset (XDC → constraint, Tcl → utility) instead of
+    forcing `design` — so imported constraints classify correctly (also improves
+    the Source-files view and the cross-probe constraint source). Source-model +
+    round-trip suites stay green; export goldens untouched (imported projects
+    derive their source model; only file-serialized sourceModels change, and none
+    of those are in the golden fixtures).
+  - Proof: `constraint-sets-journey.mjs` PASS at 1440×900 and 1366×768 (real load
+    path): two sets seeded from imported XDC, activate, inline rename, reload
+    preserves both sets + active choice, remove-the-active falls back to the first,
+    no horizontal overflow. Unified build green; 0 new tsc errors.
 - **Chapter B (UI integration) — source ↔ visual cross-probe live in the Project explorer.**
   The pure `sourceCrossProbe` model (from P2-4, previously consumer-less) now
   drives a real bidirectional cross-probe UI.

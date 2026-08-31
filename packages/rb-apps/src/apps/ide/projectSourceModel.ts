@@ -174,9 +174,10 @@ export function addSourceFile(model: ProjectSourceModel, input: AddSourceFileInp
 
 /**
  * Promote a legacy {@link import('../../fpga/toolchainBackend').ToolchainProjectInput}
- * into the source model: each HDL source becomes a `design`-fileset file in the
- * `work` library, and the toolchain `top` becomes `topEntity`. This is the seed
- * for the v1 -> v2 project-format migration.
+ * into the source model: each source lands in its language's natural fileset
+ * (RTL → `design`, XDC → `constraint`, Tcl → `utility`) in the `work` library,
+ * and the toolchain `top` becomes `topEntity`. This is the seed for the v1 -> v2
+ * project-format migration.
  */
 export function promoteToolchainInput(
   hdl: { sources?: { path?: unknown; language?: unknown; text?: unknown }[]; top?: unknown } | null | undefined
@@ -191,7 +192,7 @@ export function promoteToolchainInput(
     const text = typeof source?.text === 'string' ? source.text : '';
     // Skip duplicates rather than throw — legacy inputs may repeat a path.
     if (model.files.some((file) => file.path === path)) continue;
-    model = addSourceFile(model, { path, text, language, fileset: 'design' });
+    model = addSourceFile(model, { path, text, language, fileset: defaultFilesetForLanguage(language) });
   }
   return topEntity ? { ...model, topEntity } : model;
 }

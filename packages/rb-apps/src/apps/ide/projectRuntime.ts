@@ -27,6 +27,15 @@ import {
   normalizeVcdAnalyzerConfig,
   type VcdAnalyzerConfig,
 } from './vcdAnalyzer';
+import {
+  addConstraintSet as addConstraintSetToDoc,
+  createEmptyConstraintSets,
+  normalizeConstraintSets,
+  removeConstraintSet as removeConstraintSetFromDoc,
+  renameConstraintSet as renameConstraintSetInDoc,
+  setActiveConstraintSet as setActiveConstraintSetInDoc,
+  type ConstraintSetsDocument,
+} from './constraintSets';
 import { stableSerialize } from '../../utils/stableSerialize';
 import {
   buildDeterministicVerifyContext,
@@ -397,6 +406,13 @@ export interface ProjectRuntimeState {
    * via {@link setVcdAnalyzerConfig}.
    */
   vcdAnalyzer: VcdAnalyzerConfig;
+  /**
+   * Named XDC constraint sets (Vivado constrs_N), with exactly one active. This
+   * store is their single writable owner; persisted so they survive reload. CRUD
+   * via {@link addConstraintSet} / {@link removeConstraintSet} /
+   * {@link renameConstraintSet} / {@link setActiveConstraintSet}.
+   */
+  constraintSets: ConstraintSetsDocument;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
   loadExample: (exampleId: string) => void;
@@ -482,6 +498,14 @@ export interface ProjectRuntimeState {
   setImportedWaveform: (waveform: ProviderWaveform | null) => void;
   /** Patch the imported-waveform Analyzer view configuration. */
   setVcdAnalyzerConfig: (patch: Partial<VcdAnalyzerConfig>) => void;
+  /** Add a named XDC constraint set (first added becomes active). Returns its id or an error. */
+  addConstraintSet: (name: string, xdcText: string) => { ok: true; id: string } | { ok: false; error: string };
+  /** Remove a constraint set; if active, activation falls to the first remaining. */
+  removeConstraintSet: (id: string) => void;
+  /** Rename a constraint set. Returns ok or an error (e.g. duplicate name). */
+  renameConstraintSet: (id: string, name: string) => { ok: true } | { ok: false; error: string };
+  /** Set the active constraint set. */
+  setActiveConstraintSet: (id: string) => void;
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -548,6 +572,7 @@ interface PersistedRuntimeState {
   sim: RuntimeSimState;
   importedWaveform?: ProviderWaveform | null;
   vcdAnalyzer?: VcdAnalyzerConfig;
+  constraintSets?: ConstraintSetsDocument;
   projectHealthCore: ProjectHealthCore;
   macros: MacroDefinition[];
   macroInsertionCounts: Record<string, number>;
@@ -569,6 +594,7 @@ interface RuntimeSeedState extends PersistedRuntimeState {
   sourceModel: ProjectSourceModel;
   importedWaveform: ProviderWaveform | null;
   vcdAnalyzer: VcdAnalyzerConfig;
+  constraintSets: ConstraintSetsDocument;
   exportHistory: ProjectHealthExportResult[];
   scenarios: VerifyScenario[];
   activeScenarioId: string;
@@ -940,6 +966,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // project load starts the Analyzer empty.
           importedWaveform: null,
           vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
+          // Imported XDC constraint files seed the project's constraint sets.
+          constraintSets: buildConstraintSetsFromSources(deriveSourceModel(project)),
           designPast: [],
           designFuture: [],
           designRevision: 0,
@@ -2216,6 +2244,51 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           vcdAnalyzer: normalizeVcdAnalyzerConfig({ ...state.vcdAnalyzer, ...patch }),
         }));
       },
+      addConstraintSet: (name, xdcText) => {
+        let id = '';
+        let error: string | undefined;
+        set((state) => {
+          try {
+            const next = addConstraintSetToDoc(state.constraintSets, name, xdcText);
+            id = next.sets[next.sets.length - 1]?.id ?? '';
+            return {
+              constraintSets: next,
+              projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+            };
+          } catch (e) {
+            error = e instanceof Error ? e.message : 'Could not add constraint set';
+            return state;
+          }
+        });
+        return error ? { ok: false, error } : { ok: true, id };
+      },
+      removeConstraintSet: (id) => {
+        set((state) => ({
+          constraintSets: removeConstraintSetFromDoc(state.constraintSets, id),
+          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+        }));
+      },
+      renameConstraintSet: (id, name) => {
+        let error: string | undefined;
+        set((state) => {
+          try {
+            return {
+              constraintSets: renameConstraintSetInDoc(state.constraintSets, id, name),
+              projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+            };
+          } catch (e) {
+            error = e instanceof Error ? e.message : 'Could not rename constraint set';
+            return state;
+          }
+        });
+        return error ? { ok: false, error } : { ok: true };
+      },
+      setActiveConstraintSet: (id) => {
+        set((state) => ({
+          constraintSets: setActiveConstraintSetInDoc(state.constraintSets, id),
+          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+        }));
+      },
       startBlankProject: () => {
         set((state) => {
           if (state.projectKind === 'blank' || state.projectKind === 'custom') return state;
@@ -2673,6 +2746,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         sim: cloneSimState(state.sim),
         importedWaveform: state.importedWaveform ? structuredClone(state.importedWaveform) : null,
         vcdAnalyzer: normalizeVcdAnalyzerConfig(state.vcdAnalyzer),
+        constraintSets: normalizeConstraintSets(state.constraintSets),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
           lastExport: state.projectHealthCore.lastExport,
@@ -2996,6 +3070,7 @@ export function mergePersistedRuntimeState(
         ? structuredClone(candidate.importedWaveform as ProviderWaveform)
         : null,
     vcdAnalyzer: normalizeVcdAnalyzerConfig(candidate.vcdAnalyzer),
+    constraintSets: normalizeConstraintSets(candidate.constraintSets),
     projectHealthCore:
       hasRestoredVerifyTrustWithoutLedger ||
       hasRestoredVerifyProjectHashMismatch ||
@@ -3109,6 +3184,20 @@ function resolveDetachedExampleIdentity(input: {
   };
 }
 
+/** Seed one constraint set per imported XDC constraint file (deterministic). */
+function buildConstraintSetsFromSources(model: ProjectSourceModel): ConstraintSetsDocument {
+  let doc = createEmptyConstraintSets();
+  for (const file of model.files) {
+    if (file.fileset !== 'constraint' || file.language !== 'xdc') continue;
+    try {
+      doc = addConstraintSetToDoc(doc, file.path, file.text);
+    } catch {
+      // Duplicate names are skipped; imported paths are unique in practice.
+    }
+  }
+  return doc;
+}
+
 function createEmptyProjectState(
   input: {
     projectId?: string;
@@ -3146,6 +3235,7 @@ function createEmptyProjectState(
     sourceModel: createEmptyProjectSourceModel(),
     importedWaveform: null,
     vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
+    constraintSets: createEmptyConstraintSets(),
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
@@ -3202,6 +3292,7 @@ function stateFromExample(
     sourceModel: createEmptyProjectSourceModel(),
     importedWaveform: null,
     vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
+    constraintSets: createEmptyConstraintSets(),
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,

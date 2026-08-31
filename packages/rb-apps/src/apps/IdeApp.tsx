@@ -417,6 +417,11 @@ export const IdeApp: React.FC = () => {
   const sourceModel = useProjectRuntime((state) => state.sourceModel);
   const importedWaveform = useProjectRuntime((state) => state.importedWaveform);
   const vcdAnalyzerConfig = useProjectRuntime((state) => state.vcdAnalyzer);
+  const constraintSetsDoc = useProjectRuntime((state) => state.constraintSets);
+  const addConstraintSetToStore = useProjectRuntime((state) => state.addConstraintSet);
+  const removeConstraintSetFromStore = useProjectRuntime((state) => state.removeConstraintSet);
+  const renameConstraintSetInStore = useProjectRuntime((state) => state.renameConstraintSet);
+  const setActiveConstraintSetInStore = useProjectRuntime((state) => state.setActiveConstraintSet);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
   const runtimeSim = useProjectRuntime((state) => state.sim);
@@ -3004,6 +3009,14 @@ export const IdeApp: React.FC = () => {
             >
             <HardwareSurface
               projectName={projectName}
+              constraintSets={{
+                doc: constraintSetsDoc,
+                liveXdcText: xdcText,
+                onAdd: addConstraintSetToStore,
+                onRemove: removeConstraintSetFromStore,
+                onRename: renameConstraintSetInStore,
+                onSetActive: setActiveConstraintSetInStore,
+              }}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
               declaredBuses={circuit.buses}
