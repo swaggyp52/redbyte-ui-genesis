@@ -1888,3 +1888,70 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Project-format migration dialog (Chapter G) — honest "update required" flow.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ide-format-migration-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.ide-format-migration-dialog {
+  width: min(560px, 100%);
+  max-height: 85vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  border-radius: 14px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface, #fff);
+  color: var(--rb-text-primary);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+}
+
+.ide-format-migration-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ide-format-migration-head h2 { margin: 0; font-size: 16px; font-weight: 680; }
+.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: 11px; color: var(--rb-text-muted); }
+
+.ide-format-migration-body { margin: 0; font-size: 13px; line-height: 1.55; color: var(--rb-text-secondary); }
+
+.ide-format-migration-review summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--rb-text-primary); }
+.ide-format-migration-changes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--rb-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ide-format-migration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.ide-format-migration-actions button {
+  padding: 7px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--rb-border-strong);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  font-size: 12px;
+  font-weight: 640;
+  cursor: pointer;
+}
+.ide-format-migration-open { border-color: var(--rb-action, #2563eb) !important; background: var(--rb-action, #2563eb) !important; color: #fff !important; }
+.ide-format-migration-cancel { margin-right: auto; }

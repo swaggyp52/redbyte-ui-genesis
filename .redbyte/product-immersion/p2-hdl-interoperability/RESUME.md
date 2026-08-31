@@ -13,15 +13,15 @@
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–E **done**; Chapter F
-  (complex imported-project journey) next.
-- **CURRENT ACCEPTANCE JOURNEY:** `parity-journey.mjs` — PASS at 1440×900 and 1366×768
-  (imported project walks Project→Design→Simulate→Board→Export in ONE shell — single
-  `<main>`, no second app — with imported artifacts in every shared surface).
-- **ACTIVE IMPLEMENTATION:** Chapter F — a complex imported-project Playwright journey
-  (real user actions, no store mutation to bypass them).
-- **NEXT THREE TASKS:** (1) complex imported-project Playwright journey [F];
-  (2) project-format migration UX [G]; (3) accessibility + scale hardening [H].
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–E + G + the format-v2
+  sign-off artifact **done**; Chapters H (a11y/scale) and F (complex journey) remain.
+- **CURRENT ACCEPTANCE JOURNEY:** `migration-journey.mjs` — PASS at 1440×900 and 1366×768
+  (v0 project → honest "update required" dialog → byte-identical original backup → open
+  upgraded copy loads with a durable record → cancel dismisses → no h-overflow).
+- **ACTIVE IMPLEMENTATION:** Chapter H — accessibility + scale hardening (virtualization/
+  indexes, keyboard, 200% zoom, reduced motion, one main landmark, no horizontal overflow).
+- **NEXT THREE TASKS:** (1) accessibility + scale hardening [H]; (2) complex
+  imported-project Playwright journey [F]; (3) final closeout report.
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
@@ -106,6 +106,23 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter G (UI integration) — project-format migration UX.**
+  Opening an older-format project no longer upgrades silently. New pure
+  `export/formatMigrationPlan.ts` (`analyzeProjectForMigration` +
+  `recordFromPlan`) sits on the existing migration ladder and reports
+  current / needs-migration / too-new / invalid without mutating the input.
+  New `components/FormatMigrationDialog.tsx`: an honest "Project update
+  required" modal stating the from-version, listing the exact changes, with
+  Cancel / Export original backup / Open upgraded copy. Wired into IdeApp's
+  real file-open (`handleProjectFileSelected`): the raw document is analyzed
+  before `decodeRBProject`; a needed migration raises the dialog instead of
+  loading. **Open upgraded copy** loads a working copy (original file
+  untouched) and writes a durable `lastSavedAt` record ("Upgraded … v0 → v1");
+  **Export original backup** hands back the byte-identical original as a
+  download; **Cancel** loads nothing. 8 unit/component tests. Proof:
+  `migration-journey.mjs` PASS at 1440×900 and 1366×768 (real file input:
+  dialog, byte-identical backup, upgraded-copy load + record, cancel, no
+  overflow). Unified build green; goldens untouched.
 - **Format v2 sign-off artifact + legacy-removal posture.**
   New root `FORMAT_V2_SIGNOFF.md`: the single sign-off-gated item, prepared for
   Connor's decision (exact change, the two affected classroom golden SHAs and how
