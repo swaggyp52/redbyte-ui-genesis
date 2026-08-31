@@ -13,15 +13,18 @@
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–E + G + H + the format-v2
-  sign-off artifact **done**; Chapter F (complex journey) remains, then final closeout.
-- **CURRENT ACCEPTANCE JOURNEY:** `a11y-scale-journey.mjs` — PASS at 1440×900 and 1366×768
-  (one main landmark; a 500-signal VCD bounded to ~200 rows with an honest hint; new
-  controls keyboard-focusable; reduced-motion; no h-overflow, including at effective 200%).
-- **ACTIVE IMPLEMENTATION:** Chapter F — a complex imported-project Playwright journey
-  (real user actions across the whole spine, no store mutation to bypass them).
-- **NEXT THREE TASKS:** (1) complex imported-project Playwright journey [F];
-  (2) final closeout report; (3) (post-signoff) the v2 format bump, if Connor approves.
+- **CURRENT PHASE:** P2 Phase 2 — UI integration **complete**: Chapters A–H + the
+  format-v2 sign-off artifact all landed and pushed. Final closeout next.
+- **CURRENT ACCEPTANCE JOURNEY:** `complex-import-journey.mjs` — PASS (23 real-UI steps,
+  no store injection): import a multi-file project through the real file input, then
+  walk the whole spine exercising source files, bidirectional cross-probe, provider
+  selection, the VCD Analyzer (cursor/radix/search/pin), constraint sets (seed/activate/
+  rename), and export — one shell, no overflow, no page errors.
+- **ACTIVE IMPLEMENTATION:** none — closeout. (Post-signoff: the v2 format bump, only if
+  Connor approves via `FORMAT_V2_SIGNOFF.md`.)
+- **NEXT THREE TASKS:** (1) final closeout report; (2) await Connor's format-v2 decision;
+  (3) the remaining pre-existing P2 depth items (import review-before-apply program end-to-
+  end, parameter/generic depth) as a later slice.
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
@@ -106,6 +109,18 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter F (acceptance) — complex imported-project journey, real UI only.**
+  `complex-import-journey.mjs`: 23 real-UI steps with **no store mutation to
+  bypass user actions**. A multi-file project (VHDL + Verilog + two XDC sets +
+  circuit) is opened through the actual project file input, then the whole spine
+  is exercised by real clicks/types: Project (4 source files across design +
+  constraint filesets, top-module cross-probe Exact, bidirectional highlight both
+  directions), Design, Simulate (provider bar; import a VCD; select Imported;
+  cursor measurement 0xA@5; radix→dec; search; pin-to-narrow; switch back to
+  Browser Logic de-emphasizes the Analyzer), Board & Constraints (2 sets seeded
+  from the imported XDC; activate; inline rename), Build & Export, then back to
+  Project with the artifacts intact — exactly one workbench shell, no overflow,
+  no page errors. PASS at 1440×900.
 - **Chapter H (hardening) — accessibility + scale.**
   Honest **bounded rendering** so the new lists cannot explode the DOM at scale
   (never a silent truncation — each cap shows "showing N of M" + how to narrow):
