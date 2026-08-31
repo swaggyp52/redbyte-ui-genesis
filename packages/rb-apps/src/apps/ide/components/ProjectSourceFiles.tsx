@@ -54,6 +54,10 @@ function tierBadge(file: SourceFile): { label: string; tone: string; title: stri
   };
 }
 
+/** Bounded rendering keeps a 1000-file project from exploding the explorer DOM;
+ *  the count and hint make the cap explicit — never a silent truncation. */
+const FILE_RENDER_CAP = 100;
+
 export const ProjectSourceFiles: React.FC<ProjectSourceFilesProps> = ({ sourceModel }) => {
   if (isEmptyProjectSourceModel(sourceModel)) return null;
 
@@ -79,7 +83,7 @@ export const ProjectSourceFiles: React.FC<ProjectSourceFilesProps> = ({ sourceMo
         <div key={kind} className="ide-project-sources-group" data-testid={`ide-project-sources-group-${kind}`}>
           <p className="ide-project-explorer-heading">{FILESET_TITLES[kind]}</p>
           <ul className="ide-project-sources-list">
-            {grouped[kind].map((file) => {
+            {grouped[kind].slice(0, FILE_RENDER_CAP).map((file) => {
               const badge = tierBadge(file);
               return (
                 <li
@@ -102,6 +106,11 @@ export const ProjectSourceFiles: React.FC<ProjectSourceFilesProps> = ({ sourceMo
                 </li>
               );
             })}
+            {grouped[kind].length > FILE_RENDER_CAP ? (
+              <li className="ide-project-source-more" data-testid={`ide-project-sources-more-${kind}`}>
+                Showing {FILE_RENDER_CAP} of {grouped[kind].length} files.
+              </li>
+            ) : null}
           </ul>
         </div>
       ))}
@@ -114,12 +123,15 @@ export const ProjectSourceFiles: React.FC<ProjectSourceFilesProps> = ({ sourceMo
         >
           <span>Compile order</span>
           <ol>
-            {compileOrder.map((file, index) => (
+            {compileOrder.slice(0, FILE_RENDER_CAP).map((file, index) => (
               <li key={file.id}>
                 <code>{index + 1}</code> {file.path}
               </li>
             ))}
           </ol>
+          {compileOrder.length > FILE_RENDER_CAP ? (
+            <p className="ide-project-source-more">Showing {FILE_RENDER_CAP} of {compileOrder.length}.</p>
+          ) : null}
         </div>
       ) : null}
     </section>

@@ -7,7 +7,6 @@ import {
   clampCursorTime,
   radixForSignal,
   visibleSignals,
-  visibleWaveform,
   type VcdAnalyzerConfig,
   type VcdRadix,
 } from '../vcdAnalyzer';
@@ -174,12 +173,28 @@ interface AnalyzerBodyProps {
   onConfigChange: (patch: Partial<VcdAnalyzerConfig>) => void;
 }
 
+/** Bounded row rendering keeps a 500-signal VCD from exploding the DOM; the count
+ *  and a "filter to narrow" hint make the cap explicit — never a silent truncation. */
+const SIGNAL_RENDER_CAP = 200;
+
 const AnalyzerBody: React.FC<AnalyzerBodyProps> = ({ waveform, config, sourceName, onConfigChange }) => {
   const filtered = filteredForList(waveform, config.search);
+  const shownSignals = filtered.slice(0, SIGNAL_RENDER_CAP);
+  const hiddenSignalCount = filtered.length - shownSignals.length;
   const selected = new Set(config.selectedKeys);
-  const measurements = analyzerMeasurements(waveform, config);
-  const narrowed = visibleWaveform(waveform, config);
-  const visibleCount = visibleSignals(waveform, config).length;
+  // Bound the WAVEFORM + MEASUREMENTS zones to the same cap so an unfiltered
+  // 500-signal VCD cannot explode the DOM; the hint tells the user to pin/filter.
+  const visible = visibleSignals(waveform, config);
+  const boundedVisible = visible.slice(0, SIGNAL_RENDER_CAP);
+  const boundedKeys = new Set(boundedVisible.map((s) => s.key));
+  const visibleCount = visible.length;
+  const visibleHidden = visible.length - boundedVisible.length;
+  const narrowed = {
+    ...waveform,
+    signals: boundedVisible,
+    changes: waveform.changes.filter((c) => boundedKeys.has(c.key)),
+  };
+  const measurements = analyzerMeasurements(waveform, config).filter((m) => boundedKeys.has(m.key));
 
   const toggleSignal = (key: string) => {
     const next = new Set(config.selectedKeys);
@@ -238,7 +253,7 @@ const AnalyzerBody: React.FC<AnalyzerBodyProps> = ({ waveform, config, sourceNam
               No signals match “{config.search}”.
             </li>
           ) : (
-            filtered.map((signal) => {
+            shownSignals.map((signal) => {
               const isSelected = selected.size === 0 || selected.has(signal.key);
               return (
                 <li
@@ -275,6 +290,11 @@ const AnalyzerBody: React.FC<AnalyzerBodyProps> = ({ waveform, config, sourceNam
               );
             })
           )}
+          {hiddenSignalCount > 0 ? (
+            <li className="ide-vcd-analyzer-signal-more" data-testid="ide-vcd-analyzer-signal-more">
+              Showing {shownSignals.length} of {filtered.length} — filter to narrow the list.
+            </li>
+          ) : null}
         </ul>
       </section>
 
@@ -339,6 +359,13 @@ const AnalyzerBody: React.FC<AnalyzerBodyProps> = ({ waveform, config, sourceNam
                 <td>{measurement.changeCount}</td>
               </tr>
             ))}
+            {visibleHidden > 0 ? (
+              <tr data-testid="ide-vcd-analyzer-measure-more">
+                <td colSpan={4} className="ide-vcd-analyzer-measure-more">
+                  Showing {boundedVisible.length} of {visibleCount} signals — pin or filter signals to focus.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </section>

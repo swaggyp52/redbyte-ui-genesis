@@ -13,15 +13,15 @@
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–E + G + the format-v2
-  sign-off artifact **done**; Chapters H (a11y/scale) and F (complex journey) remain.
-- **CURRENT ACCEPTANCE JOURNEY:** `migration-journey.mjs` — PASS at 1440×900 and 1366×768
-  (v0 project → honest "update required" dialog → byte-identical original backup → open
-  upgraded copy loads with a durable record → cancel dismisses → no h-overflow).
-- **ACTIVE IMPLEMENTATION:** Chapter H — accessibility + scale hardening (virtualization/
-  indexes, keyboard, 200% zoom, reduced motion, one main landmark, no horizontal overflow).
-- **NEXT THREE TASKS:** (1) accessibility + scale hardening [H]; (2) complex
-  imported-project Playwright journey [F]; (3) final closeout report.
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A–E + G + H + the format-v2
+  sign-off artifact **done**; Chapter F (complex journey) remains, then final closeout.
+- **CURRENT ACCEPTANCE JOURNEY:** `a11y-scale-journey.mjs` — PASS at 1440×900 and 1366×768
+  (one main landmark; a 500-signal VCD bounded to ~200 rows with an honest hint; new
+  controls keyboard-focusable; reduced-motion; no h-overflow, including at effective 200%).
+- **ACTIVE IMPLEMENTATION:** Chapter F — a complex imported-project Playwright journey
+  (real user actions across the whole spine, no store mutation to bypass them).
+- **NEXT THREE TASKS:** (1) complex imported-project Playwright journey [F];
+  (2) final closeout report; (3) (post-signoff) the v2 format bump, if Connor approves.
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
@@ -106,6 +106,19 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter H (hardening) — accessibility + scale.**
+  Honest **bounded rendering** so the new lists cannot explode the DOM at scale
+  (never a silent truncation — each cap shows "showing N of M" + how to narrow):
+  the VCD Analyzer SIGNALS/WAVEFORM/MEASUREMENTS zones cap at 200 signals (a
+  500-signal VCD reports 500 but renders ~200 with a pin/filter hint);
+  ProjectSourceFiles caps each fileset group + the compile order at 100. New
+  `hdlInterop.scale.test.ts` proves the pure models at the specified scales
+  (500-signal VCD measured at a cursor; 1000-file source model grouping +
+  compile order; a 200-module cross-probe built deterministically with 200 exact
+  module links). Proof: `a11y-scale-journey.mjs` PASS at 1440×900 and 1366×768 —
+  exactly one `<main>` landmark, the 500-signal bounding + hint, the new controls
+  keyboard-focusable, reduced-motion, and no horizontal overflow including at an
+  effective 200% zoom (halved viewport). Unified build green; 0 new tsc errors.
 - **Chapter G (UI integration) — project-format migration UX.**
   Opening an older-format project no longer upgrades silently. New pure
   `export/formatMigrationPlan.ts` (`analyzeProjectForMigration` +

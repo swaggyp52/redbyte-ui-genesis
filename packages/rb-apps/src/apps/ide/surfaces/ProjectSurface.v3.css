@@ -1615,3 +1615,6 @@
 .ide-crossprobe-source-group { padding: 2px 0; }
 .ide-crossprobe-source-name { font-family: var(--rb-font-mono); font-size: 11px; color: var(--rb-text-secondary); padding: 2px 4px; }
 .ide-crossprobe-empty { font-size: 11px; color: var(--rb-text-muted); padding: 6px 4px; }
+
+/* Bounded-render hint (Chapter H). */
+.ide-project-source-more { font-size: 10px; color: var(--rb-text-muted); font-style: italic; padding: 2px 4px; }

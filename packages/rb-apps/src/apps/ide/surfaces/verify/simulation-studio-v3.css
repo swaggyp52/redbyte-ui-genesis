@@ -4040,3 +4040,7 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
   color: var(--rb-text-muted);
   font-size: 11px;
 }
+
+/* Bounded-render hints (Chapter H). */
+.ide-vcd-analyzer-signal-more,
+.ide-vcd-analyzer-measure-more { font-size: 10px; color: var(--rb-text-muted); padding: 4px 6px; font-style: italic; }
