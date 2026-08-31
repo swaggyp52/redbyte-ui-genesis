@@ -71,3 +71,85 @@ Per-surface 200% and reduced-motion (proven only for Simulate in P2), full keybo
 operability (focus order / no traps), contrast ratios, and headed 125% remain
 **UNPROVEN** and are P2.5 Visual Acceptance Contract items. A screenshot proves
 appearance at a moment, not a workflow; a journey proves only its assertions.
+
+## Code audit — per-surface consolidation targets (workflow `redbyte-surface-audit`, 6 agents)
+
+Full structured findings (regions, classifications, defects) are in the run
+journal: `subagents/workflows/wf_4d31a7cf-02a/journal.jsonl`. The highest-value,
+evidence-backed consolidations, by surface — these are the concrete Slice 1–7
+work items:
+
+### Shell (Slice 1)
+- **One save authority:** keep the top-bar save dot **+ always-visible label**
+  (remove the `<1400px` `display:none`); delete the status-bar "Storage" pill and
+  ProjectSurface's separate save chip.
+- **One owner for per-stage status:** keep the stage-nav hints; delete the footer
+  Simulation/Board/Package/Problems pills (or the reverse); drop the always-warn
+  `ide-status-support` pill and the dead `determinismHash` / `ide-status-build`.
+- **Delete** the fixed "Board: Basys3" top-bar chip (never changes).
+- **Render LocationBar only in Design** (reclaims a ~34px band on the other 4 stages).
+- **Un-hide the blocked-stage marker** (real chip, not `display:none` + aria-only).
+- **Merge `product-system-v3.css` + `unified-workbench-v3.css` shell rules** into one
+  authority; remove the `!important`-fighting top-bar grid / dock-width / panel-controls
+  / menu-popover blocks; delete dead `.ide-mode-breadcrumb` rules (4 files).
+- **Collapse three Save entry points** (top-bar Save, More→Save As, ProjectSurface Save).
+
+### Project (Slice 2)
+- **One readiness ribbon** owning each fact once (Top · Target · Design N·M·wires · Sim
+  · Mapping M/N · Saved) + a single blockers list (fold in `ProjectWarningsPanel`);
+  remove the facts strip + evidence-tier chip + interface-strip + context "Current problems".
+- **Delete dead controls:** `display:none` `.ide-project-v3-toolbar`, the `display:none`
+  explorer Simulation/Constraints group divs, the always-hidden `ide-project-hero-status`,
+  the `onPrimary:undefined` spine label.
+- **Move CrossProbe + source-files capability detail** out of the 236px primary rail into a
+  collapsible "Source ↔ visual" disclosure (source-backed/imported only); merge the two
+  compile-order renders into one.
+- **Trim the no-circuit landing:** one dominant "Start a Lab" + compact secondary group;
+  drop the oversized hero + restating summary line so start/resume/recent fit one viewport.
+- **One "Open Design"** (drop 3 of 4); one top-entity editor (drop the Technical-details copy).
+
+### Design (Slice 3, light)
+- **Delete** the `display:none !important` `ide-design-workspace-header`, the dead
+  `ide-design-toolbar-customize` subsystem, the hidden second zoom indicator, and
+  `ide-palette-section--board`; keep `ide-design-command-context-row` as the single header.
+- **Merge right-dock Inspector + Properties** into one Inspector; fold the right-dock
+  Constraints + left-dock Board I/O into one read-only "board bindings" (defer editing to Board).
+- **Default the split ratio to favor the canvas (≥0.5)** so the circuit is dominant.
+
+### Simulate (Slice 3, primary)
+- **Collapse three signal browsers to one** (WaveformViewer lane column already owns
+  select/pin/hide; delete `ide-verify-signal-shelf` + the left-dock signal rail + the
+  duplicate All/Relevant toggles bound to the same state).
+- **One canonical failure card** = `VerifyFailureExplanationPanel`; delete the ~6 other
+  inline failure blocks + the duplicate second copy; **restore one real Observe/Compare
+  segmented control** (or remove the ignored props).
+- **Delete dead paths:** `showInlineFailureWorkbenchPanels=false` branch, the CSS-hidden
+  `ide-verify-advanced-failure`, ~40 unused `VerifyCommandBarProps`; lift the Details-tab
+  deep report (truth/kmap/vectors/results/hash) out of the waveform column.
+- **Fuse `SimulationProviderBar` + the compact VCD affordance** into one strip (already
+  partly done — the compact demotion landed; the full merge is the follow-on).
+
+### Board & Constraints (Slice 4)
+- **One readiness owner** (the progress header); delete the workflow-ribbon readiness
+  callout; productSpine mirrors the same source.
+- **Collapse four pin-assignment surfaces to one** table; fold PinPlanner conflict/XDC-diff
+  into an "Advanced" disclosure; make bus mapping a row action; **show only one board
+  graphic** on the mapping screen (move `VirtualBasys3Board` to Board Check).
+- **Un-hide the Package-pin column** (drop the `display:none` at hardware CSS L619–622) —
+  the pin is the objective; drop the redundant "Purpose" column.
+- **Delete never-rendered `mapDock` + `mapInspector`;** collapse `ConstraintSetsPanel` to an
+  "advanced" disclosure; adopt one surface name ("Board & Constraints") + one mode-toggle testid.
+
+### Build & Export (Slice 4)
+- **Delete the dead surface:** `ExportSurfacePrimitives.tsx` + in-file unused
+  `gateStackSection`, `vivadoEvidenceRows`, `exportConfidenceRows`/pill, `keyArtifacts`,
+  `primaryPackageArtifacts`, the dropped productSpine — nothing there renders.
+- **Collapse the handoff-inspector aside into the decision header** (one facts block + one
+  download); let the file workspace become 2 columns so the code preview regains ~300px.
+- **One "what to submit"** home; **one primary download** (drop the duplicate); move hash/SHA
+  jargon behind the Technical-evidence dialog; wire the already-written `syntaxHighlight()`.
+
+**Cross-cutting:** the "vibe-coded" smell is concretely (a) status duplicated 3–8× per
+surface, (b) large `display:none` blocks re-implemented live, (c) two shell stylesheets +
+a 118KB verify stylesheet fighting via `!important`/specificity. Slice 1 should establish
+one status authority + one shell-CSS authority before per-surface polish.

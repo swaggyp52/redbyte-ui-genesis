@@ -6,9 +6,6 @@ export interface IdeStatusBarProps {
   gateStatus?: 'pass' | 'warn' | 'fail';
   storageState?: string;
   problemsCount?: number;
-  simulationState?: string;
-  boardState?: string;
-  packageState?: string;
   branch?: string;
   fullSha?: string;
   runtime?: string;
@@ -20,9 +17,6 @@ export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({
   gateStatus = 'warn',
   storageState,
   problemsCount,
-  simulationState,
-  boardState,
-  packageState,
   branch,
   fullSha,
   runtime,
@@ -50,9 +44,6 @@ export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({
       </span>
       {storageState ? <span className="ide-status-item" data-testid="ide-status-storage">Storage: {storageState}</span> : null}
       {typeof problemsCount === 'number' ? <span className="ide-status-item" data-testid="ide-status-problems">Problems: {problemsCount}</span> : null}
-      {simulationState ? <span className="ide-status-item" data-testid="ide-status-simulation">Simulation: {simulationState}</span> : null}
-      {boardState ? <span className="ide-status-item" data-testid="ide-status-board">Board: {boardState}</span> : null}
-      {packageState ? <span className="ide-status-item" data-testid="ide-status-package">Package: {packageState}</span> : null}
       {branch && fullSha && runtime && devUrl ? (
         <span
           className="ide-status-item ide-status-build"

@@ -2,6 +2,47 @@
 
 Decisions and their evidence. Newest first.
 
+## D-2 — Slice 1 shell: one per-stage status authority; several audit items rejected on verification
+
+**Decision (landed):** The footer status bar (`IdeStatusBar`) no longer renders
+the Simulate / Board / Package workflow-status pills. Those facts are owned once,
+by the top-center stage-nav (`IdeStageNav`, fed by `stageStatus` in `IdeApp`).
+The footer keeps genuine support context only: checks health, storage location,
+problems count — matching its own contract test ("support context, not a workflow
+authority"). `shell-status-authority-journey.mjs` proves it at 1440×900 + 1366×768
+(footer carries no `ide-status-{simulation,board,package}`; stage-nav hints do;
+0px overflow). `IdeStatusBar` + `workflowStages.authority` suites green (7/7).
+
+**Why:** Connor's "duplicate status" complaint, made concrete by the Slice-0
+audit: the same verify/hardware/export state appeared in the stage-nav AND the
+footer. The stage-nav is the better home (inline, beside each stage button), so
+the footer duplication is what goes.
+
+**Audit items VERIFIED-AND-REJECTED (don't blindly trust the audit, either):**
+- *"Render LocationBar only in Design."* REJECTED. `engineering-location-journey`
+  proves the LocationBar is a cross-mode Back/Forward/Up authority (navigates and
+  asserts in hardware mode). Restricting it to Design would break real, tested
+  navigation and delete a feature. The band stays on all stages.
+- *"Remove the `<1400px` display:none on the top-bar save label."* REJECTED. That
+  rule is intentional and paired with the footer Storage pill (comment at
+  product-system-v3.css:736 — the dot stays aria-labelled, the status bar keeps
+  the full save text). Removing it pushes the top bar past the 1366px classroom
+  width. Kept as-is; the footer Storage pill kept for the same reason (it is the
+  only save *text* at 1366px, not naive duplication).
+- *"Delete the Board: Basys3 top-bar chip."* DEFERRED/low value — it is product
+  identity (target board), asserted by `workflowStages.authority`, and is not
+  status duplication. Left in place.
+
+**Audit item DEFERRED (real, but not a safe autonomous push):**
+- *Merge `product-system-v3.css` + `unified-workbench-v3.css` shell rules into one
+  authority.* This is the audit's root-cause "two stylesheets fighting via
+  `!important`" item. It is a large, visual-regression-prone change that needs
+  headed before/after review at both viewports — not a change to land blind while
+  Connor is away. Recorded for a reviewed slice.
+
+**Boundary honored:** no format/golden change; no new store; stage-nav remains the
+single workflow-status authority; footer remains a single support-context strip.
+
 ## D-1 — Imported-VCD Analyzer collapses on native projects (Slice 3, landed)
 
 **Decision:** With no VCD loaded (and no parse error), `VcdAnalyzerPanel` renders a

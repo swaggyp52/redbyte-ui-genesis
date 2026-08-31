@@ -3178,27 +3178,19 @@ export const IdeApp: React.FC = () => {
         </div>
       </div>
 
+      {/*
+        Footer = support context only, not a workflow authority. Per-stage
+        workflow status (Simulate / Board / Package) is owned once by the
+        top-center stage-nav (see stageStatus above); repeating it here was the
+        "duplicate status" clutter. The footer keeps genuine support facts:
+        checks health, storage location, and the compiler problems count.
+      */}
       <IdeStatusBar
         mode={activeMode}
         determinismHash={determinismHash}
         gateStatus={blockingDesignIssue ? 'fail' : designCompilerStatus.warningCount > 0 ? 'warn' : 'pass'}
         storageState={saveState === 'save-failed' ? 'Save failed' : saveState === 'saved' ? 'Saved locally' : saveState}
         problemsCount={designCompilerStatus.errorCount + designCompilerStatus.warningCount}
-        simulationState={
-          runtimeSim.running
-            ? 'Running'
-            : projectVerifyState === 'assertions-match'
-              ? 'Compare current'
-              : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
-                ? 'Needs repair'
-                : projectVerifyState === 'stale'
-                  ? 'Stale'
-                  : projectVerifyState === 'trace'
-                    ? 'Observed'
-                    : 'Not run'
-        }
-        boardState={effectiveReadiness.hasIoMapping ? 'Assignments ready' : `${effectiveReadiness.missingRequiredCount} missing`}
-        packageState={exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft'}
       />
 
       <input

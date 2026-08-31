@@ -56,9 +56,16 @@ Import/Recover is a utility. Vivado is external (Browser-E0).
   executed"), reclaiming ~180px so the native scenario timeline + Drive inputs +
   Inspector lead the first viewport. Browser-proven; before/after screenshots in
   `baseline/simulate-1440x900.png` vs `baseline/simulate-after-fix-1440x900.png`.
-- **Slice 1 — shell/geometry:** NEXT. Top finding: status is duplicated between
-  the header stage-nav sub-labels and the footer status bar (Simulation/Board/
-  Package appear in both).
+- **Slice 1 — shell/geometry:** DONE (status authority). The footer no longer
+  duplicates the stage-nav's per-stage workflow status (Simulate/Board/Package
+  pills removed); the footer is now support-context only (checks/storage/problems)
+  and the stage-nav is the single per-stage authority. Browser-proven at both
+  viewports (`shell-status-authority-journey.mjs`, 0px overflow); 7/7 focused
+  tests green. On verification, three audit items were REJECTED (LocationBar is a
+  real cross-mode nav authority; the save-label display:none is an intentional
+  1366px-fit pair with the footer Storage pill; the Board chip is product
+  identity, not duplication) and the two-stylesheet CSS merge was DEFERRED as a
+  visual-regression-prone change needing headed review. See DECISION_LEDGER D-2.
 - **Slice 2 — Project:** NEXT. Hero + 5 peer actions + duplicated status.
 - **Remaining:** Slices 1–2, 3 (Design/Simulate repair loop + Journey A), 4
   (Board consolidation + Export readiness), 5 (import review E2E, hand-authored
