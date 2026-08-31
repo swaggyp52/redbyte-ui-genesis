@@ -2,6 +2,36 @@
 
 > Multi-session working ledger. This file is the single continuation point. Newest
 > entry at the top of the **Commit ledger**. Canonical repo docs still win over this file.
+> Authority split: `docs/ACTIVE_WORK.md` = project truth · this file = session
+> continuation · PR #84 = public review truth. No fourth authority.
+
+## Canonical state (update every chapter)
+
+- **CURRENT HEAD:** `675c68257` (== `origin/claude/redbyte-product-core-convergence-n3pi6t`)
+- **CURRENT BRANCH:** `claude/redbyte-product-core-convergence-n3pi6t`
+- **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
+  P2-only diff — 54 files — targeting `product/redbyte-workbench-v3` @ `bd70c4c`;
+  base `mergeable_state: clean`). PR #82 (P1) merged into product and closed.
+- **CURRENT PHASE:** P2 Phase 2 — UI integration (authorities → user-visible surfaces).
+  Phase 1 (data + authority foundation) landed.
+- **CURRENT ACCEPTANCE JOURNEY:** Chapter A — imported-VCD Analyzer browser journey in
+  the real Simulate surface at 1440×900 and 1366×768 (not yet written).
+- **ACTIVE IMPLEMENTATION:** Chapter A — mount `vcdImport` + `simulationProvider` +
+  `VcdWaveformView` into the Simulate surface as a real three-zone Analyzer with honest
+  provider identity. Reconnaissance of the Simulate surface in flight.
+- **NEXT THREE TASKS:** (1) mount VCD Analyzer + close its browser journey [A];
+  (2) source↔visual cross-probe UI [B]; (3) constraint-set UI in Project + Board [C].
+- **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
+  it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
+  removal proceeds without sign-off.)
+- **LAST BROWSER PROOF:** `source-files-journey.mjs` — PASS at 1440×900 (P2-4 visible:
+  Project explorer source files with honest tiers). Chapter A journey pending.
+- **LAST VALIDATION:** per-slice focused vitest green under pinned Node 20.19.0; both
+  classroom golden Basys3 export gates byte-identical; unified `@redbyte/rb-apps` build
+  green; 0 new tsc errors per slice. (Re-run at each Chapter close.)
+- **LAST PUSH:** `881957b4e..675c68257` → `origin/claude/redbyte-product-core-convergence-n3pi6t`
+  (product merged into P2 branch, content-neutral; HEAD == origin).
+- **DIRTY FILES:** none (tree clean at `675c68257`).
 
 ## Program
 
@@ -35,15 +65,21 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Branch / PR posture
 
-- Working branch: `claude/redbyte-product-core-convergence-n3pi6t`, based on the
-  consolidated P1 head `597337b` (= `product/redbyte-workbench-v3` + all 79 P1
-  commits).
-- P1 candidate remains **PR #82** (draft) — not merged here; left for Connor to
-  merge/close via the GitHub UI (draft + protected base + this session's branch
-  scope). P2 is stacked on top of the P1 head, so once #82 lands, the P2 PR's diff
-  collapses to just P2.
-- P2 draft PR targets `product/redbyte-workbench-v3`, titled
-  "RedByte P2 — HDL and Vivado Interoperability".
+- Working branch: `claude/redbyte-product-core-convergence-n3pi6t`.
+- **Stack consolidated (2026-08-31, cloud session).** PR #82 (P1) was merged into
+  `product/redbyte-workbench-v3` with a merge-commit (`bd70c4c`, no history rewrite,
+  no force push, no production deploy); #82 auto-closed with a final integration
+  comment. The product base (`597337b` P1 head) is preserved as an ancestor, so P2's
+  diff collapsed to **P2-only** (54 files). Product was then merged into this branch
+  (content-neutral, `675c68257`) and pushed normally.
+- P2 draft **PR #84** targets `product/redbyte-workbench-v3`, titled
+  "RedByte P2 — HDL and Vivado Interoperability". Body rewritten to the consolidated
+  P2-only state.
+- **No new stacked PR.** All P2 UI-integration work continues on this one branch / PR.
+- **Check-in loop terminated.** All recurring check-ins / self-rearming triggers were
+  cancelled and PR-activity auto-wake unsubscribed. CI is inspected only after a
+  meaningful pushed chapter, at final closeout, or when GitHub reports an actual
+  failure — never on a polling cadence.
 
 ## Slice plan (see task list #24–#31)
 
