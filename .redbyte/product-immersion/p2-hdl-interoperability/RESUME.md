@@ -68,6 +68,14 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-4 (model layer) — module parameters / generics.**
+  `apps/ide/moduleParameters.ts`: represent declared parameters (name, kind,
+  default) and instance bindings, and resolve the effective value
+  (binding → default → unset) — the depth the bounded parsers drop.
+  `parameterKindFromTypeName`, `normalizeParameters`/`normalizeBindings`
+  (dedup + stable sort), `resolveParameters`, `validateBindings` (binding for an
+  undeclared parameter is an error), `allParametersResolved`. No expression
+  evaluation — declaration + override only. 5 tests; 0 tsc errors.
 - **P2-8 (proof) — project-format scale/durability.**
   `export/__tests__/projectFormat.scale.test.ts`: a 402-node + 80-source project
   round-trips losslessly (`decode(encode(p)) ≡ normalize(p)`) and re-encodes
