@@ -15,7 +15,12 @@ import {
   buildVerifyCircuitEvidenceHash,
   buildVerifyMappingEvidenceHash,
 } from './verifyProjectHash';
-import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
+import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
+import {
+  createEmptyProjectSourceModel,
+  normalizeProjectSourceModel,
+  type ProjectSourceModel,
+} from './projectSourceModel';
 import { stableSerialize } from '../../utils/stableSerialize';
 import {
   buildDeterministicVerifyContext,
@@ -357,6 +362,13 @@ export interface ProjectRuntimeState {
   customVectors: CustomTestVector[];
   circuit: Circuit;
   hierarchy: ProjectHierarchyDocument;
+  /**
+   * First-class source / fileset authority (HDL, constraints, scripts). This
+   * store is its single writable owner. Populated on load from
+   * {@link deriveSourceModel} (imported projects carry it via their `hdl`
+   * sources) and persisted so sources survive reload. Set via {@link setSourceModel}.
+   */
+  sourceModel: ProjectSourceModel;
   designPast: DesignHistorySnapshot[];
   designFuture: DesignHistorySnapshot[];
   maxDesignHistory: number;
@@ -442,6 +454,8 @@ export interface ProjectRuntimeState {
    * whether the requested name was a usable identifier (empty → reset → ok).
    */
   setActiveTop: (name: string) => { ok: boolean; error?: string };
+  /** Replace the source/fileset model. The store is its single writable owner. */
+  setSourceModel: (model: ProjectSourceModel) => void;
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -497,6 +511,7 @@ interface PersistedRuntimeState {
   customVectors: CustomTestVector[];
   circuit: Circuit;
   hierarchy?: ProjectHierarchyDocument;
+  sourceModel?: ProjectSourceModel;
   designPast?: DesignHistorySnapshot[];
   designFuture?: DesignHistorySnapshot[];
   maxDesignHistory?: number;
@@ -523,6 +538,7 @@ interface DesignHistorySnapshot {
 
 interface RuntimeSeedState extends PersistedRuntimeState {
   activeTop: string;
+  sourceModel: ProjectSourceModel;
   exportHistory: ProjectHealthExportResult[];
   scenarios: VerifyScenario[];
   activeScenarioId: string;
@@ -886,6 +902,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           customVectors: [],
           circuit,
           hierarchy,
+          // Imported projects carry their sources via `project.hdl`; deriveSourceModel
+          // promotes them into the first-class source authority. Native/example
+          // projects with no sources yield an empty model.
+          sourceModel: deriveSourceModel(project),
           designPast: [],
           designFuture: [],
           designRevision: 0,
@@ -2142,6 +2162,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         }));
         return { ok: true };
       },
+      setSourceModel: (model) => {
+        set((state) => ({
+          sourceModel: normalizeProjectSourceModel(model),
+          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+        }));
+      },
       startBlankProject: () => {
         set((state) => {
           if (state.projectKind === 'blank' || state.projectKind === 'custom') return state;
@@ -2586,6 +2612,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         customVectors: [...(state.customVectors ?? [])],
         circuit: cloneCircuit(state.circuit),
         hierarchy: cloneProjectHierarchy(state.hierarchy),
+        sourceModel: normalizeProjectSourceModel(state.sourceModel),
         designPast: cloneDesignHistoryPast(state.designPast, state.maxDesignHistory),
         designFuture: cloneDesignHistoryFuture(state.designFuture, state.maxDesignHistory),
         maxDesignHistory: state.maxDesignHistory,
@@ -2895,6 +2922,8 @@ export function mergePersistedRuntimeState(
     customVectors: detachedCustomVectors,
     circuit,
     hierarchy,
+    // Restore the persisted source model; normalize tolerates absent/legacy state.
+    sourceModel: normalizeProjectSourceModel(candidate.sourceModel),
     designPast,
     designFuture,
     maxDesignHistory,
@@ -3057,6 +3086,7 @@ function createEmptyProjectState(
     customVectors: [],
     circuit,
     hierarchy: createEmptyProjectHierarchy(),
+    sourceModel: createEmptyProjectSourceModel(),
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,
@@ -3110,6 +3140,7 @@ function stateFromExample(
     customVectors: [],
     circuit,
     hierarchy: createEmptyProjectHierarchy(),
+    sourceModel: createEmptyProjectSourceModel(),
     designPast: [],
     designFuture: [],
     maxDesignHistory: DEFAULT_MAX_DESIGN_HISTORY,

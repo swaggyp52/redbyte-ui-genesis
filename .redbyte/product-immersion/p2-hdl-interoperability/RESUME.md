@@ -68,6 +68,24 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-2/P2-4 store wiring — source model is now a live persisted authority.**
+  Threaded `sourceModel: ProjectSourceModel` through `useProjectRuntime`
+  (state + `PersistedRuntimeState` + `RuntimeSeedState`), mirroring the P1
+  `activeTop`/`exportHistory` pattern:
+  - `loadFromProject` derives it via `deriveSourceModel(project)` — **imported
+    projects (which carry `hdl.sources`) get a populated source model with
+    honest filesets automatically, no ImportSurface change**; native/example
+    projects get an empty model.
+  - `setSourceModel` action (single writable owner) marks dirty-since-export.
+  - `partialize` + `mergePersistedRuntimeState` persist/restore it, so sources
+    survive reload; `normalizeProjectSourceModel` tolerates absent/legacy state.
+  - `createEmptyProjectState` / `stateFromExample` seed an empty model.
+  4 store tests (derive-on-load, setter+dirty, merge-restore, empty default).
+  Proof (pinned Node 20.19.0): 46 store/persistence tests + 4 new = green;
+  broad regression shows only the 7 pre-existing `history-authority` baseline
+  reds (identical on the clean branch base); 0 new tsc errors; build green.
+  File-save (.rbproj) inclusion of `sourceModel` for the hand-authored case
+  is a P2-5 follow-on (imported projects already round-trip via `deriveSourceModel`).
 - **P2-4 delivered (model layer) — source-backed module tiers + cross-probe.**
   - `apps/ide/moduleTier.ts`: `classifyModuleTier` maps a design unit to one of
     native-visual-editable / source-editable / structural-read-only /
