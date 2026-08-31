@@ -68,6 +68,17 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-5 (contract layer) — import review-before-apply plan.**
+  `apps/ide/importReview.ts`: `buildImportReviewPlan` describes what an import
+  *would* do without applying anything — per-source fileset + capability tier +
+  action (add / preserve-opaque), blockers, and whether confirmation is needed.
+  Three invariants are structural and cannot be flipped by a caller:
+  `executesTcl: false` (Tcl is never run), `mutatesInspectedSource: false`
+  (inspecting never edits source), and replacing an existing project always
+  `requiresConfirmation` (no silent replacement). HDL that does not reconstruct
+  is preserved opaquely, never silently dropped. `summarizeImportReview` for the
+  header. 6 tests; 0 tsc errors. Wiring this plan into the ImportSurface review
+  UI is the follow-on.
 - **P2-7 (model layer) — deterministic Vivado digital-twin snapshot envelope.**
   `fpga/vivado/vivadoDigitalTwin.ts`: a versioned (`schemaVersion 1.0`),
   deterministic envelope for a Vivado result produced **entirely outside
