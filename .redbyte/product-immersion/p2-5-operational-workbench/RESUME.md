@@ -114,6 +114,19 @@ Import/Recover is a utility. Vivado is external (Browser-E0).
 
 ## Ledger (newest first)
 
+- **Slice 3 follow-on — failure-diagnosis authority fix + investigation (`b5453b2a2`).**
+  Live browser investigation corrected the D-5 framing: the runnable wrong-logic
+  path already shows a full, visible failure diagnosis (advanced-failure panel +
+  first-mismatch fail-nav + drawer mismatch table + trace-to-Design); gate deletion
+  is STRUCTURAL (output floats to X) and is intercepted upstream by the compiler's
+  `blockingDesignIssue` (Compare blocked). Landed a pure-authority fix so
+  `diagnoseVerifyFailure` treats an observed `X`/`-` failing output as
+  `disconnected-output` (Design repair), not a fixable expected-value mismatch (+3
+  tests, zero regressions). Two real browser-provable defects recorded for the next
+  slice (see DECISION_LEDGER D-6): the "Design blocks Compare" structural callout does
+  not reliably render after a gate delete, and the Observe/Compare intent toggle is
+  not rendered (dead `VerifyCommandBar` props) — the latter blocks the UI-only Journey
+  A. Node 24.15.0 desktop; goldens untouched.
 - **Slice 3 first increment — Simulate imported-VCD demotion.** `VcdAnalyzerPanel`
   gains a compact early-return for the no-waveform/no-error case (a single
   provider chip + honest note + Load button) instead of the full header + honesty

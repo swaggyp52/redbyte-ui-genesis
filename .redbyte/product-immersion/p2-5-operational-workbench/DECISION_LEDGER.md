@@ -2,6 +2,54 @@
 
 Decisions and their evidence. Newest first.
 
+## D-6 — Slice 3 follow-on: failure diagnosis is more complete than D-5 implied; the real gap is the structural path, not the mismatch table
+
+**Investigation (dev server + live runtime probes, Node 24.15.0 desktop; goldens
+NOT run under Node 24).** Re-ran both failure classes against the live full-adder
+and read the rendered DOM + run model, correcting the D-5 impression ("gate-deletion
+FAIL with no mismatch table"):
+
+1. **Runnable wrong-logic edit (XOR2 → OR): failure diagnosis WORKS.** A Compare run
+   produces a correct, visible diagnosis: `ide-verify-advanced-failure` ("LD1 (SUM)
+   produced 1 when 0 was expected. Decide first…"), a first-mismatch
+   `ide-verify-fail-nav-summary` ("LD1 (SUM) t3 expected 0 · got 1"), a 2-row
+   `ide-verify-mismatch-list` (Tick/Signal/Expected/Observed) one click into the fail
+   drawer, and a visible `ide-sim-inspector-trace-design`. D-5's "no mismatch rows"
+   was an artifact of (a) using gate DELETION (structural, not runnable) and (b)
+   querying only the drawer-gated table, not the visible fail-nav / advanced panel.
+
+2. **Gate deletion is STRUCTURAL and floats the output as X.** The undriven SUM
+   samples as `X`; the design compiler raises `blockingDesignIssue`, which sets
+   `gradingBlockedByDesign` → Compare is blocked (run label flips to "observe only")
+   and PASS/FAIL is revoked. The intended structural explanation is the `primaryStatus`
+   "Design blocks Compare" callout + "Open Design" action. This structural handling
+   EXISTS upstream (IdeApp `blockingDesignIssue`, from the compiler diagnostics).
+
+**Landed this checkpoint (`b5453b2a2`):** a pure-authority correctness fix —
+`diagnoseVerifyFailure` now treats an observed `X` / `-` failing output as
+`disconnected-output` (Design repair), not a runnable expected-value mismatch,
+aligning it with `classifyVerifyFailure`. +3 tests; zero regressions (stash-verified:
+verifySurface.workstation 8-fail/45-pass baseline-identical with and without the fix;
+VerifyFailureExplanationPanel 5/5; diagnostics.contract 4/4). This corrects the
+diagnosis for any floating-X failing row a Compare surfaces; it does NOT replace the
+upstream `blockingDesignIssue` path. No sim-engine / format / store / golden change.
+
+**Two real, reproducible remaining defects (browser-provable; next slice):**
+- **The "Design blocks Compare" structural explanation did not reliably render.**
+  After deleting a gate the run flips to "observe only" but the `primaryStatus`
+  callout + `ide-verify-design-blocked-open-design` were absent in the probe —
+  timing-dependent on `blockingDesignIssue` propagation after `applyCircuitMutation`.
+  The student can be left in silent observe-only with no structural explanation.
+- **The Observe / Compare (/ Requirements) run-intent toggle is not rendered.**
+  `VerifyCommandBar` receives `onSetObserve` / `onSetCompare` / `compareAvailable`
+  but renders no toggle (dead props). Compare is reachable only via the auto-default
+  when checks exist; there is no visible way for a student to choose the intent. This
+  contradicts the ACTIVE_WORK "Observe|Compare toggle" / "three-intent controls"
+  claims and blocks the Section-3 acceptance journey ("select Compare through the UI").
+
+**Rule honored:** minimal root-cause fix, unit-tested, no bundled UI change I could
+not browser-prove this pass; the two UI defects are recorded, not silently fixed.
+
 ## D-5 — Slice 3: the Compare repair loop now shows a real verdict (the #1 usability defect)
 
 **Discovered (probe):** Running the Full Adder's 16 saved checks rendered
