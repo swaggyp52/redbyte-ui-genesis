@@ -7,37 +7,35 @@
 
 ## Canonical state (update every chapter)
 
-- **CURRENT HEAD:** local Chapter-A commit (imported-VCD Analyzer); pushed after this
-  chapter closes. Base: `675c68257`.
+- **CURRENT HEAD:** `48c64b2c7` (Chapter A pushed) + local Chapter-B commit (cross-probe),
+  pushed after this chapter closes.
 - **CURRENT BRANCH:** `claude/redbyte-product-core-convergence-n3pi6t`
 - **CURRENT PR:** [#84](https://github.com/swaggyp52/redbyte-ui-genesis/pull/84) (draft,
   P2-only diff targeting `product/redbyte-workbench-v3` @ `bd70c4c`). PR #82 (P1) merged
   into product and closed.
-- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapter A (VCD Analyzer) **done**;
-  Chapter B (cross-probe) next.
-- **CURRENT ACCEPTANCE JOURNEY:** `vcd-analyzer-journey.mjs` — PASS at 1440×900 and
-  1366×768 (mount → real file load → three zones → cursor/radix/pin/search → reload
-  persistence → honest error → no h-overflow).
-- **ACTIVE IMPLEMENTATION:** Chapter B — mount `sourceCrossProbe` as a live source↔visual
-  cross-probe UI (module↔source, instance↔instantiation, port↔declaration, …) with link
-  quality tiers.
-- **NEXT THREE TASKS:** (1) source↔visual cross-probe UI [B]; (2) constraint-set UI in
-  Project + Board & Constraints [C]; (3) simulation-provider selection + run provenance [D].
+- **CURRENT PHASE:** P2 Phase 2 — UI integration. Chapters A (VCD Analyzer) + B
+  (cross-probe) **done**; Chapter C (constraint sets) next.
+- **CURRENT ACCEPTANCE JOURNEY:** `crossprobe-journey.mjs` — PASS at 1440×900 and
+  1366×768 (panel mounted → 5-tier legend → module↔source Exact → bidirectional
+  design↔source highlight → no h-overflow).
+- **ACTIVE IMPLEMENTATION:** Chapter C — constraint-set UI in Project + Board &
+  Constraints (mount `constraintSets` model; named sets, exactly one active).
+- **NEXT THREE TASKS:** (1) constraint-set UI [C]; (2) simulation-provider selection +
+  run provenance [D]; (3) native/imported parity — one workbench grammar [E].
 - **BLOCKERS:** none. (Breaking v1→v2 format bump is *deferred by policy*, not blocked —
   it awaits an explicit `FORMAT_V2_SIGNOFF.md` decision from Connor; non-breaking legacy
   removal proceeds without sign-off.)
-- **LAST BROWSER PROOF:** `vcd-analyzer-journey.mjs` — PASS at 1440×900 and 1366×768.
-  Screenshots under `evidence/chapter-a/` (local/ignored).
-- **LAST VALIDATION:** Chapter A — 34 new/related vitest green under pinned Node 20.x
-  (vcdAnalyzer 15, panel 5, importedWaveform store 7, provider/import/view 7); unified
-  `@redbyte/rb-apps` build green (VerifySurface bundle + dts compiled); 0 new tsc errors.
-  Pre-existing baseline reds unchanged (4 verify-surface suites / 8 tests fail identically
-  on the clean base).
-- **LAST PUSH:** `881957b4e..675c68257` (product merged into P2 branch). Chapter A push
-  pending at chapter close.
-- **DIRTY FILES:** Chapter A working set (vcdAnalyzer.ts, VcdAnalyzerPanel.tsx, +tests,
-  simulationProvider.ts, projectRuntime.ts, IdeApp.tsx, VerifySurface.tsx, verify CSS,
-  vcd-analyzer-journey.mjs) — about to be committed.
+- **LAST BROWSER PROOF:** `crossprobe-journey.mjs` — PASS at 1440×900 and 1366×768.
+  Screenshots under `evidence/chapter-b/` (local/ignored). Chapter A:
+  `vcd-analyzer-journey.mjs` still PASS.
+- **LAST VALIDATION:** Chapter B — 18 cross-probe vitest green under pinned Node 20.x
+  (sourceCrossProbe 6, crossProbeBuilder 7, crossProbePanel 5); unified `@redbyte/rb-apps`
+  build green; 0 new tsc errors. Also repaired a pre-existing NUL byte in
+  `sourceCrossProbe.ts:101` (git had it as binary). Pre-existing baseline reds unchanged.
+- **LAST PUSH:** `675c68257..48c64b2c7` (Chapter A). Chapter B push pending at chapter close.
+- **DIRTY FILES:** Chapter B working set (sourceCrossProbe.ts, crossProbeBuilder.ts,
+  CrossProbePanel.tsx, +3 tests, IdeApp.tsx, ProjectSurface.tsx, ProjectSurface.v3.css,
+  crossprobe-journey.mjs) — about to be committed.
 
 ## Program
 
@@ -110,6 +108,36 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **Chapter B (UI integration) — source ↔ visual cross-probe live in the Project explorer.**
+  The pure `sourceCrossProbe` model (from P2-4, previously consumer-less) now
+  drives a real bidirectional cross-probe UI.
+  - Extended `sourceCrossProbe.ts` with an honest `CrossProbeQuality`
+    (`exact/partial/ambiguous/unavailable/stale`) + `crossProbeQualityLabel`,
+    and broadened `CrossProbeKind` (connection/constraint/testbench-case/
+    requirement) — additive. **Also repaired a latent NUL byte** at
+    `sourceCrossProbe.ts:101` (`join('\0')` → `join(' ')`) that made git treat
+    the file as binary; committed from P2-4.
+  - New `crossProbeBuilder.ts`: `buildLiveCrossProbeIndex` scans verbatim source
+    text for `entity/module <name>` declarations → `exact` (unique) / `ambiguous`
+    (multi) / `partial` (bare mention) links, plus port, instance, and
+    constraint↔XDC links; `qualityForLinks` picks the best tier; a design element
+    with no source match yields no link → the panel shows `unavailable`. Decoupled
+    `CrossProbeDesignModule` input so it stays pure. 7 tests.
+  - New `components/CrossProbePanel.tsx`: two panes (DESIGN→SOURCE, SOURCE→DESIGN)
+    over one index, a 5-tier quality legend, and single-selection bidirectional
+    highlight (a stable design key ties each element to its backing link, so a
+    click on either side lights up the other). 5 component tests.
+  - Wiring: IdeApp adapts the store hierarchy + top IO into design modules and
+    memoizes the live index (a derived read-model, not a new authority),
+    threaded through ProjectSurface → LoadedProjectOverview into the explorer
+    aside beside the Source files. Studio-Light chrome; single-column panes fit
+    the narrow explorer; responsive; no page overflow.
+  - Proof: `crossprobe-journey.mjs` PASS at 1440×900 and 1366×768 (real load path):
+    panel mounted, 5-tier legend, module↔source Exact, bidirectional highlight both
+    directions, native-only ports honestly `Unavailable`, no horizontal overflow.
+    Unified build green; 0 new tsc errors; export goldens untouched. Constraint↔XDC,
+    port, and instance links are unit-proven; the browser demo shows Exact +
+    Unavailable honestly (visual IO names differ from HDL identifiers).
 - **Chapter A (UI integration) — imported-VCD Analyzer live in the Simulate surface.**
   The existing VCD reader + provider model + `VcdWaveformView` (previously
   consumer-less) are now integrated into the real Simulate surface — no second

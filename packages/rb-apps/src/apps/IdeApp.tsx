@@ -88,6 +88,7 @@ import {
 } from './ide/projectRuntime';
 import { parseVcd } from './ide/vcdImport';
 import { waveformFromVcd } from './ide/simulationProvider';
+import { buildLiveCrossProbeIndex, type CrossProbeDesignModule } from './ide/crossProbeBuilder';
 import {
   TOP_MODULE_ID,
   elaborateProjectHierarchy,
@@ -1246,6 +1247,73 @@ export const IdeApp: React.FC = () => {
     }
   }, [effectiveTopEntityName, projectIoRows, simulationCircuit]);
   const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
+  // ── Live source ↔ visual cross-probe (a derived read-model, not an authority) ──
+  const crossProbeModules = useMemo<CrossProbeDesignModule[]>(() => {
+    const mods: CrossProbeDesignModule[] = [];
+    const topName = (sourceModel.topEntity && sourceModel.topEntity.trim()) || activeTop;
+    const topPorts = projectIoRows
+      .map((row) => ({
+        name: (row.label && row.label.trim()) || row.port,
+        direction: row.direction === 'in' ? 'input' : 'output',
+        nodeId: row.nodeId,
+      }))
+      .filter((port) => !!port.name);
+    mods.push({ id: TOP_MODULE_ID, name: topName, ports: topPorts });
+    for (const module of hierarchy.modules) {
+      const instances = (module.circuit?.nodes ?? [])
+        .map((node) => {
+          const cfg = (node.config ?? {}) as Record<string, unknown>;
+          const defId = typeof cfg.moduleDefinitionId === 'string' ? cfg.moduleDefinitionId : undefined;
+          const isInstance =
+            !!defId || hierarchy.modules.some((other) => other.name === node.type && other.id !== module.id);
+          if (!isInstance) return null;
+          const instName =
+            (typeof cfg.instanceName === 'string' && cfg.instanceName) ||
+            (typeof cfg.label === 'string' && cfg.label) ||
+            node.label ||
+            node.id;
+          const ofModule = (typeof cfg.moduleName === 'string' && cfg.moduleName) || node.type;
+          return { name: String(instName), ofModule: String(ofModule), nodeId: node.id };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+      mods.push({
+        id: module.id,
+        name: module.name,
+        ports: module.ports.map((port) => ({
+          name: port.name,
+          direction: port.direction,
+          width: port.width,
+          nodeId: port.sourceBoundary?.internalRefs?.[0]?.nodeId,
+        })),
+        instances,
+      });
+    }
+    return mods;
+  }, [hierarchy, activeTop, sourceModel.topEntity, projectIoRows]);
+
+  const crossProbeConstraint = useMemo(() => {
+    const xdcSource = sourceModel.files.find((file) => file.fileset === 'constraint' && file.language === 'xdc');
+    if (xdcSource) return { text: xdcSource.text, id: xdcSource.id };
+    return xdcText.trim().length > 0 ? { text: xdcText, id: 'active.xdc' } : null;
+  }, [sourceModel, xdcText]);
+
+  const crossProbeIndex = useMemo(
+    () =>
+      buildLiveCrossProbeIndex({
+        modules: crossProbeModules,
+        sourceModel,
+        constraintText: crossProbeConstraint?.text,
+        constraintSourceId: crossProbeConstraint?.id,
+      }),
+    [crossProbeModules, sourceModel, crossProbeConstraint],
+  );
+
+  const crossProbeSourceLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const file of sourceModel.files) labels[file.id] = file.path;
+    if (crossProbeConstraint?.id === 'active.xdc') labels['active.xdc'] = 'active.xdc (live pins)';
+    return labels;
+  }, [sourceModel, crossProbeConstraint]);
   const projectIoMapping = useMemo(
     () => materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
     [hardwareMappingV2],
@@ -2630,6 +2698,11 @@ export const IdeApp: React.FC = () => {
               hasVerifyRun={verifyLastRun !== undefined}
               runHistory={verifyRunHistory}
               sourceModel={sourceModel}
+              crossProbe={{
+                modules: crossProbeModules,
+                index: crossProbeIndex,
+                sourceLabels: crossProbeSourceLabels,
+              }}
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
               outline={projectOutline}
