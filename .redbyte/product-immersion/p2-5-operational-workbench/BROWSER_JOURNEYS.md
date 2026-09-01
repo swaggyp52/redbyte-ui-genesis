@@ -24,24 +24,26 @@ being claimed. Run against `pnpm --filter @redbyte/playground dev` on
 |---|---|---|
 | `shell-status-authority-journey.mjs` | Slice 1 — footer is support-context only; the stage-nav is the single per-stage status authority; no overflow | 1440×900, 1366×768 |
 | `project-landing-proof.mjs` | Slice 2 — one dominant primary over a subordinate alternatives cluster; no restating summary; no overflow | 1440×900, 1366×768 |
-| `compare-verdict-journey.mjs` | Slice 3 — the Compare repair loop shows a real verdict: PASS (pass-hero) → break gate → FAIL → undo → PASS | 1440×900, 1366×768 |
+| `compare-verdict-journey.mjs` | Slice 3 — focused verdict proof (PASS → FAIL → PASS). Drives the store; not a student journey. | 1440×900, 1366×768 |
+| `full-adder-operational-journey.mjs` | **UI-only Journey A core** — first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector gate-swap XOR→OR → Compare FAIL with concrete mismatch → Trace in Design → repair → PASS. **Zero store actions.** Cross-platform (default browser resolution, repo-relative evidence). | 1440×900, 1366×768 |
 
 ## P2.5 acceptance journeys
 
-- **Journey A** — Full Adder native lab. **NOT YET PROVEN as a student journey.**
-  What is earned so far, by `compare-verdict-journey.mjs`, is narrower than a
-  Journey-A claim: **the Compare verdict transition** — a run presents PASS
-  (visible pass-hero), a deliberately changed design presents FAIL (visible
-  "Compare failed"), and undo + rerun returns to PASS — one shell / one main, no
-  overflow, no page errors, at 1440×900 and 1366×768. That script also drives the
-  runtime store directly (`loadExample`, `autoSuggestMapping`, a store gate-lookup
-  to choose the delete target, and a force-click), which the acceptance contract
-  forbids; it stands as a **focused verdict proof**, not Journey A. Still UNPROVEN
-  through the UI: first-use → Start a Lab → Lab 3 selection; authoring a check; a
-  runnable wrong-logic edit; concrete case/tick/signal/expected/observed mismatch
-  evidence; Trace-in-Design; scenario preservation across the repair loop;
-  stale-then-current proof; Board mapping; trusted export; HDL/XDC/testbench
-  inspection; browser download; reload/resume. Those are the next increment.
+- **Journey A** — Full Adder native lab. **CORE PROVEN (UI-only)** by
+  `full-adder-operational-journey.mjs` with **zero store actions**: first use →
+  one `<main>` → Start a Lab → the Gannon **Lab 3 Full Adder** card → details →
+  Start (Full Adder loads) → Design (the SUM gate is selectable; compatible swaps
+  offered) → Simulate → explicitly select the Compare intent → Compare **PASS** →
+  a runnable wrong-logic edit through the inspector gate-swap (XOR→OR) → Compare
+  **FAIL** with a concrete first mismatch naming signal + tick + expected + observed
+  ("LD1 (SUM) t3 expected 0 · got 1") → **Trace in Design** (arrives with the failing
+  gate selected) → repair via the compatible-gate swap (OR→XOR) → Compare **PASS**.
+  0px overflow, no page/console errors, 1440×900 + 1366×768. Cross-platform (default
+  Playwright browser resolution, repo-relative gitignored evidence).
+  **Still to add for a full Journey A:** an explicit author-a-check step (the
+  "Create check from this value…" UI exists); Board mapping; trusted export;
+  HDL/XDC/testbench inspection; browser download; reload/resume. Those are the next
+  increment.
 - **Journey B** — 2-bit counter: CLK100MHZ as board clock, deterministic
   sequential verify, waveform, Compare, map + clock, package, free-running-clock
   testbench, Browser-E0 boundary.

@@ -2,6 +2,52 @@
 
 Decisions and their evidence. Newest first.
 
+## D-7 — Local ThinkStation slices: run intent, FPGA-part authority, and a UI-only Journey A core
+
+Environment corrected to the repo pin: the portable Node 20.19.0 runtime already
+lives at `.redbyte/tools/node-v20.19.0-win-x64` (gitignored); all local validation
+now runs under it (`node --version` = v20.19.0, pnpm 10.24.0). Cross-platform
+Playwright works on Windows via default browser resolution.
+
+**Run intent + structural blocking (`3d65bf423`, CI-green).** The Observe/Compare
+selector was never rendered (VerifyCommandBar received `onSetObserve`/`onSetCompare`/
+`compareAvailable` as dead props) and the Run action ignored the intent; a structural
+Design block silently downgraded Compare to Observe. Now the selector is rendered to
+its existing contract (`ide-vcb-observe-only` / `ide-vcb-use-saved-checks`, aria-pressed,
+Compare disabled when unavailable, intent-driven explainer), the run honors the intent,
+and a blocked Compare stays selected + disabled ("Compare blocked") with the "Design
+blocks Compare" repair path — never a silent Observe. 8 command-bar contract tests +
+1 structural-block test fixed; zero regressions (broad verify set 26 -> 25); zero net
+tsc errors.
+
+**FPGA-part authority (`583fef846`).** The Project bridge rendered the FPGA part as a
+freeform input, but IdeApp already fixes it to `DEFAULT_FPGA_PART` and ignores
+`config.part` — so edits changed nothing and the export always emitted the Basys3 part.
+Made it read-only board-owned truth (`<dd data-board-owned>`); the active top stays
+editable. The labday test that asserted a freeform part edit reached the Vivado Tcl
+(baseline-red — it never propagated) is updated to the board-owned contract
+(xc7a35tcpg236-1). Zero regressions.
+
+**Gate-swap is the runnable wrong-logic edit (no new capability needed).** The Design
+inspector already offers `GATE_SWAP_FAMILIES` swaps (`ide-design-swap-{type}`), so
+XOR->OR is a discoverable, journey-drivable, topology-preserving wrong-logic edit —
+Section 5D satisfied by the existing feature.
+
+**UI-only Journey A core (`04b980b90`, both viewports).**
+`full-adder-operational-journey.mjs` drives the real UI with ZERO store actions:
+first use -> Start a Lab -> Gannon "Lab 3 Full Adder" -> Design -> Compare PASS ->
+inspector gate-swap XOR->OR -> Compare FAIL with a concrete mismatch
+("LD1 (SUM) t3 expected 0 · got 1") -> Trace in Design (arrives with the gate selected)
+-> repair swap OR->XOR -> Compare PASS. Cross-platform (repo-relative gitignored
+evidence, default browser resolution), 0px overflow, 0 errors, 1440x900 + 1366x768.
+
+**Honest remainder (next increments):** an explicit author-a-check step (the UI exists —
+"Create check from this value…"), and extending the journey through Board mapping ->
+trusted export -> browser download -> reload/resume; plus the Board & Export surface
+convergence (Sections 6 & 8). The Board surface is a real mapping workspace
+(`ide-pin-planner-table`, `ide-hw-direct-resource-select`, `ide-virtual-board`); the
+convergence is a deliberate design pass, not to be rushed.
+
 ## D-6 — Slice 3 follow-on: failure diagnosis is more complete than D-5 implied; the real gap is the structural path, not the mismatch table
 
 **Investigation (dev server + live runtime probes, Node 24.15.0 desktop; goldens

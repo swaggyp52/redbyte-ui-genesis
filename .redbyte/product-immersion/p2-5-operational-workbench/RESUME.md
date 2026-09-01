@@ -114,6 +114,25 @@ Import/Recover is a utility. Vivado is external (Browser-E0).
 
 ## Ledger (newest first)
 
+- **Local ThinkStation session — run intent, FPGA-part, UI-only Journey A core.**
+  Environment corrected to the repo pin (portable Node 20.19.0 at
+  `.redbyte/tools/node-v20.19.0-win-x64`; all local validation runs under it).
+  - `3d65bf423` `fix(sim)`: render the Observe/Compare run-intent selector (was
+    dead props) and make it authoritative; a structurally-blocked Compare stays
+    selected + disabled ("Compare blocked") with the Design-repair path, never a
+    silent Observe. 8 command-bar + 1 structural-block test fixed; 0 regressions;
+    **CI green under Node 20.19.0**.
+  - `583fef846` `fix(target)`: FPGA part is board-owned read-only (Basys3 →
+    xc7a35tcpg236-1); removed the freeform edit the export always ignored; labday
+    test moved to the board-owned contract.
+  - `04b980b90` `test(e2e)`: `full-adder-operational-journey.mjs` — **UI-only**
+    Journey A core (zero store actions): first use → Start a Lab → Lab 3 Full
+    Adder → Design → Compare PASS → inspector gate-swap XOR→OR → Compare FAIL with
+    a concrete mismatch → Trace in Design → repair → PASS, both viewports,
+    cross-platform, 0px overflow, 0 errors.
+  - **Next:** author-a-check step; extend the journey through Board mapping →
+    trusted export → download → reload; then the Board & Export convergence
+    (Sections 6 & 8 — a deliberate design pass, not to be rushed).
 - **Slice 3 follow-on — failure-diagnosis authority fix + investigation (`b5453b2a2`).**
   Live browser investigation corrected the D-5 framing: the runnable wrong-logic
   path already shows a full, visible failure diagnosis (advanced-failure panel +

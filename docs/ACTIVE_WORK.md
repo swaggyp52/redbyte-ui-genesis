@@ -145,28 +145,29 @@ accepted.
   mergeable, NOT merged; base `claude/redbyte-product-core-convergence-n3pi6t`
   (temporarily stacked on PR #84; **retarget to `product/redbyte-workbench-v3`
   only after #84 merges — never before, and never by an autonomous session**).
-- **Checkpoint (six commits on the branch point):** `8a5cbef74` Slice 0 baseline
-  + imported-VCD demotion → `359adc098` Slice 1 (one per-stage status authority;
-  footer de-duped) → `49abc102f` Slice 2 (Project landing hierarchy) → `02dc9e147`
-  (labday harness/stale-testid repair, 13→4) → `1c5c4745e` Slice 3 (Compare shows
-  a real PASS/FAIL verdict) → the first documentation-refresh commit.
-- **Exact proof boundary (Browser-E0, honest):** browser-proven so far are the
-  three slice journeys (shell-status-authority, project-landing, compare-verdict)
-  at 1440×900 and 1366×768, 0px overflow. The compare-verdict journey proves ONLY
-  the **verdict transition** (PASS → deliberately-broken FAIL → undo/rerun PASS)
-  and currently uses forbidden store actions — it is a focused verdict proof, not
-  a full Journey A. Failure diagnosis (mismatch rows), source/Design tracing,
-  scenario preservation, Board mapping, trusted export, download, and reload are
-  **UNPROVEN**. No Vivado/synthesis/timing/bitstream/hardware claim.
-- **Remaining acceptance work:** a UI-only Full Adder Journey A (zero store
-  actions); real failure diagnosis (runnable mismatch vs structural failure);
-  Board & Export convergence + the FPGA-part authority decision; the baseline-red
-  disposition (verify ~26, labday 4, `projectSurface.submission` 4 + `continuity`
-  1); and the five-lab / import / persistence journeys.
-- **Validation caveat:** the branch was built and validated under the repo pin
-  (Node 20.19.0) in a Linux cloud session. The desktop clone runs **Node 24.15.0**
-  (no pinned Node installed); golden SHAs drift under Node 24, so golden-gate
-  re-verification is not faithful from the desktop until Node 20.19.0 is present.
+- **Checkpoint:** the six-commit Slice 0–3 checkpoint (`8a5cbef74` → `b952d46b`),
+  then the local ThinkStation session: `c3bc076c6` docs truth-correction →
+  `b5453b2a2` failure-diagnosis authority (floating output = structural) →
+  `1c5629d54` investigation record → `3d65bf423` run-intent selector + structural
+  blocking (CI green under Node 20.19.0) → `583fef846` FPGA-part board-owned →
+  `04b980b90` UI-only Journey A core.
+- **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
+  proven (`full-adder-operational-journey.mjs`, both viewports, zero store actions):
+  first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector
+  gate-swap XOR→OR → Compare FAIL with a concrete mismatch → Trace in Design →
+  repair → Compare PASS. The Observe/Compare run intent is a real, authoritative,
+  visible control. Still UNPROVEN through the UI: an explicit author-a-check step;
+  Board mapping; trusted export; HDL/XDC/testbench inspection; browser download;
+  reload/resume. No Vivado/synthesis/timing/bitstream/hardware claim.
+- **Remaining acceptance work:** the author-a-check step + the journey tail
+  (Board mapping → trusted export → download → reload); the Board & Export surface
+  convergence (Sections 6 & 8, a deliberate design pass); the baseline-red
+  disposition (verify ~25, labday, `projectSurface.submission`/`continuity`); and
+  the five-lab / import / persistence journeys.
+- **Runtime:** the repo pin **Node 20.19.0** is available locally as a portable
+  gitignored runtime at `.redbyte/tools/node-v20.19.0-win-x64`; all local
+  validation (including both golden Basys3 gates) now runs under it, and cross-
+  platform Playwright works on Windows.
   CI: PR Fast Checks run #81 SUCCESS at `b952d46b`; PR #84 head `f8899a462` green.
 - **Boundary:** format version stays **1** (v2 gated behind `FORMAT_V2_SIGNOFF.md`);
   both classroom goldens byte-identical; one writable authority per concern; no
