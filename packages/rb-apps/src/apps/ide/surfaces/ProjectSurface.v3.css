@@ -118,7 +118,7 @@
   align-items: center;
   gap: 9px;
   padding: 14px 16px;
-  border-left: 3px solid var(--rb-accent, #68b5ff);
+  border: 1px solid var(--rb-border-subtle, var(--rb-border));
   background: color-mix(in srgb, var(--rb-surface, #1a2532) 78%, transparent);
 }
 
@@ -359,7 +359,6 @@
 
 .ide-project-v3-stage-row.is-highlighted {
   background: color-mix(in srgb, var(--rb-accent, #68b5ff) 10%, transparent);
-  box-shadow: inset 3px 0 var(--rb-accent, #68b5ff);
 }
 
 .ide-project-v3-stage-name {
