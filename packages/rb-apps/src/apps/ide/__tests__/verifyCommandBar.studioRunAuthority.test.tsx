@@ -26,9 +26,9 @@ describe('Simulation Studio command authority', () => {
     );
 
     const commandBar = view.getByTestId('ide-verify-command-bar');
-    // Five workspace lenses: Timeline, Bench, Waveform, Checks, Testbench.
-    // (The Bench lens was added after this contract's original "four lenses".)
-    expect(within(commandBar).getAllByRole('tab')).toHaveLength(5);
+    // Four workspace lenses: Timeline, Bench, Waveform, Checks. Testbench is a
+    // studio mode reached from elsewhere, not a top-level lens in the bar.
+    expect(within(commandBar).getAllByRole('tab')).toHaveLength(4);
     expect(within(commandBar).getAllByTestId('ide-vcb-run')).toHaveLength(1);
     expect(view.getByTestId('ide-vcb-run').textContent).toBe('Rerun simulation');
 
