@@ -4,6 +4,67 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-01 — P2.5B desktop-workbench reconstruction: first domain instrument (Case Lab)
+
+**Status: INTERIM. One genuine instrument landed and browser-proven. The full
+P2.5B reconstruction (shell rebuild, Timing Lab, Design schematic dominance,
+Project document model, Board/Package regrammar) is NOT done.** Local candidate,
+awaiting Connor's review. Nothing pushed/merged; no Vivado/bitstream/hardware
+claim. Branch `claude/redbyte-operational-workbench-convergence-w9k2r4`, 8 commits
+ahead of origin; dev server left running at http://localhost:5173.
+
+**Landed this session (2 new commits on top of the prior six):**
+
+- `feat(sim): Case Lab` — the combinational simulation instrument is now an
+  editable **truth-table grid**, not a column of event cards. One row per case;
+  Input columns; per-output **expected/observed** pairs; a per-case verdict.
+  Expected cells cycle unset→0→1→unset in place (the authoring path that enables
+  Compare). Observed + verdict are resolved through a normalization-resilient map
+  (`caseLabData` in `VerifySurface.tsx`) that matches a run report row keyed by the
+  canonical output signal — e.g. `ld0carry` — to its output field `ld0` by
+  bidirectional normalized-key containment. New owner:
+  `packages/rb-apps/src/apps/ide/surfaces/verify/CaseLab.tsx`.
+  Rendered for the combinational path; sequential still uses
+  `ScenarioComposerWorkbench`; the detailed event table (`ScenarioBuilderPanel`)
+  stays available in a collapsed `<details>` disclosure below Case Lab (it still
+  owns add-vector / sweep / project-vectors authoring affordances that Case Lab
+  does not yet replicate, and ~23 verifySurface tests depend on it — do NOT strip
+  the disclosure until those are migrated).
+
+- `test(verify)` — realigned three inherited-red assertions to shipped copy/shape
+  (studioRunAuthority 5→4 lenses; two ScenarioBuilderPanel summary strings).
+
+**Verification (pinned Node 20.19.0 via portable `.redbyte/tools/node-v20.19.0-win-x64`):**
+- Browser-E0 on the Full Adder at 1440×900: authoring the full 8-case truth table
+  and running Compare shows all-observed + all-pass (observed per row =
+  00,01,01,10,01,10,10,11 = the correct CARRY,SUM table); corrupting one SUM
+  expectation marks exactly one case `fail` (its observed cell flagged,
+  "8 cases · 1 failing", inspector "LD1 (SUM) — Failing at this event").
+- Zero net rb-apps typecheck errors (729 baseline held, measured by stash/compare).
+- Zero net verifySurface regressions: **24 failed at pre-Case-Lab baseline,
+  24 failed at the Case Lab commit** (measured by checking out `42d5ab66a` and
+  stash-comparing). The 24 are inherited, pre-existing.
+- verifyCommandBar / ScenarioBuilderPanel / testbenchCaseGeneration suites green.
+
+**Key finding for the next session — the "crammed / nothing fits" problem is
+structural, not CSS-surface.** The verify workspace layout is a deeply
+conditioned grid in `ide-polish-pass.css` (many `data-verify-workflow-phase` /
+`data-workspace-mode` / breakpoint variants, heavily `!important`). Piecemeal
+CSS/grid edits there are high-risk (they regress the pre-run, failure-
+investigation, and compact layouts). The dark waveform region stacked under the
+light Case Lab is a genuine "black slab" clash. A real fix needs a deliberate,
+isolated shell/instrument-frame rebuild, not incremental patching. Attempting a
+`stimulus-focus` reallocation for the scenario tab was tried and reverted (it
+shrank the Case Lab row rather than reclaiming space).
+
+**Immediate next targets (honest remainder of P2.5B):** sequential **Timing Lab**
+instrument (Register1/Counter fixture); Design schematic as the dominant Design
+instrument; Project **document model** replacing the pill-soup explorer (the
+"Source — visual cross-probe" 5-pill cluster is the worst offender on the landing
+surface); Board/Package in the same grammar; then migrate the ~23 disclosure-
+dependent verifySurface tests and retire `ScenarioComposerWorkbench` for
+combinational once Case Lab reaches authoring parity.
+
 ## Canonical state
 
 > The live branch HEAD is whatever `git rev-parse HEAD` / the PR reports — this
