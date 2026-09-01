@@ -128,6 +128,7 @@ import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { ManualBench } from './verify/ManualBench';
 import { CaseLab } from './verify/CaseLab';
+import { buildFieldSignalResolver, normalizeSignalId } from '../signalIdentity';
 import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
 import { SimulationProviderBar } from '../components/SimulationProviderBar';
 import type { ProviderWaveform } from '../simulationProvider';
@@ -4608,30 +4609,44 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return evidence;
   }, [authoredVectors, lastRun, runRows, sessionShowsCompareEvidence, testbenchEvidenceIsStale]);
-  // Case Lab observed + verdict, resilient to the run's canonical output-signal
-  // keys (e.g. the report row "ld0carry" for the output field "ld0"): a run row
-  // belongs to an output field when either normalized key contains the other.
+  // Field -> canonical run-signal identity, resolved through the run evidence
+  // (normalizationMap / ioRows), not by string containment. See signalIdentity.ts:
+  // the report row "ld0carry" is related to the output field "ld0" because the
+  // evidence states it, and ambiguous fields are surfaced rather than guessed.
+  // The resolver relates each field to a RAW report-row signal (the evidence
+  // normalizationMap speaks in raw keys), so Case Lab reads the raw report rows,
+  // not the alias-canonicalized `runRows`, to keep the two identity spaces aligned.
+  const caseLabReportRows = lastRun?.report.rows ?? [];
+  const caseLabSignalResolver = useMemo(
+    () =>
+      buildFieldSignalResolver({
+        fieldIds: outputFields.map((field) => field.id),
+        evidence: lastRun?.evidence,
+        reportSignals: Array.from(new Set(caseLabReportRows.map((row) => row.signal))),
+      }),
+    [caseLabReportRows, lastRun?.evidence, outputFields]
+  );
+  // Case Lab observed values + per-case verdict, keyed by the resolved identity.
   const caseLabData = useMemo(() => {
     const observed: Record<number, Record<string, string>> = {};
     const verdict: Record<number, StimulusCaseEvidenceState> = {};
-    const rowsByTick = new Map<number, typeof runRows>();
-    for (const row of runRows) {
-      const bucket = rowsByTick.get(row.tick);
-      if (bucket) bucket.push(row);
-      else rowsByTick.set(row.tick, [row]);
+    // Exact (tick, normalized run signal) index — no containment matching.
+    const rowByTickSignal = new Map<string, (typeof caseLabReportRows)[number]>();
+    for (const row of caseLabReportRows) {
+      rowByTickSignal.set(`${row.tick}::${normalizeSignalId(row.signal)}`, row);
     }
-    const fieldMatchesSignal = (fieldId: string, signal: string) => {
-      const a = normalizeFieldId(fieldId);
-      const b = normalizeFieldId(signal);
-      return a === b || a.includes(b) || b.includes(a);
-    };
+    const fieldSignalKey = new Map<string, string | null>();
+    for (const field of outputFields) {
+      const resolved = caseLabSignalResolver.resolve(field.id);
+      fieldSignalKey.set(field.id, resolved.runSignal ? normalizeSignalId(resolved.runSignal) : null);
+    }
     for (const vector of authoredVectors) {
-      const rows = rowsByTick.get(vector.tick) ?? [];
       const obs: Record<string, string> = {};
       let anyChecked = false;
       let anyFail = false;
       for (const field of outputFields) {
-        const match = rows.find((row) => fieldMatchesSignal(field.id, row.signal));
+        const signalKey = fieldSignalKey.get(field.id);
+        const match = signalKey ? rowByTickSignal.get(`${vector.tick}::${signalKey}`) : undefined;
         if (match?.actual != null && match.actual !== '-') obs[field.id] = match.actual;
         const authored = (vector.expected ?? {})[field.id];
         if (match && authored != null) {
@@ -4648,7 +4663,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       else verdict[vector.tick] = 'not-run';
     }
     return { observed, verdict };
-  }, [authoredVectors, lastRun, outputFields, runRows, testbenchEvidenceIsStale]);
+  }, [authoredVectors, caseLabReportRows, caseLabSignalResolver, lastRun, outputFields, testbenchEvidenceIsStale]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
