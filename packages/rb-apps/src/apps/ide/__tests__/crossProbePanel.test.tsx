@@ -27,12 +27,14 @@ const index = buildLiveCrossProbeIndex({ modules, sourceModel });
 const sourceLabels = { [adderId]: 'rtl/adder.vhd' };
 
 describe('CrossProbePanel', () => {
-  it('renders the quality legend with all five tiers', () => {
+  it('carries link quality on the row, not a permanent legend key', () => {
     render(<CrossProbePanel modules={modules} index={index} sourceLabels={sourceLabels} />);
-    const legend = screen.getByTestId('ide-crossprobe-legend');
-    for (const label of ['Exact', 'Partial', 'Ambiguous', 'Stale', 'Unavailable']) {
-      expect(legend.textContent).toContain(label);
-    }
+    // The always-on legend was removed; quality lives on the relationship row.
+    expect(screen.queryByTestId('ide-crossprobe-legend')).toBeNull();
+    const moduleQuality = screen.getByTestId('ide-crossprobe-quality-module:m_adder:adder');
+    expect(moduleQuality.textContent).toBe('Exact');
+    // The meaning travels with the badge as a tooltip so no legend is needed.
+    expect(moduleQuality.getAttribute('title')).toMatch(/full confidence/i);
   });
 
   it('shows the module with an exact link and a native-only element as unavailable', () => {

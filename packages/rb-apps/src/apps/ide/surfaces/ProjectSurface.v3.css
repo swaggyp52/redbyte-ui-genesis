@@ -1530,15 +1530,6 @@
 .ide-crossprobe-title { font-size: 12px; font-weight: 650; }
 .ide-crossprobe-count { font-size: 11px; color: var(--rb-text-muted); }
 
-.ide-crossprobe-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .ide-crossprobe-badge {
   display: inline-block;
   padding: 0 7px;

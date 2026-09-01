@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
   crossProbeQualityLabel,
+  crossProbeQualityDescription,
   linksForModule,
   linksForSource,
   type CrossProbeIndex,
   type CrossProbeLink,
-  type CrossProbeQuality,
 } from '../sourceCrossProbe';
 import { qualityForLinks, type CrossProbeDesignModule } from '../crossProbeBuilder';
 
@@ -36,8 +36,6 @@ function linkKey(link: CrossProbeLink): string {
   return keyOf(link.kind, link.moduleId, link.elementKey);
 }
 
-const QUALITY_TIERS: readonly CrossProbeQuality[] = ['exact', 'partial', 'ambiguous', 'stale', 'unavailable'];
-
 export const CrossProbePanel: React.FC<CrossProbePanelProps> = ({ modules, index, sourceLabels }) => {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -61,14 +59,6 @@ export const CrossProbePanel: React.FC<CrossProbePanelProps> = ({ modules, index
           {totalLinks} link{totalLinks === 1 ? '' : 's'}
         </span>
       </header>
-
-      <ul className="ide-crossprobe-legend" data-testid="ide-crossprobe-legend" aria-label="Link quality legend">
-        {QUALITY_TIERS.map((tier) => (
-          <li key={tier} className={`ide-crossprobe-legend-item is-${tier}`}>
-            <span className={`ide-crossprobe-badge is-${tier}`}>{crossProbeQualityLabel(tier)}</span>
-          </li>
-        ))}
-      </ul>
 
       {selected ? (
         <p className="ide-crossprobe-selection" data-testid="ide-crossprobe-selection">
@@ -143,6 +133,7 @@ export const CrossProbePanel: React.FC<CrossProbePanelProps> = ({ modules, index
                         <span
                           className={`ide-crossprobe-badge is-${quality}`}
                           data-testid={`ide-crossprobe-quality-${row.key}`}
+                          title={crossProbeQualityDescription(quality)}
                         >
                           {crossProbeQualityLabel(quality)}
                         </span>
@@ -192,7 +183,10 @@ export const CrossProbePanel: React.FC<CrossProbePanelProps> = ({ modules, index
                           >
                             <span className="ide-crossprobe-row-kind">{link.kind}</span>
                             <code className="ide-crossprobe-row-name">{link.label ?? link.elementKey}</code>
-                            <span className={`ide-crossprobe-badge is-${quality}`}>
+                            <span
+                              className={`ide-crossprobe-badge is-${quality}`}
+                              title={crossProbeQualityDescription(quality)}
+                            >
                               {crossProbeQualityLabel(quality)}
                             </span>
                             <span className="ide-crossprobe-row-loc">
