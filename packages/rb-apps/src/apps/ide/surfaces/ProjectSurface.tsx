@@ -1276,14 +1276,16 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
           </div>
           <div>
             <dt>FPGA part</dt>
-            <dd>
-              <input
-                type="text"
-                value={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
-                data-testid="ide-project-fpga-part"
-                onChange={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value })}
-                readOnly={!onFpgaConfigChange}
-              />
+            {/* Board-owned target truth. The part is fixed by the selected board
+                profile (Basys3 → xc7a35tcpg236-1) and flows into every generated
+                artifact, so it is displayed read-only rather than as a freeform
+                field the export would silently ignore. */}
+            <dd
+              data-testid="ide-project-fpga-part"
+              data-board-owned="true"
+              title="Board-owned target — set by the Basys3 profile, not editable"
+            >
+              {fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
             </dd>
           </div>
           <div>

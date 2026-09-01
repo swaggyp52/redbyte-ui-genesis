@@ -323,7 +323,7 @@ describe('IdeApp lab-day wiring', () => {
     }, { timeout: 10000 });
   });
 
-  it('propagates Project top and part edits into the Export handoff summary', async () => {
+  it('propagates the Project top edit and keeps the FPGA part board-owned in the Export handoff', async () => {
     const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
@@ -333,9 +333,13 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.change(await view.findByTestId('ide-project-fpga-top'), {
       target: { value: 'lab_day_top' },
     });
-    fireEvent.change(view.getByTestId('ide-project-fpga-part'), {
-      target: { value: 'xc7a100tcsg324-1' },
-    });
+
+    // The FPGA part is board-owned (Basys3 -> xc7a35tcpg236-1) and displayed
+    // read-only — not a freeform field the export would silently ignore.
+    const partField = view.getByTestId('ide-project-fpga-part');
+    expect(partField.tagName).not.toBe('INPUT');
+    expect(partField.getAttribute('data-board-owned')).toBe('true');
+    expect(partField.textContent).toContain('xc7a35tcpg236-1');
 
     fireEvent.click(view.getByTestId('mode-button-export'));
 
@@ -344,7 +348,8 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity lab_day_top is');
     fireEvent.click(view.getByTestId('ide-export-file-vivado-import-tcl'));
-    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a100tcsg324-1');
+    // Every generated artifact derives the target from the board authority.
+    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a35tcpg236-1');
   });
 
   it('resets inherited top authority when Build Fresh is renamed', async () => {
