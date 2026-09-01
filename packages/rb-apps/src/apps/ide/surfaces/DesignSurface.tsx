@@ -5326,13 +5326,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   {signalFocusSubtitle}
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
-                {selectionStatusLabel}
-              </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-              {nextStep}
-            </p>
+            {primarySelectionIssue?.hint ? (
+              <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+                {primarySelectionIssue.hint}
+              </p>
+            ) : null}
             <div className="ide-design-inspector-facts ide-kv-list">
               <div className="ide-kv-row">
                 <span>Type</span>
