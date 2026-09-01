@@ -114,6 +114,40 @@ Import/Recover is a utility. Vivado is external (Browser-E0).
 
 ## Ledger (newest first)
 
+- **LOCAL UI ARCHITECTURE INTERVENTION — awaiting Connor's visual review — NOT PUSHED.**
+  Connor inspected the running app and found it a card/pill/narration-heavy
+  educational game, not an engineering workbench. First candidate reconstructs the
+  shared shell + Project + Design + Simulate into a professional desktop grammar.
+  Local commits on top of origin `2ef5e5ee8` (origin unchanged; safety tag
+  `safety/p2-5-before-ui-architecture-intervention`): `492b41b0f` shell ·
+  `c9f1a4196` project · `232fe970a` sim · `7e7125da1` design.
+
+  | Region | Decision | Result |
+  |---|---|---|
+  | Top workspace nav | RECONSTRUCT | Game-progression bar (icon+checkmark+status subtitle+"!") → compact text tab strip (Project/Design/Simulate/Board/Package, active underline) |
+  | Project identity + 6 metadata boxes | DE-CARD | One inline property row; identity is a plain header, not a card; dropped Readiness + eyebrow |
+  | Project workspace header + evidence-tier | DELETE | Narration + "Behavioral evidence" internal taxonomy removed |
+  | Project right rail (5 cards) | CONSOLIDATE | Next action + current problems only (de-carded); removed Recent activity / Runs / duplicate Project actions |
+  | Simulate provider banner (E0/Imported pills + prose) | DELETE | Gone on native; compact source toggle only when a .vcd is loaded; boundary stated once in Package |
+  | Simulate imported-VCD row | MOVE | Renders only once a .vcd is loaded |
+  | Simulate "Testbench" tab | MOVE | Removed from the equal lenses (generated HDL belongs in Package) |
+  | Design selection inspector | DE-NARRATE | READY badge + "Start at… inspect the path" narration removed; shows Type/Signal/Samples properties |
+
+  Validation (pinned Node 20.19.0): unified build **green**; CSS ownership audit
+  **clean**; tsc **770 → 770 (zero net, no orphans)**; the UI-only Full Adder
+  journey **passes both viewports** (function intact — edit + simulate + trace +
+  repair). After-screenshots:
+  `.redbyte/product-immersion/p2-5-operational-workbench/evidence/ui-intervention/`
+  (project / design / simulate-cases / simulate-waveform at 1440×900 and 1366×768).
+  Dev server left running at `http://localhost:5173` (Full Adder loaded).
+
+  Still open for the deliberate visual pass (Connor's direction): waveform even
+  more dominant + "Selection guidance" narration in the Simulate inspector; the
+  four pre-existing CSS side-tab/grid smells; the cyan gate glow; Design bottom
+  panel closed-by-default; Board & Package (untouched — apply the same grammar
+  after approval); and the presentation-test updates the reconstruction obsoletes.
+  No PR update / push until Connor approves the direction.
+
 - **Local ThinkStation session — run intent, FPGA-part, UI-only Journey A core.**
   Environment corrected to the repo pin (portable Node 20.19.0 at
   `.redbyte/tools/node-v20.19.0-win-x64`; all local validation runs under it).
