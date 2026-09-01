@@ -4,6 +4,86 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-01 — P2.5B workbench-core reconstruction, wave 1: identity seam + recon
+
+**Status: INTERIM. The engineering-identity foundation is landed and the whole
+architecture is mapped. Items 1–6 of the review gate are NOT all operational.**
+Local candidate, unpushed. See `ARCHITECTURE_MAP.md` (same folder) — read it
+first next session; it prevents re-investigating that the shell/store already
+exist.
+
+**Safety tag:** `safety/redbyte-before-workbench-core-reconstruction-e5388fd05`.
+
+**Landed this wave (branch `claude/redbyte-operational-workbench-convergence-w9k2r4`,
+now ~13 commits ahead of origin, nothing pushed):**
+
+1. `feat(identity)` `signalIdentity.ts` — the production identity seam. Replaces
+   Case Lab's string-containment field↔signal match with a resolver over the run
+   evidence (`normalizationMap` role-'expected' + `ioRows`): precedence
+   exact → evidence-expected → evidence-node, candidate must appear in the report
+   set, >1 candidate or cross-field collision ⇒ 'ambiguous' (surfaced, never
+   guessed), hierarchy preserved. 10 tests (containment traps, hierarchy,
+   ambiguity). Case Lab reads observed/verdict through it against the RAW report
+   rows (same identity space as the evidence). **Reuse this for Waveform / Board /
+   Package** — do not add per-surface adapters.
+2. `docs` `ARCHITECTURE_MAP.md` — the 10-agent recon: canonical `PortRef`
+   identity, the ONE store `useProjectRuntime`, the EXISTING shell
+   `IdeWorkbenchShell` (100dvh/splitters/docks — live-verified no body scroll),
+   the real shell gaps (general document tabs, global selection), surface reality,
+   and the verify-CSS maze to route around.
+3. `refactor(project)` — removed the permanent cross-probe pill legend
+   (Exact/Partial/Ambiguous/Stale/Unavailable); quality now rides each row badge
+   with a self-explaining tooltip (`crossProbeQualityDescription`). Dead legend
+   CSS + unused `QUALITY_TIERS` removed; legend test rewritten to the new behavior.
+4. `feat(sim)` — Case Lab now OWNS add / duplicate / delete case (toolbar +
+   per-row controls, keyboard-reachable), resequencing ticks contiguous. No
+   longer depends on the hidden legacy disclosure for those core operations.
+
+**Validation (pinned Node 20.19.0):** rb-apps typecheck held at 729 baseline
+across every commit (measured); verifySurface held at its 24-failure inherited
+baseline across every commit; signalIdentity 10/10, crossProbePanel 5/5,
+verifyCommandBar+ScenarioBuilderPanel green. Browser-proven on the Full Adder at
+1440×900: full truth-table Compare → all observed + pass via the resolver; one
+corrupted SUM → exactly one failing case; add/dup/delete keep ticks contiguous.
+Dev server left running at http://localhost:5173.
+
+**NOT done — remaining review gate (do in order; ARCHITECTURE_MAP has the how):**
+- **Shell gaps:** a general multi-document tab/editor-group model (only
+  Simulate-scoped `TestbenchDocumentTabs` exists — generalize it); a global
+  engineering-object **selection** authority (cross-probe backbone, now that
+  identity is solid). The frame itself already exists — do NOT rebuild it.
+- **Project (item 2):** convert explorer entries from navigate-to-surface to
+  open-document-in-center; lift `ProjectSourceFiles`/`CrossProbePanel`/
+  `ProjectCircuitPreview`/Technical-details into center documents; remove the
+  "Next: Simulate" narration card. Legend already removed.
+- **Design (item 3):** real schematic — logic symbols, orthogonal routing,
+  junctions, hierarchy/bus visibility, property-grid inspector, semantic zoom.
+  `rb-logic-view/LogicCanvas.tsx` (+ baseline tsc errors) is the owner;
+  `rb-viewport/transforms.ts` for the camera. Prove on Full Adder AND the
+  hierarchical 4-bit adder.
+- **Case Lab completion (item 4):** migrate the remaining ScenarioBuilderPanel
+  authoring affordances (sweep/hold/project-vectors) into Case Lab, migrate the
+  ~23 disclosure-dependent verifySurface tests to product behavior, then retire
+  the combinational `ScenarioComposerWorkbench` + the disclosure.
+- **Timing Lab (item 5) — NOT STARTED:** sequential instrument for a counter
+  (`packages/rb-apps/src/examples/04_4bit-counter.json`,
+  `22_lab7-sync-counter-starter-basys3.json`) or Register1. Build a cycle ruler +
+  clock/reset/input/state/expected lanes + edge markers + edit + run, rendered as
+  the sequential center (replacing `ScenarioComposerWorkbench` for
+  `isSequentialRun`, mirroring how Case Lab replaced it for combinational).
+  Investigate the sequential run/state model first (how clock edges map to ticks,
+  how state is captured in the run report/waveform).
+- **Waveform (item 6):** isolated frame OUTSIDE the `.ide-verify-region--waveform`
+  / `.ide-verify-lab-grid` namespace, drawing `--rb-canvas-dark*` tokens (not the
+  hardcoded `#080e16`/`#0a0f18` slabs). Reuse only the `SignalSource` TYPE from
+  rb-instruments (its dock is dead). Add Case↔Wave and Timing↔Wave selection sync
+  through the `signalIdentity` resolver.
+
+**Exact next step:** read `ARCHITECTURE_MAP.md`, then either (a) generalize the
+document-tab model + a global selection authority (unblocks Project/Design/Wave
+cross-probe), or (b) build the Timing Lab v1 on the 4-bit counter fixture. Do not
+push; do not merge/retarget PR #84/#85; format version stays 1; goldens untouched.
+
 ## 2026-09-01 — P2.5B desktop-workbench reconstruction: first domain instrument (Case Lab)
 
 **Status: INTERIM. One genuine instrument landed and browser-proven. The full
