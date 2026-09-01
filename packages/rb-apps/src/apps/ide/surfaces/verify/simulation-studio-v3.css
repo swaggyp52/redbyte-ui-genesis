@@ -4096,4 +4096,11 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
 .ide-case-lab-verdict.is-stale { color: var(--rb-state-warning, #b7791f); }
 .ide-case-lab-verdict.is-observed, .ide-case-lab-verdict.is-not-run { color: var(--rb-text-muted); }
 .ide-case-lab-trace { margin-left: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--rb-border); border-radius: 4px; background: transparent; color: var(--rb-action); font-size: 11px; cursor: pointer; }
+.ide-case-lab-row-actions { float: right; display: inline-flex; gap: 3px; opacity: 0; transition: opacity 120ms ease; }
+.ide-case-lab-row:hover .ide-case-lab-row-actions,
+.ide-case-lab-row.is-selected .ide-case-lab-row-actions,
+.ide-case-lab-row-actions:focus-within { opacity: 1; }
+.ide-case-lab-rowbtn { width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--rb-border); border-radius: 4px; background: var(--rb-surface, #fff); color: var(--rb-text-secondary); font-size: 11px; line-height: 1; cursor: pointer; }
+.ide-case-lab-rowbtn:hover { border-color: var(--rb-action); color: var(--rb-action); }
+.ide-case-lab-rowbtn--danger:hover { border-color: var(--rb-danger, #c0392b); color: var(--rb-danger, #c0392b); }
 .ide-case-lab-empty { padding: 18px; color: var(--rb-text-muted); font-size: 12px; }

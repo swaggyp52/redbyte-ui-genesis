@@ -25,6 +25,9 @@ export interface CaseLabProps {
   readonly onSelectCase: (tick: number) => void;
   readonly onSetExpected: (tick: number, signalId: string, next: 0 | 1 | null) => void;
   readonly onGenerateExhaustive?: () => void;
+  readonly onAddCase?: () => void;
+  readonly onDuplicateCase?: (tick: number) => void;
+  readonly onDeleteCase?: (tick: number) => void;
   readonly onRun?: () => void;
   readonly runLabel?: string;
   readonly runDisabled?: boolean;
@@ -63,6 +66,9 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   onSelectCase,
   onSetExpected,
   onGenerateExhaustive,
+  onAddCase,
+  onDuplicateCase,
+  onDeleteCase,
   onRun,
   runLabel,
   runDisabled,
@@ -95,6 +101,11 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           {failCount ? ` · ${failCount} failing` : ''}
         </span>
         <span className="ide-case-lab-spacer" />
+        {onAddCase ? (
+          <IdeButton tone="ghost" onClick={onAddCase} testId="ide-case-lab-add">
+            Add case
+          </IdeButton>
+        ) : null}
         {onGenerateExhaustive ? (
           <IdeButton tone="ghost" onClick={onGenerateExhaustive} testId="ide-case-lab-generate">
             Generate all
@@ -215,6 +226,38 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                           Trace
                         </button>
                       ) : null}
+                      <span className="ide-case-lab-row-actions">
+                        {onDuplicateCase ? (
+                          <button
+                            type="button"
+                            className="ide-case-lab-rowbtn"
+                            data-testid={`ide-case-lab-duplicate-${vector.tick}`}
+                            title="Duplicate this case"
+                            aria-label={`Duplicate case ${index + 1}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onDuplicateCase(vector.tick);
+                            }}
+                          >
+                            ⧉
+                          </button>
+                        ) : null}
+                        {onDeleteCase ? (
+                          <button
+                            type="button"
+                            className="ide-case-lab-rowbtn ide-case-lab-rowbtn--danger"
+                            data-testid={`ide-case-lab-delete-${vector.tick}`}
+                            title="Delete this case"
+                            aria-label={`Delete case ${index + 1}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onDeleteCase(vector.tick);
+                            }}
+                          >
+                            ✕
+                          </button>
+                        ) : null}
+                      </span>
                     </td>
                   </tr>
                 );

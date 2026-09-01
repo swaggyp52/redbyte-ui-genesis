@@ -3271,6 +3271,63 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, onVectorsChange]
   );
 
+  // Case Lab owns the primary case operations — add / duplicate / delete — so a
+  // student never has to open the legacy detailed table for essential authoring.
+  // For a combinational truth table one case == one tick, so ticks are kept
+  // contiguous (0..n-1) after every mutation.
+  const caseLabInputFieldIds = useMemo(
+    () => stimulusPanelInputFields.map((field) => field.id),
+    [stimulusPanelInputFields]
+  );
+  const resequenceCaseTicks = useCallback(
+    (vectors: VerifyAuthorVector[]): VerifyAuthorVector[] =>
+      vectors.map((vector, index) => (vector.tick === index ? vector : { ...vector, tick: index })),
+    []
+  );
+  const handleCaseAdd = useCallback(() => {
+    if (!onVectorsChange) return;
+    const blank: VerifyAuthorVector = {
+      id: `case-${authoredVectors.length + 1}-${authoredVectors.length}`,
+      tick: authoredVectors.length,
+      inputs: caseLabInputFieldIds.reduce<Record<string, 0 | 1>>((acc, id) => {
+        acc[id] = 0;
+        return acc;
+      }, {}),
+      expected: {},
+    };
+    onVectorsChange(resequenceCaseTicks([...authoredVectors, blank]));
+    handleStimulusSelectedTickChange(blank.tick);
+  }, [authoredVectors, caseLabInputFieldIds, onVectorsChange, resequenceCaseTicks]);
+  const handleCaseDuplicate = useCallback(
+    (tick: number) => {
+      if (!onVectorsChange) return;
+      const index = authoredVectors.findIndex((vector) => vector.tick === tick);
+      if (index < 0) return;
+      const source = authoredVectors[index];
+      const copy: VerifyAuthorVector = {
+        ...source,
+        id: `case-dup-${source.id}-${authoredVectors.length}`,
+        inputs: { ...source.inputs },
+        expected: { ...(source.expected ?? {}) },
+      };
+      const next = [
+        ...authoredVectors.slice(0, index + 1),
+        copy,
+        ...authoredVectors.slice(index + 1),
+      ];
+      onVectorsChange(resequenceCaseTicks(next));
+      handleStimulusSelectedTickChange(tick + 1);
+    },
+    [authoredVectors, onVectorsChange, resequenceCaseTicks]
+  );
+  const handleCaseDelete = useCallback(
+    (tick: number) => {
+      if (!onVectorsChange) return;
+      onVectorsChange(resequenceCaseTicks(authoredVectors.filter((vector) => vector.tick !== tick)));
+    },
+    [authoredVectors, onVectorsChange, resequenceCaseTicks]
+  );
+
   const handleSetObserveMode = useCallback(() => {
     runModeTouchedByStudentRef.current = true;
     setNextRunUsesAssertions(false);
@@ -5922,6 +5979,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onSelectCase={handleStimulusSelectedTickChange}
             onSetExpected={handleCaseSetExpected}
             onGenerateExhaustive={handleAutoGenerateVectors}
+            onAddCase={onVectorsChange ? handleCaseAdd : undefined}
+            onDuplicateCase={onVectorsChange ? handleCaseDuplicate : undefined}
+            onDeleteCase={onVectorsChange ? handleCaseDelete : undefined}
             onRun={runVerification}
             runLabel={compactCommandRunLabel}
             runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
