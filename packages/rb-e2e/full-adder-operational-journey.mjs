@@ -73,13 +73,11 @@ async function run(width, height) {
   assert(/full adder/i.test(labCardText), 'Lab 3 card identifies as Full Adder');
   await page.click(tid('ide-project-gannon-lab-start-full-adder'));
 
-  await page.waitForFunction(
-    () => /Loaded/i.test(document.querySelector('[data-testid="mode-button-project"]')?.textContent || ''),
-    { timeout: 10000 }
-  );
-  const designLabel = await text(page, 'mode-button-design');
-  assert(/component/i.test(designLabel), `Design shows components after lab load (got "${designLabel}")`);
-  console.log(`[${label}] A. first use -> Start a Lab -> Lab 3 Full Adder loaded (${designLabel.trim()})`);
+  // The lab loaded — the workspace switcher is a plain tab strip now (no per-stage
+  // status subtitle), so the load is confirmed by the circuit itself in Phase B.
+  await page.waitForSelector(tid('mode-button-design'), { timeout: 10000 });
+  await page.waitForTimeout(1000);
+  console.log(`[${label}] A. first use -> Start a Lab -> Lab 3 Full Adder loaded`);
 
   // ── B. DESIGN — the circuit is the focal object ───────────────────────────
   await page.click(tid('mode-button-design'));

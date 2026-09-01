@@ -86,72 +86,62 @@
 .ide-root .ide-project-name-input { width: min(190px, 17vw); min-height: 34px; }
 
 .ide-root .ide-top-center { align-self: stretch; }
+/* Compact workspace tab strip — professional navigation, not a progress bar. */
 .ide-root .ide-stage-nav-frame { width: 100%; min-width: 0; height: 100%; background: transparent; }
 .ide-root .ide-stage-nav {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  align-items: stretch;
   width: 100%;
   height: 100%;
   min-width: 0;
-  gap: 2px;
+  gap: 1px;
 }
 .ide-root .ide-stage-nav-button {
   position: relative;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  min-width: 0;
-  min-height: 44px;
+  display: inline-flex;
   align-items: center;
-  padding: 5px clamp(6px, 0.6vw, 11px);
-  gap: 7px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 5px;
   color: var(--rb-text-secondary);
   background: transparent;
   box-shadow: none;
-  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .ide-root .ide-stage-nav-button:hover,
 .ide-root .ide-stage-nav-button:focus-visible {
-  border-color: var(--rb-border-subtle);
   color: var(--rb-text-primary);
   background: var(--rb-surface-subtle);
 }
 .ide-root .ide-stage-nav-button[data-state='current'] {
-  border-color: color-mix(in srgb, var(--rb-action) 32%, var(--rb-border-default));
   color: var(--rb-text-primary);
-  background: color-mix(in srgb, var(--rb-action) 8%, var(--rb-shell));
+  background: color-mix(in srgb, var(--rb-action) 9%, transparent);
 }
 .ide-root .ide-stage-nav-button[data-state='current']::after {
   content: '';
   position: absolute;
-  right: 9px;
-  bottom: 2px;
-  left: 9px;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
   height: 2px;
-  border-radius: 2px;
+  border-radius: 2px 2px 0 0;
   background: var(--rb-action);
 }
-.ide-root .ide-stage-nav-button[data-state='blocked'] { color: var(--rb-text-muted); }
-.ide-root .ide-stage-nav-icon {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 6px;
-  color: inherit;
-  background: var(--rb-surface-raised);
+.ide-root .ide-stage-nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .ide-stage-nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rb-state-warning, #d98a00);
+  flex: none;
 }
-.ide-root .ide-stage-nav-button[data-state='complete'] .ide-stage-nav-icon { border-color: var(--rb-success-border); color: var(--rb-state-success); }
-.ide-root .ide-stage-nav-button[data-state='current'] .ide-stage-nav-icon { border-color: var(--rb-action); color: var(--rb-action); }
-.ide-root .ide-stage-nav-icon svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ide-root .ide-stage-nav-copy { display: grid; min-width: 0; gap: 1px; }
-.ide-root .ide-stage-nav-label,
-.ide-root .ide-stage-nav-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ide-root .ide-stage-nav-label { color: inherit; font-size: 13px; font-weight: 700; line-height: 1.15; }
-.ide-root .ide-stage-nav-hint { color: var(--rb-text-muted); font-size: 12px; line-height: 1.15; }
-.ide-root .ide-stage-nav-state { display: none; }
 
 .ide-root .ide-top-right { justify-content: flex-end; gap: 7px; }
 .ide-root .ide-topbar-fact,
