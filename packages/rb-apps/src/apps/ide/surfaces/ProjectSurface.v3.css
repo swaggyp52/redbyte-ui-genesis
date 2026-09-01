@@ -1086,34 +1086,34 @@
 }
 
 .ide-project-v3-command-board { min-height: 0; padding: 0; overflow: hidden; }
+/* Identity is a plain header, not a card. */
 .ide-project-v3-header {
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: 6px;
   align-items: start;
-  padding: 14px 18px;
-  border: 1px solid var(--rb-border);
-  border-radius: 10px;
-  background: var(--rb-surface);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .ide-project-v3-meta { display: none; }
+/* Scalar facts read as a compact inline property row, not a wall of boxes. */
 .ide-project-v3-facts {
   display: flex;
   flex-wrap: wrap;
-  margin-top: 12px;
-  gap: 6px;
+  margin-top: 6px;
+  gap: 2px 18px;
+  align-items: baseline;
 }
 .ide-project-v3-facts > span {
   display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  padding: 5px 9px;
+  align-items: baseline;
   gap: 6px;
-  border: 1px solid var(--rb-border);
-  border-radius: 7px;
-  background: var(--rb-surface-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 .ide-project-v3-facts small { color: var(--rb-text-muted); font-size: 12px; }
-.ide-project-v3-facts strong { color: var(--rb-text-primary); font-size: 13px; font-weight: 700; }
+.ide-project-v3-facts strong { color: var(--rb-text-primary); font-size: 13px; font-weight: 600; }
 /* Set Active Top — actionable Overview control over fpgaConfig.top */
 .ide-project-active-top-value {
   display: inline-flex;
@@ -1293,12 +1293,14 @@
 .ide-project-v3-stage-table { max-height: none; overflow: auto; background: var(--rb-surface-2); }
 .ide-project-v3-stage-table > :not(.ide-project-context-panel) { display: none; }
 .ide-project-context-panel { display: grid; align-content: start; gap: 12px; }
-.ide-project-context-section { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface); }
-.ide-project-context-section > span { color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
-.ide-project-context-section > strong { font-size: 15px; line-height: 1.35; }
+/* The right rail is a compact contextual panel, not a stack of cards. */
+.ide-project-context-section { display: grid; gap: 5px; padding: 0 0 12px; border: 0; border-bottom: 1px solid var(--rb-border-subtle, var(--rb-border)); border-radius: 0; background: transparent; }
+.ide-project-context-section:last-child { border-bottom: 0; padding-bottom: 0; }
+.ide-project-context-section > span { color: var(--rb-text-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+.ide-project-context-section > strong { font-size: 14px; line-height: 1.3; }
 .ide-project-context-section > p,
-.ide-project-context-section > small { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
-.ide-project-context-section.is-highlighted { border-color: var(--rb-action); box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-action) 18%, transparent); }
+.ide-project-context-section > small { margin: 0; color: var(--rb-text-secondary); font-size: 12px; line-height: 1.4; }
+.ide-project-context-section.is-highlighted { border-left: 2px solid var(--rb-action); padding-left: 8px; }
 .ide-project-context-next {
   border-color: color-mix(in srgb, var(--rb-action) 34%, var(--rb-border));
   background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface));

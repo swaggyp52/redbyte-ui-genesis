@@ -901,7 +901,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
       <section className="ide-project-v3-command-board" data-testid="ide-project-command-board-v1">
       <header className="ide-project-v3-header" data-testid="ide-project-identity-strip">
         <div className="ide-project-v3-identity">
-          <p className="ide-surface-block-label">Project center · {projectContextLabel}</p>
           {identityEditing ? (
             <input
               ref={identityInputRef}
@@ -987,7 +986,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <span><small>Target</small><strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong></span>
             <span><small>Design</small><strong>{designNodeCount} components · {reusableModuleNames.length + 1} modules</strong></span>
             <span title={simulationSourceDetail}><small>Simulation</small><strong>{projectVerifyState === 'trace' ? 'Observed' : health.lastVerify && !health.dirtySinceVerify ? 'Current' : health.dirtySinceVerify ? 'Stale' : 'Not run'} · {scenarioCount} scenarios</strong></span>
-            <span><small>Readiness</small><strong>{readinessLabel}</strong></span>
             <span><small>Storage</small><strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong></span>
             {fidelityLabel ? <span data-testid="ide-project-import-fidelity"><small>Import</small><strong>{fidelityLabel}</strong></span> : null}
           </div>
@@ -1066,28 +1064,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
         data-testid="ide-project-professional-overview"
         aria-label="Current project overview"
       >
-        <header className="ide-project-v3-workspace-header">
-          <div>
-            <p className="ide-surface-block-label">Project workspace</p>
-            <h2>Sources, structure, and next actions</h2>
-          </div>
-          <p>Inspect what belongs to the project, understand its interface, and continue where work remains.</p>
-          <div
-            className={`ide-project-evidence-tier is-${behavioralEvidenceTier}`}
-            data-testid="ide-project-simulation-evidence-tier"
-          >
-            <span>Behavioral evidence</span>
-            <strong>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</strong>
-            <small>
-              {behavioralEvidenceTier === 'validated'
-                ? 'Current simulation with passing optional checks'
-                : behavioralEvidenceTier === 'simulated'
-                  ? 'Current simulation trace; checks are absent or not all passing'
-                  : 'No current simulation evidence'}
-            </small>
-          </div>
-        </header>
-
         <div className="ide-project-workbench-grid" data-testid="ide-project-workbench-grid">
           <aside className="ide-project-explorer" data-testid="ide-project-explorer">
             <header><span>Project explorer</span><strong>{projectName}</strong></header>
@@ -1223,22 +1199,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               </strong>
               <p>{missingRequiredRows.length > 0 ? `Assign ${missingRequiredRows.slice(0, 3).map(getStudentFacingIoLabel).join(', ')} in Board & Constraints.` : verifySummary}</p>
               {missingRequiredRows.length > 0 ? <IdeButton tone="secondary" onClick={onOpenHardware} testId="ide-project-context-map">Resolve assignments</IdeButton> : null}
-            </section>
-            <section className="ide-project-context-section">
-              <span>Recent activity</span>
-              <strong>{recentActivity.label}</strong>
-              <p>{recentActivity.detail}</p>
-            </section>
-            <section className="ide-project-context-section ide-project-context-runs">
-              <ProjectRunsList runs={runHistory} onOpenVerify={onOpenVerify} />
-            </section>
-            <section className="ide-project-context-section ide-project-context-actions">
-              <span>Project actions</span>
-              <IdeButton tone="ghost" onClick={onToggleChangeProject} testId="ide-project-context-change">Change project</IdeButton>
-              {onSaveNow ? <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-project-context-save">Save project</IdeButton> : null}
-              {onRestoreLastSave ? <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-project-context-restore">Restore last save</IdeButton> : null}
-              <IdeButton tone="ghost" onClick={onOpenExport} testId="ide-project-context-export">Open package</IdeButton>
-              <small>{exportPackageCurrent ? 'Package is current.' : exportAvailable ? exportSummary : 'Package is blocked by upstream work.'}</small>
             </section>
           </div>
         </div>
