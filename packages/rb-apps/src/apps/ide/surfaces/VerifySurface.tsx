@@ -127,6 +127,7 @@ import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping 
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { ManualBench } from './verify/ManualBench';
+import { CaseLab } from './verify/CaseLab';
 import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
 import { SimulationProviderBar } from '../components/SimulationProviderBar';
 import type { ProviderWaveform } from '../simulationProvider';
@@ -3253,6 +3254,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     handleRunWithPreflight(nextRunUsesAssertions);
   }, [handleRunWithPreflight, nextRunUsesAssertions]);
 
+  // Case Lab: toggle one case's expected output cell (unset -> 0 -> 1 -> unset).
+  const handleCaseSetExpected = useCallback(
+    (tick: number, signalId: string, next: 0 | 1 | null) => {
+      if (!onVectorsChange) return;
+      const updated = authoredVectors.map((vector) => {
+        if (vector.tick !== tick) return vector;
+        const expected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+        if (next === null) delete expected[signalId];
+        else expected[signalId] = next;
+        return { ...vector, expected };
+      });
+      onVectorsChange(updated);
+    },
+    [authoredVectors, onVectorsChange]
+  );
+
   const handleSetObserveMode = useCallback(() => {
     runModeTouchedByStudentRef.current = true;
     setNextRunUsesAssertions(false);
@@ -4591,6 +4608,47 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return evidence;
   }, [authoredVectors, lastRun, runRows, sessionShowsCompareEvidence, testbenchEvidenceIsStale]);
+  // Case Lab observed + verdict, resilient to the run's canonical output-signal
+  // keys (e.g. the report row "ld0carry" for the output field "ld0"): a run row
+  // belongs to an output field when either normalized key contains the other.
+  const caseLabData = useMemo(() => {
+    const observed: Record<number, Record<string, string>> = {};
+    const verdict: Record<number, StimulusCaseEvidenceState> = {};
+    const rowsByTick = new Map<number, typeof runRows>();
+    for (const row of runRows) {
+      const bucket = rowsByTick.get(row.tick);
+      if (bucket) bucket.push(row);
+      else rowsByTick.set(row.tick, [row]);
+    }
+    const fieldMatchesSignal = (fieldId: string, signal: string) => {
+      const a = normalizeFieldId(fieldId);
+      const b = normalizeFieldId(signal);
+      return a === b || a.includes(b) || b.includes(a);
+    };
+    for (const vector of authoredVectors) {
+      const rows = rowsByTick.get(vector.tick) ?? [];
+      const obs: Record<string, string> = {};
+      let anyChecked = false;
+      let anyFail = false;
+      for (const field of outputFields) {
+        const match = rows.find((row) => fieldMatchesSignal(field.id, row.signal));
+        if (match?.actual != null && match.actual !== '-') obs[field.id] = match.actual;
+        const authored = (vector.expected ?? {})[field.id];
+        if (match && authored != null) {
+          anyChecked = true;
+          if (match.status === 'fail') anyFail = true;
+        }
+      }
+      observed[vector.tick] = obs;
+      if (!lastRun) verdict[vector.tick] = 'not-run';
+      else if (testbenchEvidenceIsStale) verdict[vector.tick] = 'stale';
+      else if (anyFail) verdict[vector.tick] = 'fail';
+      else if (anyChecked) verdict[vector.tick] = 'pass';
+      else if (Object.keys(obs).length > 0) verdict[vector.tick] = 'observed';
+      else verdict[vector.tick] = 'not-run';
+    }
+    return { observed, verdict };
+  }, [authoredVectors, lastRun, outputFields, runRows, testbenchEvidenceIsStale]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
@@ -5825,7 +5883,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             source={generatedTestbenchSource}
           />
-        ) : (
+        ) : isSequentialRun ? (
           <ScenarioComposerWorkbench
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             vectors={authoredVectors}
@@ -5837,6 +5895,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onVectorsChange={onVectorsChange}
             caseEvidenceByTick={testbenchCaseEvidenceByTick}
             observedValuesByTick={testbenchObservedValuesByTick}
+          />
+        ) : (
+          <CaseLab
+            inputFields={stimulusPanelInputFields}
+            outputFields={outputFields}
+            vectors={authoredVectors}
+            observedByTick={caseLabData.observed}
+            caseEvidenceByTick={caseLabData.verdict}
+            selectedTick={selectedTick}
+            onSelectCase={handleStimulusSelectedTickChange}
+            onSetExpected={handleCaseSetExpected}
+            onGenerateExhaustive={handleAutoGenerateVectors}
+            onRun={runVerification}
+            runLabel={compactCommandRunLabel}
+            runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
           />
         )}
         {studioMode !== 'bench' ? (

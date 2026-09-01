@@ -1,0 +1,228 @@
+import React, { useMemo, useState } from 'react';
+import { IdeButton } from '../../components/IdePrimitives';
+
+// Case Lab — the combinational simulation instrument. A single editable
+// truth-table grid: one row per test case, input columns, expected/observed
+// output columns, and a per-case verdict. This replaces the card-per-event
+// composition: the shape of the data is a table, so the instrument is a table.
+
+type Field = { readonly id: string; readonly label?: string };
+type Vector = {
+  readonly id?: string;
+  readonly tick: number;
+  readonly inputs: Record<string, number>;
+  readonly expected?: Record<string, unknown>;
+};
+export type CaseEvidence = 'not-run' | 'stale' | 'observed' | 'pass' | 'fail';
+
+export interface CaseLabProps {
+  readonly inputFields: readonly Field[];
+  readonly outputFields: readonly Field[];
+  readonly vectors: readonly Vector[];
+  readonly observedByTick: Record<number, Record<string, string>>;
+  readonly caseEvidenceByTick: Record<number, CaseEvidence>;
+  readonly selectedTick: number | null;
+  readonly onSelectCase: (tick: number) => void;
+  readonly onSetExpected: (tick: number, signalId: string, next: 0 | 1 | null) => void;
+  readonly onGenerateExhaustive?: () => void;
+  readonly onRun?: () => void;
+  readonly runLabel?: string;
+  readonly runDisabled?: boolean;
+  readonly onTraceCase?: (tick: number) => void;
+}
+
+const VERDICT_LABEL: Record<CaseEvidence, string> = {
+  'not-run': '—',
+  stale: 'stale',
+  observed: 'observed',
+  pass: 'pass',
+  fail: 'fail',
+};
+
+function asBit(value: unknown): '0' | '1' | '' {
+  if (value === 1 || value === '1') return '1';
+  if (value === 0 || value === '0') return '0';
+  return '';
+}
+
+/** Numeric value of a case's inputs, MSB = first input field, for stable ordering. */
+function comboValue(vector: Vector, inputFields: readonly Field[]): number {
+  return inputFields.reduce(
+    (acc, field, index) => acc + ((vector.inputs[field.id] ? 1 : 0) << (inputFields.length - 1 - index)),
+    0
+  );
+}
+
+export const CaseLab: React.FC<CaseLabProps> = ({
+  inputFields,
+  outputFields,
+  vectors,
+  observedByTick,
+  caseEvidenceByTick,
+  selectedTick,
+  onSelectCase,
+  onSetExpected,
+  onGenerateExhaustive,
+  onRun,
+  runLabel,
+  runDisabled,
+  onTraceCase,
+}) => {
+  const [failuresOnly, setFailuresOnly] = useState(false);
+
+  const failCount = useMemo(
+    () => vectors.filter((v) => caseEvidenceByTick[v.tick] === 'fail').length,
+    [vectors, caseEvidenceByTick]
+  );
+
+  const rows = useMemo(() => {
+    const sorted = [...vectors].sort(
+      (a, b) => comboValue(a, inputFields) - comboValue(b, inputFields) || a.tick - b.tick
+    );
+    return failuresOnly ? sorted.filter((v) => caseEvidenceByTick[v.tick] === 'fail') : sorted;
+  }, [vectors, inputFields, failuresOnly, caseEvidenceByTick]);
+
+  const cycleExpected = (tick: number, signalId: string, current: '0' | '1' | '') => {
+    onSetExpected(tick, signalId, current === '' ? 0 : current === '0' ? 1 : null);
+  };
+
+  return (
+    <section className="ide-case-lab" data-testid="ide-case-lab">
+      <header className="ide-case-lab-bar">
+        <span className="ide-case-lab-title">Test cases</span>
+        <span className="ide-case-lab-count" data-testid="ide-case-lab-count">
+          {vectors.length} case{vectors.length === 1 ? '' : 's'}
+          {failCount ? ` · ${failCount} failing` : ''}
+        </span>
+        <span className="ide-case-lab-spacer" />
+        {onGenerateExhaustive ? (
+          <IdeButton tone="ghost" onClick={onGenerateExhaustive} testId="ide-case-lab-generate">
+            Generate all
+          </IdeButton>
+        ) : null}
+        <button
+          type="button"
+          className={`ide-case-lab-filter${failuresOnly ? ' is-active' : ''}`}
+          onClick={() => setFailuresOnly((prev) => !prev)}
+          disabled={failCount === 0}
+          aria-pressed={failuresOnly}
+          data-testid="ide-case-lab-failures-only"
+        >
+          Failures only
+        </button>
+        {onRun ? (
+          <IdeButton tone="primary" onClick={onRun} disabled={runDisabled} testId="ide-case-lab-run">
+            {runLabel ?? 'Run'}
+          </IdeButton>
+        ) : null}
+      </header>
+
+      <div className="ide-case-lab-scroll">
+        <table className="ide-case-lab-table" data-testid="ide-case-lab-table">
+          <thead>
+            <tr className="ide-case-lab-grouphead">
+              <th className="ide-case-lab-num" rowSpan={2} scope="col">#</th>
+              <th className="ide-case-lab-group ide-case-lab-group--in" colSpan={inputFields.length} scope="colgroup">
+                Inputs
+              </th>
+              {outputFields.map((field) => (
+                <th
+                  key={field.id}
+                  className="ide-case-lab-group ide-case-lab-group--out"
+                  colSpan={2}
+                  scope="colgroup"
+                >
+                  {field.label ?? field.id}
+                </th>
+              ))}
+              <th className="ide-case-lab-result" rowSpan={2} scope="col">Result</th>
+            </tr>
+            <tr className="ide-case-lab-colhead">
+              {inputFields.map((field) => (
+                <th key={field.id} className="ide-case-lab-in" scope="col">{field.label ?? field.id}</th>
+              ))}
+              {outputFields.map((field) => (
+                <React.Fragment key={field.id}>
+                  <th className="ide-case-lab-exp" scope="col">exp</th>
+                  <th className="ide-case-lab-obs" scope="col">obs</th>
+                </React.Fragment>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td className="ide-case-lab-empty" colSpan={2 + inputFields.length + outputFields.length * 2}>
+                  {failuresOnly ? 'No failing cases.' : 'No cases yet — Generate all to enumerate every input combination.'}
+                </td>
+              </tr>
+            ) : (
+              rows.map((vector, index) => {
+                const evidence = caseEvidenceByTick[vector.tick] ?? 'not-run';
+                const isSelected = vector.tick === selectedTick;
+                return (
+                  <tr
+                    key={vector.id ?? vector.tick}
+                    className={`ide-case-lab-row is-${evidence}${isSelected ? ' is-selected' : ''}`}
+                    data-testid={`ide-case-lab-row-${vector.tick}`}
+                    aria-selected={isSelected}
+                    onClick={() => onSelectCase(vector.tick)}
+                  >
+                    <td className="ide-case-lab-num">{index}</td>
+                    {inputFields.map((field) => (
+                      <td key={field.id} className="ide-case-lab-in">
+                        <code>{asBit(vector.inputs[field.id]) || '0'}</code>
+                      </td>
+                    ))}
+                    {outputFields.map((field) => {
+                      const exp = asBit(vector.expected?.[field.id]);
+                      const obs = asBit(observedByTick[vector.tick]?.[field.id]);
+                      const cellFail = evidence === 'fail' && exp !== '' && obs !== '' && exp !== obs;
+                      return (
+                        <React.Fragment key={field.id}>
+                          <td className="ide-case-lab-exp">
+                            <button
+                              type="button"
+                              className={`ide-case-lab-exp-btn${exp ? ' is-set' : ''}`}
+                              data-testid={`ide-case-lab-exp-${vector.tick}-${field.id}`}
+                              title={`Expected ${field.label ?? field.id} — click to set 0 / 1 / none`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                cycleExpected(vector.tick, field.id, exp);
+                              }}
+                            >
+                              <code>{exp || '·'}</code>
+                            </button>
+                          </td>
+                          <td className={`ide-case-lab-obs${cellFail ? ' is-fail' : ''}`}>
+                            <code>{obs || '·'}</code>
+                          </td>
+                        </React.Fragment>
+                      );
+                    })}
+                    <td className="ide-case-lab-result">
+                      <span className={`ide-case-lab-verdict is-${evidence}`}>{VERDICT_LABEL[evidence]}</span>
+                      {evidence === 'fail' && onTraceCase ? (
+                        <button
+                          type="button"
+                          className="ide-case-lab-trace"
+                          data-testid={`ide-case-lab-trace-${vector.tick}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onTraceCase(vector.tick);
+                          }}
+                        >
+                          Trace
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+};
