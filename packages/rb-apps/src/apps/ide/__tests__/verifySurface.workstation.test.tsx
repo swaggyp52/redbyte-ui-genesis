@@ -458,7 +458,7 @@ describe('VerifySurface workstation controls', () => {
     );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
     expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
-    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('evaluates 1 optional check');
+    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('Check filled expected outputs');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
@@ -1258,10 +1258,18 @@ describe('VerifySurface workstation controls', () => {
       'Checked PASS/FAIL evidence is inconclusive'
     );
     expect(view.getByTestId('ide-vcb-workspace-checks')).toBeTruthy();
-    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
+    // The structural block must NOT silently downgrade the Compare intent to
+    // Observe. Compare stays selected but marked blocked, and the Run action is
+    // disabled — the student runs Observe only by choosing it explicitly.
+    expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
+    expect((view.getByTestId('ide-vcb-use-saved-checks') as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Compare blocked');
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(true);
     expect(view.queryByTestId('ide-verify-repair-panel')).toBeNull();
     expect(view.queryByTestId('ide-verify-results-guidance')).toBeNull();
 
+    // Explicitly switching to Observe re-enables Run as an ungraded trace run.
+    fireEvent.click(view.getByTestId('ide-vcb-observe-only'));
     fireEvent.click(view.getByTestId('ide-vcb-run'));
     expect(onRunVerification).toHaveBeenCalledWith(
       expect.objectContaining({ assertionMode: false, runKind: 'trace' })
@@ -1427,7 +1435,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(view.getByTestId('ide-vcb-workspace-replay')).toHaveAttribute('aria-selected', 'true');
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain(
-      'evaluates 2 optional checks'
+      'Check filled expected outputs'
     );
     expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
 
@@ -1517,7 +1525,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain(
-      'evaluates 2 optional checks'
+      'Check filled expected outputs'
     );
     fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
     expect(getByTestId('ide-vcb-workspace-checks')).toHaveAttribute('aria-selected', 'true');

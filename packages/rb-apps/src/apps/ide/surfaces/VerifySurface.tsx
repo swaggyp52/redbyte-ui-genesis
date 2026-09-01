@@ -565,6 +565,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       customVectors.filter((vector) => hasAssertedExpectedEntries(vector.expected ?? {})).length,
     [authoredVectors, customVectors]
   );
+  // Compare can only execute when the student has authored at least one expected
+  // output AND the Design is not structurally blocked. This is the single gate for
+  // the Observe/Compare toggle, the Run action, and the run itself — a blocked
+  // Compare keeps its selected intent and auto-restores when Design is repaired.
+  const compareAvailable = totalExpectedCaseCount > 0 && !gradingBlockedByDesign;
   const totalAssertedCheckCount = useMemo(
     () =>
       [...authoredVectors, ...customVectors].reduce(
@@ -788,13 +793,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [vectorCollectionSignature]);
 
   useEffect(() => {
-    if (gradingBlockedByDesign) {
-      setNextRunUsesAssertions(false);
-      return;
-    }
+    // Seed the initial run intent only. Do NOT silently switch a student's chosen
+    // Compare intent to Observe when the Design becomes structurally blocked — the
+    // intent stays Compare (shown as blocked) and execution is gated by
+    // compareAvailable, so Compare auto-restores when the Design is repaired.
     if (lastRun || runModeTouchedByStudentRef.current) return;
     setNextRunUsesAssertions(totalExpectedCaseCount > 0);
-  }, [gradingBlockedByDesign, lastRun, totalExpectedCaseCount]);
+  }, [lastRun, totalExpectedCaseCount]);
 
   const canonicalWaveformSignalByRawKey = useMemo(
     () =>
@@ -3227,7 +3232,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const handleRunWithPreflight = useCallback(
     (useAssertionsForNextRun: boolean = nextRunUsesAssertions) => {
       if (gradingBlockedByDesign && useAssertionsForNextRun) {
-        setNextRunUsesAssertions(false);
+        // Compare is blocked by a structural Design issue. Keep the Compare intent
+        // selected and let the primary status explain the block — never silently
+        // downgrade to an Observe run.
         return;
       }
       if (someVectorsOrphaned && useAssertionsForNextRun) {
@@ -3240,8 +3247,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   const runVerification = useCallback(() => {
-    handleRunWithPreflight(totalExpectedCaseCount > 0 && !gradingBlockedByDesign);
-  }, [gradingBlockedByDesign, handleRunWithPreflight, totalExpectedCaseCount]);
+    // Honor the student's selected run intent. Compare executes only when it is
+    // available; when Compare is intended but blocked, handleRunWithPreflight
+    // no-ops (and the Run action is disabled) rather than running a silent Observe.
+    handleRunWithPreflight(nextRunUsesAssertions);
+  }, [handleRunWithPreflight, nextRunUsesAssertions]);
 
   const handleSetObserveMode = useCallback(() => {
     runModeTouchedByStudentRef.current = true;
@@ -3249,10 +3259,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, []);
 
   const handleSetCompareMode = useCallback(() => {
-    if (gradingBlockedByDesign) return;
+    // Selecting Compare records the student's intent even when the Design is
+    // structurally blocked — the toggle then shows Compare as blocked and the
+    // primary status explains why, rather than the intent silently reverting.
     runModeTouchedByStudentRef.current = true;
     setNextRunUsesAssertions(true);
-  }, [gradingBlockedByDesign]);
+  }, []);
 
   const handleKeepOlderReference = useCallback(() => {
     setNextRunUsesAssertions(true);
@@ -5318,24 +5330,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
         <VerifyCommandBar
-          isCompareMode={nextRunIsCompare && !gradingBlockedByDesign}
+          isCompareMode={nextRunUsesAssertions}
           onSetObserve={handleSetObserveMode}
           onSetCompare={handleSetCompareMode}
-          compareAvailable={totalExpectedCaseCount > 0 && !gradingBlockedByDesign}
+          compareAvailable={compareAvailable}
           compareUnavailableReason={
             gradingBlockedByDesign
               ? 'Repair the structural Design issue before running Compare.'
-              : undefined
+              : totalExpectedCaseCount === 0
+                ? 'Author at least one expected output to compare against.'
+                : undefined
           }
           onRun={runVerification}
           runLabel={
-            gradingBlockedByDesign
-              ? 'Run Observe'
+            nextRunUsesAssertions && !compareAvailable
+              ? 'Compare blocked'
               : runProofIsStale
                 ? 'Rerun simulation'
                 : compactCommandRunLabel
           }
-          runDisabled={runState === 'running'}
+          runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
           runPulsing={readyDraftCanRun}
           needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
           onAuthorExpectedOutputs={handleEditExpectedOutputs}

@@ -101,6 +101,11 @@ export interface VerifyCommandBarProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
+  isCompareMode,
+  onSetObserve,
+  onSetCompare,
+  compareAvailable,
+  compareUnavailableReason,
   onRun,
   runLabel,
   runDisabled,
@@ -218,6 +223,40 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         </div>
 
         <div
+          className="ide-vcb-group ide-vcb-group--intent"
+          data-testid="ide-vcb-run-intent"
+        >
+          <div className="ide-vcb-mode-toggle" role="group" aria-label="Run intent">
+            <button
+              type="button"
+              className={`ide-vcb-mode-btn${!isCompareMode ? ' is-active' : ''}`}
+              aria-pressed={!isCompareMode}
+              onClick={onSetObserve}
+              data-testid="ide-vcb-observe-only"
+              title="Run the circuit and record observed outputs. No checks are graded."
+            >
+              Observe
+            </button>
+            <button
+              type="button"
+              className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}${!compareAvailable ? ' is-blocked' : ''}`}
+              aria-pressed={isCompareMode}
+              disabled={!compareAvailable}
+              onClick={onSetCompare}
+              data-testid="ide-vcb-use-saved-checks"
+              data-blocked={!compareAvailable ? 'true' : undefined}
+              title={
+                !compareAvailable
+                  ? compareUnavailableReason ?? 'Author at least one expected output to compare against.'
+                  : 'Run the circuit and compare observed outputs against your saved checks.'
+              }
+            >
+              Compare expected output
+            </button>
+          </div>
+        </div>
+
+        <div
           className="ide-vcb-group ide-vcb-group--actions ide-vcb-run-authority"
           data-testid="ide-vcb-run-authority"
         >
@@ -235,9 +274,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         </div>
 
         <p className="ide-vcb-mode-explainer" data-testid="ide-vcb-mode-explainer">
-          {configuredCheckCount > 0
-            ? `Runs the circuit and evaluates ${configuredCheckCount} optional check${configuredCheckCount === 1 ? '' : 's'}.`
-            : 'Runs the circuit and records observed values. No checks are required.'}
+          {isCompareMode
+            ? 'Check filled expected outputs against this run.'
+            : 'Record observed outputs without grading expected values.'}
         </p>
       </div>
     </div>

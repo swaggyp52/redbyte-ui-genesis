@@ -7,7 +7,7 @@ import { VerifyCommandBar } from '../surfaces/verify/VerifyCommandBar';
 afterEach(cleanup);
 
 describe('Simulation Studio command authority', () => {
-  it('keeps one context-aware run command beside the four work lenses', () => {
+  it('keeps one context-aware run command beside the five work lenses', () => {
     const onRun = vi.fn();
     const view = render(
       <VerifyCommandBar
@@ -26,7 +26,9 @@ describe('Simulation Studio command authority', () => {
     );
 
     const commandBar = view.getByTestId('ide-verify-command-bar');
-    expect(within(commandBar).getAllByRole('tab')).toHaveLength(4);
+    // Five workspace lenses: Timeline, Bench, Waveform, Checks, Testbench.
+    // (The Bench lens was added after this contract's original "four lenses".)
+    expect(within(commandBar).getAllByRole('tab')).toHaveLength(5);
     expect(within(commandBar).getAllByTestId('ide-vcb-run')).toHaveLength(1);
     expect(view.getByTestId('ide-vcb-run').textContent).toBe('Rerun simulation');
 
