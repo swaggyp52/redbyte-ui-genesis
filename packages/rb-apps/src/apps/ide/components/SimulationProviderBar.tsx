@@ -34,68 +34,48 @@ export interface SimulationProviderBarProps {
   readonly nativeRunLabel?: string | null;
 }
 
-const TIER_NOTE: Record<string, string> = {
-  'browser-e0': 'RedByte executes the browser logic model only — not Vivado, not hardware.',
-  'imported-external': 'External evidence — replayed, never executed. No imported HDL or Tcl runs.',
-};
-
+/**
+ * Provider provenance is a compact concern, not a full-width banner. With only the
+ * native RedByte simulator (no imported waveform) there is nothing to choose, so
+ * this renders nothing — the external Vivado/hardware boundary is stated once in
+ * Package, not repeated on every Simulate view. A compact source toggle appears
+ * only when an imported waveform is available to switch to.
+ */
 export const SimulationProviderBar: React.FC<SimulationProviderBarProps> = ({
   hasImportedWaveform,
   importedProvider,
   activeProvider,
   onSelectProvider,
-  nativeRunLabel,
 }) => {
+  if (!hasImportedWaveform) return null;
   const imported = importedProvider ?? importedVcdProvider('imported.vcd');
-  const providers: Array<{ info: SimulationProviderInfo; enabled: boolean }> = [
-    { info: BROWSER_LOGIC_PROVIDER, enabled: true },
-    { info: imported, enabled: hasImportedWaveform },
-  ];
-  const active = providers.find((p) => p.info.kind === activeProvider)?.info ?? BROWSER_LOGIC_PROVIDER;
+  const providers: SimulationProviderInfo[] = [BROWSER_LOGIC_PROVIDER, imported];
 
   return (
-    <section className="ide-sim-provider-bar" data-testid="ide-sim-provider-bar" aria-label="Simulation provider">
-      <header className="ide-sim-provider-head">
-        <span className="ide-sim-provider-title">Simulation provider</span>
-        <span className="ide-sim-provider-active" data-testid="ide-sim-provider-active">
-          {active.displayName}
-        </span>
-      </header>
-
-      <div className="ide-sim-provider-chips" role="radiogroup" aria-label="Choose simulation provider">
-        {providers.map(({ info, enabled }) => {
-          const isActive = info.kind === activeProvider;
-          return (
-            <button
-              key={info.kind}
-              type="button"
-              role="radio"
-              aria-checked={isActive}
-              className={`ide-sim-provider-chip${isActive ? ' is-active' : ''}`}
-              data-testid={`ide-sim-provider-${info.kind}`}
-              data-tier={info.evidenceTier}
-              disabled={!enabled}
-              onClick={() => enabled && onSelectProvider(info.kind)}
-              title={enabled ? info.evidenceLabel : 'Load a VCD to enable this provider'}
-            >
-              <span className="ide-sim-provider-chip-name">{info.displayName}</span>
-              <span className={`ide-sim-provider-tier is-${info.evidenceTier}`}>
-                {info.evidenceTier === 'browser-e0' ? 'Browser-E0' : 'Imported evidence'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <p className="ide-sim-provider-provenance" data-testid="ide-sim-provenance">
-        <strong>{active.evidenceLabel}.</strong> {TIER_NOTE[active.evidenceTier]}
-        {active.kind === 'browser-logic' && nativeRunLabel ? (
-          <span className="ide-sim-provider-run" data-testid="ide-sim-provenance-run"> Current run: {nativeRunLabel}.</span>
-        ) : null}
-        {active.kind === 'imported-vcd' && !hasImportedWaveform ? (
-          <span className="ide-sim-provider-hint"> Load a .vcd in the Analyzer below to view its waveform.</span>
-        ) : null}
-      </p>
-    </section>
+    <div
+      className="ide-sim-provider-strip"
+      data-testid="ide-sim-provider-bar"
+      role="radiogroup"
+      aria-label="Simulation source"
+    >
+      <span className="ide-sim-provider-strip-label">Source</span>
+      {providers.map((info) => {
+        const isActive = info.kind === activeProvider;
+        return (
+          <button
+            key={info.kind}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            className={`ide-sim-provider-pill${isActive ? ' is-active' : ''}`}
+            data-testid={`ide-sim-provider-${info.kind}`}
+            onClick={() => onSelectProvider(info.kind)}
+            title={info.evidenceLabel}
+          >
+            {info.kind === 'browser-logic' ? 'RedByte simulator' : 'Imported .vcd'}
+          </button>
+        );
+      })}
+    </div>
   );
 };

@@ -7228,16 +7228,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 : null
           }
         />
-        {/* ── Imported waveform Analyzer: external VCD evidence, replayed but never
-             executed. Independent of the native verify run and its modes. ── */}
-        <VcdAnalyzerPanel
-          waveform={importedWaveform}
-          config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
-          onImportVcd={onImportVcd ?? (() => {})}
-          onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
-          onClear={onClearImportedWaveform ?? (() => {})}
-          isActiveProvider={activeSimProvider === 'imported-vcd'}
-        />
+        {/* Imported waveform Analyzer: an advanced, external-evidence feature. It
+            occupies the workspace only once a .vcd is actually loaded — on a native
+            project it stays out of the way (Load .vcd lives in the More menu). */}
+        {importedWaveform ? (
+          <VcdAnalyzerPanel
+            waveform={importedWaveform}
+            config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
+            onImportVcd={onImportVcd ?? (() => {})}
+            onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
+            onClear={onClearImportedWaveform ?? (() => {})}
+            isActiveProvider={activeSimProvider === 'imported-vcd'}
+          />
+        ) : null}
       </IdePanel>
     </IdeSurfaceLayout>
   );

@@ -190,7 +190,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       <div className="ide-vcb-row ide-vcb-row--primary">
         <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
           <div className="ide-vcb-mode-toggle" role="tablist" aria-label="Simulation Studio workspace">
-            {(['scenario', 'bench', 'replay', 'checks', 'testbench'] as const).map((mode) => (
+            {(['scenario', 'bench', 'replay', 'checks'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
