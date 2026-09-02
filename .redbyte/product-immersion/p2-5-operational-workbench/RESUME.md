@@ -4,6 +4,69 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-02 — P2.5D instrument-grade workbench convergence: shell → Project → Design landed
+
+**Status: INTERIM REDBYTE FABLE 5.1 WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
+HEAD `1451f73c6` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+`2ef5e5ee8`. Safety tag `safety/redbyte-before-expert-ui-reconstruction-a22a6bb8d`.
+Recovery bundle of the interrupted dirty state:
+`.redbyte/product-immersion/p2-5-operational-workbench/recovery-fable51-a22a6bb8d/`.
+
+**Commits (newest first):**
+  - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
+  - `106d1f754 feat(design): schematic instrument — ANSI symbols, orthogonal nets, one toolbar, property-grid inspector`
+  - `b635fba1f feat(project): replace the loaded-project dashboard with an explorer + real documents`
+  - `54f2dafdd feat(shell): expert workbench frame — command bar, workspace rail, document host, status bar`
+
+**Landed (browser-proven at 1440×900 and 1366×768, no body scroll, no console errors):**
+
+1. Shared shell: 32px command bar with real menus (`WorkbenchCommandBar`), 56px workspace
+   rail, typed multi-document host (`workbenchDocuments.ts` / `workbenchDocumentStore.ts` /
+   `useWorkbenchDocumentHost.ts`), document tab strip, 22px status bar, global
+   `engineeringSelection.ts` read-model. Visual owner `ide/workbench-instrument-system.css`
+   (`--wb-*` tokens, wb-toolbar/toolwindow/tree/table/propgrid/menu/btn, all `.ide-root`
+   scoped, no !important).
+2. Project: explorer + real documents (Overview / Sources / Source file / Compile order),
+   property inspector, Build Fresh + Open Starter in-app dialogs. Old dashboard owners deleted.
+3. Design: schematic renderer in rb-logic-view (`symbols/portGeometry.ts`,
+   `symbols/ansiSymbols.ts`, `routing/orthogonalRouter.ts`, `SchematicNodeView`,
+   `SchematicWireView`, `LogicCanvas renderer="schematic"`); Design chrome on the wb grammar
+   (header with module trail / wire cue / health chip / Edit-Live-Replay, one toolbar with
+   Layout menu, one-line starter strip, 28px library rows + board chips, flat inspector
+   sections with 24px rows, bottom panel closed by default with Problems rows / Output /
+   Simulation). Owners: `surfaces/design/design-schematic.css`,
+   `surfaces/design/design-instrument.css`. Legacy !important inspector cards and the dark
+   design context rule deleted from ide-root.css / ide-polish-pass.css / design-workbench-v3.css.
+4. Hierarchical 4-bit adder starter `four-bit-adder-hierarchical`
+   (`examples/hierarchicalRippleAdder.ts`: `FullAdderCell` × u_fa0..u_fa3, carry-chained,
+   SUM[2] → LD2/U19). Starters may ship a hierarchy; `stateFromExample` registers and
+   elaborates it. Router detours route the carry between stages.
+
+**Validation:** rb-apps tsc 783 (= baseline), rb-logic-view tsc 49 (= baseline);
+rb-logic-view suite green; Design suite 232 pass / 17 fail — 16 of those reproduce on the
+pre-Design baseline `b635fba1f` (worktree `.redbyte/worktrees/baseline-b635`, node_modules
+junctioned): canvasChrome ×2, registerFamily, multiWireNet, placementMode, selectionContext
+trace-group, fanout ×4, workstation ×5, continuedEditing dblclick rename. No new Design red.
+`git diff --check` clean.
+
+**Known hazards found (not fixed, out of scope this wave):**
+- A user module named like a built-in composite (e.g. `FullAdder`) gets the built-in's pin
+  metadata in the connectivity checker (reports `Cin` unwired while wires use `CIN`). The
+  starter avoids the collision by name; the registry should namespace native modules.
+- Inherited Design reds above predate this work; `ide-design-context-trace` never existed in
+  source at HEAD.
+
+**Next (in order):** Case Lab completion + delete `ScenarioComposerWorkbench` combinational
+path and the `ScenarioBuilderPanel` disclosure (migrate ~23 verifySurface tests); Timing Lab
+(Register1 / 2-bit counter); isolated Waveform instrument (`rb-wave`); Board & Constraints;
+Package; identity migration onto `signalIdentity.ts`; legacy deletion (ide-polish-pass /
+ide-root dead rules, obsolete testids); responsive / a11y hardening; the three bounded
+read-only reviewers; final review-gate captures.
+
+**Must not be reset:** everything above is committed; the dev server runs on :5173
+(`preview_start` name `playground`). Baseline worktree may be removed with
+`git worktree remove .redbyte/worktrees/baseline-b635` once no longer needed.
+
 ## 2026-09-01 — P2.5B workbench-core reconstruction, wave 1: identity seam + recon
 
 **Status: INTERIM. The engineering-identity foundation is landed and the whole
