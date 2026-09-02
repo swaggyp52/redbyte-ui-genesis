@@ -7,7 +7,7 @@
 ## 2026-09-02 — P2.5D instrument-grade workbench convergence: shell → Project → Design landed
 
 **Status: INTERIM REDBYTE FABLE 5.1 WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
-HEAD `8aed07518` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+HEAD `3a8eac05d` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
 `2ef5e5ee8`. Safety tag `safety/redbyte-before-expert-ui-reconstruction-a22a6bb8d`.
 Recovery bundle of the interrupted dirty state:
 `.redbyte/product-immersion/p2-5-operational-workbench/recovery-fable51-a22a6bb8d/`.
