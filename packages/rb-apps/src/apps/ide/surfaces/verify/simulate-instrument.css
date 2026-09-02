@@ -405,3 +405,7 @@
 .ide-root .rb-tl-expected-label { fill: var(--wb-text-2); font: 9px var(--wb-font-mono); }
 .ide-root .rb-timing-table-details { border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details > summary { padding: 4px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); cursor: default; }
+
+/* Cases/Timing document: the evidence row is the verdict line and repair panels, sized to content. */
+.ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] { grid-template-rows: minmax(0, 1fr) minmax(0, 36%); }
+.ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] > .rb-sim-region--waveform { max-height: 40%; }
