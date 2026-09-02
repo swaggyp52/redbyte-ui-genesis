@@ -2651,9 +2651,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
     const zoomX = (viewport.width - FIT_MARGIN * 2) / boundsWidth;
     const zoomY = (viewport.height - FIT_MARGIN * 2) / boundsHeight;
-    const rawZoom = Math.max(0.5, Math.min(2, Math.min(zoomX, zoomY)));
-    // Round down to the nearest shared step so the whole design always fits the sheet.
-    const nextZoom = [...FIT_ZOOM_STEPS].filter((step) => step <= rawZoom + 1e-6).pop() ?? snapFitZoom(rawZoom);
+    // Continuous fit: fill the sheet inside the margin, floored so a large design stays
+    // legible and capped so a small one does not balloon. Zoom in/out still steps.
+    const nextZoom = Math.round(Math.max(0.35, Math.min(1.6, Math.min(zoomX, zoomY))) * 100) / 100;
     const centerX = (bounds.minX + bounds.maxX) / 2;
     const centerY = (bounds.minY + bounds.maxY) / 2;
     setCamera({
@@ -6675,7 +6675,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 onClick={() => setActiveLeftDockTab(tab)}
                 data-testid={`ide-design-left-tab-${tab}`}
               >
-                {tab === 'components' ? 'Library' : tab === 'board' ? 'Board' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+                {tab === 'components' ? 'Components' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
               </button>
             ))}
           </div>
@@ -6734,77 +6734,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </section>
               ) : null}
               {/* Board Resources — first: primary destination for board-aware work */}
-              {filteredBoardGroups.length > 0 ? (
-                <section
-                  className="rb-lib-section"
-                  data-testid="ide-design-palette-section-board"
-                  data-collapsed={librarySectionOpen('board') ? 'false' : 'true'}
-                >
-                  <header className="rb-lib-section-header">
-                    <div className="rb-lib-section-title">
-                      <h4>{boardPaletteSection.title}</h4>
-                    </div>
-                    <div className="rb-lib-section-meta">
-                      <span className="rb-lib-count">{boardResourcesCount}</span>
-                      {renderLibrarySectionToggle('board', boardPaletteSection.title)}
-                    </div>
-                  </header>
-                  {librarySectionOpen('board') ? (
-                  <div className="rb-lib-board-groups" data-testid="ide-design-board-io-palette">
-                      {filteredBoardGroups.map((group) => (
-                        <div
-                          key={group.id}
-                          className="rb-lib-board-group"
-                          data-testid={`ide-design-board-group-${group.id}`}
-                        >
-                          <div className="rb-lib-subheader">
-                            <h5>{group.title}</h5>
-                            <span className="rb-lib-count">{group.entries.length}</span>
-                          </div>
-                          <div className="rb-lib-chips">
-                            {group.entries.map((entry) => {
-                              const isPlaced = isBoardAliasPlaced(entry);
-                              const isPending =
-                                pendingPlacement?.kind === 'board-io' &&
-                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
-                                pendingPlacement.boardIoEntry?.direction === entry.direction;
-                              const testId =
-                                entry.direction === 'in'
-                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
-                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
-                              return (
-                                <button
-                                  key={entry.alias}
-                                  className={`rb-lib-chip${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
-                                  type="button"
-                                  onClick={() => beginBoardIoPlacement(entry)}
-                                  onPointerDown={(event) =>
-                                    beginPaletteCardDrag(event, {
-                                      kind: 'board-io',
-                                      entry,
-                                      label: entry.alias,
-                                    })
-                                  }
-                                  data-testid={testId}
-                                  disabled={isPlaced}
-                                  title={
-                                    isPlaced
-                                      ? `${entry.alias} already placed`
-                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
-                                  }
-                                  aria-pressed={isPending}
-                                >
-                                  {entry.alias}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                  ) : null}
-                </section>
-              ) : null}
 
               {/* Inputs & Outputs — second: generic pins for abstract designs */}
               {filteredPaletteByCategory.io.length > 0 ? (
@@ -7114,8 +7043,80 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ) : (
             <SurfacePanel className="ide-design-project-browser" testId="ide-design-board-dock">
               <header className="ide-design-subheader">
-                <div><h3>Board I/O</h3><p>Project bindings shared with Board &amp; Constraints.</p></div>
+                <div><h3>Board I/O</h3></div>
               </header>
+              {/* Placeable board resources: switches, buttons, clock, LEDs, seven-segment. */}
+              {filteredBoardGroups.length > 0 ? (
+                <section
+                  className="rb-lib-section"
+                  data-testid="ide-design-palette-section-board"
+                  data-collapsed={librarySectionOpen('board') ? 'false' : 'true'}
+                >
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
+                      <h4>{boardPaletteSection.title}</h4>
+                    </div>
+                    <div className="rb-lib-section-meta">
+                      <span className="rb-lib-count">{boardResourcesCount}</span>
+                      {renderLibrarySectionToggle('board', boardPaletteSection.title)}
+                    </div>
+                  </header>
+                  {librarySectionOpen('board') ? (
+                  <div className="rb-lib-board-groups" data-testid="ide-design-board-io-palette">
+                      {filteredBoardGroups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="rb-lib-board-group"
+                          data-testid={`ide-design-board-group-${group.id}`}
+                        >
+                          <div className="rb-lib-subheader">
+                            <h5>{group.title}</h5>
+                            <span className="rb-lib-count">{group.entries.length}</span>
+                          </div>
+                          <div className="rb-lib-chips">
+                            {group.entries.map((entry) => {
+                              const isPlaced = isBoardAliasPlaced(entry);
+                              const isPending =
+                                pendingPlacement?.kind === 'board-io' &&
+                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
+                                pendingPlacement.boardIoEntry?.direction === entry.direction;
+                              const testId =
+                                entry.direction === 'in'
+                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
+                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
+                              return (
+                                <button
+                                  key={entry.alias}
+                                  className={`rb-lib-chip${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
+                                  type="button"
+                                  onClick={() => beginBoardIoPlacement(entry)}
+                                  onPointerDown={(event) =>
+                                    beginPaletteCardDrag(event, {
+                                      kind: 'board-io',
+                                      entry,
+                                      label: entry.alias,
+                                    })
+                                  }
+                                  data-testid={testId}
+                                  disabled={isPlaced}
+                                  title={
+                                    isPlaced
+                                      ? `${entry.alias} already placed`
+                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
+                                  }
+                                  aria-pressed={isPending}
+                                >
+                                  {entry.alias}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  ) : null}
+                </section>
+              ) : null}
               <div className="ide-design-board-binding-list">
                 {ioRows.map((row) => {
                   const resource = getBasys3BoardResource(row.pin);
@@ -7448,7 +7449,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   title={designStatusNote ?? authoringStatusLabel}
                 >
                   <span className="rb-design-health-dot" aria-hidden="true" />
-                  <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</span>
+                  <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">
+                    {totalAuthoringErrors > 0 ? 'Errors' : totalAuthoringWarnings > 0 ? 'Warnings' : 'Clean'}
+                  </span>
                   <code className="rb-design-health-counts" data-testid="ide-design-authoring-summary-counts">
                     {totalAuthoringErrors}E {totalAuthoringWarnings}W
                   </code>
@@ -7651,27 +7654,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
             {/* ── Expanded secondary toolbar ── */}
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
-            {starterContext ? (
-              <div className="rb-design-starter" data-testid="ide-design-starter-disclosure" aria-label={`Starter: ${starterContext.name}`}>
-                <section className="rb-design-starter-row" data-testid="ide-design-starter-banner">
-                  <span className="wb-toolbar-meta">Starter</span>
-                  <strong className="rb-design-starter-title" data-testid="ide-design-starter-banner-title">{starterContext.name}</strong>
-                  {starterContext.lab ? <code className="rb-design-starter-tag" data-testid="ide-design-starter-banner-lab">{starterContext.lab}</code> : null}
-                  {starterContext.concept ? <code className="rb-design-starter-tag">{starterContext.concept}</code> : null}
-                  {starterContext.summary || starterContext.expectedBehavior ? (
-                    <details className="rb-design-starter-brief" data-testid="ide-design-starter-details" data-hierarchy-surface="design" data-hierarchy-role="advanced">
-                      <summary className="wb-link" data-testid="ide-design-starter-details-summary">Brief</summary>
-                      <div className="rb-design-starter-brief-body" data-testid="ide-design-starter-details-body">
-                        {starterContext.summary ? <p className="ide-design-starter-banner-summary">{starterContext.summary}</p> : null}
-                        {starterContext.expectedBehavior ? <p className="ide-design-starter-banner-expected"><strong>Expected behavior:</strong> {starterContext.expectedBehavior}</p> : null}
-                      </div>
-                    </details>
-                  ) : null}
-                  <span className="wb-toolbar-spacer" />
-                  <span className="wb-toolbar-meta rb-design-starter-next" data-testid="ide-design-starter-banner-next-action">{starterNextAction}</span>
-                </section>
-              </div>
-            ) : null}
+            {/* Starter identity lives in the project name and the Project overview; no narration strip. */}
 
             {showWorkspaceStatusBar ? (
               <div

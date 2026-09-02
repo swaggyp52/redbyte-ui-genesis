@@ -13,8 +13,8 @@
   --rb-schematic-fill: #ffffff;
   --rb-schematic-fill-2: #eef2f7;
   --rb-schematic-fill-io: #e9eef5;
-  --rb-schematic-net: #3d4b60;
-  --rb-schematic-net-low: #8b98ab;
+  --rb-schematic-net: #2a3644;
+  --rb-schematic-net-low: #7f8ca0;
   --rb-schematic-accent: var(--rb-action);
   --rb-schematic-high: #0f6b5b;
   --rb-schematic-unknown: var(--rb-state-warning);
