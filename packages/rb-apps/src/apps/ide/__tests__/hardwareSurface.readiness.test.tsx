@@ -245,7 +245,7 @@ describe('HardwareSurface readiness', () => {
     });
 
     const workspace = getByTestId('ide-hw-board-workspace');
-    expect(workspace.textContent).toContain('Plan Basys3 I/O and constraint intent');
+    expect(workspace.textContent).toContain('Board & Constraints');
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table')).toBeTruthy();
     expect(getByTestId('ide-hw-selected-mapping-editor')).toBeTruthy();

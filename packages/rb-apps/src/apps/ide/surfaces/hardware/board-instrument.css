@@ -1,0 +1,107 @@
+/* Board & Constraints instrument — the mapping workspace with the board
+   central: assignments (left) · Basys3 board (centre) · selected-signal
+   editor and XDC consequence (right); the bring-up stage rail as one toolbar.
+   Composes wb-* primitives; owns only what is specific to Board. No !important. */
+
+.ide-root .rb-board { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+
+/* Header: title · progress · metric chips · next action. */
+.ide-root .rb-board-header { flex-wrap: wrap; row-gap: 4px; min-height: var(--wb-toolbar-h); height: auto; padding: 2px var(--wb-space-3); }
+.ide-root .rb-board-title { display: inline-flex; align-items: baseline; gap: 10px; min-width: 0; }
+.ide-root .rb-board-title .ide-surface-block-label { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-board-title > strong { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-mono); letter-spacing: 0.04em; }
+.ide-root .rb-board-metrics { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.ide-root .rb-board-metrics > div { display: inline-flex; align-items: baseline; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface-2); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-board-metrics > div span { color: var(--wb-text-3); }
+.ide-root .rb-board-metrics > div strong { color: var(--wb-text); }
+.ide-root .rb-board-metrics > div small { color: var(--wb-text-3); }
+.ide-root .rb-board-metrics > div.is-conflict strong { color: var(--wb-err); }
+.ide-root .rb-board-metrics.is-ready > div:first-child strong { color: var(--wb-ok); }
+.ide-root .rb-board-next { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--wb-text-sm); color: var(--wb-text-2); }
+.ide-root .rb-board-next p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-board-next .ide-button,
+.ide-root .rb-board-after .ide-button,
+.ide-root .rb-board-editor .ide-button,
+.ide-root .rb-board-lab .ide-button {
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-board-next .ide-button-primary,
+.ide-root .rb-board-editor .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+
+/* Workspace grid: assignments | board | side. */
+.ide-root .rb-board-grid { display: grid; grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(280px, 320px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-board-assignments { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--wb-border-strong); }
+.ide-root .rb-board-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ide-root .rb-board-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; border-left: 1px solid var(--wb-border-strong); }
+.ide-root .rb-board-section-header { display: flex; align-items: baseline; gap: 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-board-section-header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-board-section-header .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-board-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-board-section-header .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-board-section-header > strong { margin-left: auto; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
+
+/* Assignments table: 24px rows. */
+.ide-root .rb-board-table-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-board-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
+.ide-root .rb-board-table th,
+.ide-root .rb-board-table td { height: 24px; padding: 0 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-board-table thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-board-table td code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-board-group-row td { height: 22px; background: var(--wb-surface-2); border-top: 1px solid var(--wb-border-strong); }
+.ide-root .rb-board-group-heading { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-board-table tbody tr:hover td { background: var(--wb-hover-bg); }
+.ide-root .rb-board-table tbody tr[aria-selected='true'] td,
+.ide-root .rb-board-table tbody tr.is-selected td { background: var(--wb-accent-bg-strong); }
+.ide-root .rb-board-status { font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--wb-text-3); }
+.ide-root .rb-board-status.is-ready,
+.ide-root .rb-board-status.is-mapped { color: var(--wb-ok); }
+.ide-root .rb-board-status.is-conflict { color: var(--wb-err); }
+.ide-root .rb-board-status.is-missing { color: var(--wb-warn); }
+.ide-root .rb-board-row-action { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+
+/* Board stage: the Basys3 canvas fills the centre. */
+.ide-root .rb-board-canvas { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: auto; background: var(--rb-schematic-bg, #f4f6f9); }
+.ide-root .rb-board-canvas > * { max-width: 100%; }
+
+/* Side: selected-signal editor as key/value rows + consequence. */
+.ide-root .rb-board-editor { display: flex; flex-direction: column; gap: 6px; padding: 0 0 8px; border: 0; border-bottom: 1px solid var(--wb-border-strong); border-radius: 0; background: transparent; box-shadow: none; }
+.ide-root .rb-board-editor > .ide-copy { margin: 0 var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .rb-board-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; margin: 0 var(--wb-space-3); color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-board-field select,
+.ide-root .rb-board-field input { height: 22px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-board-consequence { margin: 0 var(--wb-space-3); color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .rb-board-editor-actions { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 var(--wb-space-3); }
+.ide-root .ide-hardware-basys3-binding-chain { display: grid; grid-template-columns: auto auto auto auto auto; align-items: center; gap: 4px 6px; margin: 0 var(--wb-space-3); font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .ide-hardware-basys3-binding-chain small { display: block; color: var(--wb-text-3); font: 600 10px var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .ide-hardware-basys3-binding-chain pre { grid-column: 1 / -1; margin: 4px 0 0; padding: 6px 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface-2); color: var(--wb-text); font: var(--wb-text-xs) / 16px var(--wb-font-mono); white-space: pre-wrap; }
+
+/* Lab strip and after-mapping toolbar. */
+.ide-root .rb-board-lab,
+.ide-root .rb-board-after { display: flex; align-items: center; gap: 8px; flex: none; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-board-lab > div,
+.ide-root .rb-board-after > div { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-board-lab .ide-surface-block-label,
+.ide-root .rb-board-after .ide-surface-block-label { margin: 0; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-board-lab h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-board-lab .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-board-after-actions { display: inline-flex; gap: 4px; margin-left: auto; }
+
+/* Stage rail (non-map modes): one toolbar with the mode segment. */
+.ide-root .rb-board-rail { flex-wrap: wrap; gap: 8px; }
+.ide-root .rb-board-rail-top { display: inline-flex; align-items: center; gap: 8px; }
+.ide-root .rb-board-rail-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .rb-board-chip { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface-2); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-board-modes { margin-left: auto; }
+.ide-root .rb-board-modes .wb-btn { gap: 4px; }
+.ide-root .rb-board-mode-status { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-board-modes .wb-btn.is-active .rb-board-mode-status { color: var(--wb-accent); }

@@ -77,9 +77,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-hardware-command-strip"]')).toBeNull();
-    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain(
-      'Map a logical signal to a Basys3 control'
-    );
+    expect(getByTestId('ide-hardware-mapping-progress')).toBeTruthy();
   });
 
   it('shows Complete state and full count when all required signals are mapped', () => {
