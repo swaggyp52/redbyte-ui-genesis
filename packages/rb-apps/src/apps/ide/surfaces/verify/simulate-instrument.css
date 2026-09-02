@@ -291,7 +291,8 @@
 .ide-root .ide-case-lab-note.is-warn { color: var(--wb-warn); }
 .ide-root .ide-case-lab-note-dismiss { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font-size: var(--wb-text-xs); cursor: pointer; }
 /* Waveform tab: the evidence deck becomes the document; cases shrink to a strip. */
-.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 168px) minmax(0, 1fr); }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr); grid-template-areas: 'evidence inspector'; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] > .rb-sim-region--waveform { border-top: 0; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { grid-template-rows: minmax(0, 1fr) minmax(0, 220px); }
 
 /* Timing Lab: events in time — a dense table plus an editor strip for the selected event. */

@@ -5839,6 +5839,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
         >
+        {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
+        {studioMode !== 'replay' ? (
         <VerifyStimulusRegion
           className="rb-sim-primary"
           data-panel-state="stable"
@@ -6112,6 +6114,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </details>
         ) : null}
         </VerifyStimulusRegion>
+        ) : null}
 
         <VerifyWaveformRegion>
           {isDraftSession ? (
