@@ -7,7 +7,7 @@
 ## 2026-09-02 — P2.5E signature engineering workbench convergence: Wave 1 landed, Waves 2–3 in flight
 
 **Status: INTERIM REDBYTE SIGNATURE WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
-HEAD `4e6aa285a` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+HEAD `c681a0f51` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
 `2ef5e5ee8` (ahead 45+, nothing pushed). Safety tag at the campaign start:
 `safety/redbyte-before-signature-workbench-76c673580`. Worktree clean at each commit below.
 
@@ -48,6 +48,27 @@ an expansion that enhances understanding. Chrome is not the signature; the relat
   input lanes, expected-over-observed output lanes; click drives / cycles checks; the events
   table is a closed disclosure.
 - `4e6aa285a` Waveform document is the trace instrument beside the evidence inspector (no case strip).
+- `048032cfd` Documents decide replay mode (never a prior run); Simulation Studio + workstation tests
+  migrated off the retired selector. `e9b16e2d9` Cases keeps a compact evidence deck (36% cap) —
+  the trace stage stays in Cases because 21 waveform-behaviour tests exercise it through the Cases
+  mount; the Waveform tab owns the full instrument without the grid.
+- `d0c804d41` Case Lab: arrow keys / Home / End move the selected case, F / Shift+F step failures,
+  ‹ Fail / Fail › beside Failures only; one scenario shows only the explorer header.
+**Wave 4 — physical + handoff (started):**
+- `0bc03c7aa` Board bring-up resolves EXPECTED_IO rows to LEDs through the index (no substring); the
+  constraint panel states the live mapping as the implicit active set ("Live mapping · 5 pins ·
+  active · packaged as top.xdc").
+- `fbf9fe77a` Package Handoff Overview document (tab "Handoff", opened from the Package toolbar):
+  hash, state, files/bytes, mapping completeness, simulation result, constraints, architecture
+  block view, mapping table, artifact manifest, warnings, proof boundary; print stylesheet; in-app
+  only, nothing added to the canonical ZIP.
+- `c681a0f51` The starter brief becomes project context (Project Overview: name, lab, concept,
+  next action, summary, expected behavior — absent when the project did not come from a starter);
+  the Board I/O tab carries its own search bound to the shared query, because the list moved but
+  the filter had not; the health chip keeps its informative states ("Blocking circuit issue",
+  "Empty canvas", "Add circuit I/O") and only the two "Ready for Simulate" branches became
+  "Clean" / "Review wiring". Ten Design tests migrated onto the new owners, two Project tests
+  added for the relocated brief.
 - `ac34055a0` Reviewer pass two (three bounded read-only reviewers on the Wave 1 captures; one
   Workflow, exactly three agents): Simulate Related (P0), honest case/tick naming, artifact port
   tokens in the Overview I/O table, reset lanes and changed-input truth in Timing, narrow-width
@@ -64,24 +85,37 @@ inspector "Live circuit · Paused"); backward-detour vertical legs one grid from
 (`orthogonalRouter.ts`); Package eyebrow truncation ("BUILD & EX…"); probe readout black band
 when probes are pinned (restyled, unverified with probes pinned).
 
-**Validation at `ac34055a0`:** rb-apps tsc 783 (= baseline) after every step; bounded sets:
-chrome/authority 23/23, Simulate 26 red (all inherited names; the 27th baseline red in
-`verifySurface.authoring` is now green), Design 16 red (= the 16 inherited names), Board 5 red
-(name-identical to baseline), Package 37 (= baseline count) with the migrated handoff test green,
-document host 11/11, Timing/Case/entry sets green. Migrated, not deleted: `workbenchChrome`
-(selection/target moved to the frame bar), `workflowStages.authority` (Run menu),
-`verifyCommandBar.actionRowHierarchy` / `studioRunAuthority` (documents own instruments),
-`exportSurface.handoff-states` (role guide, no narration card). Owed migrations: `designSurface.
-workstation` + `ideApp.labday-wiring` starter-banner assertions (strip deleted; starter identity
-lives in the project name / Project overview), `verifySurface.simulationStudio` "moves
-expected-output authoring into the optional Checks workspace" (Checks mode retired into Cases).
-Browser proof: Related from Design → Cases lands on the same signal; rail clicks publish; Compare
-opens the Waveform tab; timing lane clicks create events and checks; 44 captures re-run (no
-body scroll, 0 console errors at 1440×900 / 1366×768 / 125% / 200%).
+**Validation at `c681a0f51` (Node 20.19.0, the repo pin):**
 
-**Next (in order):** Case Lab reconstruction (compact scenario selector instead of the
-permanent rail when one scenario exists; keyboard navigation; multi-row ops; failure next/prev;
-run history); Waveform frame (Signal Explorer · Wave Canvas · Evidence Inspector; consolidate
+| Gate | Result | Baseline |
+| --- | --- | --- |
+| rb-apps typecheck | 779 errors | 783 — four fewer, none added |
+| rb-logic-view typecheck | 49 errors | 49 — unchanged |
+| classroom golden Basys3 export gate | PASS | byte-identical |
+| classroom golden Basys3 ALU export gate | PASS | byte-identical |
+| Design set (34 files) | 16 red / 269 pass | exactly the 16 inherited names |
+| Simulate set (32 files) | 22 red / 200 pass | subset of the inherited names |
+| Board set (6 files) | 5 red / 57 pass | name-identical to baseline |
+| Package set (6 files) | 37 red / 28 pass | baseline count |
+| Document host + Project workbench | 24 pass / 0 red | new |
+| Captures | 44 PNGs, 0 console errors, no body scroll | 1440×900 · 1366×768 · 125% · 200% |
+
+Every red is classified: it reproduces on the pre-campaign baseline, or it was migrated onto
+the new owner in the same commit that moved the behaviour. Nothing was deleted to go green.
+Migrated this campaign: `workbenchChrome` (selection and target moved to the frame bar),
+`workflowStages.authority` (Run menu), `verifyCommandBar.actionRowHierarchy` /
+`studioRunAuthority` and `verifySurface.simulationStudio` / `workstation` (documents own the
+instruments), `exportSurface.handoff-states` (role guide, no narration card),
+`designSurface.paletteDock` ×6 / `libraryRail` / `idleInspector` / `workstation` (Board I/O owns
+board resources; one categorized component list; no canvas starter narration), plus two new
+`projectWorkbench` tests for the relocated starter brief.
+
+**Claim boundary (unchanged):** Browser-E0 only. RedByte generated the package; Vivado
+synthesis, implementation, timing, bitstream, programming and physical observation have no
+evidence here. Format version stays 1. Both classroom goldens are byte-identical. Nothing was
+pushed; PR #85 untouched; `main` and the product branch untouched.
+
+**Next (in order):** Case Lab multi-row ops and run history; Waveform frame (Signal Explorer · Wave Canvas · Evidence Inspector; consolidate
 the four header rows; cursors A/B, next/prev transition; narrow-width lane alignment); retire
 `ScenarioBuilderPanel` sequential disclosure once sweep/hold/pulse move to lanes; Board workbench
 (one constraint authority, resource property grid, 200% centre); Package Handoff Overview
