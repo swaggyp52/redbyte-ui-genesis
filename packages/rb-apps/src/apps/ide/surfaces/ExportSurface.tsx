@@ -1712,17 +1712,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <p className="ide-surface-block-label">Build &amp; Export</p>
               <h2>{surfaceStatusTitle}</h2>
               <p className="rb-pkg-trust-reason">{trustReason}</p>
-              <div
-                className="rb-pkg-submission-answer"
-                data-testid="ide-export-submission-answer"
-                aria-label="What should I submit?"
-              >
-                <strong>What should I submit?</strong>
-                <span>
-                  Submit only the roles your instructor or LMS requests, commonly top.vhd and top.xdc. Add
-                  testbench.vhd, the project setup, or README files only when requested.
-                </span>
-              </div>
             </div>
             <div
               className="rb-pkg-decision-state"

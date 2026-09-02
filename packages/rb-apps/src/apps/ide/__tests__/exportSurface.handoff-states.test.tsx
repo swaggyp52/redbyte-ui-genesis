@@ -300,8 +300,8 @@ describe('ExportSurface handoff states', () => {
     }
   });
 
-  it('answers what to submit in the package decision while retaining the detailed role guide', () => {
-    const { getByTestId } = render(
+  it('keeps the detailed role guide without a narration card in the package decision', () => {
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="h1"
@@ -309,12 +309,8 @@ describe('ExportSurface handoff states', () => {
       />
     );
 
-    const inspector = getByTestId('ide-export-package-inspector-v1');
-    const answer = within(inspector).getByTestId('ide-export-submission-answer');
-    expect(answer.textContent).toContain('What should I submit?');
-    expect(answer.textContent).toContain('top.vhd');
-    expect(answer.textContent).toContain('top.xdc');
-    expect(answer.textContent).toContain('testbench.vhd');
+    // The decision block states the package's derived state; the role guide answers "what to submit".
+    expect(queryByTestId('ide-export-submission-answer')).toBeNull();
 
     const detailedGuide = getByTestId('ide-export-submission-guidance');
     expect(detailedGuide.textContent).toContain('Choose files by requested role');

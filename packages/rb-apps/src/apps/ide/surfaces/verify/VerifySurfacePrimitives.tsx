@@ -214,7 +214,7 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
           {primaryActionLabel && onPrimaryAction ? (
             <button
               type="button"
-              className="rb-wave-results-summary-action is-primary"
+              className="rb-wave-results-summary-action is-ghost"
               onClick={onPrimaryAction}
               data-testid={primaryActionTestId ?? 'ide-verify-results-summary-primary'}
             >

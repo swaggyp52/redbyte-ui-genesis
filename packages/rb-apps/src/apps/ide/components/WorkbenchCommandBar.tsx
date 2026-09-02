@@ -445,6 +445,7 @@ export function WorkbenchCommandBar<TContext>({
             aria-label="Open command palette"
             title="Command palette (Ctrl K)"
           >
+            <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="6" r="4" /><path d="M9 9l3.5 3.5" /></svg>
             <kbd>Ctrl K</kbd>
           </button>
         ) : null}

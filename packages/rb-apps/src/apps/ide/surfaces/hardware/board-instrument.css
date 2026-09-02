@@ -143,3 +143,10 @@
 @media (max-width: 899px) {
   .ide-root .rb-board-header .rb-board-metrics { margin-left: 0; flex-basis: 100%; }
 }
+
+/* binding chain on paper */
+.ide-root .rb-board-editor .ide-hardware-basys3-binding-chain { margin: 0; padding: 6px 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); box-shadow: none; overflow: auto; max-width: 100%; }
+.ide-root .rb-board-editor .ide-hardware-basys3-binding-chain * { color: inherit; background: transparent; text-shadow: none; }
+.ide-root .rb-board-editor .ide-hardware-basys3-binding-chain pre,
+.ide-root .rb-board-editor .ide-hardware-basys3-binding-chain code { white-space: pre-wrap; overflow-wrap: anywhere; font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-board-editor .ide-hardware-basys3-binding-chain [class*="label"], .ide-root .rb-board-editor .ide-hardware-basys3-binding-chain small { color: var(--wb-text-3); }

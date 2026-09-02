@@ -4740,8 +4740,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const publishSelection = useEngineeringSelection((state) => state.select);
   const continuityOrigin = studioMode === 'replay' ? 'waveform' : isSequentialRun ? 'timing' : 'cases';
   const relationshipIndex = useEngineeringRelationshipIndex();
+  // Simulate keys lanes by the normalized label; resolve through the relation the
+  // same way the selection publisher does (run signal, field id, label — exact only).
   const simRelated = selectedSignal
-    ? relationshipIndex.resolveRunSignal(selectedSignal) ?? relationshipIndex.resolveField(selectedSignal)
+    ? relationshipIndex.resolveRunSignal(selectedSignal) ??
+      relationshipIndex.resolveField(selectedSignal) ??
+      relationshipIndex.signals.find(
+        (entry) =>
+          normalizeSignalId(entry.label) === normalizeSignalId(selectedSignal) ||
+          normalizeSignalId(entry.fieldId) === normalizeSignalId(selectedSignal)
+      ) ??
+      null
     : null;
   const continuityMountedRef = useRef(false);
   useEffect(() => {
@@ -7351,9 +7360,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </>
           ) : (
             <>
-              <header><span>Inspector</span><strong>{selectedSignal ?? (selectedAuthoredEvent ? `Event ${selectedAuthoredEventIndex + 1}` : 'Select an event')}</strong></header>
+              <header><span>Inspector</span><strong>{selectedSignal ?? (selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : 'Select an event')}</strong></header>
               <dl>
-                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? `Event ${selectedAuthoredEventIndex + 1}` : '—'}</dd></div>
+                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : '—'}</dd></div>
                 <div><dt>Time</dt><dd>{selectedAuthoredEvent ? `t${selectedAuthoredEvent.tick}` : '—'}</dd></div>
                 <div><dt>Input changes</dt><dd>{selectedEventChangedInputs.length > 0 ? selectedEventChangedInputs.map((field) => field.label).join(', ') : 'None at this event'}</dd></div>
                 <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? '—'}</dd></div>
@@ -7406,7 +7415,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onClose={closeCreateCheckDialog}
             body={
               <section className="ide-verify-create-check-dialog">
-                <p className="ide-verify-create-check-event">At Event {selectedAuthoredEventIndex + 1} (t{selectedTick}):</p>
+                <p className="ide-verify-create-check-event">At t{selectedTick}:</p>
                 <div className="ide-verify-create-check-value" data-testid="ide-verify-create-check-preview">
                   <strong>{selectedCheckSignal}</strong>
                   <span>observed</span>

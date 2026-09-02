@@ -4,6 +4,7 @@ import { sameEngineeringObject, type EngineeringObjectRef } from '../../engineer
 import type { WorkbenchDocument } from '../../workbenchDocuments';
 import type { IdeMode } from '../../workflowStages';
 import { ArchitecturePreview } from './ArchitecturePreview';
+import { xdcPortToken } from '../../hardwareXdcPreview';
 import type { OverviewFact, ProjectMappingRowLike, ProjectProblem } from './projectWorkbenchModel';
 
 export interface ProjectOverviewDocumentProps {
@@ -198,7 +199,7 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
                       >
                         <td className="is-mono">{row.label}</td>
                         <td className="is-mono">{row.direction}</td>
-                        <td className="is-mono">{row.port}</td>
+                        <td className="is-mono" title="Artifact port in top.vhd / top.xdc">{xdcPortToken(row.label)}</td>
                         <td className={`is-mono${missing ? ' is-mismatch' : ''}`}>{row.pin.trim() || (row.required ? 'unmapped' : '—')}</td>
                         <td className="is-center">{row.required ? '●' : ''}</td>
                       </tr>

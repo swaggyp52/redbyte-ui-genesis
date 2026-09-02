@@ -188,3 +188,9 @@
 .ide-root .rb-pkg-decision h2 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); white-space: nowrap; }
 .ide-root .rb-pkg-decision p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-pkg-decision .rb-pkg-submission-answer { color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+
+/* narrow package */
+@media (max-width: 899px) {
+  .ide-root .rb-pkg-file-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40%) minmax(0, 1fr) auto; }
+  .ide-root .rb-pkg-file-workspace > * { min-width: 0; }
+}

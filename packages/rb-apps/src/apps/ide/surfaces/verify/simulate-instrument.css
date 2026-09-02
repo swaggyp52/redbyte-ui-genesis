@@ -369,8 +369,8 @@
 .ide-root .rb-timing-in-group { letter-spacing: 0.04em; }
 /* Narrow viewports: the Cases/Timing grid stacks; the toolbar wraps. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, 240px); grid-template-areas: 'cases' 'inspector' 'evidence'; }
-  .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); max-height: 200px; }
+  .ide-root .rb-sim-lab-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) minmax(0, 30%) minmax(0, 150px); grid-template-areas: 'cases' 'inspector' 'evidence'; }
+  .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
   .ide-root .rb-sim-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); }
 }
 

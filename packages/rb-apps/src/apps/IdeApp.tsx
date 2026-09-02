@@ -2514,6 +2514,10 @@ export const IdeApp: React.FC = () => {
       const relation = relationshipIndex.resolveField(selectedEngineeringObject.fieldId);
       if (relation) return describeSignalRelationPath(relation);
     }
+    if (selectedEngineeringObject.kind === 'case-tick') {
+      const scenario = scenarios.find((entry) => entry.id === selectedEngineeringObject.scenarioId);
+      return `${scenario?.name ?? selectedEngineeringObject.scenarioId} · t${selectedEngineeringObject.tick}`;
+    }
     if (selectedEngineeringObject.kind === 'node') {
       const relation = relationshipIndex.resolveNode(selectedEngineeringObject.nodeId);
       if (relation) return describeSignalRelationPath(relation);

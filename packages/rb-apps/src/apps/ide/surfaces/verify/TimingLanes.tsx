@@ -64,11 +64,16 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
     [clockFieldIds, inputFields]
   );
   const lanes = useMemo(() => {
-    const clocks = inputFields.filter((field) => clockFieldIds.has(field.id));
-    const resets = inputFields.filter((field) => !clockFieldIds.has(field.id) && isResetField(field));
-    const rest = inputFields.filter((field) => !clockFieldIds.has(field.id) && !isResetField(field));
+    const known = new Set(inputFields.map((field) => field.id));
+    const driven = new Set<string>();
+    for (const vector of ordered) for (const id of Object.keys(vector.inputs)) if (!known.has(id) && !clockFieldIds.has(id)) driven.add(id);
+    const extra: VerifyVectorDraftInput[] = Array.from(driven).map((id) => ({ id, label: id.toUpperCase() }));
+    const all = [...inputFields, ...extra];
+    const clocks = all.filter((field) => clockFieldIds.has(field.id));
+    const resets = all.filter((field) => !clockFieldIds.has(field.id) && isResetField(field));
+    const rest = all.filter((field) => !clockFieldIds.has(field.id) && !isResetField(field));
     return [...clocks, ...resets, ...rest];
-  }, [clockFieldIds, inputFields]);
+  }, [clockFieldIds, inputFields, ordered]);
 
   /** Held input value at a tick: the last event at or before it. */
   const inputAt = (fieldId: string, tick: number): 0 | 1 => {

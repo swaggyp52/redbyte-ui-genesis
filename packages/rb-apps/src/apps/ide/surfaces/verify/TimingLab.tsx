@@ -156,9 +156,10 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   const ensureEventAt = (tick: number): VerifyAuthorVector[] => {
     if (orderedVectors.some((vector) => vector.tick === tick)) return [...orderedVectors];
     const held = [...orderedVectors].filter((vector) => vector.tick < tick).at(-1);
-    const inputs = Object.fromEntries(
-      inputFields.map((field) => [field.id, held?.inputs[field.id] === 1 ? 1 : 0])
-    ) as Record<string, 0 | 1>;
+    const inputs = {
+      ...(held?.inputs ?? {}),
+      ...(Object.fromEntries(inputFields.map((field) => [field.id, held?.inputs[field.id] === 1 ? 1 : 0])) as Record<string, 0 | 1>),
+    } as Record<string, 0 | 1>;
     return [...orderedVectors, { id: nextEventId(orderedVectors), tick, inputs, expected: {} }].sort(
       (left, right) => left.tick - right.tick || left.id.localeCompare(right.id)
     );
@@ -189,9 +190,9 @@ export const TimingLab: React.FC<TimingLabProps> = ({
 
   const previous = selectedVector ? previousVector(orderedVectors, selectedVector) : null;
   const changedInputs = selectedVector
-    ? inputFields.filter(
-        (field) => (selectedVector.inputs[field.id] ?? 0) !== (previous?.inputs[field.id] ?? 0)
-      )
+    ? Array.from(new Set([...inputFields.map((field) => field.id), ...Object.keys(selectedVector.inputs), ...Object.keys(previous?.inputs ?? {})]))
+        .filter((id) => (selectedVector.inputs[id] ?? 0) !== (previous?.inputs[id] ?? 0))
+        .map((id) => inputFields.find((field) => field.id === id) ?? { id, label: id.toUpperCase() })
     : [];
   const eventState = selectedVector ? caseEvidenceByTick?.[selectedVector.tick] : undefined;
   const checkTotal = orderedVectors.reduce((n, v) => n + Object.keys(v.expected ?? {}).length, 0);

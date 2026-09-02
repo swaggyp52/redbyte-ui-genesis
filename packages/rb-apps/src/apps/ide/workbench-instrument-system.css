@@ -918,3 +918,12 @@
 .ide-root .rb-related-head code { font: 600 var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .rb-related-ambiguous { margin-left: auto; color: var(--wb-warn-text); }
 .ide-root .rb-related-detail { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* narrow frame bar */
+@media (max-width: 899px) {
+  .ide-root .wb-cmdbar-center { display: none; }
+  .ide-root .wb-cmdbar-project { max-width: 120px; }
+  .ide-root .wb-cmdbar-fact[data-testid='ide-topbar-target'] { display: none; }
+  .ide-root .wb-cmdbar-right kbd { display: none; }
+  .ide-root .wb-cmdbar-fact-label { display: none; }
+}
