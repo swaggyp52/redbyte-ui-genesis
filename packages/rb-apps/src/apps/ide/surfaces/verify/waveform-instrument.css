@@ -68,9 +68,6 @@
 .ide-root .rb-wave-frame,
 .ide-root .rb-wave-deck { display: flex; flex-direction: column; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
 .ide-root .rb-wave-stage { display: flex; flex-direction: column; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
-.ide-root .rb-wave-stage[data-state='fail'] .rb-wave-header { border-left: 3px solid var(--wb-err); }
-.ide-root .rb-wave-stage[data-state='pass'] .rb-wave-header { border-left: 3px solid var(--wb-ok); }
-.ide-root .rb-wave-stage[data-state='stale'] .rb-wave-header { border-left: 3px solid var(--wb-warn); }
 
 /* Header: label · case · tick · signal · watch · sequential badge. */
 .ide-root .rb-wave-header { padding-left: var(--wb-space-3); }

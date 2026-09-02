@@ -30152,13 +30152,6 @@ button:disabled,
   font-weight: 800;
 }
 
-[data-ide-mode-marker='design'] .ide-design-inspector-proof-boundary {
-  margin: 0;
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
 [data-ide-mode-marker='design'] .ide-design-inspector-action-grid {
   gap: 8px !important;
 }

@@ -885,15 +885,6 @@
   padding-bottom: 36px;
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-design-inspector-proof-boundary {
-  margin: 0;
-  padding: 10px;
-  border-left: 2px solid #66839a;
-  border-radius: 4px;
-  background: rgba(102, 131, 154, 0.08);
-}
-
 .ide-root .ide-design-inline-board-facts {
   display: grid;
   gap: 1px;
@@ -1121,29 +1112,6 @@
   box-shadow: none;
 }
 
-.ide-root .ide-project-v3 .ide-project-v3-next {
-  border: 1px solid color-mix(in srgb, var(--rb-action) 42%, var(--rb-border-default));
-  border-left: 3px solid var(--rb-action);
-  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface-1));
-  box-shadow: none;
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next-state {
-  color: var(--rb-accent);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next .ide-button {
-  border-color: var(--rb-action);
-  background: var(--rb-action);
-  color: #ffffff;
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next .ide-button:hover,
-.ide-root .ide-project-v3 .ide-project-v3-next .ide-button:focus-visible {
-  border-color: var(--rb-action-hover);
-  background: var(--rb-action-hover);
-}
-
 .ide-root .ide-project-v3 .ide-project-v3-meta {
   border-color: var(--rb-border-subtle);
 }
@@ -1245,10 +1213,6 @@
   background: transparent;
 }
 
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-next {
-  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface-1));
-}
-
 :root[data-redbyte-mode='ide'][data-rb-theme='dark']
   .ide-root
   .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
@@ -1276,12 +1240,6 @@
 :root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-identity {
   border-color: color-mix(in srgb, var(--rb-border-strong) 68%, var(--rb-border-default));
   background: var(--rb-surface-1);
-  box-shadow: none;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-next,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-next {
-  background: var(--rb-surface-2);
   box-shadow: none;
 }
 
