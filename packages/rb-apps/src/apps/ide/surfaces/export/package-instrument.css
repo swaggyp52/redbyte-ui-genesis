@@ -1,0 +1,190 @@
+/* Package instrument — Build & Export as a document: a status toolbar, the
+   package file tree, the artifact code viewer, and the handoff inspector as
+   key/value rows. Composes wb-* primitives; owns only what is specific to
+   Package. No !important. */
+
+.ide-root .rb-pkg { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root .rb-pkg .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* Hero → status strip: state · decision · trust axes · actions. */
+.ide-root .rb-pkg-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; flex: none; min-height: var(--wb-toolbar-h); padding: 4px var(--wb-space-3); margin: 0; border: 0; border-bottom: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface-2); box-shadow: none; }
+.ide-root .rb-pkg-hero h2 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .rb-pkg-hero p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-decision-state { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.ide-root .rb-pkg-decision-state > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-decision-state > strong { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-pkg-decision-state dl { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+.ide-root .rb-pkg-decision-state dl > div { display: inline-flex; align-items: baseline; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-decision-state dt { color: var(--wb-text-3); }
+.ide-root .rb-pkg-decision-state dd { margin: 0; color: var(--wb-text); }
+.ide-root .rb-pkg-decision-copy { margin: 0; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-primary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: auto; }
+.ide-root .rb-pkg-primary .ide-button,
+.ide-root .rb-pkg-preview-actions .ide-button,
+.ide-root .rb-pkg-technical-entry .ide-button,
+.ide-root .rb-pkg-lab .ide-button {
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-pkg-primary .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-pkg-validation { color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-validation.is-ok { color: var(--wb-ok); }
+.ide-root .rb-pkg-validation.is-error,
+.ide-root .rb-pkg-validation.is-fail { color: var(--wb-err); }
+.ide-root .rb-pkg-trust-reason { margin: 0; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+
+/* Files: tree (left) · preview (centre) · handoff (right). */
+.ide-root .rb-pkg-files { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-pkg-section-header { display: flex; align-items: baseline; gap: 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-section-header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-pkg-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .rb-pkg-section-header > p { margin: 0 0 0 auto; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-pkg-file-workspace { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(260px, 300px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-pkg-file-list { display: flex; flex-direction: column; min-height: 0; overflow: auto; border-right: 1px solid var(--wb-border-strong); }
+.ide-root .rb-pkg-file-groups { display: block; }
+.ide-root .rb-pkg-file-group { display: block; }
+.ide-root .rb-pkg-file-group > header { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 var(--wb-space-3) 0 8px; border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-file-group:first-child > header { border-top: 0; }
+.ide-root .rb-pkg-file-group > header h4,
+.ide-root .rb-pkg-file-group > header strong { margin: 0; flex: 1; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-pkg-file-group > header small,
+.ide-root .rb-pkg-file-group > header span { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-file-group ul { margin: 0; padding: 2px 0; list-style: none; }
+.ide-root .rb-pkg-file-group li { display: block; }
+.ide-root .rb-pkg-file-group button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 24px;
+  padding: 0 var(--wb-space-3) 0 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-pkg-file-group button:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-pkg-file-group button.is-selected { border-left-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
+.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 9px var(--wb-font-mono); }
+.ide-root .rb-pkg-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--wb-font-mono); }
+.ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-file-availability.is-ready { color: var(--wb-ok); }
+.ide-root .rb-pkg-file-availability-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ide-root .rb-pkg-file-role-empty { margin: 0; padding: 2px var(--wb-space-3) 4px 14px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+
+/* Preview: a code viewer with a compact file toolbar. */
+.ide-root .rb-pkg-preview { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ide-root .rb-pkg-preview > header,
+.ide-root .rb-pkg-preview > div > header { display: flex; align-items: center; gap: 8px; flex: none; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-preview header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-pkg-preview header > div > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-preview header strong { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); }
+.ide-root .rb-pkg-preview header p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-preview-actions { display: inline-flex; gap: 4px; margin-left: auto; }
+.ide-root .rb-pkg-preview pre { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px 0; overflow: auto; background: var(--wb-code-bg, #0f151e); color: var(--wb-code-text, #e6ecf5); font: var(--wb-text-sm) / 18px var(--wb-font-mono); }
+.ide-root .rb-pkg-code-line { display: grid; grid-template-columns: 48px minmax(0, 1fr); }
+.ide-root .rb-pkg-line-number { padding-right: 12px; color: var(--wb-code-gutter, #6b7a90); text-align: right; user-select: none; }
+.ide-root .rb-pkg-preview > p { margin: 0; padding: 12px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+
+/* Handoff inspector: key/value rows. */
+.ide-root .rb-pkg-handoff { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-left: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface); box-shadow: none; overflow: auto; }
+.ide-root .rb-pkg-handoff > header { display: flex; align-items: baseline; gap: 8px; height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-handoff > header span { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-handoff > header strong { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-handoff > dl { display: block; margin: 0; padding: 2px var(--wb-space-3); }
+.ide-root .rb-pkg-handoff > dl > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 24px; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-handoff > dl > div:last-child { border-bottom: 0; }
+.ide-root .rb-pkg-handoff dt { margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-pkg-handoff dd { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-handoff > section { margin: 0; padding: 6px var(--wb-space-3); border-top: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-handoff > section > span,
+.ide-root .rb-pkg-handoff > section > h4 { display: block; margin: 0 0 2px; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-handoff > section p,
+.ide-root .rb-pkg-handoff > section li { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 15px var(--wb-font-ui); }
+.ide-root .rb-pkg-handoff > section ol,
+.ide-root .rb-pkg-handoff > section ul { margin: 0; padding-left: 16px; }
+.ide-root .rb-pkg-handoff code { font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Upstream readiness rows · submission roles · lab · boundary · technical entry. */
+.ide-root .rb-pkg-upstream,
+.ide-root .rb-pkg-submission,
+.ide-root .rb-pkg-lab,
+.ide-root .rb-pkg-technical-entry { flex: none; margin: 0; padding: 0; border: 0; border-top: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root .rb-pkg-upstream-rows { display: block; }
+.ide-root .rb-pkg-upstream-rows > * { display: grid; grid-template-columns: 10px minmax(120px, 0.5fr) minmax(0, 1.5fr) auto; align-items: center; gap: 8px; min-height: 24px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-upstream-rows > *::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--wb-text-3); }
+.ide-root .rb-pkg-upstream-rows > .is-ready::before { background: var(--wb-ok); }
+.ide-root .rb-pkg-upstream-rows > .is-blocked::before { background: var(--wb-err); }
+.ide-root .rb-pkg-upstream-rows strong { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-pkg-upstream-rows p { margin: 0; color: var(--wb-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-upstream-rows .ide-button { height: 20px; min-height: 0; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); box-shadow: none; font: var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-pkg-submission-roles { display: block; }
+.ide-root .rb-pkg-submission-roles > * { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 24px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-submission-roles strong,
+.ide-root .rb-pkg-submission-roles code { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-pkg-submission-roles p { margin: 0; color: var(--wb-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-submission-answer { color: var(--wb-text-2); }
+.ide-root .rb-pkg-lab { display: flex; align-items: center; gap: 8px; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); }
+.ide-root .rb-pkg-lab h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-pkg-lab p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-pkg-boundary { margin: 0; padding: 4px var(--wb-space-3); border-top: 1px solid var(--wb-border); color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-pkg-technical-entry { display: flex; align-items: center; gap: 8px; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); }
+.ide-root .rb-pkg-technical-entry p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+
+/* Technical dialog. */
+.ide-root .rb-pkg-dialog-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(15, 21, 30, 0.45); }
+.ide-root .rb-pkg-dialog { width: min(920px, 92vw); max-height: 86vh; overflow: auto; padding: 0; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius-lg); background: var(--wb-surface); box-shadow: var(--wb-overlay-shadow); }
+.ide-root .rb-pkg-dialog > header { display: flex; align-items: center; gap: 8px; padding: 6px var(--wb-space-3); border-bottom: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-dialog h2 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .rb-pkg-dialog > section { padding: 6px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-dialog h3 { margin: 0 0 4px; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-dialog p,
+.ide-root .rb-pkg-dialog li { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 16px var(--wb-font-ui); }
+.ide-root .rb-pkg-gate-list article,
+.ide-root .rb-pkg-diagnostics article { display: grid; grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr); gap: 8px; min-height: 24px; align-items: center; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-provenance dl { display: block; margin: 0; }
+.ide-root .rb-pkg-provenance dl > div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px; min-height: 22px; align-items: center; }
+.ide-root .rb-pkg-provenance dt { color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-provenance dd { margin: 0; font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Root is the hero section itself: a column; the decision strip is one toolbar inside it. */
+.ide-root .rb-pkg.rb-pkg-hero { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 0; padding: 0; border-bottom: 0; background: var(--wb-surface); }
+.ide-root .rb-pkg-strip { flex-wrap: wrap; row-gap: 4px; height: auto; min-height: var(--wb-toolbar-h); padding: 4px var(--wb-space-3); border-bottom: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-strip .rb-pkg-decision-copy { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-pkg-strip .rb-pkg-decision-copy h2 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-pkg-strip .rb-pkg-decision-copy p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-strip .rb-pkg-submission-answer { color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-preview pre { max-height: 62vh; }
+
+/* The Package panel body is the column; the hero strip is its first row. */
+.ide-root [data-testid='ide-export-panel'] { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root [data-testid='ide-export-panel'] > .ide-panel-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; overflow: auto; }
+.ide-root .rb-pkg-hero { height: auto; }
+.ide-root .rb-pkg-hero .rb-pkg-decision-copy { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-pkg-hero .rb-pkg-decision-copy h2 { white-space: nowrap; }
+.ide-root .rb-pkg-hero .rb-pkg-decision-copy p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-hero .rb-pkg-submission-answer { color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .rb-pkg-files { flex: none; }
+.ide-root .rb-pkg-file-workspace { max-height: 70vh; }
+
+/* Corrected structure: the hero section IS the column root; the decision block is the strip. */
+.ide-root .rb-pkg.rb-pkg-hero { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; min-height: 0; padding: 0; border: 0; background: var(--wb-surface); }
+.ide-root .rb-pkg-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; flex: none; min-height: var(--wb-toolbar-h); padding: 4px var(--wb-space-3); border-bottom: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-decision .rb-pkg-decision-copy { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-pkg-decision h2 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-pkg-decision p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-decision .rb-pkg-submission-answer { color: var(--wb-text-2); font-size: var(--wb-text-sm); }

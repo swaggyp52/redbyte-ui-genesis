@@ -73,6 +73,7 @@ import {
   type ExportDebugCopyState,
 } from './export/ExportSurfacePrimitives';
 import './export-handoff-workspace-v3.css';
+import './export/package-instrument.css';
 import {
   deriveBehavioralEvidenceTier,
   deriveBehavioralEvidenceTierFromResult,
@@ -1667,13 +1668,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       <IdePanel testId="ide-export-panel">
         <section
           ref={surfaceRef}
-          className="ide-export-v3 ide-export-readiness-hero"
+          className="rb-pkg rb-pkg-hero"
           data-testid="ide-export-readiness-hero"
           aria-label="Build and export package decision and files"
         >
           <section
             className={
-              'ide-export-v3__decision ide-export-package-inspector-v1' +
+              'rb-pkg-decision' +
               (exportBlocked
                 ? ' is-blocked'
                 : exportTrustAxes.verificationTrust === 'trusted'
@@ -1687,12 +1688,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             data-export-action-state={exportTrustAxes.action}
             data-export-derived-state={exportTrustAxes.derived}
           >
-            <div className="ide-export-v3__decision-copy">
+            <div className="rb-pkg-decision-copy">
               <p className="ide-surface-block-label">Build &amp; Export</p>
               <h2>{surfaceStatusTitle}</h2>
-              <p className="ide-export-v3__trust-reason">{trustReason}</p>
+              <p className="rb-pkg-trust-reason">{trustReason}</p>
               <div
-                className="ide-export-v3__submission-answer"
+                className="rb-pkg-submission-answer"
                 data-testid="ide-export-submission-answer"
                 aria-label="What should I submit?"
               >
@@ -1704,7 +1705,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
             </div>
             <div
-              className="ide-export-v3__decision-state"
+              className="rb-pkg-decision-state"
               data-testid="ide-export-trust-axes"
               aria-label="Export structure, verification trust, and download action"
             >
@@ -1730,7 +1731,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </dl>
               <small>{viewModel.artifacts.length} generated file{viewModel.artifacts.length === 1 ? '' : 's'}</small>
             </div>
-            <div className="ide-export-v3__primary" data-testid="ide-export-primary-actions">
+            <div className="rb-pkg-primary" data-testid="ide-export-primary-actions">
               <IdeButton
                 tone="secondary"
                 onClick={() => setPackageValidation(
@@ -1797,7 +1798,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </IdeButton>
               ) : null}
               {packageValidation ? (
-                <small className={`ide-export-v3__validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
+                <small className={`rb-pkg-validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
                   {packageValidation.message} Browser E0 only · Vivado external.
                 </small>
               ) : null}
@@ -1823,35 +1824,33 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} /> : null}
 
           <section
-            className="ide-export-v3__files"
+            className="rb-pkg-files"
             data-testid="ide-export-package-contents"
             aria-labelledby="ide-export-v3-files-title"
           >
-            <header className="ide-export-v3__section-header">
+            <header className="rb-pkg-section-header">
               <div>
                 <p className="ide-surface-block-label">Package files</p>
-                <h3 id="ide-export-v3-files-title">Inspect the generated handoff</h3>
               </div>
               <p>{readyArtifactCount} ready · {viewModel.artifacts.length} total</p>
             </header>
-            <div className="ide-export-v3__file-workspace" data-testid="ide-export-package-files">
+            <div className="rb-pkg-file-workspace" data-testid="ide-export-package-files">
               <nav
-                className="ide-export-v3__file-list"
+                className="rb-pkg-file-list"
                 data-testid="ide-export-file-browser"
                 aria-label="Generated package files"
               >
-                <div className="ide-export-v3__file-groups" data-testid="ide-export-artifact-tabs">
+                <div className="rb-pkg-file-groups" data-testid="ide-export-artifact-tabs">
                   {artifactGroups.map((group) => (
                     <section
                       key={group.id}
-                      className="ide-export-v3__file-group"
+                      className="rb-pkg-file-group"
                       data-testid={`ide-export-artifact-role-${group.id}`}
                       data-artifact-role={group.id}
                     >
                       <header>
                         <strong>{group.label}</strong>
                         <span>{group.artifacts.length}</span>
-                        <p>{group.description}</p>
                       </header>
                       <div>
                         {group.artifacts.length > 0 ? group.artifacts.map((artifact) => {
@@ -1870,22 +1869,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                               onClick={() => setSelectedArtifactPath(artifact.path)}
                               data-testid={'ide-export-file-' + slug}
                             >
-                              <span className="ide-export-v3__file-icon" aria-hidden="true">
+                              <span className="rb-pkg-file-icon" aria-hidden="true">
                                 {formatArtifactGlyph(artifact.path)}
                               </span>
-                              <span className="ide-export-v3__file-name">{artifact.path}</span>
+                              <span className="rb-pkg-file-name">{artifact.path}</span>
                               <strong
-                                className="ide-export-v3__file-availability"
+                                className="rb-pkg-file-availability"
                                 aria-label={availability}
                                 title={availability}
                               >
                                 <span aria-hidden="true">{artifact.status === 'ready' ? '✓' : '·'}</span>
-                                <span className="ide-export-v3__file-availability-label">{availability}</span>
+                                <span className="rb-pkg-file-availability-label">{availability}</span>
                               </strong>
                             </button>
                           );
                         }) : (
-                          <p className="ide-export-v3__file-role-empty">No file is generated for this role yet.</p>
+                          <p className="rb-pkg-file-role-empty">No file is generated for this role yet.</p>
                         )}
                       </div>
                     </section>
@@ -1893,7 +1892,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </div>
               </nav>
               <article
-                className="ide-export-v3__preview"
+                className="rb-pkg-preview"
                 data-testid="ide-export-selected-preview-v1"
                 aria-live="polite"
               >
@@ -1905,7 +1904,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <strong data-testid="ide-export-preview-path">{selectedArtifact.path}</strong>
                         <p>{selectedArtifact.note}</p>
                       </div>
-                      <div className="ide-export-v3__preview-actions">
+                      <div className="rb-pkg-preview-actions">
                         <IdeButton
                           tone="secondary"
                           onClick={() => void copyToClipboard(selectedArtifact.content, 'artifact')}
@@ -1929,8 +1928,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         {(selectedArtifact.content || 'File content will appear when its owning stage is ready.')
                           .split('\n')
                           .map((line, index) => (
-                            <span className="ide-export-v3__code-line" key={`${selectedArtifact.path}-${index}`}>
-                              <span className="ide-export-v3__line-number" aria-hidden="true">{index + 1}</span>
+                            <span className="rb-pkg-code-line" key={`${selectedArtifact.path}-${index}`}>
+                              <span className="rb-pkg-line-number" aria-hidden="true">{index + 1}</span>
                               <span>{line.length > 0 ? line : ' '}</span>
                             </span>
                           ))}
@@ -1941,7 +1940,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p>No generated package files are available yet.</p>
                 )}
               </article>
-              <aside className="ide-export-v3__handoff" data-testid="ide-export-handoff-inspector" aria-label="Vivado handoff inspector">
+              <aside className="rb-pkg-handoff" data-testid="ide-export-handoff-inspector" aria-label="Vivado handoff inspector">
                 <header><span>Handoff inspector</span><strong>{formatExportDerivedState(exportTrustAxes.derived)}</strong></header>
                 <dl>
                   <div><dt>Evidence tier</dt><dd>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</dd></div>
@@ -1967,18 +1966,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </section>
 
           <section
-            className="ide-export-v3__upstream"
+            className="rb-pkg-upstream"
             data-testid="ide-export-upstream-readiness"
             aria-labelledby="ide-export-v3-upstream-title"
           >
-            <header className="ide-export-v3__section-header">
+            <header className="rb-pkg-section-header">
               <div>
                 <p className="ide-surface-block-label">Upstream readiness</p>
-                <h3 id="ide-export-v3-upstream-title">What owns this package state</h3>
               </div>
-              <p>Repair work stays in Design, Simulate, or Board &amp; Constraints.</p>
             </header>
-            <div className="ide-export-v3__upstream-rows">
+            <div className="rb-pkg-upstream-rows">
               {upstreamReadinessRows.map((row) => (
                 <article
                   key={row.id}
@@ -1995,18 +1992,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </section>
 
           <section
-            className="ide-export-v3__submission"
+            className="rb-pkg-submission"
             data-testid="ide-export-submission-guidance"
             aria-labelledby="ide-export-v3-submission-title"
           >
-            <header className="ide-export-v3__section-header">
+            <header className="rb-pkg-section-header">
               <div>
                 <p className="ide-surface-block-label">Vivado submission guide</p>
                 <h3 id="ide-export-v3-submission-title">Choose files by requested role</h3>
               </div>
-              <p>Course requirements differ. Submit only the roles your instructor or LMS requests.</p>
             </header>
-            <div className="ide-export-v3__submission-roles">
+            <div className="rb-pkg-submission-roles">
               {VIVADO_SUBMISSION_GUIDANCE.map((item) => (
                 <article
                   key={item.role}
@@ -2021,7 +2017,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </section>
 
           {guidedLabTask && guidedLabExportSummary ? (
-            <section className="ide-export-v3__lab" data-testid="ide-export-guided-full-adder-summary">
+            <section className="rb-pkg-lab" data-testid="ide-export-guided-full-adder-summary">
               <div>
                 <p className="ide-surface-block-label">Lab submission</p>
                 <h3>{guidedLabTask.title}</h3>
@@ -2031,14 +2027,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </section>
           ) : null}
 
-          <p className="ide-export-v3__boundary" data-testid="ide-export-e0-boundary-summary">
+          <p className="rb-pkg-boundary" data-testid="ide-export-e0-boundary-summary">
             Browser E0 confirms package generation only. Vivado build, bitstream, programming, and physical board behavior remain external.
           </p>
 
-          <section className="ide-export-v3__technical-entry" aria-label="Technical package evidence">
+          <section className="rb-pkg-technical-entry" aria-label="Technical package evidence">
             <div>
               <p className="ide-surface-block-label">Technical evidence</p>
-              <p>Open diagnostics, gate results, hashes, and the debug report only when troubleshooting.</p>
             </div>
             <IdeButton
               tone="secondary"
@@ -2050,9 +2045,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </section>
 
           {technicalEvidenceOpen ? (
-            <div className="ide-export-v3__dialog-backdrop">
+            <div className="rb-pkg-dialog-backdrop">
               <section
-                className="ide-export-v3__dialog"
+                className="rb-pkg-dialog"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="ide-export-v3-dialog-title"
@@ -2074,7 +2069,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
                 <section>
                   <h3>Readiness gates</h3>
-                  <div className="ide-export-v3__gate-list" data-testid="ide-export-gate-stack">
+                  <div className="rb-pkg-gate-list" data-testid="ide-export-gate-stack">
                     {gateRows.map((gate) => (
                       <article key={gate.id} data-testid={'ide-export-gate-' + gate.id}>
                         <strong>{gate.label}</strong>
@@ -2104,7 +2099,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
                 <section>
                   <h3>Diagnostics</h3>
-                  <div className="ide-export-v3__diagnostics" data-testid="ide-export-blockers-list">
+                  <div className="rb-pkg-diagnostics" data-testid="ide-export-blockers-list">
                     {visibleDiagnosticsList.length > 0 ? visibleDiagnosticsList.map((entry) => (
                       <article key={entry.id} data-testid={'ide-export-diagnostic-' + entry.id}>
                         <div><code>{entry.code}</code><strong>{entry.title}</strong></div>
@@ -2115,7 +2110,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </div>
                 </section>
 
-                <section className="ide-export-v3__provenance">
+                <section className="rb-pkg-provenance">
                   <h3>Build identity</h3>
                   <dl>
                     <div><dt>RedByte version</dt><dd>{redbyteVersion}</dd></div>

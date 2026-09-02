@@ -2199,7 +2199,6 @@
     min-inline-size: 100%;
   }
 
-
 }
 
 /* ============================================================
@@ -2379,15 +2378,6 @@
 .ide-root [data-ide-mode-marker='hardware'] [data-testid='ide-hw-map-table'],
 .ide-root [data-ide-mode-marker='hardware'] .ide-hw-map-table {
   border-color: rgba(154, 184, 214, 0.14);
-}
-
-.ide-root [data-ide-mode-marker='export'] [data-testid='ide-export-readiness-hero'],
-.ide-root [data-ide-mode-marker='export'] .ide-export-summary-hero {
-  border-color: rgba(115, 224, 181, 0.30);
-  background:
-    linear-gradient(135deg, rgba(115, 224, 181, 0.12), rgba(11, 26, 21, 0.92) 58%),
-    var(--rb-lab-bg-export);
-  box-shadow: var(--rb-lab-depth-2);
 }
 
 .ide-root [data-ide-mode-marker='export'] [data-testid='ide-export-vivado-evidence-rows'] {
