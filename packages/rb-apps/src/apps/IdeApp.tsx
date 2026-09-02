@@ -35,6 +35,7 @@ import { WorkbenchDocumentTabStrip } from './ide/components/WorkbenchDocumentTab
 import { useWorkbenchDocumentHost } from './ide/useWorkbenchDocumentHost';
 import { describeEngineeringObject, useEngineeringSelection } from './ide/engineeringSelection';
 import { describeSignalRelationPath, useEngineeringRelationshipIndex } from './ide/engineeringRelationships';
+import { useWorkbenchNavigation } from './ide/workbenchNavigation';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
@@ -2499,6 +2500,12 @@ export const IdeApp: React.FC = () => {
     sourceModel,
     boardLabel: fpgaConfig.board,
   });
+  // Surfaces open related documents through the navigation seam; the host owner registers once.
+  const registerDocumentOpener = useWorkbenchNavigation((state) => state.register);
+  useEffect(() => {
+    registerDocumentOpener(documentHost.openDocument);
+    return () => registerDocumentOpener(null);
+  }, [documentHost.openDocument, registerDocumentOpener]);
   const selectedEngineeringObject = useEngineeringSelection((state) => state.selected);
   const relationshipIndex = useEngineeringRelationshipIndex();
   const selectionPath = useMemo(() => {
@@ -2808,7 +2815,7 @@ export const IdeApp: React.FC = () => {
         selectionPath={selectionPath}
         selectionKind={selectionKindLabel}
         runState={hasCircuit && runtimeSim.running ? { label: 'Running', tone: 'warn' } : null}
-        targetLabel={hasCircuit ? `${fpgaConfig.board} · ${fpgaConfig.part}` : null}
+        targetLabel={hasCircuit ? `${fpgaConfig.board.charAt(0).toUpperCase()}${fpgaConfig.board.slice(1)} · ${fpgaConfig.part}` : null}
       />
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
@@ -3039,6 +3046,8 @@ export const IdeApp: React.FC = () => {
               }}
               onDebugTickSelected={handleDebugTickSelected}
               onSignalSelected={setVerifySelectedSignal}
+              activeDocument={documentHost.activeDocument}
+              onOpenDocument={documentHost.openDocument}
               selectedTickOverride={verifySelectedTick}
               onSelectedTickChange={setVerifySelectedTick}
               liveSignalRoles={liveSignalRoles}

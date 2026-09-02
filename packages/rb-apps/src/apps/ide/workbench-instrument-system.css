@@ -904,3 +904,17 @@
 .ide-root .wb-rail-btn { color: var(--wb-frame-text-2); }
 .ide-root .wb-rail-btn--utility { color: var(--wb-frame-text-3); }
 .ide-root .wb-rail-rule { background: var(--wb-frame-border); }
+
+.ide-root .wb-toolbar-fact { display: inline-flex; align-items: baseline; gap: 4px; padding: 0 4px; color: var(--wb-text-3); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .wb-toolbar-fact code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+
+/* Details-hosted menus (Layout, Related…): the summary is a ghost button, the popup a wb-menu. */
+.ide-root .wb-menu-details { position: relative; display: inline-block; }
+.ide-root .wb-menu-details > summary { list-style: none; cursor: default; }
+.ide-root .wb-menu-details > summary::-webkit-details-marker { display: none; }
+.ide-root .wb-menu-details[open] > summary { background: var(--wb-active-bg); }
+.ide-root .wb-menu-details > .wb-menu { position: absolute; z-index: 200; top: calc(100% + 2px); left: 0; min-width: 260px; }
+.ide-root .rb-related-head { display: flex; align-items: baseline; gap: 8px; padding: 4px 10px 6px; border-bottom: 1px solid var(--wb-border); color: var(--wb-text-2); font-size: var(--wb-text-xs); }
+.ide-root .rb-related-head code { font: 600 var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-related-ambiguous { margin-left: auto; color: var(--wb-warn-text); }
+.ide-root .rb-related-detail { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }

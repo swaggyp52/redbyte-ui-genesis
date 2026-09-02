@@ -88,7 +88,7 @@ export function describeEngineeringObject(ref: EngineeringObjectRef): string {
     case 'scenario':
       return `scenario ${ref.scenarioId}`;
     case 'case-tick':
-      return `case ${ref.tick}`;
+      return `${ref.scenarioId} · t${ref.tick}`;
     case 'signal-edge':
       return `${ref.fieldId} @ tick ${ref.tick}`;
     case 'board-resource':

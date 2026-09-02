@@ -26,9 +26,10 @@ describe('Simulation Studio command authority', () => {
     );
 
     const commandBar = view.getByTestId('ide-verify-command-bar');
-    // Four workspace lenses: Timeline, Bench, Waveform, Checks. Testbench is a
-    // studio mode reached from elsewhere, not a top-level lens in the bar.
-    expect(within(commandBar).getAllByRole('tab')).toHaveLength(4);
+    // The workbench's document tabs own Cases / Timing / Waveform; the command
+    // bar carries no second instrument selector, only the run authority.
+    expect(within(commandBar).queryAllByRole('tab')).toHaveLength(0);
+    expect(view.queryByTestId('ide-vcb-run-mode')).toBeNull();
     expect(within(commandBar).getAllByTestId('ide-vcb-run')).toHaveLength(1);
     expect(view.getByTestId('ide-vcb-run').textContent).toBe('Rerun simulation');
 

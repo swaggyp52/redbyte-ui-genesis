@@ -130,6 +130,9 @@ import { ManualBench } from './verify/ManualBench';
 import { CaseLab } from './verify/CaseLab';
 import { buildFieldSignalResolver, normalizeSignalId } from '../signalIdentity';
 import { useEngineeringSelection } from '../engineeringSelection';
+import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { RelatedMenu } from '../components/RelatedMenu';
+import type { WorkbenchDocument } from '../workbenchDocuments';
 import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
 import { SimulationProviderBar } from '../components/SimulationProviderBar';
 import type { ProviderWaveform } from '../simulationProvider';
@@ -275,6 +278,10 @@ export interface VerifySurfaceProps {
   scenarios?: VerifyScenario[];
   /** ID of the currently active scenario. */
   activeScenarioId?: string | null;
+  /** The workbench document this surface renders; documents own the instrument (cases/timing vs waveform). */
+  activeDocument?: WorkbenchDocument | null;
+  /** Open another engineering document in the workbench (Waveform after a run, Cases from Waveform). */
+  onOpenDocument?: (doc: WorkbenchDocument) => void;
   /** The resolved active scenario — used for stale detection. */
   activeScenario?: VerifyScenario | null;
   onCreateScenario?: () => void;
@@ -423,6 +430,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onCustomVectorsChange,
   scenarios,
   activeScenarioId,
+  activeDocument = null,
+  onOpenDocument,
   activeScenario,
   onCreateScenario,
   onDuplicateScenario,
@@ -606,6 +615,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
+  const restoredTickRef = useRef<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
   // Which simulation provider is the current run-of-record (Chapter D).
   const [activeSimProvider, setActiveSimProvider] = useState<'browser-logic' | 'imported-vcd'>('browser-logic');
@@ -621,6 +631,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [studioMode, setStudioMode] = useState<
     'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
   >(() => (lastRun ? 'replay' : 'scenario'));
+  // Documents own the instrument: a Cases/Timing document shows authoring, the
+  // Waveform document shows recorded evidence. Live I/O is a toggle over either.
+  const documentStudioMode: 'scenario' | 'replay' | null =
+    activeDocument?.kind === 'waveform'
+      ? 'replay'
+      : activeDocument?.kind === 'cases' || activeDocument?.kind === 'timing'
+        ? 'scenario'
+        : null;
+  useEffect(() => {
+    if (!documentStudioMode) return;
+    setStudioMode((current) => (current === 'bench' ? current : documentStudioMode));
+  }, [documentStudioMode]);
+  const openWaveformDocument = useCallback(() => {
+    if (onOpenDocument && activeScenarioId) onOpenDocument({ kind: 'waveform', scenarioId: activeScenarioId });
+    else setStudioMode('replay');
+  }, [activeScenarioId, onOpenDocument]);
+  const toggleLiveIo = useCallback(() => {
+    setStudioMode((current) => (current === 'bench' ? (documentStudioMode ?? 'scenario') : 'bench'));
+  }, [documentStudioMode]);
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -699,7 +728,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       const raw = sessionStorage.getItem(VERIFY_UI_STORAGE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof s.selectedTick === 'number') setSelectedTick(s.selectedTick);
+      if (typeof s.selectedTick === 'number') {
+        restoredTickRef.current = s.selectedTick;
+        setSelectedTick(s.selectedTick);
+      }
       if (s.cursorA === null || typeof s.cursorA === 'number') setCursorA(s.cursorA as number | null);
       if (s.cursorB === null || typeof s.cursorB === 'number') setCursorB(s.cursorB as number | null);
       if (typeof s.drawerOpen === 'boolean') setDrawerOpen(s.drawerOpen);
@@ -1505,11 +1537,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     });
   }, [displaySignalTimeline]);
 
+  const appliedRunKeyRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (lastRun) {
-      setRunState('complete');
-      setStudioMode('replay');
+    if (!lastRun) return;
+    setRunState('complete');
+    if (appliedRunKeyRef.current === undefined) {
+      appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
+      return;
     }
+    if (appliedRunKeyRef.current === (lastRunWorkbenchKey ?? null)) return;
+    appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
+    openWaveformDocument();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRunWorkbenchKey]);
 
   // Auto-shape the lower analysis deck once per run:
@@ -4696,8 +4735,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const globalOrigin = useEngineeringSelection((state) => state.origin);
   const publishSelection = useEngineeringSelection((state) => state.select);
   const continuityOrigin = studioMode === 'replay' ? 'waveform' : isSequentialRun ? 'timing' : 'cases';
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  const simRelated = selectedSignal
+    ? relationshipIndex.resolveRunSignal(selectedSignal) ?? relationshipIndex.resolveField(selectedSignal)
+    : null;
+  const continuityMountedRef = useRef(false);
   useEffect(() => {
     if (selectedTick == null || !activeScenarioId) return;
+    if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
+    if (restoredTickRef.current === selectedTick && globalSelected?.kind === 'signal' && globalOrigin !== continuityOrigin) return;
     const next = { kind: 'case-tick' as const, scenarioId: activeScenarioId, tick: selectedTick };
     if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
     publishSelection(next, continuityOrigin);
@@ -4705,27 +4751,54 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [selectedTick, activeScenarioId]);
   useEffect(() => {
     if (!selectedSignal) return;
+    if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
+    const laneKey = normalizeSignalId(selectedSignal);
     const owner = Array.from(caseLabSignalResolver.byField.values()).find(
-      (entry) => entry.runSignal != null && normalizeSignalKey(entry.runSignal) === normalizeSignalKey(selectedSignal)
+      (entry) => entry.runSignal != null && normalizeSignalId(entry.runSignal) === laneKey
     );
-    const fieldId = owner?.fieldId ?? inputFields.concat(outputFields).find((field) => normalizeSignalKey(field.id) === normalizeSignalKey(selectedSignal))?.id ?? null;
+    const relation =
+      (owner ? relationshipIndex.resolveField(owner.fieldId) : null) ??
+      relationshipIndex.signals.find(
+        (entry) => normalizeSignalId(entry.label) === laneKey || normalizeSignalId(entry.fieldId) === laneKey
+      ) ??
+      null;
+    const fieldId =
+      relation?.fieldId ??
+      owner?.fieldId ??
+      inputFields.concat(outputFields).find((field) => normalizeSignalId(field.id) === laneKey || normalizeSignalId(field.label ?? '') === laneKey)?.id ??
+      null;
     if (!fieldId) return;
-    const next = { kind: 'signal' as const, fieldId, runSignal: owner?.runSignal ?? null, nodeId: owner?.nodeId };
+    const next = {
+      kind: 'signal' as const,
+      fieldId,
+      runSignal: relation?.run?.resolution.runSignal ?? owner?.runSignal ?? null,
+      nodeId: relation?.nodeId ?? owner?.nodeId,
+    };
     if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
     publishSelection(next, continuityOrigin);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSignal]);
   useEffect(() => {
+    continuityMountedRef.current = true;
     if (!globalSelected || globalOrigin === continuityOrigin) return;
     if (globalSelected.kind === 'case-tick' && globalSelected.scenarioId === activeScenarioId && globalSelected.tick !== selectedTick) {
       setSelectedTick(globalSelected.tick);
     } else if (globalSelected.kind === 'signal') {
       const resolved = caseLabSignalResolver.resolve(globalSelected.fieldId);
-      const lane = resolved.runSignal ?? globalSelected.runSignal ?? globalSelected.fieldId;
+      const relation = relationshipIndex.resolveField(globalSelected.fieldId);
+      const wanted = resolved.runSignal ?? globalSelected.runSignal ?? globalSelected.fieldId;
+      const candidates = [relation?.label, resolved.runSignal, globalSelected.runSignal, globalSelected.fieldId]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .map((value) => normalizeSignalId(value));
+      const lane =
+        displaySignalTimeline.find((entry) => candidates.includes(normalizeSignalId(entry.signal)))?.signal ??
+        inputFields.concat(outputFields).find((field) => candidates.includes(normalizeSignalId(field.label ?? field.id)))?.id ??
+        wanted;
       if (normalizeSignalKey(lane) !== normalizeSignalKey(selectedSignal ?? '')) setSelectedSignal(lane);
     }
+    // Re-applies once the lane timeline exists, so an incoming signal survives the observe-first auto-select.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalSelected, globalOrigin]);
+  }, [globalSelected, globalOrigin, displaySignalTimeline]);
   // Case Lab observed values + per-case verdict, keyed by the resolved identity.
   const caseLabData = useMemo(() => {
     const observed: Record<number, Record<string, string>> = {};
@@ -5550,7 +5623,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
           onAuthorExpectedOutputs={handleEditExpectedOutputs}
           workspaceMode={studioMode}
-          onWorkspaceModeChange={setStudioMode}
+          liveIoActive={studioMode === 'bench'}
+          onToggleLiveIo={toggleLiveIo}
           configuredCheckCount={totalAssertedCheckCount}
           hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
         />
@@ -5919,7 +5993,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {studioMode === 'bench' ? (
           <ManualBench
             onOpenVirtualBoard={onGoToHardware}
-            onOpenAnalyzer={lastRun ? () => setStudioMode('replay') : undefined}
+            onOpenAnalyzer={lastRun ? openWaveformDocument : undefined}
             onAddToSequence={onAppendScenarioStep}
           />
         ) : studioMode === 'testbench' ? (
@@ -5934,7 +6008,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             inputFields={stimulusPanelInputFields}
             outputFields={outputFields}
             selectedTick={selectedTick}
-            lens={studioMode === 'checks' ? 'checks' : 'scenario'}
+            lens="scenario"
             onSelectTick={handleStimulusSelectedTickChange}
             onVectorsChange={onVectorsChange}
             caseEvidenceByTick={testbenchCaseEvidenceByTick}
@@ -6020,7 +6094,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           stimulusAssist={stimulusAssist}
           observedValuesByTick={testbenchObservedValuesByTick}
           caseEvidenceByTick={testbenchCaseEvidenceByTick}
-          showExpectedLanes={studioMode === 'checks'}
+          showExpectedLanes={totalAssertedCheckCount > 0}
           />
         </details>
         ) : null}
@@ -7309,6 +7383,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </IdeButton>
               <IdeButton tone="secondary" onClick={() => setCreateCheckDialogOpen(true)} disabled={!canCreateCheckFromSelection} testId="ide-sim-inspector-create-check">Create check from this value</IdeButton>
               <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} disabled={!selectedSignal && !selectedFailureCase} testId="ide-sim-inspector-trace-design">Trace in Design</IdeButton>
+              {simRelated ? (
+                <RelatedMenu relation={simRelated} activeScenarioId={activeScenarioId ?? null} hasRun={simRelated.run !== null} origin={continuityOrigin} testId="ide-sim-related" />
+              ) : null}
             </>
           )}
         </aside>

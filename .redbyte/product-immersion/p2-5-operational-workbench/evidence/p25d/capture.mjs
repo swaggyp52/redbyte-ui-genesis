@@ -78,13 +78,13 @@ async function run() {
     await clickTestId(page, 'ide-vcb-run');
     await sleep(1500);
     // Compare auto-enters the Waveform document; 05 is the Cases document after the run.
-    await clickTestId(page, 'ide-vcb-workspace-scenario');
+    await page.locator('[data-testid^="ide-doc-tab-cases:"], [data-testid^="ide-doc-tab-timing:"]').first().evaluate((node) => node.click());
     await page.waitForSelector('[data-testid="ide-verify-lab-grid"][data-studio-mode="scenario"]', { timeout: 8000 }).catch(() => {});
     await sleep(500);
     written.push(await shot(page, '05-simulate-cases-after-compare', vp.tag));
-    const replay = page.locator('[data-testid="ide-vcb-workspace-replay"]');
+    const replay = page.locator('[data-testid^="ide-doc-tab-waveform:"]');
     await replay.waitFor({ state: 'attached', timeout: 8000 });
-    await page.waitForFunction(() => !document.querySelector('[data-testid="ide-vcb-workspace-replay"]')?.disabled, null, { timeout: 8000 });
+    
     await replay.evaluate((node) => node.click());
     await page.waitForSelector('[data-testid="ide-verify-lab-grid"][data-studio-mode="replay"]', { timeout: 8000 });
     await sleep(600);

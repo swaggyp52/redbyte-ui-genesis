@@ -143,6 +143,7 @@ import {
 } from '../ideCommandRegistry';
 import { workspacePreferencesStore } from '../workspacePreferences';
 import { useEngineeringSelection } from '../engineeringSelection';
+import { RelatedMenu } from '../components/RelatedMenu';
 import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
 import {
   TOP_MODULE_ID,
@@ -2968,6 +2969,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
     [editorCircuit.nodes, selectedNodeIds]
   );
+  // Related… follows the selected boundary signal into its other representations.
+  const designRelated = selectedNode ? relationshipIndex.resolveNode(selectedNode.id) : null;
 
   const handleInspectorInputToggle = useCallback(() => {
     if (!selectedNode || !onRuntimeSimSetInput) return;
@@ -5685,6 +5688,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                 Clear
               </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
             </div>
           </div>
           {selectedSequentialInspector?.actionLabel &&
@@ -5882,6 +5888,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                 Clear trace
               </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete-wire">
                 Disconnect
               </IdeButton>
@@ -5907,6 +5916,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                 Clear trace
               </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
             </div>
           </div>
         </div>

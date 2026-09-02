@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { RelatedMenu } from '../components/RelatedMenu';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -3323,6 +3324,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           : 'Choose from the selector or click a highlighted Basys3 resource. Both update the same saved mapping.'}
                       </p>
                       <div className="rb-board-editor-actions">
+                        {(() => {
+                          const boardRelated = relationshipIndex.resolveField(selectedMappingRow.id);
+                          return boardRelated ? (
+                            <RelatedMenu relation={boardRelated} activeScenarioId={null} hasRun={boardRelated.run !== null} origin="board-io" testId="ide-board-related" />
+                          ) : null;
+                        })()}
                         <IdeButton
                           tone="secondary"
                           onClick={() => {

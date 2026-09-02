@@ -96,6 +96,9 @@ export interface VerifyCommandBarProps {
   ) => void;
   readonly configuredCheckCount?: number;
   readonly hasReplay?: boolean;
+  /** Live I/O (drive inputs, read outputs) is a toggle over the current document. */
+  readonly liveIoActive?: boolean;
+  readonly onToggleLiveIo?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -114,6 +117,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onWorkspaceModeChange,
   configuredCheckCount = 0,
   hasReplay = false,
+  liveIoActive = false,
+  onToggleLiveIo,
 }) => {
   const commandBarRef = React.useRef<HTMLDivElement>(null);
   const restoreRunFocusRef = React.useRef(false);
@@ -187,40 +192,23 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      <div className="wb-segment rb-sim-seg" role="tablist" aria-label="Simulate instrument" data-testid="ide-vcb-run-mode">
-        {(['scenario', 'bench', 'replay', 'checks'] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            role="tab"
-            className={`wb-btn${workspaceMode === mode ? ' is-active' : ''}`}
-            aria-pressed={workspaceMode === mode}
-            aria-selected={workspaceMode === mode}
-            onClick={() => onWorkspaceModeChange?.(mode)}
-            data-testid={`ide-vcb-workspace-${mode}`}
-            disabled={mode === 'replay' && !hasReplay}
-            title={
-              mode === 'replay' && !hasReplay
-                ? 'Run the simulation to create a replay.'
-                : mode === 'bench'
-                  ? 'Drive inputs and read outputs live — the same state as the Virtual Board.'
-                  : mode === 'scenario'
-                    ? 'Authored cases for this scenario.'
-                    : mode === 'checks'
-                      ? 'Saved expected outputs for this scenario.'
-                      : undefined
-            }
-          >
-            {mode === 'scenario'
-              ? 'Cases'
-              : mode === 'bench'
-                ? 'Bench'
-                : mode === 'replay'
-                  ? 'Waveform'
-                  : `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`}
-          </button>
-        ))}
-      </div>
+      {onToggleLiveIo ? (
+        <button
+          type="button"
+          className={`wb-btn wb-btn--ghost${liveIoActive ? ' is-active' : ''}`}
+          aria-pressed={liveIoActive}
+          onClick={onToggleLiveIo}
+          data-testid="ide-vcb-workspace-bench"
+          title="Drive inputs and read outputs live — the same state as the simulated board."
+        >
+          Live I/O
+        </button>
+      ) : null}
+      {configuredCheckCount > 0 ? (
+        <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title="Saved expected outputs in this scenario">
+          <code>{configuredCheckCount}</code> checks
+        </span>
+      ) : null}
       <span className="wb-toolbar-sep" />
       <div className="wb-segment rb-sim-seg" role="group" aria-label="Run intent" data-testid="ide-vcb-run-intent">
         <button
