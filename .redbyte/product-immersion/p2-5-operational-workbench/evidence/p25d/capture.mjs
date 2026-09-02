@@ -93,6 +93,12 @@ async function run() {
     written.push(await shot(page, '07-board', vp.tag));
     await mode(page, 'export');
     written.push(await shot(page, '08-package', vp.tag));
+    const handoff = page.locator('[data-testid="ide-export-open-handoff"]');
+    if (await handoff.count()) {
+      await handoff.evaluate((node) => node.click());
+      await sleep(1200);
+      written.push(await shot(page, '15-package-handoff', vp.tag));
+    }
 
     await openStarter(page, 'four-bit-adder-hierarchical');
     await mode(page, 'design');

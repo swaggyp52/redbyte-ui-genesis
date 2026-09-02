@@ -104,7 +104,7 @@ when probes are pinned (restyled, unverified with probes pinned).
 | Board set (6 files) | 5 red / 57 pass | name-identical to baseline |
 | Package set (6 files) | 37 red / 28 pass | baseline count |
 | Document host + Project workbench | 24 pass / 0 red | new |
-| Captures | 56 PNGs (14 states × 4 viewports), 0 console errors, no body scroll | 1440×900 · 1366×768 · 125% · 200% |
+| Captures | 60 PNGs (15 states × 4 viewports), 0 console errors, no body scroll | 1440×900 · 1366×768 · 125% · 200% |
 
 Every red is classified: it reproduces on the pre-campaign baseline, or it was migrated onto
 the new owner in the same commit that moved the behaviour. Nothing was deleted to go green.
