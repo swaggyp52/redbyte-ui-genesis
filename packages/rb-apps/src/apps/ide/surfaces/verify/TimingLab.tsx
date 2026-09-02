@@ -210,20 +210,29 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       <div className="rb-timing-scroll">
         <table className="rb-timing-table" data-testid="ide-timing-lab-table" role="list" aria-label="Scenario events">
           <thead>
-            <tr>
-              <th className="rb-timing-num" scope="col">#</th>
-              <th className="rb-timing-time" scope="col">t</th>
+            <tr className="rb-timing-grouphead">
+              <th className="rb-timing-num" scope="col" rowSpan={2}>#</th>
+              <th className="rb-timing-time" scope="col" rowSpan={2}>t</th>
+              <th className="rb-timing-in-group" scope="colgroup" colSpan={orderedInputs.length}>Inputs</th>
+              {outputFields.map((field) => (
+                <th key={field.id} className="rb-timing-out" scope="colgroup" colSpan={2}>
+                  {field.label}
+                </th>
+              ))}
+              <th className="rb-timing-status" scope="col" rowSpan={2}>Status</th>
+            </tr>
+            <tr className="rb-timing-colhead">
               {orderedInputs.map((field) => (
                 <th key={field.id} className={`rb-timing-in${clockSet.has(field.id) ? ' is-clock' : ''}`} scope="col" title={clockSet.has(field.id) ? `${field.label} (clock)` : field.label}>
                   {field.label}
                 </th>
               ))}
               {outputFields.map((field) => (
-                <th key={field.id} className="rb-timing-out" scope="col" colSpan={2}>
-                  {field.label}
-                </th>
+                <React.Fragment key={field.id}>
+                  <th className="rb-timing-exp" scope="col">exp</th>
+                  <th className="rb-timing-obs" scope="col">obs</th>
+                </React.Fragment>
               ))}
-              <th className="rb-timing-status" scope="col">Status</th>
             </tr>
           </thead>
           <tbody>

@@ -100,3 +100,17 @@
 @media (prefers-reduced-motion: reduce) {
   .ide-root *, .ide-root *::before, .ide-root *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Narrow viewports (200% zoom on a laptop, ~720px CSS): the document takes the whole
+   width; support docks collapse and come back through View > panels when wider. */
+@media (max-width: 899px) {
+  .ide-root .ide-workbench-main,
+  .ide-root .ide-workbench-main.hide-left-dock,
+  .ide-root .ide-workbench-main.hide-right-dock,
+  .ide-root .ide-workbench-main.hide-left-dock.hide-right-dock,
+  .ide-root .ide-workbench-main.hide-left-dock:not(.hide-right-dock),
+  .ide-root .ide-workbench-main:not(.hide-left-dock).hide-right-dock { grid-template-columns: minmax(0, 1fr) !important; }
+  .ide-root .ide-workbench-main .ide-workbench-workspace { grid-column: 1; }
+  .ide-root .ide-workbench-main .ide-workbench-dock-left,
+  .ide-root .ide-workbench-main .ide-workbench-dock-right { display: none; }
+}

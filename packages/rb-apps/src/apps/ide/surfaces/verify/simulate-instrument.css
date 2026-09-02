@@ -359,3 +359,17 @@
 .ide-root .rb-tb-preview-line { display: grid; grid-template-columns: 44px minmax(0, 1fr); }
 .ide-root .rb-tb-preview-no { padding-right: 10px; color: var(--wb-text-3); text-align: right; user-select: none; }
 .ide-root .rb-tb-preview-line code { white-space: pre; color: var(--wb-text); }
+
+/* Inspector children keep their size; the ghost Run mirrors the toolbar's authority. */
+.ide-root .rb-sim-inspector > * { flex: none; }
+.ide-root .ide-case-lab-bar .ide-button-ghost { border-color: var(--wb-border-strong); }
+/* Timing Lab two-row header. */
+.ide-root .rb-timing-grouphead th { border-bottom: 1px solid var(--wb-border-strong); }
+.ide-root .rb-timing-colhead th { top: 24px; }
+.ide-root .rb-timing-in-group { letter-spacing: 0.04em; }
+/* Narrow viewports: the Cases/Timing grid stacks; the toolbar wraps. */
+@media (max-width: 899px) {
+  .ide-root .rb-sim-lab-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, 240px); grid-template-areas: 'cases' 'inspector' 'evidence'; }
+  .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); max-height: 200px; }
+  .ide-root .rb-sim-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); }
+}

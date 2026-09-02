@@ -951,15 +951,6 @@
   min-height: 250px;
 }
 
-.ide-vwp {
-  min-height: 420px;
-  background: #080e16;
-}
-
-.ide-vwp-lanes {
-  opacity: 0.84;
-}
-
 .ide-verify-oscilloscope-stage {
   min-height: 420px;
   border: 0;
@@ -1981,20 +1972,6 @@
 
 .ide-root .ide-stimulus-case-status.is-fail {
   color: var(--rb-danger);
-}
-
-.ide-root .ide-vwp {
-  min-height: 210px;
-  background:
-    linear-gradient(rgba(180, 192, 212, 0.035) 1px, transparent 1px),
-    #0a0f16;
-  background-size: 100% 42px;
-}
-
-.ide-root .ide-vwp-ready-hero {
-  border: 1px dashed rgba(212, 116, 245, 0.26);
-  border-radius: 10px;
-  background: rgba(212, 116, 245, 0.05);
 }
 
 .ide-root .ide-verify-results-summary[data-kind='pass'] {
@@ -3057,14 +3034,6 @@
   .ide-scenario-testbench-preview > header > div:last-child { text-align: left; }
 }
 
-.ide-root .ide-verify-console-frame,
-.ide-root .ide-verify-instrument-deck,
-.ide-root .ide-verify-oscilloscope-stage,
-.ide-root .ide-vwp {
-  background: var(--rb-canvas-dark);
-  color: #f2f5f8;
-}
-
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-oscilloscope-stage [data-testid='ide-verify-waveform-preview'] {
   min-height: 238px !important;
@@ -3083,11 +3052,6 @@
   min-height: 0 !important;
   height: auto !important;
 }
-.ide-root .ide-vwp {
-  min-height: clamp(220px, 28vh, 300px);
-  background-color: #10161f;
-  background-image: linear-gradient(rgba(150, 170, 196, .06) 1px, transparent 1px);
-}
 
 /* Before the first run, the scenario editor remains the primary work object.
    Keep the waveform present as a concise, intentional next-state panel instead
@@ -3097,38 +3061,6 @@
   .ide-verify-region--waveform {
   min-height: 0 !important;
   height: auto !important;
-}
-
-.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
-  .ide-vwp {
-  min-height: 112px !important;
-  height: auto !important;
-  padding: 12px 14px !important;
-}
-
-.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
-  .ide-vwp-summary {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 4px 18px !important;
-  align-items: center !important;
-  padding: 0 !important;
-  border: 0 !important;
-}
-
-.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
-  .ide-vwp-header-facts {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-}
-
-.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
-  .ide-vwp-ready-hero {
-  display: none !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']

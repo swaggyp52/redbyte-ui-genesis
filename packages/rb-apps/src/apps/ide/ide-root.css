@@ -2522,33 +2522,6 @@
   text-align: right;
 }
 
-/* Probe Bar */
-.ide-design-probe-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ide-space-1);
-  padding: var(--ide-space-1) var(--ide-space-2);
-  border-bottom: 1px solid var(--ide-border);
-  background: var(--ide-surface-2);
-  min-height: 28px;
-}
-
-.ide-design-probe-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ide-space-1);
-  padding: 2px 6px;
-  border-radius: 9999px;
-  border: 1px solid var(--ide-border);
-  background: var(--ide-surface-3);
-  font-size: var(--rb-font-size-1);
-}
-
-.ide-design-probe-value {
-  font-family: var(--rb-font-mono);
-  font-weight: var(--rb-font-weight-semibold);
-}
-
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-toggle-rail {
   width: 100%;
   font-size: 11px;
@@ -19483,26 +19456,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 10px;
 }
 
-[data-ide-mode-marker='design'] .ide-design-compiler-strip,
-[data-ide-mode-marker='design'] .ide-design-probe-bar {
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(75, 106, 136, 0.22);
-  border-radius: 12px;
-  background: rgba(7, 14, 24, 0.72);
-}
-
-[data-ide-mode-marker='design'] .ide-design-probe-bar {
-  position: absolute;
-  top: 54px;
-  right: 12px;
-  z-index: 4;
-  max-width: min(540px, calc(100% - 24px));
-  justify-content: flex-end;
-  gap: 8px;
-  pointer-events: none;
-}
-
 [data-ide-mode-marker='design'] .ide-design-canvas {
   padding: 10px;
   gap: 10px;
@@ -20818,10 +20771,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   order: 3;
   flex: 1;
   min-height: 120px;
-}
-.ide-verify-region--waveform:has(.ide-vwp) {
-  flex: 0 1 auto;
-  min-height: 0;
 }
 
 /* ── Workspace: side-by-side stimulus (left) + waveform (right) ────────────── */
@@ -22429,23 +22378,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   opacity: 0.85;
 }
 
-/* Framed board workspace — central, higher contrast */
-[data-ide-mode-marker='hardware'] .ide-hw-board-workspace {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: clamp(360px, 54vh, 640px);
-  margin-bottom: 4px;
-  border-radius: 16px;
-  border: 1px solid rgba(72, 118, 152, 0.52);
-  background:
-    radial-gradient(ellipse 72% 55% at 50% 38%, rgba(52, 211, 153, 0.08), transparent 58%),
-    linear-gradient(180deg, rgba(12, 26, 42, 0.96), rgba(6, 14, 24, 0.99));
-  box-shadow:
-    0 22px 48px rgba(1, 8, 16, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
 [data-ide-mode-marker='hardware'] .ide-hw-board-chrome {
   display: flex;
   align-items: center;
@@ -22500,12 +22432,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: rgba(175, 205, 228, 0.82);
   background: rgba(6, 16, 28, 0.65);
 }
-/* Map Pins stage: pipeline authority strip (mirrors Project Map Pins legitimacy) */
-[data-ide-mode-marker='hardware'] .ide-hw-board-workspace--map[data-testid='ide-hw-board-workspace'] [data-testid='ide-hw-map-authority-callout'] {
-  margin: 0 18px 14px;
-  border-color: rgba(56, 189, 248, 0.38);
-  background: linear-gradient(135deg, rgba(12, 26, 44, 0.55) 0%, rgba(8, 18, 32, 0.72) 100%);
-}
+
 [data-ide-mode-marker='hardware'] .ide-hw-board-canvas {
   flex: 1;
   min-height: 0;
@@ -22524,10 +22451,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 16px;
   align-items: stretch;
 }
-[data-ide-mode-marker='hardware'] .ide-hw-board-workspace--map .ide-hw-map-table {
-  flex: 0 0 min(360px, 36vw);
-  max-height: min(560px, 62vh);
-}
+
 [data-ide-mode-marker='hardware'] .ide-hw-board-wrap {
   flex: 1 1 auto;
   width: 100%;
@@ -26484,178 +26408,6 @@ button:disabled,
 }
 
 /* ════════════════════════════════════════════════════════════════
-   Verify Waveform Placeholder — scaffold lanes + overlay CTA
-   ════════════════════════════════════════════════════════════════ */
-
-.ide-vwp {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 80px;
-  max-height: 140px;
-  overflow: hidden;
-}
-
-/* Scaffold lanes */
-.ide-vwp-lanes {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  opacity: 0.35;
-  pointer-events: none;
-  padding: 8px 0;
-}
-.ide-vwp-lane {
-  display: flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 12px;
-  border-bottom: 1px solid rgba(48, 77, 107, 0.15);
-}
-.ide-vwp-lane-label {
-  width: 80px;
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--rb-text-muted, #7a95b0);
-}
-.ide-vwp-lane-label code {
-  font-family: var(--rb-font-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
-}
-.ide-vwp-lane-trace {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-.ide-vwp-lane-bar {
-  width: 100%;
-  height: 2px;
-  border-radius: 1px;
-  background: rgba(100, 116, 139, 0.25);
-}
-
-/* Kind-based lane coloring */
-.ide-vwp-lane--clk .ide-vwp-lane-label { color: #a78bfa; }
-.ide-vwp-lane--clk .ide-vwp-lane-bar { background: rgba(139, 92, 246, 0.3); }
-
-.ide-vwp-lane--in .ide-vwp-lane-label { color: #5eead4; }
-.ide-vwp-lane--in .ide-vwp-lane-bar { background: rgba(20, 184, 166, 0.3); }
-
-.ide-vwp-lane--out .ide-vwp-lane-label { color: #fcd34d; }
-.ide-vwp-lane--out .ide-vwp-lane-bar { background: rgba(251, 191, 36, 0.3); }
-
-.ide-vwp-lane--empty .ide-vwp-lane-label {
-  color: var(--rb-text-muted, #7a95b0);
-  font-style: italic;
-}
-
-/* Overlay CTA */
-.ide-vwp-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 18, 30, 0.55);
-  backdrop-filter: blur(2px);
-}
-.ide-vwp-overlay-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  background: rgba(15, 25, 42, 0.8);
-  border: 1px solid rgba(48, 77, 107, 0.4);
-}
-.ide-vwp-overlay-icon {
-  font-size: 18px;
-}
-.ide-vwp-overlay-text {
-  margin: 0;
-  font-size: 13px;
-  color: var(--rb-text-muted, #7a95b0);
-  text-align: center;
-  max-width: 280px;
-}
-
-/* ── Waveform placeholder: empty state hero (no vectors yet) ── */
-.ide-vwp--no-vectors {
-  max-height: none;
-}
-
-.ide-vwp-empty-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 32px 24px;
-  text-align: center;
-}
-
-.ide-vwp-empty-hero-icon {
-  font-size: 28px;
-  color: rgba(100, 160, 220, 0.45);
-  line-height: 1;
-}
-
-.ide-vwp-empty-hero-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(188, 210, 232, 0.9);
-  letter-spacing: 0.01em;
-}
-
-.ide-vwp-empty-hero-desc {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.55;
-  color: rgba(150, 180, 210, 0.72);
-  max-width: 320px;
-}
-
-.ide-vwp-empty-hero-signals {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.ide-vwp-empty-hero-signals-label {
-  font-size: 11px;
-  color: rgba(100, 140, 180, 0.55);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ide-vwp-empty-hero-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-}
-
-.ide-vwp-empty-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-family: var(--rb-font-mono, 'JetBrains Mono', monospace);
-  border: 1px solid rgba(50, 80, 110, 0.5);
-  background: rgba(12, 24, 40, 0.6);
-}
-
-.ide-vwp-empty-chip--clk { color: #a78bfa; border-color: rgba(139, 92, 246, 0.3); }
-.ide-vwp-empty-chip--in  { color: #5eead4; border-color: rgba(20, 184, 166, 0.25); }
-.ide-vwp-empty-chip--out { color: #fcd34d; border-color: rgba(251, 191, 36, 0.2); }
-
-/* ════════════════════════════════════════════════════════════════
    Scenario Library Header — styled dropdown, tabs, CRUD actions
    ════════════════════════════════════════════════════════════════ */
 
@@ -27264,11 +27016,6 @@ button:disabled,
   z-index: 1;
   min-height: 0 !important;
   overflow: hidden !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform:has(.ide-vwp) {
-  flex: 1 1 auto !important;
-  min-height: clamp(260px, 34vh, 420px) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[data-state='expanded'] {
@@ -29891,7 +29638,6 @@ button:disabled,
   [data-ide-mode-marker='verify'] .ide-verify-waveform-transport {
     grid-template-columns: minmax(0, 1fr) !important;
   }
-
 
   [data-ide-mode-marker='verify'] .ide-verify-workbench-header-meta,
   [data-ide-mode-marker='verify'] .ide-verify-signal-toolbar {
@@ -33546,25 +33292,6 @@ button:disabled,
   padding: 8px 10px !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-vwp {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  max-height: none;
-  height: 100%;
-  padding: 10px 12px 12px;
-  gap: 10px;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(72, 118, 158, 0.18);
-}
-
 /* Verify legitimacy reset:
    restore a real desktop authoring lane while keeping waveform dominant, and
    trim post-run chrome that was spending height without improving the next action. */
@@ -33701,94 +33428,6 @@ button:disabled,
 [data-ide-mode-marker='verify'] .ide-vcb-session-details-summary {
   font-size: 12px !important;
   padding: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-observe-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  background: rgba(56, 189, 248, 0.08);
-  color: rgba(201, 236, 255, 0.92);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-header-note {
-  margin: 0;
-  max-width: none;
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgba(193, 214, 234, 0.82);
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-header-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-header-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(78, 113, 144, 0.24);
-  background: rgba(10, 19, 32, 0.8);
-  color: rgba(212, 229, 247, 0.9);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-lanes {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding-top: 2px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
-    repeating-linear-gradient(
-      90deg,
-      rgba(101, 145, 184, 0.08) 0,
-      rgba(101, 145, 184, 0.08) 1px,
-      transparent 1px,
-      transparent 72px
-    );
-  border-radius: 10px;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-lane {
-  min-height: 32px;
-  padding: 0 9px;
-  border-radius: 10px;
-  background: rgba(9, 17, 30, 0.64);
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-lane-label {
-  min-width: 90px;
-  font-size: 11px;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-lane-trace {
-  height: 22px;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-lane-bar {
-  height: 8px;
-  border-radius: 999px;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-overlay,
-[data-ide-mode-marker='verify'] .ide-vwp-overlay-content {
-  display: none;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-assist-slot {

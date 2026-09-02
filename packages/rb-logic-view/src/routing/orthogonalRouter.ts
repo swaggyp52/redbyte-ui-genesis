@@ -214,7 +214,8 @@ export function routeCircuit(
           points,
           degenerate: false,
         });
-        if (trunkOwners > 1 && t.y !== s.y) junctions.push({ x: channel, y: t.y });
+        // A branch leaving a trunk end is an L corner, not a T junction.
+        if (trunkOwners > 1 && t.y !== s.y && t.y !== yLo && t.y !== yHi) junctions.push({ x: channel, y: t.y });
       }
       if (trunkOwners > 1) {
         // The source enters the trunk at s.y; that corner is a junction only when

@@ -8162,6 +8162,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
                     data-interaction-mode={effectiveInteractionMode}
+                    data-learning-mode={effectiveLearningMode}
                     data-wire-active={wireStartPort ? '1' : '0'}
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-placement-active={isPlacementMode ? '1' : '0'}
@@ -10419,6 +10420,8 @@ function describeStudentSignalKey(
   const node = circuit.nodes.find((entry) => entry.id === nodeId);
   const nodeLabel = describeNodeForStudents(node, ioRowByNodeId?.get(nodeId));
   if (!portName || portName === 'out') return nodeLabel;
+  // An output pin's only port is its feed; the student-facing signal is the pin itself.
+  if (node?.type === 'OUTPUT' && portName === 'in') return nodeLabel;
   return `${nodeLabel} · ${describePortForStudents(portName)}`;
 }
 

@@ -135,7 +135,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           Failures only
         </button>
         {onRun ? (
-          <IdeButton tone="primary" onClick={onRun} disabled={runDisabled} testId="ide-case-lab-run">
+          <IdeButton tone="ghost" onClick={onRun} disabled={runDisabled} testId="ide-case-lab-run">
             {runLabel ?? 'Run'}
           </IdeButton>
         ) : null}

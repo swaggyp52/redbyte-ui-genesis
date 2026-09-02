@@ -188,3 +188,17 @@
 }
 .ide-root .rb-sch-stage .rb-minimap svg rect { fill: var(--rb-schematic-symbol-fill, #c5cfdc); stroke: none; }
 .ide-root .rb-sch-stage .rb-minimap svg rect[fill='none'] { fill: rgba(37, 99, 235, 0.08); stroke: var(--wb-accent); stroke-width: 1; }
+
+/* Reviewer fixes: pin markers only when they mean something; value tints only when a value exists;
+   rings for selection and faults only. */
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot { opacity: 0; }
+.ide-root .rb-sch-stage.is-wire-mode .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-state]:not([data-state='idle']),
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-probed='1'],
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-mismatch='1'],
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-issue],
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-hit:hover ~ .rb-sym-pin-dot { opacity: 1; }
+.ide-root .rb-sch-stage[data-learning-mode='edit'] .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-signal='0'] .rb-net-line,
+.ide-root .rb-sch-stage[data-learning-mode='edit'] .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-signal='1'] .rb-net-line { stroke: var(--rb-schematic-net); stroke-width: 1.5px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='traced'] .rb-sym-ring,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='changed'] .rb-sym-ring { display: none; }

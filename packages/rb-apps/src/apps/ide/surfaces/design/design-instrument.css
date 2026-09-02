@@ -441,3 +441,11 @@
 .ide-root .ide-design-console-readout strong,
 .ide-root .ide-design-simulation-readout strong { color: var(--wb-text); font-weight: 600; }
 .ide-root .ide-design-console-readout p { margin: 0; }
+
+/* Probe readout: light chips, not a dark HUD. */
+.ide-root .ide-design-probe-bar { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; max-width: 60%; padding: 0; border: 0; background: transparent; box-shadow: none; pointer-events: none; }
+.ide-root .ide-design-probe-pill { display: inline-flex; align-items: baseline; gap: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); box-shadow: none; }
+.ide-root .ide-design-probe-pill code { color: var(--wb-text); font: inherit; }
+.ide-root .ide-design-probe-value { color: var(--wb-text); font-weight: 700; }
+.ide-root .rb-design-dock-tabs { overflow-x: auto; scrollbar-width: none; }
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 7px; }

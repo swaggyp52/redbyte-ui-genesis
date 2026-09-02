@@ -105,3 +105,41 @@
 .ide-root .rb-board-modes .wb-btn { gap: 4px; }
 .ide-root .rb-board-mode-status { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .rb-board-modes .wb-btn.is-active .rb-board-mode-status { color: var(--wb-accent); }
+
+/* Reviewer fixes: the assignments pane scrolls; planner rows are dense; the side is paper. */
+.ide-root .rb-board-assignments { overflow: auto; }
+.ide-root .rb-board-assignments .ide-pin-planner { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ide-root .rb-board-assignments .ide-pin-planner-head { display: flex; align-items: baseline; gap: 8px; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-board-assignments .ide-pin-planner-head h3,
+.ide-root .rb-board-assignments .ide-pin-planner-head h2 { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-board-assignments .ide-pin-planner-head p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-board-assignments .ide-pin-planner-stats { margin-left: auto; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-board-assignments table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
+.ide-root .rb-board-assignments th,
+.ide-root .rb-board-assignments td { height: 24px; padding: 0 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 24px; }
+.ide-root .rb-board-assignments thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-board-assignments td code,
+.ide-root .rb-board-assignments td button { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-board-assignments td button { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); }
+.ide-root .rb-board-assignments td small,
+.ide-root .rb-board-assignments td span { font-size: var(--wb-text-xs); color: var(--wb-text-3); }
+.ide-root .rb-board-side,
+.ide-root .rb-board-side .rb-board-editor,
+.ide-root .rb-board-side > * { background: var(--wb-surface); color: var(--wb-text); box-shadow: none; }
+.ide-root .rb-board-side .ide-copy { color: var(--wb-text-3); }
+.ide-root .rb-board-side [data-testid='ide-hardware-basys3-binding-chain'] { color: var(--wb-text); }
+.ide-root .rb-board-editor .ide-button-secondary:disabled { opacity: 0.5; }
+
+/* Planner cells: the pin field and status badge are paper chips, not HUD pills. */
+.ide-root .rb-board-assignments .ide-pin-planner-pin-input { width: 72px; height: 20px; min-height: 0; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); box-shadow: none; }
+.ide-root .rb-board-assignments .ide-pin-planner-pin-input:focus-visible { outline: 2px solid var(--wb-accent); outline-offset: -1px; }
+.ide-root .rb-board-assignments .ide-pin-planner-badge { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-board-assignments .ide-pin-planner-badge.is-ok { color: var(--wb-ok, var(--wb-text-2)); }
+.ide-root .rb-board-assignments .ide-pin-planner-badge.is-conflict,
+.ide-root .rb-board-assignments .ide-pin-planner-badge.is-error { color: var(--wb-danger, var(--wb-text)); border-color: var(--wb-danger, var(--wb-border-strong)); }
+
+/* The base toolbar caps its height; the Board header wraps its metric chips instead of clipping. */
+.ide-root .rb-board-header { flex: none; max-height: none; overflow: visible; }
+@media (max-width: 899px) {
+  .ide-root .rb-board-header .rb-board-metrics { margin-left: 0; flex-basis: 100%; }
+}

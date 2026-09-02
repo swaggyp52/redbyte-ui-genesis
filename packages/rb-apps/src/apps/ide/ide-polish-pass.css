@@ -1160,106 +1160,6 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-/* vwp new hero states (ready + seed CTA) */
-.ide-root .ide-vwp-ready-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 20px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  text-align: center;
-}
-.ide-root .ide-vwp-ready-hero-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--rb-text-2);
-  margin: 0;
-}
-.ide-root .ide-vwp-ready-hero-desc {
-  font-size: 12px;
-  color: var(--rb-text-3);
-  max-width: 52ch;
-  margin: 0;
-  line-height: 1.5;
-}
-.ide-root .ide-vwp-ready-hero-run {
-  margin-top: 4px;
-  padding: 7px 18px;
-  border-radius: 6px;
-  background: rgba(46, 196, 182, 0.15);
-  color: #2ec4b6;
-  border: 1px solid rgba(46, 196, 182, 0.35);
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: background 0.12s;
-}
-.ide-root .ide-vwp-ready-hero-run:hover:not(:disabled) {
-  background: rgba(46, 196, 182, 0.26);
-}
-.ide-root .ide-vwp-ready-hero-run:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.ide-root .ide-vwp-empty-hero-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
-.ide-root .ide-vwp-empty-hero-seed {
-  padding: 6px 14px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--rb-text-2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.ide-root .ide-vwp-empty-hero-seed:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-.ide-root .ide-vwp-summary {
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ide-root .ide-vwp-header-note {
-  font-size: 12px;
-  color: var(--rb-text-3);
-  margin: 0;
-}
-.ide-root .ide-vwp-header-meta {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.ide-root .ide-vwp-header-chip {
-  font-size: 10.5px;
-  padding: 1px 7px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--rb-text-3);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-.ide-root .ide-vwp-observe-chip {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #5eead4;
-  background: rgba(20, 184, 166, 0.1);
-  border: 1px solid rgba(20, 184, 166, 0.25);
-  border-radius: 4px;
-  padding: 1px 6px;
-  align-self: flex-start;
-}
-
 /* ───────── §10b. Verify — inline mode explainer (audit pass 2026-05-02) ────────── */
 /* The Observe / Compare toggle had no inline explanation. Students could read
    the buttons but not what each mode actually does. Adding a one-line
@@ -2139,26 +2039,6 @@
   gap: 12px;
 }
 
-[data-ide-mode-marker='verify'] .ide-vwp-empty-hero-steps {
-  margin: 2px 0 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--rb-text-2, #cfdbeb);
-  text-align: left;
-}
-
-[data-ide-mode-marker='verify'] .ide-vwp-empty-hero {
-  max-width: 540px;
-  margin: 0 auto;
-  padding: 18px 16px;
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-vwp-lanes {
-  min-height: 188px;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-waveform-ghost {
   opacity: 0.92;
 }
@@ -2348,30 +2228,6 @@
 
 .ide-root [data-ide-mode-marker='design'] .ide-canvas,
 .ide-root [data-ide-mode-marker='design'] [data-testid='ide-design-canvas'] {
-  box-shadow: var(--rb-lab-depth-2);
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-vwp-ready-hero,
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-pass-hero,
-.ide-root [data-ide-mode-marker='verify'] [data-testid='ide-verify-pass-hero'] {
-  border-color: rgba(74, 222, 128, 0.30);
-  background:
-    linear-gradient(135deg, rgba(74, 222, 128, 0.12), rgba(13, 27, 44, 0.86) 58%),
-    var(--rb-lab-bg-proof);
-  box-shadow: var(--rb-lab-depth-2);
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-results-summary-state,
-.ide-root [data-ide-mode-marker='verify'] .ide-vwp-ready-hero-title {
-  font-size: clamp(18px, 2vw, 26px);
-}
-
-.ide-root [data-ide-mode-marker='hardware'] [data-testid='ide-hw-board-workspace'],
-.ide-root [data-ide-mode-marker='hardware'] .ide-hw-board-workspace {
-  border-color: rgba(244, 185, 66, 0.22);
-  background:
-    linear-gradient(145deg, rgba(244, 185, 66, 0.06), rgba(7, 18, 24, 0.90)),
-    var(--rb-lab-bg-board);
   box-shadow: var(--rb-lab-depth-2);
 }
 
@@ -3335,10 +3191,6 @@
   padding: 7px 12px;
 }
 
-.ide-root [data-ide-mode-marker='hardware'] [data-hierarchy-role='context'] {
-  background: rgba(8, 18, 31, 0.56);
-}
-
 .ide-root [data-ide-mode-marker='export'] [data-hierarchy-focal='e0-handoff'] {
   min-height: 220px;
   overflow: visible;
@@ -3352,10 +3204,6 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-action-card {
   align-self: stretch;
-}
-
-.ide-root [data-ide-mode-marker='export'] [data-hierarchy-role='context'] {
-  opacity: 0.88;
 }
 
 .ide-root [data-ide-mode-marker='import'] [data-hierarchy-focal='manifest-restore'] {
@@ -4350,30 +4198,6 @@
   flex: 1 1 auto !important;
   min-height: 210px !important;
   overflow-x: hidden !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp {
-  min-height: 0 !important;
-  padding: 8px 12px !important;
-  gap: 6px !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-summary {
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 8px !important;
-  padding-bottom: 0 !important;
-  border-bottom: 0 !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-empty-hero {
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-empty-hero-steps,
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-lanes {
-  display: none !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-workspace {
