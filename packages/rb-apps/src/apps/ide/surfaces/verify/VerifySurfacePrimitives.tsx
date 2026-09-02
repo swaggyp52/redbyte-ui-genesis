@@ -159,62 +159,62 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
   const tone = RESULT_KIND_TONE[kind];
   const summary = (
     <section
-      className={`ide-verify-results-summary ${STATE_TONE_CLASS[tone]}`}
+      className={`rb-wave-results-summary ${STATE_TONE_CLASS[tone]}`}
       data-testid="ide-verify-results-summary"
       data-kind={kind}
     >
-      <div className="ide-verify-results-summary-main">
+      <div className="rb-wave-results-summary-main">
         <span
-          className="ide-verify-results-summary-state"
+          className="rb-wave-results-summary-state"
           data-testid="ide-verify-results-summary-state"
         >
-          <span className="ide-verify-results-summary-dot" aria-hidden="true" />
+          <span className="rb-wave-results-summary-dot" aria-hidden="true" />
           {RESULT_KIND_LABEL[kind]}
         </span>
         <span
-          className="ide-verify-results-summary-headline"
+          className="rb-wave-results-summary-headline"
           data-testid="ide-verify-results-summary-headline"
         >
           {kind === 'pass' ? <span data-testid="ide-verify-pass-hero-title">{headline}</span> : headline}
         </span>
         {subline ? (
           <span
-            className="ide-verify-results-summary-subline"
+            className="rb-wave-results-summary-subline"
             data-testid="ide-verify-results-summary-subline"
           >
             {kind === 'pass' ? <span data-testid="ide-verify-pass-hero-meta">{subline}</span> : subline}
           </span>
         ) : null}
         {guidanceItems && guidanceItems.length > 0 ? (
-          <ol className="ide-verify-results-guidance" data-testid="ide-verify-results-guidance">
+          <ol className="rb-wave-results-guidance" data-testid="ide-verify-results-guidance">
             {guidanceItems.map((item) => <li key={item}>{item}</li>)}
           </ol>
         ) : null}
       </div>
       {metrics && metrics.length > 0 ? (
         <ul
-          className="ide-verify-results-summary-metrics"
+          className="rb-wave-results-summary-metrics"
           data-testid="ide-verify-results-summary-metrics"
           aria-label="Run metrics"
         >
           {metrics.map((metric) => (
             <li
               key={metric.id}
-              className={`ide-verify-results-summary-metric is-${metric.tone ?? 'neutral'}`}
+              className={`rb-wave-results-summary-metric is-${metric.tone ?? 'neutral'}`}
               data-testid={`ide-verify-results-summary-metric-${metric.id}`}
             >
-              <span className="ide-verify-results-summary-metric-label">{metric.label}</span>
-              <span className="ide-verify-results-summary-metric-value">{metric.value}</span>
+              <span className="rb-wave-results-summary-metric-label">{metric.label}</span>
+              <span className="rb-wave-results-summary-metric-value">{metric.value}</span>
             </li>
           ))}
         </ul>
       ) : null}
       {(primaryActionLabel && onPrimaryAction) || (secondaryActionLabel && onSecondaryAction) ? (
-        <div className="ide-verify-results-summary-actions">
+        <div className="rb-wave-results-summary-actions">
           {primaryActionLabel && onPrimaryAction ? (
             <button
               type="button"
-              className="ide-verify-results-summary-action is-primary"
+              className="rb-wave-results-summary-action is-primary"
               onClick={onPrimaryAction}
               data-testid={primaryActionTestId ?? 'ide-verify-results-summary-primary'}
             >
@@ -224,7 +224,7 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
           {secondaryActionLabel && onSecondaryAction ? (
             <button
               type="button"
-              className="ide-verify-results-summary-action is-ghost"
+              className="rb-wave-results-summary-action is-ghost"
               onClick={onSecondaryAction}
               data-testid={secondaryActionTestId ?? 'ide-verify-results-summary-secondary'}
             >

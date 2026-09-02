@@ -155,6 +155,7 @@ import {
 import { buildSimulationEvidenceSummary } from '../simulationEvidence';
 import './verify/simulation-studio-v3.css';
 import './verify/simulate-instrument.css';
+import './verify/waveform-instrument.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'verify',
@@ -6030,8 +6031,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 />
               ) : null}
               centerPanel={(
-            <div className="ide-verify-console-frame">
-            <div className="ide-verify-instrument-deck">
+            <div className="rb-wave-frame">
+            <div className="rb-wave-deck">
             {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
             {lastRun ? (
               <VerifyResultsSummary
@@ -6122,7 +6123,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ) : null}
             {lastRun ? (
               <div
-                className="ide-verify-results-actions"
+                className="rb-wave-actions"
                 data-testid="ide-vcb-utilities-panel"
                 aria-label="Run inspection and repair actions"
               >
@@ -6172,12 +6173,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </div>
             ) : null}
-            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
+            <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
-              <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
-                <div className="ide-verify-scope-copy">
+              <div className="wb-toolbar rb-wave-header" data-testid="ide-verify-scope-header">
+                <div className="rb-wave-header-copy">
                   <span
-                    className="ide-verify-scope-label"
+                    className="rb-wave-label"
                     data-testid="ide-verify-scope-label"
                     title={
                       isSequentialRun
@@ -6188,17 +6189,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     Waveform truth
                   </span>
                 </div>
-                <div className="ide-verify-scope-header-right">
+                <div className="rb-wave-header-right">
                   {selectedScopeCaseLabel ? (
-                    <span className="ide-verify-scope-case-chip" data-testid="ide-verify-scope-case">
+                    <span className="rb-wave-chip" data-testid="ide-verify-scope-case">
                       {selectedScopeCaseLabel}
                     </span>
                   ) : null}
                   {selectedCaseTickLabel ? (
-                    <code className="ide-verify-scope-tick">{selectedCaseTickLabel}</code>
+                    <code className="rb-wave-tick">{selectedCaseTickLabel}</code>
                   ) : null}
                   {selectedSignal ? (
-                    <span className="ide-verify-scope-signal-chip" data-testid="ide-verify-scope-signal">
+                    <span className="rb-wave-chip rb-wave-chip--signal" data-testid="ide-verify-scope-signal">
                       {selectedSignal}
                     </span>
                   ) : null}
@@ -6236,16 +6237,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     {selectedSignalIsProbed ? 'Unwatch signal' : 'Watch signal'}
                   </button>
                   {isSequentialRun && (
-                    <span className="ide-verify-scope-seq-badge" data-testid="ide-verify-seq-badge">
+                    <span className="rb-wave-seq-badge" data-testid="ide-verify-seq-badge">
                       Sequential
                     </span>
                   )}
                 </div>
               </div>
-              <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
-                <div className="ide-verify-waveform-primary" data-testid="ide-verify-waveform-primary">
+              <div className="rb-wave-bar" data-testid="ide-verify-waveform-bar">
+                <div className="rb-wave-primary" data-testid="ide-verify-waveform-primary">
                 {canStepThroughCases ? (
-                  <div className="ide-verify-step-controls" data-testid="ide-verify-step-controls">
+                  <div className="rb-wave-group" data-testid="ide-verify-step-controls">
                     <IdeButton
                       tone={isStepMode ? 'secondary' : 'ghost'}
                       onClick={() => setIsStepMode((previous) => !previous)}
@@ -6259,11 +6260,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {isStepMode ? 'Step cases on' : 'Step cases'}
                     </IdeButton>
                     {isStepMode ? (
-                      <div className="ide-verify-step-bar" data-testid="ide-verify-step-bar">
+                      <div className="rb-wave-step-bar" data-testid="ide-verify-step-bar">
                         <IdeButton tone="secondary" onClick={goToPrevStep} disabled={totalSteps <= 1} testId="ide-verify-step-prev">
                           ← Prev
                         </IdeButton>
-                        <span className="ide-verify-step-position" data-testid="ide-verify-step-position">
+                        <span className="rb-wave-step-position" data-testid="ide-verify-step-position">
                           {selectedCasePositionLabel}
                         </span>
                         <IdeButton tone="secondary" onClick={goToNextStep} disabled={totalSteps <= 1} testId="ide-verify-step-next">
@@ -6278,15 +6279,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ) : null}
                   </div>
                 ) : null}
-                <div className="ide-verify-waveform-transport" data-testid="ide-verify-waveform-transport">
+                <div className="rb-wave-transport" data-testid="ide-verify-waveform-transport">
                 {/* Center: Zoom + Row density */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-center">
-                  <span className="ide-verify-zoom-label ide-copy">Tick range</span>
+                <div className="rb-wave-group">
+                  <span className="ide-copy">Tick range</span>
                   {(['all', 'fail', 'window'] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"
-                      className={`ide-verify-zoom-btn ${tickZoom === mode ? 'is-active' : ''}`}
+                      className={`rb-wave-zoom${tickZoom === mode ? ' is-active' : ''}`}
                       onClick={() => {
                         setTickZoom(mode);
                         if (mode === 'window') setTickWindowCenter(selectedTick);
@@ -6299,9 +6300,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
 
                 {/* Right: Tick scrubber + advanced tools */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-right">
+                <div className="rb-wave-group rb-wave-group--right">
                   {allWaveformTicks.length > 0 && selectedTick !== null ? (
-                    <label className="ide-verify-scrubber-field" data-testid="ide-verify-tick-nav">
+                    <label className="rb-wave-scrubber" data-testid="ide-verify-tick-nav">
                       <input
                         type="range"
                         min={0}
@@ -6327,7 +6328,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
 
                 {/* Fail/meta navigation intentionally owns a separate row. */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
+                <div className="rb-wave-group" data-testid="ide-verify-fail-nav">
                   {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
                     <>
                       <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
@@ -6363,9 +6364,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
               </div>
               {allWaveformTicks.length > 0 && (
-                <div className="ide-verify-waveform-tools-panel" data-testid="ide-verify-waveform-tools-panel">
-                  <div className="ide-verify-waveform-tools-section">
-                    <span className="ide-verify-waveform-tools-label ide-copy">View</span>
+                <div className="rb-wave-tools" data-testid="ide-verify-waveform-tools-panel">
+                  <div className="rb-wave-tools-section">
+                    <span className="rb-wave-tools-label">View</span>
                     <button
                       type="button"
                       className="ide-verify-zoom-btn"
@@ -6395,7 +6396,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     >
                       Fit
                     </button>
-                    <span className="ide-verify-waveform-tools-label ide-copy">Rows</span>
+                    <span className="rb-wave-tools-label">Rows</span>
                     {(['small', 'normal', 'large'] as const).map((d) => (
                       <button
                         key={d}
@@ -6411,9 +6412,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ))}
                   </div>
                   {selectedTick !== null && (
-                    <div className="ide-verify-waveform-tools-section ide-verify-waveform-tools-section--markers">
-                      <span className="ide-verify-waveform-tools-label ide-copy">Markers</span>
-                      <span className="ide-verify-waveform-tools-readouts">
+                    <div className="rb-wave-tools-section">
+                      <span className="rb-wave-tools-label">Markers</span>
+                      <span className="rb-wave-tools-readouts">
                         {cursorA !== null && (
                           <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
                         )}
@@ -6426,7 +6427,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           </code>
                         )}
                       </span>
-                      <div className="ide-verify-cursor-controls" data-testid="ide-verify-cursor-controls">
+                      <div className="rb-wave-tools-section" data-testid="ide-verify-cursor-controls">
                         <button
                           type="button"
                           className="ide-verify-zoom-btn"
@@ -6533,7 +6534,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
 
               <div
-                className="ide-waveform-outer ide-verify-waveform-frame"
+                className="rb-wave-canvas"
                 data-testid="ide-verify-waveform-preview"
                 data-verify-trace-only={isTraceOnly ? '1' : '0'}
               >
@@ -6543,7 +6544,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectTick={setSelectedTick}
                 />
                 <div
-                  className="ide-verify-waveform-scroll"
+                  className="rb-wave-scroll"
                   ref={waveformScrollRef}
                   onWheel={handleWaveformWheel}
                   data-layout-mode={layoutMode}
