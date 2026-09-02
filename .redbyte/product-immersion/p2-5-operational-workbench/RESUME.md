@@ -7,7 +7,7 @@
 ## 2026-09-02 — P2.5E signature engineering workbench convergence: Wave 1 landed, Waves 2–3 in flight
 
 **Status: INTERIM REDBYTE SIGNATURE WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
-HEAD `c681a0f51` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+HEAD `c9d7706d4` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
 `2ef5e5ee8` (ahead 45+, nothing pushed). Safety tag at the campaign start:
 `safety/redbyte-before-signature-workbench-76c673580`. Worktree clean at each commit below.
 
@@ -62,6 +62,12 @@ an expansion that enhances understanding. Chrome is not the signature; the relat
   hash, state, files/bytes, mapping completeness, simulation result, constraints, architecture
   block view, mapping table, artifact manifest, warnings, proof boundary; print stylesheet; in-app
   only, nothing added to the canonical ZIP.
+- `c9d7706d4` Library rows carry their badges on one line: a row is a three-column grid but can
+  also hold a capability badge and a palette badge, which were wrapping into an implicit second
+  grid row and printing over the next part against the fixed 28px height. Extra children now take
+  implicit columns, the port summary shrinks before the name or a capability warning, and the row
+  clips. Timing lanes take the keyboard (Left/Right move the tick, Home/End jump). `capture.mjs`
+  gained steps 12–14 — the SUM[2] journey at every viewport.
 - `c681a0f51` The starter brief becomes project context (Project Overview: name, lab, concept,
   next action, summary, expected behavior — absent when the project did not come from a starter);
   the Board I/O tab carries its own search bound to the shared query, because the list moved but
@@ -98,7 +104,7 @@ when probes are pinned (restyled, unverified with probes pinned).
 | Board set (6 files) | 5 red / 57 pass | name-identical to baseline |
 | Package set (6 files) | 37 red / 28 pass | baseline count |
 | Document host + Project workbench | 24 pass / 0 red | new |
-| Captures | 44 PNGs, 0 console errors, no body scroll | 1440×900 · 1366×768 · 125% · 200% |
+| Captures | 56 PNGs (14 states × 4 viewports), 0 console errors, no body scroll | 1440×900 · 1366×768 · 125% · 200% |
 
 Every red is classified: it reproduces on the pre-campaign baseline, or it was migrated onto
 the new owner in the same commit that moved the behaviour. Nothing was deleted to go green.
@@ -109,6 +115,24 @@ instruments), `exportSurface.handoff-states` (role guide, no narration card),
 `designSurface.paletteDock` ×6 / `libraryRail` / `idleInspector` / `workstation` (Board I/O owns
 board resources; one categorized component list; no canvas starter narration), plus two new
 `projectWorkbench` tests for the relocated starter brief.
+
+**Signature proof — the SUM[2] causal journey (captures 12–14, all four viewports):** selecting
+SUM[2] on the hierarchical 4-bit adder names it in the frame bar as `SUM[2] ← u_fa2/SUM · U19`;
+Related… offers Open schematic (driven by u_fa2/SUM), Open FullAdderCell (inside u_fa2), Open
+cases (16 checks on SUM[2] in Default), Open board mapping (LED LD2 · U19) and Open package
+(SUM[2] in top.vhd, top.xdc, testbench.vhd). Following the Cases hop lands on SUM[2] in the case
+grid, the signal rail and the inspector; following the Board hop lands on the SUM[2] mapping row
+with artifact port SUM[2], LED LD2, pin U19 and its two XDC lines. One object, six
+representations, no string matching anywhere in the chain.
+
+**Open defects carried forward (recorded, not fixed):** one problems ledger (the status bar counts
+design diagnostics only while Package reports its own warning count); Waveform still carries four
+header rows above the lanes and has no scope tree (the signal rail is a flat list); the Board
+three-column grid squeezes the centre board at 200% (the header wraps, the board does not);
+Design library rows clip their port summary at the 220px dock (the full interface stays in the
+row tooltip); buses render as individual bits rather than bundled nets; per-artifact provenance
+in Package is a manifest, not a dependency graph; saved/reloaded layout was not re-verified this
+campaign.
 
 **Claim boundary (unchanged):** Browser-E0 only. RedByte generated the package; Vivado
 synthesis, implementation, timing, bitstream, programming and physical observation have no
