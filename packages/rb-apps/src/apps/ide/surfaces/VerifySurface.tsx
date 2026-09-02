@@ -148,10 +148,8 @@ import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 import type { IdeChromeContract } from '../chromeContract';
 import { diagnoseVerifyFailure } from '../verifyFailureDiagnosis';
 import { TestbenchDocumentTabs } from './verify/TestbenchDocumentTabs';
-import {
-  ScenarioComposerWorkbench,
-  ScenarioTestbenchPreview,
-} from './verify/ScenarioComposerWorkbench';
+import { TimingLab } from './verify/TimingLab';
+import { ScenarioTestbenchPreview } from './verify/ScenarioTestbenchPreview';
 import { buildSimulationEvidenceSummary } from '../simulationEvidence';
 import './verify/simulation-studio-v3.css';
 import './verify/simulate-instrument.css';
@@ -5891,7 +5889,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             source={generatedTestbenchSource}
           />
         ) : isSequentialRun ? (
-          <ScenarioComposerWorkbench
+          <TimingLab
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             vectors={authoredVectors}
             inputFields={stimulusPanelInputFields}
@@ -5902,6 +5900,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onVectorsChange={onVectorsChange}
             caseEvidenceByTick={testbenchCaseEvidenceByTick}
             observedValuesByTick={testbenchObservedValuesByTick}
+            clockFieldIds={clockSignalNames}
           />
         ) : (
           <CaseLab

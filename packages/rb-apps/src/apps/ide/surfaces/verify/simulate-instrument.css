@@ -293,3 +293,69 @@
 /* Waveform tab: the evidence deck becomes the document; cases shrink to a strip. */
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 168px) minmax(0, 1fr); }
 .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { grid-template-rows: minmax(0, 1fr) minmax(0, 220px); }
+
+/* Timing Lab: events in time — a dense table plus an editor strip for the selected event. */
+.ide-root .rb-timing { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; outline: none; background: var(--wb-surface); }
+.ide-root .rb-timing:focus-visible { box-shadow: inset 0 0 0 2px var(--wb-focus); }
+.ide-root .rb-timing-bar { display: flex; align-items: center; gap: 6px; flex: none; height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-timing-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .rb-timing-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-timing-spacer { flex: 1 1 auto; }
+.ide-root .rb-timing-danger { color: var(--wb-err); }
+.ide-root .rb-timing-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-timing-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
+.ide-root .rb-timing-table th,
+.ide-root .rb-timing-table td { height: 24px; padding: 0 8px; text-align: center; border-bottom: 1px solid var(--wb-border); white-space: nowrap; }
+.ide-root .rb-timing-table thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-mono); border-bottom: 1px solid var(--wb-border-strong); }
+.ide-root .rb-timing-table th.is-clock::before { content: '⌒ '; color: var(--rb-wave-clock); }
+.ide-root .rb-timing-num { width: 28px; color: var(--wb-text-3); font-family: var(--wb-font-mono); }
+.ide-root .rb-timing-time code { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-timing-table td code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-timing-table td.rb-timing-in.is-changed code { color: var(--rb-wave-in); font-weight: 700; }
+.ide-root .rb-timing-table td.rb-timing-in.is-clock code { color: var(--rb-wave-clock); }
+.ide-root .rb-timing-table th.rb-timing-out,
+.ide-root .rb-timing-table td.rb-timing-exp { border-left: 1px solid var(--wb-border-strong); }
+.ide-root .rb-timing-table td.rb-timing-obs.is-fail code { color: var(--wb-err); font-weight: 700; }
+.ide-root .rb-timing-row { cursor: pointer; }
+.ide-root .rb-timing-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-timing-row.is-selected { background: var(--wb-accent-bg-strong); }
+.ide-root .rb-timing-row.is-selected td { border-bottom-color: var(--wb-accent); }
+.ide-root .rb-timing-verdict { display: inline-block; min-width: 44px; font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--wb-text-3); }
+.ide-root .rb-timing-verdict.is-pass { color: var(--wb-ok); }
+.ide-root .rb-timing-verdict.is-fail { color: var(--wb-err); }
+.ide-root .rb-timing-verdict.is-stale { color: var(--wb-warn); }
+.ide-root .rb-timing-empty { padding: 12px; color: var(--wb-text-3); text-align: left; }
+.ide-root .rb-timing-editor { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-auto-rows: auto; align-items: start; gap: 6px 16px; flex: none; padding: 6px var(--wb-space-3) 8px; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-timing-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ide-root .rb-timing-field > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-timing-field > strong { color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-timing-time-input { display: inline-flex; align-items: center; gap: 2px; }
+.ide-root .rb-timing-time-input b { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-timing-time-input input { width: 56px; height: 22px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-timing-error { grid-column: 1 / -1; margin: 0; color: var(--wb-err); font-size: var(--wb-text-sm); }
+.ide-root .rb-timing-group { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; }
+.ide-root .rb-timing-group-label { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-timing-toggles { display: flex; flex-wrap: wrap; gap: 4px; }
+.ide-root .rb-timing-toggle { display: inline-flex; align-items: baseline; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-mono); cursor: pointer; }
+.ide-root .rb-timing-toggle strong { color: var(--wb-text); font-weight: 700; }
+.ide-root .rb-timing-toggle small { color: var(--wb-text-3); font-size: 10px; }
+.ide-root .rb-timing-toggle.is-high { border-color: var(--rb-wave-in); color: var(--rb-wave-in); }
+.ide-root .rb-timing-toggle.is-high strong { color: var(--rb-wave-in); }
+.ide-root .rb-timing-toggle.is-clock.is-high { border-color: var(--rb-wave-clock); color: var(--rb-wave-clock); }
+.ide-root .rb-timing-toggle.is-clock.is-high strong { color: var(--rb-wave-clock); }
+.ide-root .rb-timing-toggle.is-unset { border-style: dashed; }
+.ide-root .rb-timing-toggle:disabled { opacity: 0.5; cursor: default; }
+.ide-root .rb-timing-snapshot { display: flex; flex-wrap: wrap; gap: 6px; }
+.ide-root .rb-timing-snapshot code { padding: 1px 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Generated testbench preview: a code viewer, not a card. */
+.ide-root .rb-tb-preview { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background: var(--wb-surface); }
+.ide-root .rb-tb-preview-bar { display: flex; align-items: baseline; gap: 8px; flex: none; height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-tb-preview-eyebrow { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-tb-preview-file { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); }
+.ide-root .rb-tb-preview-scenario { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-tb-preview-note { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-tb-preview-code { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 0; font: var(--wb-text-sm) / 18px var(--wb-font-mono); }
+.ide-root .rb-tb-preview-line { display: grid; grid-template-columns: 44px minmax(0, 1fr); }
+.ide-root .rb-tb-preview-no { padding-right: 10px; color: var(--wb-text-3); text-align: right; user-select: none; }
+.ide-root .rb-tb-preview-line code { white-space: pre; color: var(--wb-text); }

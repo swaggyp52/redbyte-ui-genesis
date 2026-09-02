@@ -1,10 +1,8 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  ScenarioComposerWorkbench,
-  ScenarioTestbenchPreview,
-} from '../surfaces/verify/ScenarioComposerWorkbench';
+import { TimingLab } from '../surfaces/verify/TimingLab';
+import { ScenarioTestbenchPreview } from '../surfaces/verify/ScenarioTestbenchPreview';
 
 const inputFields = [
   { id: 'a', label: 'A' },
@@ -23,7 +21,7 @@ function renderComposer(
   return {
     onVectorsChange,
     view: render(
-      <ScenarioComposerWorkbench
+      <TimingLab
         scenarioName="Full Adder truth table"
         vectors={vectors}
         inputFields={inputFields}
@@ -39,7 +37,7 @@ function renderComposer(
   };
 }
 
-describe('ScenarioComposerWorkbench', () => {
+describe('TimingLab', () => {
   it('adds a stable event at the next time and carries forward the current stimulus', () => {
     const { onVectorsChange, view } = renderComposer();
     fireEvent.click(view.getByTestId('ide-scenario-composer-add-event'));
