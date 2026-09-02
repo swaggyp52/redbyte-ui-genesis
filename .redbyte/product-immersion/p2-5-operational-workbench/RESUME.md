@@ -22,6 +22,8 @@ Recovery bundle of the interrupted dirty state:
 
 **Board (bounded):** `8bde3da58` `feat(board)` three-column mapping workspace with the Basys3 board central, header/rail toolbars, rb-board-* owner; PinPlanner, ConstraintSetsPanel, provenance/drift callouts and the non-map modes still legacy-styled. 11 Board/export reds, all inherited.
 
+**Package (bounded):** `8d0d6b46b` `feat(package)` status strip + file tree + code viewer + handoff rows on package-instrument.css; export reds 37 = baseline.
+
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
   - `106d1f754 feat(design): schematic instrument — ANSI symbols, orthogonal nets, one toolbar, property-grid inspector`
