@@ -2440,14 +2440,6 @@
   padding: 10px 12px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-inspector-section {
-  padding: 12px 0 !important;
-}
-
-[data-ide-mode-marker='design'] .ide-inspector-section + .ide-inspector-section {
-  border-top-color: rgba(55, 86, 118, 0.48) !important;
-}
-
 .ide-design-palette .ide-palette-groups {
   max-height: 220px;
   overflow: auto;
@@ -6922,15 +6914,6 @@ details[open] summary .details-arrow {
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
-/* ── Inspector: quieter treatment ── */
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section {
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section + .ide-inspector-section {
-  border-top: none;
-}
-
 /* Inspector empty hint — shown when nothing selected */
 .ide-design-inspector-hint {
   padding: var(--ide-space-3);
@@ -7146,25 +7129,6 @@ details[open] summary .details-arrow {
   border-top: 1px solid rgba(255,255,255,0.05);
   margin-top: 4px;
   padding-top: 4px;
-}
-
-/* ── Inspector sections: card-feel with subtle backgrounds ── */
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section {
-  background: rgba(8,16,28,0.45);
-  border-radius: 4px;
-  margin: 3px 6px;
-  overflow: hidden;
-}
-
-/* Remove double borders between section header and content */
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-toggle {
-  background: rgba(12,24,40,0.6);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-/* Live Simulation section gets a subtle blue tint to stand out */
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section:has([accordion-id='live-sim']) {
-  border: 1px solid rgba(56,189,248,0.1);
 }
 
 /* ── Selection header: bigger, more presence ── */
@@ -7698,7 +7662,6 @@ details[open] summary .details-arrow {
   margin-left: auto;
   flex-shrink: 0;
 }
-
 
 /* ── Phase 19A: Kit tip strip — collapsible one-liner ── */
 .ide-verify-kit-tip {
@@ -8638,7 +8601,6 @@ details[open] summary .details-arrow {
 .ide-verify-mismatch-fix-btn:hover {
   background: rgba(255,107,107,0.1);
 }
-
 
 /* ══════════════════════════════════════════════════════════════════
    Phase 25 — Scope dominance · Truth table instrument feel ·
@@ -11451,8 +11413,6 @@ details[open].ide-export-evidence-details > summary::before {
   background: #081321;
   box-shadow: none;
 }
-
-
 
 [data-ide-mode-marker='project'] .ide-workbench-dock-left .ide-workbench-placeholder {
   padding-top: var(--rb-space-1);
@@ -16553,7 +16513,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   grid-template-columns: minmax(0, 1fr);
 }
 
-
 [data-layout-mode='compact'] .ide-design-pane-row[data-design-view='stacked'] .ide-design-pane--canvas {
   min-height: min(280px, 54%);
 }
@@ -16897,13 +16856,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 10px;
 }
 
-
 [data-ide-mode-marker='design'] .ide-design-live-summary {
   padding: 8px 10px;
-}
-
-[data-ide-mode-marker='design'] .ide-inspector .ide-inspector-section {
-  min-height: 0;
 }
 
 @supports selector(:has(*)) {
@@ -18410,7 +18364,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   grid-template-columns: minmax(0, 1fr);
 }
 
-
 /* ── Verify failure diagnosis block ── */
 .ide-verify-fail-diagnosis {
   display: flex;
@@ -19352,30 +19305,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
     linear-gradient(180deg, rgba(7, 16, 28, 0.98), rgba(5, 11, 20, 0.98));
 }
 
-[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-section {
-  margin: 0 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(72, 99, 128, 0.38);
-  background: rgba(9, 17, 28, 0.9);
-  overflow: hidden;
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-section > .ide-inspector-title {
-  margin: 0;
-  padding: 15px 16px 0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(166, 191, 220, 0.72);
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-content {
-  padding: 14px 16px 16px;
-  display: grid;
-  gap: 12px;
-}
-
 .ide-design-inspector-identity-card,
 .ide-design-inspector-empty-card {
   display: grid;
@@ -19836,7 +19765,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 4px;
   padding: 4px;
 }
-
 
 [data-ide-mode-marker='design'] .ide-design-toast {
   bottom: 14px;
@@ -21465,7 +21393,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-radius: 0 0 var(--ide-radius-s, 6px) var(--ide-radius-s, 6px);
 }
 
-
 /* ════════════════════════════════════════════════════════════════
    Slice 2 — Waveform visibility fix
    cursor-readout (160px delta table) was blocking the oscilloscope.
@@ -22006,19 +21933,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-left: 1px solid rgba(40, 68, 96, 0.5) !important;
 }
 
-[data-ide-mode-marker='design'] .ide-inspector-section {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
-}
-
-/* Inspector section title: quieter */
-[data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 12px;
-  font-weight: 750;
-  text-transform: none;
-  letter-spacing: 0.04em;
-  color: var(--rb-text-secondary);
-}
-
 /* ── Diagnostics drawer: hidden unless it has actual content ── */
 /* The diagnostics drawer below the canvas adds noise when empty.
    We set max-height: 0 when collapsed to reclaim vertical space. */
@@ -22060,7 +21974,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 [data-ide-mode-marker='design'] .ide-design-canvas {
   background: rgba(4, 10, 18, 0.82) !important;
 }
-
 
 /* ── Authoring status bar: compact, read as secondary info ── */
 /* The "AUTHORING STATUS / SIMULATION" info bar below the toolbar is verbose.
@@ -22257,7 +22170,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-color: rgba(55,90,120,0.18) !important;
   box-shadow: 0 6px 20px rgba(2,8,16,0.18) !important;
 }
-
 
 /* ════════════════════════════════════════════════════════════
    POLISH PASS — Hierarchy · Waveform · Canvas · Transitions
@@ -24374,16 +24286,6 @@ button:disabled,
   padding: 10px 10px 14px !important;
 }
 
-/* Inspector section headers: clear, not shouty */
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-section-header,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-toggle {
-  font-size: 9.5px !important;
-  letter-spacing: 0.08em !important;
-  color: rgba(120,165,210,0.55) !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-}
-
 /* ════════════════════════════════════════════════════════════
    SLICE 11 — INTERACTION & ORGANIZATION OVERHAUL
    Control grouping, toolbar discipline, panel role clarity
@@ -24919,25 +24821,6 @@ button:disabled,
   color: rgba(130,170,210,0.3) !important;
   display: block !important;
   margin-bottom: 8px !important;
-}
-[data-testid='ide-design-inspector-identity-title'] {
-  font-size: 15px !important;
-  font-weight: 700 !important;
-  color: rgba(186,230,253,0.55) !important;
-}
-[data-testid='ide-design-inspector-identity-subtitle'] {
-  font-size: 11px !important;
-  color: rgba(130,170,210,0.45) !important;
-  margin-top: 3px !important;
-  line-height: 1.4 !important;
-}
-[data-testid='ide-design-inspector-next-step'] {
-  font-size: 10px !important;
-  color: rgba(130,170,210,0.3) !important;
-  margin-top: 12px !important;
-  line-height: 1.5 !important;
-  padding-top: 10px !important;
-  border-top: 1px solid rgba(56,189,248,0.05) !important;
 }
 
 /* ── C3. Waveform legend: minimal, not decorative ────────────── */
@@ -30333,23 +30216,6 @@ button:disabled,
   width: 100% !important;
 }
 
-[data-ide-mode-marker='design'] .ide-inspector-section {
-  margin-bottom: 14px !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(73, 109, 141, 0.24) !important;
-  background: rgba(8, 14, 24, 0.9) !important;
-}
-
-[data-ide-mode-marker='design'] .ide-inspector-section > .ide-inspector-title,
-[data-ide-mode-marker='design'] .ide-inspector-section-header {
-  padding: 14px 16px 0 !important;
-}
-
-[data-ide-mode-marker='design'] .ide-inspector-section .ide-inspector-content {
-  padding: 14px 16px 16px !important;
-  gap: 14px !important;
-}
-
 [data-ide-mode-marker='design'] .ide-design-inspector-action-group,
 [data-ide-mode-marker='design'] .ide-design-inspector-property-card,
 [data-ide-mode-marker='design'] .ide-design-inspector-diagnostics {
@@ -30358,15 +30224,6 @@ button:disabled,
   border-radius: 12px !important;
   border: 1px solid rgba(73, 109, 141, 0.2) !important;
   background: rgba(11, 18, 30, 0.78) !important;
-}
-
-[data-ide-mode-marker='design'] .ide-design-inspector-group-label,
-[data-ide-mode-marker='design'] .ide-inspector-section-title {
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.14em !important;
-  text-transform: uppercase !important;
-  color: rgba(136, 173, 206, 0.72) !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-action-grid {
@@ -30424,7 +30281,6 @@ button:disabled,
 /* ==========================================================================
    Broad product pass — shared shell geometry and calmer Design ↔ Verify grammar
    ========================================================================== */
-
 
 .ide-workbench-shell .ide-workbench-dock-toggle-rail {
   display: flex !important;
@@ -31327,24 +31183,6 @@ button:disabled,
   padding: 8px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section {
-  margin-bottom: 10px !important;
-}
-
-[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-inspector-section-header {
-  padding: 10px 12px 0 !important;
-}
-
-[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-inspector-content {
-  gap: 8px !important;
-  padding: 8px 12px 10px !important;
-}
-
-[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-design-inspector-action-group {
-  gap: 7px !important;
-  padding: 9px !important;
-}
-
 [data-ide-mode-marker='project'] .ide-project-flightdeck {
   grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr) !important;
   gap: 18px !important;
@@ -31722,27 +31560,12 @@ button:disabled,
   font-size: 12px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-design-inspector-identity-card strong[data-testid='ide-design-inspector-identity-title'] {
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  color: var(--rb-text-primary) !important;
-  line-height: 1.25 !important;
-}
-
 [data-ide-mode-marker='design'] .ide-design-inspector-status {
   flex-shrink: 0 !important;
   white-space: nowrap !important;
   font-size: 12px !important;
   letter-spacing: 0.08em !important;
   padding: 2px 7px !important;
-}
-
-[data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  font-weight: 750;
-  color: var(--rb-text-secondary);
-  text-transform: none;
 }
 
 /* ── Verify: Signal rail — compact overhaul ──────────────────────────────── */

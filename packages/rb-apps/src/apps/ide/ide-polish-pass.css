@@ -3364,12 +3364,6 @@
   border-color: rgba(125, 211, 252, 0.25);
 }
 
-.ide-root [data-ide-mode-marker='design'] [data-hierarchy-role='context'] {
-  border: 1px solid rgba(154, 184, 214, 0.14);
-  border-radius: 12px;
-  background: rgba(9, 19, 32, 0.78);
-}
-
 .ide-root [data-ide-mode-marker='verify'] [data-hierarchy-role='primary'] {
   border: 1px solid rgba(74, 222, 128, 0.18);
   border-radius: 14px;
@@ -5289,7 +5283,6 @@
   min-width: min(170px, 26vw) !important;
   max-width: min(210px, 32vw) !important;
 }
-
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has(.ide-verify-region--result .ide-verify-run-proof)
   .ide-verify-panel

@@ -1,0 +1,190 @@
+/* Design schematic instrument — the visual grammar of symbols and nets drawn
+   by rb-logic-view's schematic renderer (SchematicNodeView / SchematicWireView).
+   One owner: symbol fills, ink, pin markers, net weights, selection/trace/
+   mismatch states, and the plane the schematic sits on. Tokens only; no
+   !important; strokes are non-scaling so lines stay crisp at every zoom. */
+
+:root[data-redbyte-mode='ide'] {
+  --rb-schematic-bg: #f4f6f9;
+  --rb-schematic-grid-minor: #e4e9f0;
+  --rb-schematic-grid-major: #d2dae4;
+  --rb-schematic-ink: #1c2739;
+  --rb-schematic-ink-2: #55637a;
+  --rb-schematic-fill: #ffffff;
+  --rb-schematic-fill-2: #eef2f7;
+  --rb-schematic-fill-io: #e9eef5;
+  --rb-schematic-net: #3d4b60;
+  --rb-schematic-net-low: #8b98ab;
+  --rb-schematic-accent: var(--rb-action);
+  --rb-schematic-high: #0f6b5b;
+  --rb-schematic-unknown: var(--rb-state-warning);
+  --rb-schematic-mismatch: var(--rb-state-danger);
+  --rb-schematic-issue: var(--rb-state-warning);
+}
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'],
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] {
+  --rb-schematic-bg: #10161f;
+  --rb-schematic-grid-minor: #1a222d;
+  --rb-schematic-grid-major: #232e3c;
+  --rb-schematic-ink: #e6ecf5;
+  --rb-schematic-ink-2: #9aa8bb;
+  --rb-schematic-fill: #1b2431;
+  --rb-schematic-fill-2: #232e3c;
+  --rb-schematic-fill-io: #253141;
+  --rb-schematic-net: #c3cddb;
+  --rb-schematic-net-low: #6f7d92;
+  --rb-schematic-high: #5ec9a6;
+}
+
+/* Symbols ─────────────────────────────────────────────────────────────────── */
+
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-body,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-body-extra,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-bubble,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-wedge {
+  fill: var(--rb-schematic-fill);
+  stroke: var(--rb-schematic-ink);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-body-extra,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-wedge { fill: none; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--module .rb-sym-body { fill: var(--rb-schematic-fill-2); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--register .rb-sym-body,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--block .rb-sym-body { fill: var(--rb-schematic-fill-2); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--io-in .rb-sym-body,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--io-out .rb-sym-body,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--clock .rb-sym-body,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym--const .rb-sym-body { fill: var(--rb-schematic-fill-io); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='hover'] .rb-sym-body { stroke: var(--rb-schematic-accent); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='selected'] .rb-sym-body,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='selected'] .rb-sym-bubble { stroke: var(--rb-schematic-accent); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='traced'] .rb-sym-body { stroke: var(--rb-schematic-accent); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='changed'] .rb-sym-body { stroke: var(--rb-schematic-high); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='mismatch'] .rb-sym-body { stroke: var(--rb-schematic-mismatch); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='error'] .rb-sym-body { stroke: var(--rb-schematic-mismatch); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='warn'] .rb-sym-body { stroke: var(--rb-schematic-issue); stroke-width: 2px; }
+
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-ring { fill: none; stroke: var(--rb-schematic-accent); stroke-width: 1.5px; stroke-dasharray: none; vector-effect: non-scaling-stroke; opacity: 0.9; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='traced'] .rb-sym-ring { opacity: 0.55; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='changed'] .rb-sym-ring { stroke: var(--rb-schematic-high); opacity: 0.6; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='mismatch'] .rb-sym-ring,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='error'] .rb-sym-ring { stroke: var(--rb-schematic-mismatch); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='warn'] .rb-sym-ring { stroke: var(--rb-schematic-issue); }
+
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-stub { stroke: var(--rb-schematic-net); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-stub.is-bus { stroke-width: 3px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-bus-slash { stroke: var(--rb-schematic-ink); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-title { fill: var(--rb-schematic-ink); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-type { fill: var(--rb-schematic-ink-2); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-alias { fill: var(--rb-schematic-ink-2); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-name { fill: var(--rb-schematic-ink); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-value { fill: var(--rb-schematic-ink-2); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-value.is-high { fill: var(--rb-schematic-high); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-value.is-unknown { fill: var(--rb-schematic-unknown); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-value { fill: var(--rb-schematic-ink-2); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-value.is-high { fill: var(--rb-schematic-high); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-value.is-unknown { fill: var(--rb-schematic-unknown); }
+
+/* Pin end markers: quiet by default, filled when they matter. */
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot { fill: var(--rb-schematic-fill); stroke: var(--rb-schematic-net); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-state='source'] { fill: var(--rb-schematic-accent); stroke: var(--rb-schematic-accent); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-state='valid-target'] { fill: var(--rb-schematic-high); stroke: var(--rb-schematic-high); r: 3.2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-state='invalid-target'] { stroke: var(--rb-schematic-net-low); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-probed='1'] { fill: var(--rb-schematic-accent); stroke: var(--rb-schematic-accent); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-highlighted='1'] { fill: var(--rb-schematic-accent); stroke: var(--rb-schematic-accent); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-mismatch='1'] { fill: var(--rb-schematic-mismatch); stroke: var(--rb-schematic-mismatch); r: 3.4px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-issue='error'] { stroke: var(--rb-schematic-mismatch); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-dot[data-issue='warn'] { stroke: var(--rb-schematic-issue); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-pin-hit:hover ~ .rb-sym-pin-dot { stroke: var(--rb-schematic-accent); }
+
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-diag circle { fill: var(--rb-schematic-issue); stroke: var(--rb-schematic-fill); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-diag[data-severity='error'] circle { fill: var(--rb-schematic-mismatch); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-diag text { fill: #ffffff; }
+
+/* Nets ─────────────────────────────────────────────────────────────────────── */
+
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net-line { stroke: var(--rb-schematic-net); stroke-width: 1.5px; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-signal='1'] .rb-net-line { stroke: var(--rb-schematic-ink); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-signal='0'] .rb-net-line { stroke: var(--rb-schematic-net-low); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-tone='hover'] .rb-net-line { stroke: var(--rb-schematic-accent); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-tone='net'] .rb-net-line { stroke: var(--rb-schematic-accent); stroke-width: 2px; opacity: 0.85; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-tone='selected'] .rb-net-line { stroke: var(--rb-schematic-accent); stroke-width: 2.5px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-tone='traced'] .rb-net-line { stroke: var(--rb-schematic-accent); stroke-width: 2px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-tone='mismatch'] .rb-net-line { stroke: var(--rb-schematic-mismatch); stroke-width: 2.5px; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net.is-degenerate .rb-net-line { stroke-dasharray: 4 3; stroke: var(--rb-schematic-issue); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net-rewire { stroke: var(--rb-schematic-accent); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .logic-fanout-junction { fill: var(--rb-schematic-ink); stroke: none; }
+
+/* Marquee + selection bounds: thin, accent, no fill wash. */
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-logic-marquee { fill: color-mix(in srgb, var(--rb-schematic-accent) 8%, transparent); stroke: var(--rb-schematic-accent); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] [data-testid='logic-selection-bounds'] { fill: none; stroke: var(--rb-schematic-accent); }
+
+/* Legacy canvas rules paint every node text white; the schematic owns its ink. */
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym text { fill: var(--rb-schematic-ink); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym text.rb-sym-type,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym text.rb-sym-alias,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym text.rb-sym-pin-value { fill: var(--rb-schematic-ink-2); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym text.is-high { fill: var(--rb-schematic-high); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym text.is-unknown { fill: var(--rb-schematic-unknown); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-diag text { fill: #ffffff; }
+
+/* Schematic frame and stage: the document fills its pane edge to edge. No
+   card, no radius, no dark slab — the stage colour is the schematic sheet. */
+.ide-root .rb-sch-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--rb-schematic-bg, #f4f6f9);
+  box-shadow: none;
+}
+.ide-root .rb-sch-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--rb-schematic-bg, #f4f6f9);
+  box-shadow: none;
+}
+.ide-root .rb-sch-stage.is-wire-mode { cursor: crosshair; }
+.ide-root .rb-sch-stage[data-placement-active='1'] { cursor: copy; }
+.ide-root .rb-sch-stage > .rb-logic-canvas-svg { display: block; }
+.ide-root .rb-sch-mode {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface);
+  font: 600 var(--wb-text-xs) var(--wb-font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* Minimap on the schematic sheet: paper, not a dark slab. */
+.ide-root .rb-sch-stage .rb-minimap {
+  right: 10px;
+  bottom: 10px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  background: var(--wb-surface);
+  box-shadow: none;
+  opacity: 1;
+}
+.ide-root .rb-sch-stage .rb-minimap svg rect { fill: var(--rb-schematic-symbol-fill, #c5cfdc); stroke: none; }
+.ide-root .rb-sch-stage .rb-minimap svg rect[fill='none'] { fill: rgba(37, 99, 235, 0.08); stroke: var(--wb-accent); stroke-width: 1; }

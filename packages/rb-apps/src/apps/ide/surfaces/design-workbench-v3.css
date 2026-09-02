@@ -1,12 +1,4 @@
-/* Unified Workbench v3: Design owns a stable library / canvas / inspector frame. */
 
-/* Supporting prose and metadata must remain readable in the compact workbench.
-   max() preserves larger inherited hierarchy, while interactive descendants
-   keep their separate 14px control contract below. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :where(p, li, td, th, dt, dd, label, small, span, strong, summary):not(button *, a *, [role='button'] *) {
-  font-size: max(13px, 1em) !important;
-}
 
 /* Dock tabs are compact rail navigation, not form controls — they keep their
    own size contract in product-system-v3.css so four labels fit a 180px rail. */
@@ -73,13 +65,6 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel-header {
   min-height: 42px;
   padding: 8px 10px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette h3,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel h3,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 14px;
-  line-height: 1.25;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-sections {
@@ -1500,15 +1485,6 @@
   color: var(--rb-text-primary);
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right .ide-inspector-section > .ide-inspector-title {
-  color: var(--rb-text-secondary);
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
-
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
   :is(.ide-palette-section, .ide-design-selection-inspector, .ide-design-inspector-identity-card, .ide-design-inspector-action-group, .ide-inspector-section, .ide-design-live-summary) {
   border-color: var(--rb-border);
@@ -1794,15 +1770,6 @@
   stroke-width: 1.8px !important;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] :is(.ide-inspector-section, .ide-inspector-card, .ide-design-inspector-section, .ide-design-inspector-identity-card, .ide-design-inspector-action-group) {
-  margin: 0;
-  padding: 14px 16px;
-  border: 0;
-  border-bottom: 1px solid var(--rb-border);
-  border-radius: 0;
-  background: var(--rb-surface);
-}
-
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
   :is(.ide-design-palette-header, .ide-palette-section) {
   background: var(--rb-surface);
@@ -1889,12 +1856,6 @@
   border-color: var(--rb-border) !important;
   background: var(--rb-surface-2) !important;
   color: var(--rb-text-primary) !important;
-}
-
-:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-inspector-section {
-  border-color: var(--rb-border) !important;
-  background: var(--rb-surface) !important;
 }
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']

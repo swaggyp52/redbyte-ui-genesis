@@ -3262,7 +3262,21 @@ function stateFromExample(
   const enriched = enrichProjectIoRowsWithV2Metadata(cloneIoRows(example.ioRows), undefined);
   const hardwareMappingV2 = buildHardwareMappingV2FromProjectIoRows(enriched);
   const projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
-  const baseSimState = initializeSimulationStateForCircuit(circuit, projectIoRows);
+  const hierarchy = example.hierarchy
+    ? normalizeProjectHierarchy(cloneProjectHierarchy(example.hierarchy), [])
+    : createEmptyProjectHierarchy();
+  const hierarchyComponents = hierarchy.modules.map(toCompositeDefinition);
+  for (const def of hierarchyComponents) {
+    try {
+      registerCompositeNode(def);
+    } catch (e) {
+      console.warn('Failed to register starter module:', def.name, e);
+    }
+  }
+  const baseSimState = initializeSimulationStateForCircuit(
+    hierarchy.modules.length > 0 ? elaborateProjectHierarchy(circuit, hierarchy) : circuit,
+    projectIoRows
+  );
   // Build kit probes from example.probes if defined
   const kitProbes = (example.probes ?? []).map((p) => ({
     key: `${p.nodeId}.${p.portName}`,
@@ -3288,7 +3302,7 @@ function stateFromExample(
     activeScenarioId: DEFAULT_SCENARIO_ID,
     customVectors: [],
     circuit,
-    hierarchy: createEmptyProjectHierarchy(),
+    hierarchy,
     sourceModel: createEmptyProjectSourceModel(),
     importedWaveform: null,
     vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
@@ -3307,7 +3321,7 @@ function stateFromExample(
     },
     macros: [],
     macroInsertionCounts: {},
-    customComponents: [],
+    customComponents: hierarchyComponents,
   };
 }
 

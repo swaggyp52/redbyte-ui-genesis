@@ -1,0 +1,443 @@
+/* Design instrument chrome — the schematic document header, its toolbar,
+   the compact component library rows, and the starter strip. Composes the
+   shared wb-* primitives; owns only what is specific to Design. No !important. */
+
+/* Header: module trail · wire cue · mode segment. */
+.ide-root .rb-design-header { padding-left: var(--wb-space-3); }
+.ide-root .rb-design-breadcrumb { display: inline-flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
+.ide-root .rb-design-breadcrumb button {
+  height: var(--wb-control-h);
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: transparent;
+  font: 600 var(--wb-text-md) var(--wb-font-mono);
+  cursor: pointer;
+}
+.ide-root .rb-design-breadcrumb button:hover { background: var(--wb-hover-bg); color: var(--wb-text); }
+.ide-root .rb-design-breadcrumb button.is-current { color: var(--wb-text); cursor: default; }
+.ide-root .rb-design-breadcrumb .wb-sep { color: var(--wb-text-3); }
+.ide-root .rb-design-breadcrumb .ide-design-breadcrumb-of { color: var(--wb-text-3); font-weight: 500; }
+.ide-root .rb-design-wirecue { display: inline-flex; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
+.ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--wb-accent); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-design-wirecue-msg code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-design-wirecue-msg.is-error { color: var(--wb-err); }
+.ide-root .rb-design-mode .wb-btn { min-width: 52px; }
+.ide-root .rb-design-mode .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
+.ide-root .rb-design-mode[data-mode='live'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-ok) 16%, transparent); border-color: var(--wb-ok); }
+.ide-root .rb-design-mode[data-mode='replay'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-warn) 18%, transparent); border-color: var(--wb-warn); }
+
+/* Toolbar. */
+.ide-root .rb-design-toolbar { padding-left: var(--wb-space-2); }
+.ide-root .rb-design-toolbar .wb-btn svg { flex: none; }
+.ide-root .rb-design-zoom { min-width: 48px; }
+.ide-root .rb-design-zoom code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-design-menu { position: relative; }
+.ide-root .rb-design-menu > summary { list-style: none; cursor: pointer; }
+.ide-root .rb-design-menu > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-design-menu[open] > summary { background: var(--wb-accent-bg); }
+.ide-root .rb-design-menu-popup { left: 0; top: calc(100% + 4px); min-width: 260px; }
+.ide-root .rb-design-menu-field { cursor: default; }
+.ide-root .rb-design-menu-field select {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+
+/* Starter strip: one line, the brief behind a disclosure. */
+.ide-root .rb-design-starter { flex: none; }
+.ide-root .rb-design-starter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: var(--wb-row-h);
+  padding: 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-2);
+  white-space: nowrap;
+}
+.ide-root .rb-design-starter-title { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-design-starter-tag { padding: 0 5px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text-2); }
+.ide-root .rb-design-starter-brief { position: relative; }
+.ide-root .rb-design-starter-brief > summary { list-style: none; cursor: pointer; font-size: var(--wb-text-sm); }
+.ide-root .rb-design-starter-brief > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-design-starter-brief-body {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(520px, 60vw);
+  padding: 8px 12px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  background: var(--wb-surface);
+  box-shadow: var(--wb-overlay-shadow);
+  white-space: normal;
+  color: var(--wb-text);
+  font-size: var(--wb-text-md);
+  line-height: 1.45;
+}
+.ide-root .rb-design-starter-brief-body p { margin: 0 0 6px; }
+.ide-root .rb-design-starter-next { overflow: hidden; text-overflow: ellipsis; }
+
+/* Component library rows (28px): glyph · name · pin signature. */
+.ide-root .rb-lib-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--wb-space-2) 0 6px;
+  border: 0;
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-md) / 1 var(--wb-font-ui);
+  text-align: left;
+  white-space: nowrap;
+  cursor: grab;
+}
+.ide-root .rb-lib-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-lib-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-lib-row.is-placement-active { background: var(--wb-accent-bg-strong); }
+.ide-root .rb-lib-glyph {
+  display: inline-grid;
+  place-items: center;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface);
+  font: 600 10px var(--wb-font-mono);
+}
+.ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.ide-root .rb-lib-pins { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-cap,
+.ide-root .rb-lib-badge { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Library tool window: search row, sections with 24px headers, board chips. */
+.ide-root .rb-design-dock-tabs { flex: none; }
+.ide-root .rb-lib-toolbar { flex: none; display: flex; flex-direction: column; }
+.ide-root .rb-lib-toolbar .wb-search { color: var(--wb-text-3); }
+.ide-root .rb-lib-search-input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; color: var(--wb-text); background: transparent; font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-lib-search-input:focus { outline: none; }
+.ide-root .rb-lib-search-input::-webkit-search-cancel-button { appearance: none; }
+.ide-root .rb-lib-bus { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-lib-results { margin: 0 var(--wb-space-3) 4px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-lib-sections { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-lib-section { display: block; margin: 0; padding: 0; border: 0; }
+.ide-root .rb-lib-section-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 var(--wb-space-2) 0 6px;
+  border-top: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+}
+.ide-root .rb-lib-section:first-child .rb-lib-section-header { border-top: 0; }
+.ide-root .rb-lib-section-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ide-root .rb-lib-section-meta { display: flex; align-items: center; gap: 6px; }
+.ide-root .rb-lib-section-header h4,
+.ide-root .rb-lib-subheader h5 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ide-root .rb-lib-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-toggle {
+  order: -1;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-3);
+  background: transparent;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ide-root .rb-lib-toggle:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .rb-lib-toggle:disabled { opacity: 0.4; cursor: default; }
+.ide-root .rb-lib-section[data-collapsed='true'] .rb-lib-section-header { color: var(--wb-text-3); }
+.ide-root .rb-lib-list { display: block; padding: 2px 0; }
+.ide-root .rb-lib-subsection { display: block; }
+.ide-root .rb-lib-subheader { display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 var(--wb-space-2) 0 12px; }
+.ide-root .rb-lib-board-groups { display: block; }
+.ide-root .rb-lib-board-group { display: block; }
+.ide-root .rb-lib-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px var(--wb-space-2) 6px 12px; }
+.ide-root .rb-lib-chip {
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  cursor: grab;
+}
+.ide-root .rb-lib-chip:hover { border-color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-lib-chip.is-placed { color: var(--wb-text-3); background: var(--wb-surface-2); cursor: default; text-decoration: line-through; }
+.ide-root .rb-lib-chip.is-placement-active { border-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
+.ide-root .rb-lib-row--module { grid-template-columns: 34px minmax(0, 1fr) auto auto; cursor: default; }
+.ide-root .rb-lib-row-actions { display: inline-flex; gap: 2px; }
+.ide-root .rb-lib-row-actions .wb-btn { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 8px; }
+
+/* Inspector grammar: flat sections, 24px key/value rows, compact actions.
+   Narration stays available but reads as secondary text, not cards. */
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-title {
+  margin: 0;
+  padding: 0 var(--wb-space-3);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 24px var(--wb-font-ui);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-content { padding: 4px var(--wb-space-3) 8px; }
+.ide-root .rb-insp-sel-inspector,
+.ide-root .rb-insp-props,
+.ide-root .rb-insp-canvas-default,
+.ide-root .rb-insp-board { display: block; padding: 0; }
+.ide-root .rb-insp-identity-card,
+.ide-root .rb-insp-idle-card,
+.ide-root .rb-insp-empty-card,
+.ide-root .rb-insp-section,
+.ide-root .rb-insp-diagnostics,
+.ide-root .rb-insp-io-state,
+.ide-root .rb-insp-section-stack,
+.ide-root .rb-insp-signal-model {
+  display: block;
+  margin: 0;
+  padding: 6px var(--wb-space-3) 8px;
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root .rb-insp-eyebrow,
+.ide-root .rb-insp-idle-eyebrow,
+.ide-root .rb-insp-group-label,
+.ide-root .rb-insp-io-state-kicker {
+  display: block;
+  margin: 4px 0 2px;
+  color: var(--wb-text-3);
+  font: 600 var(--wb-text-xs) / 16px var(--wb-font-ui);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ide-root .rb-insp-identity-row { display: flex; align-items: flex-start; gap: 8px; }
+.ide-root .rb-insp-title-block { flex: 1; min-width: 0; }
+.ide-root .rb-insp-sel-identity strong,
+.ide-root .rb-insp-idle-card h4,
+.ide-root .rb-insp-io-state-header strong { color: var(--wb-text); font: 600 var(--wb-text-lg) / 18px var(--wb-font-ui); }
+.ide-root .rb-insp-subtitle { margin: 1px 0 0; color: var(--wb-text-3); font: var(--wb-text-sm) / 16px var(--wb-font-ui); }
+.ide-root .rb-insp-subtitle code,
+.ide-root .rb-insp-sel-identity code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-insp-sep { color: var(--wb-text-3); }
+.ide-root .rb-insp-status {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 14px var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .rb-insp-status.is-ok { color: var(--wb-ok); border-color: color-mix(in srgb, var(--wb-ok) 50%, transparent); }
+.ide-root .rb-insp-status.is-warn { color: var(--wb-warn); border-color: color-mix(in srgb, var(--wb-warn) 50%, transparent); }
+.ide-root .rb-insp-status.is-error { color: var(--wb-err); border-color: color-mix(in srgb, var(--wb-err) 50%, transparent); }
+.ide-root .rb-insp-next-step,
+.ide-root .rb-insp-hint,
+.ide-root .rb-insp-meaning,
+.ide-root .rb-insp-what-it-is,
+.ide-root .rb-insp-structure-hint,
+.ide-root .rb-insp-guidance,
+.ide-root .rb-insp-idle-tip,
+.ide-root .rb-insp-proof-boundary,
+.ide-root .rb-insp-sel-issues-hint,
+.ide-root .rb-insp-sel-issues-message,
+.ide-root .rb-insp-io-state-label {
+  margin: 3px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) / 15px var(--wb-font-ui);
+}
+.ide-root .rb-insp-name-control,
+.ide-root .rb-insp-inline-editor { display: block; margin-top: 4px; }
+.ide-root .rb-insp-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
+.ide-root .rb-insp-field > label,
+.ide-root .rb-insp-field > span:first-child { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-insp-field--checkbox { grid-template-columns: auto minmax(0, 1fr); }
+.ide-root .rb-insp-name-control input,
+.ide-root .rb-insp-field input:not([type='checkbox']),
+.ide-root .rb-insp-field select,
+.ide-root .rb-insp-inline-editor input,
+.ide-root .rb-insp-inline-editor select {
+  width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-mono);
+}
+.ide-root .rb-insp-facts { display: block; margin: 2px 0 0; padding: 0; }
+.ide-root .rb-insp-facts > div,
+.ide-root .rb-insp-row,
+.ide-root .rb-insp-idle-stat,
+.ide-root .rb-insp-io-state-list > * {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-insp-facts > div:last-child,
+.ide-root .rb-insp-row:last-child,
+.ide-root .rb-insp-idle-stat:last-child { border-bottom: 0; }
+.ide-root .rb-insp-facts dt,
+.ide-root .rb-insp-row > :first-child,
+.ide-root .rb-insp-idle-stat > :first-child,
+.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-insp-facts dd,
+.ide-root .rb-insp-row > :last-child,
+.ide-root .rb-insp-idle-stat > :last-child,
+.ide-root .rb-insp-io-state-value { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-insp-idle-stats { display: block; }
+.ide-root .rb-insp-action-group { display: block; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
+.ide-root .rb-insp-action-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.ide-root .rb-insp-action-grid .ide-button,
+.ide-root .rb-insp-sel-inspector .ide-button,
+.ide-root .rb-insp-props .ide-button,
+.ide-root .rb-insp-board .ide-button,
+.ide-root .rb-insp-canvas-default .ide-button,
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inline-actions .ide-button {
+  width: auto;
+  min-height: 0;
+  height: var(--wb-control-h);
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-insp-action-grid .ide-button:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-action-grid .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-insp-action-grid .ide-button:disabled { opacity: 0.45; }
+.ide-root .rb-insp-group--danger .ide-button { color: var(--wb-err); }
+.ide-root .rb-insp-sel-pins { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ide-root .rb-insp-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+}
+.ide-root .rb-insp-pin-value { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-insp-sel-issues-list,
+.ide-root .rb-insp-diagnostic-list { margin: 2px 0 0; padding: 0; list-style: none; }
+.ide-root .rb-insp-sel-issues-list li,
+.ide-root .rb-insp-diagnostic-list li { padding: 3px 0; border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); }
+.ide-root .rb-insp-sel-issues-header { display: flex; align-items: center; gap: 6px; }
+.ide-root .rb-insp-sel-issues-pill { padding: 0 5px; border-radius: var(--wb-radius); color: var(--wb-err); background: color-mix(in srgb, var(--wb-err) 12%, transparent); font: 600 var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-insp-subgroup { margin-top: 6px; }
+
+.ide-root .rb-insp-live-summary { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ide-root .rb-design-health { display: inline-flex; align-items: center; gap: 6px; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .rb-design-health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-ok); }
+.ide-root .rb-design-health.is-warn .rb-design-health-dot,
+.ide-root .rb-design-health.is-warning .rb-design-health-dot { background: var(--wb-warn); }
+.ide-root .rb-design-health.is-error .rb-design-health-dot,
+.ide-root .rb-design-health.is-blocking .rb-design-health-dot { background: var(--wb-err); }
+.ide-root .rb-design-health-counts { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Header health chip: always visible; the bottom Problems panel holds the list. */
+.ide-root .rb-design-health { display: inline-flex; align-items: center; gap: 6px; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .rb-design-health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-ok); }
+.ide-root .rb-design-health.has-warnings .rb-design-health-dot { background: var(--wb-warn); }
+.ide-root .rb-design-health.has-errors .rb-design-health-dot { background: var(--wb-err); }
+.ide-root .rb-design-health.has-errors { color: var(--wb-text); }
+.ide-root .rb-design-health-counts { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Bottom panel: Problems as 24px rows; Output / Simulation as compact readouts. */
+.ide-root .ide-design-bottom-workspace { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ide-root .ide-design-bottom-content { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-problems { display: block; padding: 0; }
+.ide-root .rb-problems-row {
+  display: grid;
+  grid-template-columns: 14px minmax(120px, 0.6fr) minmax(0, 1.6fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0 var(--wb-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-problems-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-problems-sev { width: 8px; height: 8px; border-radius: 50%; background: var(--wb-text-3); }
+.ide-root .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }
+.ide-root .rb-problems-row[data-severity='warn'] .rb-problems-sev,
+.ide-root .rb-problems-row[data-severity='warning'] .rb-problems-sev { background: var(--wb-warn); }
+.ide-root .rb-problems-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-problems-msg { color: var(--wb-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-problems-ref { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .ide-design-console-readout,
+.ide-root .ide-design-simulation-readout { display: grid; gap: 4px; padding: 8px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); }
+.ide-root .ide-design-console-readout strong,
+.ide-root .ide-design-simulation-readout strong { color: var(--wb-text); font-weight: 600; }
+.ide-root .ide-design-console-readout p { margin: 0; }

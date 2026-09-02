@@ -26,6 +26,10 @@ import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds, clientToLocal } from '@redbyte/rb-viewport';
 import { useCanvasInput } from './useCanvasInput';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
+import { buildGeometryIndex, pinWorldPoint, unionBounds, type GeometryIndexEntry } from './symbols/portGeometry';
+import { routeBounds, routeCircuit, type RoutedWire } from './routing/orthogonalRouter';
+import { SchematicNodeView, schematicLodForZoom } from './components/SchematicNodeView';
+import { SchematicWireView } from './components/SchematicWireView';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -68,6 +72,11 @@ export interface LogicCanvasProps {
   /** Canvas color language. 'dark' (default) preserves the legacy look; 'light'
    *  renders professional schematic nodes on the light technical canvas. */
   appearance?: 'light' | 'dark';
+  /**
+   * 'schematic' renders ANSI symbols with pin geometry and orthogonal routed
+   * nets (the Design instrument). 'legacy' keeps the chip/card renderer.
+   */
+  renderer?: 'legacy' | 'schematic';
   onUndo?: () => void;
   onRedo?: () => void;
   /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
@@ -209,6 +218,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   ioPresentationMap,
   presentationZoomMode = 'dense',
   appearance = 'dark',
+  renderer = 'legacy',
   onUndo,
   onRedo,
   onPortClick,
@@ -267,6 +277,32 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   // Use external circuit if provided, otherwise poll from engine
   const [internalCircuit, setInternalCircuit] = React.useState(engine.getCircuit());
   const circuit = externalCircuit ?? internalCircuit;
+  // Schematic renderer: symbol geometry is the single source of pin positions;
+  // nets are routed orthogonally from it. Both are memoized per circuit.
+  const isSchematic = renderer === 'schematic';
+  const geometryIndex = React.useMemo<Map<string, GeometryIndexEntry> | null>(
+    () => (isSchematic ? buildGeometryIndex(circuit.nodes, getChipMetadata) : null),
+    [circuit.nodes, getChipMetadata, isSchematic]
+  );
+  const routedNets = React.useMemo(
+    () => (isSchematic && geometryIndex ? routeCircuit(circuit, geometryIndex, { grid: gridSize }) : null),
+    [circuit, geometryIndex, gridSize, isSchematic]
+  );
+  const routedWireById = React.useMemo(() => {
+    const map = new Map<string, RoutedWire>();
+    routedNets?.forEach((net) => net.wires.forEach((wire) => map.set(wire.wireId, wire)));
+    return map;
+  }, [routedNets]);
+  const schematicLod = schematicLodForZoom(camera.zoom);
+  const pinScreenPoint = React.useCallback(
+    (nodeId: string, portName: string): { x: number; y: number } | null => {
+      if (!geometryIndex) return null;
+      const point = pinWorldPoint(geometryIndex.get(nodeId), portName);
+      if (!point) return null;
+      return { x: point.x * camera.zoom + camera.x, y: point.y * camera.zoom + camera.y };
+    },
+    [camera.x, camera.y, camera.zoom, geometryIndex]
+  );
   const wireToNetId = React.useMemo(() => computeWireNetIds(circuit.connections), [circuit.connections]);
   const hoveredNetId = hoveredWireId ? wireToNetId.get(hoveredWireId) ?? null : null;
   const selectedNetIds = React.useMemo(() => {
@@ -403,9 +439,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       }).filter((node) => {
         const x = node.position.x;
         const y = node.position.y;
+        const entry = geometryIndex?.get(node.id);
+        if (entry) {
+          // Bounds intersection: a wide module block stays visible while any part of it is on screen.
+          const b = entry.geometry.bounds;
+          return x + b.maxX >= viewBounds.left && x + b.minX <= viewBounds.right && y + b.maxY >= viewBounds.top && y + b.minY <= viewBounds.bottom;
+        }
         return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;
       }),
-    [circuit.nodes, viewBounds]
+    [circuit.nodes, geometryIndex, viewBounds]
   );
 
   const visibleNodeIds = React.useMemo(() => new Set(visibleNodes.map((node) => node.id)), [visibleNodes]);
@@ -422,6 +464,22 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   /** Output ports driving two or more loads, rendered as junction dots. */
   const fanoutJunctions = React.useMemo(() => {
+    if (routedNets) {
+      // Schematic: junction dots sit where a branch leaves the shared trunk.
+      const junctions: { key: string; screenX: number; screenY: number; active: boolean }[] = [];
+      for (const net of routedNets) {
+        const active = (renderSignals.get(net.netId) ?? 0) === 1;
+        net.junctions.forEach((junction, index) => {
+          junctions.push({
+            key: `${net.netId}#${index}`,
+            screenX: junction.x * camera.zoom + camera.x,
+            screenY: junction.y * camera.zoom + camera.y,
+            active,
+          });
+        });
+      }
+      return junctions;
+    }
     const loadsBySource = new Map<string, number>();
     for (const connection of circuit.connections) {
       const { fromNodeId, fromPortName } = resolveConnectionEndpoints(connection);
@@ -446,7 +504,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       });
     }
     return junctions.sort((a, b) => a.key.localeCompare(b.key));
-  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, renderSignals, visibleNodeIds]);
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, renderSignals, routedNets, visibleNodeIds]);
 
   // Invariant: controlled mode requires onCircuitChange callback
   if (import.meta.env.DEV) {
@@ -1062,6 +1120,25 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       return;
     }
 
+    if (geometryIndex) {
+      // Schematic: fit the real symbol outlines plus routed nets, not node centres.
+      const symbolBounds = unionBounds(geometryIndex.values());
+      const netBounds = routedNets ? routeBounds(routedNets) : null;
+      if (symbolBounds) {
+        const bounds = netBounds
+          ? {
+              minX: Math.min(symbolBounds.minX, netBounds.minX),
+              minY: Math.min(symbolBounds.minY, netBounds.minY),
+              maxX: Math.max(symbolBounds.maxX, netBounds.maxX),
+              maxY: Math.max(symbolBounds.maxY, netBounds.maxY),
+            }
+          : symbolBounds;
+        const fitted = fitToBounds(bounds, width, height, 48, 2.4);
+        setCamera({ ...fitted, zoom: snapFitZoom(fitted.zoom) });
+        return;
+      }
+    }
+
     // Calculate bounds
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
@@ -1080,7 +1157,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
     const newCamera = fitToBounds({ minX, maxX, minY, maxY }, width, height, 100, 2);
     setCamera({ ...newCamera, zoom: snapFitZoom(newCamera.zoom) });
-  }, [circuit.nodes, width, height, setCamera]);
+  }, [circuit.nodes, geometryIndex, routedNets, width, height, setCamera]);
 
   // Reset view to default
   const resetView = React.useCallback(() => {
@@ -1245,7 +1322,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   );
 
   const selectionBoundsWorld = React.useMemo(
-    () => computeSelectionBounds(selectedNodes),
+    () => (geometryIndex ? computeGeometrySelectionBounds(selectedNodes, geometryIndex) : computeSelectionBounds(selectedNodes)),
     [selectedNodes]
   );
 
@@ -1325,17 +1402,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       from: {
         nodeId: fromNodeId,
         portName: fromPortName,
-        x: (fromNode.position.x + 24) * camera.zoom + camera.x,
-        y: fromNode.position.y * camera.zoom + camera.y,
+        x: pinScreenPoint(fromNodeId, fromPortName)?.x ?? (fromNode.position.x + 24) * camera.zoom + camera.x,
+        y: pinScreenPoint(fromNodeId, fromPortName)?.y ?? fromNode.position.y * camera.zoom + camera.y,
       },
       to: {
         nodeId: toNodeId,
         portName: toPortName,
-        x: (toNode.position.x - 24) * camera.zoom + camera.x,
-        y: toNode.position.y * camera.zoom + camera.y,
+        x: pinScreenPoint(toNodeId, toPortName)?.x ?? (toNode.position.x - 24) * camera.zoom + camera.x,
+        y: pinScreenPoint(toNodeId, toPortName)?.y ?? toNode.position.y * camera.zoom + camera.y,
       },
     };
-  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, selection.wires]);
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, pinScreenPoint, selection.wires]);
 
   // Hovered wire endpoint overlay — shows discoverable handles without requiring prior selection.
   // Returns null when: no wire is hovered, the hovered wire is already selected (selected handles take over),
@@ -1357,17 +1434,17 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       from: {
         nodeId: fromNodeId,
         portName: fromPortName,
-        x: (fromNode.position.x + 24) * camera.zoom + camera.x,
-        y: fromNode.position.y * camera.zoom + camera.y,
+        x: pinScreenPoint(fromNodeId, fromPortName)?.x ?? (fromNode.position.x + 24) * camera.zoom + camera.x,
+        y: pinScreenPoint(fromNodeId, fromPortName)?.y ?? fromNode.position.y * camera.zoom + camera.y,
       },
       to: {
         nodeId: toNodeId,
         portName: toPortName,
-        x: (toNode.position.x - 24) * camera.zoom + camera.x,
-        y: toNode.position.y * camera.zoom + camera.y,
+        x: pinScreenPoint(toNodeId, toPortName)?.x ?? (toNode.position.x - 24) * camera.zoom + camera.x,
+        y: pinScreenPoint(toNodeId, toPortName)?.y ?? toNode.position.y * camera.zoom + camera.y,
       },
     };
-  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, hoveredWireId, selection.wires]);
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, hoveredWireId, pinScreenPoint, selection.wires]);
 
   return (
     <CanvasHost
@@ -1590,8 +1667,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         data-wire-hover-target-state={hoveredWireTargetState ?? 'none'}
         width={width}
         height={height}
+        data-renderer={renderer}
         style={{
-          background: '#0a0a0a',
+          background: isSchematic ? 'var(--rb-schematic-bg, #f4f6f9)' : '#0a0a0a',
           touchAction: 'none',
           cursor: interactionMode === 'panning' ? 'grabbing' : isSpacePressed ? 'grab' : (() => {
             if (canvasInput.dragState.isDragging) return 'grabbing';
@@ -1628,9 +1706,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         <g key="grid-layer">
           {renderGrid(camera, width, height, {
             size: gridSize,
-            color: '#142233',
+            color: isSchematic ? 'var(--rb-schematic-grid-minor, #e1e6ee)' : '#142233',
             majorLineInterval: 5,
-            majorLineColor: '#24405a',
+            majorLineColor: isSchematic ? 'var(--rb-schematic-grid-major, #cdd5e0)' : '#24405a',
           })}
         </g>
 
@@ -1658,6 +1736,36 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               hoveredWireId !== wireId &&
               !isNetHighlighted;
 
+            const routed = isSchematic ? routedWireById.get(wireId) : undefined;
+            if (isSchematic && routed) {
+              return (
+                <SchematicWireView
+                  key={wireId}
+                  wire={routed}
+                  camera={camera}
+                  isSelected={selection.wires.has(wireId)}
+                  isHovered={hoveredWireId === wireId}
+                  isBeingRewired={rewiredWireId === wireId}
+                  isNetHighlighted={isNetHighlighted}
+                  isTraced={isOnTracedPath}
+                  isMismatch={hasMismatch}
+                  isProbed={(probeColors?.length ?? 0) > 0}
+                  unrelatedInTraceScope={unrelatedInTraceScope}
+                  signal={signal}
+                  onSelect={selectWire}
+                  onHover={setHoveredWireId}
+                  onContextMenu={(clickedWireId, event) => {
+                    selectWire(clickedWireId, false);
+                    onWireContextMenu?.({
+                      wireId: clickedWireId,
+                      signalKey: `${fromNodeId}.${fromPortName}`,
+                      clientX: event.clientX,
+                      clientY: event.clientY,
+                    });
+                  }}
+                />
+              );
+            }
             return (
               <WireView
                 key={wireId}
@@ -1704,7 +1812,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               stroke="#0b1622"
               strokeWidth={1}
               pointerEvents="none"
-              data-testid={`logic-fanout-junction-${junction.key}`}
+              data-testid={`logic-fanout-junction-${junction.key.replace(/#0$/, '')}`}
             />
           ))}
         </g>
@@ -1722,8 +1830,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               circuit,
               getChipMetadata
             ) ? -24 : 24;
-            const startX = (startNode.position.x + startPortXOffset) * camera.zoom + camera.x;
-            const startY = startNode.position.y * camera.zoom + camera.y;
+            const pinStart = pinScreenPoint(editingState.wireStartPort!.nodeId, editingState.wireStartPort!.portName);
+            const startX = pinStart ? pinStart.x : (startNode.position.x + startPortXOffset) * camera.zoom + camera.x;
+            const startY = pinStart ? pinStart.y : startNode.position.y * camera.zoom + camera.y;
 
             let isValid = true;
             let rejectionReason: string | undefined;
@@ -1901,7 +2010,45 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
         {/* Nodes — stable container */}
         <g key="node-layer">
-          {visibleNodes.map((node) => (
+          {visibleNodes.map((node) => isSchematic && geometryIndex?.get(node.id) ? (
+            <SchematicNodeView
+              key={node.id}
+              node={node}
+              geometry={geometryIndex.get(node.id)!.geometry}
+              camera={camera}
+              lod={schematicLod}
+              isSelected={selection.nodes.has(node.id)}
+              isTraced={node.id === highlightedNodeId || (tracedNodeIds?.has(node.id) ?? false)}
+              isChanged={changedNodeIds?.has(node.id) ?? false}
+              isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}
+              mismatchPortKeys={mismatchPortKeys}
+              signals={renderSignals}
+              wireStartPort={editingState.wireStartPort}
+              validWireTargets={validWireTargetKeys}
+              hoveredWireTargetState={hoveredWireTargetState}
+              probedPorts={probedPorts}
+              highlightedPortKeys={highlightedPortKeys}
+              highlightedPort={highlightedPort}
+              dragPosition={canvasInput.dragState.dragNodeId === node.id ? canvasInput.dragState.dragPosition : undefined}
+              diagnosticBadge={nodeDiagnosticBadges?.[node.id]}
+              onDiagnosticBadgeClick={onNodeDiagnosticBadgeClick}
+              issueGlow={nodeIssueSeverities?.get(node.id) ?? null}
+              issuePortSeverities={issuePortSeverities}
+              ioPresentation={ioPresentationMap?.[node.id]}
+              onPortClick={handlePortClick}
+              onPortHover={(portName) => setHoveredPort({ nodeId: node.id, portName })}
+              onPortLeave={() => setHoveredPort(null)}
+              onToggleSwitch={handleToggleSwitch}
+              onNodeDoubleClick={onNodeDoubleClick}
+              onNodeContextMenu={
+                onNodeContextMenu
+                  ? (nodeId, clientX, clientY) => onNodeContextMenu({ nodeId, clientX, clientY })
+                  : undefined
+              }
+              onProbeToggle={onProbeToggle}
+              showAllValues={isRunning || isReplayMode}
+            />
+          ) : (
             <NodeView
               key={node.id}
               node={node}
@@ -2143,10 +2290,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           </g>
         ) : null}
 
-        {/* Switch Toggle Overlay Layer */}
+        {/* Switch Toggle Overlay Layer (legacy renderer only: the schematic
+            input symbol is itself the toggle target and carries its value). */}
         <g id="rb-switch-overlay" style={{ pointerEvents: 'none' }}>
           {visibleNodes
-            .filter((node) => node.type === 'Switch' || node.type === 'INPUT')
+            .filter((node) => !isSchematic && (node.type === 'Switch' || node.type === 'INPUT'))
             .filter((node) => node.position)
             .map((node) => {
               const ioPresentation = ioPresentationMap?.[node.id] ?? inferNodeIoPresentation(node);
@@ -2292,7 +2440,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             prevents generic OUTPUT headers from becoming the circuit's label. */}
         <g id="rb-output-label-overlay" style={{ pointerEvents: 'none' }}>
           {visibleNodes
-            .filter((node) => node.type === 'OUTPUT' || node.type === 'Lamp')
+            .filter((node) => !isSchematic && (node.type === 'OUTPUT' || node.type === 'Lamp'))
             .filter((node) => node.position)
             .map((node) => {
               const ioPresentation = ioPresentationMap?.[node.id] ?? inferNodeIoPresentation(node);
@@ -2367,6 +2515,14 @@ interface SelectionBounds {
   minY: number;
   maxX: number;
   maxY: number;
+}
+
+function computeGeometrySelectionBounds(
+  nodes: Node[],
+  index: ReadonlyMap<string, GeometryIndexEntry>
+): SelectionBounds | null {
+  const entries = nodes.map((node) => index.get(node.id)).filter((entry): entry is GeometryIndexEntry => Boolean(entry));
+  return unionBounds(entries);
 }
 
 function computeSelectionBounds(nodes: Node[]): SelectionBounds | null {

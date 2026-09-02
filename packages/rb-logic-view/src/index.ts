@@ -36,3 +36,30 @@ export {
   wirePortState,
   wireRejectionMessage,
 } from './tools/wireGuidance';
+
+// Schematic instrument: symbol geometry, ANSI outlines, orthogonal routing.
+export {
+  GRID as SCHEMATIC_GRID,
+  PIN_PITCH as SCHEMATIC_PIN_PITCH,
+  buildGeometryIndex,
+  findPin,
+  pinWorldPoint,
+  resolvePortGeometry,
+  symbolKindForNode,
+  unionBounds,
+  type GeometryIndexEntry,
+  type SymbolGeometry,
+  type SymbolKind,
+  type SymbolPin,
+} from './symbols/portGeometry';
+export { outlineFor, type SymbolOutline } from './symbols/ansiSymbols';
+export {
+  connectionEndpoints,
+  polylinePath,
+  routeBounds,
+  routeCircuit,
+  type RoutedNet,
+  type RoutedWire,
+} from './routing/orthogonalRouter';
+export { SchematicNodeView, schematicLodForZoom, type SchematicLod, type SchematicNodeViewProps } from './components/SchematicNodeView';
+export { SchematicWireView, type SchematicWireViewProps } from './components/SchematicWireView';

@@ -167,7 +167,8 @@ describe('DesignSurface contextual inspector contract', () => {
     fireEvent.click(view.getByTestId('ide-design-learning-mode-live'));
 
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'live');
-    expect(view.getByText('Exploratory simulation · not saved evidence')).toBeTruthy();
+    expect(view.getByTestId('ide-design-live-transport')).toBeTruthy();
+    expect(view.getByTestId('ide-design-learning-mode-live').getAttribute('title')).toContain('not saved evidence');
   });
 
   it('returns idle inspector space to the canvas when nothing is selected', () => {

@@ -1,5 +1,7 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole, TestVector } from '@redbyte/rb-utils';
+import type { ProjectHierarchyDocument } from './projectHierarchy';
+import { buildHierarchicalRippleAdder } from './examples/hierarchicalRippleAdder';
 import { LAB_STARTERS } from './labStarters';
 import fourBitAdderRaw from '../../examples/09_4bit-adder.json';
 
@@ -51,9 +53,13 @@ export interface IdeExampleDefinition {
   probes?: Array<{ nodeId: string; portName: string; label: string; color: string }>;
   /** Curated learning path metadata. Present only on the 6 path examples. */
   learningPath?: ExampleLearningPath;
+  /** Native visual hierarchy the starter ships with (module definitions + instances in `circuit`). */
+  hierarchy?: ProjectHierarchyDocument;
 }
 
 export const IDE_DEFAULT_EXAMPLE_ID = 'signal-tour';
+
+const HIERARCHICAL_RIPPLE_ADDER = buildHierarchicalRippleAdder();
 
 const FOUR_BIT_ADDER_NODE_LABELS = new Map<string, string>([
   ['a0', 'A0 (SW0)'],
@@ -513,6 +519,28 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
         { from: { nodeId: 'or_node',   portName: 'out' }, to: { nodeId: 'ld0_node',  portName: 'in' } },
       ],
     },
+  },
+  {
+    id: 'four-bit-adder-hierarchical',
+    category: 'showcase' as const,
+    name: '4-Bit Adder (hierarchical)',
+    summary: 'One FullAdderCell module instantiated four times (u_fa0–u_fa3) and chained through the carry: A[3:0] + B[3:0] → SUM[3:0], CARRY.',
+    course: 'Gannon Pilot',
+    lab: 'Lab 4',
+    concept: 'Hierarchy & Buses',
+    tags: ['arithmetic', 'combinational', 'adder', 'hierarchy', 'buses', 'gannon-pilot'],
+    expectedBehavior:
+      'SW0/SW2/SW4/SW6 drive A[3:0] and SW1/SW3/SW5/SW7 drive B[3:0]. LD0–LD3 show SUM[3:0]; LD4 shows CARRY. Each stage is the same FullAdderCell definition (a user module, distinct from the built-in FullAdder part).',
+    goals: [
+      'Open u_fa2 and trace SUM[2] back through its XOR path',
+      'Follow the carry chain from u_fa0/COUT to u_fa3/CIN',
+      'Run the starter cases and inspect a carry-out case in the waveform',
+      'Map A/B/SUM/CARRY to the Basys3 switches and LEDs before packaging',
+    ],
+    ioRows: HIERARCHICAL_RIPPLE_ADDER.ioRows,
+    vectors: HIERARCHICAL_RIPPLE_ADDER.vectors,
+    circuit: HIERARCHICAL_RIPPLE_ADDER.circuit,
+    hierarchy: HIERARCHICAL_RIPPLE_ADDER.hierarchy,
   },
   {
     id: 'four-bit-adder',

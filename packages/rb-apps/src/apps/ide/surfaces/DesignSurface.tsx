@@ -20,6 +20,8 @@ import {
   wireRejectionMessage,
   type ChipMetadata,
   type NodeIoPresentation,
+  buildGeometryIndex,
+  unionBounds,
 } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
@@ -151,6 +153,8 @@ import {
   type ProjectHierarchyDocument,
 } from '../projectHierarchy';
 import './design-workbench-v3.css';
+import './design/design-schematic.css';
+import './design/design-instrument.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'design',
@@ -1045,7 +1049,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const cards = Array.from(
       event.currentTarget.querySelectorAll<HTMLButtonElement>(
-        'button.ide-palette-card, button.ide-design-resource-tile'
+        'button.rb-lib-row, button.rb-lib-chip'
       )
     ).filter((card) => !card.disabled);
     if (cards.length === 0) return;
@@ -2594,32 +2598,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (const node of editorCircuit.nodes) {
-      const px = node.position?.x ?? node.x ?? 0;
-      const py = node.position?.y ?? node.y ?? 0;
-      minX = Math.min(minX, px);
-      maxX = Math.max(maxX, px);
-      minY = Math.min(minY, py);
-      maxY = Math.max(maxY, py);
-    }
-    if (!Number.isFinite(minX)) {
+    const bounds = unionBounds(buildGeometryIndex(editorCircuit.nodes as Node[]).values());
+    if (!bounds) {
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    const spanX = Math.max(96, maxX - minX);
-    const spanY = Math.max(96, maxY - minY);
-    const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
-    const boundsWidth = Math.max(1, spanX + padding * 2);
-    const boundsHeight = Math.max(1, spanY + padding * 2);
-    const zoomX = (viewport.width * 0.9) / boundsWidth;
-    const zoomY = (viewport.height * 0.9) / boundsHeight;
-    const nextZoom = snapFitZoom(Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY))));
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
+    const FIT_MARGIN = 48;
+    const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
+    const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
+    const zoomX = (viewport.width - FIT_MARGIN * 2) / boundsWidth;
+    const zoomY = (viewport.height - FIT_MARGIN * 2) / boundsHeight;
+    const rawZoom = Math.max(0.5, Math.min(2, Math.min(zoomX, zoomY)));
+    // Round down to the nearest shared step so the whole design always fits the sheet.
+    const nextZoom = [...FIT_ZOOM_STEPS].filter((step) => step <= rawZoom + 1e-6).pop() ?? snapFitZoom(rawZoom);
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
     setCamera({
       x: viewport.width / 2 - centerX * nextZoom,
       y: viewport.height / 2 - centerY * nextZoom,
@@ -4469,11 +4462,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const issueTone = primaryIssue.severity === 'draft' ? 'warn' : primaryIssue.severity;
     return (
       <div
-        className={`ide-design-selection-issues is-${issueTone}`}
+        className={`rb-insp-sel-issues is-${issueTone}`}
         data-testid="ide-design-selection-issues"
       >
-        <div className="ide-design-selection-issues-header">
-          <span className={`ide-design-selection-issues-pill is-${issueTone}`}>
+        <div className="rb-insp-sel-issues-header">
+          <span className={`rb-insp-sel-issues-pill is-${issueTone}`}>
             {primaryIssue.severity === 'error'
               ? 'Error'
               : primaryIssue.severity === 'warn'
@@ -4482,14 +4475,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </span>
           <strong data-testid="ide-design-selection-issue-title">{primaryIssue.title}</strong>
         </div>
-        <p className="ide-design-selection-issues-message" data-testid="ide-design-selection-issue-message">
+        <p className="rb-insp-sel-issues-message" data-testid="ide-design-selection-issue-message">
           {primaryIssue.message}
         </p>
-        <p className="ide-design-selection-issues-hint" data-testid="ide-design-selection-issue-hint">
+        <p className="rb-insp-sel-issues-hint" data-testid="ide-design-selection-issue-hint">
           {primaryIssue.hint}
         </p>
         {selectionAuthoringIssues.length > 1 ? (
-          <ul className="ide-design-selection-issues-list">
+          <ul className="rb-insp-sel-issues-list">
             {selectionAuthoringIssues.slice(1).map((issue) => {
               const signalKey = issue.focusTarget.portKey ? `${issue.focusTarget.nodeId}.${issue.focusTarget.portKey}` : null;
               return (
@@ -5028,7 +5021,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       <button
         key={item.type}
         type="button"
-        className={`ide-palette-card${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
+        className={`rb-lib-row${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
         onClick={options?.onClick ?? (() => beginNodePlacement(item.type))}
         onPointerDown={
           options?.onClick
@@ -5039,29 +5032,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         aria-pressed={isPending}
         title={tooltip}
       >
-        <span className="ide-design-component-tile-glyph" aria-hidden="true">
-          {item.glyph}
-        </span>
-        <span className="ide-palette-card-body">
-            <span className="ide-palette-card-title-row">
-            <span className="ide-design-component-tile-title">{item.title}</span>
-            {item.capabilityBadge ? (
-              <span className="ide-palette-card-cap" title={item.capabilityTitle ?? undefined}>
-                {item.capabilityBadge}
-              </span>
-            ) : null}
-            {options?.badge || item.paletteBadge ? (
-              <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
-            ) : null}
-          </span>
-          <span className="ide-palette-card-subtitle">
-            {item.portSummary ? (
-              <span className="ide-palette-card-ports">{item.portSummary}</span>
-            ) : (
-              item.subtitle
-            )}
-          </span>
-        </span>
+        <span className="rb-lib-glyph" aria-hidden="true">{item.glyph}</span>
+        <span className="rb-lib-name ide-design-component-tile-title">{item.title}</span>
+        <code className="rb-lib-pins">{item.portSummary ?? item.subtitle}</code>
+        {item.capabilityBadge ? (
+          <span className="rb-lib-cap" title={item.capabilityTitle ?? undefined}>{item.capabilityBadge}</span>
+        ) : null}
+        {options?.badge || item.paletteBadge ? <span className="rb-lib-badge">{options?.badge ?? item.paletteBadge}</span> : null}
       </button>
     );
   };
@@ -5073,7 +5050,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const renderLibrarySectionToggle = (sectionId: string, label: string) => (
     <button
       type="button"
-      className="ide-palette-section-toggle"
+      className="rb-lib-toggle"
       aria-expanded={librarySectionOpen(sectionId)}
       aria-label={`${librarySectionOpen(sectionId) ? 'Collapse' : 'Expand'} ${label}`}
       onClick={() => toggleLibrarySection(sectionId)}
@@ -5142,28 +5119,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (hasSingleSelectedNode && selectedNode && selectedNodeInspectorModel) {
       const { displayName, typeName } = selectedNodeInspectorModel;
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-selection-inspector">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">{displayName}</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   <span data-testid="ide-design-inspector-part-kind">
                     {selectedNodeTeachingProfile?.partKind ?? 'Part'}
                   </span>
-                  <span className="ide-design-identity-sep"> · </span>
+                  <span className="rb-insp-sep"> · </span>
                   <span data-testid="ide-design-selection-type">{typeName}</span>
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <div className="ide-design-inspector-name-control" data-testid="ide-design-inspector-name-control">
-              <span className="ide-design-inspector-group-label">
+            <div className="rb-insp-name-control" data-testid="ide-design-inspector-name-control">
+              <span className="rb-insp-group-label">
                 {selectedNode.type === 'INPUT' || selectedNode.type === 'OUTPUT' ? 'Signal name' : 'Part label'}
               </span>
               {renderNodeLabelEditor(selectedNode)}
@@ -5175,28 +5152,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (hasMultiNodeSelection) {
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-multiselect-summary">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   Use Arrow keys to nudge this group, align shared edges when it gets messy, or press Ctrl+D / Cmd+D to duplicate it.
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
               Keep refining the selection as one working unit, then save it as a reusable block when the group stabilizes.
             </p>
-            <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
+            <div className="rb-insp-sel-pins" data-testid="ide-design-multiselect-types">
               {selectedTypeSummary.map((entry) => (
-                <span key={entry.type} className="ide-design-pin-pill">
+                <span key={entry.type} className="rb-insp-pin">
                   {nodeTypeLabel(entry.type)}: {entry.count}
                 </span>
               ))}
@@ -5207,25 +5184,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (hasMultiWireSelection) {
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-multiselect-summary">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-multiwire-count">{selectedWireIdsAll.length} wire segments selected</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   {multiWireNetSummary?.headline ?? 'Multiple wires — comparing signal paths'}
                 </p>
                 {multiWireNetSummary ? (
-                  <div className="ide-design-inspector-meaning" data-testid="ide-design-multiwire-net-meaning">
-                    <p className="ide-design-inspector-what-it-is" data-testid="ide-design-multiwire-net-detail">
+                  <div className="rb-insp-meaning" data-testid="ide-design-multiwire-net-meaning">
+                    <p className="rb-insp-what-it-is" data-testid="ide-design-multiwire-net-detail">
                       {multiWireNetSummary.detail}
                     </p>
                     {multiWireNetSummary.groupLabels.length > 0 ? (
                       <p
-                        className="ide-design-inspector-structure-hint"
+                        className="rb-insp-structure-hint"
                         data-testid="ide-design-multiwire-group-labels"
                         title={multiWireNetSummary.groupLabels.join('\n')}
                       >
@@ -5235,11 +5212,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
               {multiWireNetSummary?.sameNet
                 ? 'To read live value for one hop, select a single wire. The canvas still shows the full net while several segments on that net stay selected.'
                 : 'Pick one net at a time: deselect until you have one driver in this list, or a single wire, then use Trace and the signal panel on the right.'}
@@ -5251,39 +5228,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (selectedWireContext) {
       const nextStep = primarySelectionIssue?.hint ?? 'Trace this net, pin it, or inspect its source and sink below.';
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-selection-inspector">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">
                     {describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}
                   </strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   Wire net from {selectedWireContext.sourceLabel} to {selectedWireContext.targetLabel}
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
               {nextStep}
             </p>
-            <div className="ide-design-inspector-facts ide-kv-list">
-              <div className="ide-kv-row">
+            <div className="rb-insp-facts rb-insp-facts">
+              <div className="rb-insp-row">
                 <span>Type</span>
                 <span data-testid="ide-design-selection-type">Wire</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Connection</span>
                 <code data-testid="ide-design-selection-id">
                   {`${selectedWireContext.sourceLabel} -> ${selectedWireContext.targetLabel}`}
                 </code>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Branches</span>
                 <span>{selectedWireContext.branchCount}</span>
               </div>
@@ -5314,34 +5291,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ? `Start at ${activeInspectorSignalLandingTarget.signalLabel} and inspect the highlighted path first.`
           : 'Pin this signal or step simulation to inspect how it changes.');
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-selection-inspector">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">{activeInspectorSignalLabel}</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   {signalFocusSubtitle}
                 </p>
               </div>
             </div>
             {primarySelectionIssue?.hint ? (
-              <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+              <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
                 {primarySelectionIssue.hint}
               </p>
             ) : null}
-            <div className="ide-design-inspector-facts ide-kv-list">
-              <div className="ide-kv-row">
+            <div className="rb-insp-facts rb-insp-facts">
+              <div className="rb-insp-row">
                 <span>Type</span>
                 <span data-testid="ide-design-selection-type">Signal</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Signal</span>
                 <code data-testid="ide-design-selection-id">{activeInspectorSignalLabel}</code>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Samples</span>
                 <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
               </div>
@@ -5352,13 +5329,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (isReplayMode) {
       return (
-        <div className="ide-design-inspector-empty-card ide-design-inspector-replay-idle" data-testid="ide-design-inspector-empty">
-          <span className="ide-design-inspector-eyebrow ide-design-inspector-eyebrow--inspect">Inspect mode</span>
-          <div className="ide-design-inspector-title-block">
-            <div className="ide-design-selection-identity">
+        <div className="rb-insp-empty-card rb-insp-replay-idle" data-testid="ide-design-inspector-empty">
+          <span className="rb-insp-eyebrow rb-insp-eyebrow--inspect">Inspect mode</span>
+          <div className="rb-insp-title-block">
+            <div className="rb-insp-sel-identity">
               <strong data-testid="ide-design-inspector-identity-title">{activeReplaySelectionLabel}</strong>
             </div>
-            <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+            <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
               {activeReplayTimingHint ?? 'Verify-authored replay'}
             </p>
           </div>
@@ -5387,9 +5364,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     // real canvas selection to inspect.
     if (focusedAssetContext) {
       return (
-        <div className="ide-design-selection-deferred" data-testid="ide-design-selection-deferred">
+        <div className="rb-insp-sel-deferred" data-testid="ide-design-selection-deferred">
           <p className="ide-copy" style={{ margin: 0 }}>
-            <span className="ide-design-inspector-eyebrow">Canvas selection</span>
+            <span className="rb-insp-eyebrow">Canvas selection</span>
             {' — '}
             Project focus is active. Select a node or wire to inspect it here, or use{' '}
             <strong>Clear focus</strong> on the canvas banner.
@@ -5398,13 +5375,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       );
     }
     return (
-      <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
-        <span className="ide-design-inspector-eyebrow">Inspector</span>
-        <div className="ide-design-inspector-title-block">
-          <div className="ide-design-selection-identity">
+      <div className="rb-insp-empty-card" data-testid="ide-design-inspector-empty">
+        <span className="rb-insp-eyebrow">Inspector</span>
+        <div className="rb-insp-title-block">
+          <div className="rb-insp-sel-identity">
             <strong data-testid="ide-design-inspector-identity-title">Canvas ready</strong>
           </div>
-          <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+          <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
             Selection state, mapping, and signal context land here.
           </p>
           <p className="ide-design-logical-io-note" data-testid="ide-design-logical-io-explainer">
@@ -5412,7 +5389,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </p>
         </div>
         {!showBlankStateCard ? (
-          <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+          <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
             Select a node, wire, or verify-linked signal to inspect it without leaving the canvas.
           </p>
         ) : null}
@@ -5422,7 +5399,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const renderSelectionGuidance = () => {
     if (selectionIssueSummary || primarySelectionDiagnostic) {
       return (
-        <div className="ide-design-inspector-guidance" data-testid="ide-design-inspector-guidance">
+        <div className="rb-insp-guidance" data-testid="ide-design-inspector-guidance">
           {selectionIssueSummary}
           {primarySelectionIssue ? (
             <div className="ide-inline-actions">
@@ -5436,12 +5413,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           ) : null}
           {selectedNodeDiagnostics.length > 0 ? (
-            <div className="ide-design-inspector-diagnostics" data-testid="ide-design-selection-diagnostics">
-              <ul className="ide-design-inspector-diagnostic-list">
+            <div className="rb-insp-diagnostics" data-testid="ide-design-selection-diagnostics">
+              <ul className="rb-insp-diagnostic-list">
                 {selectedNodeDiagnostics.slice(0, 3).map((diagnostic) => (
                   <li
                     key={`${diagnostic.code}-${diagnostic.message}`}
-                    className={`ide-design-inspector-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
+                    className={`rb-insp-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
                   >
                     <span>{diagnostic.message}</span>
                   </li>
@@ -5471,18 +5448,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     } = selectedNodeInspectorModel;
 
     return (
-      <div className="ide-design-inspector-selection-details-content">
+      <div className="rb-insp-selection-details-content">
         {selectedNodeTeachingProfile ? (
-          <div className="ide-design-inspector-meaning" data-testid="ide-design-inspector-meaning">
+          <div className="rb-insp-meaning" data-testid="ide-design-inspector-meaning">
             <p
-              className="ide-design-inspector-what-it-is"
+              className="rb-insp-what-it-is"
               data-testid="ide-design-inspector-what-it-is"
             >
               {selectedNodeTeachingProfile.whatItIs}
             </p>
             {selectedNodeTeachingProfile.structureHint ? (
               <p
-                className="ide-design-inspector-structure-hint"
+                className="rb-insp-structure-hint"
                 data-testid="ide-design-inspector-structure-hint"
               >
                 {selectedNodeTeachingProfile.structureHint}
@@ -5490,13 +5467,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
           </div>
         ) : null}
-        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+        <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
           {nextStep}
         </p>
-        <div className="ide-design-inspector-facts ide-kv-list">
+        <div className="rb-insp-facts rb-insp-facts">
           {showSelectedSignalModel ? (
             <div
-              className="ide-design-inspector-signal-model"
+              className="rb-insp-signal-model"
               data-testid="ide-design-selected-signal-model"
             >
               <div>
@@ -5521,7 +5498,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             const membership = busForNode(editorCircuit, selectedNode.id);
             if (!membership) return null;
             return (
-              <div className="ide-kv-row" data-testid="ide-design-selection-bus">
+              <div className="rb-insp-row" data-testid="ide-design-selection-bus">
                 <span>Bus</span>
                 <span>
                   <code>{busRangeLabel(membership.bus)}</code> · bit {membership.index}
@@ -5529,21 +5506,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             );
           })()}
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Reference</span>
             <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
           </div>
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Board mapping</span>
             <span>{boardSummary}</span>
           </div>
           {selectedSequentialInspector ? (
             <>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Timing role</span>
                 <span data-testid="ide-design-sequential-role">{selectedSequentialInspector.roleLabel}</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Timing context</span>
                 <span data-testid="ide-design-sequential-timing-context">
                   {selectedSequentialInspector.timingContext}
@@ -5558,10 +5535,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const renderSelectionActions = () => {
     if (hasSingleSelectedNode && selectedNode) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-edit-group">
-            <span className="ide-design-inspector-group-label">Edit</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="rb-insp-group-label">Edit</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                 Copy
               </IdeButton>
@@ -5572,8 +5549,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             {(() => {
               const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
               return swapTargets && swapTargets.length > 0 ? (
-                <div className="ide-design-inspector-subgroup" data-testid="ide-design-swap-group">
-                  <span className="ide-design-inspector-group-label">Swap type</span>
+                <div className="rb-insp-subgroup" data-testid="ide-design-swap-group">
+                  <span className="rb-insp-group-label">Swap type</span>
                   <div className="ide-design-swap-chips">
                     {swapTargets.map((targetType) => (
                       <button
@@ -5592,13 +5569,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             })()}
           </div>
           {selectedNativeModule ? (
-            <div className="ide-design-inspector-action-group" data-testid="ide-design-module-instance-actions">
-              <span className="ide-design-inspector-group-label">Module instance</span>
+            <div className="rb-insp-action-group" data-testid="ide-design-module-instance-actions">
+              <span className="rb-insp-group-label">Module instance</span>
               <p className="ide-design-instance-identity" data-testid="ide-design-instance-identity">
                 <strong>{readInstanceName(selectedNode) || selectedNode.label || selectedNode.id}</strong>
                 <span> : {selectedNativeModule.displayName}</span>
               </p>
-              <div className="ide-design-inspector-action-grid">
+              <div className="rb-insp-action-grid">
                 <IdeButton
                   tone="primary"
                   onClick={() => onOpenModule?.(selectedNativeModule.id)}
@@ -5646,9 +5623,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </p>
             </div>
           ) : null}
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
-            <span className="ide-design-inspector-group-label">Net tracing</span>
-            <div className="ide-design-inspector-action-grid">
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Net tracing</span>
+            <div className="rb-insp-action-grid">
               {primarySelectionIssue ? (
                 <IdeButton tone="secondary" onClick={() => focusDesignIssue(primarySelectionIssue)}>
                   Focus issue
@@ -5671,9 +5648,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           {selectedSequentialInspector?.actionLabel &&
           ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
             (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
-            <div className="ide-design-inspector-action-group" data-testid="ide-design-sequential-action-group">
-              <span className="ide-design-inspector-group-label">Sequential next step</span>
-              <div className="ide-design-inspector-action-grid">
+            <div className="rb-insp-action-group" data-testid="ide-design-sequential-action-group">
+              <span className="rb-insp-group-label">Sequential next step</span>
+              <div className="rb-insp-action-grid">
                   {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
                     <IdeButton
                       tone="secondary"
@@ -5696,9 +5673,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           ) : null}
           {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
-            <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-input-control">
-              <span className="ide-design-inspector-group-label">Input control</span>
-              <div className="ide-design-inspector-action-grid">
+            <div className="rb-insp-action-group" data-testid="ide-design-inspector-input-control">
+              <span className="rb-insp-group-label">Input control</span>
+              <div className="rb-insp-action-grid">
                 {(() => {
                   const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
                   return (
@@ -5716,9 +5693,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
-          <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
-            <span className="ide-design-inspector-group-label">Danger</span>
-            <div className="ide-design-inspector-action-grid">
+          <div className="rb-insp-action-group rb-insp-group--danger" data-testid="ide-design-inspector-danger-group">
+            <span className="rb-insp-group-label">Danger</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
                 Delete node
               </IdeButton>
@@ -5729,10 +5706,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (hasMultiNodeSelection) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-edit-group">
-            <span className="ide-design-inspector-group-label">Edit</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="rb-insp-group-label">Edit</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                 Copy ({selection.nodes.size})
               </IdeButton>
@@ -5746,9 +5723,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null}
             </div>
           </div>
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-arrange-group">
-            <span className="ide-design-inspector-group-label">Align</span>
-            <div className="ide-design-inspector-action-grid ide-design-align-grid">
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-arrange-group">
+            <span className="rb-insp-group-label">Align</span>
+            <div className="rb-insp-action-grid ide-design-align-grid">
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('left')} testId="ide-design-align-left-btn">
                 Left
               </IdeButton>
@@ -5768,8 +5745,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 Bottom
               </IdeButton>
             </div>
-            <span className="ide-design-inspector-group-label">Distribute</span>
-            <div className="ide-design-inspector-action-grid">
+            <span className="rb-insp-group-label">Distribute</span>
+            <div className="rb-insp-action-grid">
               <IdeButton
                 tone="ghost"
                 onClick={handleDistributeSelectionHorizontally}
@@ -5789,9 +5766,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </div>
           {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (
-            <div className="ide-design-inspector-action-group">
-              <span className="ide-design-inspector-group-label">Compose</span>
-              <div className="ide-design-inspector-action-grid">
+            <div className="rb-insp-action-group">
+              <span className="rb-insp-group-label">Compose</span>
+              <div className="rb-insp-action-grid">
                 <IdeButton tone="ghost" onClick={openMacroDialog} testId="ide-design-save-macro-open">
                   Save as Macro...
                 </IdeButton>
@@ -5799,9 +5776,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           ) : null}
           {(onCreateModuleFromSelection || onSaveAsComponent) && selectedNodeIdsAll.length >= 2 ? (
-            <div className="ide-design-inspector-action-group">
-              <span className="ide-design-inspector-group-label">Hierarchy</span>
-              <div className="ide-design-inspector-action-grid">
+            <div className="rb-insp-action-group">
+              <span className="rb-insp-group-label">Hierarchy</span>
+              <div className="rb-insp-action-grid">
                 {onCreateModuleFromSelection ? (
                   <IdeButton tone="primary" onClick={openModuleDialog} testId="ide-design-create-module-open">
                     Create component from selection…
@@ -5837,9 +5814,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null}
             </div>
           ) : null}
-          <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
-            <span className="ide-design-inspector-group-label">Danger</span>
-            <div className="ide-design-inspector-action-grid">
+          <div className="rb-insp-action-group rb-insp-group--danger" data-testid="ide-design-inspector-danger-group">
+            <span className="rb-insp-group-label">Danger</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
                 Delete {selection.nodes.size} nodes
               </IdeButton>
@@ -5850,10 +5827,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (selectedWireContext) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
-            <span className="ide-design-inspector-group-label">Net tracing</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Net tracing</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="secondary" onClick={focusSelectedPath} testId="ide-design-context-focus-path">
                 Focus path
               </IdeButton>
@@ -5873,10 +5850,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (activeInspectorSignalKey) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
-            <span className="ide-design-inspector-group-label">Signal actions</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Signal actions</span>
+            <div className="rb-insp-action-grid">
               {activeInspectorSignalLandingTarget ? (
                 <IdeButton tone="secondary" onClick={focusActiveInspectorSignalNode} testId="ide-design-inspector-focus-node">
                   Inspect {activeInspectorSignalLandingTarget.nodeLabel}
@@ -5903,15 +5880,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!registerCfg) return null;
       const registerWidth = registerCfg ? normalizeRegisterWidth(selectedNode.type, registerCfg) : 1;
       return (
-        <div className="ide-design-inspector-inline-editor" data-testid="ide-design-inspector-inline-editor">
+        <div className="rb-insp-inline-editor" data-testid="ide-design-inspector-inline-editor">
           <div className="ide-design-register-config" data-testid="ide-design-register-config">
-              <span className="ide-design-inspector-group-label">Register semantics</span>
-              <p className="ide-design-inspector-hint">
+              <span className="rb-insp-group-label">Register semantics</span>
+              <p className="rb-insp-hint">
                 Matches simulation and export. For bus registers, width controls how many D[i]/Q[i] taps appear on the
                 chip.
               </p>
               {selectedNode.type !== 'Register1' ? (
-                <label className="ide-design-inspector-field">
+                <label className="rb-insp-field">
                   <span>Width (bits)</span>
                   <input
                     type="number"
@@ -5927,7 +5904,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   />
                 </label>
               ) : null}
-              <label className="ide-design-inspector-field ide-design-inspector-field--checkbox">
+              <label className="rb-insp-field rb-insp-field--checkbox">
                 <input
                   type="checkbox"
                   checked={registerCfg.hasEnable === true}
@@ -5936,7 +5913,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 />
                 <span>Model clock enable (EN / CE)</span>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Clock edge</span>
                 <select
                   className="ide-export-pin-input"
@@ -5948,7 +5925,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="falling_edge" disabled>Falling edge · unsupported</option>
                 </select>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Reset kind</span>
                 <select
                   className="ide-export-pin-input"
@@ -5963,7 +5940,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="sync_set" disabled>Synchronous set · unsupported</option>
                 </select>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Reset polarity</span>
                 <select
                   className="ide-export-pin-input"
@@ -5975,7 +5952,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="active_low" disabled>Active low · unsupported</option>
                 </select>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Enable polarity</span>
                 <select
                   className="ide-export-pin-input"
@@ -6010,11 +5987,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
     return (
       <>
-        <div className="ide-kv-row">
+        <div className="rb-insp-row">
           <span>Selected case</span>
           <span>{activeSimulationSelectionLabel}</span>
         </div>
-        <div className="ide-kv-row">
+        <div className="rb-insp-row">
           <span>State</span>
           <span>
             {staleReplayBreadcrumb
@@ -6024,30 +6001,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 : 'Live circuit'}
           </span>
         </div>
-        <div className="ide-kv-row">
+        <div className="rb-insp-row">
           <span>Mode</span>
           <span>{simModeLabel}</span>
         </div>
         {activeReplayTimingHint ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Sample</span>
             <span>{activeReplayTimingHint}</span>
           </div>
         ) : null}
         {simulationStory.clockEvent ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Clock</span>
             <span>{simulationStory.clockLabel} {simulationStory.clockEvent} edge</span>
           </div>
         ) : null}
         {activeVerifySignal ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Verify focus</span>
             <code>{activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}</code>
           </div>
         ) : null}
         {activeDebugContext ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Expected / observed</span>
             <span>
               <code>{activeDebugContext.expected}</code> / <code>{activeDebugContext.actual}</code>
@@ -6094,7 +6071,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (hasSingleSelectedNode && selectedNode) {
       if (selectedSequentialInspector) {
         return (
-          <div className="ide-design-inspector-section-stack">
+          <div className="rb-insp-section-stack">
             <IdeCallout
               tone="info"
               title="Sequential guidance"
@@ -6104,14 +6081,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {selectedSequentialInspector.behaviorSummary}
               </span>
             </IdeCallout>
-            <div className="ide-design-live-summary">
-              <div className="ide-kv-list">
-                <div className="ide-kv-row">
+            <div className="rb-insp-live-summary">
+              <div className="rb-insp-facts">
+                <div className="rb-insp-row">
                   <span>Role</span>
                   <span>{selectedSequentialInspector.roleLabel}</span>
                 </div>
                 {selectedSequentialInspector.controlLabel ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>{selectedSequentialInspector.controlLabel}</span>
                     <span data-testid="ide-design-sequential-control-source">
                       {selectedSequentialInspector.controlSourceLabel ?? 'No source wired'}
@@ -6119,55 +6096,55 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
                 {selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>Control activity</span>
                     <span data-testid="ide-design-sequential-control-activity">
                       {selectedSequentialInspector.controlActivity}
                     </span>
                   </div>
                 ) : !selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>Signal activity</span>
                     <span data-testid="ide-design-sequential-control-activity">
                       {selectedSequentialInspector.controlActivity}
                     </span>
                   </div>
                 ) : null}
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>{selectedSequentialInspector.ioSummaryLabel}</span>
                   <span data-testid="ide-design-sequential-input-summary">{selectedSequentialInspector.ioSummary}</span>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>{selectedSequentialInspector.stateSummaryLabel}</span>
                   <span data-testid="ide-design-sequential-output-summary">{selectedSequentialInspector.stateSummary}</span>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Timing context</span>
                   <span>{selectedSequentialInspector.timingContext}</span>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Current</span>
                   <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Previous</span>
                   <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Transition</span>
                   <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Last transition</span>
                   <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
                 </div>
                 {selectedNodeReplayCausation ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>Why now</span>
                     <span data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</span>
                   </div>
                 ) : null}
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Trace state</span>
                   {(() => {
                     const dock = formatTraceStateDock(traceState?.nodeIds.has(selectedNode.id) ?? false);
@@ -6182,18 +6159,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
             {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-              <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
+              <div className="rb-insp-sel-pins" data-testid="ide-design-selection-pins">
                 {selectedNodeSignals.map((entry) => {
                   const val = entry.value;
                   const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
                   return (
                     <span
                       key={`${selectedNode.id}-${entry.port}`}
-                      className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                      className={`rb-insp-pin rb-insp-pin--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
                       data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
                     >
                       {entry.port}
-                      <span className="ide-design-pin-pill-value">{valStr}</span>
+                      <span className="rb-insp-pin-value">{valStr}</span>
                     </span>
                   );
                 })}
@@ -6204,32 +6181,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         );
       }
       return (
-        <div className="ide-design-inspector-section-stack">
+        <div className="rb-insp-section-stack">
           {selectedNodeReplayCausation ? (
             <div className="ide-design-replay-causation-card" data-testid="ide-design-replay-causation-card">
               <span className="ide-design-replay-causation-label">Why now</span>
               <p className="ide-design-replay-causation-text" data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</p>
             </div>
           ) : null}
-          <div className="ide-design-live-summary">
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
+          <div className="rb-insp-live-summary">
+            <div className="rb-insp-facts">
+              <div className="rb-insp-row">
                 <span>Current</span>
                 <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Previous</span>
                 <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Transition</span>
                 <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Last transition</span>
                 <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Trace state</span>
                 {(() => {
                   const dock = formatTraceStateDock(traceState?.nodeIds.has(selectedNode.id) ?? false);
@@ -6244,27 +6221,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </div>
           {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-            <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
+            <div className="rb-insp-sel-pins" data-testid="ide-design-selection-pins">
               {selectedNodeSignals.map((entry) => {
                 const val = entry.value;
                 const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
                 return (
                   <span
                     key={`${selectedNode.id}-${entry.port}`}
-                    className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                    className={`rb-insp-pin rb-insp-pin--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
                     data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
                   >
                     {entry.port}
-                    <span className="ide-design-pin-pill-value">{valStr}</span>
+                    <span className="rb-insp-pin-value">{valStr}</span>
                   </span>
                 );
               })}
             </div>
           ) : null}
           {selectedNodeInputDrivers.length > 0 && (
-            <div className="ide-design-selection-drivers" data-testid="ide-design-input-drivers">
+            <div className="rb-insp-sel-drivers" data-testid="ide-design-input-drivers">
               {selectedNodeInputDrivers.map((d) => (
-                <div key={d.port} className="ide-kv-row" data-testid={`ide-design-driver-row-${d.port}`}>
+                <div key={d.port} className="rb-insp-row" data-testid={`ide-design-driver-row-${d.port}`}>
                   <span>{describePortForStudents(d.port)}</span>
                   <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
                 </div>
@@ -6277,47 +6254,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (selectedWireContext) {
       return (
-        <div className="ide-design-live-summary">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row" data-testid="ide-design-wire-connection">
+        <div className="rb-insp-live-summary">
+          <div className="rb-insp-facts">
+            <div className="rb-insp-row" data-testid="ide-design-wire-connection">
               <span>Connection</span>
               <span>{selectedWireContext.sourceLabel} → {selectedWireContext.targetLabel}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Signal</span>
               <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Current</span>
               <code data-testid="ide-design-context-current">{selectedWireContext.snapshot?.currentValue ?? 0}</code>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Previous</span>
               <code data-testid="ide-design-context-previous">{selectedWireContext.snapshot?.previousValue ?? 0}</code>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Transition</span>
               <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Last transition</span>
               <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
             </div>
             {selectedWireReplayCausation ? (
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Why now</span>
                 <span data-testid="ide-design-replay-causation">{selectedWireReplayCausation}</span>
               </div>
             ) : null}
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Driver / Source</span>
               <span>{selectedWireContext.sourceLabel} · {describePortForStudents(selectedWireContext.sourcePort)}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Sink</span>
               <span>{selectedWireContext.targetLabel} · {describePortForStudents(selectedWireContext.targetPort)}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Trace state</span>
               {(() => {
                 const inWireTrace = Boolean(
@@ -6339,39 +6316,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (activeInspectorSignalKey) {
       return (
-        <div className="ide-design-live-summary">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
+        <div className="rb-insp-live-summary">
+          <div className="rb-insp-facts">
+            <div className="rb-insp-row">
               <span>Signal</span>
               <code data-testid="ide-design-signal-selected">{activeInspectorSignalLabel}</code>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Current</span>
               <code data-testid="ide-design-signal-current-value">{activeInspectorSignalSnapshot?.currentValue ?? 0}</code>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Previous</span>
               <code>{activeInspectorSignalSnapshot?.previousValue ?? 0}</code>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Transition</span>
               <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Last transition</span>
               <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
             </div>
             {activeInspectorReplayCausation ? (
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Why now</span>
                 <span data-testid="ide-design-replay-causation">{activeInspectorReplayCausation}</span>
               </div>
             ) : null}
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Samples</span>
               <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Trace state</span>
               {(() => {
                 const dock = formatTraceStateDock(Boolean(traceState));
@@ -6426,7 +6403,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
 
     return (
-      <section className="ide-design-inline-board" data-testid="ide-design-inline-board-assignment">
+      <section className="rb-insp-board" data-testid="ide-design-inline-board-assignment">
         <header>
           <span className="ide-surface-block-label">Top-level {selectedNodeIoRow.direction === 'in' ? 'input' : 'output'}</span>
           <h3>{selectedNodeIoRow.label}</h3>
@@ -6435,7 +6412,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             board binding.
           </p>
         </header>
-        <label className="ide-design-inline-board-field">
+        <label className="rb-insp-field">
           <span>Basys3 resource</span>
           <select
             value={selectedBoardResource?.packagePin ?? ''}
@@ -6454,7 +6431,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ))}
           </select>
         </label>
-        <dl className="ide-design-inline-board-facts">
+        <dl className="rb-insp-facts">
           <div><dt>Direction</dt><dd>{selectedNodeIoRow.direction === 'in' ? 'Input' : 'Output'}</dd></div>
           <div><dt>Required class</dt><dd>{describeRequiredBoardResourceClass(selectedNodeIoRow, selectedBoardResource, timingGuidance)}</dd></div>
           <div><dt>Package pin</dt><dd>{selectedBoardResource?.packagePin ?? 'Not assigned'}</dd></div>
@@ -6488,7 +6465,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </IdeButton>
           ) : null}
         </div>
-        <p className="ide-copy ide-design-inspector-proof-boundary">
+        <p className="ide-copy rb-insp-proof-boundary">
           This creates package constraints for export. It does not prove synthesis, implementation, programming, or physical board behavior.
         </p>
       </section>
@@ -6496,22 +6473,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   };
   const renderBottomWorkspace = () => (
     <div className="ide-design-bottom-workspace" data-testid="ide-design-bottom-workspace">
-      <div className="ide-design-dock-tabs" role="tablist" aria-label="Design bottom panel">
+      <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design bottom panel">
         {(['problems', 'console', 'simulation'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
             aria-selected={activeBottomDockTab === tab}
-            className={activeBottomDockTab === tab ? 'is-active' : ''}
+            className={`wb-toolwindow-tab${activeBottomDockTab === tab ? ' is-active' : ''}`}
             onClick={() => setActiveBottomDockTab(tab)}
             data-testid={`ide-design-bottom-tab-${tab}`}
           >
-            {tab === 'problems'
-              ? `Problems (${authoringIssues.length + compilerDiagnostics.length})`
-              : tab === 'simulation'
-                ? 'Simulation / Waveform'
-                : 'Console'}
+            {tab === 'problems' ? (
+              <>Problems <span className="wb-toolwindow-count">{authoringIssues.length + compilerDiagnostics.length}</span></>
+            ) : tab === 'simulation' ? 'Simulation' : 'Output'}
           </button>
         ))}
       </div>
@@ -6520,19 +6495,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           authoringIssues.length === 0 && compilerDiagnostics.length === 0 ? (
             <IdeEmptyState title="No current problems" body="The circuit has no reported structural or compiler diagnostics." primaryAction={null} />
           ) : (
-            <div className="ide-design-problem-list">
+            <div className="rb-problems" role="list" data-testid="ide-design-problem-list">
               {authoringIssues.map((issue) => (
                 <button
                   type="button"
+                  role="listitem"
+                  className="rb-problems-row"
+                  data-severity={issue.severity}
                   key={`${issue.kind}:${issue.portKey}`}
                   onClick={() => selectMultipleNodes([issue.nodeId], false)}
+                  title="Select the affected part on the schematic"
                 >
-                  <strong>{issue.title}</strong><span>{issue.message}</span><code>{issue.portKey}</code>
+                  <span className="rb-problems-sev" aria-hidden="true" />
+                  <span className="rb-problems-title">{issue.title}</span>
+                  <span className="rb-problems-msg">{issue.message}</span>
+                  <code className="rb-problems-ref">{issue.portKey}</code>
                 </button>
               ))}
               {compilerDiagnostics.map((diagnostic) => (
-                <button type="button" key={diagnostic.id} onClick={() => onDiagnosticAction?.(diagnostic)}>
-                  <strong>{diagnostic.title}</strong><span>{diagnostic.message}</span>
+                <button
+                  type="button"
+                  role="listitem"
+                  className="rb-problems-row"
+                  data-severity={diagnostic.severity}
+                  key={diagnostic.id}
+                  onClick={() => onDiagnosticAction?.(diagnostic)}
+                >
+                  <span className="rb-problems-sev" aria-hidden="true" />
+                  <span className="rb-problems-title">{diagnostic.title}</span>
+                  <span className="rb-problems-msg">{diagnostic.message}</span>
+                  <code className="rb-problems-ref">{diagnostic.location?.nodeId ?? diagnostic.location?.signal ?? ''}</code>
                 </button>
               ))}
             </div>
@@ -6616,7 +6608,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         }}
         dock={
         <div className="ide-design-dock-stack" data-testid="ide-design-left-dock-workspace">
-          <div className="ide-design-dock-tabs" role="tablist" aria-label="Design tools">
+          <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design tools">
             {(['components', 'hierarchy', 'sources', 'board'] as const)
               .filter((tab) => isEditingTopModule || tab !== 'board')
               .map((tab) => (
@@ -6625,41 +6617,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 type="button"
                 role="tab"
                 aria-selected={activeLeftDockTab === tab}
-                className={activeLeftDockTab === tab ? 'is-active' : ''}
+                className={`wb-toolwindow-tab${activeLeftDockTab === tab ? ' is-active' : ''}`}
                 onClick={() => setActiveLeftDockTab(tab)}
                 data-testid={`ide-design-left-tab-${tab}`}
               >
-                {tab === 'components' ? 'Library' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+                {tab === 'components' ? 'Library' : tab === 'board' ? 'Board' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
               </button>
             ))}
           </div>
           {activeLeftDockTab === 'components' ? (
           <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
-            <header className="ide-design-subheader ide-design-palette-header">
-              <div>
-                <h3>Component Library</h3>
-              </div>
-              {onRuntimeCreateBus ? (
-                <IdeButton
-                  tone="secondary"
-                  onClick={() => openBusDialog('input')}
-                  testId="ide-design-library-new-bus"
-                >
-                  New bus…
-                </IdeButton>
-              ) : null}
-            </header>
-            <div className="ide-design-palette-toolbar">
+            <div className="rb-lib-toolbar">
+              <div className="wb-search">
+              <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="6" cy="6" r="4" /><path d="M9 9l3.5 3.5" strokeLinecap="round" /></svg>
               <input
-                type="text"
-                className="ide-design-search"
+                type="search"
+                className="rb-lib-search-input"
+                aria-label="Filter component library"
                 value={paletteQuery}
                 onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search gates or pins..."
+                placeholder="Filter parts"
                 data-testid="ide-design-search"
               />
+              {onRuntimeCreateBus ? (
+                <button type="button" className="wb-btn wb-btn--ghost rb-lib-bus" onClick={() => openBusDialog('input')} data-testid="ide-design-library-new-bus" title="Create a bus port">
+                  Bus +
+                </button>
+              ) : null}
+              </div>
               {paletteHasQuery && (
-                <p className="ide-design-palette-results" data-testid="ide-design-palette-results">
+                <p className="rb-lib-results" data-testid="ide-design-palette-results">
                   {hasPaletteResults
                     ? `${filteredPaletteByCategory.logic.length + filteredPaletteByCategory.sequential.length + filteredPaletteByCategory.io.length + filteredPaletteByCategory.components.length} results`
                     : `No results for "${paletteQuery.trim()}".`}
@@ -6667,27 +6654,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               )}
             </div>
 
-            <div className="ide-design-palette-sections" onKeyDown={handleLibraryRailKeyDown}>
+            <div className="rb-lib-sections" onKeyDown={handleLibraryRailKeyDown}>
               {commonPaletteItems.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--common"
+                  className="rb-lib-section"
                   data-testid="ide-design-palette-section-common"
                   data-collapsed={librarySectionOpen('common') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
                       <h4>Common</h4>
-                      <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
+                      <span className="rb-lib-count">{commonPaletteItems.length}</span>
                       {renderLibrarySectionToggle('common', 'Common')}
                     </div>
-                    {librarySectionOpen('common') ? (
-                      <p className="ide-palette-section-copy">
-                        Start here for most combinational and first sequential circuits.
-                      </p>
-                    ) : null}
                   </header>
                   {librarySectionOpen('common') ? (
-                    <div className="ide-palette-card-list">
+                    <div className="rb-lib-list">
                       {commonPaletteItems.map((item) =>
                         renderNodePaletteCard(item, {
                           testId: `ide-design-common-${item.type.toLowerCase()}`,
@@ -6700,35 +6682,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {/* Board Resources — first: primary destination for board-aware work */}
               {filteredBoardGroups.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--board"
+                  className="rb-lib-section"
                   data-testid="ide-design-palette-section-board"
                   data-collapsed={librarySectionOpen('board') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
                       <h4>{boardPaletteSection.title}</h4>
                     </div>
-                    <div className="ide-palette-section-meta">
-                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                    <div className="rb-lib-section-meta">
+                      <span className="rb-lib-count">{boardResourcesCount}</span>
                       {renderLibrarySectionToggle('board', boardPaletteSection.title)}
                     </div>
                   </header>
                   {librarySectionOpen('board') ? (
-                  <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
+                  <div className="rb-lib-board-groups" data-testid="ide-design-board-io-palette">
                       {filteredBoardGroups.map((group) => (
                         <div
                           key={group.id}
-                          className="ide-palette-board-group"
+                          className="rb-lib-board-group"
                           data-testid={`ide-design-board-group-${group.id}`}
                         >
-                          <div className="ide-palette-subsection-header">
-                            <div>
-                              <h5>{group.title}</h5>
-                              <p>{group.description}</p>
-                            </div>
-                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
+                          <div className="rb-lib-subheader">
+                            <h5>{group.title}</h5>
+                            <span className="rb-lib-count">{group.entries.length}</span>
                           </div>
-                          <div className="ide-palette-board-grid">
+                          <div className="rb-lib-chips">
                             {group.entries.map((entry) => {
                               const isPlaced = isBoardAliasPlaced(entry);
                               const isPending =
@@ -6742,7 +6721,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               return (
                                 <button
                                   key={entry.alias}
-                                  className={`ide-design-resource-tile${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
+                                  className={`rb-lib-chip${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
                                   type="button"
                                   onClick={() => beginBoardIoPlacement(entry)}
                                   onPointerDown={(event) =>
@@ -6776,24 +6755,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {/* Inputs & Outputs — second: generic pins for abstract designs */}
               {filteredPaletteByCategory.io.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--io"
+                  className="rb-lib-section"
                   data-testid="ide-design-palette-section-io"
                   data-collapsed={librarySectionOpen('io') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
                       <h4>{ioPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
+                      <span className="rb-lib-count">
                         {filteredPaletteByCategory.io.length}
                       </span>
                       {renderLibrarySectionToggle('io', ioPaletteSection.title)}
                     </div>
-                    {librarySectionOpen('io') ? (
-                      <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
-                    ) : null}
                   </header>
                   {librarySectionOpen('io') ? (
-                    <div className="ide-palette-card-list">
+                    <div className="rb-lib-list">
                       {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
                     </div>
                   ) : null}
@@ -6803,24 +6779,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {/* Logic Gates */}
               {filteredPaletteByCategory.logic.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--logic"
+                  className="rb-lib-section"
                   data-testid="ide-design-palette-section-logic"
                   data-collapsed={librarySectionOpen('logic') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
                       <h4>{logicPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
+                      <span className="rb-lib-count">
                         {filteredPaletteByCategory.logic.length}
                       </span>
                       {renderLibrarySectionToggle('logic', logicPaletteSection.title)}
                     </div>
-                    {librarySectionOpen('logic') ? (
-                      <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
-                    ) : null}
                   </header>
                   {librarySectionOpen('logic') ? (
-                    <div className="ide-palette-card-list">
+                    <div className="rb-lib-list">
                       {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
                     </div>
                   ) : null}
@@ -6830,35 +6803,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {/* Sequential & Timing */}
               {filteredPaletteByCategory.sequential.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--sequential"
+                  className="rb-lib-section"
                   data-testid="ide-design-palette-section-sequential"
                   data-collapsed={librarySectionOpen('sequential') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
                       <h4>{sequentialPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
+                      <span className="rb-lib-count">
                         {filteredPaletteByCategory.sequential.length}
                       </span>
                       {renderLibrarySectionToggle('sequential', sequentialPaletteSection.title)}
                     </div>
-                    {librarySectionOpen('sequential') ? (
-                      <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
-                    ) : null}
                   </header>
                   {librarySectionOpen('sequential') ? SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
                     const items = filteredPaletteByCategory[subsection.key];
                     if (!items || items.length === 0) return null;
                     return (
-                      <div key={subsection.key} className="ide-palette-subsection" data-testid={subsection.testId}>
-                        <div className="ide-palette-subsection-header">
-                          <div>
-                            <h5>{subsection.title}</h5>
-                            <p>{subsection.description}</p>
-                          </div>
-                          <span className="ide-palette-subsection-count">{items.length}</span>
+                      <div key={subsection.key} className="rb-lib-subsection" data-testid={subsection.testId}>
+                        <div className="rb-lib-subheader">
+                          <h5>{subsection.title}</h5>
+                          <span className="rb-lib-count">{items.length}</span>
                         </div>
-                        <div className="ide-palette-card-list">
+                        <div className="rb-lib-list">
                           {items.map((item) => renderNodePaletteCard(item))}
                         </div>
                       </div>
@@ -6878,40 +6845,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               filteredCustomComponents.length > 0 ||
               filteredMacros.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--reusable"
+                  className="rb-lib-section"
                   data-testid="ide-design-palette-section-reusable"
                   data-collapsed={librarySectionOpen('reusable') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
                       <h4>{reusablePaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
+                      <span className="rb-lib-count">
                         {filteredPaletteByCategory.components.length +
                           filteredCustomComponents.length +
                           filteredMacros.length}
                       </span>
                       {renderLibrarySectionToggle('reusable', reusablePaletteSection.title)}
                     </div>
-                    {librarySectionOpen('reusable') ? (
-                      <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
-                    ) : null}
                   </header>
 
                   {librarySectionOpen('reusable') && filteredPaletteByCategory.components.length > 0 ? (
                     <div
-                      className="ide-palette-subsection"
+                      className="rb-lib-subsection"
                       data-testid="ide-design-palette-built-in-blocks"
                     >
-                      <div className="ide-palette-subsection-header">
-                        <div>
-                          <h5>Built-in Blocks</h5>
-                          <p>Ready-made helpers for arithmetic and sequential experiments.</p>
-                        </div>
-                        <span className="ide-palette-subsection-count">
+                      <div className="rb-lib-subheader">
+                        <h5>Built-in Blocks</h5>
+                        <span className="rb-lib-count">
                           {filteredPaletteByCategory.components.length}
                         </span>
                       </div>
-                      <div className="ide-palette-card-list">
+                      <div className="rb-lib-list">
                         {filteredPaletteByCategory.components.map((item) =>
                           renderNodePaletteCard(item, { badge: item.paletteBadge ?? 'Built-in' })
                         )}
@@ -6920,36 +6881,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   ) : null}
 
                   {librarySectionOpen('reusable') && filteredCustomComponents.length > 0 ? (
-                    <div className="ide-palette-subsection" data-testid="ide-palette-group-custom">
-                      <div className="ide-palette-subsection-header">
-                        <div>
-                          <h5>Custom Parts</h5>
-                          <p>Reusable components saved into the project component library.</p>
-                        </div>
-                        <span className="ide-palette-subsection-count">
+                    <div className="rb-lib-subsection" data-testid="ide-palette-group-custom">
+                      <div className="rb-lib-subheader">
+                        <h5>Custom Parts</h5>
+                        <span className="rb-lib-count">
                           {filteredCustomComponents.length}
                         </span>
                       </div>
-                      <div className="ide-palette-card-list">
+                      <div className="rb-lib-list">
                         {filteredCustomComponents.map((item) => {
                           const definition = hierarchy?.modules.find((module) => module.name === item.type);
                           return (
-                            <article key={item.type} className="ide-palette-card ide-palette-card--custom ide-native-component-card" data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
-                              <span className="ide-design-component-tile-glyph" aria-hidden="true">M</span>
-                              <span className="ide-palette-card-body">
-                                <span className="ide-palette-card-title-row"><strong>{item.title}</strong><span className="ide-palette-card-badge">Project</span></span>
-                                <span className="ide-palette-card-subtitle">{definition ? `${definition.ports.length} ports · editable visual source` : item.description || 'Custom reusable block.'}</span>
-                                <span className="ide-native-component-card-actions">
-                                  {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
-                                    <button type="button" data-testid={`ide-design-palette-place-${definition.id}`} onClick={() => {
-                                      const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
-                                      onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
-                                    }}>Place instance</button>
-                                  ) : null}
-                                  {definition && onOpenModule ? <button type="button" onClick={() => onOpenModule(definition.id)}>Open definition</button> : null}
-                                </span>
+                            <div key={item.type} className="rb-lib-row rb-lib-row--module" data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                              <span className="rb-lib-glyph" aria-hidden="true">M</span>
+                              <span className="rb-lib-name">{item.title}</span>
+                              <code className="rb-lib-pins">{definition ? `${definition.ports.length} ports` : 'custom'}</code>
+                              <span className="rb-lib-row-actions">
+                                {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
+                                  <button type="button" className="wb-btn wb-btn--ghost" data-testid={`ide-design-palette-place-${definition.id}`} title="Place an instance on the schematic" onClick={() => {
+                                    const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
+                                    onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
+                                  }}>Place</button>
+                                ) : null}
+                                {definition && onOpenModule ? <button type="button" className="wb-btn wb-btn--ghost" title="Open the module definition" onClick={() => onOpenModule(definition.id)}>Open</button> : null}
                               </span>
-                            </article>
+                            </div>
                           );
                         })}
                       </div>
@@ -7136,14 +7092,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
-          <div className="ide-design-dock-tabs" role="tablist" aria-label="Design inspector">
+          <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design inspector">
             {(['inspector', 'properties', 'constraints'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 role="tab"
                 aria-selected={activeRightDockTab === tab}
-                className={activeRightDockTab === tab ? 'is-active' : ''}
+                className={`wb-toolwindow-tab${activeRightDockTab === tab ? ' is-active' : ''}`}
                 onClick={() => setActiveRightDockTab(tab)}
                 data-testid={`ide-design-right-tab-${tab}`}
               >
@@ -7199,9 +7155,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
                 {pinnedProbeRows.length > 0 ? (
-                  <div className="ide-kv-list ide-copy-top-gap" data-testid="ide-design-probe-list">
+                  <div className="rb-insp-facts ide-copy-top-gap" data-testid="ide-design-probe-list">
                     {pinnedProbeRows.map((probe) => (
-                      <div className="ide-kv-row" key={probe.key}>
+                      <div className="rb-insp-row" key={probe.key}>
                         <code>{probe.label}</code>
                         <span>{probe.value}</span>
                       </div>
@@ -7229,44 +7185,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 const hasIdleIoState = idleInputRows.length > 0 || idleOutputRows.length > 0;
                 return (
                   <div
-                    className="ide-design-inspector-canvas-default"
+                    className="rb-insp-canvas-default"
                     data-testid="ide-design-inspector-canvas-default"
                   >
                     <div
-                      className="ide-design-inspector-idle-card"
+                      className="rb-insp-idle-card"
                       data-testid="ide-design-inspector-idle-card"
                     >
-                      <span className="ide-design-inspector-idle-eyebrow">
+                      <span className="rb-insp-idle-eyebrow">
                         Design overview
                       </span>
                       {isEmptyCanvas ? (
-                        <p className="ide-copy ide-design-inspector-idle-empty-line">
+                        <p className="ide-copy rb-insp-idle-empty-line">
                           Empty canvas. Drop a gate, an input, or load an example to begin.
                         </p>
                       ) : (
                         <dl
-                          className="ide-design-inspector-idle-stats"
+                          className="rb-insp-idle-stats"
                           data-testid="ide-design-inspector-idle-stats"
                         >
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Inputs</dt>
                             <dd data-testid="ide-design-inspector-idle-inputs">
                               {inputCountIdle}
                             </dd>
                           </div>
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Outputs</dt>
                             <dd data-testid="ide-design-inspector-idle-outputs">
                               {outputCountIdle}
                             </dd>
                           </div>
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Nodes</dt>
                             <dd data-testid="ide-design-inspector-idle-nodes">
                               {nodeCountIdle}
                             </dd>
                           </div>
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Wires</dt>
                             <dd data-testid="ide-design-inspector-idle-wires">
                               {connectionCountIdle}
@@ -7276,27 +7232,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       )}
                       {hasIdleIoState ? (
                         <div
-                          className="ide-design-inspector-io-state"
+                          className="rb-insp-io-state"
                           data-testid="ide-design-inspector-io-state"
                         >
-                          <div className="ide-design-inspector-io-state-header">
+                          <div className="rb-insp-io-state-header">
                             <span>Current I/O</span>
-                            <span className="ide-design-inspector-io-state-kicker">Design state</span>
+                            <span className="rb-insp-io-state-kicker">Design state</span>
                           </div>
-                          <div className="ide-design-inspector-io-state-list">
+                          <div className="rb-insp-io-state-list">
                             {[...idleInputRows, ...idleOutputRows].map((row) => (
                               <div
                                 key={`${row.kind}-${row.id}`}
-                                className={`ide-design-inspector-io-state-row is-${row.kind}`}
+                                className={`rb-insp-io-state-row is-${row.kind}`}
                                 data-testid={`ide-design-inspector-${row.kind}-${row.id}`}
                               >
-                                <span className="ide-design-inspector-io-state-label">
+                                <span className="rb-insp-io-state-label">
                                   <strong>{row.label}</strong>
                                   <span>{row.kind === 'input' ? 'input' : 'output'}</span>
                                   {row.pinAlias ? <code>{row.pinAlias}</code> : null}
                                 </span>
                                 <code
-                                  className="ide-design-inspector-io-state-value"
+                                  className="rb-insp-io-state-value"
                                   data-testid={`ide-design-inspector-${row.kind}-${row.id}-value`}
                                 >
                                   {row.value}
@@ -7305,7 +7261,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             ))}
                           </div>
                           <p
-                            className="ide-copy ide-design-inspector-proof-boundary"
+                            className="ide-copy rb-insp-proof-boundary"
                             data-testid="ide-design-inspector-proof-boundary"
                           >
                             This is live design state only. Verify owns behavior proof before trust or export.
@@ -7314,7 +7270,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       ) : null}
                       {totalErrors > 0 || totalWarnings > 0 ? (
                         <p
-                          className="ide-copy ide-design-inspector-idle-issues"
+                          className="ide-copy rb-insp-idle-issues"
                           data-testid="ide-design-inspector-idle-issues"
                         >
                           {totalErrors > 0
@@ -7327,7 +7283,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           {' '}waiting in build status. Select a part or jump from the top status deck to resolve them.
                         </p>
                       ) : !isEmptyCanvas ? (
-                        <p className="ide-copy ide-design-inspector-idle-tip">
+                        <p className="ide-copy rb-insp-idle-tip">
                           Select a part, a wire, or a Verify-linked signal to open actions and live state.
                         </p>
                       ) : null}
@@ -7339,16 +7295,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           )}
           </div>
           {activeRightDockTab === 'properties' ? (
-            <div className="ide-design-properties-panel" data-testid="ide-design-properties-panel">
+            <div className="rb-insp-props" data-testid="ide-design-properties-panel">
               {renderSelectionIdentityCard()}
               {hasSingleSelectedNode && selectedNode ? (
                 <>
                   {renderSelectedNodeDetails()}
                   {renderSelectionProperties()}
                   {selectedComponentDefinition ? (
-                    <section className="ide-design-component-contract" data-testid="ide-design-component-contract">
-                      <span className="ide-design-inspector-group-label">Component contract</span>
-                      <dl className="ide-design-inline-board-facts">
+                    <section className="rb-insp-section" data-testid="ide-design-component-contract">
+                      <span className="rb-insp-group-label">Component contract</span>
+                      <dl className="rb-insp-facts">
                         <div><dt>Component type</dt><dd>{selectedComponentDefinition.displayName}</dd></div>
                         <div><dt>Category</dt><dd>{selectedComponentDefinition.category.replaceAll('-', ' ')}</dd></div>
                         <div><dt>Ports</dt><dd>{selectedComponentDefinition.ports.length}</dd></div>
@@ -7372,160 +7328,128 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         <DesignWorkspaceFrame view={effectiveDesignView} canvasAppearance={canvasAppearance} canvasDensity={canvasDensity}>
           <div className="ide-surface-command-stack">
 
-            {/* ── Compact primary toolbar ── */}
-          <div
-            className={`ide-design-control-bar${isCanvasWorkspace ? ' is-canvas' : isSplitWorkspace ? ' is-split' : ' is-code'}${
-              showWorkspaceStatusBar ? ' has-status' : ''
-            }`}
-            data-testid="ide-design-control-bar"
-            data-hierarchy-surface="design"
-            data-hierarchy-role="context"
-          >
+            {/* ── Schematic document header: module trail · wire cue · mode ── */}
             <div
-              className="ide-design-workspace-header"
-              data-testid="ide-design-workspace-header"
-              title={designCommandDescription}
+              className="wb-toolbar rb-design-header"
+              data-testid="ide-design-control-bar"
+              data-hierarchy-surface="design"
+              data-hierarchy-role="context"
             >
+              <nav className="rb-design-breadcrumb" aria-label="Design hierarchy" data-testid="ide-design-module-breadcrumb">
+                <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)} className={isEditingTopModule ? 'is-current' : ''}>
+                  {topEntityName || 'top'}
+                </button>
+                {activeNativeModule ? (
+                  <>
+                    <span className="wb-sep" aria-hidden="true">›</span>
+                    <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
+                      {drilledInstance?.moduleId === activeNativeModule.id ? (
+                        <span data-testid="ide-design-breadcrumb-instance">
+                          {drilledInstance.instanceName}
+                          <span className="ide-design-breadcrumb-of"> : {activeNativeModule.displayName}</span>
+                        </span>
+                      ) : (
+                        activeNativeModule.displayName
+                      )}
+                    </button>
+                  </>
+                ) : null}
+              </nav>
               {toolMode === 'wire' && !isPlacementMode ? (
-                <div
-                  className="ide-design-wire-cuebar"
-                  data-testid="ide-design-wire-cuebar"
-                  data-wire-active={wireStartPort ? '1' : '0'}
-                >
-                  <span className="ide-design-wire-cuebar-badge">Wire</span>
-                  <div
-                    className={`ide-design-wire-cuebar-message${wireFeedback ? ' is-error' : ''}`}
+                <div className="rb-design-wirecue" data-testid="ide-design-wire-cuebar" data-wire-active={wireStartPort ? '1' : '0'}>
+                  <span className="rb-design-wirecue-badge">Wire</span>
+                  <span
+                    className={`rb-design-wirecue-msg${wireFeedback ? ' is-error' : ''}`}
                     data-testid="ide-design-wire-cue"
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-wire-active={wireStartPort ? '1' : '0'}
                   >
                     {wireFeedback ? (
-                      <>
-                        <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
-                        {wireStartPort ? (
-                          <span> Source: {wireSourceLabel} selected; compatible inputs are green.</span>
-                        ) : null}
-                      </>
+                      <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
                     ) : wireStartPort ? (
-                      <span>Source: {wireSourceLabel} selected; compatible inputs are green.</span>
+                      <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
                     ) : (
-                      <span>Choose an output port to start the wire.</span>
+                      <span>Choose an output port to start a wire</span>
                     )}
-                  </div>
+                  </span>
                   {wireStartPort ? (
-                    <button
-                      type="button"
-                      className="ide-design-wire-cuebar-action ide-design-tool-hud-action"
-                      onClick={cancelActiveWire}
-                      data-testid="ide-design-wire-cancel"
-                    >
-                      Cancel wire
+                    <button type="button" className="wb-btn wb-btn--ghost" onClick={cancelActiveWire} data-testid="ide-design-wire-cancel">
+                      Cancel
                     </button>
                   ) : (
-                    <span className="ide-design-wire-cuebar-shortcut" aria-hidden="true">Esc cancels</span>
+                    <span className="wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
                   )}
                 </div>
-              ) : (
-                <div className="ide-design-workspace-heading" data-testid="ide-design-workspace-heading">
-                  <nav className="ide-design-module-breadcrumb" aria-label="Design hierarchy" data-testid="ide-design-module-breadcrumb">
-                    <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)} className={isEditingTopModule ? 'is-current' : ''}>
-                      {topEntityName || 'top'}
-                    </button>
-                    {activeNativeModule ? (
-                      <>
-                        <span aria-hidden="true">/</span>
-                        <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
-                          {drilledInstance?.moduleId === activeNativeModule.id ? (
-                            <span data-testid="ide-design-breadcrumb-instance">
-                              {drilledInstance.instanceName}
-                              <span className="ide-design-breadcrumb-of"> : {activeNativeModule.displayName}</span>
-                            </span>
-                          ) : (
-                            activeNativeModule.displayName
-                          )}
-                        </button>
-                      </>
-                    ) : null}
-                  </nav>
-                  <div className="ide-design-workspace-heading-main">
-                    <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
-                      {activeNativeModule ? `Editing ${activeNativeModule.displayName}` : isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
-                    </span>
-                    <p className="ide-design-workspace-summary">
-                      {activeNativeModule
-                        ? 'Edit this reusable component source. Board assignments remain owned by the top module.'
-                        : 'Build the circuit graph here, then use Simulate to check its behavior.'}
-                    </p>
-                    <div
-                      className={`ide-design-authoring-summary ${authoringStatusToneClass}`}
-                      data-testid="ide-design-authoring-summary"
-                      data-ready={designStructureReady ? 'true' : 'false'}
-                    >
-                      <strong data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</strong>
-                    </div>
-                  </div>
-                  {!isCodeWorkspace ? (
-                    <div
-                      className="ide-design-learning-mode"
-                      data-testid="ide-design-learning-mode"
-                      data-mode={effectiveLearningMode}
-                      aria-label="Design workspace mode"
-                    >
-                      <div className="ide-design-learning-mode-tabs" role="group" aria-label="Design mode">
-                        <button
-                          type="button"
-                          className={effectiveLearningMode === 'edit' ? 'is-active' : ''}
-                          aria-pressed={effectiveLearningMode === 'edit'}
-                          onClick={handleResumeLiveEditing}
-                          data-testid="ide-design-learning-mode-edit"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className={effectiveLearningMode === 'live' ? 'is-active' : ''}
-                          aria-pressed={effectiveLearningMode === 'live'}
-                          disabled={!hasRunnablePath}
-                          title={
-                            hasRunnablePath
-                              ? 'Explore current circuit values.'
-                              : 'Connect at least one input to one output through supported logic.'
-                          }
-                          onClick={() => {
-                            onClearExternalDebug?.();
-                            setDesignLearningMode('live');
-                          }}
-                          data-testid="ide-design-learning-mode-live"
-                        >
-                          Live
-                        </button>
-                        <button
-                          type="button"
-                          className={effectiveLearningMode === 'replay' ? 'is-active' : ''}
-                          aria-pressed={effectiveLearningMode === 'replay'}
-                          disabled={!replaySession || replayTrace.length === 0}
-                          title={
-                            replaySession && replayTrace.length > 0
-                              ? 'Inspect the current Verify run without changing the circuit.'
-                              : 'Run a scenario in Simulate to create a replay.'
-                          }
-                          onClick={() => onSelectDebugTickIndex?.(0)}
-                          data-testid="ide-design-learning-mode-replay"
-                        >
-                          Replay
-                        </button>
-                      </div>
-                      <span className="ide-design-learning-mode-truth">
-                        {effectiveLearningMode === 'replay'
-                          ? 'Recorded Verify run · read-only evidence'
-                          : effectiveLearningMode === 'live'
-                            ? 'Exploratory simulation · not saved evidence'
-                            : 'Authoring circuit structure'}
-                      </span>
-                    </div>
-                  ) : null}
+              ) : null}
+              {isPlacementMode && placementModeLabel ? (
+                <span className="wb-toolbar-meta" data-testid="ide-design-placement-hint">
+                  Placing <code>{placementModeLabel}</code> · click the canvas · Esc cancels
+                </span>
+              ) : null}
+              <span className="wb-toolbar-spacer" />
+              {!isCodeWorkspace ? (
+                <div
+                  className={`rb-design-health ${authoringStatusToneClass}`}
+                  data-testid="ide-design-authoring-summary"
+                  title={designStatusNote ?? authoringStatusLabel}
+                >
+                  <span className="rb-design-health-dot" aria-hidden="true" />
+                  <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</span>
+                  <code className="rb-design-health-counts" data-testid="ide-design-authoring-summary-counts">
+                    {totalAuthoringErrors}E {totalAuthoringWarnings}W
+                  </code>
                 </div>
-              )}
+              ) : null}
+              {effectiveLearningMode === 'live' ? (
+                <div className="wb-toolbar-group" data-testid="ide-design-live-transport" aria-label="Exploratory simulation controls">
+                  <button type="button" className="wb-btn" onClick={simRunning ? pauseSimulation : startSimulation} data-testid="ide-design-live-run">
+                    {simRunning ? 'Pause' : 'Run'}
+                  </button>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={stepSimulation} data-testid="ide-design-live-step">Step</button>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={resetSimulation} data-testid="ide-design-live-reset">Reset</button>
+                  <span className="wb-toolbar-meta" data-testid="ide-design-live-tick"><code>tick {runtimeSim.tick}</code></span>
+                  <span className="wb-toolbar-sep" />
+                </div>
+              ) : null}
+              {!isCodeWorkspace ? (
+                <div className="wb-segment rb-design-mode" role="group" aria-label="Design mode" data-testid="ide-design-learning-mode" data-mode={effectiveLearningMode}>
+                  <button
+                    type="button"
+                    className="wb-btn"
+                    aria-pressed={effectiveLearningMode === 'edit'}
+                    onClick={handleResumeLiveEditing}
+                    data-testid="ide-design-learning-mode-edit"
+                    title="Author circuit structure"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-btn"
+                    aria-pressed={effectiveLearningMode === 'live'}
+                    disabled={!hasRunnablePath}
+                    title={hasRunnablePath ? 'Explore current circuit values (exploratory, not saved evidence)' : 'Connect at least one input to one output through supported logic.'}
+                    onClick={() => {
+                      onClearExternalDebug?.();
+                      setDesignLearningMode('live');
+                    }}
+                    data-testid="ide-design-learning-mode-live"
+                  >
+                    Live
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-btn"
+                    aria-pressed={effectiveLearningMode === 'replay'}
+                    disabled={!replaySession || replayTrace.length === 0}
+                    title={replaySession && replayTrace.length > 0 ? 'Inspect the recorded run (read-only evidence)' : 'Run a scenario in Simulate to create a replay.'}
+                    onClick={() => onSelectDebugTickIndex?.(0)}
+                    data-testid="ide-design-learning-mode-replay"
+                  >
+                    Replay
+                  </button>
+                </div>
+              ) : null}
             </div>
             {guidedLabTask && guidedLabDesignChecklist ? (
               <section
@@ -7588,452 +7512,111 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </section>
               </section>
             ) : null}
-            <div className="ide-design-command-context-row" data-testid="ide-design-command-context-row">
-              <div className="ide-design-command-context" aria-label="Current design module and mode">
-                <nav className="ide-design-command-breadcrumb" aria-label="Design module breadcrumb">
-                  <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>{topEntityName || 'top'}</button>
-                  {activeNativeModule ? <><span aria-hidden="true">/</span><button type="button" onClick={() => onOpenModule?.(activeNativeModule.id)}>{activeNativeModule.displayName}</button></> : null}
-                </nav>
-                {toolMode === 'wire' && !isPlacementMode ? (
-                  <div className="ide-design-wire-inline" data-testid="ide-design-wire-inline" data-wire-active={wireStartPort ? '1' : '0'}>
-                    <strong>Wire</strong>
-                    <span>{wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected · choose an input` : 'Choose an output port')}</span>
-                    {wireStartPort ? <button type="button" onClick={cancelActiveWire}>Cancel</button> : null}
-                  </div>
-                ) : null}
-                {!isCodeWorkspace ? (
-                  <div className="ide-design-command-mode" role="group" aria-label="Design mode">
-                    <button type="button" className={effectiveLearningMode === 'edit' ? 'is-active' : ''} onClick={handleResumeLiveEditing}>Edit</button>
-                    <button type="button" className={effectiveLearningMode === 'live' ? 'is-active' : ''} disabled={!hasRunnablePath} onClick={() => { onClearExternalDebug?.(); setDesignLearningMode('live'); }}>Live</button>
-                    <button type="button" className={effectiveLearningMode === 'replay' ? 'is-active' : ''} disabled={!replaySession || replayTrace.length === 0} onClick={() => onSelectDebugTickIndex?.(0)}>Replay</button>
-                  </div>
-                ) : null}
-              </div>
-              <span className={`ide-design-command-state ${authoringStatusToneClass}`}>
-                {isCodeWorkspace ? primaryArtifactFileName : authoringStatusLabel}
-              </span>
-            </div>
-            <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
-              <div className="ide-design-toolbar-row-v3">
-              {effectiveLearningMode === 'live' ? (
-                <div
-                  className="ide-toolbar-group is-simulation"
-                  data-testid="ide-design-live-transport"
-                  aria-label="Exploratory simulation controls"
-                >
-                  <span className="ide-design-toolbar-group-label">Simulation</span>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={simRunning ? pauseSimulation : startSimulation}
-                    testId="ide-design-live-run"
-                  >
-                    {simRunning ? 'Pause' : 'Run'}
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-live-step">
-                    Step
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-live-reset">
-                    Reset
-                  </IdeButton>
-                  <span className="ide-design-live-tick" data-testid="ide-design-live-tick">
-                    Tick {runtimeSim.tick}
-                  </span>
-                </div>
-              ) : null}
-              {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
+            {/* ── Schematic toolbar: tool · history · view · camera · layout ── */}
+            <div className="wb-toolbar rb-design-toolbar" data-testid="ide-design-toolbar">
               {isCodeWorkspace ? (
-                <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
-                  <span className="ide-design-code-context-label">Code focus</span>
-                  <span className="ide-design-code-context-desc" data-testid="ide-design-code-context-primary-artifact">
-                    Viewing {primaryArtifactFileName} ({primaryArtifactLabel}) as the primary artifact.
-                    Switch artifacts and open the secondary drawer from the code pane header.
-                  </span>
-                </div>
+                <span className="wb-toolbar-title" data-testid="ide-design-code-context">
+                  <code data-testid="ide-design-code-context-primary-artifact">{primaryArtifactFileName}</code>
+                </span>
               ) : workspacePreset.showCanvasTools ? (
                 <>
-                  {/* Group 1: Mode — primary weight */}
-                  {toolbarVisible(IDE_COMMAND_IDS.selectDesignTool) || toolbarVisible(IDE_COMMAND_IDS.selectWireTool) ? (
-                  <div
-                    className="ide-toolbar-group is-mode"
-                    style={{ order: toolbarGroupOrder.get('mode') ?? 1 }}
-                    data-toolbar-group="mode"
-                  >
-                    <span className="ide-design-toolbar-group-label">Mode</span>
-                    <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
-                      {toolbarVisible(IDE_COMMAND_IDS.selectDesignTool) ? (
-                      <button
-                        type="button"
-                        className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
-                        onClick={setSelectMode}
-                        data-testid="ide-design-tool-select"
-                        aria-pressed={toolMode === 'select'}
-                        title="Select tool (S)"
-                      >
-                        <span className="ide-design-tool-icon" aria-hidden="true">↖</span>
-                        <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
-                      </button>
-                      ) : null}
-                      {toolbarVisible(IDE_COMMAND_IDS.selectWireTool) ? (
-                      <button
-                        type="button"
-                        className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
-                        onClick={setWireMode}
-                        data-testid="ide-design-tool-wire"
-                        aria-pressed={toolMode === 'wire'}
-                        title="Wire tool (W)"
-                      >
-                        <span className="ide-design-tool-icon" aria-hidden="true">⌀</span>
-                        <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
-                      </button>
-                      ) : null}
-                    </div>
+                  <div className="wb-segment" data-testid="ide-design-tool-segmented" role="group" aria-label="Tool">
+                    <button type="button" className="wb-btn" onClick={setSelectMode} data-testid="ide-design-tool-select" aria-pressed={toolMode === 'select'} title="Select tool (S)">
+                      <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M3 2l8 5.5-3.6.8L9.2 12l-1.6.7-1.8-3.6L3 11.5z" /></svg>
+                      Select
+                    </button>
+                    <button type="button" className="wb-btn" onClick={setWireMode} data-testid="ide-design-tool-wire" aria-pressed={toolMode === 'wire'} title="Wire tool (W)">
+                      <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2 11h4v-8h6" /><circle cx="2" cy="11" r="1.4" fill="currentColor" /><circle cx="12" cy="3" r="1.4" fill="currentColor" /></svg>
+                      Wire
+                    </button>
                   </div>
-                  ) : null}
-
-                  {/* Group 2: Edit operations */}
-                  {toolbarVisible(IDE_COMMAND_IDS.undoDesignEdit) || toolbarVisible(IDE_COMMAND_IDS.redoDesignEdit) ? (
-                  <div
-                    className="ide-toolbar-group is-edit"
-                    style={{ order: toolbarGroupOrder.get('history') ?? 2 }}
-                    data-toolbar-group="history"
-                  >
-                    <span className="ide-design-toolbar-group-label">History</span>
-                    {toolbarVisible(IDE_COMMAND_IDS.undoDesignEdit) ? (
-                    <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
-                      Undo
-                    </IdeButton>
-                    ) : null}
-                    {toolbarVisible(IDE_COMMAND_IDS.redoDesignEdit) ? (
-                    <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
-                      Redo
-                    </IdeButton>
-                    ) : null}
-                  </div>
-                  ) : null}
+                  <span className="wb-toolbar-sep" />
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={handleUndo} disabled={undoDepth === 0} data-testid="ide-design-tool-undo" title="Undo (Ctrl Z)" aria-label="Undo">↶</button>
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={handleRedo} disabled={redoDepth === 0} data-testid="ide-design-tool-redo" title="Redo (Ctrl Y)" aria-label="Redo">↷</button>
+                  <span className="wb-toolbar-sep" />
                 </>
               ) : null}
-
-              {/* Group 3: Utilities — floated right */}
-              <div
-                className="ide-toolbar-group is-utils"
-                style={{ order: toolbarGroupOrder.get('canvas') ?? 3 }}
-                data-toolbar-group="canvas"
-              >
-                <span className="ide-design-toolbar-group-label">View</span>
-                <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
-                  {(['canvas', 'hdl', 'split'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={`ide-design-view-btn${designView === v ? ' is-active' : ''}`}
-                      onClick={() => setDesignView(v)}
-                      data-testid={`ide-design-view-${v}`}
-                    >
-                      {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'Code' : 'Split'}
-                    </button>
-                  ))}
-                </div>
-                {workspacePreset.showCanvasTools ? (
-                  <div className="ide-design-canvas-preferences" data-testid="ide-design-canvas-preferences">
-                    <label>
-                      <span>Canvas</span>
-                      <select value={canvasAppearance} onChange={(event) => workspacePreferencesStore.setDesignCanvasAppearance(event.target.value as 'dark' | 'light' | 'system')} aria-label="Canvas appearance">
-                        <option value="dark">Dark graph paper</option>
-                        <option value="light">Light graph paper</option>
-                        <option value="system">Follow application theme</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>Density</span>
-                      <select value={canvasDensity} onChange={(event) => workspacePreferencesStore.setDesignCanvasDensity(event.target.value as 'comfortable' | 'compact')} aria-label="Canvas density">
-                        <option value="comfortable">Comfortable</option>
-                        <option value="compact">Compact</option>
-                      </select>
-                    </label>
-                  </div>
-                ) : null}
-                {workspacePreset.showCanvasTools ? (
-                  <div
-                    className={`ide-design-toolbar-view-tools${showSplitCanvasContext ? ' is-split' : ''}`}
-                    data-testid="ide-design-canvas-view-tools"
-                    data-open="true"
-                    data-blocks-canvas-placement="1"
-                    data-blocks-macro-placement="1"
-                    role="group"
-                    aria-label="Canvas view controls"
+              <div className="wb-segment" data-testid="ide-design-view-toggle" role="group" aria-label="Document view">
+                {(['canvas', 'hdl', 'split'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className="wb-btn"
+                    aria-pressed={designView === v}
+                    onClick={() => setDesignView(v)}
+                    data-testid={`ide-design-view-${v}`}
                   >
-                    <span className="ide-design-toolbar-group-label">Camera</span>
-                    <div className="ide-design-toolbar-view-meta">
-                      <span
-                        className="ide-design-canvas-zoom-indicator"
-                        data-testid="ide-design-canvas-zoom-indicator"
-                      >
-                        <span data-testid="ide-design-canvas-stat-zoom">{zoomPercent}%</span> zoom
-                      </span>
-                      {showSplitCanvasContext ? (
-                        <span
-                          className="ide-design-canvas-presentation-indicator"
-                          data-testid="ide-design-split-canvas-indicator"
-                        >
-                          Circuit pane
-                        </span>
-                      ) : presentationZoom === 'classroom' ? (
-                        <span
-                          className="ide-design-canvas-presentation-indicator"
-                          data-testid="ide-design-presentation-zoom-indicator"
-                        >
-                          Classroom
-                        </span>
-                      ) : null}
-                    </div>
-                    <div
-                      className="ide-design-toolbar-canvas-controls"
-                      data-testid="ide-design-canvas-controls"
-                    >
-                      {toolbarVisible(IDE_COMMAND_IDS.zoomOutDesignCanvas) ? (
-                      <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">
-                        Zoom −
-                      </IdeButton>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="ide-design-zoom-readout"
-                        onClick={zoomTo100}
-                        title="Current zoom — click to return to 100%"
-                        data-testid="ide-design-zoom-readout"
-                      >
-                        {Math.round(camera.zoom * 100)}%
+                    {v === 'canvas' ? 'Schematic' : v === 'hdl' ? 'HDL' : 'Split'}
+                  </button>
+                ))}
+              </div>
+              {workspacePreset.showCanvasTools ? (
+                <>
+                  <span className="wb-toolbar-sep" />
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={() => fitToCircuit()} data-testid="ide-design-fit-circuit-canvas" title="Fit design">Fit</button>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-center-selection-canvas" title="Fit selection">Selection</button>
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomOut} data-testid="ide-design-zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+                  <button type="button" className="wb-btn wb-btn--ghost rb-design-zoom" onClick={zoomTo100} data-testid="ide-design-zoom-readout" title="Zoom — click to return to 100%">
+                    <code data-testid="ide-design-canvas-stat-zoom">{Math.round(camera.zoom * 100)}%</code>
+                  </button>
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomIn} data-testid="ide-design-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+                  <span className="wb-toolbar-sep" />
+                  <details className="rb-design-menu" data-testid="ide-design-toolbar-overflow" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
+                    <summary className="wb-btn wb-btn--ghost">Layout ▾</summary>
+                    <div className="wb-menu rb-design-menu-popup" aria-label="Layout and canvas">
+                      <button type="button" className="wb-menu-item" onClick={handleArrangeCircuit} disabled={editorCircuit.nodes.length < 2 || isReplayMode} data-testid="ide-design-arrange">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Arrange by dependency</span><span className="wb-menu-item-key" />
                       </button>
-                      {toolbarVisible(IDE_COMMAND_IDS.zoomInDesignCanvas) ? (
-                      <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
-                        Zoom +
-                      </IdeButton>
-                      ) : null}
-                      {toolbarVisible(IDE_COMMAND_IDS.fitDesignCanvas) ? (
-                      <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-canvas">
-                        Fit
-                      </IdeButton>
-                      ) : null}
-                      <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">
-                        Reset
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={centerSelection}
-                        disabled={selection.nodes.size === 0}
-                        testId="ide-design-center-selection-canvas"
-                      >
-                        Center
-                      </IdeButton>
-                    </div>
-                  </div>
-                ) : null}
-                {workspacePreset.showCanvasTools ? (
-                  <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
-                    Snap {snapToGrid ? 'On' : 'Off'}
-                  </IdeButton>
-                ) : null}
-                {workspacePreset.showCanvasTools && toolbarVisible(IDE_COMMAND_IDS.arrangeDesign) ? (
-                  <div className="ide-design-toolbar-layout" role="group" aria-label="Circuit layout">
-                    <span className="ide-design-toolbar-group-label">Layout</span>
-                    <IdeButton
-                      tone="secondary"
-                      onClick={handleArrangeCircuit}
-                      disabled={editorCircuit.nodes.length < 2 || isReplayMode}
-                      testId="ide-design-arrange"
-                    >
-                      Arrange
-                    </IdeButton>
-                  </div>
-                ) : null}
-                {workspacePreset.showCanvasTools ? (
-                  <details
-                    className="ide-design-toolbar-overflow"
-                    data-testid="ide-design-toolbar-overflow"
-                    data-blocks-canvas-placement="1"
-                  >
-                    <summary>More</summary>
-                    <div className="ide-design-toolbar-overflow-menu" aria-label="More Design tools">
-                      <label className="ide-design-more-field">
-                        <span>Canvas appearance</span>
-                        <select value={canvasAppearance} onChange={(event) => workspacePreferencesStore.setDesignCanvasAppearance(event.target.value as 'dark' | 'light' | 'system')} aria-label="Canvas appearance in More tools">
-                          <option value="dark">Dark canvas</option>
-                          <option value="light">Light canvas</option>
+                      <button type="button" className="wb-menu-item" onClick={toggleSnapToGrid} data-testid="ide-design-tool-snap" aria-pressed={snapToGrid}>
+                        <span className="wb-menu-item-check" aria-hidden="true">{snapToGrid ? '●' : ''}</span><span className="wb-menu-item-label">Snap to grid</span><span className="wb-menu-item-key">G</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={resetView} data-testid="ide-design-zoom-reset">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Reset view</span><span className="wb-menu-item-key" />
+                      </button>
+                      <div className="wb-menu-sep" />
+                      <label className="wb-menu-item rb-design-menu-field">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Canvas</span>
+                        <select value={canvasAppearance} onChange={(event) => workspacePreferencesStore.setDesignCanvasAppearance(event.target.value as 'dark' | 'light' | 'system')} aria-label="Canvas appearance">
+                          <option value="light">Light</option>
+                          <option value="dark">Dark</option>
                           <option value="system">Follow application</option>
                         </select>
                       </label>
-                      <label className="ide-design-more-field">
-                        <span>Canvas density</span>
-                        <select value={canvasDensity} onChange={(event) => workspacePreferencesStore.setDesignCanvasDensity(event.target.value as 'comfortable' | 'compact')} aria-label="Canvas density in More tools">
+                      <label className="wb-menu-item rb-design-menu-field">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Density</span>
+                        <select value={canvasDensity} onChange={(event) => workspacePreferencesStore.setDesignCanvasDensity(event.target.value as 'comfortable' | 'compact')} aria-label="Canvas density">
                           <option value="comfortable">Comfortable</option>
                           <option value="compact">Compact</option>
                         </select>
                       </label>
-                      {toolbarVisible(IDE_COMMAND_IDS.zoomOutDesignCanvas) ? (
-                        <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-overflow-zoom-out">
-                          Zoom out
-                        </IdeButton>
-                      ) : null}
-                      {toolbarVisible(IDE_COMMAND_IDS.zoomInDesignCanvas) ? (
-                        <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-overflow-zoom-in">
-                          Zoom in
-                        </IdeButton>
-                      ) : null}
-                      {toolbarVisible(IDE_COMMAND_IDS.fitDesignCanvas) ? (
-                        <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-overflow-fit">
-                          Fit canvas
-                        </IdeButton>
-                      ) : null}
-                      <IdeButton tone="ghost" onClick={resetView} testId="ide-design-overflow-reset">
-                        Reset view
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={centerSelection}
-                        disabled={selection.nodes.size === 0}
-                        testId="ide-design-overflow-center-selection"
-                      >
-                        Center selection
-                      </IdeButton>
-                      <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-overflow-snap">
-                        Snap {snapToGrid ? 'On' : 'Off'}
-                      </IdeButton>
-                      {toolbarVisible(IDE_COMMAND_IDS.arrangeDesign) ? (
-                        <IdeButton
-                          tone="secondary"
-                          onClick={handleArrangeCircuit}
-                          disabled={editorCircuit.nodes.length < 2 || isReplayMode}
-                          testId="ide-design-overflow-arrange"
-                        >
-                          Arrange circuit
-                        </IdeButton>
-                      ) : null}
                     </div>
                   </details>
-                ) : null}
-                <details className="ide-design-toolbar-customize" data-blocks-canvas-placement="1">
-                  <summary data-testid="ide-design-toolbar-customize">Customize</summary>
-                  <div className="ide-design-toolbar-customize-menu" aria-label="Customize Design toolbar">
-                    <strong>Toolbar controls</strong>
-                    {DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS.map((option) => {
-                      const required = (REQUIRED_DESIGN_TOOLBAR_COMMAND_IDS as readonly IdeCommandId[]).includes(option.id);
-                      return (
-                        <label key={option.id}>
-                          <input
-                            type="checkbox"
-                            checked={toolbarVisible(option.id)}
-                            disabled={required}
-                            onChange={(event) => toggleToolbarCommand(option.id, event.target.checked)}
-                          />
-                          <span>{option.label}{required ? ' · required' : ''}</span>
-                        </label>
-                      );
-                    })}
-                    <strong className="ide-design-toolbar-customize-subheading">Command group order</strong>
-                    <div className="ide-design-toolbar-group-order" data-testid="ide-design-toolbar-group-order">
-                      {orderedToolbarGroupIds.map((groupId, index) => {
-                        const group = DESIGN_TOOLBAR_COMMAND_GROUPS.find((candidate) => candidate.id === groupId);
-                        if (!group) return null;
-                        return (
-                          <div key={groupId} className="ide-design-toolbar-group-order-row">
-                            <span>{index + 1}. {group.label}</span>
-                            <span className="ide-design-toolbar-group-order-actions">
-                              <button
-                                type="button"
-                                onClick={() => reorderToolbarGroup(groupId, 'up')}
-                                disabled={index === 0}
-                                aria-label={`Move ${group.label} earlier`}
-                                data-testid={`ide-design-toolbar-group-${groupId}-up`}
-                              >
-                                Up
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => reorderToolbarGroup(groupId, 'down')}
-                                disabled={index === orderedToolbarGroupIds.length - 1}
-                                aria-label={`Move ${group.label} later`}
-                                data-testid={`ide-design-toolbar-group-${groupId}-down`}
-                              >
-                                Down
-                              </button>
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => workspacePreferencesStore.restoreDesignToolbarDefaults()}
-                      testId="ide-design-toolbar-restore-defaults"
-                    >
-                      Restore defaults
-                    </IdeButton>
-                  </div>
-                </details>
-              </div>
-              </div>
+                </>
+              ) : null}
+              <span className="wb-toolbar-spacer" />
             </div>
-
             {/* ── Expanded secondary toolbar ── */}
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
             {starterContext ? (
-              <section
-                className="ide-design-context-disclosure ide-design-starter-context"
-                data-testid="ide-design-starter-disclosure"
-                aria-label={`Starter: ${starterContext.name}`}
-              >
-              <section className="ide-design-starter-banner" data-testid="ide-design-starter-banner">
-                <div className="ide-design-starter-banner-main">
-                  <div className="ide-design-starter-banner-head">
-                    <span className="ide-design-starter-banner-eyebrow">Starter loaded</span>
-                    <div className="ide-design-starter-banner-tags">
-                      {starterContext.lab ? (
-                        <span className="ide-design-starter-banner-tag" data-testid="ide-design-starter-banner-lab">
-                          {starterContext.lab}
-                        </span>
-                      ) : null}
-                      {starterContext.concept ? (
-                        <span className="ide-design-starter-banner-tag">{starterContext.concept}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <h3 className="ide-design-starter-banner-title" data-testid="ide-design-starter-banner-title">
-                    {starterContext.name}
-                  </h3>
+              <div className="rb-design-starter" data-testid="ide-design-starter-disclosure" aria-label={`Starter: ${starterContext.name}`}>
+                <section className="rb-design-starter-row" data-testid="ide-design-starter-banner">
+                  <span className="wb-toolbar-meta">Starter</span>
+                  <strong className="rb-design-starter-title" data-testid="ide-design-starter-banner-title">{starterContext.name}</strong>
+                  {starterContext.lab ? <code className="rb-design-starter-tag" data-testid="ide-design-starter-banner-lab">{starterContext.lab}</code> : null}
+                  {starterContext.concept ? <code className="rb-design-starter-tag">{starterContext.concept}</code> : null}
                   {starterContext.summary || starterContext.expectedBehavior ? (
-                    <div
-                      className="ide-design-starter-details"
-                      data-testid="ide-design-starter-details"
-                      data-hierarchy-surface="design"
-                      data-hierarchy-role="advanced"
-                    >
-                      <span className="ide-design-starter-details-label" data-testid="ide-design-starter-details-summary">
-                        Starter brief
-                      </span>
-                      <div className="ide-design-starter-details-body" data-testid="ide-design-starter-details-body">
-                        {starterContext.summary ? (
-                          <p className="ide-design-starter-banner-summary">{starterContext.summary}</p>
-                        ) : null}
-                        {starterContext.expectedBehavior ? (
-                          <p className="ide-design-starter-banner-expected">
-                            <strong>Expected behavior:</strong> {starterContext.expectedBehavior}
-                          </p>
-                        ) : null}
+                    <details className="rb-design-starter-brief" data-testid="ide-design-starter-details" data-hierarchy-surface="design" data-hierarchy-role="advanced">
+                      <summary className="wb-link" data-testid="ide-design-starter-details-summary">Brief</summary>
+                      <div className="rb-design-starter-brief-body" data-testid="ide-design-starter-details-body">
+                        {starterContext.summary ? <p className="ide-design-starter-banner-summary">{starterContext.summary}</p> : null}
+                        {starterContext.expectedBehavior ? <p className="ide-design-starter-banner-expected"><strong>Expected behavior:</strong> {starterContext.expectedBehavior}</p> : null}
                       </div>
-                    </div>
+                    </details>
                   ) : null}
-                </div>
-                <div className="ide-design-starter-banner-next">
-                  <span className="ide-design-starter-banner-next-label">Next</span>
-                  <p
-                    className="ide-design-starter-banner-next-copy"
-                    data-testid="ide-design-starter-banner-next-action"
-                  >
-                    {starterNextAction}
-                  </p>
-                </div>
-              </section>
-              </section>
+                  <span className="wb-toolbar-spacer" />
+                  <span className="wb-toolbar-meta rb-design-starter-next" data-testid="ide-design-starter-banner-next-action">{starterNextAction}</span>
+                </section>
+              </div>
             ) : null}
 
             {showWorkspaceStatusBar ? (
@@ -8331,7 +7914,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             ) : null}
           </div>
-          </div>
             {effectiveDesignView === 'stacked' && (
               <div className="ide-design-stacked-notice" data-testid="ide-design-stacked-notice">
                 <span className="ide-design-stacked-notice-icon" aria-hidden="true">||</span>
@@ -8379,22 +7961,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
               <div className="ide-design-layout ide-design-layout-canvas-only">
                 <section
-                  className="ide-design-canvas"
+                  className="rb-sch-frame"
                   data-testid="ide-design-canvas"
                   data-hierarchy-surface="design"
                   data-hierarchy-role="primary"
                   data-hierarchy-focal="circuit-canvas"
                 >
-                  {toolMode !== 'wire' || isPlacementMode ? (
-                    <div
-                      className={`ide-design-tool-hud${isPlacementMode ? ' is-placement-mode' : ''}`}
-                      data-testid="ide-design-tool-hud"
-                      data-blocks-canvas-placement="1"
-                    >
-                      <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
-                      <span className="ide-design-tool-hud-hint">{toolHint}</span>
-                    </div>
-                  ) : null}
                   {focusedAssetContext && (
                     <DesignFocusBanner
                       context={focusedAssetContext}
@@ -8583,7 +8155,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                   ) : null}
                   <div
-                    className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
+                    className={`rb-sch-stage ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
                       presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
                     }`}
                     ref={bindCanvasHost}
@@ -8606,7 +8178,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   >
                     {toolMode !== 'select' || isPlacementMode ? (
                       <div
-                        className="ide-design-canvas-mode-indicator"
+                        className="rb-sch-mode"
                         data-testid="ide-design-canvas-mode-indicator"
                         data-blocks-canvas-placement="1"
                       >
@@ -8727,6 +8299,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       width={canvasSize.width}
                       height={canvasSize.height}
                       appearance={canvasAppearance === 'dark' ? 'dark' : 'light'}
+                      renderer="schematic"
                       showToolbar={false}
                       showHud={false}
                       getChipMetadata={getChipMetadata}

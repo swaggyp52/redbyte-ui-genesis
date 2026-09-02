@@ -200,18 +200,21 @@ describe('DesignSurface authoring issues', () => {
   });
 
   it('keeps invalid wire feedback sticky and source armed until escape clears it', async () => {
+    const withSecondInput = structuredClone(ISSUE_CIRCUIT);
+    withSecondInput.nodes.push({ id: 'sw1_node', type: 'INPUT', label: 'SW1', position: { x: 120, y: 260 } });
+    useCircuitStore.setState({ circuit: withSecondInput, isDirty: false, past: [], future: [] });
     const view = renderSurface();
 
     await waitFor(() => {
       expect(view.container.querySelector('[data-testid="node-INPUT-sw0_node"]')).not.toBeNull();
-      expect(view.container.querySelector('[data-testid="node-OUTPUT-ld0_node"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-testid="node-INPUT-sw1_node"]')).not.toBeNull();
     });
 
     const sourcePort = view.container.querySelector(
       '[data-testid="node-INPUT-sw0_node"] [data-port-id="out"]'
     ) as Element | null;
     const invalidTargetPort = view.container.querySelector(
-      '[data-testid="node-OUTPUT-ld0_node"] [data-port-id="out"]'
+      '[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]'
     ) as Element | null;
 
     expect(sourcePort).toBeTruthy();
@@ -226,7 +229,7 @@ describe('DesignSurface authoring issues', () => {
         'Outputs cannot be wired directly to each other. Source kept: SW0 out.'
       );
     });
-    expect(view.getByTestId('ide-design-wire-cue').textContent).toContain('Source: SW0 out');
+    expect(view.getByTestId('ide-design-wire-cue').getAttribute('data-wire-source-label')).toBe('SW0 out');
     expect(view.getByTestId('ide-design-wire-cancel')).toBeTruthy();
     expect(useLogicViewStore.getState().editingState.wireStartPort).toEqual({
       nodeId: 'sw0_node',

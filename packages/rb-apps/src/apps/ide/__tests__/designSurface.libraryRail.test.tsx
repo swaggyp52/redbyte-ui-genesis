@@ -142,7 +142,7 @@ describe('DesignSurface library rail', () => {
 
     fireEvent.keyDown(first, { key: 'ArrowDown' });
     expect(document.activeElement).not.toBe(first);
-    expect((document.activeElement as HTMLElement).classList.contains('ide-palette-card')).toBe(true);
+    expect((document.activeElement as HTMLElement).classList.contains('rb-lib-row')).toBe(true);
 
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
     expect(document.activeElement).toBe(first);
