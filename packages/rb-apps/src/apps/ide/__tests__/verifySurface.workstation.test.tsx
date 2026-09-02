@@ -454,7 +454,6 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId, queryByText } = view;
 
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
-    expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('Check filled expected outputs');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
@@ -515,8 +514,7 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByTestId } = view;
 
-    expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
-    expect(getByTestId('ide-vcb-workspace-checks').textContent).toBe('Checks');
+    expect(queryByTestId('ide-vcb-check-count')).toBeNull();
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('No checks are required');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
     expect(getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
@@ -526,7 +524,7 @@ describe('VerifySurface workstation controls', () => {
       )
     ).toEqual(['Run simulation']);
 
-    fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
+    // Expected cells are inline in the Cases document; no Checks tab to open.
     await waitFor(() => {
       expect(getByTestId('ide-case-lab-exp-0-ld0')).toBeTruthy();
     });
@@ -1248,7 +1246,6 @@ describe('VerifySurface workstation controls', () => {
     expect(view.getByTestId('ide-verify-session-guidance').textContent).toContain(
       'Checked PASS/FAIL evidence is inconclusive'
     );
-    expect(view.getByTestId('ide-vcb-workspace-checks')).toBeTruthy();
     // The structural block must NOT silently downgrade the Compare intent to
     // Observe. Compare stays selected but marked blocked, and the Run action is
     // disabled — the student runs Observe only by choosing it explicitly.
@@ -1424,7 +1421,6 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(view.getByTestId('ide-vcb-workspace-replay')).toHaveAttribute('aria-selected', 'true');
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain(
       'Check filled expected outputs'
     );
@@ -1512,14 +1508,11 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-vcb-workspace-scenario'));
-
-    expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
+    // The workbench document tabs own Cases / Waveform; the bar carries no instrument selector.
+    expect(queryByTestId('ide-vcb-run-mode')).toBeNull();
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain(
       'Check filled expected outputs'
     );
-    fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
-    expect(getByTestId('ide-vcb-workspace-checks')).toHaveAttribute('aria-selected', 'true');
     expect(getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
   });
 
@@ -2718,7 +2711,6 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-case-lab-title').textContent).toContain('Test cases');
-    fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
     expect(queryByTestId('ide-verify-testbench-summary')).toBeNull();
     expect(queryByTestId('ide-verify-testbench-summary-inputs')).toBeNull();
     expect(queryByTestId('ide-verify-testbench-summary-outputs')).toBeNull();

@@ -630,7 +630,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
   const [studioMode, setStudioMode] = useState<
     'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
-  >(() => (lastRun ? 'replay' : 'scenario'));
+  >(() => (activeDocument?.kind === 'waveform' ? 'replay' : 'scenario'));
   // Documents own the instrument: a Cases/Timing document shows authoring, the
   // Waveform document shows recorded evidence. Live I/O is a toggle over either.
   const documentStudioMode: 'scenario' | 'replay' | null =
