@@ -7,12 +7,12 @@
 ## 2026-09-02 — P2.5D instrument-grade workbench convergence: shell → Project → Design landed
 
 **Status: INTERIM REDBYTE FABLE 5.1 WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
-HEAD `1451f73c6` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+HEAD `8aed07518` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
 `2ef5e5ee8`. Safety tag `safety/redbyte-before-expert-ui-reconstruction-a22a6bb8d`.
 Recovery bundle of the interrupted dirty state:
 `.redbyte/product-immersion/p2-5-operational-workbench/recovery-fable51-a22a6bb8d/`.
 
-**Simulate (landed after the entry below was first written):** HEAD  — : Cases document on the wb grammar (one toolbar, scenario explorer tool window + signal rail in the left dock, Case Lab grid beside a flat inspector, legacy evidence deck capped at 280px until the Waveform instrument replaces it). Verify legacy rail/dock/hierarchy-role rules deleted; left dock follows the layout policy; dock widths follow preferences. 44 test reds across verify+Design+shell sets, all reproducing on baseline .
+**Simulate (landed after the entry below was first written):** `3f546e33a` `feat(simulate)` — Cases document on the wb grammar (one toolbar, scenario explorer tool window + signal rail in the left dock, Case Lab grid beside a flat inspector, legacy evidence deck capped at 280px until the Waveform instrument replaces it). Verify legacy rail/dock/hierarchy-role rules deleted; the left dock follows the layout policy; dock widths follow preferences. 44 test reds across the verify + Design + shell sets, all reproducing on baseline `b635fba1f`.
 
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
