@@ -1,0 +1,289 @@
+/* Simulate instrument chrome — the Simulate toolbar, the scenario explorer
+   tool window and the Case Lab table. Composes the shared wb-* primitives;
+   owns only what is specific to Simulate. No !important. */
+
+/* Toolbar: instrument segment · run intent · explainer · Run. */
+.ide-root .rb-sim-toolbar { padding-left: var(--wb-space-3); }
+.ide-root .rb-sim-seg .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
+.ide-root .rb-sim-seg .wb-btn.is-blocked { color: var(--wb-text-3); }
+.ide-root .rb-sim-explainer { margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-sim-run .ide-button {
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 12px;
+  border: 1px solid var(--wb-accent);
+  border-radius: var(--wb-radius);
+  color: var(--wb-accent-text);
+  background: var(--wb-accent);
+  box-shadow: none;
+  font: 600 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-sim-run .ide-button:disabled { opacity: 0.45; }
+.ide-root .rb-sim-run .ide-button.is-pulsing { box-shadow: 0 0 0 3px var(--wb-accent-bg-strong); }
+
+/* Left dock: scenarios above the signal rail. */
+.ide-root .rb-sim-dock { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ide-root .rb-sim-dock > .rb-scn { flex: 0 1 auto; max-height: 46%; min-height: 96px; border-bottom: 1px solid var(--wb-border-strong); }
+.ide-root .rb-sim-dock > .ide-verify-left-dock { flex: 1 1 auto; min-height: 0; }
+
+/* Scenario explorer rows. */
+.ide-root .rb-scn { display: flex; flex-direction: column; min-height: 0; }
+.ide-root .rb-scn-header { gap: 6px; }
+.ide-root .rb-scn-new { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); white-space: nowrap; }
+.ide-root .rb-scn-manage { position: relative; }
+.ide-root .rb-scn-manage > summary { list-style: none; cursor: pointer; }
+.ide-root .rb-scn-manage > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-scn-manage-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.ide-root .rb-scn-menu { right: 0; top: calc(100% + 4px); min-width: 180px; }
+.ide-root .rb-scn-menu .wb-menu-item.is-danger { color: var(--wb-err); }
+.ide-root .rb-scn-body { padding: 2px 0; }
+.ide-root .rb-scn-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'main main' 'meta preview';
+  gap: 2px 8px;
+  width: 100%;
+  padding: 4px var(--wb-space-3) 5px 10px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-scn-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-scn-row.is-active { border-left-color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-scn-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-scn-row-main { grid-area: main; display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ide-root .rb-scn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: var(--wb-text-md); }
+.ide-root .rb-scn-version { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-scn-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-scn-preview { grid-area: preview; display: grid; gap: 1px; justify-self: end; }
+.ide-root .rb-scn-preview-row { display: flex; align-items: center; gap: 4px; }
+.ide-root .rb-scn-preview-label { width: 26px; overflow: hidden; text-overflow: ellipsis; text-align: right; color: var(--wb-text-3); font: 9px var(--wb-font-mono); }
+.ide-root .rb-scn-preview-bits { display: inline-flex; gap: 1px; }
+.ide-root .rb-scn-preview-bits > span { width: 4px; height: 8px; background: var(--wb-border-strong); }
+.ide-root .rb-scn-preview-bits > span.is-high { background: var(--wb-accent); }
+.ide-root .rb-scn-preview-empty { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-scn-editline,
+.ide-root .rb-scn-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--wb-space-3);
+  border-top: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-2);
+}
+.ide-root .rb-scn-editline label { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-scn-editline input {
+  flex: 1;
+  min-width: 80px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+.ide-root .rb-scn-danger { border-color: var(--wb-err); color: var(--wb-err); }
+
+/* Case Lab: the document toolbar and a dense truth-table grid. */
+.ide-root .ide-case-lab { display: flex; flex-direction: column; min-height: 0; border: 0; border-radius: 0; background: var(--wb-surface); overflow: hidden; }
+.ide-root .ide-case-lab-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: var(--wb-toolbar-h);
+  padding: 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+}
+.ide-root .ide-case-lab-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .ide-case-lab-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .ide-case-lab-spacer { flex: 1 1 auto; }
+.ide-root .ide-case-lab-bar .ide-button,
+.ide-root .ide-case-lab-filter {
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.ide-root .ide-case-lab-bar .ide-button:hover,
+.ide-root .ide-case-lab-filter:hover { background: var(--wb-hover-bg); }
+.ide-root .ide-case-lab-bar .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .ide-case-lab-filter.is-active { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .ide-case-lab-filter:disabled,
+.ide-root .ide-case-lab-bar .ide-button:disabled { opacity: 0.45; cursor: default; }
+.ide-root .ide-case-lab-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .ide-case-lab-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
+.ide-root .ide-case-lab-table th,
+.ide-root .ide-case-lab-table td { height: 24px; padding: 0 8px; text-align: center; border-bottom: 1px solid var(--wb-border); white-space: nowrap; }
+.ide-root .ide-case-lab-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--wb-surface-2);
+  color: var(--wb-text-3);
+  font: 600 var(--wb-text-xs) var(--wb-font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ide-root .ide-case-lab-grouphead th { border-bottom: 1px solid var(--wb-border-strong); }
+.ide-root .ide-case-lab-colhead th { top: 24px; text-transform: none; letter-spacing: 0; font-family: var(--wb-font-mono); }
+.ide-root .ide-case-lab-group--out,
+.ide-root .ide-case-lab-table td.ide-case-lab-exp { border-left: 1px solid var(--wb-border-strong); }
+.ide-root .ide-case-lab-num { width: 28px; color: var(--wb-text-3); font-family: var(--wb-font-mono); }
+.ide-root .ide-case-lab-table td code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .ide-case-lab-row { cursor: pointer; }
+.ide-root .ide-case-lab-row:hover { background: var(--wb-hover-bg); }
+.ide-root .ide-case-lab-row.is-selected { background: var(--wb-accent-bg-strong); }
+.ide-root .ide-case-lab-row.is-selected td { border-bottom-color: var(--wb-accent); }
+.ide-root .ide-case-lab-obs.is-fail code { color: var(--wb-err); font-weight: 700; }
+.ide-root .ide-case-lab-exp-btn {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--wb-radius);
+  background: transparent;
+  color: var(--wb-text-3);
+  cursor: pointer;
+}
+.ide-root .ide-case-lab-exp-btn.is-set { color: var(--wb-text); }
+.ide-root .ide-case-lab-exp-btn:hover { border-color: var(--wb-border-strong); background: var(--wb-surface); }
+.ide-root .ide-case-lab-verdict { display: inline-block; min-width: 44px; font: 600 var(--wb-text-xs) var(--wb-font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.ide-root .ide-case-lab-verdict.is-pass { color: var(--wb-ok); }
+.ide-root .ide-case-lab-verdict.is-fail { color: var(--wb-err); }
+.ide-root .ide-case-lab-verdict.is-stale { color: var(--wb-warn); }
+.ide-root .ide-case-lab-verdict.is-observed,
+.ide-root .ide-case-lab-verdict.is-not-run { color: var(--wb-text-3); }
+.ide-root .ide-case-lab-trace { margin-left: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-accent); font-size: var(--wb-text-xs); cursor: pointer; }
+.ide-root .ide-case-lab-row-actions { float: right; display: inline-flex; gap: 2px; opacity: 0; }
+.ide-root .ide-case-lab-row:hover .ide-case-lab-row-actions,
+.ide-root .ide-case-lab-row.is-selected .ide-case-lab-row-actions,
+.ide-root .ide-case-lab-row-actions:focus-within { opacity: 1; }
+.ide-root .ide-case-lab-rowbtn { width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font-size: 11px; line-height: 1; cursor: pointer; }
+.ide-root .ide-case-lab-rowbtn:hover { border-color: var(--wb-accent); color: var(--wb-accent); }
+.ide-root .ide-case-lab-rowbtn--danger:hover { border-color: var(--wb-err); color: var(--wb-err); }
+.ide-root .ide-case-lab-empty { padding: 12px; color: var(--wb-text-3); font-size: var(--wb-text-sm); text-align: left; }
+
+/* Simulate frame: the document fills its pane; regions are plain blocks. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace { padding: 0; }
+.ide-root .rb-sim-panel { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root .rb-sim-panel > .ide-panel-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; }
+.ide-root .rb-sim-command-stack { display: flex; flex-direction: column; margin: 0; padding: 0; background: transparent; }
+.ide-root .rb-sim-region { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ide-root .rb-sim-region--header { flex: none; border-bottom: 1px solid var(--wb-border-strong); }
+.ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; border: 0; }
+.ide-root .rb-sim-lab-frame { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background: transparent; }
+.ide-root .rb-sim-lab-grid { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; gap: 0; }
+.ide-root .rb-sim-primary { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+
+/* Signal rail (left dock, under the scenarios). */
+.ide-root .rb-sig { display: flex; flex-direction: column; min-height: 0; }
+.ide-root .rb-sig-header { gap: 6px; }
+.ide-root .rb-sig-toprow { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ide-root .rb-sig-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ide-root .rb-sig-title h3 { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-sig-action { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-sig-focus { margin: 0; padding: 2px var(--wb-space-3) 4px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-sig-focus code { font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-sig-list { padding: 0 0 4px; }
+.ide-root .rb-sig-group { display: block; }
+.ide-root .rb-sig-group-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 var(--wb-space-3) 0 8px; border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-sig-group:first-child .rb-sig-group-header { border-top: 0; }
+.ide-root .rb-sig-group-label { flex: 1; color: var(--wb-text-2); font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-sig-group-header .ide-copy { margin: 0; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-sig-group-body { display: block; padding: 2px 0; }
+.ide-root .rb-sig-group-body .ide-copy { margin: 0; padding: 2px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-sig-entry { display: flex; align-items: center; gap: 6px; padding-right: var(--wb-space-2); }
+.ide-root .rb-sig-row {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 var(--wb-space-3) 0 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-mono);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ide-root .rb-sig-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-sig-row.is-active { border-left-color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-sig-badge { padding: 0 5px; border-radius: var(--wb-radius); color: var(--wb-err); background: color-mix(in srgb, var(--wb-err) 12%, transparent); font: 600 var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Inspector (right column of the Cases document): flat sections, key/value rows. */
+.ide-root .rb-sim-inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-left: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface); box-shadow: none; overflow: auto; }
+.ide-root .rb-sim-inspector > header { display: flex; align-items: baseline; gap: 8px; height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-sim-inspector > header span { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-sim-inspector > header strong { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-sim-inspector > dl { display: block; margin: 0; padding: 2px var(--wb-space-3); }
+.ide-root .rb-sim-inspector > dl > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 24px; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-sim-inspector > dl > div:last-child { border-bottom: 0; }
+.ide-root .rb-sim-inspector > dl dt { margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-sim-inspector > dl dd { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-sim-inspector > section { margin: 0; padding: 6px var(--wb-space-3); border-top: 1px solid var(--wb-border); }
+.ide-root .rb-sim-inspector > section > span { display: block; margin-bottom: 2px; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-sim-inspector > section > p { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 15px var(--wb-font-ui); }
+.ide-root .rb-sim-inspector > .ide-button {
+  margin: 4px var(--wb-space-3) 0;
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-sim-inspector > .ide-button:last-child { margin-bottom: 8px; }
+.ide-root .rb-sim-inspector > .ide-button:disabled { opacity: 0.45; }
+
+/* Cases document: cases beside the inspector; the evidence deck below, capped. */
+.ide-root .rb-sim-lab-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 280px);
+  grid-template-areas: 'cases inspector' 'evidence evidence';
+  gap: 0;
+}
+.ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ide-root .rb-sim-lab-grid > .rb-sim-inspector { grid-area: inspector; min-height: 0; }
+.ide-root .rb-sim-lab-grid > .rb-sim-region--waveform { grid-area: evidence; min-height: 0; overflow: auto; border-top: 1px solid var(--wb-border-strong); }
+.ide-root .rb-sim-region--stimulus > .ide-case-lab { flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; }
+.ide-root .rb-sig-header { display: block; height: auto; padding: 0; }
+.ide-root .rb-sig-toprow { height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); }

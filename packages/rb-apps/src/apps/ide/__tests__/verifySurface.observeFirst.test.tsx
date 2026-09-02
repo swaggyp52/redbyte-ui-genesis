@@ -311,7 +311,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
 

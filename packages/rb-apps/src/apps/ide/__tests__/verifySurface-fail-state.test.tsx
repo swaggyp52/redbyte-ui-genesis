@@ -50,9 +50,9 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();

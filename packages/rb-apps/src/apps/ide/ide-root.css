@@ -2137,18 +2137,6 @@
   gap: var(--ide-space-1);
 }
 
-.ide-export-file-tree-list .ide-signal-row {
-  justify-content: space-between;
-  align-items: center;
-  text-align: left;
-  gap: var(--ide-space-2);
-}
-
-.ide-export-file-tree-list .ide-signal-row span:last-child {
-  font-size: var(--rb-font-size-1);
-  color: var(--ide-text-soft);
-}
-
 .rb-logic-canvas-svg {
   background: radial-gradient(circle at 35% 0%, #132538 0%, #0a1119 56%);
 }
@@ -2561,17 +2549,6 @@
   font-weight: var(--rb-font-weight-semibold);
 }
 
-/* ==========================================================================
-   Major Verify desktop screen redesign
-   Goal: verify reads as collapsed rail + workbench + waveform, with the
-   waveform getting a real evidence footprint and the live editor no longer
-   trapped in a narrow, height-capped column.
-   ========================================================================== */
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left {
-  width: 60px;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-toggle-rail {
   width: 100%;
   font-size: 11px;
@@ -2769,51 +2746,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--ide-space-2);
-}
-
-.ide-verify-left-dock {
-  display: grid;
-  gap: var(--ide-space-2);
-  min-height: 0;
-}
-
-.ide-signal-list {
-  display: grid;
-  gap: var(--ide-space-1);
-  min-height: 0;
-  overflow: auto;
-  max-height: 288px;
-}
-
-.ide-signal-row {
-  text-align: left;
-  border: 1px solid rgba(130, 160, 188, 0.4);
-  border-radius: var(--ide-radius-s);
-  background: rgba(23, 38, 53, 0.76);
-  color: var(--ide-text-muted);
-  font-size: 11px;
-  padding: 6px 8px;
-  cursor: pointer;
-  transition:
-    border-color var(--rb-motion-fast) var(--rb-ease-standard),
-    color var(--rb-motion-fast) var(--rb-ease-standard),
-    background var(--rb-motion-fast) var(--rb-ease-standard);
-}
-
-.ide-signal-row:hover {
-  border-color: rgba(46, 196, 182, 0.5);
-  color: #d5fffa;
-}
-
-.ide-signal-row:focus-visible {
-  outline: 2px solid var(--rb-focus-ring);
-  outline-offset: 2px;
-}
-
-.ide-signal-row.is-active {
-  border-color: rgba(46, 196, 182, 0.62);
-  color: #d7fffb;
-  background: rgba(46, 196, 182, 0.16);
 }
 
 .ide-verify-vector-form {
@@ -4442,16 +4374,6 @@
   outline-offset: 2px;
 }
 
-/* Scrollbar styling for all panels */
-.ide-workbench-placeholder,
-.ide-table-wrap,
-.ide-signal-list,
-.ide-export-artifact-code,
-.ide-import-textarea {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(46, 196, 182, 0.25) transparent;
-}
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -4475,17 +4397,6 @@
   border-bottom: 1px solid rgba(58, 87, 116, 0.4);
   padding-bottom: var(--ide-space-2);
   margin-bottom: var(--ide-space-2);
-}
-
-/* Stronger hover state for all .ide-signal-row items */
-.ide-signal-row:hover {
-  border-color: rgba(46, 196, 182, 0.4) !important;
-  background: rgba(46, 196, 182, 0.06) !important;
-}
-
-.ide-signal-row.is-active {
-  border-color: rgba(46, 196, 182, 0.65) !important;
-  background: rgba(46, 196, 182, 0.14) !important;
 }
 
 /* Reduce visual noise on kv-rows — less border, more breathing room */
@@ -7046,11 +6957,6 @@ details[open] summary .details-arrow {
   min-height: 22px;
 }
 
-/* ── Design console: stay collapsed unless there's output ── */
-.ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-console-height: 40px;
-}
-
 /* ════════════════════════════════════════════════════════════════
    Phase 15 — Design Surface: Canvas Hero + Instrument Polish
    ════════════════════════════════════════════════════════════════ */
@@ -7772,28 +7678,6 @@ details[open] summary .details-arrow {
   opacity: 1;
 }
 
-/* ── Phase 19C: Left dock — compact navigation feel ── */
-.ide-verify-left-dock .ide-design-subheader h3 {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(160,180,210,0.55);
-  font-weight: 600;
-  margin: 0;
-}
-.ide-verify-left-dock .ide-design-subheader {
-  padding: 8px var(--ide-space-2) 4px;
-  border-bottom: none;
-}
-.ide-verify-left-dock .ide-signal-row {
-  font-size: 12px;
-  padding: 4px var(--ide-space-2);
-}
-.ide-verify-left-dock .ide-callout {
-  margin: var(--ide-space-1) var(--ide-space-2);
-  font-size: 11px;
-}
-
 /* ── Phase 19D: Typography discipline ── */
 /* Major block spacing — waveform + tab panel separation */
 .ide-verify-workbench-v2 > * + * {
@@ -7964,20 +7848,6 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   gap: var(--ide-space-1);
-}
-
-/* ── Phase 20F: Left dock signal list — dim unselected ── */
-.ide-verify-left-dock .ide-signal-list .ide-signal-row:not(.is-active) {
-  opacity: 0.7;
-}
-.ide-verify-left-dock .ide-signal-list .ide-signal-row:hover {
-  opacity: 1;
-}
-.ide-verify-left-dock .ide-design-subheader h3 {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(140,165,200,0.6);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -9855,13 +9725,6 @@ details[open] summary .details-arrow {
   align-content: start;
 }
 
-/* Verify left dock inherits the same scroll behaviour. */
-.ide-verify-left-dock {
-  display: grid;
-  gap: var(--ide-space-2);
-  align-content: start;
-}
-
 /* ImportSurface: toggle button to reveal blocked (behavioral) example samples */
 .ide-import-behavioral-toggle {
   all: unset;
@@ -11728,9 +11591,7 @@ details[open].ide-export-evidence-details > summary::before {
   align-items: center;
   gap: 6px;
 }
-.ide-verify-signal-row-wrap .ide-signal-row {
-  flex: 1 1 auto;
-}
+
 .ide-verify-signal-pin-btn {
   border: 1px solid rgba(120, 150, 180, 0.35);
   background: rgba(10, 20, 36, 0.9);
@@ -16288,22 +16149,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   margin-bottom: 8px;
 }
 
-.ide-verify-signal-group {
-  display: grid;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(56, 89, 120, 0.22);
-}
-
-.ide-verify-signal-group:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-
-.ide-verify-signal-group-header {
-  margin-bottom: 0;
-}
-
 .ide-verify-group-toggle {
   padding: 0;
   border: none;
@@ -16311,11 +16156,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: var(--ide-text-strong);
   font: inherit;
   cursor: pointer;
-}
-
-.ide-verify-group-body {
-  display: grid;
-  gap: 6px;
 }
 
 .ide-verify-signal-row-wrap {
@@ -17064,16 +16904,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   .ide-import-workflow-step-btn {
     padding: 9px 10px;
   }
-}
-
-/* ============================================================
-   Phase 23: Verify Waveform Dominance + Design-Verify Bridge
-   ============================================================ */
-
-/* --- A1: Signal list: uncap height so left dock grows freely --- */
-.ide-verify-left-dock .ide-signal-list {
-  max-height: none;
-  flex: 1 1 auto;
 }
 
 /* --- A1: Waveform scroll: let it fill available space --- */
@@ -21331,20 +21161,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   outline: none;
 }
 
-/* ════════════════════════════════════════════════════════════════
-   Slice 2 — Height Chain Fix
-   Root cause: clamp(520px, 64vh, 900px) !important on workbench-v2
-   prevents flex:1 from working. Waveform got 0px. Fix: zero all
-   min-height floors, fix grid, compact secondary content.
-   ════════════════════════════════════════════════════════════════ */
-
-/* 1. Verify grid: cap the vectors dock so workspace gets the majority.
-  Uses :not(.hide-right-dock):not(.is-right-dock-collapsed) to match the compact-mode rule specificity
-      so this later declaration wins. !important beats the minmax(220px,auto) minimum. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-rows: minmax(0, 1fr) 80px !important;
-}
-
 /* 2. Zero the workbench's own min-height floor (beats 520px !important) */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-panel-body > .ide-verify-workbench {
   min-height: 0 !important;
@@ -24058,29 +23874,6 @@ button:disabled,
   opacity: 0.85 !important;
 }
 
-/* ════════════════════════════════════════════════════════════
-   SLICE 10 — STRUCTURAL USABILITY OVERHAUL
-   Verify + Design: real layout fixes, not polish.
-   Waveform dominates. Canvas dominates. Docks are secondary.
-   ════════════════════════════════════════════════════════════ */
-
-/* ── VERIFY: Waveform gets the space it needs ───────────────────
-
-   The scenario builder was set to flex:0 0 42% which gave the
-   waveform only ~300px. Combined with 62px row heights, only
-   2-3 signals were visible. Fixes:
-   1. Scenario builder collapsed by default (TSX change)
-   2. When open, cap it at 28% so waveform always dominates
-   3. Give waveform workbench flex:1 with enough minimum height
-   4. Signal list dock narrower to give waveform more width
-   ─────────────────────────────────────────────────────────── */
-
-/* Verify: keep the signal rail compact but readable. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] {
-  --ide-workbench-left-width: 192px !important;
-  --ide-workbench-right-width: 200px !important;
-}
-
 /* Scenario builder: when open, cap at 28% height max so waveform dominates */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details {
   flex: 0 0 auto !important;
@@ -24195,34 +23988,6 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tab-panel {
   max-height: 220px !important;
   overflow: auto !important;
-}
-
-/* Verify left dock: signal list — narrow and clean */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-left {
-  padding: 8px 6px !important;
-}
-
-/* Signal list rows: compact */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-signal-row {
-  padding: 3px 6px !important;
-}
-
-/* ── DESIGN: Canvas gets maximum space ──────────────────────────
-
-   Left palette dock was 276px on a 1674px viewport — 16.5%.
-   Right inspector was 252px — 15%. The canvas had 1074px (64%)
-   which is actually decent but the palette dock is too wide.
-   Main fixes:
-   1. Narrow left dock from 276px → 200px
-   2. Compact palette items (less text, tighter rows)
-   3. Toolbar buttons: bigger click targets, clearer labels
-   4. Right inspector: slightly narrower
-   ─────────────────────────────────────────────────────────── */
-
-/* Design: tighter dock widths */
-.ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-left-width: 192px !important;
-  --ide-workbench-right-width: 224px !important;
 }
 
 /* Palette dock: compact padding */
@@ -24402,26 +24167,6 @@ button:disabled,
 }
 .ide-verify-signal-toolbar .ide-button:hover {
   opacity: 1 !important;
-}
-
-/* Signal group headers: clean section anchor */
-.ide-verify-signal-group-header {
-  padding: 4px 0 2px !important;
-  margin-top: 4px !important;
-}
-.ide-verify-signal-group-header .ide-verify-group-toggle {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.07em !important;
-  text-transform: uppercase !important;
-  color: rgba(130,170,210,0.5) !important;
-  background: none !important;
-  border: none !important;
-  cursor: pointer !important;
-  padding: 0 !important;
-}
-.ide-verify-signal-group-header .ide-verify-group-toggle:hover {
-  color: rgba(130,170,210,0.9) !important;
 }
 
 /* ── Verify waveform header: unified zone ───────────────────── */
@@ -27755,66 +27500,6 @@ button:disabled,
   padding: 3px 8px;
 }
 
-/* ── 3. Left signal dock: instrument-panel dark treatment ────────── */
-.ide-verify-left-dock {
-  background: rgba(2, 5, 13, 0.95);
-  border-right: 1px solid rgba(20, 38, 62, 0.75);
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader {
-  background: rgba(3, 7, 16, 0.92) !important;
-  border-bottom: 1px solid rgba(20, 38, 62, 0.55) !important;
-  padding: 5px 8px 4px !important;
-}
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader h3 {
-  font-size: 9px !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
-  color: #3a5570 !important;
-  font-weight: 700 !important;
-}
-
-/* Group toggle labels: compact uppercase instrument-style section dividers */
-.ide-verify-left-dock .ide-verify-signal-group-header {
-  background: rgba(3, 7, 15, 0.78) !important;
-  border-bottom: 1px solid rgba(20, 38, 62, 0.45) !important;
-}
-.ide-verify-left-dock .ide-verify-group-toggle {
-  font-size: 9px !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
-  color: #3a5570 !important;
-  font-weight: 700 !important;
-  padding: 4px 6px !important;
-  border: none !important;
-  background: transparent !important;
-}
-
-/* Signal rows: role-based color coding via group context (input/output/internal) */
-.ide-verify-left-dock [data-testid="ide-verify-group-inputs"] .ide-signal-row {
-  color: #5aafe0 !important;
-  background: rgba(59, 130, 246, 0.05) !important;
-  border-color: rgba(59, 130, 246, 0.18) !important;
-}
-.ide-verify-left-dock [data-testid="ide-verify-group-inputs"] .ide-signal-row.is-active {
-  background: rgba(59, 130, 246, 0.18) !important;
-  border-color: rgba(59, 130, 246, 0.42) !important;
-}
-.ide-verify-left-dock [data-testid="ide-verify-group-outputs"] .ide-signal-row {
-  color: #4ec896 !important;
-  background: rgba(52, 211, 153, 0.05) !important;
-  border-color: rgba(52, 211, 153, 0.18) !important;
-}
-.ide-verify-left-dock [data-testid="ide-verify-group-outputs"] .ide-signal-row.is-active {
-  background: rgba(52, 211, 153, 0.18) !important;
-  border-color: rgba(52, 211, 153, 0.42) !important;
-}
-.ide-verify-left-dock [data-testid="ide-verify-group-internal"] .ide-signal-row {
-  color: #9a7edc !important;
-  background: rgba(139, 92, 246, 0.05) !important;
-  border-color: rgba(139, 92, 246, 0.18) !important;
-}
-
 /* ── 4. Workspace panel tone differentiation ──────────────────────
    Stimulus = "authoring space" — sky-blue left accent marks the editable workbench
    Waveform = "evidence space" — deep terminal dark, amber accent on scope header */
@@ -27880,31 +27565,6 @@ button:disabled,
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-}
-
-/* ── 9. Responsive signals dock: narrow width budget ─────────────────
-   At standard viewports (1320–1599px): 156px. At ≥1600px: 180px.
-   When leftDockMode='collapsed' only the 26px rail shows regardless.
-   Narrowing here reclaims horizontal budget for waveform + stimulus
-   at common student laptop widths (1366×768, 1536×864). */
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] {
-  --ide-workbench-left-width: 216px !important;
-}
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] {
-  --ide-workbench-left-width: 192px !important;
-}
-
-/* Signal name button: truncate with ellipsis when dock is narrow */
-.ide-verify-left-dock .ide-signal-row {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Dock padding: tighter horizontal padding when narrow */
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-workbench-dock-left,
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] .ide-workbench-dock-left {
-  padding: 6px 4px !important;
 }
 
 /* ── 10. Action row hierarchy: save-expected demoted to ghost utility ──
@@ -29951,27 +29611,6 @@ button:disabled,
   gap: 8px !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
-  display: flex !important;
-  align-items: flex-start !important;
-  justify-content: space-between !important;
-  gap: 12px !important;
-  padding: 12px 12px 10px !important;
-  border-bottom: 1px solid rgba(63, 108, 145, 0.18) !important;
-  margin-bottom: 10px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  min-width: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title h3 {
-  margin: 0 !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-signal-filter-state {
   display: inline-flex !important;
   align-items: center !important;
@@ -30253,11 +29892,6 @@ button:disabled,
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  [data-ide-mode-marker='verify'] .ide-verify-workbench-header,
-  [data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
 
   [data-ide-mode-marker='verify'] .ide-verify-workbench-header-meta,
   [data-ide-mode-marker='verify'] .ide-verify-signal-toolbar {
@@ -30361,49 +29995,6 @@ button:disabled,
   padding: 14px 10px !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
-  display: grid !important;
-  gap: 10px !important;
-  margin-bottom: 0 !important;
-  padding-bottom: 10px !important;
-  border-bottom: 1px solid rgba(79, 114, 145, 0.18) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-headline {
-  display: grid;
-  gap: 6px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(111, 199, 255, 0.72);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title h3 {
-  margin: 0;
-  font-size: 15px;
-  color: rgba(238, 246, 255, 0.94);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-summary {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: rgba(172, 197, 222, 0.76);
-  max-height: 4.2em;
-  overflow: hidden;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-signal-toolbar {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -30417,41 +30008,11 @@ button:disabled,
   justify-content: center !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-signal-group {
-  padding: 12px;
-  border: 1px solid rgba(73, 107, 138, 0.18);
-  border-radius: 16px;
-  background: rgba(9, 17, 29, 0.74);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-group + .ide-verify-signal-group {
-  margin-top: 12px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-group-body {
-  display: grid;
-  gap: 10px;
-  margin-top: 10px;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-signal-row-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
-}
-
-[data-ide-mode-marker='verify'] .ide-signal-row,
-[data-ide-mode-marker='verify'] .ide-verify-signal-pin-btn,
-[data-ide-mode-marker='verify'] .ide-verify-signal-visibility-btn {
-  border-radius: 10px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-signal-row {
-  justify-content: flex-start !important;
-  padding: 0 12px !important;
-  background: rgba(10, 19, 31, 0.9) !important;
-  border-color: rgba(77, 114, 147, 0.22) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-signal-pin-btn,
@@ -30887,18 +30448,6 @@ button:disabled,
   justify-content: flex-start;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock {
-  grid-template-rows: auto minmax(0, 1fr) !important;
-  gap: 12px !important;
-  height: 100% !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-signal-list {
-  max-height: none !important;
-  height: 100% !important;
-  gap: 10px !important;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench,
@@ -31317,10 +30866,6 @@ button:disabled,
   padding: 14px 16px 16px !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
-  margin-bottom: 4px !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open {
   margin-top: 12px !important;
 }
@@ -31568,105 +31113,6 @@ button:disabled,
   padding: 2px 7px !important;
 }
 
-/* ── Verify: Signal rail — compact overhaul ──────────────────────────────── */
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-  padding: 7px 10px 6px !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
-  background: transparent !important;
-  min-height: 0 !important;
-}
-
-.ide-verify-signal-rail-toprow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: 0;
-}
-
-.ide-verify-signal-rail-title {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-}
-
-.ide-verify-signal-rail-title h3 {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
-  color: rgba(168, 212, 244, 0.82) !important;
-  margin: 0 !important;
-  white-space: nowrap !important;
-}
-
-.ide-verify-signal-rail-count {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: rgba(163, 245, 194, 0.82) !important;
-  background: rgba(134, 239, 172, 0.08) !important;
-  border: 1px solid rgba(134, 239, 172, 0.18) !important;
-  border-radius: 4px !important;
-  padding: 0 7px !important;
-  line-height: 20px !important;
-  flex-shrink: 0 !important;
-}
-
-.ide-verify-signal-rail-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.ide-verify-signal-rail-action-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 7px;
-  border-radius: 4px;
-  border: 1px solid rgba(56, 189, 248, 0.12);
-  background: transparent;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(153, 203, 240, 0.74);
-  cursor: pointer;
-  transition: color 0.12s, border-color 0.12s, background 0.12s;
-  white-space: nowrap;
-}
-
-.ide-verify-signal-rail-action-btn:hover {
-  color: rgba(147, 210, 248, 0.9);
-  border-color: rgba(56, 189, 248, 0.25);
-  background: rgba(56, 189, 248, 0.06);
-}
-
-.ide-verify-signal-rail-focus {
-  font-size: 10px !important;
-  color: rgba(160, 194, 223, 0.72) !important;
-  margin: 0 !important;
-  line-height: 1.3 !important;
-}
-
-.ide-verify-signal-rail-focus code {
-  font-size: 10px;
-  color: rgba(191, 225, 248, 0.88);
-}
-
-/* Signal group headers — much tighter */
-[data-ide-mode-marker='verify'] .ide-verify-signal-group-header {
-  padding: 4px 8px !important;
-  min-height: 22px !important;
-  gap: 6px !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-group-toggle {
   font-size: 11px !important;
   font-weight: 700 !important;
@@ -31679,37 +31125,10 @@ button:disabled,
   cursor: pointer !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-row {
-  padding: 5px 8px !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-signal-pin-btn,
 [data-ide-mode-marker='verify'] .ide-verify-signal-visibility-btn {
   padding: 2px 6px !important;
   min-width: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader {
-  padding: 4px 8px !important;
-  min-height: 22px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader h3 {
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.10em !important;
-  text-transform: uppercase !important;
-  color: rgba(130, 165, 200, 0.65) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock {
-  width: 156px !important;
-  min-width: 138px !important;
-  max-width: 174px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-list {
-  padding-bottom: 8px !important;
 }
 
 /* ── Verify: Workspace mode layout states ────────────────────────────────── */
@@ -34091,11 +33510,6 @@ button:disabled,
   font-size: 12px !important;
 }
 
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-left-dock .ide-design-subheader h3 {
-  font-size: 10px !important;
-  letter-spacing: 0.08em !important;
-}
-
 /* Verify targeted correction pass: compact rails, stronger two-zone workspace,
    and a lighter observation-stage draft state. */
 [data-ide-mode-marker='verify'] .ide-verify-workspace {
@@ -34113,78 +33527,8 @@ button:disabled,
   border-radius: 14px;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-left-dock {
-  display: grid;
-  gap: 8px;
-  padding: 10px 8px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-header {
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(70, 103, 133, 0.18);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title h3 {
-  font-size: 13px;
-  letter-spacing: 0.02em;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-count {
-  min-height: 20px;
-  padding: 0 6px;
-  font-size: 10px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-focus {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: rgba(166, 194, 219, 0.74);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-list {
-  gap: 6px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader {
-  margin-bottom: 4px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-design-subheader h3 {
-  font-size: 11px;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-group-toggle {
   font-size: 11px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: center;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-row {
-  min-height: 28px;
-  padding: 4px 8px;
-  font-size: 11px;
-  border-radius: 8px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-entry-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: rgba(127, 29, 29, 0.22);
-  color: rgba(254, 202, 202, 0.92);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-command-bar {
@@ -35856,77 +35200,6 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__body .ide-export-artifact-code span {
   font-size: 12px;
-}
-
-/* Verify: keep the open Signals rail readable without changing other modes. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] {
-  --ide-workbench-left-width: clamp(176px, 14vw, 196px) !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.is-left-dock-collapsed).hide-right-dock {
-  grid-template-columns: clamp(176px, 14vw, 196px) minmax(0, 1fr) !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.is-left-dock-collapsed):not(.hide-right-dock) {
-  grid-template-columns:
-    clamp(176px, 14vw, 196px)
-    minmax(0, 1fr)
-    var(--ide-workbench-right-slot-width) !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-left,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock {
-  width: 100% !important;
-  min-width: 176px !important;
-  max-width: 196px !important;
-  box-sizing: border-box !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock {
-  overflow-x: hidden !important;
-  padding: 10px 10px 12px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-toprow {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  align-items: stretch !important;
-  gap: 6px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title {
-  width: 100% !important;
-  min-width: 0 !important;
-  flex-wrap: wrap !important;
-  row-gap: 4px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-count {
-  max-width: 100% !important;
-  padding-inline: 5px !important;
-  font-size: 12px !important;
-  white-space: nowrap !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-actions {
-  flex-wrap: wrap !important;
-  justify-content: flex-start !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  gap: 4px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-action-btn {
-  min-height: 36px !important;
-  padding: 6px 8px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-focus {
-  overflow-wrap: anywhere !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-entry {
-  grid-template-columns: minmax(0, 1fr) auto !important;
 }
 
 /* Round 14A: keep fail-state repair visible without pushing waveform evidence below 1366x768. */

@@ -154,6 +154,7 @@ import {
 } from './verify/ScenarioComposerWorkbench';
 import { buildSimulationEvidenceSummary } from '../simulationEvidence';
 import './verify/simulation-studio-v3.css';
+import './verify/simulate-instrument.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'verify',
@@ -4418,7 +4419,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep the compact signal browser stable beside the primary workspace. */
-      leftDockMode: isNoCircuitTaskFirst ? ('hidden' as const) : ('visible' as const),
+      leftDockMode:
+        isNoCircuitTaskFirst && !(scenarios && scenarios.length > 0) ? ('hidden' as const) : ('visible' as const),
       /** Saved cases and mismatch detail now live in the lower details tray. */
       rightDockMode: ('hidden' as const),
       consoleMode: isNoCircuitTaskFirst
@@ -4427,7 +4429,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           ? ('auto' as const)
           : ('hidden' as const),
     }),
-    [isNoCircuitTaskFirst, sessionSignalsAssertionFailure]
+    [isNoCircuitTaskFirst, scenarios, sessionSignalsAssertionFailure]
   );
 
   useEffect(() => {
@@ -5255,7 +5257,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       layoutIntent="workbench"
       consoleHasBlocking={sessionSignalsAssertionFailure}
       consoleHasEntries={false}
-      leftDockMode="hidden"
+      leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
       rightDockCanCollapse={false}
       consoleMode={verifyLayoutPolicy.consoleMode}
@@ -5304,19 +5306,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   : 'No blocking simulation issue selected.',
       }}
       dock={
+        <div className="rb-sim-dock" data-testid="ide-sim-scenario-explorer">
+        {scenarios && scenarios.length > 0 ? (
+          <TestbenchDocumentTabs
+            scenarios={scenarios}
+            activeScenarioId={activeScenarioId ?? null}
+            onSwitch={(id) => onSwitchScenario?.(id)}
+            onCreate={() => onCreateScenario?.()}
+            onDuplicate={() => onDuplicateScenario?.()}
+            onRename={(name) => onRenameScenario?.(name)}
+            onDelete={(id) => onDeleteScenario?.(id)}
+          />
+        ) : (
+          <div className="ide-sim-scenario-empty">
+            <span>Scenarios</span>
+            <strong>No saved scenario yet</strong>
+            <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
+            <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
+              Create scenario
+            </IdeButton>
+          </div>
+        )}
         <section
-          className="ide-verify-left-dock"
+          className="wb-toolwindow rb-sig"
           data-testid="ide-verify-left-dock"
           data-collapsed="false"
         >
           <header
-            className="ide-verify-signal-rail-header"
+            className="wb-toolwindow-header rb-sig-header"
             data-testid="ide-verify-signal-rail-header"
           >
-            <div className="ide-verify-signal-rail-toprow">
-              <div className="ide-verify-signal-rail-title">
+            <div className="rb-sig-toprow">
+              <div className="rb-sig-title">
                 <h3>Signals</h3>
-                <span className="ide-verify-signal-rail-count" data-testid="ide-verify-signal-filter-state">
+                <span className="wb-toolwindow-count rb-sig-count" data-testid="ide-verify-signal-filter-state">
                   {showMismatchOnlySignals
                     ? `${visibleSignalCount} flagged`
                     : showAllSignals
@@ -5324,11 +5347,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       : `${visibleSignalCount} relevant`}
                 </span>
               </div>
-              <div className="ide-verify-signal-rail-actions">
+              <div className="rb-sig-actions">
                 {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
                   <button
                     type="button"
-                    className="ide-verify-signal-rail-action-btn"
+                    className="wb-btn wb-btn--ghost rb-sig-action"
                     onClick={() => {
                       setShowMismatchOnlySignals(false);
                       setShowAllSignals((previous) => !previous);
@@ -5340,7 +5363,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </div>
             </div>
-            <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
+            <p className="rb-sig-focus" data-testid="ide-verify-signal-rail-summary">
               {selectedSignal ? (
                 <>
                   <code>{selectedSignal}</code> active
@@ -5352,32 +5375,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </p>
           </header>
-          <div className="ide-signal-list" data-testid="ide-verify-signal-list">
+          <div className="wb-toolwindow-body rb-sig-list" data-testid="ide-verify-signal-list">
             {displaySignalTimeline.length === 0 ? (
               lastRun ? (
                 <p className="ide-copy">No signal data in the last run — check circuit mapping.</p>
               ) : null
             ) : (
               (['Inputs', 'Outputs', 'Internal'] as const).map((group) => (
-                <section key={group} className="ide-verify-signal-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
-                  <header className="ide-design-subheader ide-verify-signal-group-header">
-                    <strong className="ide-verify-signal-group-label">{group}</strong>
+                <section key={group} className="rb-sig-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
+                  <header className="rb-sig-group-header">
+                    <strong className="rb-sig-group-label">{group}</strong>
                     <span className="ide-copy">{groupedVisibleSignals[group].length}</span>
                   </header>
-                  <div className="ide-verify-group-body">
+                  <div className="rb-sig-group-body">
                       {groupedVisibleSignals[group].length === 0 ? (
                         <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
                       ) : (
                         groupedVisibleSignals[group].map((signalRow) => (
                           <div
                             key={signalRow.signal}
-                            className="ide-verify-signal-entry"
+                            className="rb-sig-entry"
                             onMouseEnter={() => handleSignalHover(signalRow.signal)}
                             onMouseLeave={() => handleSignalHover(null)}
                           >
                             <button
-                              className={`ide-signal-row ${selectedSignal === signalRow.signal ? 'is-active' : ''}`}
+                              className={`rb-sig-row${selectedSignal === signalRow.signal ? ' is-active' : ''}`}
                               type="button"
+                              aria-pressed={selectedSignal === signalRow.signal}
                               onClick={() => handleSignalSelect(signalRow.signal)}
                               data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
                             >
@@ -5385,7 +5409,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             </button>
                             {hasSessionFailureEvidence &&
                             failingRows.some((row) => row.signal === signalRow.signal) ? (
-                              <span className="ide-verify-signal-entry-badge">Mismatch</span>
+                              <span className="rb-sig-badge">Mismatch</span>
                             ) : null}
                           </div>
                         ))
@@ -5396,6 +5420,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
           </div>
         </section>
+        </div>
       }
       inspector={null}
       console={null}
@@ -5410,7 +5435,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {runAnnouncement}
       </div>
       <IdePanel
-        className="ide-verify-panel"
+        className="rb-sim-panel"
         testId="ide-verify-panel"
       >
         <VerifyHeaderRegion>
@@ -5456,7 +5481,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             }
           />
         ) : null}
-        <div className="ide-surface-command-stack ide-verify-chrome-stack">
+        <div className="rb-sim-command-stack">
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
         <VerifyCommandBar
@@ -5511,78 +5536,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </div>
         </VerifyHeaderRegion>
 
-        {!isNoCircuitTaskFirst ? (
-          <section
-            className="ide-verify-signal-shelf"
-            data-testid="ide-verify-signal-shelf"
-            aria-label="Circuit signals"
-          >
-            <header>
-              <div>
-                <span>Signals</span>
-                <strong>
-                  {showMismatchOnlySignals
-                    ? `${visibleSignalCount} flagged`
-                    : showAllSignals
-                      ? `${signalTimeline.length} visible`
-                      : `${visibleSignalCount} relevant`}
-                </strong>
-              </div>
-              {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
-                <button
-                  type="button"
-                  aria-pressed={showAllSignals}
-                  onClick={() => {
-                    setShowMismatchOnlySignals(false);
-                    setShowAllSignals((previous) => !previous);
-                  }}
-                  data-testid="ide-verify-show-all-signals-shelf"
-                >
-                  {showAllSignals ? 'Show relevant' : 'Show all'}
-                </button>
-              ) : null}
-            </header>
-            <div className="ide-verify-signal-shelf-groups" data-testid="ide-verify-signal-shelf-list">
-              {(['Inputs', 'Outputs', 'Internal'] as const).map((group) => {
-                const rows = groupedVisibleSignals[group];
-                if (rows.length === 0) return null;
-                return (
-                  <section key={group} className={`ide-verify-signal-shelf-group is-${group.toLowerCase()}`}>
-                    <span>{group}</span>
-                    <div>
-                      {rows.map((signalRow) => {
-                        const signalPresentation = getVerifySignalPresentation(
-                          signalRow.signal,
-                          [...inputFields, ...outputFields]
-                        );
-                        const logicalName = signalPresentation.logicalName;
-                        const physicalName = signalPresentation.physicalName;
-                        const mismatch = hasSessionFailureEvidence &&
-                          failingRows.some((row) => row.signal === signalRow.signal);
-                        return (
-                          <button
-                            key={signalRow.signal}
-                            className={selectedSignal === signalRow.signal ? 'is-active' : ''}
-                            type="button"
-                            aria-pressed={selectedSignal === signalRow.signal}
-                            onClick={() => handleSignalSelect(signalRow.signal)}
-                            onMouseEnter={() => handleSignalHover(signalRow.signal)}
-                            onMouseLeave={() => handleSignalHover(null)}
-                            data-testid={`ide-verify-shelf-signal-${toTestId(signalRow.signal)}`}
-                          >
-                            <strong>{logicalName}</strong>
-                            {physicalName ? <small>{physicalName}</small> : null}
-                            {mismatch ? <em>Mismatch</em> : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
         {guidedLabTask ? (
           <section className="ide-guided-lab-card" data-testid="ide-verify-guided-full-adder-truth-table">
@@ -5746,42 +5699,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </section>
         )}
         <div
-          className="ide-verify-lab-frame"
+          className="rb-sim-lab-frame"
           data-testid="ide-verify-lab-frame"
           data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
         >
         <div
-          className="ide-verify-lab-grid"
+          className="rb-sim-lab-grid"
           data-testid="ide-verify-lab-grid"
           data-stimulus-layout="stable"
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
         >
-        <aside className="ide-sim-scenario-explorer" data-testid="ide-sim-scenario-explorer" aria-label="Scenario explorer">
-          {scenarios && scenarios.length > 0 ? (
-            <TestbenchDocumentTabs
-              scenarios={scenarios}
-              activeScenarioId={activeScenarioId ?? null}
-              onSwitch={(id) => onSwitchScenario?.(id)}
-              onCreate={() => onCreateScenario?.()}
-              onDuplicate={() => onDuplicateScenario?.()}
-              onRename={(name) => onRenameScenario?.(name)}
-              onDelete={(id) => onDeleteScenario?.(id)}
-            />
-          ) : (
-            <div className="ide-sim-scenario-empty">
-              <span>Scenarios</span>
-              <strong>No saved scenario yet</strong>
-              <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
-              <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
-                Create scenario
-              </IdeButton>
-            </div>
-          )}
-        </aside>
         <VerifyStimulusRegion
-          className="ide-verify-testbench-primary"
+          className="rb-sim-primary"
           data-panel-state="stable"
           data-work-priority="primary"
         >
@@ -7272,7 +7203,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>}
           </div>}
         </VerifyWaveformRegion>
-        <aside className="ide-sim-context-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
+        <aside className="rb-sim-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
           {studioMode === 'testbench' ? (
             <>
               <header><span>Source inspector</span><strong>testbench.vhd</strong></header>

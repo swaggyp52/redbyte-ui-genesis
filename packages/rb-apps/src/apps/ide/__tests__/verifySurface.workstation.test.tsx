@@ -470,7 +470,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
 
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
   });
@@ -541,7 +541,7 @@ describe('VerifySurface workstation controls', () => {
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
 
@@ -940,7 +940,7 @@ describe('VerifySurface workstation controls', () => {
     openVerifyUtilities(getByTestId);
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-vcb-evidence')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
 
     expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
@@ -966,9 +966,9 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-verify-run-state').textContent).toContain('2 signals · 3 ticks · COMPLETE');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
 
     const waveformViewport = getByTestId('ide-verify-waveform-scroll');
@@ -976,17 +976,17 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.keyDown(waveformViewport, { key: 'ArrowRight' });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
 
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
   });
 
@@ -1015,18 +1015,18 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
 
     fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
 
     expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
   });
 
@@ -1149,7 +1149,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     expect(getByTestId('ide-verify-create-check-preview').textContent).toContain('ld0');
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -1593,7 +1593,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
 
@@ -1683,7 +1683,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stays in Observe until you choose Compare');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
@@ -1959,7 +1959,7 @@ describe('VerifySurface workstation controls', () => {
     onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
-    expect(getByTestId('ide-mode-verify').getAttribute('data-left-dock-state')).toBe('hidden');
+    expect(getByTestId('ide-mode-verify').getAttribute('data-left-dock-state')).toBe('visible');
   });
 
   it('folds workbench actions and signal-rail controls into their header rows', () => {
@@ -2003,10 +2003,10 @@ describe('VerifySurface workstation controls', () => {
     expect(workbenchHeader.textContent).not.toContain('Show checks');
     expect(view.queryByTestId('ide-stimulus-advanced-tools-toggle')).toBeNull();
 
-    const signalShelf = getByTestId('ide-verify-signal-shelf');
+    const signalShelf = getByTestId('ide-verify-left-dock');
     expect(within(signalShelf).getByText('Signals')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
-    expect(getByTestId('ide-verify-show-all-signals-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
+    expect(getByTestId('ide-verify-show-all-signals')).toBeTruthy();
     expect(within(signalShelf).queryByTestId('ide-verify-fit-waveform')).toBeNull();
   });
 
@@ -2183,7 +2183,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(
-      within(getByTestId('ide-verify-signal-shelf')).getByRole('button', { name: /LD0/i })
+      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
     );
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -2261,7 +2261,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(
-      within(getByTestId('ide-verify-signal-shelf')).getByRole('button', { name: /LD0/i })
+      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
     );
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -2328,7 +2328,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(
-      within(getByTestId('ide-verify-signal-shelf')).getByRole('button', { name: /LD0/i })
+      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
     );
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -2405,7 +2405,7 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByText } = view;
 
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-sw0')).toBeTruthy();
     expect(view.container.querySelectorAll('[data-testid="ide-verify-waveform-row-ld0"]')).toHaveLength(1);
@@ -2460,7 +2460,7 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByText } = view;
 
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-ld0_node_in')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });

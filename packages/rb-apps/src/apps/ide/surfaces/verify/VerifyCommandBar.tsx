@@ -180,105 +180,95 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   return (
     <div
       ref={commandBarRef}
-      className="ide-verify-command-bar"
+      className="wb-toolbar rb-sim-toolbar"
       data-testid="ide-verify-command-bar"
       data-run-mode="simulation"
       data-workspace-mode={workspaceMode}
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      <div className="ide-vcb-row ide-vcb-row--primary">
-        <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
-          <div className="ide-vcb-mode-toggle" role="tablist" aria-label="Simulation Studio workspace">
-            {(['scenario', 'bench', 'replay', 'checks'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                role="tab"
-                className={`ide-vcb-mode-btn${workspaceMode === mode ? ' is-active' : ''}`}
-                onClick={() => onWorkspaceModeChange?.(mode)}
-                data-testid={`ide-vcb-workspace-${mode}`}
-                aria-selected={workspaceMode === mode}
-                disabled={mode === 'replay' && !hasReplay}
-                title={
-                  mode === 'replay' && !hasReplay
-                    ? 'Run the simulation to create a replay.'
-                    : mode === 'bench'
-                      ? 'Drive inputs and read outputs live — the same state as the Virtual Board.'
+      <div className="wb-segment rb-sim-seg" role="tablist" aria-label="Simulate instrument" data-testid="ide-vcb-run-mode">
+        {(['scenario', 'bench', 'replay', 'checks'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            role="tab"
+            className={`wb-btn${workspaceMode === mode ? ' is-active' : ''}`}
+            aria-pressed={workspaceMode === mode}
+            aria-selected={workspaceMode === mode}
+            onClick={() => onWorkspaceModeChange?.(mode)}
+            data-testid={`ide-vcb-workspace-${mode}`}
+            disabled={mode === 'replay' && !hasReplay}
+            title={
+              mode === 'replay' && !hasReplay
+                ? 'Run the simulation to create a replay.'
+                : mode === 'bench'
+                  ? 'Drive inputs and read outputs live — the same state as the Virtual Board.'
+                  : mode === 'scenario'
+                    ? 'Authored cases for this scenario.'
+                    : mode === 'checks'
+                      ? 'Saved expected outputs for this scenario.'
                       : undefined
-                }
-              >
-                {mode === 'scenario'
-                  ? 'Timeline'
-                  : mode === 'bench'
-                    ? 'Bench'
-                    : mode === 'replay'
-                      ? 'Waveform'
-                      : mode === 'checks'
-                        ? `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`
-                        : 'Testbench'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div
-          className="ide-vcb-group ide-vcb-group--intent"
-          data-testid="ide-vcb-run-intent"
-        >
-          <div className="ide-vcb-mode-toggle" role="group" aria-label="Run intent">
-            <button
-              type="button"
-              className={`ide-vcb-mode-btn${!isCompareMode ? ' is-active' : ''}`}
-              aria-pressed={!isCompareMode}
-              onClick={onSetObserve}
-              data-testid="ide-vcb-observe-only"
-              title="Run the circuit and record observed outputs. No checks are graded."
-            >
-              Observe
-            </button>
-            <button
-              type="button"
-              className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}${!compareAvailable ? ' is-blocked' : ''}`}
-              aria-pressed={isCompareMode}
-              disabled={!compareAvailable}
-              onClick={onSetCompare}
-              data-testid="ide-vcb-use-saved-checks"
-              data-blocked={!compareAvailable ? 'true' : undefined}
-              title={
-                !compareAvailable
-                  ? compareUnavailableReason ?? 'Author at least one expected output to compare against.'
-                  : 'Run the circuit and compare observed outputs against your saved checks.'
-              }
-            >
-              Compare expected output
-            </button>
-          </div>
-        </div>
-
-        <div
-          className="ide-vcb-group ide-vcb-group--actions ide-vcb-run-authority"
-          data-testid="ide-vcb-run-authority"
-        >
-          <IdeButton
-            tone="primary"
-            onClick={handleRun}
-            disabled={runDisabled}
-            testId="ide-vcb-run"
-            className={runPulsing ? 'is-pulsing' : undefined}
-            hierarchySurface="verify"
-            hierarchyRole="next"
+            }
           >
-            {runLabel}
-          </IdeButton>
-        </div>
-
-        <p className="ide-vcb-mode-explainer" data-testid="ide-vcb-mode-explainer">
-          {isCompareMode
-            ? 'Check filled expected outputs against this run.'
-            : 'Record observed outputs without grading expected values.'}
-        </p>
+            {mode === 'scenario'
+              ? 'Cases'
+              : mode === 'bench'
+                ? 'Bench'
+                : mode === 'replay'
+                  ? 'Waveform'
+                  : `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`}
+          </button>
+        ))}
       </div>
+      <span className="wb-toolbar-sep" />
+      <div className="wb-segment rb-sim-seg" role="group" aria-label="Run intent" data-testid="ide-vcb-run-intent">
+        <button
+          type="button"
+          className={`wb-btn${!isCompareMode ? ' is-active' : ''}`}
+          aria-pressed={!isCompareMode}
+          onClick={onSetObserve}
+          data-testid="ide-vcb-observe-only"
+          title="Run the circuit and record observed outputs. No checks are graded."
+        >
+          Observe
+        </button>
+        <button
+          type="button"
+          className={`wb-btn${isCompareMode ? ' is-active' : ''}${!compareAvailable ? ' is-blocked' : ''}`}
+          aria-pressed={isCompareMode}
+          disabled={!compareAvailable}
+          onClick={onSetCompare}
+          data-testid="ide-vcb-use-saved-checks"
+          data-blocked={!compareAvailable ? 'true' : undefined}
+          title={
+            !compareAvailable
+              ? compareUnavailableReason ?? 'Author at least one expected output to compare against.'
+              : 'Run the circuit and compare observed outputs against your saved checks.'
+          }
+        >
+          Compare
+        </button>
+      </div>
+      <span className="wb-toolbar-spacer" />
+      <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
+        <IdeButton
+          tone="primary"
+          onClick={handleRun}
+          disabled={runDisabled}
+          testId="ide-vcb-run"
+          className={`wb-btn wb-btn--primary${runPulsing ? ' is-pulsing' : ''}`}
+          hierarchySurface="verify"
+          hierarchyRole="next"
+        >
+          {runLabel}
+        </IdeButton>
+      </div>
+      <span className="wb-toolbar-meta rb-sim-explainer" data-testid="ide-vcb-mode-explainer">
+        {isCompareMode
+          ? 'Check filled expected outputs against this run.'
+          : 'Record observed outputs without grading expected values.'}
+      </span>
     </div>
   );
 };

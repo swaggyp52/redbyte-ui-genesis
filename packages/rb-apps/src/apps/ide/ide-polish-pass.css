@@ -2134,39 +2134,6 @@
   border-color: rgba(46, 196, 182, 0.38);
 }
 
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-left-dock {
-  transition: inline-size 140ms ease;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock[data-collapsed='true'] {
-  inline-size: 52px;
-  min-inline-size: 52px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock[data-collapsed='true'] .ide-signal-list,
-[data-ide-mode-marker='verify'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-focus,
-[data-ide-mode-marker='verify'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-count {
-  display: none;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-title h3 {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-toprow {
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-signal-rail-toggle {
-  min-inline-size: 58px;
-  font-size: 10px;
-}
-
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] {
   grid-template-columns: minmax(500px, 1.05fr) minmax(560px, 1fr);
   gap: 12px;
@@ -2232,16 +2199,7 @@
     min-inline-size: 100%;
   }
 
-  .ide-root [data-ide-mode-marker='verify'] .ide-verify-left-dock {
-    inline-size: 56px;
-    min-inline-size: 56px;
-  }
 
-  .ide-root [data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-list,
-  [data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-verify-signal-rail-focus,
-  [data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-verify-signal-rail-count {
-    display: none;
-  }
 }
 
 /* ============================================================
@@ -3364,18 +3322,6 @@
   border-color: rgba(125, 211, 252, 0.25);
 }
 
-.ide-root [data-ide-mode-marker='verify'] [data-hierarchy-role='primary'] {
-  border: 1px solid rgba(74, 222, 128, 0.18);
-  border-radius: 14px;
-  background:
-    linear-gradient(135deg, rgba(74, 222, 128, 0.08), rgba(9, 19, 32, 0.86) 58%),
-    rgba(9, 19, 32, 0.92);
-}
-
-.ide-root [data-ide-mode-marker='verify'] [data-hierarchy-role='context'] {
-  opacity: 0.92;
-}
-
 .ide-root [data-ide-mode-marker='hardware'] [data-hierarchy-focal='basys3-board-workbench'] {
   min-height: clamp(420px, 60vh, 760px);
 }
@@ -4105,35 +4051,6 @@
   position: relative !important;
   z-index: 20 !important;
   pointer-events: auto !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-left-dock[data-collapsed='true'] {
-  inline-size: auto !important;
-  min-inline-size: 0 !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-left-dock[data-collapsed='true'] .ide-signal-list {
-  display: grid !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-focus {
-  display: block !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-count {
-  display: inline-flex !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-title h3 {
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-  font-size: 13px !important;
-  letter-spacing: 0 !important;
-}
-
-.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-left-dock[data-collapsed='true'] .ide-verify-signal-rail-toprow {
-  flex-direction: row !important;
-  align-items: flex-start !important;
 }
 
 /* Export Handoff Station v1: visible E0 handoff, not a hidden details drawer. */

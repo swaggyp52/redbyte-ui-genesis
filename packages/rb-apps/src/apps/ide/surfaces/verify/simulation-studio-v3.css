@@ -36,26 +36,6 @@
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
-.ide-verify-panel :where(p, span, small, label, dt, dd, li),
-.ide-verify-left-dock :where(p, span, small, label, dt, dd, li) {
-  font-size: max(13px, 1em);
-}
-
-.ide-verify-panel :where(button, input, select, textarea, th, td, code),
-.ide-verify-left-dock :where(button, input, select, textarea, th, td, code) {
-  font-size: max(14px, 1em);
-}
-
-.ide-verify-panel :where(button, input, select, textarea),
-.ide-verify-left-dock :where(button, input, select, textarea) {
-  min-height: 36px;
-}
-
-.ide-verify-panel .ide-copy,
-.ide-verify-left-dock .ide-copy {
-  font-size: 13px;
-}
-
 /* Compact and 125%-equivalent laptop layouts inherit several legacy
    instrument rules with 9-10px metadata and a 26px step control. Keep the
    same professional readability and hit-area floors in every Verify layout,
@@ -152,19 +132,6 @@
   .ide-verify-no-circuit-actions
   [data-testid='ide-verify-no-circuit-open-design'] {
   min-height: 40px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-verify-signal-rail-focus,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-verify-signal-rail-count,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-vcb-mode-explainer,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-stimulus-toolbar-label,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-stimulus-selection-chip,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-stimulus-toolbar-note,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-verify-waveform-tools-label,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-verify-context-state,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-verify-stimulus-mode-label,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-verify-stimulus-mode-value {
-  font-size: 13px !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -1401,56 +1368,6 @@
   margin: 0 0 8px;
   color: #d9e4ef;
   font-size: 14px;
-}
-
-.ide-verify-zoom-btn,
-.ide-verify-signal-rail-action-btn,
-.ide-verify-mismatch-fix-btn,
-.ide-verify-left-dock .ide-signal-row {
-  min-height: 36px;
-  font-size: 14px;
-}
-
-.ide-verify-left-dock {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  min-width: 0;
-  height: 100%;
-  background: #0c141f;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock .ide-signal-row,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-pin-btn,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-visibility-btn {
-  min-height: 36px;
-  font-size: 13px;
-}
-
-.ide-verify-signal-rail-header {
-  padding: 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.17);
-}
-
-.ide-verify-signal-group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
-  padding: 0 10px;
-}
-
-.ide-verify-signal-group-label {
-  color: #cbd5e1;
-  font-size: 13px;
-  text-transform: uppercase;
-}
-
-.ide-verify-group-body {
-  display: grid;
-}
-
-.ide-verify-signal-entry-badge {
-  border-radius: 4px;
 }
 
 /* Clock authoring is a testbench command surface, not part of the clock signal
@@ -4066,41 +3983,4 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
 }
 .ide-vcd-analyzer-compact .ide-vcd-analyzer-load { flex: 0 0 auto; }
 
-/* ── Case Lab: the combinational truth-table instrument ── */
-.ide-case-lab { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--rb-border); border-radius: 6px; overflow: hidden; background: var(--rb-surface); }
-.ide-case-lab-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--rb-border-subtle, var(--rb-border)); background: var(--rb-surface-subtle); }
-.ide-case-lab-title { font-size: 13px; font-weight: 600; color: var(--rb-text-primary); }
-.ide-case-lab-count { font-size: 12px; color: var(--rb-text-muted); }
-.ide-case-lab-spacer { flex: 1 1 auto; }
-.ide-case-lab-filter { height: 26px; padding: 0 9px; border: 1px solid var(--rb-border); border-radius: 5px; background: transparent; color: var(--rb-text-secondary); font-size: 12px; cursor: pointer; }
-.ide-case-lab-filter.is-active { border-color: var(--rb-action); color: var(--rb-action); background: color-mix(in srgb, var(--rb-action) 10%, transparent); }
-.ide-case-lab-filter:disabled { opacity: 0.5; cursor: default; }
-.ide-case-lab-scroll { min-height: 0; overflow: auto; }
-.ide-case-lab-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.ide-case-lab-table th, .ide-case-lab-table td { padding: 4px 8px; text-align: center; border-bottom: 1px solid var(--rb-border-subtle, rgba(148,163,184,0.16)); white-space: nowrap; }
-.ide-case-lab-table thead th { position: sticky; top: 0; z-index: 1; background: var(--rb-surface-subtle); color: var(--rb-text-muted); font-weight: 600; font-size: 11px; }
-.ide-case-lab-grouphead th { border-bottom: 1px solid var(--rb-border); }
-.ide-case-lab-group--out { border-left: 1px solid var(--rb-border); }
-.ide-case-lab-colhead th { font-size: 10px; }
-.ide-case-lab-num { width: 30px; color: var(--rb-text-muted); }
-.ide-case-lab-table td code { font-family: var(--rb-font-mono, ui-monospace, monospace); font-size: 12px; }
-.ide-case-lab-row { cursor: pointer; }
-.ide-case-lab-row:hover { background: var(--rb-surface-subtle); }
-.ide-case-lab-row.is-selected { background: color-mix(in srgb, var(--rb-action) 12%, transparent); }
-.ide-case-lab-obs.is-fail { color: var(--rb-danger, #c0392b); font-weight: 700; }
-.ide-case-lab-exp-btn { min-width: 22px; height: 22px; padding: 0 4px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--rb-text-secondary); cursor: pointer; }
-.ide-case-lab-exp-btn:hover { border-color: var(--rb-border); background: var(--rb-surface); }
-.ide-case-lab-verdict { display: inline-block; min-width: 44px; font-size: 11px; font-weight: 600; }
-.ide-case-lab-verdict.is-pass { color: var(--rb-state-success, #2f855a); }
-.ide-case-lab-verdict.is-fail { color: var(--rb-danger, #c0392b); }
-.ide-case-lab-verdict.is-stale { color: var(--rb-state-warning, #b7791f); }
-.ide-case-lab-verdict.is-observed, .ide-case-lab-verdict.is-not-run { color: var(--rb-text-muted); }
-.ide-case-lab-trace { margin-left: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--rb-border); border-radius: 4px; background: transparent; color: var(--rb-action); font-size: 11px; cursor: pointer; }
-.ide-case-lab-row-actions { float: right; display: inline-flex; gap: 3px; opacity: 0; transition: opacity 120ms ease; }
-.ide-case-lab-row:hover .ide-case-lab-row-actions,
-.ide-case-lab-row.is-selected .ide-case-lab-row-actions,
-.ide-case-lab-row-actions:focus-within { opacity: 1; }
-.ide-case-lab-rowbtn { width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--rb-border); border-radius: 4px; background: var(--rb-surface, #fff); color: var(--rb-text-secondary); font-size: 11px; line-height: 1; cursor: pointer; }
-.ide-case-lab-rowbtn:hover { border-color: var(--rb-action); color: var(--rb-action); }
-.ide-case-lab-rowbtn--danger:hover { border-color: var(--rb-danger, #c0392b); color: var(--rb-danger, #c0392b); }
-.ide-case-lab-empty { padding: 18px; color: var(--rb-text-muted); font-size: 12px; }
+/* Case Lab styling moved to simulate-instrument.css. */
