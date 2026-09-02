@@ -31,7 +31,9 @@ export type WorkbenchDocument =
   /** Recorded run evidence for a scenario (Waveform). */
   | { readonly kind: 'waveform'; readonly scenarioId: string }
   | { readonly kind: 'board-io'; readonly constraintSetId: string }
-  | { readonly kind: 'package-artifact' };
+  | { readonly kind: 'package-artifact' }
+  /** The engineering handoff overview derived from canonical evidence (in-app only). */
+  | { readonly kind: 'handoff' };
 
 export type WorkbenchDocumentKind = WorkbenchDocument['kind'];
 
@@ -44,6 +46,7 @@ export function documentKey(doc: WorkbenchDocument): string {
     case 'sources':
     case 'compile-order':
     case 'package-artifact':
+    case 'handoff':
       return doc.kind;
     case 'source-file':
       return `source-file:${doc.fileId}`;
@@ -84,6 +87,7 @@ export function documentMode(doc: WorkbenchDocument): IdeMode {
     case 'board-io':
       return 'hardware';
     case 'package-artifact':
+    case 'handoff':
       return 'export';
   }
 }
@@ -119,6 +123,8 @@ export function fallbackDocumentLabel(doc: WorkbenchDocument): string {
       return 'I/O Planning';
     case 'package-artifact':
       return 'Package';
+    case 'handoff':
+      return 'Handoff';
   }
 }
 
@@ -147,6 +153,7 @@ export function pruneDocuments(
       case 'sources':
       case 'compile-order':
       case 'package-artifact':
+      case 'handoff':
         return true;
       case 'source-file':
         return snapshot.fileIds.has(doc.fileId);
@@ -175,6 +182,7 @@ export function parseWorkbenchDocument(value: unknown): WorkbenchDocument | null
     case 'sources':
     case 'compile-order':
     case 'package-artifact':
+    case 'handoff':
       return { kind: raw.kind };
     case 'source-file': {
       const fileId = str('fileId');

@@ -47,6 +47,7 @@ const KIND_ICON: Record<WorkbenchDocument['kind'], React.ReactNode> = {
   timing: <svg viewBox="0 0 12 12" {...stroke}><path d="M1 9h2V3h2v6h2V3h2v6h2" /></svg>,
   waveform: <svg viewBox="0 0 12 12" {...stroke}><path d="M1 8h1.5V4h2v4h2V4h2v4H11" /><path d="M1 2.5h10" strokeDasharray="1 1.5" /></svg>,
   'board-io': <svg viewBox="0 0 12 12" {...stroke}><rect x="3.5" y="3.5" width="5" height="5" rx="0.5" /><path d="M5 3.5V1.5M7 3.5V1.5M5 10.5V8.5M7 10.5V8.5M3.5 5H1.5M3.5 7H1.5M10.5 5H8.5M10.5 7H8.5" /></svg>,
+  handoff: <svg viewBox="0 0 12 12" {...stroke}><path d="M2 1.5h5.5l2.5 2.5v6.5h-8z" /><path d="M7.5 1.5V4H10M4 6.5h4M4 8.5h4" /></svg>,
   'package-artifact': <svg viewBox="0 0 12 12" {...stroke}><path d="M1.5 4.5h9v5.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5z" /><path d="M1.5 4.5l1-2h7l1 2M5 7h2" /></svg>,
 };
 

@@ -194,3 +194,23 @@
   .ide-root .rb-pkg-file-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 40%) minmax(0, 1fr) auto; }
   .ide-root .rb-pkg-file-workspace > * { min-width: 0; }
 }
+
+/* Handoff overview — an engineering deliverable on paper; prints clean. */
+.ide-root .rb-handoff { display: flex; flex-direction: column; min-height: 0; overflow: auto; background: var(--wb-paper); }
+.ide-root .rb-handoff-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.ide-root .rb-handoff-arch .rb-arch { min-height: 160px; max-height: 240px; }
+.ide-root .rb-handoff-state { padding: 2px 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: 600 var(--wb-text-sm) var(--wb-font-ui); color: var(--wb-text); background: var(--wb-surface); }
+.ide-root .rb-handoff-state.is-ok { color: var(--wb-ok); border-color: var(--wb-ok); }
+.ide-root .rb-handoff-state.is-stale { color: var(--wb-warn-text); border-color: var(--wb-warn); }
+.ide-root .rb-handoff-state.is-blocked { color: var(--wb-err); border-color: var(--wb-err); }
+.ide-root .rb-handoff-boundary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 0; padding: 8px var(--wb-space-3) 12px; }
+.ide-root .rb-handoff-boundary-grid dt { font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; color: var(--wb-text-3); }
+.ide-root .rb-handoff-boundary-grid dd { margin: 4px 0 0; font-size: var(--wb-text-sm); color: var(--wb-text-2); line-height: 1.45; }
+.ide-root .rb-handoff .wb-table td[data-tone='ok'] { color: var(--wb-ok); }
+.ide-root .rb-handoff .wb-table td[data-tone='error'] { color: var(--wb-err); }
+.ide-root .rb-handoff .wb-table td[data-tone='warn'] { color: var(--wb-warn-text); }
+@media print {
+  .ide-root .wb-cmdbar, .ide-root .wb-rail, .ide-root .wb-status, .ide-root .wb-doctabs, .ide-root .ide-workbench-dock, .ide-root .rb-pkg-hero { display: none; }
+  .ide-root .rb-handoff { overflow: visible; }
+  .ide-root .rb-handoff .wb-btn { display: none; }
+}

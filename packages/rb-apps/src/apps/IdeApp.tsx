@@ -3152,6 +3152,8 @@ export const IdeApp: React.FC = () => {
             >
             <ExportSurface
               project={exportProject}
+              activeDocument={documentHost.activeDocument}
+              onOpenDocument={documentHost.openDocument}
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
               lastExport={projectHealthCore.lastExport}

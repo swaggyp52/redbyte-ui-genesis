@@ -288,6 +288,8 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
         }
         case 'package-artifact':
           return 'Package';
+        case 'handoff':
+          return 'Handoff';
       }
     },
     [boardLabel, constraintSets.sets, modules, scenarios, sourceModel.files, topEntityName]
