@@ -100,6 +100,39 @@ async function run() {
     await sleep(400);
     written.push(await shot(page, '09-design-hierarchical-adder', vp.tag));
 
+
+    // ── SUM[2] causal journey: one engineering object across every representation ──
+    // Design (driver + pin in the frame bar, Related open) → Cases (same signal) → Board (same pin, XDC).
+    const sum2 = page.locator('g[data-node-type="OUTPUT"]', { hasText: "SUM[2]" }).first();
+    const sum2Fallback = page.locator("g.rb-sym", { hasText: "SUM[2]" }).first();
+    const sum2Target = (await sum2.count()) ? sum2 : sum2Fallback;
+    if (await sum2Target.count()) {
+      await sum2Target.click({ force: true });
+      await sleep(700);
+      await page.evaluate(() => {
+        const details = document.querySelector('[data-testid="ide-design-related"]');
+        if (details) details.open = true;
+      });
+      await sleep(300);
+      written.push(await shot(page, "12-journey-sum2-design", vp.tag));
+      const toCases = page.locator('[data-testid="ide-design-related-cases"]');
+      if (await toCases.count()) {
+        await toCases.evaluate((node) => node.click());
+        await sleep(1600);
+        written.push(await shot(page, "13-journey-sum2-cases", vp.tag));
+      }
+      await page.evaluate(() => {
+        const details = document.querySelector('[data-testid="ide-sim-related"]');
+        if (details) details.open = true;
+      });
+      await sleep(300);
+      const toBoard = page.locator('[data-testid="ide-sim-related-board-io"]');
+      if (await toBoard.count()) {
+        await toBoard.evaluate((node) => node.click());
+        await sleep(1600);
+        written.push(await shot(page, "14-journey-sum2-board", vp.tag));
+      }
+    }
     await openStarter(page, 'two-bit-counter');
     await mode(page, 'verify');
     written.push(await shot(page, '10-simulate-timing-counter', vp.tag));

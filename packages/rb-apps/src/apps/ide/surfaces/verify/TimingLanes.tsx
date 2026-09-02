@@ -138,7 +138,27 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   };
 
   return (
-    <div className="rb-tl" data-testid="ide-timing-lanes" role="grid" aria-label="Timing lanes">
+    <div
+      className="rb-tl"
+      data-testid="ide-timing-lanes"
+      role="grid"
+      aria-label="Timing lanes — left and right move the selected tick"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          event.preventDefault();
+          const current = selectedTick ?? 0;
+          const next = Math.min(maxTick, Math.max(0, current + (event.key === 'ArrowRight' ? 1 : -1)));
+          if (next !== current) onSelectTick(next);
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          onSelectTick(0);
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          onSelectTick(maxTick);
+        }
+      }}
+    >
       <div className="rb-tl-scroll">
         <svg className="rb-tl-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="presentation">
           {/* selected tick column */}

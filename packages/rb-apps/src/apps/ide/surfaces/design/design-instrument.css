@@ -90,7 +90,12 @@
 /* Component library rows (28px): glyph · name · pin signature. */
 .ide-root .rb-lib-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) minmax(0, auto);
+  /* A row may also carry a capability badge and a palette badge; let them take
+     implicit columns on the same line instead of wrapping into the next row. */
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  overflow: hidden;
   align-items: center;
   gap: 8px;
   width: 100%;
@@ -120,7 +125,7 @@
   font: 600 10px var(--wb-font-mono);
 }
 .ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-.ide-root .rb-lib-pins { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-lib-cap,
 .ide-root .rb-lib-badge { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 
