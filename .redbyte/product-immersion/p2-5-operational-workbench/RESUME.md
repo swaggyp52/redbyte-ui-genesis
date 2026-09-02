@@ -14,6 +14,8 @@ Recovery bundle of the interrupted dirty state:
 
 **Simulate (landed after the entry below was first written):** `3f546e33a` `feat(simulate)` — Cases document on the wb grammar (one toolbar, scenario explorer tool window + signal rail in the left dock, Case Lab grid beside a flat inspector, legacy evidence deck capped at 280px until the Waveform instrument replaces it). Verify legacy rail/dock/hierarchy-role rules deleted; the left dock follows the layout policy; dock widths follow preferences. 44 test reds across the verify + Design + shell sets, all reproducing on baseline `b635fba1f`.
 
+**Case Lab hand-over:** `d8b09fcbb` `feat(simulate)` Case Lab owns combinational scenarios; the builder disclosure renders only for the sequential composer until the Timing Lab lands; auto-vector notice and fallback-signal warning ported into Case Lab; 27 verify/labday reds, all inherited.
+
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
   - `106d1f754 feat(design): schematic instrument — ANSI symbols, orthogonal nets, one toolbar, property-grid inspector`
