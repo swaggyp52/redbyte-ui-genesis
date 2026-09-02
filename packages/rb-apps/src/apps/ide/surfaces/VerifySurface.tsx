@@ -1539,7 +1539,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const appliedRunKeyRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (!lastRun) return;
+    if (!lastRun) {
+      // No run yet: remember that, so the first completed run opens the Waveform.
+      if (appliedRunKeyRef.current === undefined) appliedRunKeyRef.current = null;
+      return;
+    }
     setRunState('complete');
     if (appliedRunKeyRef.current === undefined) {
       appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;

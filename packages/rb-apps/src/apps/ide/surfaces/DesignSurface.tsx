@@ -6709,30 +6709,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
 
             <div className="rb-lib-sections" onKeyDown={handleLibraryRailKeyDown}>
-              {commonPaletteItems.length > 0 ? (
-                <section
-                  className="rb-lib-section"
-                  data-testid="ide-design-palette-section-common"
-                  data-collapsed={librarySectionOpen('common') ? 'false' : 'true'}
-                >
-                  <header className="rb-lib-section-header">
-                    <div className="rb-lib-section-title">
-                      <h4>Common</h4>
-                      <span className="rb-lib-count">{commonPaletteItems.length}</span>
-                      {renderLibrarySectionToggle('common', 'Common')}
-                    </div>
-                  </header>
-                  {librarySectionOpen('common') ? (
-                    <div className="rb-lib-list">
-                      {commonPaletteItems.map((item) =>
-                        renderNodePaletteCard(item, {
-                          testId: `ide-design-common-${item.type.toLowerCase()}`,
-                        })
-                      )}
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
+              {/* One list: every primitive appears once under its category. */}
               {/* Board Resources — first: primary destination for board-aware work */}
 
               {/* Inputs & Outputs — second: generic pins for abstract designs */}
