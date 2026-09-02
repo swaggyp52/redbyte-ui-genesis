@@ -196,18 +196,9 @@
   background: var(--rb-bg);
 }
 
-:root[data-redbyte-mode='ide'] .ide-root .ide-workbench-shell .ide-workbench-workspace {
-  background: var(--rb-canvas);
-}
-
 :root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-left-rail {
   background: var(--rb-shell);
   border-color: var(--rb-border-subtle);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='design'] .ide-workbench-workspace,
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='hardware'] .ide-workbench-workspace {
-  background: var(--rb-canvas);
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-panel,
@@ -890,30 +881,6 @@
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right {
-  scrollbar-color: var(--rb-border-strong) var(--rb-surface-1);
-  scrollbar-gutter: stable;
-  scrollbar-width: auto;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right::-webkit-scrollbar {
-  width: 10px;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right::-webkit-scrollbar-track {
-  background: var(--rb-surface-1);
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right::-webkit-scrollbar-thumb {
-  border: 2px solid var(--rb-surface-1);
-  border-radius: 999px;
-  background: var(--rb-border-strong);
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-inline-board {
   padding-bottom: 36px;
 }
@@ -1338,28 +1305,6 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
   background: var(--rb-app-bg);
   color: var(--rb-text-primary);
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(.ide-workbench-main, .ide-workbench-dock, .ide-workbench-console, .ide-design-bottom-workspace) {
-  background: var(--rb-surface);
-  color: var(--rb-text-primary);
-}
-
-/* Dock tabs are workspace navigation, so they remain reachable and readable
-   at the normal 240/300px support-rail widths. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left .ide-design-dock-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  overflow: visible;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-design-dock-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%;
-  overflow: visible;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {

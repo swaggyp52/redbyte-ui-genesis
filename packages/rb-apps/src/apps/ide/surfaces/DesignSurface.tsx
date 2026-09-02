@@ -142,6 +142,8 @@ import {
   type IdeCommandId,
 } from '../ideCommandRegistry';
 import { workspacePreferencesStore } from '../workspacePreferences';
+import { useEngineeringSelection } from '../engineeringSelection';
+import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
 import {
   TOP_MODULE_ID,
   analyzeModuleSelection,
@@ -973,6 +975,46 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [rawSelection]
   );
   const editorCircuit = useMemo(() => normalizeCircuitForCanvas(circuit), [circuit]);
+
+  // ── Engineering-object continuity ──────────────────────────────────────
+  // The schematic publishes its single-node selection to the workbench and
+  // follows node/signal selections made elsewhere (Cases, Board, Package).
+  const selectNodeInStore = useLogicViewStore((state) => state.selectNode);
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  const clearGlobalSelection = useEngineeringSelection((state) => state.clear);
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  const schematicModuleId = hierarchy?.activeModuleId ?? TOP_MODULE_ID;
+  useEffect(() => {
+    if (selection.nodes.size === 1) {
+      const nodeId = Array.from(selection.nodes)[0];
+      const relation = schematicModuleId === TOP_MODULE_ID ? relationshipIndex.resolveNode(nodeId) : null;
+      const next = relation
+        ? { kind: 'signal' as const, fieldId: relation.fieldId, runSignal: relation.run?.resolution.runSignal ?? null, nodeId }
+        : { kind: 'node' as const, moduleId: schematicModuleId, nodeId };
+      if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+      publishSelection(next, 'schematic');
+      return;
+    }
+    if (selection.nodes.size === 0 && globalOrigin === 'schematic' && globalSelected && (globalSelected.kind === 'node' || globalSelected.kind === 'signal')) {
+      clearGlobalSelection();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection, schematicModuleId]);
+  useEffect(() => {
+    if (!globalSelected || globalOrigin === 'schematic') return;
+    const nodeId =
+      globalSelected.kind === 'node' && globalSelected.moduleId === schematicModuleId
+        ? globalSelected.nodeId
+        : globalSelected.kind === 'signal' && schematicModuleId === TOP_MODULE_ID
+          ? globalSelected.nodeId ?? relationshipIndex.resolveField(globalSelected.fieldId)?.nodeId ?? null
+          : null;
+    if (!nodeId || !editorCircuit.nodes.some((node) => node.id === nodeId)) return;
+    if (selection.nodes.size === 1 && selection.nodes.has(nodeId)) return;
+    selectNodeInStore(nodeId, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin, schematicModuleId]);
 
   // ── Live HDL generation (VHDL + Verilog from current circuit) ────────────
   const liveHdlResult = useMemo(() => {

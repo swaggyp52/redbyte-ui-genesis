@@ -34,6 +34,7 @@ import { WorkbenchStatusBar } from './ide/components/WorkbenchStatusBar';
 import { WorkbenchDocumentTabStrip } from './ide/components/WorkbenchDocumentTabStrip';
 import { useWorkbenchDocumentHost } from './ide/useWorkbenchDocumentHost';
 import { describeEngineeringObject, useEngineeringSelection } from './ide/engineeringSelection';
+import { describeSignalRelationPath, useEngineeringRelationshipIndex } from './ide/engineeringRelationships';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
@@ -2499,6 +2500,45 @@ export const IdeApp: React.FC = () => {
     boardLabel: fpgaConfig.board,
   });
   const selectedEngineeringObject = useEngineeringSelection((state) => state.selected);
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  const selectionPath = useMemo(() => {
+    if (!selectedEngineeringObject) return null;
+    if (selectedEngineeringObject.kind === 'signal') {
+      const relation = relationshipIndex.resolveField(selectedEngineeringObject.fieldId);
+      if (relation) return describeSignalRelationPath(relation);
+    }
+    if (selectedEngineeringObject.kind === 'node') {
+      const relation = relationshipIndex.resolveNode(selectedEngineeringObject.nodeId);
+      if (relation) return describeSignalRelationPath(relation);
+      const node = circuit.nodes.find((entry) => entry.id === selectedEngineeringObject.nodeId);
+      const label = (node as { label?: string } | undefined)?.label?.trim();
+      const moduleTrail = selectedEngineeringObject.moduleId === 'top' ? '' : `${selectedEngineeringObject.moduleId} / `;
+      if (label) return `${moduleTrail}${label}${node?.type ? ` · ${node.type}` : ''}`;
+    }
+    return describeEngineeringObject(selectedEngineeringObject);
+  }, [circuit.nodes, relationshipIndex, selectedEngineeringObject]);
+  const selectionKindLabel = useMemo(() => {
+    switch (selectedEngineeringObject?.kind) {
+      case 'signal': return 'signal';
+      case 'node': return 'node';
+      case 'module': return 'module';
+      case 'case-tick': return 'case';
+      case 'signal-edge': return 'edge';
+      case 'board-resource': return 'pin';
+      case 'constraint-set': return 'constraints';
+      case 'source-range': return 'source';
+      case 'artifact': return 'artifact';
+      case 'scenario': return 'scenario';
+      case 'run': return 'run';
+      case 'problem': return 'problem';
+      default: return null;
+    }
+  }, [selectedEngineeringObject?.kind]);
+  useEffect(() => {
+    if (selectedEngineeringObject?.kind !== 'signal') return;
+    const focus = selectedEngineeringObject.runSignal ?? selectedEngineeringObject.fieldId;
+    setVerifySelectedSignal((current) => (current === focus ? current : focus));
+  }, [selectedEngineeringObject]);
   // Project workspace read-models (derived; the runtime store stays the owner).
   const projectScenarioSummaries = useMemo(
     () =>
@@ -2765,6 +2805,10 @@ export const IdeApp: React.FC = () => {
         onRenameProject={handleRenameProject}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         onSave={handleSaveProject}
+        selectionPath={selectionPath}
+        selectionKind={selectionKindLabel}
+        runState={hasCircuit && runtimeSim.running ? { label: 'Running', tone: 'warn' } : null}
+        targetLabel={hasCircuit ? `${fpgaConfig.board} · ${fpgaConfig.part}` : null}
       />
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
@@ -3144,10 +3188,7 @@ export const IdeApp: React.FC = () => {
       <WorkbenchStatusBar
         problemsCount={designCompilerStatus.errorCount + designCompilerStatus.warningCount}
         onShowProblems={() => workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true })}
-        selectionLabel={selectedEngineeringObject ? describeEngineeringObject(selectedEngineeringObject) : null}
         runState={statusRunState}
-        boardTarget={hasCircuit ? fpgaConfig.board : undefined}
-        fpgaPart={hasCircuit ? fpgaConfig.part : undefined}
       />
 
       <input

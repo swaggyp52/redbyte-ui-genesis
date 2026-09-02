@@ -104,7 +104,7 @@ describe('workflow stage authority', () => {
         context={{ hasCircuit: false }}
       />
     );
-    fireEvent.click(view.getByTestId('ide-menu-simulate'));
+    fireEvent.click(view.getByTestId('ide-menu-run'));
     const item = view.getByTestId(`ide-menu-item-${IDE_COMMAND_IDS.runSimulation}`);
     expect(item).toHaveAttribute('aria-disabled', 'true');
     expect(item.getAttribute('title')).toContain('Open a project with a design first.');

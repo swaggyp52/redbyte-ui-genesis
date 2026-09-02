@@ -22,37 +22,11 @@
   gap: 0;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  min-width: 0;
-  max-width: none;
-  overflow: hidden auto;
-  /* Whole-dock opacity animation made text needlessly dim while focused and
-     could leave stale compositor tiles when browser proof disabled animations.
-     Keep transitions on the controls themselves, not the workbench region. */
-  opacity: 1 !important;
-  transition: none !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
-  grid-column: 1;
-  grid-row: 1;
-  width: auto;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
   overflow: hidden;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  grid-column: 3;
-  grid-row: 1;
-  width: auto;
-  position: relative;
-  z-index: 4;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette,
@@ -971,23 +945,13 @@
     overflow-x: hidden !important;
     overflow-y: auto !important;
   }
-
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
+  
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
     grid-column: 2;
     grid-row: 1;
   }
-
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-    grid-column: 2;
-    grid-row: 2;
-    border-top: 1px solid rgba(148, 163, 184, 0.2);
-    border-left: 0;
-  }
+  
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
@@ -1222,10 +1186,6 @@
   box-shadow: inset 0 0 0 1px rgba(77, 208, 225, 0.04);
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  border-left-color: rgba(77, 208, 225, 0.18);
-  background: #10161f;
-}
 /* Trace-backed circuit replay transport. */
 .ide-root .ide-design-replay-transport {
   display: grid;
@@ -1448,23 +1408,6 @@
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] {
   background: var(--rb-app-bg);
-}
-
-:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(.ide-workbench-dock-left, .ide-workbench-dock-right, .ide-design-palette, .ide-design-input-panel) {
-  border-color: var(--rb-border);
-  background: var(--rb-surface);
-  color: var(--rb-text-primary);
-}
-
-:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(.ide-workbench-dock-left, .ide-workbench-dock-right) {
-  background: var(--rb-surface) !important;
-}
-
-:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(.ide-workbench-dock-left, .ide-workbench-dock-right) {
-  box-shadow: none;
 }
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
@@ -1879,21 +1822,6 @@
   min-height: 36px;
   white-space: normal;
   line-height: 1.25;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-empty-state {
-  border: 1px solid var(--rb-border);
-  background: var(--rb-surface-2);
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-empty-title {
-  color: var(--rb-text-primary);
-  font-size: 14px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-empty-body {
-  color: var(--rb-text-secondary);
-  font-size: 13px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design']

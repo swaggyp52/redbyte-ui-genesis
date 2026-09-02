@@ -29,6 +29,14 @@ export interface WorkbenchCommandBarProps<TContext> {
   onRenameProject?: (nextName: string) => void;
   onOpenCommandPalette?: () => void;
   onSave?: () => void;
+  /** Compact path of the selected engineering object; null shows the command/search entry. */
+  selectionPath?: string | null;
+  /** Kind label shown beside the path (signal, node, case…). */
+  selectionKind?: string | null;
+  /** Current run/operation state where relevant. */
+  runState?: { label: string; tone: 'ok' | 'warn' | 'error' | 'idle' } | null;
+  /** Target board and part, e.g. "Basys3 · xc7a35tcpg236-1". */
+  targetLabel?: string | null;
 }
 
 /** Default menubar. Every entry is a real registry command; nothing here is inert. */
@@ -45,13 +53,18 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
   {
     id: 'edit',
     label: 'Edit',
-    sections: [[IDE_COMMAND_IDS.undoDesignEdit, IDE_COMMAND_IDS.redoDesignEdit]],
+    sections: [
+      [IDE_COMMAND_IDS.undoDesignEdit, IDE_COMMAND_IDS.redoDesignEdit],
+      [IDE_COMMAND_IDS.selectDesignTool, IDE_COMMAND_IDS.selectWireTool],
+      [IDE_COMMAND_IDS.arrangeDesign],
+    ],
   },
   {
     id: 'view',
     label: 'View',
     sections: [
       [IDE_COMMAND_IDS.showDesignCanvas, IDE_COMMAND_IDS.showDesignCode, IDE_COMMAND_IDS.showDesignSplit],
+      [IDE_COMMAND_IDS.fitDesignCanvas, IDE_COMMAND_IDS.zoomInDesignCanvas, IDE_COMMAND_IDS.zoomOutDesignCanvas],
       [
         IDE_COMMAND_IDS.toggleWorkspacePanel,
         'workspace.panel.toggle-right' as IdeCommandId,
@@ -62,27 +75,14 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
     ],
   },
   {
-    id: 'design',
-    label: 'Design',
-    sections: [
-      [IDE_COMMAND_IDS.selectDesignTool, IDE_COMMAND_IDS.selectWireTool],
-      [IDE_COMMAND_IDS.arrangeDesign, IDE_COMMAND_IDS.fitDesignCanvas, IDE_COMMAND_IDS.zoomInDesignCanvas, IDE_COMMAND_IDS.zoomOutDesignCanvas],
-    ],
+    id: 'run',
+    label: 'Run',
+    sections: [[IDE_COMMAND_IDS.runSimulation, IDE_COMMAND_IDS.openReplay], [IDE_COMMAND_IDS.buildExportPackage]],
   },
   {
-    id: 'simulate',
-    label: 'Simulate',
-    sections: [[IDE_COMMAND_IDS.runSimulation, IDE_COMMAND_IDS.openReplay]],
-  },
-  {
-    id: 'board',
-    label: 'Board',
-    sections: [[IDE_COMMAND_IDS.assignBoardResource]],
-  },
-  {
-    id: 'package',
-    label: 'Package',
-    sections: [[IDE_COMMAND_IDS.buildExportPackage]],
+    id: 'tools',
+    label: 'Tools',
+    sections: [[IDE_COMMAND_IDS.assignBoardResource], [IDE_COMMAND_IDS.openCommandPalette, IDE_COMMAND_IDS.openImportRecover]],
   },
   {
     id: 'help',
@@ -110,8 +110,9 @@ const SAVE_LABEL: Record<WorkbenchSaveState, string> = {
 };
 
 /**
- * Application command bar: identity, project name, menubar of real commands,
- * save state, board target, command palette, Save. One row, 32px. Menus are
+ * Application frame bar: identity, project name, a functional menubar of real
+ * commands, the selected engineering object (or the command/search entry),
+ * run state, target, save state, Save. One row, 32px. Menus are
  * derived from the command registry so the bar can never expose a command the
  * palette does not also expose (one command system, several entry points).
  */
@@ -128,6 +129,10 @@ export function WorkbenchCommandBar<TContext>({
   onRenameProject,
   onOpenCommandPalette,
   onSave,
+  selectionPath = null,
+  selectionKind = null,
+  runState = null,
+  targetLabel = null,
 }: WorkbenchCommandBarProps<TContext>): React.ReactElement {
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [activeItemIndex, setActiveItemIndex] = React.useState(0);
@@ -391,22 +396,56 @@ export function WorkbenchCommandBar<TContext>({
         })}
       </div>
 
-      <span className="wb-cmdbar-spacer" />
+      <div className="wb-cmdbar-center">
+        {selectionPath ? (
+          <button
+            type="button"
+            className="wb-cmdbar-object"
+            onClick={onOpenCommandPalette}
+            data-testid="ide-topbar-selection"
+            title={`Selected: ${selectionPath}. Ctrl K lists related commands.`}
+          >
+            {selectionKind ? <span className="wb-cmdbar-object-kind">{selectionKind}</span> : null}
+            <code>{selectionPath}</code>
+          </button>
+        ) : onOpenCommandPalette ? (
+          <button
+            type="button"
+            className="wb-cmdbar-search"
+            onClick={onOpenCommandPalette}
+            data-testid="ide-topbar-command-palette"
+            aria-label="Open command palette"
+          >
+            Search commands, signals, files… <kbd>Ctrl K</kbd>
+          </button>
+        ) : null}
+      </div>
 
       <div className="wb-cmdbar-right">
+        {runState ? (
+          <span className="wb-cmdbar-fact" data-testid="ide-topbar-run" data-tone={runState.tone === 'idle' ? undefined : runState.tone}>
+            {runState.label}
+          </span>
+        ) : null}
+        {targetLabel ? (
+          <span className="wb-cmdbar-fact" data-testid="ide-topbar-target" title="Target board and part">
+            <code>{targetLabel}</code>
+          </span>
+        ) : null}
         <span className="wb-cmdbar-fact" data-testid="ide-save-state" data-state={saveState} title={saveTitle} aria-label={saveState}>
           <span className="wb-save-dot" data-state={saveState} aria-hidden="true" />
           <span className="wb-cmdbar-fact-label" aria-live="polite">{SAVE_LABEL[saveState]}</span>
         </span>
-        {onOpenCommandPalette ? (
+        {selectionPath && onOpenCommandPalette ? (
           <button
             type="button"
             className="wb-btn"
             onClick={onOpenCommandPalette}
             data-testid="ide-topbar-command-palette"
             aria-label="Open command palette"
+            title="Command palette (Ctrl K)"
           >
-            Commands <kbd>Ctrl K</kbd>
+            <kbd>Ctrl K</kbd>
           </button>
         ) : null}
         {onSave ? (

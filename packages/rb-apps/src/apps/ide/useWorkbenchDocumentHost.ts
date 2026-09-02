@@ -279,7 +279,7 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
         }
         case 'board-io': {
           const set = constraintSets.sets.find((entry) => entry.id === doc.constraintSetId);
-          return set ? `${set.name} — I/O Planning` : `${boardLabel} — I/O Planning`;
+          return set ? `${set.name} — ${boardLabel} I/O` : `${boardLabel} I/O`;
         }
         case 'package-artifact':
           return 'Package';

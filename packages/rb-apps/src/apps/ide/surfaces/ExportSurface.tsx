@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEngineeringSelection } from '../engineeringSelection';
 import type { IdeExampleDefinition } from '../examplesCatalog';
 import type { RBProject } from '../../../export/projectFormat';
 import { buildDeterministicZip, sha256Hex } from '../../../export/deterministicZip';
@@ -356,6 +357,25 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return topVhd?.path ?? readme?.path ?? baseViewModel.artifacts[0]?.path ?? '';
   });
   const [openFixPathId, setOpenFixPathId] = useState<string | null>(null);
+
+  // ── Engineering-object continuity ──────────────────────────────────────
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  useEffect(() => {
+    if (!selectedArtifactPath) return;
+    const next = { kind: 'artifact' as const, artifactId: selectedArtifactPath };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, 'package-artifact');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedArtifactPath]);
+  useEffect(() => {
+    if (!globalSelected || globalOrigin === 'package-artifact' || globalSelected.kind !== 'artifact') return;
+    if (globalSelected.artifactId !== selectedArtifactPath && baseViewModel.artifacts.some((artifact) => artifact.path === globalSelected.artifactId)) {
+      setSelectedArtifactPath(globalSelected.artifactId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin]);
   // Phase 32: pipeline rebuild state
   const [rebuildSteps, setRebuildSteps] = useState<RebuildStep[]>(() => makeSteps());
   const [isRebuilding, setIsRebuilding] = useState(false);

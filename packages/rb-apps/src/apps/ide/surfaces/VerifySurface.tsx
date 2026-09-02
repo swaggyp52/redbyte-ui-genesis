@@ -129,6 +129,7 @@ import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { ManualBench } from './verify/ManualBench';
 import { CaseLab } from './verify/CaseLab';
 import { buildFieldSignalResolver, normalizeSignalId } from '../signalIdentity';
+import { useEngineeringSelection } from '../engineeringSelection';
 import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
 import { SimulationProviderBar } from '../components/SimulationProviderBar';
 import type { ProviderWaveform } from '../simulationProvider';
@@ -4687,6 +4688,44 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }),
     [caseLabReportRows, lastRun?.evidence, outputFields]
   );
+
+  // ── Engineering-object continuity ──────────────────────────────────────
+  // Case selection and signal focus publish to the workbench; selections made
+  // elsewhere (schematic, board) land on the matching case / signal here.
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  const continuityOrigin = studioMode === 'replay' ? 'waveform' : isSequentialRun ? 'timing' : 'cases';
+  useEffect(() => {
+    if (selectedTick == null || !activeScenarioId) return;
+    const next = { kind: 'case-tick' as const, scenarioId: activeScenarioId, tick: selectedTick };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, continuityOrigin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTick, activeScenarioId]);
+  useEffect(() => {
+    if (!selectedSignal) return;
+    const owner = Array.from(caseLabSignalResolver.byField.values()).find(
+      (entry) => entry.runSignal != null && normalizeSignalKey(entry.runSignal) === normalizeSignalKey(selectedSignal)
+    );
+    const fieldId = owner?.fieldId ?? inputFields.concat(outputFields).find((field) => normalizeSignalKey(field.id) === normalizeSignalKey(selectedSignal))?.id ?? null;
+    if (!fieldId) return;
+    const next = { kind: 'signal' as const, fieldId, runSignal: owner?.runSignal ?? null, nodeId: owner?.nodeId };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, continuityOrigin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSignal]);
+  useEffect(() => {
+    if (!globalSelected || globalOrigin === continuityOrigin) return;
+    if (globalSelected.kind === 'case-tick' && globalSelected.scenarioId === activeScenarioId && globalSelected.tick !== selectedTick) {
+      setSelectedTick(globalSelected.tick);
+    } else if (globalSelected.kind === 'signal') {
+      const resolved = caseLabSignalResolver.resolve(globalSelected.fieldId);
+      const lane = resolved.runSignal ?? globalSelected.runSignal ?? globalSelected.fieldId;
+      if (normalizeSignalKey(lane) !== normalizeSignalKey(selectedSignal ?? '')) setSelectedSignal(lane);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin]);
   // Case Lab observed values + per-case verdict, keyed by the resolved identity.
   const caseLabData = useMemo(() => {
     const observed: Record<number, Record<string, string>> = {};

@@ -929,12 +929,6 @@
   max-width: 32ch;
 }
 
-/* Inspector container styling — calmer, clearer separation from canvas */
-.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  background: #0a1624;
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
-}
-
 /* ───────── §10. Verify surface — new structural primitives ────────── */
 
 /* VerifyContextHeader — slim identity + state row at top of Verify */
@@ -2217,13 +2211,6 @@
 .ide-root .ide-projectx-example-card:hover {
   border-color: rgba(46, 196, 182, 0.34);
   box-shadow: var(--rb-lab-depth-2);
-}
-
-.ide-root [data-ide-mode-marker='design'] .ide-workbench-workspace,
-.ide-root [data-ide-mode-marker='hardware'] .ide-workbench-workspace {
-  background:
-    linear-gradient(180deg, rgba(17, 31, 49, 0.50), rgba(7, 16, 27, 0.78)),
-    var(--rb-lab-bg-workbench);
 }
 
 .ide-root [data-ide-mode-marker='design'] .ide-canvas,
@@ -4256,21 +4243,6 @@
   inline-size: 100% !important;
   max-width: none !important;
   margin-inline: 0 !important;
-}
-
-.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-left {
-  overflow: hidden !important;
-}
-
-.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-left > .ide-design-palette {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
-
-.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-left > .ide-design-input-panel {
-  flex: 0 0 auto !important;
-  margin-top: 0 !important;
 }
 
 .ide-root [data-ide-mode-marker='design'] .ide-design-palette {

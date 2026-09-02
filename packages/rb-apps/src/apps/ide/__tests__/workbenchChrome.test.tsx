@@ -16,10 +16,7 @@ describe('WorkbenchStatusBar', () => {
       <WorkbenchStatusBar
         problemsCount={2}
         onShowProblems={onShowProblems}
-        selectionLabel="full_adder / xor2_node"
         runState={{ label: 'Simulation stale', tone: 'warn' }}
-        boardTarget="Basys3"
-        fpgaPart="xc7a35tcpg236-1"
       />
     );
     const text = view.getByTestId('ide-status-bar').textContent ?? '';
@@ -28,20 +25,19 @@ describe('WorkbenchStatusBar', () => {
     // Project identity and save state are command-bar facts, never repeated here.
     expect(text).not.toContain('Full Adder');
     expect(text).not.toContain('Saved');
-    expect(view.getByTestId('ide-status-selection').textContent).toBe('full_adder / xor2_node');
     expect(view.getByTestId('ide-status-run').textContent).toBe('Simulation stale');
-    expect(view.getByTestId('ide-status-target').textContent).toBe('Basys3 · xc7a35tcpg236-1');
+    // The selected object and the target belong to the application frame bar, never the status line.
+    expect(view.queryByTestId('ide-status-selection')).toBeNull();
+    expect(view.queryByTestId('ide-status-target')).toBeNull();
 
     fireEvent.click(view.getByTestId('ide-status-problems'));
     expect(onShowProblems).toHaveBeenCalledTimes(1);
     expect(view.getByTestId('ide-status-problems').textContent).toBe('2 problems');
   });
 
-  it('omits selection, run state, and target when they do not exist', () => {
+  it('omits run state when it does not exist', () => {
     const view = render(<WorkbenchStatusBar problemsCount={0} />);
-    expect(view.queryByTestId('ide-status-selection')).toBeNull();
     expect(view.queryByTestId('ide-status-run')).toBeNull();
-    expect(view.queryByTestId('ide-status-target')).toBeNull();
     expect(view.getByTestId('ide-status-problems').textContent).toBe('No problems');
   });
 });

@@ -1,4 +1,6 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
+import { useEngineeringSelection } from '../engineeringSelection';
+import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -453,6 +455,35 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
   const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(() => mappingRows[0]?.id ?? null);
+
+  // ── Engineering-object continuity ──────────────────────────────────────
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  useEffect(() => {
+    if (!selectedMappingRowId) return;
+    const row = mappingRows.find((entry) => entry.id === selectedMappingRowId);
+    if (!row) return;
+    const relation = relationshipIndex.resolveField(row.id);
+    const next = { kind: 'signal' as const, fieldId: row.id, runSignal: relation?.run?.resolution.runSignal ?? null, nodeId: row.nodeId ?? relation?.nodeId };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, 'board-io');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMappingRowId]);
+  useEffect(() => {
+    if (!globalSelected || globalOrigin === 'board-io') return;
+    const fieldId =
+      globalSelected.kind === 'signal'
+        ? globalSelected.fieldId
+        : globalSelected.kind === 'node'
+          ? relationshipIndex.resolveNode(globalSelected.nodeId)?.fieldId ?? null
+          : null;
+    if (!fieldId) return;
+    const row = mappingRows.find((entry) => entry.id === fieldId);
+    if (row && row.id !== selectedMappingRowId) setSelectedMappingRowId(row.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin]);
 
   // Slice N4 — chrome rebuild: Esc returns the user to Map Pins from any
   // sub-mode (bringup / proof / live). Without this, students who entered a

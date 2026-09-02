@@ -83,6 +83,21 @@
   --wb-plane-border: rgba(150, 170, 196, 0.22);
 
   --wb-overlay-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  /* layered frame — RedByte industrial light: graphite frame, cool tool windows,
+     calm document frame, off-white engineering paper */
+  --wb-frame-bg: #262c36;
+  --wb-frame-bg-2: #323a47;
+  --wb-frame-border: #3d4654;
+  --wb-frame-text: #e8ecf2;
+  --wb-frame-text-2: #b3bcc9;
+  --wb-frame-text-3: #808b9a;
+  --wb-rail-bg: #2c333f;
+  --wb-tool-bg: #eef1f5;
+  --wb-tool-header-bg: #e5e9ef;
+  --wb-doc-bg: #e9ecf1;
+  --wb-paper: #fbfbfa;
+  --wb-surface: #fbfbfa;
+  --wb-surface-2: #f4f6f8;
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='dark'],
@@ -94,6 +109,17 @@
   --wb-ext: #a58cf0;
   --wb-ext-bg: #2a2440;
   --wb-overlay-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --wb-frame-bg: #12161c;
+  --wb-frame-bg-2: #1c222b;
+  --wb-frame-border: #2a323d;
+  --wb-frame-text: #e6eaf0;
+  --wb-frame-text-2: #a9b2bf;
+  --wb-frame-text-3: #74808f;
+  --wb-rail-bg: #171c23;
+  --wb-tool-bg: #1a1f27;
+  --wb-tool-header-bg: #1f252e;
+  --wb-doc-bg: #161a20;
+  --wb-paper: #1d222a;
 }
 
 /* ── Application frame ─────────────────────────────────────────────────────── */
@@ -149,8 +175,9 @@
   min-width: 0;
   height: var(--wb-cmdbar-h);
   padding: 0 var(--wb-space-2);
-  border-bottom: 1px solid var(--wb-border);
-  background: var(--wb-surface);
+  border-bottom: 1px solid var(--wb-frame-border);
+  color: var(--wb-frame-text);
+  background: var(--wb-frame-bg);
 }
 .ide-root .wb-cmdbar-brand {
   display: inline-flex;
@@ -158,14 +185,14 @@
   gap: 6px;
   min-width: 0;
   padding: 0 4px 0 2px;
-  color: var(--wb-text);
+  color: var(--wb-frame-text);
   font-size: var(--wb-text-md);
   font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
 .ide-root .wb-cmdbar-brand svg { width: 18px; height: 18px; color: var(--wb-brand); }
-.ide-root .wb-cmdbar-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--wb-border-strong); flex: none; }
+.ide-root .wb-cmdbar-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--wb-frame-border); flex: none; }
 .ide-root .wb-cmdbar-project {
   display: inline-flex;
   min-width: 0;
@@ -175,12 +202,12 @@
   padding: 0 6px;
   border: 1px solid transparent;
   border-radius: var(--wb-radius);
-  color: var(--wb-text);
+  color: var(--wb-frame-text);
   background: transparent;
   font: 600 var(--wb-text-md) / 1 var(--wb-font-ui);
   white-space: nowrap;
 }
-.ide-root .wb-cmdbar-project:hover { border-color: var(--wb-border-strong); background: var(--wb-hover-bg); }
+.ide-root .wb-cmdbar-project:hover { border-color: var(--wb-frame-border); background: var(--wb-frame-bg-2); }
 .ide-root .wb-cmdbar-project-text { overflow: hidden; text-overflow: ellipsis; }
 .ide-root .wb-cmdbar-project-input {
   width: 200px;
@@ -188,8 +215,8 @@
   padding: 0 6px;
   border: 1px solid var(--wb-accent);
   border-radius: var(--wb-radius);
-  color: var(--wb-text);
-  background: var(--wb-surface);
+  color: var(--wb-frame-text);
+  background: var(--wb-frame-bg-2);
   font: 600 var(--wb-text-md) / 1 var(--wb-font-ui);
 }
 .ide-root .wb-cmdbar-spacer { flex: 1 1 auto; min-width: var(--wb-space-2); }
@@ -198,11 +225,40 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--wb-text-2);
+  color: var(--wb-frame-text-2);
   font-size: var(--wb-text-sm);
   white-space: nowrap;
 }
-.ide-root .wb-cmdbar-fact code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .wb-cmdbar-fact code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-frame-text); }
+.ide-root .wb-cmdbar-fact[data-tone='ok'] { color: var(--wb-ok); }
+.ide-root .wb-cmdbar-fact[data-tone='warn'] { color: #f2b544; }
+.ide-root .wb-cmdbar-fact[data-tone='error'] { color: #ff7b7b; }
+.ide-root .wb-cmdbar-center { display: flex; flex: 1 1 auto; justify-content: center; min-width: 0; padding: 0 var(--wb-space-2); }
+.ide-root .wb-cmdbar-object,
+.ide-root .wb-cmdbar-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(560px, 100%);
+  height: var(--wb-control-h);
+  padding: 0 8px;
+  border: 1px solid var(--wb-frame-border);
+  border-radius: var(--wb-radius);
+  color: var(--wb-frame-text-2);
+  background: var(--wb-frame-bg-2);
+  font: var(--wb-text-sm) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-cmdbar-object:hover,
+.ide-root .wb-cmdbar-search:hover { color: var(--wb-frame-text); border-color: var(--wb-frame-text-3); }
+.ide-root .wb-cmdbar-object code { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-frame-text); }
+.ide-root .wb-cmdbar-object-kind { flex: none; color: var(--wb-frame-text-3); font-size: var(--wb-text-xs); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .wb-cmdbar-search kbd,
+.ide-root .wb-cmdbar-right kbd { padding: 1px 4px; border: 1px solid var(--wb-frame-border); border-radius: 2px; color: var(--wb-frame-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .wb-cmdbar-right > .wb-btn { border-color: var(--wb-frame-border); color: var(--wb-frame-text-2); background: transparent; }
+.ide-root .wb-cmdbar-right > .wb-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-cmdbar-right > .wb-btn--primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
 .ide-root .wb-save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-text-3); flex: none; }
 .ide-root .wb-save-dot[data-state='saved'] { background: var(--wb-ok); }
 .ide-root .wb-save-dot[data-state='autosaving'],
@@ -221,13 +277,13 @@
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: var(--wb-radius);
-  color: var(--wb-text-2);
+  color: var(--wb-frame-text-2);
   background: transparent;
   font: 500 var(--wb-text-md) / 1 var(--wb-font-ui);
   white-space: nowrap;
 }
-.ide-root .wb-menubar-btn:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
-.ide-root .wb-menubar-btn[aria-expanded='true'] { color: var(--wb-text); background: var(--wb-accent-bg); border-color: transparent; }
+.ide-root .wb-menubar-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-menubar-btn[aria-expanded='true'] { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); border-color: var(--wb-frame-border); }
 .ide-root .wb-menu {
   position: absolute;
   z-index: 200;
@@ -322,8 +378,8 @@
   flex-direction: column;
   min-height: 0;
   padding: 4px 0;
-  border-right: 1px solid var(--wb-border);
-  background: var(--wb-surface);
+  border-right: 1px solid var(--wb-frame-border);
+  background: var(--wb-rail-bg);
 }
 .ide-root .wb-rail-group { display: flex; flex-direction: column; gap: 2px; }
 .ide-root .wb-rail-spacer { flex: 1 1 auto; }
@@ -347,8 +403,8 @@
   cursor: pointer;
 }
 .ide-root .wb-rail-btn svg { width: 18px; height: 18px; }
-.ide-root .wb-rail-btn:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
-.ide-root .wb-rail-btn[data-state='current'] { color: var(--wb-text); background: var(--wb-accent-bg); border-left-color: var(--wb-accent); }
+.ide-root .wb-rail-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-rail-btn[data-state='current'] { color: #ffffff; background: rgba(255, 255, 255, 0.08); border-left-color: var(--wb-accent); }
 .ide-root .wb-rail-btn[data-state='current'] svg { color: var(--wb-accent); }
 .ide-root .wb-rail-btn[data-state='blocked'] .wb-rail-dot {
   position: absolute;
@@ -384,8 +440,8 @@
   min-width: 0;
   height: var(--wb-tabstrip-h);
   padding: 0 var(--wb-space-1) 0 0;
-  border-bottom: 1px solid var(--wb-border);
-  background: var(--wb-surface);
+  border-bottom: 1px solid var(--wb-border-strong);
+  background: var(--wb-doc-bg);
 }
 .ide-root .wb-doctabs-history { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; border-right: 1px solid var(--wb-border); }
 .ide-root .wb-doctabs-history .wb-btn { font-size: 14px; color: var(--wb-text-2); }
@@ -494,9 +550,9 @@
   height: var(--wb-status-h);
   padding: 0 var(--wb-space-2);
   overflow: hidden;
-  border-top: 1px solid var(--wb-border);
+  border-top: 1px solid var(--wb-border-strong);
   color: var(--wb-text-2);
-  background: var(--wb-surface);
+  background: var(--wb-doc-bg);
   font-size: var(--wb-text-sm);
   line-height: 1;
 }
@@ -829,3 +885,22 @@
 @media (prefers-reduced-motion: reduce) {
   .ide-root .wb-doctab-close { transition: none; }
 }
+
+/* Layers ───────────────────────────────────────────────────
+   Tool windows (docks) sit on the cool neutral; documents sit on paper;
+   the document frame owns tabs and contextual toolbars. */
+.ide-root .ide-workbench-main > .ide-workbench-dock, .ide-root .ide-workbench-dock { background: var(--wb-tool-bg); }
+.ide-root .wb-toolwindow { background: var(--wb-tool-bg); }
+.ide-root .wb-toolwindow-header { background: var(--wb-tool-header-bg); }
+.ide-root .ide-workbench-dock .wb-toolbar { background: var(--wb-tool-header-bg); }
+.ide-root .ide-workbench-main > .ide-workbench-workspace, .ide-root .ide-workbench-workspace { background: var(--wb-paper); }
+.ide-root .ide-workbench-workspace > * > .wb-toolbar:first-child,
+.ide-root .ide-workbench-workspace .rb-design-header,
+.ide-root .ide-workbench-workspace .rb-design-toolbar,
+.ide-root .ide-workbench-workspace .rb-sim-toolbar,
+.ide-root .ide-workbench-workspace .rb-board-header,
+.ide-root .ide-workbench-workspace .rb-board-rail,
+.ide-root .ide-workbench-workspace .rb-pkg-toolbar { background: var(--wb-doc-bg); }
+.ide-root .wb-rail-btn { color: var(--wb-frame-text-2); }
+.ide-root .wb-rail-btn--utility { color: var(--wb-frame-text-3); }
+.ide-root .wb-rail-rule { background: var(--wb-frame-border); }
