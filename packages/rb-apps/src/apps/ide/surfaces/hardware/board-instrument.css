@@ -150,3 +150,10 @@
 .ide-root .rb-board-editor .ide-hardware-basys3-binding-chain pre,
 .ide-root .rb-board-editor .ide-hardware-basys3-binding-chain code { white-space: pre-wrap; overflow-wrap: anywhere; font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-board-editor .ide-hardware-basys3-binding-chain [class*="label"], .ide-root .rb-board-editor .ide-hardware-basys3-binding-chain small { color: var(--wb-text-3); }
+
+/* Constraint sets: the live mapping row is the implicit active set. */
+.ide-root .ide-constraint-sets-live { display: flex; align-items: baseline; gap: 8px; min-height: 26px; padding: 0 var(--wb-space-3); border-top: 1px solid var(--wb-border); border-bottom: 1px solid var(--wb-border); background: var(--wb-accent-bg); font-size: var(--wb-text-sm); }
+.ide-root .ide-constraint-sets-live-name { font-weight: 600; color: var(--wb-text); }
+.ide-root .ide-constraint-sets-live code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .ide-constraint-sets-live-note { margin-left: auto; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .ide-constraint-sets-note { margin: 0; padding: 4px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-xs); }

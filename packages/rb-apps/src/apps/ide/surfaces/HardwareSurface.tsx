@@ -1,6 +1,7 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { normalizeSignalId } from '../signalIdentity';
 import { RelatedMenu } from '../components/RelatedMenu';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
@@ -1628,7 +1629,26 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     return Array.from(map.entries()).sort(([a], [b]) => a - b);
   }, [expectedIoRows]);
 
-  // ── Bring-Up: compare current step expected vs actual LD values ─────
+  // ── Bring-Up: an expected-I/O row names a signal by field id, label or artifact
+  // port; the relationship index resolves it to a mapped LED (exact identity only).
+  const ledIndexForSignal = useCallback(
+    (signal: string): number | null => {
+      const key = normalizeSignalId(signal);
+      if (!key) return null;
+      const relation = relationshipIndex.signals.find((entry) =>
+        [entry.fieldId, entry.label, entry.board?.artifactPort ?? ''].some(
+          (candidate) => candidate.length > 0 && normalizeSignalId(candidate) === key
+        )
+      );
+      if (!relation) return null;
+      const byNode = ioBus.meta.ldNodeIds.findIndex((nodeId) => nodeId === relation.nodeId);
+      if (byNode >= 0) return byNode;
+      const alias = relation.board?.resource?.alias ?? '';
+      const match = /^LD(\d+)$/i.exec(alias);
+      return match ? Number(match[1]) : null;
+    },
+    [ioBus.meta.ldNodeIds, relationshipIndex]
+  );
   const mismatchedLd = useMemo<boolean[]>(() => {
     if (hwMode !== 'bringup' || bringupTickGroups.length === 0)
       return Array(16).fill(false);
@@ -1636,15 +1656,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (!currentGroup) return Array(16).fill(false);
     const [, signals] = currentGroup;
     return Array.from({ length: 16 }, (_, i) => {
-      const sig = signals.find(
-        (s) =>
-          s.signal.toLowerCase() === `ld${i}` ||
-          s.signal.toLowerCase() === `ld[${i}]`
-      );
+      const sig = signals.find((s) => ledIndexForSignal(s.signal) === i);
       if (!sig) return false;
       return sig.expected !== String(ioBus.state.ld[i]);
     });
-  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld]);
+  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld, ledIndexForSignal]);
 
   const bringupStepPass = useMemo(
     () => mismatchedLd.every((v) => !v),
@@ -1793,11 +1809,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const hardwareAssertions = useMemo<AssertionEntry[]>(() => {
     return expectedIoRows.map((row) => {
-      const ldMatch = row.signal.match(/ld\[?(\d+)\]?/i);
-      if (!ldMatch) {
+      const ldIdx = ledIndexForSignal(row.signal);
+      if (ldIdx == null) {
         return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
       }
-      const ldIdx = Number(ldMatch[1]);
       const nodeId = ioBus.meta.ldNodeIds[ldIdx];
       if (!nodeId) {
         return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
@@ -1813,7 +1828,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       const actual = String(rawVal);
       return { tick: row.tick, signal: row.signal, expected: row.expected, actual, pass: actual === row.expected, hasData: true };
     });
-  }, [expectedIoRows, ioBus.meta.ldNodeIds, traceByTick]);
+  }, [expectedIoRows, ioBus.meta.ldNodeIds, ledIndexForSignal, traceByTick]);
 
   const assertionsWithData = useMemo(() => hardwareAssertions.filter((a) => a.hasData), [hardwareAssertions]);
   const assertionFailCount = useMemo(() => assertionsWithData.filter((a) => !a.pass).length, [assertionsWithData]);
@@ -3473,7 +3488,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
         )}
         {/* ── Constraint sets: named XDC sets (Vivado constrs_N), one active ── */}
-        {constraintSets ? <ConstraintSetsPanel {...constraintSets} /> : null}
+        {constraintSets ? <ConstraintSetsPanel {...constraintSets} livePinCount={mappedRequiredCount} /> : null}
         {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
         {hardwareWorkflowRibbon}
       </IdePanel>
