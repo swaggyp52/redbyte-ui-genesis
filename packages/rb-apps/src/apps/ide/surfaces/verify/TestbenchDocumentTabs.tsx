@@ -159,6 +159,8 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
         </details>
       </header>
 
+      {/* One scenario needs no permanent list: the header names it and Manage owns the rest. */}
+      {scenarios.length > 1 ? (
       <div className="wb-toolwindow-body rb-scn-body" role="tablist" aria-label="Open testbenches">
         {scenarios.map((scenario, scenarioIndex) => {
           const isActive = scenario.id === activeScenario.id;
@@ -211,6 +213,7 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
           );
         })}
       </div>
+      ) : null}
 
       {renaming ? (
         <form
