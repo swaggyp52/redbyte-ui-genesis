@@ -12,6 +12,8 @@ HEAD `1451f73c6` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; o
 Recovery bundle of the interrupted dirty state:
 `.redbyte/product-immersion/p2-5-operational-workbench/recovery-fable51-a22a6bb8d/`.
 
+**Simulate (landed after the entry below was first written):** HEAD  — : Cases document on the wb grammar (one toolbar, scenario explorer tool window + signal rail in the left dock, Case Lab grid beside a flat inspector, legacy evidence deck capped at 280px until the Waveform instrument replaces it). Verify legacy rail/dock/hierarchy-role rules deleted; left dock follows the layout policy; dock widths follow preferences. 44 test reds across verify+Design+shell sets, all reproducing on baseline .
+
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
   - `106d1f754 feat(design): schematic instrument — ANSI symbols, orthogonal nets, one toolbar, property-grid inspector`
