@@ -37,6 +37,7 @@ import { describeEngineeringObject, useEngineeringSelection } from './ide/engine
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
+import { ExamplesBrowser } from './ide/components/ProjectSurfacePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { deriveProjectOutlineSummary } from './ide/projectOutline';
 import type { DesignCompilerStatus } from './ide/surfaces/DesignSurface';
@@ -2335,10 +2336,21 @@ export const IdeApp: React.FC = () => {
     return true;
   }, [createRecoveryBackup, hasUnsavedWork, projectKind, refreshSavedProjects, replaceWithBlankProject, setLastSavedAt]);
 
+  // Build Fresh is a project-level command (File menu, palette, start center).
+  // Replacing populated work goes through one deterministic in-app confirmation.
+  const [buildFreshDialogOpen, setBuildFreshDialogOpen] = useState(false);
+  const [starterPickerOpen, setStarterPickerOpen] = useState(false);
   const handleBuildFreshProject = useCallback(() => {
-    if (hasUnsavedWork && !window.confirm('Start a fresh project? A recovery snapshot will be created before current work is replaced.')) return;
+    if (hasCircuit) {
+      setBuildFreshDialogOpen(true);
+      return;
+    }
     replaceWithFreshProjectSafely();
-  }, [hasUnsavedWork, replaceWithFreshProjectSafely]);
+  }, [hasCircuit, replaceWithFreshProjectSafely]);
+  const confirmBuildFreshProject = useCallback(() => {
+    setBuildFreshDialogOpen(false);
+    replaceWithFreshProjectSafely();
+  }, [replaceWithFreshProjectSafely]);
 
   const handleApplyWorkspacePreset = useCallback((presetId: WorkspacePresetId) => {
     workspacePreferencesStore.applyPreset(presetId);
@@ -2400,6 +2412,7 @@ export const IdeApp: React.FC = () => {
       { id: IDE_COMMAND_IDS.duplicateProject, title: 'Duplicate Project', category: 'project', keywords: ['copy', 'clone'], execute: handleDuplicateProject },
       { id: IDE_COMMAND_IDS.openProject, title: 'Open Existing Project...', category: 'project', keywords: ['recent', 'local'], execute: handleOpenLoadModal },
       { id: IDE_COMMAND_IDS.buildFreshProject, title: 'Build Fresh Project', category: 'project', keywords: ['blank', 'new'], execute: handleBuildFreshProject },
+      { id: 'project.open-starter', title: 'Open Starter...', category: 'project', keywords: ['example', 'lab', 'catalog', 'course'], execute: () => setStarterPickerOpen(true) },
       { id: IDE_COMMAND_IDS.restoreRecoverySnapshot, title: 'Restore Recovery Snapshot', category: 'project', keywords: ['backup', 'recover'], availability: () => repositoryState.recoveryAvailable ? available : { state: 'disabled', reason: 'No recovery snapshot is available in this session.' }, execute: handleRecoverProject },
       { id: IDE_COMMAND_IDS.undoDesignEdit, title: 'Undo Design Edit', category: 'edit', keywords: ['history'], shortcut: { key: 'z', modifiers: ['primary'], label: 'Ctrl Z' }, availability: (context) => context.canUndo ? available : { state: 'disabled', reason: 'There is no design edit to undo.' }, execute: undoProjectEdit },
       { id: IDE_COMMAND_IDS.redoDesignEdit, title: 'Redo Design Edit', category: 'edit', keywords: ['history'], shortcut: { key: 'y', modifiers: ['primary'], label: 'Ctrl Y' }, availability: (context) => context.canRedo ? available : { state: 'disabled', reason: 'There is no design edit to redo.' }, execute: redoProjectEdit },
@@ -2486,6 +2499,46 @@ export const IdeApp: React.FC = () => {
     boardLabel: fpgaConfig.board,
   });
   const selectedEngineeringObject = useEngineeringSelection((state) => state.selected);
+  // Project workspace read-models (derived; the runtime store stays the owner).
+  const projectScenarioSummaries = useMemo(
+    () =>
+      scenarios.map((scenario) => ({
+        id: scenario.id,
+        name: scenario.name,
+        vectorCount: scenario.vectors.length,
+        checkCount: scenario.vectors.reduce((count, vector) => count + Object.keys(vector.expected ?? {}).length, 0),
+        sequential: isSequentialProject,
+      })),
+    [isSequentialProject, scenarios]
+  );
+  const projectArtifactSummaries = useMemo(
+    () => exportViewModel.artifacts.map((artifact) => ({ path: artifact.path, bytes: artifact.content.length })),
+    [exportViewModel.artifacts]
+  );
+  const projectProblems = useMemo(() => {
+    const seen = new Set<string>();
+    const problems: Array<{ id: string; severity: 'error' | 'warning' | 'info'; code: string; message: string; fixMode?: IdeMode }> = [];
+    for (const issue of projectHealth.blockingIssues) {
+      const id = `issue:${issue.code}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const mode = issue.fixPath?.mode;
+      problems.push({ id, severity: 'error', code: issue.code, message: issue.message, fixMode: mode === 'project' ? 'hardware' : (mode as IdeMode | undefined) });
+    }
+    for (const diagnostic of designCompilerStatus.diagnostics) {
+      const id = `diag:${diagnostic.id}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      problems.push({
+        id,
+        severity: diagnostic.severity === 'error' ? 'error' : diagnostic.severity === 'warn' ? 'warning' : 'info',
+        code: diagnostic.code,
+        message: diagnostic.title ? `${diagnostic.title}: ${diagnostic.message}` : diagnostic.message,
+        fixMode: 'design',
+      });
+    }
+    return problems;
+  }, [designCompilerStatus.diagnostics, projectHealth.blockingIssues]);
   const checkedCommandIds = useMemo(() => {
     const ids = new Set<string>();
     ids.add(
@@ -2759,8 +2812,6 @@ export const IdeApp: React.FC = () => {
               readiness={effectiveReadiness}
               health={projectHealth}
               mappingRows={projectIoRows}
-              simRunning={runtimeSim.running}
-              runtimeSim={runtimeSim}
               examples={IDE_EXAMPLES.map((example) => ({
                 id: example.id,
                 name: example.name,
@@ -2773,156 +2824,34 @@ export const IdeApp: React.FC = () => {
                 learningPath: example.learningPath,
               }))}
               projectKind={projectKind}
-              sourceExampleId={sourceExampleId}
-              scenarioAuthority={scenarioAuthority}
-              scenarioCount={scenarios.length}
-              activeScenarioName={activeScenario?.name ?? null}
-              activeScenarioEventCount={activeScenario?.vectors.length ?? 0}
-              activeScenarioCheckCount={
-                activeScenario?.vectors.reduce(
-                  (count, vector) => count + Object.keys(vector.expected ?? {}).length,
-                  0
-                ) ?? 0
-              }
               activeExampleId={activeExampleId}
               onOpenExample={handleOpenExample}
-              primaryCtaLabel={primaryProjectCta.label}
-              primaryCta={primaryProjectCta}
               workflowAuthority={workflowAuthority}
-              onPrimaryCta={handleProjectPrimaryAction}
-              onUpdateMappingPin={handleMappingPinChange}
-              onAutoSuggestMapping={handleAutoSuggestMapping}
-              onOpenDesign={() => setCurrentMode('design')}
-              onOpenVerify={() => setCurrentMode('verify')}
-              onOpenExport={() => setCurrentMode('export')}
-              onOpenHardware={() => setCurrentMode('hardware')}
               onOpenImport={() => setCurrentMode('import')}
               guidedLabTask={activeGuidedLabTask ?? FULL_ADDER_SCRATCH_LAB}
               onStartGuidedLab={handleStartGuidedLab}
-              onStartBlankProject={replaceWithFreshProjectSafely}
+              onStartBlankProject={handleBuildFreshProject}
               recentProjects={savedProjects.slice(0, 3)}
               onOpenSavedProjects={handleOpenLoadModal}
               onOpenRecentProject={handleOpenRecentProject}
-              diagnosticRouteRequest={diagnosticRouteRequest}
-              onGoToHardware={() => setCurrentMode('hardware')}
-              studentName={studentName}
-              onStudentNameChange={setStudentName}
-              hasVerifyRun={verifyLastRun !== undefined}
               runHistory={verifyRunHistory}
               sourceModel={sourceModel}
-              crossProbe={{
-                modules: crossProbeModules,
-                index: crossProbeIndex,
-                sourceLabels: crossProbeSourceLabels,
-              }}
+              crossProbe={{ index: crossProbeIndex, sourceLabels: crossProbeSourceLabels }}
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
+              onFpgaConfigChange={handleFpgaConfigChange}
               outline={projectOutline}
               circuit={circuit}
               hierarchy={hierarchy}
-              onFocusMacro={(macroId, macroName) => {
-                setDesignFocusRequest(
-                  createDesignFocusRequest('macro', macroId, macroName)
-                );
-                setCurrentMode('design');
-              }}
-              onFocusCustomComponent={(componentName) => {
-                setDesignFocusRequest(
-                  createDesignFocusRequest(
-                    'custom-component',
-                    componentName,
-                    componentName
-                  )
-                );
-                setCurrentMode('design');
-              }}
-              ioSignalRolesByLabel={liveSignalRoles}
-              onFpgaConfigChange={handleFpgaConfigChange}
-              onSaveNow={() => {
-                if (!exportProjectRef.current) return;
-                const saved = projectRepository.save({
-                  projectId,
-                  projectName,
-                  projectHash,
-                  project: exportProjectRef.current,
-                  scenarios,
-                  activeScenarioId,
-                });
-                if (saved.ok) {
-                  const snap = saved.value.snapshot;
-                  setSavedProjectHash(snap.projectHash);
-                  refreshSavedProjects();
-                  setLastSavedAt(`Saved ${new Date(snap.savedAtIso).toLocaleTimeString()}`);
-                } else {
-                  setLastSavedAt(`Save failed: ${saved.error.message}`);
-                }
-                if (sessionMetaRef.current) saveLabSessionMeta(sessionMetaRef.current);
-              }}
-              onDuplicateProject={() => {
-                if (!exportProjectRef.current) return;
-                const duplicateName = `${projectName?.trim() || 'Untitled Project'} copy`;
-                const duplicateId = createProjectId(duplicateName);
-                const duplicateProject = {
-                  ...exportProjectRef.current,
-                  name: duplicateName,
-                  meta: { ...(exportProjectRef.current.meta ?? {}), projectId: duplicateId },
-                };
-                const saved = projectRepository.save({
-                  projectId: duplicateId,
-                  projectName: duplicateName,
-                  projectHash,
-                  project: duplicateProject,
-                  scenarios,
-                  activeScenarioId,
-                });
-                if (saved.ok) {
-                  refreshSavedProjects();
-                  setLastSavedAt(`Duplicated as "${duplicateName}" — open it from Open existing.`);
-                } else {
-                  setLastSavedAt(`Duplicate failed: ${saved.error.message}`);
-                }
-              }}
-              onRestoreLastSave={() => {
-                if (!window.confirm('Restore the last saved project? Unsaved changes will be lost.')) return;
-                const opened = projectRepository.open(projectId);
-                if (!opened.ok) { window.alert(opened.error.message); return; }
-                const { project: proj, snapshot: snap } = opened.value;
-                isRestoringRef.current = true;
-                handleSafeLoadIntoIde(proj, {
-                  sourceLabel: 'last saved project',
-                  savedProjectHash: snap.projectHash,
-                  nextMode: 'project',
-                  backupCurrent: true,
-                  testbenchSnapshot: {
-                    scenarios: snap.scenarios,
-                    activeScenarioId: snap.activeScenarioId,
-                  },
-                });
-                isRestoringRef.current = false;
-              }}
+              scenarios={projectScenarioSummaries}
+              activeScenarioId={activeScenarioId}
+              constraintSets={constraintSetsDoc}
+              artifacts={projectArtifactSummaries}
+              problems={projectProblems}
               saveState={saveState}
-              onRenameProject={handleRenameProject}
-              onResetProject={() => {
-                if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
-                const backup = createRecoveryBackup();
-                if (backup.failed) {
-                  setLastSavedAt('Could not reset the project because recovery storage failed. Current work was left unchanged.');
-                  refreshSavedProjects();
-                  return;
-                }
-                clearLabSessionMeta();
-                resetToActiveExample();
-                setProjectHdlSources([]);
-                setImportMeta(null);
-                setCurrentMode('project');
-                setSavedProjectHash(null);
-                if (backup.name) {
-                  setLastSavedAt(`Reset to example. Previous work backed up as "${backup.name}".`);
-                } else {
-                  setLastSavedAt('Reset to example');
-                }
-                refreshSavedProjects();
-              }}
+              document={documentHost.activeDocument}
+              onOpenDocument={documentHost.openDocument}
+              onNavigateMode={setCurrentMode}
             />
           </ErrorBoundary>
         ) : activeMode === 'design' ? (
@@ -3275,6 +3204,73 @@ export const IdeApp: React.FC = () => {
         />
       ) : null}
 
+      {buildFreshDialogOpen ? (
+        <IdeModal
+          title="Start a new blank project?"
+          body={
+            <div className="ide-project-build-fresh-dialog-copy">
+              <p>
+                Your current project will remain unchanged until you confirm.
+                <br />
+                Save or download a backup first if you need one.
+              </p>
+              <p>
+                {saveState === 'unsaved'
+                  ? 'This workspace has unsaved changes. Starting blank will discard them from the active workspace.'
+                  : 'Starting blank replaces the active workspace. Saved and recent projects remain available.'}
+              </p>
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={() => setBuildFreshDialogOpen(false)} testId="ide-project-build-fresh-cancel">
+                Cancel
+              </IdeButton>
+              <IdeButton tone="primary" onClick={confirmBuildFreshProject} testId="ide-project-build-fresh-confirm">
+                Start blank project
+              </IdeButton>
+            </>
+          }
+          onClose={() => setBuildFreshDialogOpen(false)}
+          testId="ide-project-build-fresh-dialog"
+        />
+      ) : null}
+      {starterPickerOpen ? (
+        <IdeModal
+          title="Open a starter"
+          body={
+            <div className="ide-project-starter-picker" data-testid="ide-project-starter-picker">
+              <ExamplesBrowser
+                examples={IDE_EXAMPLES.map((example) => ({
+                  id: example.id,
+                  name: example.name,
+                  concept: example.concept,
+                  expectedBehavior: example.expectedBehavior,
+                  course: example.course,
+                  lab: example.lab,
+                  tags: example.tags,
+                  learningPathOrder: example.learningPath?.order,
+                  flagship: example.learningPath?.flagship,
+                  openProof: example.learningPath?.openProof,
+                }))}
+                activeExampleId={activeExampleId}
+                onLoad={(exampleId) => {
+                  setStarterPickerOpen(false);
+                  handleOpenExample(exampleId);
+                }}
+                testId="ide-project-examples-browser"
+              />
+            </div>
+          }
+          actions={
+            <IdeButton tone="ghost" onClick={() => setStarterPickerOpen(false)} testId="ide-project-starter-picker-close">
+              Close
+            </IdeButton>
+          }
+          onClose={() => setStarterPickerOpen(false)}
+          testId="ide-project-starter-picker-modal"
+        />
+      ) : null}
       {pendingExample ? (
         <IdeModal
           title="Replace current workspace with example?"

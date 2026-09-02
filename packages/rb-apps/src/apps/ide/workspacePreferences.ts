@@ -8,7 +8,7 @@ import {
  * UI-only workbench preferences. Project, simulation, mapping, and package
  * authority must never be added to this envelope.
  */
-export const WORKSPACE_PREFERENCES_STORAGE_KEY = 'rb.ide.workspace.preferences.v1';
+export const WORKSPACE_PREFERENCES_STORAGE_KEY = 'rb.ide.workspace.preferences.v2';
 export const WORKSPACE_PREFERENCES_VERSION = 1 as const;
 
 export const WORKSPACE_SURFACE_IDS = [
@@ -80,7 +80,10 @@ export const WORKSPACE_DOCK_SIZE_LIMITS: Readonly<
 });
 
 const AUTHORING_SURFACES = createSurfacePreferences({
-  project: { right: { visible: true, sizePx: 320 } },
+  project: {
+    left: { visible: true, sizePx: 248 },
+    right: { visible: true, sizePx: 288 },
+  },
   design: {
     left: { visible: true, sizePx: 220 },
     right: { visible: true, sizePx: 280 },

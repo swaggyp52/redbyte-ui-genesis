@@ -407,16 +407,14 @@ describe('IdeApp lab-day wiring', () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
     });
 
+    // The structural Design blocker is a real problem row on the Overview, with
+    // its repair path pointing at Design — not a hero status line.
     await waitFor(() => {
-      expect(view.getByTestId('ide-projectx-next-status').textContent).toBe('DESIGN BLOCKED');
+      expect(view.getByTestId('ide-project-problems').textContent).toMatch(/Compiler (error|warning)/);
     });
-
-    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Design blocked');
-    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Compiler error');
-    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Output');
-    expect(view.getByTestId('ide-project-command-strip-primary-cta').textContent).toContain(
-      'Open Design'
-    );
+    expect(view.getByTestId('ide-project-problems').textContent).toContain('Output');
+    expect(view.getByTestId('ide-project-fact-problems').textContent).not.toContain('none');
+    expect(view.getAllByText('Open Design').length).toBeGreaterThan(0);
   });
 
   it('renders Project home on first load at /', async () => {
@@ -701,6 +699,8 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     await view.findByTestId('ide-project-panel', {}, { timeout: 5000 });
+    fireEvent.click(await view.findByTestId('ide-menu-file'));
+    fireEvent.click(await view.findByTestId('ide-menu-item-project.open-starter'));
     fireEvent.click(await view.findByTestId('ide-project-load-start-logic-gates', {}, { timeout: 5000 }));
 
     await waitFor(() => {

@@ -11452,14 +11452,7 @@ details[open].ide-export-evidence-details > summary::before {
   box-shadow: none;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-dock,
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-workspace {
-  background: #081321;
-}
 
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-dock {
-  box-shadow: inset -1px 0 0 rgba(58, 87, 116, 0.35);
-}
 
 [data-ide-mode-marker='project'] .ide-workbench-dock-left .ide-workbench-placeholder {
   padding-top: var(--rb-space-1);
@@ -30432,14 +30425,6 @@ button:disabled,
    Broad product pass — shared shell geometry and calmer Design ↔ Verify grammar
    ========================================================================== */
 
-.ide-workbench-shell .ide-workbench-dock {
-  padding: 16px 14px !important;
-  background:
-    linear-gradient(180deg, rgba(7, 14, 24, 0.98), rgba(5, 10, 18, 0.98)) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(81, 116, 147, 0.18),
-    0 18px 34px rgba(1, 6, 12, 0.22) !important;
-}
 
 .ide-workbench-shell .ide-workbench-dock-toggle-rail {
   display: flex !important;

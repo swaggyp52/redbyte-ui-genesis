@@ -37,7 +37,7 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
     id: 'file',
     label: 'File',
     sections: [
-      [IDE_COMMAND_IDS.openProject, IDE_COMMAND_IDS.buildFreshProject, IDE_COMMAND_IDS.openImportRecover],
+      [IDE_COMMAND_IDS.openProject, IDE_COMMAND_IDS.buildFreshProject, 'project.open-starter' as IdeCommandId, IDE_COMMAND_IDS.openImportRecover],
       [IDE_COMMAND_IDS.saveProject, IDE_COMMAND_IDS.saveProjectAs, IDE_COMMAND_IDS.duplicateProject],
       ['project.export-backup' as IdeCommandId, IDE_COMMAND_IDS.restoreRecoverySnapshot],
     ],

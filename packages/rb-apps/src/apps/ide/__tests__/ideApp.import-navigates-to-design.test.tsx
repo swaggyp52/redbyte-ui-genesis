@@ -255,8 +255,8 @@ describe('IdeApp: import navigates to Design after success', () => {
     failRecoverySnapshotWrites();
 
     const view = renderIdeApp();
-    fireEvent.click(await view.findByTestId('ide-project-change-project'));
-    fireEvent.click(await view.findByTestId('ide-project-path-build-fresh'));
+    fireEvent.click(await view.findByTestId('ide-menu-file'));
+    fireEvent.click(await view.findByTestId('ide-menu-item-project.build-fresh'));
     fireEvent.click(await view.findByTestId('ide-project-build-fresh-confirm'));
 
     await waitFor(() => {
