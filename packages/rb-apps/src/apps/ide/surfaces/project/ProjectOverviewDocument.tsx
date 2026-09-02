@@ -141,6 +141,9 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
             <span className="wb-toolbar-meta">
               {circuit ? `${circuit.nodes.length} components · ${circuit.connections.length} nets` : 'no circuit'}
             </span>
+            <button type="button" className="wb-link" onClick={() => onOpenDocument({ kind: 'architecture' })} data-testid="ide-project-overview-open-architecture">
+              Architecture
+            </button>
           </header>
           {circuit && circuit.nodes.length > 0 ? (
             <ArchitecturePreview

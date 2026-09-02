@@ -176,7 +176,7 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         role="img"
         aria-label={`Architecture of the current top module: ${circuit.nodes.length} components, ${circuit.connections.length} nets`}
-        preserveAspectRatio="xMinYMin meet"
+        preserveAspectRatio="xMidYMid meet"
       >
         {layout.wires.map((wire) => (
           <path

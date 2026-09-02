@@ -256,6 +256,10 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
       switch (doc.kind) {
         case 'project-overview':
           return 'Overview';
+        case 'architecture':
+          return 'Architecture';
+        case 'runs':
+          return 'Runs';
         case 'sources':
           return 'Sources';
         case 'compile-order':

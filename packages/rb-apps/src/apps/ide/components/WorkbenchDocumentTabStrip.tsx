@@ -38,6 +38,8 @@ const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeL
 const KIND_ICON: Record<WorkbenchDocument['kind'], React.ReactNode> = {
   'project-overview': <svg viewBox="0 0 12 12" {...stroke}><rect x="1.5" y="1.5" width="9" height="9" rx="1" /><path d="M1.5 4.5h9M4.5 4.5v6" /></svg>,
   sources: <svg viewBox="0 0 12 12" {...stroke}><path d="M2 2.5v7M2 4h3M2 7h3" /><rect x="6" y="3" width="4.5" height="2" rx="0.5" /><rect x="6" y="6.5" width="4.5" height="2" rx="0.5" /></svg>,
+  architecture: <svg viewBox="0 0 12 12" {...stroke}><rect x="1.5" y="1.5" width="4" height="3" rx="0.5" /><rect x="6.5" y="7.5" width="4" height="3" rx="0.5" /><rect x="6.5" y="1.5" width="4" height="3" rx="0.5" /><path d="M5.5 3h1M3.5 4.5v4.5h3" /></svg>,
+  runs: <svg viewBox="0 0 12 12" {...stroke}><path d="M1.5 3h9M1.5 6h9M1.5 9h6" /><path d="M9.5 8l1 1 1.5-2" /></svg>,
   'source-file': <svg viewBox="0 0 12 12" {...stroke}><path d="M3 1.5h4l2.5 2.5v6.5h-6.5z" /><path d="M7 1.5V4h2.5" /></svg>,
   'compile-order': <svg viewBox="0 0 12 12" {...stroke}><path d="M3 2.5h7M3 6h7M3 9.5h7" /><path d="M1.5 2.5h.01M1.5 6h.01M1.5 9.5h.01" strokeWidth="2" /></svg>,
   schematic: <svg viewBox="0 0 12 12" {...stroke}><path d="M3.5 2.5h2.5a3.5 3.5 0 0 1 0 7H3.5z" /><path d="M1 4.5h2.5M1 7.5h2.5M9.5 6H11" /></svg>,

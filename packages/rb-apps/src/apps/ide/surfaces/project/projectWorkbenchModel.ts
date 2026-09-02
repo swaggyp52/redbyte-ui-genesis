@@ -152,6 +152,8 @@ export function deriveProjectExplorer(input: ProjectExplorerInput): readonly Pro
     rows: [
       { key: 'doc:overview', kind: 'document', label: 'Overview', depth: 0, select: { kind: 'project' }, open: { kind: 'project-overview' } },
       { key: 'doc:sources', kind: 'document', label: 'Sources', meta: `${(input.sourceModel?.files.length ?? 0) + modules.length + 1} units`, depth: 0, select: { kind: 'project' }, open: { kind: 'sources' } },
+      { key: 'doc:architecture', kind: 'document', label: 'Architecture', meta: input.hierarchy ? `${input.hierarchy.modules.length + 1} modules` : undefined, depth: 0, select: { kind: 'project' }, open: { kind: 'architecture' } },
+      { key: 'doc:runs', kind: 'document', label: 'Runs', meta: input.runs.length ? `${input.runs.length}` : undefined, depth: 0, select: { kind: 'project' }, open: { kind: 'runs' } },
       { key: 'doc:compile-order', kind: 'document', label: 'Compile Order', depth: 0, select: { kind: 'project' }, open: { kind: 'compile-order' } },
     ],
   });

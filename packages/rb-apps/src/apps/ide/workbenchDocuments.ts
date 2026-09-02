@@ -16,6 +16,10 @@ import type { IdeMode } from './workflowStages';
  */
 export type WorkbenchDocument =
   | { readonly kind: 'project-overview' }
+  /** Module tree, block view and interface table over the same hierarchy Design uses. */
+  | { readonly kind: 'architecture' }
+  /** Run ledger and actual diagnostics. */
+  | { readonly kind: 'runs' }
   | { readonly kind: 'sources' }
   | { readonly kind: 'source-file'; readonly fileId: string }
   | { readonly kind: 'compile-order' }
@@ -35,6 +39,8 @@ export type WorkbenchDocumentKind = WorkbenchDocument['kind'];
 export function documentKey(doc: WorkbenchDocument): string {
   switch (doc.kind) {
     case 'project-overview':
+    case 'architecture':
+    case 'runs':
     case 'sources':
     case 'compile-order':
     case 'package-artifact':
@@ -63,6 +69,8 @@ export function documentKey(doc: WorkbenchDocument): string {
 export function documentMode(doc: WorkbenchDocument): IdeMode {
   switch (doc.kind) {
     case 'project-overview':
+    case 'architecture':
+    case 'runs':
     case 'sources':
     case 'source-file':
     case 'compile-order':
@@ -89,6 +97,10 @@ export function fallbackDocumentLabel(doc: WorkbenchDocument): string {
   switch (doc.kind) {
     case 'project-overview':
       return 'Overview';
+    case 'architecture':
+      return 'Architecture';
+    case 'runs':
+      return 'Runs';
     case 'sources':
       return 'Sources';
     case 'source-file':
@@ -130,6 +142,8 @@ export function pruneDocuments(
   return docs.filter((doc) => {
     switch (doc.kind) {
       case 'project-overview':
+      case 'architecture':
+      case 'runs':
       case 'sources':
       case 'compile-order':
       case 'package-artifact':
@@ -156,6 +170,8 @@ export function parseWorkbenchDocument(value: unknown): WorkbenchDocument | null
     typeof raw[key] === 'string' && (raw[key] as string).length > 0 ? (raw[key] as string) : null;
   switch (raw.kind) {
     case 'project-overview':
+    case 'architecture':
+    case 'runs':
     case 'sources':
     case 'compile-order':
     case 'package-artifact':

@@ -161,3 +161,15 @@
   .ide-root .rb-source-doc-body { grid-template-columns: minmax(0, 1fr); }
   .ide-root .rb-source-doc-links { border-left: 0; border-top: 1px solid var(--wb-border); max-height: 220px; }
 }
+
+/* Architecture document: module tree · block view · interface. */
+.ide-root .rb-project-architecture-body { display: grid; grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 0; flex: 1 1 auto; }
+.ide-root .rb-project-architecture-tree { grid-row: 1 / span 2; min-height: 0; overflow: auto; border-right: 1px solid var(--wb-border); background: var(--wb-tool-bg); }
+.ide-root .rb-project-architecture-tree .rb-doc-section-header { border-top: 0; }
+.ide-root .rb-project-architecture-stage { display: flex; min-height: 200px; max-height: 55%; min-width: 0; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-project-architecture-stage .rb-arch { flex: 1 1 auto; }
+.ide-root .rb-project-architecture-interface { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.ide-root .rb-doc-header-code { font: 600 var(--wb-text-md) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-project-runs .wb-table td[data-tone='ok'] { color: var(--wb-ok); font-weight: 600; }
+.ide-root .rb-project-runs .wb-table td[data-tone='error'] { color: var(--wb-err); font-weight: 600; }
+.ide-root .rb-project-runs .wb-panel-line[aria-selected='true'] { background: var(--wb-accent-bg); }

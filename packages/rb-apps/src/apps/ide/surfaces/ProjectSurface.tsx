@@ -28,6 +28,8 @@ import type { IdeMode } from '../workflowStages';
 import { ProjectExplorer } from './project/ProjectExplorer';
 import { ProjectOverviewDocument } from './project/ProjectOverviewDocument';
 import { ProjectSourcesDocument } from './project/ProjectSourcesDocument';
+import { ProjectArchitectureDocument } from './project/ProjectArchitectureDocument';
+import { ProjectRunsDocument } from './project/ProjectRunsDocument';
 import { ProjectSourceFileDocument } from './project/ProjectSourceFileDocument';
 import { ProjectInspector } from './project/ProjectInspector';
 import {
@@ -401,6 +403,33 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const activeFile = document?.kind === 'source-file' ? sourceModel?.files.find((file) => file.id === document.fileId) ?? null : null;
   const documentNode = (() => {
     switch (document?.kind) {
+      case 'architecture':
+        return (
+          <ProjectArchitectureDocument
+            topModuleName={resolvedTop}
+            circuit={circuit}
+            hierarchy={hierarchy}
+            ioLabelByNodeId={ioLabelByNodeId}
+            moduleNameByNodeId={moduleNameByNodeId}
+            mappingRows={sortedMappingRows}
+            selected={selected}
+            onSelect={(ref) => select(ref, 'architecture')}
+            onOpenDocument={openDocument}
+          />
+        );
+      case 'runs':
+        return (
+          <ProjectRunsDocument
+            runs={runHistory ?? []}
+            problems={problems}
+            scenarios={scenarios ?? []}
+            activeScenarioId={activeScenarioId ?? null}
+            selected={selected}
+            onSelect={(ref) => select(ref, 'runs')}
+            onOpenDocument={openDocument}
+            onNavigateMode={navigateMode}
+          />
+        );
       case 'sources':
         return (
           <ProjectSourcesDocument
