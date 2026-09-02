@@ -20,6 +20,8 @@ Recovery bundle of the interrupted dirty state:
 
 **Timing Lab:** `a0b3733fc` `feat(simulate)` TimingLab.tsx replaces ScenarioComposerWorkbench (deleted); events table + editor strip; ScenarioTestbenchPreview split out. Sequential builder disclosure remains until sweep/hold/pulse generators are ported.
 
+**Board (bounded):** `8bde3da58` `feat(board)` three-column mapping workspace with the Basys3 board central, header/rail toolbars, rb-board-* owner; PinPlanner, ConstraintSetsPanel, provenance/drift callouts and the non-map modes still legacy-styled. 11 Board/export reds, all inherited.
+
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
   - `106d1f754 feat(design): schematic instrument — ANSI symbols, orthogonal nets, one toolbar, property-grid inspector`
