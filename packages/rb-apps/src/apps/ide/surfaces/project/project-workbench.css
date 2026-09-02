@@ -156,8 +156,8 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 248px), 360px); --ide-workbench-right-width: clamp(240px, var(--rb-workbench-pref-right-width, 288px), 400px); }
 
 @media (max-width: 1280px) {
-  .rb-project-overview-body { grid-template-columns: minmax(0, 1fr); }
-  .rb-project-overview-arch { border-right: 0; border-bottom: 1px solid var(--wb-border); }
-  .rb-source-doc-body { grid-template-columns: minmax(0, 1fr); }
-  .rb-source-doc-links { border-left: 0; border-top: 1px solid var(--wb-border); max-height: 220px; }
+  .ide-root .rb-project-overview-body { grid-template-columns: minmax(0, 1fr); }
+  .ide-root .rb-project-overview-arch { border-right: 0; border-bottom: 1px solid var(--wb-border); }
+  .ide-root .rb-source-doc-body { grid-template-columns: minmax(0, 1fr); }
+  .ide-root .rb-source-doc-links { border-left: 0; border-top: 1px solid var(--wb-border); max-height: 220px; }
 }

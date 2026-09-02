@@ -192,3 +192,6 @@
 .ide-root .rb-wave-bus-word-cell { min-width: 22px; height: 18px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); cursor: pointer; }
 .ide-root .rb-wave-bus-word-cell.is-selected { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
 .ide-root .rb-wave-bus-word-cell.is-unknown { color: var(--wb-warn); }
+.ide-root .rb-wave-tools .rb-wave-zoom { height: 22px; padding: 0 7px; font-size: var(--wb-text-xs); }
+.ide-root .rb-wave-zoom.is-active { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-wave-check-trigger:disabled { opacity: 0.45; }

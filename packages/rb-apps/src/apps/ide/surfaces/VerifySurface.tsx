@@ -6137,7 +6137,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
                 <button
                   type="button"
-                  className={`ide-vcb-analysis-toggle${drawerOpen ? ' is-open' : ''}`}
+                  className={`wb-btn wb-btn--ghost rb-wave-drawer-toggle${drawerOpen ? ' is-open' : ''}`}
                   onClick={() => setDrawerOpen((previous) => !previous)}
                   data-testid="ide-verify-drawer-toggle"
                   aria-expanded={drawerOpen}
@@ -6205,7 +6205,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <button
                     ref={createCheckTriggerRef}
                     type="button"
-                    className="ide-verify-create-check-trigger"
+                    className="wb-btn wb-btn--ghost rb-wave-check-trigger"
                     disabled={!canCreateCheckFromSelection}
                     onClick={() => setCreateCheckDialogOpen(true)}
                     data-testid="ide-verify-create-check-from-value"
@@ -6368,7 +6368,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span className="rb-wave-tools-label">View</span>
                     <button
                       type="button"
-                      className="ide-verify-zoom-btn"
+                      className="rb-wave-zoom"
                       onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
                       data-testid="ide-verify-zoom-out"
                       title="Zoom out (narrower ticks)"
@@ -6378,7 +6378,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      className="ide-verify-zoom-btn"
+                      className="rb-wave-zoom"
                       onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
                       data-testid="ide-verify-zoom-in"
                       title="Zoom in (wider ticks)"
@@ -6388,7 +6388,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      className="ide-verify-zoom-btn"
+                      className="rb-wave-zoom"
                       onClick={fitWaveformView}
                       data-testid="ide-verify-zoom-fit"
                       title="Fit all ticks in view"
@@ -6400,7 +6400,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <button
                         key={d}
                         type="button"
-                        className={`ide-verify-zoom-btn ${waveformDensity === d ? 'is-active' : ''}`}
+                        className={`rb-wave-zoom ${waveformDensity === d ? 'is-active' : ''}`}
                         onClick={() => setWaveformDensity(d)}
                         data-testid={`ide-verify-density-${d}`}
                         aria-label={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
@@ -6429,7 +6429,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <div className="rb-wave-tools-section" data-testid="ide-verify-cursor-controls">
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => setCursorFromSelected('A')}
                           data-testid="ide-verify-set-cursor-a"
                         >
@@ -6437,7 +6437,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => setCursorFromSelected('B')}
                           data-testid="ide-verify-set-cursor-b"
                         >
@@ -6445,7 +6445,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => jumpToCursor('A')}
                           disabled={cursorA === null}
                           data-testid="ide-verify-jump-cursor-a"
@@ -6454,7 +6454,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => jumpToCursor('B')}
                           disabled={cursorB === null}
                           data-testid="ide-verify-jump-cursor-b"
@@ -6463,7 +6463,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={clearCursors}
                           data-testid="ide-verify-clear-cursors"
                         >
