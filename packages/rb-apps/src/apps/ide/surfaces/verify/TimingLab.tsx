@@ -4,6 +4,7 @@ import type {
   VerifyVectorDraftInput,
 } from '../ScenarioBuilderPanel';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
+import { TimingLanes } from './TimingLanes';
 
 // Timing Lab — the sequential simulation instrument. Events are rows in time:
 // one row per stimulus event (t), one column per driven input and per
@@ -151,6 +152,41 @@ export const TimingLab: React.FC<TimingLabProps> = ({
     commitVector(selectedVector.id, { expected });
   };
 
+  /** Ensure an event exists at a tick, carrying the held stimulus forward; returns the vector list with it. */
+  const ensureEventAt = (tick: number): VerifyAuthorVector[] => {
+    if (orderedVectors.some((vector) => vector.tick === tick)) return [...orderedVectors];
+    const held = [...orderedVectors].filter((vector) => vector.tick < tick).at(-1);
+    const inputs = Object.fromEntries(
+      inputFields.map((field) => [field.id, held?.inputs[field.id] === 1 ? 1 : 0])
+    ) as Record<string, 0 | 1>;
+    return [...orderedVectors, { id: nextEventId(orderedVectors), tick, inputs, expected: {} }].sort(
+      (left, right) => left.tick - right.tick || left.id.localeCompare(right.id)
+    );
+  };
+  const driveInputAt = (tick: number, fieldId: string, value: 0 | 1) => {
+    if (!onVectorsChange) return;
+    const next = ensureEventAt(tick).map((vector) =>
+      vector.tick === tick ? { ...vector, inputs: { ...vector.inputs, [fieldId]: value } } : vector
+    );
+    onVectorsChange(next);
+    onSelectTick(tick);
+    setTimeError(null);
+  };
+  const cycleExpectedAt = (tick: number, fieldId: string) => {
+    if (!onVectorsChange) return;
+    const next = ensureEventAt(tick).map((vector) => {
+      if (vector.tick !== tick) return vector;
+      const current = vector.expected?.[fieldId];
+      const expected = { ...vector.expected };
+      if (current == null) expected[fieldId] = 0;
+      else if (current === 0) expected[fieldId] = 1;
+      else delete expected[fieldId];
+      return { ...vector, expected };
+    });
+    onVectorsChange(next);
+    onSelectTick(tick);
+  };
+
   const previous = selectedVector ? previousVector(orderedVectors, selectedVector) : null;
   const changedInputs = selectedVector
     ? inputFields.filter(
@@ -207,6 +243,22 @@ export const TimingLab: React.FC<TimingLabProps> = ({
         </button>
       </header>
 
+      <TimingLanes
+        vectors={orderedVectors}
+        inputFields={orderedInputs}
+        outputFields={outputFields}
+        clockFieldIds={clockSet}
+        selectedTick={selectedVector?.tick ?? selectedTick}
+        editable={editable}
+        observedValuesByTick={observedValuesByTick}
+        caseEvidenceByTick={caseEvidenceByTick}
+        onSelectTick={onSelectTick}
+        onDriveInput={driveInputAt}
+        onCycleExpected={cycleExpectedAt}
+      />
+
+      <details className="rb-timing-table-details" data-testid="ide-scenario-table-disclosure">
+        <summary className="wb-link">Event table</summary>
       <div className="rb-timing-scroll">
         <table className="rb-timing-table" data-testid="ide-timing-lab-table" role="list" aria-label="Scenario events">
           <thead>
@@ -287,6 +339,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
           </tbody>
         </table>
       </div>
+      </details>
 
       {selectedVector ? (
         <div className="rb-timing-editor" data-testid="ide-scenario-event-editor">

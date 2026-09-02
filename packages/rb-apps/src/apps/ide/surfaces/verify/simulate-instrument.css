@@ -373,3 +373,34 @@
   .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); max-height: 200px; }
   .ide-root .rb-sim-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); }
 }
+
+/* Timing lanes — the sequential authoring instrument (ruler · clock/reset/input lanes · expected over observed). */
+.ide-root .rb-tl { flex: 1 1 auto; min-height: 0; background: var(--rb-wave-bg, var(--wb-paper)); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-tl-scroll { overflow: auto; max-height: 100%; }
+.ide-root .rb-tl-svg { display: block; font-family: var(--wb-font-mono); }
+.ide-root .rb-tl-selected { fill: var(--wb-accent-bg); }
+.ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-3); font: 600 10px var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-tl-tick-label { fill: var(--wb-text-3); font: 10px var(--wb-font-mono); }
+.ide-root .rb-tl-tick.is-event .rb-tl-tick-label { fill: var(--wb-text); font-weight: 700; }
+.ide-root .rb-tl-tick-hit { fill: transparent; cursor: pointer; }
+.ide-root .rb-tl-tick-hit:hover { fill: var(--wb-hover-bg); }
+.ide-root .rb-tl-grid { stroke: var(--wb-border); stroke-width: 1; }
+.ide-root .rb-tl-tick.is-event .rb-tl-grid { stroke: var(--wb-border-strong); }
+.ide-root .rb-tl-edge { fill: var(--wb-text-2); }
+.ide-root .rb-tl-fail { fill: var(--wb-err); }
+.ide-root .rb-tl-group-rule, .ide-root .rb-tl-lane-rule { stroke: var(--wb-border); stroke-width: 1; }
+.ide-root .rb-tl-label { fill: var(--wb-text); font: 11.5px var(--wb-font-mono); }
+.ide-root .rb-tl-tag { fill: var(--wb-text-3); font: 600 9px var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-tl-trace { fill: none; stroke: var(--wb-accent); stroke-width: 1.75; stroke-linejoin: miter; }
+.ide-root .rb-tl-lane.is-clock .rb-tl-trace { stroke: var(--wb-text-2); }
+.ide-root .rb-tl-lane.is-reset .rb-tl-trace { stroke: var(--wb-warn); }
+.ide-root .rb-tl-trace--observed { stroke: #1f7a4d; }
+.ide-root .rb-tl-cell { fill: transparent; cursor: pointer; }
+.ide-root .rb-tl-cell:hover { fill: var(--wb-hover-bg); }
+.ide-root .rb-tl-cell.is-fail { fill: var(--wb-err-bg); }
+.ide-root .rb-tl-expected line { stroke: var(--wb-text-2); stroke-width: 2; stroke-dasharray: 3 2; }
+.ide-root .rb-tl-expected.is-pass line { stroke: var(--wb-ok); }
+.ide-root .rb-tl-expected.is-fail line { stroke: var(--wb-err); }
+.ide-root .rb-tl-expected-label { fill: var(--wb-text-2); font: 9px var(--wb-font-mono); }
+.ide-root .rb-timing-table-details { border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-timing-table-details > summary { padding: 4px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); cursor: default; }

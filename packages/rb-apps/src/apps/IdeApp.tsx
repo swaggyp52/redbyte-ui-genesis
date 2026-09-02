@@ -2529,7 +2529,7 @@ export const IdeApp: React.FC = () => {
       case 'signal': return 'signal';
       case 'node': return 'node';
       case 'module': return 'module';
-      case 'case-tick': return 'case';
+      case 'case-tick': return isSequentialProject ? 'tick' : 'case';
       case 'signal-edge': return 'edge';
       case 'board-resource': return 'pin';
       case 'constraint-set': return 'constraints';
@@ -2540,7 +2540,7 @@ export const IdeApp: React.FC = () => {
       case 'problem': return 'problem';
       default: return null;
     }
-  }, [selectedEngineeringObject?.kind]);
+  }, [isSequentialProject, selectedEngineeringObject?.kind]);
   useEffect(() => {
     if (selectedEngineeringObject?.kind !== 'signal') return;
     const focus = selectedEngineeringObject.runSignal ?? selectedEngineeringObject.fieldId;
