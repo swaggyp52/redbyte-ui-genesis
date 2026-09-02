@@ -7,7 +7,7 @@
 ## 2026-09-02 — P2.5D instrument-grade workbench convergence: shell → Project → Design landed
 
 **Status: INTERIM REDBYTE FABLE 5.1 WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
-HEAD `3a8eac05d` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+HEAD `6b45629fd` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
 `2ef5e5ee8`. Safety tag `safety/redbyte-before-expert-ui-reconstruction-a22a6bb8d`.
 Recovery bundle of the interrupted dirty state:
 `.redbyte/product-immersion/p2-5-operational-workbench/recovery-fable51-a22a6bb8d/`.
@@ -23,6 +23,64 @@ Recovery bundle of the interrupted dirty state:
 **Board (bounded):** `8bde3da58` `feat(board)` three-column mapping workspace with the Basys3 board central, header/rail toolbars, rb-board-* owner; PinPlanner, ConstraintSetsPanel, provenance/drift callouts and the non-map modes still legacy-styled. 11 Board/export reds, all inherited.
 
 **Package (bounded):** `8d0d6b46b` `feat(package)` status strip + file tree + code viewer + handoff rows on package-instrument.css; export reds 37 = baseline.
+
+**Responsive + reviewer pass:** `6b45629fd` `fix(workbench)` — the ≤899px dock collapse in `unified-workbench-v3.css` (200% effective 720px: docks hidden, workspace fills), the three bounded read-only reviewers (EDA interaction, schematic/simulation visualization, adversarial visual) run once via one Workflow with exactly three agents, and the bounded fixes below. Not a review candidate.
+
+**Reviewer pass (three bounded read-only reviewers: EDA interaction, schematic/simulation
+visualization, adversarial visual) — disposition of every finding:**
+
+Fixed in `6b45629fd` (browser-checked at 1440×900 after hot reload; captures re-run):
+- Case Lab header carried a second primary Run beside the toolbar's → ghost; `ide-vcb-run`
+  is the one run authority (`ide-case-lab-run` kept, tone ghost).
+- Simulate inspector rows and buttons shrank inside the flex column → `flex: none` on the
+  inspector's children.
+- Simulate / Board collapsed at 200% (720px effective) → ≤899px rule in
+  `unified-workbench-v3.css` (docks hidden, workspace fills the grid) + single-column
+  `rb-sim-lab-grid` and a wrapping `rb-sim-toolbar` in `simulate-instrument.css`.
+- Pin Planner overflowed the assignments pane and kept its card/pill styling →
+  `rb-board-assignments` scrolls; planner head, table, sticky header, pin input and status
+  badge restyled as dense paper rows in `board-instrument.css`.
+- Board side dock was a dark gradient slab → hardware `[data-hierarchy-role]` dark rules
+  deleted from ide-polish-pass.css / ide-root.css; side and editor paint `--wb-surface`.
+- Design probe readout was a dark HUD → light readout chips in `design-instrument.css`;
+  legacy `.ide-design-probe-*` rules deleted from ide-root.css.
+- Inspector labelled an output pin's signal "LD0 (CARRY) · Input" (its internal `in`
+  port) → `describeStudentSignalKey` names the pin itself for OUTPUT nodes.
+- Pre-run evidence placeholder was a black slab with unstyled text → `.ide-vwp*` legacy
+  rules deleted from ide-root.css / ide-polish-pass.css / simulation-studio-v3.css; owner
+  rules in `waveform-instrument.css` (status line, fact chips, empty lanes on the wave
+  palette).
+- Junction dots sat on trunk-end corners → router emits a junction only where the trunk
+  continues through the branch (`t.y !== yLo && t.y !== yHi`).
+- Hollow pin markers read as inversion bubbles → `.rb-sym-pin-dot` hidden at rest; shown
+  in wire mode, on hover, and when probed / mismatched / flagged.
+- Nets carried 0/1 value tints in Edit mode with no run → tints only while simulating
+  (see `design-schematic.css` stage rules).
+- Every symbol wore a grey trace ring during a trace → rings only for selected / error /
+  mismatch / warn tones.
+- Timing Lab header lacked the Case Lab's exp · obs sub-row → two-row header
+  (`rb-timing-grouphead` / `rb-timing-colhead`).
+- Capture 06 was byte-identical to 05 (Waveform tab never activated) → `capture.mjs` waits
+  for `[data-studio-mode="replay"]` before shooting.
+
+Deferred (recorded, not fixed):
+- Waveform lane rows still stack label + trace on narrow decks; the lane gutter needs a
+  fixed-column grid at ≤1366.
+- Command bar at 1366: project title clamps to 160px and the save label drops; needs an
+  ellipsis/min-width pass in `workbench-instrument-system.css`.
+- Fit-to-view zoom ladder is coarse (steps of the FIT_ZOOM_STEPS table); a continuous fit
+  with a snapped readout is the fix.
+- Library chips clip at the 220px dock; the dock tabs scroll now, the chip grid still wraps
+  by min-width.
+- PinPlannerPanel and ConstraintSetsPanel keep their component-level markup (restyled by the
+  Board owner only where visible); the non-map Board modes remain legacy-styled.
+- Board at 200% (720px effective): the header wraps cleanly now, but the three-column grid
+  squeezes the centre board to nothing; stack the board under the assignments at ≤899px.
+- Cases document after Compare shows two primaries (toolbar Run and the PASS bar's "Open
+  circuit replay"); the replay opener should be a ghost.
+- A FAIL-state capture (05b) and a Register1 starter are still owed.
+
+**Validation after the reviewer pass:** rb-apps tsc 783 (= baseline), rb-logic-view tsc 49 (= baseline). Simulate set 26 red / 208 pass across 35 files; the same 12 failing files show 27 red on baseline `b635fba1f` — two `verifySurface.authoring` reds are fixed, and one red is P2.5D-era, not inherited: `verifySurface.simulationStudio › moves expected-output authoring into the optional Checks workspace` expects the legacy builder's stimulus summary (`ide-verify-stimulus-summary`) in a combinational studio, which the Case Lab hand-over (`d8b09fcbb`) limited to sequential runs — a test to migrate onto the Case Lab, recorded here, not hidden. Design 16 red / 264 pass = exactly the 16 inherited names. Board 5 red / 57 pass, name-identical to baseline. Package 37 red / 28 pass = baseline count (no Package source touched). rb-logic-view: all 12 collected files green; `crash-guard.test.tsx` hangs the runner at HEAD and at baseline (environmental — root vitest stalls at worker teardown on this desktop; run bounded chunks and kill only `vitest` workers). Captures: 44 fresh PNGs at 1440×900 / 1366×768 / 125% / 200%, 0 console errors, no body scroll, shot 05 (Cases after Compare) differs from 06 (Waveform) at every viewport. `git diff --check`: only autocrlf warnings.
 
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
@@ -72,8 +130,9 @@ trace-group, fanout ×4, workstation ×5, continuedEditing dblclick rename. No n
 path and the `ScenarioBuilderPanel` disclosure (migrate ~23 verifySurface tests); Timing Lab
 (Register1 / 2-bit counter); isolated Waveform instrument (`rb-wave`); Board & Constraints;
 Package; identity migration onto `signalIdentity.ts`; legacy deletion (ide-polish-pass /
-ide-root dead rules, obsolete testids); responsive / a11y hardening; the three bounded
-read-only reviewers; final review-gate captures.
+ide-root dead rules, obsolete testids); responsive / a11y hardening (narrow-width
+collapse landed; keyboard + reduced-motion audit still owed); deferred reviewer items above; FAIL-state
+and Register1 captures; final review-gate captures.
 
 **Must not be reset:** everything above is committed; the dev server runs on :5173
 (`preview_start` name `playground`). Baseline worktree may be removed with
