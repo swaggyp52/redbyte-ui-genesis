@@ -605,7 +605,7 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
     });
 
-    fireEvent.click(view.getByTestId('ide-verify-generate-basic-vectors'));
+    fireEvent.click(view.getByTestId('ide-case-lab-generate'));
 
     await waitFor(() => {
       const state = useProjectRuntime.getState();

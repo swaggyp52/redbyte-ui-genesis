@@ -108,7 +108,7 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-verify-workflow-phase', 'post-run');
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-workspace-mode', 'split');
     expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'stable');
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
   });
 });

@@ -52,7 +52,7 @@ describe('Verify first-run composition', () => {
 
     expect(queryByTestId('ide-verify-first-run-panel')).toBeNull();
     expect(queryByTestId('ide-verify-workspace-story')).toBeNull();
-    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(getByTestId('ide-case-lab')).toBeTruthy();
     // Empty-state hero replaces the passive instruction text (no-vectors path)
     expect(getByTestId('ide-verify-waveform-placeholder-cta')).toBeTruthy();
   });
@@ -66,7 +66,7 @@ describe('Verify first-run composition', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(getByTestId('ide-case-lab')).toBeTruthy();
   });
 
   it('keeps the stimulus canvas visible when no vectors exist', () => {
@@ -78,7 +78,7 @@ describe('Verify first-run composition', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(getByTestId('ide-case-lab')).toBeTruthy();
   });
 
   it('blocked mode still suppresses the retired first-run hero', () => {

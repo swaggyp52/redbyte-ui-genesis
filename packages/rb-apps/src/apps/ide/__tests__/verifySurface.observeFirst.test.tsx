@@ -361,8 +361,8 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    fireEvent.click(getByTestId('ide-case-lab-row-1'));
+    expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
 
     fireEvent.click(getByTestId('ide-verify-inspect-design'));

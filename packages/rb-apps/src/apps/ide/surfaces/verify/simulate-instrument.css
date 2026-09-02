@@ -287,3 +287,6 @@
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; }
 .ide-root .rb-sig-header { display: block; height: auto; padding: 0; }
 .ide-root .rb-sig-toprow { height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); }
+.ide-root .ide-case-lab-note { display: flex; align-items: center; gap: 8px; flex: none; min-height: 24px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .ide-case-lab-note.is-warn { color: var(--wb-warn); }
+.ide-root .ide-case-lab-note-dismiss { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font-size: var(--wb-text-xs); cursor: pointer; }
