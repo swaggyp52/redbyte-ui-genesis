@@ -135,8 +135,9 @@ describe('DesignSurface library rail', () => {
 
   it('moves focus between library cards with arrow keys', async () => {
     const view = renderSurface();
-    await waitFor(() => expect(view.getByTestId('ide-design-palette-section-common')).toBeTruthy());
-    const first = view.getByTestId('ide-design-common-input');
+    await waitFor(() => expect(view.getByTestId('ide-design-palette-section-io')).toBeTruthy());
+    // Every primitive is listed once under its category; the first I/O row starts the walk.
+    const first = view.getByTestId('ide-design-palette-input');
     first.focus();
     expect(document.activeElement).toBe(first);
 

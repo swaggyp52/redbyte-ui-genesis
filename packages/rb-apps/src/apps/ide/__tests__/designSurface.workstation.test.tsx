@@ -245,7 +245,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-command-strip-secondary-cta')).toBeNull();
   });
 
-  it('keeps starter guidance compact while preserving next action and detail access', () => {
+  it('carries no starter narration on the canvas — the brief is project context', () => {
     const view = renderSurface({
       starterContext: {
         name: '2-Bit Up Counter (Basys3)',
@@ -257,27 +257,15 @@ describe('DesignSurface workstation redesign', () => {
       },
     });
 
-    expect(view.getByTestId('ide-design-starter-banner-title').textContent).toContain(
-      '2-Bit Up Counter'
-    );
-    expect(view.getByTestId('ide-design-starter-banner-next-action').textContent).toContain(
-      'In Verify'
-    );
-    expect(view.queryByTestId('ide-design-starter-go-to-verify')).toBeNull();
-    expect(view.getByTestId('ide-design-starter-banner').tagName).toBe('SECTION');
-    const brief = view.getByTestId('ide-design-starter-disclosure').querySelector('details');
-    expect(brief === null || !brief.hasAttribute('open')).toBe(true);
+    // The strip, its title, next action and brief disclosure are gone from the canvas;
+    // the Project Overview owns the starter brief (see projectWorkbench.test.tsx).
+    expect(view.queryByTestId('ide-design-starter-disclosure')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-banner')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-banner-title')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-banner-next-action')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-details')).toBeNull();
     expect(view.queryByTestId('ide-design-command-strip-primary-cta')).toBeNull();
-
-    const details = view.getByTestId('ide-design-starter-details');
-    expect(details.tagName).toBe('DETAILS');
-    expect(details.hasAttribute('open')).toBe(false);
-    expect(view.getByTestId('ide-design-starter-details-summary').textContent).toContain(
-      'Brief'
-    );
-    expect(view.getByTestId('ide-design-starter-details-body').textContent).toContain(
-      'Expected behavior'
-    );
+    expect(view.container.textContent ?? '').not.toContain('In Verify: confirm CLK100MHZ');
   });
 
   it('keeps the library stable and reveals the inspector only after selection', async () => {

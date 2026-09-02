@@ -9,6 +9,15 @@ import type { OverviewFact, ProjectMappingRowLike, ProjectProblem } from './proj
 
 export interface ProjectOverviewDocumentProps {
   readonly projectName: string;
+  /** Starter this project came from — its brief is project context, not canvas narration. */
+  readonly starter?: {
+    readonly name: string;
+    readonly lab?: string;
+    readonly concept?: string;
+    readonly summary?: string;
+    readonly expectedBehavior?: string;
+    readonly nextAction?: string;
+  } | null;
   readonly topModuleName: string;
   readonly canEditTop: boolean;
   readonly onSetTop?: (top: string) => void;
@@ -33,6 +42,7 @@ const TOP_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
  */
 export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = ({
   projectName,
+  starter = null,
   topModuleName,
   canEditTop,
   onSetTop,
@@ -211,6 +221,29 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
           </div>
         </section>
       </div>
+
+      {starter ? (
+        <section className="rb-doc-section rb-project-starter" aria-label="Starter" data-testid="ide-project-starter-brief">
+          <header className="rb-doc-section-header">
+            <span>Starter</span>
+            <code data-testid="ide-project-starter-name">{starter.name}</code>
+            {starter.lab ? <code data-testid="ide-project-starter-lab">{starter.lab}</code> : null}
+            {starter.concept ? <code>{starter.concept}</code> : null}
+            <span className="wb-toolbar-spacer" />
+            {starter.nextAction ? (
+              <span className="wb-toolbar-meta" data-testid="ide-project-starter-next-action">{starter.nextAction}</span>
+            ) : null}
+          </header>
+          {starter.summary || starter.expectedBehavior ? (
+            <div className="rb-project-starter-body" data-testid="ide-project-starter-body">
+              {starter.summary ? <p>{starter.summary}</p> : null}
+              {starter.expectedBehavior ? (
+                <p><strong>Expected behavior:</strong> {starter.expectedBehavior}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {problems.length > 0 ? (
         <section className="rb-doc-section" aria-label="Problems" data-testid="ide-project-problems">

@@ -2880,6 +2880,7 @@ export const IdeApp: React.FC = () => {
               }))}
               projectKind={projectKind}
               activeExampleId={activeExampleId}
+              starterContext={activeStarterContext ?? null}
               onOpenExample={handleOpenExample}
               workflowAuthority={workflowAuthority}
               onOpenImport={() => setCurrentMode('import')}

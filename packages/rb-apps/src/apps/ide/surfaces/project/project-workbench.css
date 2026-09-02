@@ -173,3 +173,9 @@
 .ide-root .rb-project-runs .wb-table td[data-tone='ok'] { color: var(--wb-ok); font-weight: 600; }
 .ide-root .rb-project-runs .wb-table td[data-tone='error'] { color: var(--wb-err); font-weight: 600; }
 .ide-root .rb-project-runs .wb-panel-line[aria-selected='true'] { background: var(--wb-accent-bg); }
+
+/* Starter brief — project context, one compact block. */
+.ide-root .rb-project-starter .rb-doc-section-header code { font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text-2); }
+.ide-root .rb-project-starter-body { padding: 6px var(--wb-space-3) 10px; color: var(--wb-text-2); font-size: var(--wb-text-sm); line-height: 1.45; }
+.ide-root .rb-project-starter-body p { margin: 0 0 4px; }
+.ide-root .rb-project-starter-body strong { color: var(--wb-text); }

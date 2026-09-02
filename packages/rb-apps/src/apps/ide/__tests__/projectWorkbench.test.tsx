@@ -112,6 +112,34 @@ describe('Project workbench — loaded project', () => {
     expect(view.getByTestId('ide-project-fact-problems').textContent).toContain('1');
   });
 
+  it('shows the starter brief as project context — name, lab, next action and expected behavior', () => {
+    const view = render(
+      <ProjectSurface
+        {...baseProps({
+          starterContext: {
+            name: '2-Bit Up Counter',
+            lab: 'Lab 4',
+            concept: 'Sequential logic',
+            summary: 'A two-bit counter driven by the board clock.',
+            expectedBehavior: 'With EN high, the counter advances on each rising edge.',
+            nextAction: 'Open Simulate and run the Timing scenario.',
+          },
+        })}
+      />
+    );
+    const brief = view.getByTestId('ide-project-starter-brief');
+    expect(view.getByTestId('ide-project-starter-name').textContent).toContain('2-Bit Up Counter');
+    expect(view.getByTestId('ide-project-starter-lab').textContent).toContain('Lab 4');
+    expect(view.getByTestId('ide-project-starter-next-action').textContent).toContain('Open Simulate');
+    expect(brief.textContent).toContain('Expected behavior');
+    expect(brief.textContent).toContain('advances on each rising edge');
+  });
+
+  it('omits the starter brief for a project that did not come from a starter', () => {
+    const view = render(<ProjectSurface {...baseProps()} />);
+    expect(view.queryByTestId('ide-project-starter-brief')).toBeNull();
+  });
+
   it('selecting an explorer row opens the inspector; activating it opens the document', () => {
     const onOpenDocument = vi.fn();
     const view = render(<ProjectSurface {...baseProps({ onOpenDocument })} />);

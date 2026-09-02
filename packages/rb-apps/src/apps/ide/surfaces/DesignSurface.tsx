@@ -3807,8 +3807,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : !hasLogicalIoBoundary
           ? 'Add circuit I/O'
           : totalAuthoringWarnings > 0 || authoringIssueCounts.draftCount > 0
-            ? 'Ready for Simulate — review wiring'
-            : 'Ready for Simulate';
+            ? 'Review wiring'
+            : 'Clean';
   const designCommandTone: 'idle' | 'ok' | 'warn' | 'error' =
     totalAuthoringErrors > 0
       ? 'error'
@@ -7022,6 +7022,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <header className="ide-design-subheader">
                 <div><h3>Board I/O</h3></div>
               </header>
+              {/* The list lives here, so the filter does too — one query, filtered per tab. */}
+              <div className="rb-lib-toolbar">
+                <div className="wb-search">
+                  <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="6" cy="6" r="4" /><path d="M9 9l3.5 3.5" /></svg>
+                  <input
+                    type="search"
+                    className="rb-lib-search-input"
+                    aria-label="Filter board resources"
+                    value={paletteQuery}
+                    onChange={(event) => setPaletteQuery(event.target.value)}
+                    placeholder="Filter resources, pins"
+                    data-testid="ide-design-board-search"
+                  />
+                </div>
+              </div>
               {/* Placeable board resources: switches, buttons, clock, LEDs, seven-segment. */}
               {filteredBoardGroups.length > 0 ? (
                 <section
@@ -7426,9 +7441,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   title={designStatusNote ?? authoringStatusLabel}
                 >
                   <span className="rb-design-health-dot" aria-hidden="true" />
-                  <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">
-                    {totalAuthoringErrors > 0 ? 'Errors' : totalAuthoringWarnings > 0 ? 'Warnings' : 'Clean'}
-                  </span>
+                  <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</span>
                   <code className="rb-design-health-counts" data-testid="ide-design-authoring-summary-counts">
                     {totalAuthoringErrors}E {totalAuthoringWarnings}W
                   </code>

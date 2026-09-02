@@ -94,6 +94,15 @@ export interface ProjectSurfaceProps {
   }>;
   projectKind?: ProjectKind;
   activeExampleId: string | null;
+  /** Starter context for the loaded project, surfaced in the Overview. */
+  starterContext?: {
+    name: string;
+    lab?: string;
+    concept?: string;
+    summary?: string;
+    expectedBehavior?: string;
+    nextAction?: string;
+  } | null;
   onOpenExample: (exampleId: string) => void;
   onOpenImport: () => void;
   guidedLabTask?: GuidedLabTaskDefinition | null;
@@ -153,6 +162,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   examples,
   projectKind = 'blank',
   activeExampleId,
+  starterContext = null,
   onOpenExample,
   onOpenImport,
   guidedLabTask,
@@ -472,6 +482,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         return (
           <ProjectOverviewDocument
             projectName={projectName}
+            starter={starterContext}
             topModuleName={resolvedTop}
             canEditTop={Boolean(onFpgaConfigChange)}
             onSetTop={(top) => onFpgaConfigChange?.({ top })}
@@ -699,6 +710,15 @@ const StarterCatalog: React.FC<{
   open: boolean;
   examples: ProjectSurfaceProps['examples'];
   activeExampleId: string | null;
+  /** Starter context for the loaded project, surfaced in the Overview. */
+  starterContext?: {
+    name: string;
+    lab?: string;
+    concept?: string;
+    summary?: string;
+    expectedBehavior?: string;
+    nextAction?: string;
+  } | null;
   onOpenExample: (exampleId: string) => void;
   guidedLabTask?: GuidedLabTaskDefinition | null;
   onStartGuidedLab?: (labId: string) => void;

@@ -160,7 +160,7 @@ describe('DesignSurface contextual inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-palette-section-common')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-section-io')).toBeTruthy();
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'edit');
     expect(view.getByTestId('ide-design-learning-mode-replay')).toBeDisabled();
 
