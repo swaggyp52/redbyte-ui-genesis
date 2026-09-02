@@ -4,6 +4,96 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-02 — P2.5E signature engineering workbench convergence: Wave 1 landed, Waves 2–3 in flight
+
+**Status: INTERIM REDBYTE SIGNATURE WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
+HEAD `4e6aa285a` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+`2ef5e5ee8` (ahead 45+, nothing pushed). Safety tag at the campaign start:
+`safety/redbyte-before-signature-workbench-76c673580`. Worktree clean at each commit below.
+
+**Governing concept (Connor, P2.5E):** RedByte is an engineering-causality workbench — one
+selected engineering object stays understandable across Project → hierarchy → schematic →
+Cases/Timing → Waveform → Board → package pin → XDC → generated artifacts. Not a Vivado copy;
+an expansion that enhances understanding. Chrome is not the signature; the relationship is.
+
+**Wave 1 — signature foundation (done):**
+- `59cdf812b` Engineering Relationship Index (`ide/engineeringRelationships.ts`, derived and
+  read-only over ioRows / circuit / hierarchy / scenarios / last run via `signalIdentity.ts` /
+  constraint sets): field ⇄ node/port ⇄ driver & loads (module instance path) ⇄ run signal ⇄
+  case checks & failing ticks ⇄ board resource / package pin / I/O standard / XDC lines in the
+  active set ⇄ artifacts; duplicate ids, duplicate pins and ambiguous run signals surfaced.
+  Selection continuity: schematic, Cases/Timing/Waveform, Board, Package publish to
+  `engineeringSelection` and follow foreign selections. Application frame bar (graphite): identity,
+  project, File/Edit/View/Run/Tools/Help (registry commands only), centre = selected object's
+  relationship path (`LD1 (SUM) ← XOR2 (SUM)/out · E19`) or the command/search entry, right =
+  running op / target / save. Status line = problems + evidence freshness only. Layer tokens
+  (`--wb-frame-*`, `--wb-rail-bg`, `--wb-tool-bg`, `--wb-doc-bg`, `--wb-paper`); 53 mode-scoped dock
+  rules and the light-theme dock overrides deleted from ide-root / ide-polish-pass /
+  product-system-v3 / design-workbench-v3.
+- `aaeab80cf` Documents own Simulate: Cases / Timing / Waveform tabs; the inner Cases/Bench/
+  Waveform/Checks row is gone; Bench is a Live I/O toggle; Compare opens the Waveform tab; the
+  Case Lab ghost Run is removed. Related… (`components/RelatedMenu.tsx` +
+  `ide/workbenchNavigation.ts` opener seam) in the Design node inspector, Simulate inspector,
+  Board editor: only documents the project has, each with its evidence.
+**Wave 2 — Project + Design (partial):**
+- `52de4a3c1` Project Architecture document (module tree · block view · interface with buses)
+  and Runs document (ledger + problems); both explorer rows and workbench documents.
+- `9dbaf898c` Design: continuous Fit (35–160%), Board I/O tab owns the placeable board
+  resources, Components / Hierarchy / Sources / Board I/O tabs, starter narration strip deleted,
+  health chip = Clean/Warnings/Errors + counts, darker net ink. `d83892ce2` no duplicate Common
+  section; the first completed run opens the Waveform.
+**Wave 3 — Simulation studio (in flight):**
+- `4564a6b85` Timing Lab authors on lanes and edges (`surfaces/verify/TimingLanes.tsx`): tick
+  ruler with rising-edge markers and failure dots, generated clock lane (1 edge/tick), reset and
+  input lanes, expected-over-observed output lanes; click drives / cycles checks; the events
+  table is a closed disclosure.
+- `4e6aa285a` Waveform document is the trace instrument beside the evidence inspector (no case strip).
+- `ac34055a0` Reviewer pass two (three bounded read-only reviewers on the Wave 1 captures; one
+  Workflow, exactly three agents): Simulate Related (P0), honest case/tick naming, artifact port
+  tokens in the Overview I/O table, reset lanes and changed-input truth in Timing, narrow-width
+  frame/Simulate/Package layouts, one primary per document (results bar ghost; "What should I
+  submit?" card deleted), Board binding chain on paper.
+
+**Reviewer findings still open (recorded, not fixed):** constraints identity across
+Project/Board/Package (explorer "1 · 5/5 mapped" vs Board "0 sets" vs Package "top.xdc ✓"; the
+index emits no XDC line numbers without an active set); one problems ledger (status bar counts
+design diagnostics only; Package says "Warnings 2"); Board bring-up still maps LEDs by substring
+(`HardwareSurface.tsx` ~1641/1796); Waveform deck still carries four toolbar rows above the
+lanes; Design library tabs clip at the 220px dock ("Sourc"); Design mode truth (Edit segment vs
+inspector "Live circuit · Paused"); backward-detour vertical legs one grid from pin ends
+(`orthogonalRouter.ts`); Package eyebrow truncation ("BUILD & EX…"); probe readout black band
+when probes are pinned (restyled, unverified with probes pinned).
+
+**Validation at `ac34055a0`:** rb-apps tsc 783 (= baseline) after every step; bounded sets:
+chrome/authority 23/23, Simulate 26 red (all inherited names; the 27th baseline red in
+`verifySurface.authoring` is now green), Design 16 red (= the 16 inherited names), Board 5 red
+(name-identical to baseline), Package 37 (= baseline count) with the migrated handoff test green,
+document host 11/11, Timing/Case/entry sets green. Migrated, not deleted: `workbenchChrome`
+(selection/target moved to the frame bar), `workflowStages.authority` (Run menu),
+`verifyCommandBar.actionRowHierarchy` / `studioRunAuthority` (documents own instruments),
+`exportSurface.handoff-states` (role guide, no narration card). Owed migrations: `designSurface.
+workstation` + `ideApp.labday-wiring` starter-banner assertions (strip deleted; starter identity
+lives in the project name / Project overview), `verifySurface.simulationStudio` "moves
+expected-output authoring into the optional Checks workspace" (Checks mode retired into Cases).
+Browser proof: Related from Design → Cases lands on the same signal; rail clicks publish; Compare
+opens the Waveform tab; timing lane clicks create events and checks; 44 captures re-run (no
+body scroll, 0 console errors at 1440×900 / 1366×768 / 125% / 200%).
+
+**Next (in order):** Case Lab reconstruction (compact scenario selector instead of the
+permanent rail when one scenario exists; keyboard navigation; multi-row ops; failure next/prev;
+run history); Waveform frame (Signal Explorer · Wave Canvas · Evidence Inspector; consolidate
+the four header rows; cursors A/B, next/prev transition; narrow-width lane alignment); retire
+`ScenarioBuilderPanel` sequential disclosure once sweep/hold/pulse move to lanes; Board workbench
+(one constraint authority, resource property grid, 200% centre); Package Handoff Overview
+(in-app derived document; nothing added to the canonical ZIP; goldens untouched); identity
+consumers (Board bring-up substring, Waveform/Package) onto the index; legacy deletion
+(ide-polish-pass / ide-root dead rules, `.ide-vwp-*` component, obsolete ids); SUM[2] vertical
+journey capture set; keyboard / reduced-motion audit.
+
+**Must not be reset:** everything above is committed; dev server on :5173 (`preview_start`
+name `playground`); baseline worktree `.redbyte/worktrees/baseline-b635` still useful for red
+classification; `capture.mjs` drives document tabs (`ide-doc-tab-cases:*`, `ide-doc-tab-waveform:*`).
+
 ## 2026-09-02 — P2.5D instrument-grade workbench convergence: shell → Project → Design landed
 
 **Status: INTERIM REDBYTE FABLE 5.1 WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
