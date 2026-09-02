@@ -192,18 +192,6 @@
   overflow: hidden;
 }
 
-:root[data-redbyte-mode='ide'] .ide-root > :is(.ide-top-bar, .ide-surface-column, .ide-status-bar) {
-  min-width: 0;
-  max-width: 100%;
-}
-
-:root[data-redbyte-mode='ide'] .ide-root .ide-surface-column {
-  background: var(--rb-bg);
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
-
 :root[data-redbyte-mode='ide'] .ide-root .ide-workbench-shell .ide-workbench-main {
   background: var(--rb-bg);
 }
@@ -232,61 +220,6 @@
   border-color: var(--rb-border-subtle);
   background: var(--rb-surface-1);
   box-shadow: var(--rb-lab-depth-1);
-}
-
-.ide-root .ide-top-bar,
-.ide-root .ide-stage-nav-frame {
-  background: color-mix(in srgb, var(--rb-shell) 96%, var(--rb-surface-2));
-  border-color: var(--rb-border-subtle);
-}
-
-.ide-root .ide-top-bar {
-  z-index: 50;
-  grid-template-columns: minmax(0, 1fr) auto;
-  overflow: visible;
-}
-
-.ide-root .ide-stage-nav-frame {
-  z-index: 20;
-}
-
-/* The five product stages must read as navigation, not clipped metadata.
-   The integrated shell deliberately uses the wider desktop rail so
-   Board & Constraints remains fully named. */
-.ide-root .ide-stage-nav {
-  width: min(100%, 1200px);
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.ide-root .ide-status-bar {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 14px;
-  padding: 0 12px !important;
-  overflow: hidden;
-  border-color: var(--rb-border-subtle) !important;
-  color: var(--rb-text-secondary);
-  background: var(--rb-shell);
-}
-
-.ide-root .ide-status-bar--quiet {
-  justify-content: flex-start;
-}
-
-.ide-root .ide-status-item,
-.ide-root .ide-status-support {
-  flex: 0 0 auto;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.ide-root .ide-status-build {
-  min-width: 0;
-  margin-left: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .ide-root .ide-workbench-shell {
@@ -1213,16 +1146,6 @@
 /* Product System v3: restrained course-lab identity and Project Center hierarchy. */
 .ide-root .ide-brand-mark {
   color: var(--rb-brand-red);
-}
-
-.ide-root .ide-brand-wordmark {
-  color: var(--rb-text-primary);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-top-bar,
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-stage-nav-frame {
-  background: var(--rb-shell);
-  box-shadow: 0 1px 0 rgba(75, 65, 54, 0.05);
 }
 
 .ide-root .ide-project-v3 .ide-project-v3-identity {

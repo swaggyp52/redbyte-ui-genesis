@@ -21,14 +21,19 @@ import './ide/theme/redbyte-theme.css';
 import './ide/theme/redbyte-primitives.css';
 import './ide/product-system-v3.css';
 import './ide/unified-workbench-v3.css';
+import './ide/workbench-instrument-system.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
 import { getIdeModeLabel, type IdeMode } from './ide/workflowStages';
 import { buildTopEntityName, normalizeTopEntityName } from './ide/topEntity';
-import { IdeTopBar } from './ide/components/IdeTopBar';
-import { IdeStatusBar } from './ide/components/IdeStatusBar';
+import { WorkbenchCommandBar } from './ide/components/WorkbenchCommandBar';
+import { WorkspaceRail } from './ide/components/WorkspaceRail';
+import { WorkbenchStatusBar } from './ide/components/WorkbenchStatusBar';
+import { WorkbenchDocumentTabStrip } from './ide/components/WorkbenchDocumentTabStrip';
+import { useWorkbenchDocumentHost } from './ide/useWorkbenchDocumentHost';
+import { describeEngineeringObject, useEngineeringSelection } from './ide/engineeringSelection';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
@@ -102,7 +107,6 @@ import {
   sameLocation,
   type EngineeringLocation,
 } from './ide/engineeringLocation';
-import { LocationBar, type LocationSegment } from './ide/components/LocationBar';
 import { generateHierarchicalVhdlProject } from './ide/hierarchicalVhdl';
 import {
   FULL_ADDER_LAB_ID,
@@ -767,13 +771,11 @@ export const IdeApp: React.FC = () => {
     () => computeModulePath(circuit, hierarchy.modules, activeModuleId),
     [circuit, hierarchy.modules, activeModuleId]
   );
+  // Inside a child module the tab strip shows the module trail; each parent
+  // segment is a real navigation (recorded, so Back returns).
   const canNavUp = activeMode === 'design' && modulePath.length >= 2;
-  const handleNavUp = useCallback(() => {
-    if (activeMode !== 'design' || modulePath.length < 2) return;
-    // Up is a normal navigation to the parent module (recorded, so Back returns).
-    setActiveModule(modulePath[modulePath.length - 2]);
-  }, [activeMode, modulePath, setActiveModule]);
 
+  type LocationSegment = { key: string; label: string; kind: 'mode' | 'module'; onSelect?: () => void };
   const locationSegments = useMemo<LocationSegment[]>(() => {
     const segments: LocationSegment[] = [
       { key: 'mode', label: getIdeModeLabel(activeMode), kind: 'mode' },
@@ -2453,9 +2455,67 @@ export const IdeApp: React.FC = () => {
       { id: IDE_COMMAND_IDS.useDarkTheme, title: 'Theme: Workbench Dark', category: 'theme', keywords: ['appearance'], execute: () => setThemeVariant('dark') },
       { id: IDE_COMMAND_IDS.useSystemTheme, title: 'Theme: Follow System', category: 'theme', keywords: ['appearance'], execute: () => setThemeVariant('system') },
       { id: IDE_COMMAND_IDS.openHelp, title: 'Open Help and Keyboard Shortcuts', category: 'help', keywords: ['guide', 'keys'], shortcut: { key: '?', label: '?' }, execute: () => setShowShortcuts(true) },
+      { id: 'project.export-backup', title: 'Export Project Backup', category: 'project', keywords: ['download', 'json', 'archive'], availability: requiresCircuit, execute: handleExportProjectBackup },
+      { id: 'workspace.panel.toggle-right', title: 'Toggle Right Workspace Panel', category: 'workspace', keywords: ['inspector', 'dock', 'hide', 'show'], execute: () => { const dock = workspacePreferencesStore.getSnapshot().surfaces[activeMode].docks.right; workspacePreferencesStore.setDock(activeMode, 'right', { visible: !dock.visible }); } },
+      { id: 'workspace.panel.toggle-bottom', title: 'Toggle Bottom Panel', category: 'workspace', keywords: ['problems', 'console', 'output', 'dock'], execute: () => { const dock = workspacePreferencesStore.getSnapshot().surfaces[activeMode].docks.bottom; workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: !dock.visible }); } },
     ];
     return createIdeCommandRegistry(commands);
-  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleSaveAsProject, handleSaveProject, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
+  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleExportProjectBackup, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleSaveAsProject, handleSaveProject, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
+
+  // ── Document host + global engineering selection ────────────────────────────
+  const isSequentialProject = useMemo(
+    () => analyzeSequentialLogic(circuit).hasClockedMacros || verifyLastRun?.schedule === 'clocked_macro',
+    [circuit, verifyLastRun?.schedule]
+  );
+  const documentHost = useWorkbenchDocumentHost({
+    activeMode,
+    setCurrentMode,
+    projectId,
+    hasCircuit,
+    topEntityName: effectiveTopEntityName,
+    activeModuleId,
+    setActiveModule,
+    modules: hierarchy.modules,
+    scenarios,
+    activeScenarioId,
+    switchScenario: switchVerifyScenario,
+    isSequential: isSequentialProject,
+    constraintSets: constraintSetsDoc,
+    setActiveConstraintSet: setActiveConstraintSetInStore,
+    sourceModel,
+    boardLabel: fpgaConfig.board,
+  });
+  const selectedEngineeringObject = useEngineeringSelection((state) => state.selected);
+  const checkedCommandIds = useMemo(() => {
+    const ids = new Set<string>();
+    ids.add(
+      themeVariant === 'dark' || themeVariant === 'midnight'
+        ? IDE_COMMAND_IDS.useDarkTheme
+        : themeVariant === 'system'
+          ? IDE_COMMAND_IDS.useSystemTheme
+          : IDE_COMMAND_IDS.useLightTheme
+    );
+    const view = workspacePreferences.design.view;
+    ids.add(view === 'code' ? IDE_COMMAND_IDS.showDesignCode : view === 'split' ? IDE_COMMAND_IDS.showDesignSplit : IDE_COMMAND_IDS.showDesignCanvas);
+    return ids as ReadonlySet<`${string}.${string}`>;
+  }, [themeVariant, workspacePreferences.design.view]);
+  const statusRunState = useMemo(() => {
+    if (!hasCircuit) return null;
+    if (runtimeSim.running) return { label: 'Running', tone: 'warn' as const };
+    switch (projectVerifyState) {
+      case 'assertions-match':
+        return { label: 'Simulation current · pass', tone: 'ok' as const };
+      case 'trace':
+        return { label: 'Simulation observed', tone: 'ok' as const };
+      case 'stale':
+        return { label: 'Simulation stale', tone: 'warn' as const };
+      case 'assertions-differ':
+      case 'verify-error':
+        return { label: 'Simulation failing', tone: 'error' as const };
+      default:
+        return { label: 'Not simulated', tone: 'idle' as const };
+    }
+  }, [hasCircuit, projectVerifyState, runtimeSim.running]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -2640,59 +2700,18 @@ export const IdeApp: React.FC = () => {
           <button onClick={() => { setAutosaveAvailable(false); localStorage.removeItem('rb-autosave-circuit'); }}>Dismiss</button>
         </div>
       )}
-      <IdeTopBar
+      <WorkbenchCommandBar
         projectName={projectName}
-        projectId={projectId}
-        boardTarget={fpgaConfig.board}
         saveState={saveState}
         lastSavedAt={repositoryState.lastSavedAtIso ? formatSavedAtLabel(repositoryState.lastSavedAtIso) : null}
         storageLabel={repositoryState.storageLocation.label}
-        recoveryAvailable={repositoryState.recoveryAvailable}
-        currentMode={activeMode}
-        onModeChange={setCurrentMode}
-        stageStatus={{
-          project: hasCircuit ? 'Loaded' : 'New project',
-          design: `${circuit.nodes.length} component${circuit.nodes.length === 1 ? '' : 's'}`,
-          verify: runtimeSim.running
-            ? 'Running'
-            : projectVerifyState === 'assertions-match'
-              ? 'Current'
-              : projectVerifyState === 'stale'
-                ? 'Stale'
-                : projectVerifyState === 'trace'
-                  ? 'Observed'
-                : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
-                  ? 'Needs review'
-                  : 'Not run',
-          hardware: `${projectIoRows.filter((row) => row.required && row.pin.trim().length > 0).length} / ${projectIoRows.filter((row) => row.required).length} assigned`,
-          export: exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft',
-        }}
-        stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
-        stepsBlocked={{
-          design: Boolean(blockingDesignIssue),
-          verify: !hasCircuit || Boolean(blockingDesignIssue),
-          hardware: !hasCircuit || Boolean(blockingDesignIssue),
-          export: !workflowAuthority.exportAvailable,
-        }}
         buildIdentity={buildIdentity}
-        onSave={handleSaveProject}
-        onSaveAs={handleSaveAsProject}
-        onLoad={handleOpenLoadModal}
-        onResetToExample={handleResetToExample}
-        onRunVerify={() => setCurrentMode('verify')}
-        onExport={() => setCurrentMode('export')}
-        onImport={() => setCurrentMode('import')}
+        registry={commandRegistry}
+        context={commandContext}
+        checkedCommandIds={checkedCommandIds}
         onRenameProject={handleRenameProject}
-        onHelp={() => setShowShortcuts(true)}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-        onDuplicateProject={handleDuplicateProject}
-        onExportBackup={handleExportProjectBackup}
-        onRecover={handleRecoverProject}
-        activeWorkspacePreset={workspacePreferences.activePresetId}
-        onApplyWorkspacePreset={handleApplyWorkspacePreset}
-        onResetWorkspace={handleResetWorkspace}
-        themeVariant={themeVariant}
-        onThemeChange={setThemeVariant}
+        onSave={handleSaveProject}
       />
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
@@ -2703,16 +2722,31 @@ export const IdeApp: React.FC = () => {
         onClose={() => setCommandPaletteOpen(false)}
       />
 
-      <div className="ide-layout-shell">
-        <div className="ide-surface-column">
-        <LocationBar
-          segments={locationSegments}
-          canBack={locationPast.length > 0}
-          canForward={locationFuture.length > 0}
-          canUp={canNavUp}
-          onBack={handleNavBack}
-          onForward={handleNavForward}
-          onUp={handleNavUp}
+      <div className="wb-body">
+        <WorkspaceRail
+          currentMode={activeMode}
+          onModeChange={setCurrentMode}
+          stepsBlocked={{
+            design: Boolean(blockingDesignIssue),
+            verify: hasCircuit && Boolean(blockingDesignIssue),
+            hardware: hasCircuit && Boolean(blockingDesignIssue),
+            export: hasCircuit && !workflowAuthority.exportAvailable,
+          }}
+        />
+        <div className="wb-document-column ide-surface-column" data-testid="ide-document-column">
+        <WorkbenchDocumentTabStrip
+          open={documentHost.open}
+          activeKey={documentHost.activeKey}
+          labelFor={documentHost.labelFor}
+          onActivate={documentHost.activate}
+          onClose={documentHost.close}
+          history={{
+            canBack: locationPast.length > 0,
+            canForward: locationFuture.length > 0,
+            onBack: handleNavBack,
+            onForward: handleNavForward,
+          }}
+          trail={canNavUp ? locationSegments.filter((segment) => segment.kind === 'module') : undefined}
         />
         {activeMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project workspace encountered an error">
@@ -3178,19 +3212,13 @@ export const IdeApp: React.FC = () => {
         </div>
       </div>
 
-      {/*
-        Footer = support context only, not a workflow authority. Per-stage
-        workflow status (Simulate / Board / Package) is owned once by the
-        top-center stage-nav (see stageStatus above); repeating it here was the
-        "duplicate status" clutter. The footer keeps genuine support facts:
-        checks health, storage location, and the compiler problems count.
-      */}
-      <IdeStatusBar
-        mode={activeMode}
-        determinismHash={determinismHash}
-        gateStatus={blockingDesignIssue ? 'fail' : designCompilerStatus.warningCount > 0 ? 'warn' : 'pass'}
-        storageState={saveState === 'save-failed' ? 'Save failed' : saveState === 'saved' ? 'Saved locally' : saveState}
+      <WorkbenchStatusBar
         problemsCount={designCompilerStatus.errorCount + designCompilerStatus.warningCount}
+        onShowProblems={() => workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true })}
+        selectionLabel={selectedEngineeringObject ? describeEngineeringObject(selectedEngineeringObject) : null}
+        runState={statusRunState}
+        boardTarget={hasCircuit ? fpgaConfig.board : undefined}
+        fpgaPart={hasCircuit ? fpgaConfig.part : undefined}
       />
 
       <input
