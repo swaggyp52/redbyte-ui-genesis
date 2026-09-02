@@ -16,6 +16,8 @@ Recovery bundle of the interrupted dirty state:
 
 **Case Lab hand-over:** `d8b09fcbb` `feat(simulate)` Case Lab owns combinational scenarios; the builder disclosure renders only for the sequential composer until the Timing Lab lands; auto-vector notice and fallback-signal warning ported into Case Lab; 27 verify/labday reds, all inherited.
 
+**Waveform deck:** `f70cc1408` `feat(simulate)` evidence deck on `waveform-instrument.css` with --rb-wave-* tokens; the SVG viewer reads tokens (no hard-coded dark palette); verdict bar, transport, tools, bus words as rows; Waveform tab makes the deck the document. 25 waveform/verify reds, all inherited.
+
 **Commits (newest first):**
   - `1451f73c6 chore(tests): keep original line endings in the migrated Design tests`
   - `106d1f754 feat(design): schematic instrument — ANSI symbols, orthogonal nets, one toolbar, property-grid inspector`
