@@ -4,6 +4,52 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-04 — P2.5F maximum product depth (Fable 5.1 ultracode, desktop session)
+
+**Label:** INTERIM REDBYTE MAX-DEPTH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.
+HEAD `a65f9d295` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+`2ef5e5ee8`; safety tag `safety/redbyte-before-max-depth-6fcf75b0d`. Nothing pushed; PR #85,
+`main` and the product branch untouched; format version 1; both classroom goldens byte-identical.
+
+**Landed (oldest → newest):**
+- `9eb00213b` Universal Navigator (Ctrl+K) over the derived index in `workbenchNavigator.ts` —
+  signals, buses, modules, instances, sources, cases, failures, board resources, constraint lines,
+  artifacts, problems, runs, open documents — every entry opens the real document and publishes
+  the exact selection; ambiguity is shown, never guessed. One Problems ledger
+  (`engineeringProblems.ts`) over project health, design authoring, the compiler, signal identity,
+  the run, board mapping, export validation and import fidelity; one fact is one row; a shared
+  Problems tool window (`components/ProblemsPanel.tsx`) in every workspace's bottom dock; the
+  status bar, the Design tab, Package's fact and the navigator all count the same list.
+- `2f7f2c6c9` Close / Close others / Reopen closed as registry commands (View menu, navigator,
+  tab context menu); availability from the command context.
+- `3882ebbca` Start Center rebuilt as a library (`surfaces/project/StartCenter.tsx`): sections,
+  dense list, real ArchitecturePreview of the selected lab/starter/recent project, one Start
+  command. Old ProjectLanding/StarterCatalog/RecentProjects deleted with 66 legacy rule blocks;
+  the polish-era dark input slab rewritten to workbench tokens; E-tier codes gone from lab copy.
+- `a2648438f` Design layers (Layers menu, persisted), bus brackets (`SchematicBusBrackets.tsx`,
+  lanes per side), hierarchy frames, pin values from the working zoom.
+- `28a4ea1e7` Export generator resolves the V2 mapping (V2-only projects were blocked with twelve
+  testbench-target errors); Design toolbar Trace group (Driver, Loads).
+- `2edf2d926` Waveform: one command bar replaces five header rows; Signals rail filter.
+- `17ab94d0b` Board layers + conflict state; centre never collapses (stacks under 900px);
+  constraint sets on demand.
+
+**Validation at each commit:** rb-apps typecheck 779 (= baseline), rb-logic-view 49 (= baseline),
+both golden gates PASS, Design set 16 red = the 16 inherited names (classified against the
+baseline worktree), Board 5 red = inherited, Simulate reds ⊂ inherited (observe-first
+"publishes the auto-selected observed signal" is baseline-red), lab-day only the pre-existing
+Verify-detach red. Captures: 60 PNGs regenerated per wave (`evidence/p25d`).
+
+**Open, in order:** Case Lab multi-select / bulk expected / run selected / history; Waveform
+groups + next/prev transition; Timing snap-to-edge + run range; Package provenance
+(dependencies/dependents) + previous/current comparison surfacing; keyboard/screen-reader audit;
+scale proof (256 cases, 500 lanes); legacy sweep (ScenarioBuilderPanel, ide-polish-pass
+remnants); reviewer findings (workflow `wf_e8a568cb-83b`, three read-only lenses).
+
+**Must not be reset:** everything above is committed; dev server on :5173 (already running,
+serves this clone); baseline worktree `.redbyte/worktrees/baseline-b635`; scratch patch scripts
+under the session scratchpad are disposable.
+
 ## 2026-09-02 — P2.5E signature engineering workbench convergence: Wave 1 landed, Waves 2–3 in flight
 
 **Status: INTERIM REDBYTE SIGNATURE WORKBENCH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.**
