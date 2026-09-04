@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
 import { ProblemsPanel } from '../components/ProblemsPanel';
 import { useEngineeringProblems } from '../engineeringProblems';
 import { useEngineeringSelection } from '../engineeringSelection';
@@ -691,6 +692,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     return s;
   }, [mappingRows]);
   const problemsLedgerCount = useEngineeringProblems((state) => state.problems.length);
+  const workspacePreferences = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  );
+  const boardLayers = workspacePreferences.board.layers;
   const mappingProjectionById = useMemo(
     () => new Map(mappingProjection.map((projection) => [projection.logicalSignalId, projection])),
     [mappingProjection]
@@ -768,6 +775,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     },
     [mappingProjection.length, mappingProjectionById, mappingRows, pinUsageCounts]
   );
+  /** Board aliases whose mapping is in conflict, for the conflicts layer. */
+  const conflictAliases = useMemo(() => {
+    const aliases = new Set<string>();
+    for (const row of conflictingMappingRows) {
+      const pin = mappingProjectionById.get(row.id)?.packagePin ?? row.pin ?? null;
+      const alias = pin ? getBasys3BoardResource(pin)?.alias : undefined;
+      if (alias) aliases.add(alias);
+    }
+    return aliases;
+  }, [conflictingMappingRows, mappingProjectionById]);
   const selectedAllowedBoardAliases = useMemo(
     () => buildAllowedBoardAliasesForRow(selectedMappingRow),
     [selectedMappingRow]
@@ -3266,6 +3283,32 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
               <section className="rb-board-stage" data-testid="ide-hw-map-board" data-work-priority="primary">
                 <header className="rb-board-section-header">
+                  <details className="wb-menu-details rb-board-layers" data-testid="ide-board-layers">
+                    <summary className="wb-btn wb-btn--ghost" title="Board layers (persisted with the workspace)">Layers ▾</summary>
+                    <div className="wb-menu" aria-label="Board layers">
+                      {(
+                        [
+                          ['labels', 'Resource labels'],
+                          ['mapped', 'Mapped resources'],
+                          ['compatible', 'Compatible targets'],
+                          ['conflicts', 'Conflicts'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={boardLayers[id]}
+                          className="wb-menu-item"
+                          onClick={() => workspacePreferencesStore.setBoardLayer(id as BoardLayerId, !boardLayers[id])}
+                          data-testid={`ide-board-layer-${id}`}
+                        >
+                          <span className="wb-menu-item-check" aria-hidden="true">{boardLayers[id] ? '●' : ''}</span>
+                          <span className="wb-menu-item-label">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
                   <div>
                     <p className="ide-surface-block-label">Basys3</p>
                     <p className="ide-copy ide-copy--flush" data-testid="ide-hw-board-task-copy">
@@ -3280,6 +3323,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   aria-label="Interactive Basys3 board assignment canvas"
                 >
                   <Basys3BoardView
+                    layers={boardLayers}
+                    conflictAliases={conflictAliases}
                     mappedAliases={mapModeAliases}
                     highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
                     allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : new Set<string>()}

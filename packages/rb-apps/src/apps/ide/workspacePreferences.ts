@@ -45,6 +45,20 @@ function normalizeDesignLayers(raw: unknown): DesignLayers {
   for (const id of DESIGN_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
   return Object.freeze(next);
 }
+export type BoardLayerId = 'labels' | 'mapped' | 'compatible' | 'conflicts';
+export type BoardLayers = Readonly<Record<BoardLayerId, boolean>>;
+export const BOARD_LAYER_IDS: readonly BoardLayerId[] = ['labels', 'mapped', 'compatible', 'conflicts'];
+export const DEFAULT_BOARD_LAYERS: BoardLayers = Object.freeze({ labels: true, mapped: true, compatible: true, conflicts: true });
+function normalizeBoardLayers(raw: unknown): BoardLayers {
+  const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const next: Record<BoardLayerId, boolean> = { ...DEFAULT_BOARD_LAYERS };
+  for (const id of BOARD_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
+  return Object.freeze(next);
+}
+export interface BoardWorkspacePreferences {
+  /** Board twin presentation layers (persisted with the workspace). */
+  readonly layers: BoardLayers;
+}
 export type DesignCanvasAppearance = 'dark' | 'light' | 'system';
 export type DesignCanvasDensity = 'comfortable' | 'compact';
 
@@ -72,6 +86,7 @@ export interface WorkspacePreferencesV1 {
   readonly activePresetId: WorkspacePresetId | null;
   readonly surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>;
   readonly design: DesignWorkspacePreferences;
+  readonly board: BoardWorkspacePreferences;
 }
 
 export interface WorkspacePresetDefinition {
@@ -188,6 +203,7 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
     canvasDensity: 'compact',
     layers: DEFAULT_DESIGN_LAYERS,
   },
+  board: { layers: DEFAULT_BOARD_LAYERS },
 });
 
 export function parseWorkspacePreferences(raw: string | null | undefined): WorkspacePreferencesV1 {
@@ -213,6 +229,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
   }
 
   const rawDesign = isRecord(value.design) ? value.design : {};
+  const rawBoard = isRecord(value.board) ? value.board : {};
   const activePresetId = isWorkspacePresetId(value.activePresetId)
     ? value.activePresetId
     : value.activePresetId === null
@@ -234,6 +251,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
         : defaults.design.canvasDensity,
       layers: normalizeDesignLayers(rawDesign.layers),
     },
+    board: { layers: normalizeBoardLayers(rawBoard.layers) },
   });
 }
 
@@ -321,6 +339,13 @@ export class WorkspacePreferencesStore {
     });
   }
 
+  setBoardLayer(id: BoardLayerId, on: boolean): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      board: { layers: Object.freeze({ ...this.#preferences.board.layers, [id]: on }) },
+    });
+  }
+
   setDesignLayer(id: DesignLayerId, on: boolean): WorkspacePreferencesV1 {
     return this.#replace({
       ...this.#preferences,
@@ -396,6 +421,7 @@ export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
       canvasDensity: DEFAULT_WORKSPACE_PREFERENCES.design.canvasDensity,
       layers: DEFAULT_WORKSPACE_PREFERENCES.design.layers,
     },
+    board: { layers: DEFAULT_WORKSPACE_PREFERENCES.board.layers },
   });
 }
 

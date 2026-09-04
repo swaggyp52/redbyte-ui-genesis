@@ -77,13 +77,14 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
   };
 
   return (
-    <section className="ide-constraint-sets" data-testid="ide-constraint-sets" aria-label="Constraint sets">
-      <header className="ide-constraint-sets-head">
+    <details className="ide-constraint-sets" data-testid="ide-constraint-sets" aria-label="Constraint sets" open={doc.sets.length > 0}>
+      <summary className="ide-constraint-sets-head">
         <span className="ide-constraint-sets-title">Constraint sets</span>
         <span className="ide-constraint-sets-count" data-testid="ide-constraint-sets-count">
           {doc.sets.length} set{doc.sets.length === 1 ? '' : 's'}
         </span>
-      </header>
+        {doc.sets.length === 0 ? <span className="ide-constraint-sets-live-note">live mapping is active · packaged as top.xdc</span> : null}
+      </summary>
       <p className="ide-constraint-sets-note">
         One set is active at a time and is what Build &amp; Export packages as <code>top.xdc</code>.
       </p>
@@ -220,6 +221,6 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
           </pre>
         </details>
       ) : null}
-    </section>
+    </details>
   );
 };

@@ -157,3 +157,17 @@
 .ide-root .ide-constraint-sets-live code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .ide-constraint-sets-live-note { margin-left: auto; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .ide-constraint-sets-note { margin: 0; padding: 4px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+
+/* ── The centre board never collapses. Side panes yield first, then stack. ── */
+@media (max-width: 1180px) {
+  .ide-root .rb-board-grid { grid-template-columns: minmax(220px, 260px) minmax(280px, 1fr) minmax(220px, 250px); }
+}
+@media (max-width: 899px) {
+  .ide-root .rb-board-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 24%) minmax(0, 1fr) minmax(0, 26%); }
+  .ide-root .rb-board-assignments { border-right: 0; border-bottom: 1px solid var(--wb-border-strong); }
+  .ide-root .rb-board-side { border-left: 0; border-top: 1px solid var(--wb-border-strong); }
+  .ide-root .rb-board-stage { min-height: 160px; }
+}
+
+.ide-root .rb-board-layers { order: 2; margin-left: auto; }
+.ide-root .rb-board-section-header > div { min-width: 0; }
