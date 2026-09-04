@@ -151,6 +151,16 @@ accepted.
   `1c5629d54` investigation record → `3d65bf423` run-intent selector + structural
   blocking (CI green under Node 20.19.0) → `583fef846` FPGA-part board-owned →
   `04b980b90` UI-only Journey A core.
+- **P2.5E/P2.5F desktop sessions (2026-09-02 → 2026-09-04, not pushed):** the signature
+  workbench reconstruction on the same branch — Universal Navigator (Ctrl+K), one Problems
+  ledger, Start Center as a library, Design layers / bus brackets / trace, one Waveform command
+  bar with edge stepping, Board layers, Case Lab multi-select with the followed signal as a
+  column, and the field-identity repair (authored expectations on hyphenated io-row ids such as
+  the hierarchical adder's `carry-out` were silently pruned on every Simulate write). HEAD
+  `311ed2467`, 68 commits ahead of origin, label **INTERIM REDBYTE MAX-DEPTH RECONSTRUCTION /
+  NOT A REVIEW CANDIDATE / NOT PUSHED**. Browser-E0 only; both goldens byte-identical; format
+  version 1. Continuation and open list:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
   proven (`full-adder-operational-journey.mjs`, both viewports, zero store actions):
   first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector

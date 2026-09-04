@@ -7,7 +7,7 @@
 ## 2026-09-04 — P2.5F maximum product depth (Fable 5.1 ultracode, desktop session)
 
 **Label:** INTERIM REDBYTE MAX-DEPTH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.
-HEAD `a65f9d295` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
+HEAD `311ed2467` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still
 `2ef5e5ee8`; safety tag `safety/redbyte-before-max-depth-6fcf75b0d`. Nothing pushed; PR #85,
 `main` and the product branch untouched; format version 1; both classroom goldens byte-identical.
 
@@ -33,22 +33,56 @@ HEAD `a65f9d295` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; o
 - `2edf2d926` Waveform: one command bar replaces five header rows; Signals rail filter.
 - `17ab94d0b` Board layers + conflict state; centre never collapses (stacks under 900px);
   constraint sets on demand.
+- `336588258` Case Lab multi-select (Shift/Ctrl, Ctrl+A), bulk expected edits in one write, run
+  history line, # column = case number (tick). **Field identity:** the Simulate surface's canonical
+  field id is now the project io-row id byte for byte — it used to rewrite `carry-out` to
+  `carry_out`, the runtime's alias rule strips punctuation, every surface write was pruned as an
+  unknown output and the hierarchical adder's authored carry expectations vanished (dead CARRY
+  column; Compare never checked carry). The runtime also accepts the underscore spelling as an
+  alias of the same row. Reviewer P0/P1 fixes: false Verilog port-parity export lint removed; Board
+  narrates the selected row and adopts a followed signal on mount; Related… menu fixed-positioned
+  (escapes the dock's scroll box, flips at the viewport edge); Package strip vocabulary + full
+  export hash + "browser-verified" wording; 0-based cases; architecture figure net tracks; bus
+  planner collapses to a summary once every member has a pin; project switch clears the selection.
+- `81878278b` **Select once, follow everywhere — the Cases side:** the followed signal is a Case Lab
+  column (header underline, cell wash, aria-current); a click on any output column makes that
+  signal the followed one and publishes it from Cases. The Simulate landing effect re-runs only
+  when the set of lanes changes; the default-lane auto-select yields to a selection made elsewhere
+  (null lane included) and converges on the timeline's own lane name. Tools menu retired (its two
+  entries duplicated File and the Board rail; Navigator heads View). Lab goals say "Run Compare in
+  Simulate" / "Build the Vivado package"; the RTL schematic is named as a Vivado view.
+- `311ed2467` Waveform "‹ Edge / Edge ›" step the followed lane's transitions (count beside
+  them). Narrow windows / 200%: folded docks capped (22vh/24vh), bottom tool window bounded
+  (30vh), shell rows give the workbench the remaining height.
 
 **Validation at each commit:** rb-apps typecheck 779 (= baseline), rb-logic-view 49 (= baseline),
 both golden gates PASS, Design set 16 red = the 16 inherited names (classified against the
 baseline worktree), Board 5 red = inherited, Simulate reds ⊂ inherited (observe-first
-"publishes the auto-selected observed signal" is baseline-red), lab-day only the pre-existing
-Verify-detach red. Captures: 60 PNGs regenerated per wave (`evidence/p25d`).
+"publishes the auto-selected observed signal", simulationStudio "runs no-check stimulus…",
+verifySimulationStudio.v3 "names the student task…", waveform-priority ×4, hardware/export
+trust-clarity — all fail identically in the baseline worktree), lab-day only the pre-existing
+Verify-detach red. New green: verifySurface.fieldIdentity (3), projectRuntime.fieldAlias (3),
+verifySurface.followColumn (2), simulationStudio "cell-level optional checks". Live-app proof
+(this session, 1280×720 pane + 720×450 emulation): Ctrl+K → SUM[2] lands the exact signal; Design
+SUM[2] → Cases followed column → SUM[1] header click → chip "SUM[1] ← u_fa1/SUM · E19" → CARRY
+→ Board opens on the CARRY row; fresh hierarchical adder: CARRY column exp 0 0 0 1 0 1, Compare
+report carries the carry signal, six carry checks pass; Waveform SUM[1] edges t1/t2/t4.
 
-**Open, in order:** Case Lab multi-select / bulk expected / run selected / history; Waveform
-groups + next/prev transition; Timing snap-to-edge + run range; Package provenance
-(dependencies/dependents) + previous/current comparison surfacing; keyboard/screen-reader audit;
-scale proof (256 cases, 500 lanes); legacy sweep (ScenarioBuilderPanel, ide-polish-pass
-remnants); reviewer findings (workflow `wf_e8a568cb-83b`, three read-only lenses).
+**Open, in order:** Design at 200% — the workbench inner grid is still content-sized
+(rows 160/520/180 in a 318px main; the schematic shows but the frame overflows; the winning rules
+live in `ide-root.css` ≤860/≤760 blocks and the design pane row); Run menu "Run Compare"
+(needs a Simulate run-request bridge — the Compare rows are computed inside the surface); Waveform
+lane groups; Timing snap-to-edge + run range; Package provenance previous/current comparison;
+keyboard/screen-reader audit; scale proof (256 cases, 500 lanes); legacy sweep
+(ScenarioBuilderPanel, ide-polish-pass remnants); stale run evidence from a previous project state
+still renders under the STALE strip after a reload (the strip is honest; consider clearing the run
+on project switch); a second reviewer round (the first was workflow `wf_e8a568cb-83b`).
 
 **Must not be reset:** everything above is committed; dev server on :5173 (already running,
-serves this clone); baseline worktree `.redbyte/worktrees/baseline-b635`; scratch patch scripts
-under the session scratchpad are disposable.
+serves this clone; browser pane tab "seed", last left on the hierarchical adder with SUM[1]
+followed in Simulate); baseline worktree `.redbyte/worktrees/baseline-b635`; scratch patch scripts
+under the session scratchpad are disposable. Exact next seam: the Design 200% inner grid (see
+Open) or the Run-menu Compare bridge — both are contained; nothing is half-edited.
 
 ## 2026-09-02 — P2.5E signature engineering workbench convergence: Wave 1 landed, Waves 2–3 in flight
 
