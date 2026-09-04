@@ -251,3 +251,6 @@
   .ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: 0; }
   .ide-root .rb-wave-cmd .rb-wave-group--tail .wb-btn { padding: 0 6px; }
 }
+
+/* Edge navigation: a compact count beside the two step buttons. */
+.ide-root .rb-wave-edges__count { font-size: 11px; color: var(--wb-text-3); white-space: nowrap; }

@@ -1060,3 +1060,25 @@
 .ide-root .wb-menu-details[data-align='end'] > .wb-menu { left: auto; right: 0; }
 .ide-root .rb-related-menu { max-width: min(340px, calc(100vw - 16px)); }
 .ide-root .rb-related-menu .wb-menu-item { white-space: normal; }
+
+/* ── Narrow windows and 200% zoom ─────────────────────────────────────────
+   Below 900px the docks fold above and below the workspace and the bottom
+   tool window sits under it. All three are capped so the document keeps
+   the height: the schematic, grid or board is the reason the window is
+   open; library, inspector and tool window scroll inside their strips. */
+@media (max-width: 899px) {
+  .ide-root .ide-surface-shell.ide-workbench-shell {
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    min-height: 0;
+  }
+  .ide-root .ide-workbench-shell > .ide-workbench-console { min-height: 0 !important; max-height: 30vh !important; overflow: auto; }
+  .ide-root .ide-workbench-shell .ide-workbench-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    min-height: 0 !important;
+  }
+  .ide-root .ide-workbench-shell .ide-workbench-main > .ide-workbench-dock-left { max-height: 22vh !important; min-height: 0 !important; overflow: auto !important; }
+  .ide-root .ide-workbench-shell .ide-workbench-main > .ide-workbench-dock-right { max-height: 24vh !important; min-height: 0 !important; overflow: auto !important; }
+  .ide-root .ide-workbench-shell .ide-workbench-main > .ide-workbench-workspace { min-height: 0 !important; }
+  .ide-root .ide-design-dock-stack { max-height: 26vh !important; }
+}

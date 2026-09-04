@@ -4789,6 +4789,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   // The followed signal (selected here or anywhere else) is one Case Lab column;
   // clicking a column makes that signal the followed one.
+  // Transitions of the followed lane: the ticks at which its value changes.
+  // "‹ Edge" / "Edge ›" step the selected tick between them.
+  const selectedLaneEdges = useMemo(() => {
+    if (!selectedSignal) return [] as number[];
+    const lane = displaySignalTimeline.find((entry) => entry.signal === selectedSignal);
+    if (!lane) return [] as number[];
+    const edges: number[] = [];
+    for (let index = 1; index < lane.values.length; index += 1) {
+      const previous = lane.values[index - 1]?.value ?? '-';
+      const current = lane.values[index]?.value ?? '-';
+      if (current !== previous) edges.push(lane.values[index].tick);
+    }
+    return edges;
+  }, [displaySignalTimeline, selectedSignal]);
+  const previousEdgeTick = useMemo(
+    () => (selectedTick == null ? null : [...selectedLaneEdges].reverse().find((tick) => tick < selectedTick) ?? null),
+    [selectedLaneEdges, selectedTick]
+  );
+  const nextEdgeTick = useMemo(
+    () => (selectedTick == null ? selectedLaneEdges[0] ?? null : selectedLaneEdges.find((tick) => tick > selectedTick) ?? null),
+    [selectedLaneEdges, selectedTick]
+  );
   const caseLabFocusFieldId = useMemo(() => {
     if (!selectedSignal) return null;
     const key = normalizeSignalId(selectedSignal);
@@ -6430,6 +6452,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
                 </div>
 
+                {/* Edge navigation: the followed lane's transitions. */}
+                <div className="rb-wave-group rb-wave-edges" data-testid="ide-verify-edge-nav" aria-label="Transitions of the followed signal">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => { if (previousEdgeTick != null) setSelectedTick(previousEdgeTick); }}
+                    disabled={previousEdgeTick == null}
+                    testId="ide-verify-edge-prev"
+                    title={selectedSignal ? `Previous transition of ${selectedSignal}${previousEdgeTick != null ? ` (t${previousEdgeTick})` : ''}` : 'Select a signal to step its transitions'}
+                  >
+                    ‹ Edge
+                  </IdeButton>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => { if (nextEdgeTick != null) setSelectedTick(nextEdgeTick); }}
+                    disabled={nextEdgeTick == null}
+                    testId="ide-verify-edge-next"
+                    title={selectedSignal ? `Next transition of ${selectedSignal}${nextEdgeTick != null ? ` (t${nextEdgeTick})` : ''}` : 'Select a signal to step its transitions'}
+                  >
+                    Edge ›
+                  </IdeButton>
+                  {selectedSignal && selectedLaneEdges.length > 0 ? (
+                    <span className="rb-wave-edges__count ide-copy" data-testid="ide-verify-edge-count">
+                      {selectedLaneEdges.length} edge{selectedLaneEdges.length === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </div>
                 {/* Fail/meta navigation intentionally owns a separate row. */}
                 <div className="rb-wave-group" data-testid="ide-verify-fail-nav">
                   {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
