@@ -1716,6 +1716,42 @@ export const IdeApp: React.FC = () => {
     }
   }, [exportProject, projectName, setLastSavedAt]);
 
+  // Read-only preview of a saved project for the Start Center. The repository
+  // read parses the stored snapshot without loading it into the runtime.
+  const recentProjectsForStart = useMemo(() => savedProjects.slice(0, 6), [savedProjects]);
+  const peekCacheRef = useRef(new Map<string, ReturnType<typeof buildPeek>>());
+  const peekRecentProject = useCallback((projectId: string) => {
+    const entry = savedProjects.find((saved) => saved.projectId === projectId);
+    const cacheKey = entry ? `${projectId}:${entry.savedAtIso}:${entry.projectHash}` : projectId;
+    const cached = peekCacheRef.current.get(cacheKey);
+    if (cached !== undefined) return cached;
+    const built = buildPeek(projectId);
+    peekCacheRef.current.set(cacheKey, built);
+    if (peekCacheRef.current.size > 24) peekCacheRef.current.delete(peekCacheRef.current.keys().next().value as string);
+    return built;
+  }, [savedProjects]);
+
+  function buildPeek(projectId: string) {
+    const opened = projectRepository.open(projectId);
+    if (!opened.ok) return null;
+    const project = opened.value.project;
+    const ioLabels = new Map<string, string>();
+    for (const node of project.circuit.nodes) {
+      if ((node.type === 'INPUT' || node.type === 'OUTPUT') && node.label) ioLabels.set(node.id, node.label);
+    }
+    const hierarchy = project.hierarchy ?? null;
+    return {
+      circuit: project.circuit,
+      hierarchy,
+      ioLabels,
+      top: project.fpga?.top,
+      board: project.fpga?.board,
+      part: project.fpga?.part,
+      caseCount: project.vectors?.length,
+      lastRun: null,
+    };
+  }
+
   const handleRecoverProject = useCallback(() => {
     const checkpoint = repositoryState.recoveryCheckpoint;
     if (!checkpoint) return;
@@ -3023,9 +3059,15 @@ export const IdeApp: React.FC = () => {
               guidedLabTask={activeGuidedLabTask ?? FULL_ADDER_SCRATCH_LAB}
               onStartGuidedLab={handleStartGuidedLab}
               onStartBlankProject={handleBuildFreshProject}
-              recentProjects={savedProjects.slice(0, 3)}
+              recentProjects={recentProjectsForStart}
               onOpenSavedProjects={handleOpenLoadModal}
               onOpenRecentProject={handleOpenRecentProject}
+              peekRecentProject={peekRecentProject}
+              recovery={{
+                available: repositoryState.recoveryAvailable,
+                label: repositoryState.recoveryCheckpoint ? formatSavedAtLabel(repositoryState.recoveryCheckpoint.savedAtIso) : null,
+                onRestore: handleRecoverProject,
+              }}
               runHistory={verifyRunHistory}
               sourceModel={sourceModel}
               crossProbe={{ index: crossProbeIndex, sourceLabels: crossProbeSourceLabels }}

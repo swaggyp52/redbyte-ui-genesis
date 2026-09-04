@@ -28,24 +28,25 @@ async function run(width, height) {
   // ① One dominant primary action.
   const primary = page.getByTestId('ide-project-start-a-lab-primary');
   if (await primary.count() === 0) fail('Start a Lab primary missing');
-  if (!((await primary.textContent()) ?? '').includes('Start a Lab')) fail('primary label wrong');
+  if (!((await primary.textContent()) ?? '').includes('Course labs')) fail('primary label wrong');
   if (await primary.getAttribute('data-product-priority') !== 'primary') fail('primary not marked priority');
 
   // ② The alternatives are one subordinate cluster, not peer buttons.
-  const secondary = page.locator('.ide-project-v3-launch-secondary');
+  const secondary = page.locator('.rb-start-nav-actions');
   if (await secondary.count() === 0) fail('subordinate cluster missing');
-  for (const t of ['ide-project-open-starter-primary', 'ide-project-import-primary', 'ide-project-open-existing-primary', 'ide-project-build-fresh-primary']) {
+  for (const t of ['ide-project-import-primary', 'ide-project-open-existing-primary', 'ide-project-build-fresh-primary']) {
     if (await secondary.getByTestId(t).count() === 0) fail(`alternative not in the subordinate cluster: ${t}`);
   }
 
   // ③ The old restating summary line is gone (hierarchy is shown, not narrated).
   if (await page.getByTestId('ide-project-start-summary').count() !== 0) fail('restating start-summary line should be removed');
 
-  // ④ The primary sits above the fold and is visibly the largest action.
+  // ④ The library opens on Course labs with a real preview and one Start command.
   const primaryBox = await primary.boundingBox();
   const anAltBox = await secondary.getByTestId('ide-project-import-primary').boundingBox();
   if (!primaryBox || !anAltBox) fail('could not measure action geometry');
-  if (primaryBox.height <= anAltBox.height) fail(`primary (${primaryBox.height}px) should be taller than an alternative (${anAltBox.height}px)`);
+  if (await page.getByTestId('ide-project-start-figure').count() === 0) fail('selected lab has no real preview figure');
+  if (await page.locator('.rb-start-primary').count() !== 1) fail('expected exactly one primary Start command in the preview');
 
   // ⑤ No horizontal overflow.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -54,7 +55,7 @@ async function run(width, height) {
   await page.screenshot({ path: `${OUT}/slice2-project-landing-${width}x${height}.png` });
   if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
   await context.close();
-  console.log(`[${width}×${height}] PASS — dominant primary (${Math.round(primaryBox.height)}px) over subordinate cluster (${Math.round(anAltBox.height)}px), no summary line, overflow ${overflow}px`);
+  console.log(`[${width}×${height}] PASS — Course labs section with subordinate actions and a real preview`);
 }
 
 await run(1440, 900);

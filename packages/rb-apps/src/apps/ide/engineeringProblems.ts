@@ -138,6 +138,8 @@ function describeConflict(state: Basys3SemanticMappingProjection['conflictState'
 
 /** Build the ledger. Pure; deterministic order; ids stable across rebuilds. */
 export function buildEngineeringProblems(input: EngineeringProblemsInput): EngineeringProblem[] {
+  // No circuit, no problems: the Start Center is not a place to repair anything.
+  if (!input.hasCircuit) return [];
   const problems: EngineeringProblem[] = [];
   const seen = new Set<string>();
   const push = (problem: EngineeringProblem) => {

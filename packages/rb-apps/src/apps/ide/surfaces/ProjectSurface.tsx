@@ -1,19 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ProblemsPanel } from '../components/ProblemsPanel';
+import { StartCenter, type StartCenterPeek } from './project/StartCenter';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import type { ProjectIoMappingKind } from '../examplesCatalog';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
-import { IdeButton, IdePanel } from '../components/IdePrimitives';
-import { ExamplesBrowser } from '../components/ProjectSurfacePrimitives';
 import type { ProjectOutlineSummary } from '../projectOutline';
 import type { VerifyRunLedgerEntry } from '../projectRuntime';
 import type { ProjectSourceModel } from '../projectSourceModel';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 import { getStudentFacingIoLabel } from '../ioLabels';
-import { LAB_STARTERS } from '../labStarters';
-import { GANNON_PILOT_LABS, formatGannonPilotProofScope } from '../gannonPilotLabs';
 import { getProjectKindDisplayName, type ProjectKind } from '../projectIdentity';
 import type { IdeChromeContract } from '../chromeContract';
 import type { ProjectHierarchyDocument } from '../projectHierarchy';
@@ -117,6 +114,10 @@ export interface ProjectSurfaceProps {
   }>;
   onOpenSavedProjects?: () => void;
   onOpenRecentProject?: (projectId: string) => void;
+  /** Read-only look at a saved project for the Start Center preview; never loads it. */
+  peekRecentProject?: (projectId: string) => StartCenterPeek | null;
+  /** Recovery snapshot state for the Start Center's Recover section. */
+  recovery?: { available: boolean; label: string | null; onRestore: () => void } | null;
   runHistory?: VerifyRunLedgerEntry[];
   /** First-class source/fileset authority (imported HDL, constraints, scripts). */
   sourceModel?: ProjectSourceModel;
@@ -140,7 +141,6 @@ export interface ProjectSurfaceProps {
   onNavigateMode?: (mode: IdeMode) => void;
 }
 
-const COURSE_LANDING_EXAMPLE_IDS = ['logic-gates', 'half-adder', 'two-bit-counter'] as const;
 
 /**
  * Project workspace. With no project open it is the start center; with a
@@ -170,6 +170,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onStartGuidedLab,
   onStartBlankProject,
   recentProjects = [],
+  peekRecentProject,
+  recovery = null,
   onOpenSavedProjects,
   onOpenRecentProject,
   runHistory = [],
@@ -191,11 +193,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenDocument,
   onNavigateMode,
 }) => {
-  const [starterCatalogOpen, setStarterCatalogOpen] = useState(false);
-  const [labCatalogOpen, setLabCatalogOpen] = useState(false);
-  const [expandedLabId, setExpandedLabId] = useState(GANNON_PILOT_LABS[0]?.id ?? '');
-  const labCatalogRef = useRef<HTMLElement | null>(null);
-  const starterCatalogRef = useRef<HTMLElement | null>(null);
 
   const selected = useEngineeringSelection((state) => state.selected);
   const selectRef = useEngineeringSelection((state) => state.select);
@@ -253,13 +250,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => examples.find((example) => example.id === activeExampleId) ?? null,
     [activeExampleId, examples]
   );
-  const landingExamples = useMemo(() => {
-    const examplesById = new Map(examples.map((example) => [example.id, example]));
-    const courseExamples = COURSE_LANDING_EXAMPLE_IDS.map((id) => examplesById.get(id)).filter(
-      (example): example is NonNullable<typeof example> => Boolean(example)
-    );
-    return courseExamples.length === COURSE_LANDING_EXAMPLE_IDS.length ? courseExamples : examples.slice(0, 4);
-  }, [examples]);
 
   const boardLabel = fpgaConfig?.board ?? 'Basys3';
   const fpgaPart = fpgaConfig?.part ?? 'xc7a35tcpg236-1';
@@ -366,46 +356,38 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const handleStartBlankProject = useCallback(() => {
     (onStartBlankProject ?? (() => navigateMode('design')))();
   }, [navigateMode, onStartBlankProject]);
-  const openLabCatalog = useCallback(() => {
-    setLabCatalogOpen(true);
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => labCatalogRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
-    }
-  }, []);
-  const openStarterCatalog = useCallback(() => {
-    setStarterCatalogOpen(true);
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => starterCatalogRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
-    }
-  }, []);
 
   // ── Start center (no project open) ────────────────────────────────────────
   if (!readiness.hasCircuit) {
     return (
-      <IdeSurfaceLayout mode="project" layoutIntent="readable" leftDockMode="hidden" rightDockMode="hidden" consoleMode="hidden" inspector={null}>
-        <IdePanel testId="ide-project-panel">
-          <div className="ide-project-v3" data-testid="ide-project-command-center">
-            <ProjectLanding
-              onOpenLabCatalog={openLabCatalog}
-              onStartBlankProject={handleStartBlankProject}
-              onOpenStarterCatalog={openStarterCatalog}
-              onOpenImport={onOpenImport}
-              onOpenSavedProjects={onOpenSavedProjects}
+      <IdeSurfaceLayout
+        mode="project"
+        layoutIntent="workbench"
+        leftDockMode="hidden"
+        rightDockMode="hidden"
+        consoleMode="hidden"
+        shellDensity="immersive"
+        surfaceFrame="edge-to-edge"
+        inspector={null}
+      >
+        <div className="rb-start-host" data-testid="ide-project-panel">
+          <div className="rb-start-host" data-testid="ide-project-command-center">
+            <StartCenter
               recentProjects={recentProjects}
-              onOpenRecentProject={onOpenRecentProject}
-              starterCatalogOpen={starterCatalogOpen}
-              starterCatalogRef={starterCatalogRef}
-              landingExamples={landingExamples}
               guidedLabTask={guidedLabTask}
-              onStartGuidedLab={onStartGuidedLab}
               onOpenExample={onOpenExample}
-              labCatalogOpen={labCatalogOpen}
-              labCatalogRef={labCatalogRef}
-              expandedLabId={expandedLabId}
-              onToggleLab={setExpandedLabId}
+              onStartGuidedLab={onStartGuidedLab}
+              onOpenRecentProject={onOpenRecentProject}
+              onOpenSavedProjects={onOpenSavedProjects}
+              onOpenImport={onOpenImport}
+              onStartBlankProject={handleStartBlankProject}
+              peekRecentProject={peekRecentProject}
+              recovery={recovery}
+              boardLabel={fpgaConfig?.board ?? 'Basys3'}
+              fpgaPart={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
             />
           </div>
-        </IdePanel>
+        </div>
       </IdeSurfaceLayout>
     );
   }
@@ -580,226 +562,6 @@ function inspectorSupports(ref: EngineeringObjectRef | null): boolean {
 }
 
 // ── Start center ─────────────────────────────────────────────────────────────
-
-const ProjectLanding: React.FC<{
-  onOpenLabCatalog: () => void;
-  onStartBlankProject: () => void;
-  onOpenStarterCatalog: () => void;
-  onOpenImport: () => void;
-  onOpenSavedProjects?: () => void;
-  recentProjects: NonNullable<ProjectSurfaceProps['recentProjects']>;
-  onOpenRecentProject?: (projectId: string) => void;
-  starterCatalogOpen: boolean;
-  starterCatalogRef: React.RefObject<HTMLElement | null>;
-  landingExamples: ProjectSurfaceProps['examples'];
-  guidedLabTask?: GuidedLabTaskDefinition | null;
-  onStartGuidedLab?: (labId: string) => void;
-  onOpenExample: (exampleId: string) => void;
-  labCatalogOpen: boolean;
-  labCatalogRef: React.RefObject<HTMLElement | null>;
-  expandedLabId: string;
-  onToggleLab: (labId: string) => void;
-}> = ({
-  onOpenLabCatalog,
-  onStartBlankProject,
-  onOpenStarterCatalog,
-  onOpenImport,
-  onOpenSavedProjects,
-  recentProjects,
-  onOpenRecentProject,
-  starterCatalogOpen,
-  starterCatalogRef,
-  landingExamples,
-  guidedLabTask,
-  onStartGuidedLab,
-  onOpenExample,
-  labCatalogOpen,
-  labCatalogRef,
-  expandedLabId,
-  onToggleLab,
-}) => (
-  <div className="ide-project-v3-landing" data-testid="ide-project-landing">
-    <section className="ide-project-v3-welcome" data-testid="ide-project-start-hub">
-      <div className="ide-project-v3-welcome-copy">
-        <h1 data-testid="ide-project-launch-title">Start a project</h1>
-        <p>Open a course lab, continue local work, import a design, or begin with a blank canvas.</p>
-      </div>
-      <div className="ide-project-v3-launch" data-testid="ide-project-primary-actions">
-        <button
-          type="button"
-          className="ide-button ide-button-primary ide-project-v3-launch-primary"
-          onClick={onOpenLabCatalog}
-          data-testid="ide-project-start-a-lab-primary"
-          data-product-priority="primary"
-        >
-          <strong>Start a Lab</strong>
-          <small>Gannon course path — opens the lab's live circuit.</small>
-        </button>
-        <div className="ide-project-v3-launch-secondary" role="group" aria-label="Other ways to start">
-          <button type="button" className="ide-button ide-button-secondary" onClick={onOpenStarterCatalog} data-testid="ide-project-open-starter-primary">Open Starter</button>
-          <button type="button" className="ide-button ide-button-secondary" onClick={onOpenImport} data-testid="ide-project-import-primary">Import Project</button>
-          {onOpenSavedProjects ? (
-            <button type="button" className="ide-button ide-button-secondary" onClick={onOpenSavedProjects} data-testid="ide-project-open-existing-primary">Open Existing</button>
-          ) : null}
-          <button type="button" className="ide-button ide-button-secondary" onClick={onStartBlankProject} data-testid="ide-project-build-fresh-primary">Build Fresh</button>
-        </div>
-      </div>
-    </section>
-
-    <RecentProjects projects={recentProjects} onOpenRecentProject={onOpenRecentProject} onOpenSavedProjects={onOpenSavedProjects} />
-
-    <StarterCatalog
-      catalogRef={starterCatalogRef}
-      open={starterCatalogOpen}
-      examples={landingExamples}
-      activeExampleId={null}
-      onOpenExample={onOpenExample}
-      guidedLabTask={guidedLabTask}
-      onStartGuidedLab={onStartGuidedLab}
-      testId="ide-project-starter-catalog"
-    />
-
-    <section
-      ref={labCatalogRef}
-      className="ide-project-v3-catalog ide-project-v3-labs"
-      data-testid="ide-project-gannon-lab-pack"
-      hidden={!labCatalogOpen}
-    >
-      <header>
-        <div>
-          <h2>Gannon Pilot lab pack</h2>
-        </div>
-        <p>Browser-simulated project packages; Vivado build, bitstream, and board observation stay external.</p>
-      </header>
-      <div className="ide-project-v3-lab-list" data-testid="ide-project-gannon-disclosure">
-        {GANNON_PILOT_LABS.map((lab) => {
-          const expanded = expandedLabId === lab.id;
-          return (
-            <article key={lab.id} className="ide-project-v3-lab-row" data-testid={`ide-project-gannon-lab-card-${lab.id}`}>
-              <button
-                type="button"
-                className="ide-project-v3-lab-heading"
-                onClick={() => onToggleLab(expanded ? '' : lab.id)}
-                data-testid={`ide-project-gannon-lab-details-${lab.id}`}
-                aria-expanded={expanded}
-              >
-                <span>Lab {lab.labNumber}</span>
-                <strong>{lab.title}</strong>
-                <small>{lab.difficulty}</small>
-              </button>
-              <div className="ide-project-v3-lab-body" hidden={!expanded}>
-                <p><strong>Build:</strong> {lab.build}</p>
-                <p><strong>Submit:</strong> {lab.submit}</p>
-                <p><strong>Scope:</strong> {formatGannonPilotProofScope(lab.proofScope)}</p>
-                <IdeButton tone="secondary" onClick={() => onOpenExample(lab.exampleId)} testId={`ide-project-gannon-lab-start-${lab.id}`}>
-                  {lab.startLabel}
-                </IdeButton>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-      <aside className="ide-project-v3-instructor-note" data-testid="ide-instructor-note">
-        <strong>For instructors</strong>
-        <p>Assign Vivado or physical-board checks separately when E1, E2, or E3 evidence is required.</p>
-      </aside>
-    </section>
-  </div>
-);
-
-const StarterCatalog: React.FC<{
-  catalogRef: React.RefObject<HTMLElement | null>;
-  open: boolean;
-  examples: ProjectSurfaceProps['examples'];
-  activeExampleId: string | null;
-  /** Starter context for the loaded project, surfaced in the Overview. */
-  starterContext?: {
-    name: string;
-    lab?: string;
-    concept?: string;
-    summary?: string;
-    expectedBehavior?: string;
-    nextAction?: string;
-  } | null;
-  onOpenExample: (exampleId: string) => void;
-  guidedLabTask?: GuidedLabTaskDefinition | null;
-  onStartGuidedLab?: (labId: string) => void;
-  testId: string;
-}> = ({ catalogRef, open, examples, activeExampleId, onOpenExample, guidedLabTask, onStartGuidedLab, testId }) => (
-  <section ref={catalogRef} className="ide-project-v3-catalog" data-testid={testId} data-expanded={open ? 'true' : 'false'} hidden={!open}>
-    <header>
-      <div>
-        <h2>Starter catalog</h2>
-      </div>
-      <p>Loading a starter opens its live circuit in Design.</p>
-    </header>
-    {guidedLabTask && onStartGuidedLab ? (
-      <button type="button" className="ide-project-v3-guided-row" onClick={() => onStartGuidedLab(guidedLabTask.id)} data-testid="ide-project-guided-full-adder-lab">
-        <strong data-testid="ide-project-guided-full-adder-start">{guidedLabTask.shortTitle} scratch lab</strong>
-        <span>{guidedLabTask.assignment}</span>
-      </button>
-    ) : null}
-    <div className="ide-project-v3-starter-list" data-testid="ide-project-start-column">
-      <ExamplesBrowser
-        examples={examples.map((example) => ({
-          id: example.id,
-          name: example.name,
-          concept: example.concept,
-          expectedBehavior: example.expectedBehavior,
-          course: example.course,
-          lab: example.lab,
-          tags: example.tags,
-          learningPathOrder: example.learningPath?.order,
-          flagship: example.learningPath?.flagship,
-          openProof: example.learningPath?.openProof,
-        }))}
-        activeExampleId={activeExampleId}
-        onLoad={onOpenExample}
-        testId="ide-project-examples-browser"
-      />
-      {LAB_STARTERS.map((starter) => (
-        <button key={starter.id} type="button" onClick={() => onOpenExample(starter.example.id)} data-testid={`ide-project-lab-card-${starter.id}`}>
-          <span>
-            <strong>{starter.title}</strong>
-            <small>{starter.description}</small>
-          </span>
-          <span className="ide-project-v3-starter-action">Start -&gt;</span>
-        </button>
-      ))}
-    </div>
-  </section>
-);
-
-const RecentProjects: React.FC<{
-  projects: NonNullable<ProjectSurfaceProps['recentProjects']>;
-  onOpenRecentProject?: (projectId: string) => void;
-  onOpenSavedProjects?: () => void;
-}> = ({ projects, onOpenRecentProject, onOpenSavedProjects }) => (
-  <section className="ide-project-v3-recent" data-testid="ide-project-recent-panel">
-    <header>
-      <div>
-        <h2>Recent projects</h2>
-      </div>
-      {onOpenSavedProjects ? (
-        <IdeButton tone="secondary" onClick={onOpenSavedProjects} testId="ide-project-open-existing">Open existing project...</IdeButton>
-      ) : null}
-    </header>
-    {projects.length > 0 ? (
-      <div className="ide-project-v3-recent-list">
-        {projects.slice(0, 4).map((project) => (
-          <button key={project.projectId} type="button" onClick={() => onOpenRecentProject?.(project.projectId)} data-testid={`ide-project-recent-${project.projectId}`}>
-            <strong>{project.projectName}</strong>
-            <span title={formatSavedAt(project.savedAtIso)}>
-              Saved {formatSavedAtRelative(project.savedAtIso) ?? formatSavedAt(project.savedAtIso)}
-            </span>
-          </button>
-        ))}
-      </div>
-    ) : (
-      <p className="ide-project-v3-empty">No saved projects yet. Local saves appear here.</p>
-    )}
-  </section>
-);
 
 function formatSavedAt(value: string): string {
   if (!value) return 'not saved';

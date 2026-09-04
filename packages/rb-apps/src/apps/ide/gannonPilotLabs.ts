@@ -75,10 +75,10 @@ export const GANNON_PILOT_LABS: GannonPilotLab[] = [
 
 export function formatGannonPilotProofScope(scope: GannonPilotLabProofScope): string {
   if (scope === 'browser-e0') {
-    return 'Browser E0 package proof';
+    return 'Browser simulation and package';
   }
   if (scope === 'vivado-optional') {
-    return 'Browser E0; Vivado E1 if assigned';
+    return 'Browser simulation; Vivado build if assigned';
   }
-  return 'Browser E0; board E3 if assigned';
+  return 'Browser simulation; board observation if assigned';
 }

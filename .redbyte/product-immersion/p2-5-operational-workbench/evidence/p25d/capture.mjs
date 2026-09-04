@@ -63,6 +63,8 @@ async function run() {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await sleep(800);
+    const lab3 = page.locator('[data-testid="ide-project-gannon-lab-card-full-adder"]');
+    if (await lab3.count()) { await lab3.first().click(); await sleep(500); }
     written.push(await shot(page, '01-project-landing', vp.tag));
 
     await openStarter(page, 'full-adder');

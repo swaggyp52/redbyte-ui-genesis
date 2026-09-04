@@ -179,3 +179,154 @@
 .ide-root .rb-project-starter-body { padding: 6px var(--wb-space-3) 10px; color: var(--wb-text-2); font-size: var(--wb-text-sm); line-height: 1.45; }
 .ide-root .rb-project-starter-body p { margin: 0 0 4px; }
 .ide-root .rb-project-starter-body strong { color: var(--wb-text); }
+
+/* ── Start Center — a project and lab library ─────────────────────────
+   Three panes on engineering paper: compact sections, a dense selectable
+   list, and a real preview rendered by ArchitecturePreview. No hero card,
+   no filter-chip wall, no repeated action buttons. */
+.ide-root .rb-start-host { display: flex; min-height: 0; height: 100%; }
+.ide-root .rb-start {
+  display: grid;
+  grid-template-columns: 176px minmax(300px, 380px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--wb-paper);
+  color: var(--wb-text);
+}
+.ide-root .rb-start-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--wb-space-3) var(--wb-space-2);
+  border-right: 1px solid var(--wb-border);
+  background: var(--wb-tool-bg);
+}
+.ide-root .rb-start-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--wb-text-2);
+  background: transparent;
+  font: 500 var(--wb-text-md) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-start-nav-item:hover { background: var(--wb-hover-bg); color: var(--wb-text); }
+.ide-root .rb-start-nav-item.is-active { background: var(--wb-active-bg); color: var(--wb-text); }
+.ide-root .rb-start-nav-item:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-start-nav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: var(--wb-space-3);
+  border-top: 1px solid var(--wb-border);
+}
+.ide-root .rb-start-nav-actions .wb-btn { justify-content: flex-start; }
+
+.ide-root .rb-start-list-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--wb-border); background: var(--wb-surface); }
+.ide-root .rb-start-list-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: var(--wb-toolbar-h);
+  padding: 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-start-list-title { margin: 0; font: 600 var(--wb-text-md) var(--wb-font-ui); color: var(--wb-text); white-space: nowrap; }
+.ide-root .rb-start-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border);
+  border-radius: 3px;
+  color: var(--wb-text);
+  background: var(--wb-paper);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+.ide-root .rb-start-search:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
+.ide-root .rb-start-list { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-start-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px var(--wb-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-md) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-start-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-start-row.is-selected { background: var(--wb-active-bg); }
+.ide-root .rb-start-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-start-row-kind { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-mono); letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
+.ide-root .rb-start-row-main { display: grid; min-width: 0; gap: 1px; }
+.ide-root .rb-start-row-main strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-start-row-main small { color: var(--wb-text-2); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-start-row-meta { display: grid; justify-items: end; gap: 1px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-start-row-meta code { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-start-empty { margin: 0; padding: var(--wb-space-4) var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .rb-start-empty p { margin: 0 0 var(--wb-space-3); max-width: 44ch; }
+
+.ide-root .rb-start-preview { min-width: 0; min-height: 0; overflow: auto; }
+.ide-root .rb-start-preview-body { display: flex; flex-direction: column; gap: var(--wb-space-4); max-width: 880px; padding: var(--wb-space-4) var(--wb-space-5); }
+.ide-root .rb-start-preview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--wb-space-4); }
+.ide-root .rb-start-preview-title { margin: 0; font: 600 18px / 1.2 var(--wb-font-ui); color: var(--wb-text); }
+.ide-root .rb-start-preview-sub { margin: 4px 0 0; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-start-primary { flex: none; min-width: 140px; }
+.ide-root .rb-start-figure {
+  min-height: 220px;
+  max-height: 360px;
+  border: 1px solid var(--wb-border);
+  border-radius: 3px;
+  background: var(--wb-surface);
+  overflow: hidden;
+}
+.ide-root .rb-start-figure .rb-arch { margin: 0; height: 100%; }
+.ide-root .rb-start-figure .rb-arch svg { width: 100%; height: 100%; max-height: 358px; }
+.ide-root .rb-start-figure--empty { display: flex; align-items: center; justify-content: center; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-start-figure--truth { display: flex; align-items: center; justify-content: center; padding: var(--wb-space-3); }
+.ide-root .rb-start-truth { border-collapse: collapse; font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-start-truth th, .ide-root .rb-start-truth td { padding: 2px 12px; border-bottom: 1px solid var(--wb-border); text-align: center; }
+.ide-root .rb-start-truth th { color: var(--wb-text-2); font-weight: 600; }
+.ide-root .rb-start-truth .is-out { border-left: 1px solid var(--wb-border); }
+.ide-root .rb-start-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--wb-space-2) var(--wb-space-4);
+  margin: 0;
+}
+.ide-root .rb-start-facts div { display: grid; gap: 2px; }
+.ide-root .rb-start-facts dt { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-start-facts dd { margin: 0; }
+.ide-root .rb-start-facts code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-start-brief { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--wb-space-3) var(--wb-space-4); }
+.ide-root .rb-start-brief h3 { margin: 0 0 3px; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-start-brief p, .ide-root .rb-start-brief ol { margin: 0; color: var(--wb-text); font: var(--wb-text-md) / 1.45 var(--wb-font-ui); }
+.ide-root .rb-start-brief ol { padding-left: 18px; }
+.ide-root .rb-start-boundary { margin: 0; padding-top: var(--wb-space-3); border-top: 1px solid var(--wb-border); color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-ui); }
+@media (max-width: 1100px) {
+  .ide-root .rb-start { grid-template-columns: 150px minmax(240px, 300px) minmax(0, 1fr); }
+}
+@media (max-width: 899px) {
+  .ide-root .rb-start { grid-template-columns: 1fr; grid-template-rows: auto minmax(160px, 38%) minmax(0, 1fr); }
+  .ide-root .rb-start-nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--wb-border); }
+  .ide-root .rb-start-nav-actions { flex-direction: row; margin: 0 0 0 auto; padding: 0; border: 0; }
+  .ide-root .rb-start-list-pane { border-right: 0; border-bottom: 1px solid var(--wb-border); }
+  .ide-root .rb-start-row-meta { display: none; }
+}

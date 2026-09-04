@@ -282,36 +282,38 @@
 }
 
 /* ───────── §6. Inputs / selects / segmented ────────── */
+/* Inputs live in light tool windows and on paper; the dark instrument planes host none. */
 .ide-root input[type='text'],
 .ide-root input[type='search'],
 .ide-root input[type='number'],
 .ide-root textarea,
 .ide-root select {
-  background: rgba(8, 16, 26, 0.72);
-  border: 1px solid rgba(140, 168, 196, 0.22);
-  border-radius: 7px;
-  color: var(--rb-text-1);
-  padding: 7px 11px;
-  font-size: 13px;
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-border);
+  border-radius: 3px;
+  color: var(--wb-text);
+  padding: 3px 8px;
+  font-size: var(--wb-text-sm);
   font-family: inherit;
-  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .ide-root input::placeholder,
 .ide-root textarea::placeholder {
-  color: rgba(168, 189, 212, 0.45);
+  color: var(--wb-text-3);
 }
 .ide-root input:hover:not(:disabled),
 .ide-root textarea:hover:not(:disabled),
 .ide-root select:hover:not(:disabled) {
-  border-color: rgba(140, 168, 196, 0.40);
+  border-color: var(--wb-text-3);
 }
 .ide-root input:focus-visible,
 .ide-root textarea:focus-visible,
 .ide-root select:focus-visible {
-  outline: none;
-  border-color: rgba(46, 196, 182, 0.55);
-  box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.16);
-  background: rgba(8, 16, 26, 0.88);
+  outline: 2px solid var(--wb-focus);
+  outline-offset: -1px;
+  border-color: var(--wb-focus);
+  box-shadow: none;
+  background: var(--wb-surface);
 }
 
 /* ───────── §7. Custom scrollbars (discoverable) ────────── */
