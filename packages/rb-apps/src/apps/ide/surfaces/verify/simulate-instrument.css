@@ -433,3 +433,8 @@
 /* Result cell: verdict and row actions share one line; actions float over the cell, never wrap it. */
 .ide-root .ide-case-lab-result { position: relative; min-width: 96px; white-space: nowrap; }
 .ide-root .ide-case-lab-row-actions { float: none; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+
+/* The followed signal is one visible column: header underline + cell wash. */
+.ide-root .ide-case-lab-group--out { cursor: pointer; }
+.ide-root .ide-case-lab th.is-followed, .ide-root .ide-case-lab td.is-followed { background: color-mix(in srgb, var(--wb-focus) 9%, transparent); }
+.ide-root .ide-case-lab-group.is-followed { box-shadow: inset 0 -2px 0 var(--wb-focus); }

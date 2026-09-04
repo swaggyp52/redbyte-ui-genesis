@@ -114,7 +114,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     expectedBehavior: 'Each switch directly drives its corresponding LED. SW0→LD0, SW1→LD1, SW2→LD2, SW3→LD3.',
     goals: [
       'Map SW and LD ports to Basys3 pins',
-      'Run Verify — all vectors should pass green',
+      'Run Compare in Simulate — every case should pass',
       'Toggle switches on the Hardware board',
       'Export the Vivado bundle',
     ],
@@ -175,8 +175,8 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     goals: [
       'Observe each gate respond to the same two inputs',
       'Compare AND vs OR vs XOR outputs side-by-side',
-      'Run Verify to see the full truth table pass',
-      'Export to Vivado and check the gate-level RTL view',
+      'Run Compare in Simulate to see the full truth table pass',
+      'Build the Vivado package in Build & Export; the gate-level RTL schematic is a Vivado view',
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', direction: 'in',  pin: 'V17', required: true },
@@ -400,9 +400,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     expectedBehavior: 'LD1 shows the SUM (SW0 XOR SW1). LD0 shows the CARRY (SW0 AND SW1). Both LEDs light only when both switches are ON.',
     goals: [
       'Toggle SW0 and SW1 — LD1 shows sum, LD0 shows carry',
-      'Run Verify — all 4 truth-table rows should pass green',
+      'Run Compare in Simulate — all 4 truth-table cases should pass',
       'Compare with Full Adder: notice there is no carry-in',
-      'Export the Vivado bundle and check the gate-level RTL view',
+      'Build the Vivado package; open the gate-level RTL schematic in Vivado',
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0 (A)', direction: 'in',  pin: 'V17', required: true },
@@ -452,9 +452,9 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     expectedBehavior: 'LD1 shows SUM, LD0 shows CARRY-OUT. SW2 is the carry-in. Compare with Half Adder to see how CIN changes the behavior.',
     goals: [
       'Compare with Half Adder — how does CIN change the behavior?',
-      'Run Verify — all 8 truth-table rows should pass green',
+      'Run Compare in Simulate — all 8 truth-table cases should pass',
       'Trace the carry chain: AND0 and AND1 both contribute to CARRY via OR',
-      'Export to Vivado and inspect the two-stage XOR cascade in RTL view',
+      'Build the Vivado package; inspect the two-stage XOR cascade in Vivado\'s RTL schematic',
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0 (A)',   direction: 'in',  pin: 'V17', required: true },
@@ -555,7 +555,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       'SW0/SW2/SW4/SW6 are A0-A3 and SW1/SW3/SW5/SW7 are B0-B3. LD0-LD3 show the 4-bit sum; LD4 shows carry-out.',
     goals: [
       'Trace carry propagation from bit 0 through bit 3',
-      'Run Verify with sample additions and one carry-out case',
+      'Run Compare in Simulate with sample additions and one carry-out case',
       'Map SW0-SW7 and LD0-LD4 before Export',
       'Export the browser-E0 Vivado project ZIP for instructor review',
     ],

@@ -62,7 +62,7 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
   {
     id: 'view',
     label: 'View',
-    sections: [
+    sections: [[IDE_COMMAND_IDS.openCommandPalette], 
       [IDE_COMMAND_IDS.showDesignCanvas, IDE_COMMAND_IDS.showDesignCode, IDE_COMMAND_IDS.showDesignSplit],
       [IDE_COMMAND_IDS.closeDocument, IDE_COMMAND_IDS.closeOtherDocuments, IDE_COMMAND_IDS.reopenClosedDocument],
       [IDE_COMMAND_IDS.fitDesignCanvas, IDE_COMMAND_IDS.zoomInDesignCanvas, IDE_COMMAND_IDS.zoomOutDesignCanvas],
@@ -79,11 +79,6 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
     id: 'run',
     label: 'Run',
     sections: [[IDE_COMMAND_IDS.runSimulation, IDE_COMMAND_IDS.openReplay], [IDE_COMMAND_IDS.buildExportPackage]],
-  },
-  {
-    id: 'tools',
-    label: 'Tools',
-    sections: [[IDE_COMMAND_IDS.assignBoardResource], [IDE_COMMAND_IDS.openCommandPalette, IDE_COMMAND_IDS.openImportRecover]],
   },
   {
     id: 'help',

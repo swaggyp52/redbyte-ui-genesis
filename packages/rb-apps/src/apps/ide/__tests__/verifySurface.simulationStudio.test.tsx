@@ -114,9 +114,11 @@ describe('Verify Simulation Studio', () => {
     expect(view.getByTestId('ide-verify-run-announcer').textContent).toContain('Checks not evaluated');
   });
 
-  it('moves expected-output authoring into the optional Checks workspace', () => {
+  it('keeps expected-output authoring optional and cell-level in the Case Lab', () => {
     const view = render(<VerifySurface {...baseProps} />);
 
-    expect(view.getByTestId('ide-verify-stimulus-summary').textContent).toContain('Run the scenario');
+    expect(view.getByTestId('ide-case-lab')).toBeTruthy();
+    // No check authored yet: the expected cell is an empty slot, not a requirement.
+    expect(view.getByTestId('ide-case-lab-exp-0-ld0').textContent?.trim()).toBe('\u00b7');
   });
 });

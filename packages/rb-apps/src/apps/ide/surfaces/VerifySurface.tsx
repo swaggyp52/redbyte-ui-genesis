@@ -1490,15 +1490,43 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       return;
     }
+    const foreignSelection = useEngineeringSelection.getState();
+    const foreignSignal =
+      foreignSelection.selected?.kind === 'signal' &&
+      foreignSelection.origin !== 'cases' &&
+      foreignSelection.origin !== 'timing' &&
+      foreignSelection.origin !== 'waveform';
+    if (!selectedSignal && foreignSignal) return; // the landing effect owns this case
+    if (selectedSignal) {
+      if (displaySignalTimeline.some((entry) => entry.signal === selectedSignal)) return;
+      // The same signal under another spelling (field id vs. lane label):
+      // converge on the timeline's own name instead of replacing the choice.
+      const selectedKey = normalizeSignalId(selectedSignal);
+      const selectedField = inputFields
+        .concat(outputFields)
+        .find((field) => normalizeSignalId(field.id) === selectedKey || normalizeSignalId(field.label ?? '') === selectedKey);
+      const sameLane = displaySignalTimeline.find((entry) => {
+        const laneKey = normalizeSignalId(entry.signal);
+        if (laneKey === selectedKey) return true;
+        return Boolean(
+          selectedField &&
+            (normalizeSignalId(selectedField.id) === laneKey || normalizeSignalId(selectedField.label ?? '') === laneKey)
+        );
+      });
+      if (sameLane) {
+        handleSignalSelect(sameLane.signal);
+        return;
+      }
+      // Not a lane of this timeline. A selection made elsewhere is the followed
+      // object and stays; only a stale local choice falls back to a default.
+      if (foreignSignal) return;
+    }
     const firstFailSignal = failingRows[0]?.signal;
-    const nextSignal =
-      selectedSignal && displaySignalTimeline.some((entry) => entry.signal === selectedSignal)
-        ? selectedSignal
-        : firstFailSignal ?? displaySignalTimeline[0]?.signal ?? null;
+    const nextSignal = firstFailSignal ?? displaySignalTimeline[0]?.signal ?? null;
     if (nextSignal !== selectedSignal) {
       handleSignalSelect(nextSignal);
     }
-  }, [displaySignalTimeline, failingRows, handleSignalSelect, selectedSignal]);
+  }, [displaySignalTimeline, failingRows, handleSignalSelect, inputFields, outputFields, selectedSignal]);
 
   useEffect(() => {
     if (failingRows.length === 0) {
@@ -4759,6 +4787,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }),
     [caseLabReportRows, lastRun?.evidence, outputFields]
   );
+  // The followed signal (selected here or anywhere else) is one Case Lab column;
+  // clicking a column makes that signal the followed one.
+  const caseLabFocusFieldId = useMemo(() => {
+    if (!selectedSignal) return null;
+    const key = normalizeSignalId(selectedSignal);
+    if (!key) return null;
+    for (const field of outputFields) {
+      if (normalizeSignalId(field.id) === key || normalizeSignalId(field.label ?? '') === key) return field.id;
+      const resolved = caseLabSignalResolver.resolve(field.id);
+      if (resolved.runSignal && normalizeSignalId(resolved.runSignal) === key) return field.id;
+    }
+    return null;
+  }, [caseLabSignalResolver, outputFields, selectedSignal]);
+  const handleCaseLabFocusField = useCallback(
+    (fieldId: string) => {
+      const resolved = caseLabSignalResolver.resolve(fieldId);
+      handleSignalSelect(resolved.runSignal ?? fieldId);
+    },
+    [caseLabSignalResolver, handleSignalSelect]
+  );
 
   // ── Engineering-object continuity ──────────────────────────────────────
   // Case selection and signal focus publish to the workbench; selections made
@@ -4781,6 +4829,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       null
     : null;
   const continuityMountedRef = useRef(false);
+  // The landing below re-runs when the set of lanes changes (a run arrives), not
+  // on every render — otherwise a Design-origin selection would snap the follow
+  // back each time the user moved it here.
+  const timelineLaneKey = useMemo(() => displaySignalTimeline.map((entry) => entry.signal).join('|'), [displaySignalTimeline]);
   useEffect(() => {
     if (selectedTick == null || !activeScenarioId) return;
     if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
@@ -4837,9 +4889,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         wanted;
       if (normalizeSignalKey(lane) !== normalizeSignalKey(selectedSignal ?? '')) setSelectedSignal(lane);
     }
-    // Re-applies once the lane timeline exists, so an incoming signal survives the observe-first auto-select.
+    // Re-applies once the lane set changes (a run arrives), so an incoming signal maps to its real lane.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalSelected, globalOrigin, displaySignalTimeline]);
+  }, [globalSelected, globalOrigin, timelineLaneKey]);
   // Case Lab observed values + per-case verdict, keyed by the resolved identity.
   const caseLabData = useMemo(() => {
     const observed: Record<number, Record<string, string>> = {};
@@ -6081,6 +6133,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onSelectCase={handleStimulusSelectedTickChange}
             onSetExpected={handleCaseSetExpected}
             onSetExpectedMany={handleCaseSetExpectedMany}
+            focusFieldId={caseLabFocusFieldId}
+            onFocusField={handleCaseLabFocusField}
             onGenerateExhaustive={handleAutoGenerateVectors}
             onAddCase={onVectorsChange ? handleCaseAdd : undefined}
             onDuplicateCase={onVectorsChange ? handleCaseDuplicate : undefined}

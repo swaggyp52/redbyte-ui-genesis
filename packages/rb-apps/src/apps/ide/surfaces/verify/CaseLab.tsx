@@ -26,6 +26,10 @@ export interface CaseLabProps {
   readonly onSetExpected: (tick: number, signalId: string, next: 0 | 1 | null) => void;
   /** One write for many cases (bulk edits must not race each other through stale snapshots). */
   readonly onSetExpectedMany?: (edits: readonly { tick: number; signalId: string; next: 0 | 1 | null }[]) => void;
+  /** The output column that is the workbench's followed signal (select once, follow everywhere). */
+  readonly focusFieldId?: string | null;
+  /** Clicking an output column makes that signal the followed one. */
+  readonly onFocusField?: (fieldId: string) => void;
   readonly onGenerateExhaustive?: () => void;
   readonly onAddCase?: () => void;
   readonly onDuplicateCase?: (tick: number) => void;
@@ -77,6 +81,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   onSelectCase,
   onSetExpected,
   onSetExpectedMany,
+  focusFieldId = null,
+  onFocusField,
   onGenerateExhaustive,
   onAddCase,
   onDuplicateCase,
@@ -307,9 +313,13 @@ export const CaseLab: React.FC<CaseLabProps> = ({
               {outputFields.map((field) => (
                 <th
                   key={field.id}
-                  className="ide-case-lab-group ide-case-lab-group--out"
+                  className={`ide-case-lab-group ide-case-lab-group--out${field.id === focusFieldId ? ' is-followed' : ''}`}
                   colSpan={2}
                   scope="colgroup"
+                  aria-current={field.id === focusFieldId ? 'true' : undefined}
+                  title={field.id === focusFieldId ? `${field.label ?? field.id} — followed signal` : `Follow ${field.label ?? field.id}`}
+                  data-testid={`ide-case-lab-col-${field.id}`}
+                  onClick={() => onFocusField?.(field.id)}
                 >
                   {field.label ?? field.id}
                 </th>
@@ -322,8 +332,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
               ))}
               {outputFields.map((field) => (
                 <React.Fragment key={field.id}>
-                  <th className="ide-case-lab-exp" scope="col">exp</th>
-                  <th className="ide-case-lab-obs" scope="col">obs</th>
+                  <th className={`ide-case-lab-exp${field.id === focusFieldId ? ' is-followed' : ''}`} scope="col">exp</th>
+                  <th className={`ide-case-lab-obs${field.id === focusFieldId ? ' is-followed' : ''}`} scope="col">obs</th>
                 </React.Fragment>
               ))}
             </tr>
@@ -359,7 +369,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                       const cellFail = evidence === 'fail' && exp !== '' && obs !== '' && exp !== obs;
                       return (
                         <React.Fragment key={field.id}>
-                          <td className="ide-case-lab-exp">
+                          <td className={`ide-case-lab-exp${field.id === focusFieldId ? ' is-followed' : ''}`}>
                             <button
                               type="button"
                               className={`ide-case-lab-exp-btn${exp ? ' is-set' : ''}`}
@@ -373,7 +383,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                               <code>{exp || '·'}</code>
                             </button>
                           </td>
-                          <td className={`ide-case-lab-obs${cellFail ? ' is-fail' : ''}`}>
+                          <td className={`ide-case-lab-obs${field.id === focusFieldId ? ' is-followed' : ''}${cellFail ? ' is-fail' : ''}`}>
                             <code>{obs || '·'}</code>
                           </td>
                         </React.Fragment>
