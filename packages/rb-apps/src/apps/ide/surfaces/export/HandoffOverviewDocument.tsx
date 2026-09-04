@@ -88,7 +88,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
       </header>
 
       <dl className="rb-facts" data-testid="ide-package-handoff-facts">
-        <div className="rb-fact"><dt>Package hash</dt><dd className="is-mono">{(viewModel.exportHash ?? packageHash).slice(0, 12)}</dd></div>
+        <div className="rb-fact"><dt>Export hash</dt><dd className="is-mono" title="Deterministic export hash written into the generated sources">{viewModel.exportHash ?? packageHash}</dd></div>
         <div className="rb-fact" data-tone={isStale ? 'warn' : undefined}><dt>State</dt><dd>{stateReason}</dd></div>
         <div className="rb-fact"><dt>Files</dt><dd className="is-mono">{viewModel.artifacts.length} · {artifactBytes.toLocaleString()} bytes</dd></div>
         <div className="rb-fact" data-tone={required > mapped ? 'warn' : 'ok'}><dt>Mapping</dt><dd className="is-mono">{mapped}/{required} required</dd></div>

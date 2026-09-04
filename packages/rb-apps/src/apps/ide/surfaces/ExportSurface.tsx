@@ -1051,12 +1051,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
       switch (handoffTruth.condition) {
         case 'export-stale':
+          return 'Package stale — rebuild to match the current design';
         case 'export-missing':
-          return 'E0 export package ready to build';
+          return 'Package not built yet — evidence validated';
         case 'mapping-review':
-          return 'E0 export package ready - mapping review pending';
+          return 'Package ready — mapping review pending';
         case 'ready':
-          return 'E0 export package ready';
+          return 'Package current';
         default:
           return 'Export status';
       }

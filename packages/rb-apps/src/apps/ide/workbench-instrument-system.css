@@ -1055,3 +1055,8 @@
 /* Document tab context menu: the same menu grammar as the frame menus. */
 .ide-root .wb-doctab-menu { z-index: 60; min-width: 160px; }
 .ide-root .wb-doctab-menu .wb-menu-item[disabled] { color: var(--wb-text-3); cursor: default; }
+
+/* A menu that would leave the viewport hangs from its trigger's right edge instead. */
+.ide-root .wb-menu-details[data-align='end'] > .wb-menu { left: auto; right: 0; }
+.ide-root .rb-related-menu { max-width: min(340px, calc(100vw - 16px)); }
+.ide-root .rb-related-menu .wb-menu-item { white-space: normal; }

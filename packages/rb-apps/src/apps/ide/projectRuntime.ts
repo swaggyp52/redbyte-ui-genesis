@@ -4270,10 +4270,15 @@ function reconcileScenarioStepsForLiveIo(
 
 function buildIoRowSignalCandidates(row: ProjectIoRow): string[] {
   const nodeId = row.nodeId?.trim() ?? '';
+  // The underscore spelling of a punctuated id (`carry-out` → `carry_out`) is
+  // the key older builds wrote; it belongs to the same row.
+  const underscoreSpelling = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
   return [
     row.id,
+    underscoreSpelling(row.id),
     row.label,
     nodeId,
+    nodeId ? underscoreSpelling(nodeId) : '',
     nodeId ? `${nodeId}.in` : '',
     nodeId ? `${nodeId}.out` : '',
     nodeId ? `${nodeId}_in` : '',

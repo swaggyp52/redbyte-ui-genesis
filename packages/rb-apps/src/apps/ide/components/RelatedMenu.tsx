@@ -36,7 +36,33 @@ export const RelatedMenu: React.FC<RelatedMenuProps> = ({
   const hostAvailable = true;
 
   return (
-    <details className="wb-menu-details rb-related" ref={detailsRef} data-testid={testId}>
+    <details
+      className="wb-menu-details rb-related"
+      ref={detailsRef}
+      data-testid={testId}
+      onToggle={(event) => {
+        const details = event.currentTarget;
+        if (!details.open) {
+          details.removeAttribute('data-align');
+          return;
+        }
+        const menu = details.querySelector<HTMLElement>('.wb-menu');
+        const trigger = details.querySelector<HTMLElement>('summary');
+        if (!menu || !trigger) return;
+        // Measure from the trigger's left edge with the menu's natural width, so the
+        // answer does not depend on which edge the menu currently hangs from.
+        const rect = trigger.getBoundingClientRect();
+        // The trigger often lives in a scrolling dock; a fixed menu escapes its overflow box.
+        const alignEnd = rect.left + menu.offsetWidth > window.innerWidth - 8;
+        details.setAttribute('data-align', alignEnd ? 'end' : 'start');
+        menu.style.position = 'fixed';
+        menu.style.top = `${Math.round(rect.bottom + 2)}px`;
+        menu.style.left = alignEnd ? 'auto' : `${Math.round(rect.left)}px`;
+        menu.style.right = alignEnd ? `${Math.round(window.innerWidth - rect.right)}px` : 'auto';
+        menu.style.maxHeight = `${Math.max(160, window.innerHeight - rect.bottom - 12)}px`;
+        menu.style.overflowY = 'auto';
+      }}
+    >
       <summary className="wb-btn wb-btn--ghost" data-testid={`${testId}-trigger`} title={`Follow ${relation.label} into its other representations`}>
         {label}
       </summary>

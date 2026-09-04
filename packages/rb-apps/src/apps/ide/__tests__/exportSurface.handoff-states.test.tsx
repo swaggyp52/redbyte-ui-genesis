@@ -118,12 +118,13 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const hero = getByTestId('ide-export-readiness-hero');
-    expect(hero.textContent).toContain('E0 export package ready');
+    expect(hero.textContent).toContain('Package current');
     const inspector = getByTestId('ide-export-package-inspector-v1');
     expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
     expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-trusted');
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(actions.textContent).toContain('Validate package');
+    expect(actions.textContent).toContain('Download');
     expect(getByTestId('ide-export-package-download-v1').textContent).toBe('Download Package');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
@@ -163,7 +164,7 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(2);
+    expect(actions.textContent).toContain('Open Simulate');
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect((getByTestId('ide-export-draft-download-v1') as HTMLButtonElement).disabled).toBe(false);
@@ -211,7 +212,7 @@ describe('ExportSurface handoff states', () => {
       expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
     }
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(actions.textContent).toContain('Open Board & Constraints');
     expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Board & Constraints');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);

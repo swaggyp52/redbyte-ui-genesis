@@ -408,7 +408,28 @@
 
 /* Cases/Timing document: the evidence row is the verdict line and repair panels, sized to content. */
 .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] { grid-template-rows: minmax(0, 1fr) minmax(0, 36%); }
-.ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] > .rb-sim-region--waveform { max-height: 40%; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] > .rb-sim-region--waveform { min-height: 0; }
 
 .ide-root .rb-sig-filter { display: block; width: 100%; height: 22px; margin: 4px 0 2px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: 3px; color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-ui); }
 .ide-root .rb-sig-filter:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
+
+/* Case Lab: multi-selection and bulk expected edits. */
+.ide-root .ide-case-lab-row.is-multi { background: var(--wb-active-bg); }
+.ide-root .ide-case-lab-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: none; min-height: 28px; padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-tool-header-bg); }
+.ide-root .ide-case-lab-bulk-count { font: 600 var(--wb-text-sm) var(--wb-font-ui); color: var(--wb-text); }
+.ide-root .ide-case-lab-bulk-field { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .ide-case-lab-bulk .is-danger { color: var(--wb-err); }
+.ide-root .ide-case-lab-history { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .ide-case-lab-history code { font: 600 var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .ide-case-lab-history .is-better { color: var(--wb-ok); }
+.ide-root .ide-case-lab-history .is-worse { color: var(--wb-err); }
+
+/* Studio modes stack under 900px too: the document keeps the height, the inspector becomes a bottom strip. */
+@media (max-width: 899px) {
+  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) minmax(0, 32%) minmax(0, 140px); grid-template-areas: 'cases' 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr) minmax(0, 140px); grid-template-areas: 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
+}
+/* Result cell: verdict and row actions share one line; actions float over the cell, never wrap it. */
+.ide-root .ide-case-lab-result { position: relative; min-width: 96px; white-space: nowrap; }
+.ide-root .ide-case-lab-row-actions { float: none; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }

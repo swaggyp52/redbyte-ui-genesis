@@ -24,6 +24,8 @@ export interface CaseLabProps {
   readonly selectedTick: number | null;
   readonly onSelectCase: (tick: number) => void;
   readonly onSetExpected: (tick: number, signalId: string, next: 0 | 1 | null) => void;
+  /** One write for many cases (bulk edits must not race each other through stale snapshots). */
+  readonly onSetExpectedMany?: (edits: readonly { tick: number; signalId: string; next: 0 | 1 | null }[]) => void;
   readonly onGenerateExhaustive?: () => void;
   readonly onAddCase?: () => void;
   readonly onDuplicateCase?: (tick: number) => void;
@@ -39,6 +41,8 @@ export interface CaseLabProps {
   /** No mapped inputs exist yet: the input columns are placeholders until Board maps real signals. */
   readonly isUsingFallbackSignals?: boolean;
   readonly onGoToHardware?: () => void;
+  /** Run ledger, newest first, for the history line (current vs previous). */
+  readonly runHistory?: readonly { readonly runId: string; readonly status: 'pass' | 'fail'; readonly passedRows: number; readonly failedRows: number; readonly ranAtIso: string }[];
 }
 
 const VERDICT_LABEL: Record<CaseEvidence, string> = {
@@ -72,6 +76,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   selectedTick,
   onSelectCase,
   onSetExpected,
+  onSetExpectedMany,
   onGenerateExhaustive,
   onAddCase,
   onDuplicateCase,
@@ -85,8 +90,13 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   onDismissAutoVectorNotice,
   isUsingFallbackSignals,
   onGoToHardware,
+  runHistory,
 }) => {
   const [failuresOnly, setFailuresOnly] = useState(false);
+  // Multi-selection is presentation state: Shift extends, Ctrl toggles, Escape clears.
+  const [selectedTicks, setSelectedTicks] = useState<ReadonlySet<number>>(() => new Set());
+  const [anchorTick, setAnchorTick] = useState<number | null>(null);
+  const [bulkField, setBulkField] = useState<string>('');
   const orderedTicks = useMemo(() => [...vectors].map((vector) => vector.tick).sort((a, b) => a - b), [vectors]);
   const failingTicks = useMemo(() => orderedTicks.filter((tick) => caseEvidenceByTick[tick] === 'fail'), [caseEvidenceByTick, orderedTicks]);
   const stepCase = (direction: 1 | -1) => {
@@ -114,6 +124,42 @@ export const CaseLab: React.FC<CaseLabProps> = ({
     return failuresOnly ? sorted.filter((v) => caseEvidenceByTick[v.tick] === 'fail') : sorted;
   }, [vectors, inputFields, failuresOnly, caseEvidenceByTick]);
 
+  const visibleTicks = rows.map((vector) => vector.tick);
+  const selectRange = (fromTick: number, toTick: number) => {
+    const a = visibleTicks.indexOf(fromTick);
+    const b = visibleTicks.indexOf(toTick);
+    if (a < 0 || b < 0) return;
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    setSelectedTicks(new Set(visibleTicks.slice(lo, hi + 1)));
+  };
+  const handleRowClick = (tick: number, event: React.MouseEvent) => {
+    if (event.shiftKey && anchorTick != null) {
+      selectRange(anchorTick, tick);
+    } else if (event.ctrlKey || event.metaKey) {
+      setSelectedTicks((previous) => {
+        const next = new Set(previous);
+        if (next.has(tick)) next.delete(tick); else next.add(tick);
+        return next;
+      });
+      setAnchorTick(tick);
+    } else {
+      setSelectedTicks(new Set([tick]));
+      setAnchorTick(tick);
+    }
+    onSelectCase(tick);
+  };
+  const bulkTicks = useMemo(() => visibleTicks.filter((tick) => selectedTicks.has(tick)), [selectedTicks, visibleTicks]);
+  const effectiveBulkField = outputFields.some((field) => field.id === bulkField) ? bulkField : (outputFields[0]?.id ?? '');
+  const applyBulkExpected = (value: 0 | 1 | null) => {
+    if (!effectiveBulkField) return;
+    const edits = bulkTicks.map((tick) => ({ tick, signalId: effectiveBulkField, next: value }));
+    if (onSetExpectedMany) onSetExpectedMany(edits);
+    else for (const edit of edits) onSetExpected(edit.tick, edit.signalId, edit.next);
+  };
+  const latestRun = runHistory?.[0] ?? null;
+  const previousRun = runHistory?.[1] ?? null;
+  const historyDelta = latestRun && previousRun ? latestRun.failedRows - previousRun.failedRows : null;
+
   const cycleExpected = (tick: number, signalId: string, current: '0' | '1' | '') => {
     // First click asserts the common case (1), second flips to 0, third clears the check.
     onSetExpected(tick, signalId, current === '' ? 1 : current === '1' ? 0 : null);
@@ -127,6 +173,18 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           {vectors.length} case{vectors.length === 1 ? '' : 's'}
           {failCount ? ` · ${failCount} failing` : ''}
         </span>
+        {latestRun ? (
+          <span className="ide-case-lab-history" data-testid="ide-case-lab-history" title={previousRun ? `Previous run: ${previousRun.passedRows} passed · ${previousRun.failedRows} failed` : 'No previous run'}>
+            <code>{latestRun.status.toUpperCase()}</code>
+            {historyDelta !== null ? (
+              <span className={historyDelta < 0 ? 'is-better' : historyDelta > 0 ? 'is-worse' : ''}>
+                {historyDelta === 0 ? 'same as previous' : historyDelta < 0 ? `${-historyDelta} fewer failing than previous` : `${historyDelta} more failing than previous`}
+              </span>
+            ) : (
+              <span>first run</span>
+            )}
+          </span>
+        ) : null}
         <span className="ide-case-lab-spacer" />
         {onAddCase ? (
           <IdeButton tone="ghost" onClick={onAddCase} testId="ide-case-lab-add">
@@ -190,14 +248,50 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           ) : null}
         </div>
       ) : null}
+      {bulkTicks.length > 1 ? (
+        <div className="ide-case-lab-bulk" role="toolbar" aria-label="Selected cases" data-testid="ide-case-lab-bulk">
+          <span className="ide-case-lab-bulk-count" data-testid="ide-case-lab-bulk-count">{bulkTicks.length} cases selected</span>
+          <label className="ide-case-lab-bulk-field">
+            <span>Expected</span>
+            <select value={effectiveBulkField} onChange={(event) => setBulkField(event.target.value)} data-testid="ide-case-lab-bulk-field">
+              {outputFields.map((field) => (
+                <option key={field.id} value={field.id}>{field.label ?? field.id}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="wb-btn wb-btn--ghost" onClick={() => applyBulkExpected(0)} data-testid="ide-case-lab-bulk-set-0">= 0</button>
+          <button type="button" className="wb-btn wb-btn--ghost" onClick={() => applyBulkExpected(1)} data-testid="ide-case-lab-bulk-set-1">= 1</button>
+          <button type="button" className="wb-btn wb-btn--ghost" onClick={() => applyBulkExpected(null)} data-testid="ide-case-lab-bulk-clear">clear</button>
+          <span className="ide-case-lab-spacer" />
+          {onDuplicateCase ? (
+            <button type="button" className="wb-btn wb-btn--ghost" onClick={() => { for (const tick of bulkTicks) onDuplicateCase(tick); }} data-testid="ide-case-lab-bulk-duplicate">Duplicate</button>
+          ) : null}
+          {onDeleteCase ? (
+            <button type="button" className="wb-btn wb-btn--ghost is-danger" onClick={() => { for (const tick of [...bulkTicks].reverse()) onDeleteCase(tick); setSelectedTicks(new Set()); }} data-testid="ide-case-lab-bulk-delete">Delete</button>
+          ) : null}
+          <button type="button" className="wb-btn wb-btn--ghost" onClick={() => setSelectedTicks(new Set())} data-testid="ide-case-lab-bulk-none">Clear selection</button>
+        </div>
+      ) : null}
       <div className="ide-case-lab-scroll">
         <table
           className="ide-case-lab-table"
           data-testid="ide-case-lab-table"
           tabIndex={0}
-          aria-label="Test cases — arrow keys move the selected case, F steps to the next failure"
+          aria-label="Test cases — arrow keys move the selected case, Shift extends the selection, Ctrl+A selects all, F steps to the next failure"
           onKeyDown={(event) => {
-            if (event.key === 'ArrowDown') { event.preventDefault(); stepCase(1); }
+            if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && event.shiftKey) {
+              event.preventDefault();
+              const index = selectedTick == null ? -1 : visibleTicks.indexOf(selectedTick);
+              const next = visibleTicks[Math.min(visibleTicks.length - 1, Math.max(0, index + (event.key === 'ArrowDown' ? 1 : -1)))];
+              if (next == null) return;
+              const anchor = anchorTick ?? selectedTick ?? next;
+              setAnchorTick(anchor);
+              selectRange(anchor, next);
+              onSelectCase(next);
+            }
+            else if ((event.ctrlKey || event.metaKey) && (event.key === 'a' || event.key === 'A')) { event.preventDefault(); setSelectedTicks(new Set(visibleTicks)); }
+            else if (event.key === 'Escape') { setSelectedTicks(new Set()); }
+            else if (event.key === 'ArrowDown') { event.preventDefault(); stepCase(1); }
             else if (event.key === 'ArrowUp') { event.preventDefault(); stepCase(-1); }
             else if (event.key === 'Home') { event.preventDefault(); if (orderedTicks[0] != null) onSelectCase(orderedTicks[0]); }
             else if (event.key === 'End') { event.preventDefault(); const last = orderedTicks[orderedTicks.length - 1]; if (last != null) onSelectCase(last); }
@@ -206,7 +300,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
         >
           <thead>
             <tr className="ide-case-lab-grouphead">
-              <th className="ide-case-lab-num" rowSpan={2} scope="col">#</th>
+              <th className="ide-case-lab-num" rowSpan={2} scope="col" title="Case number — rows are ordered by input combination">#</th>
               <th className="ide-case-lab-group ide-case-lab-group--in" colSpan={inputFields.length} scope="colgroup">
                 Inputs
               </th>
@@ -248,12 +342,12 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                 return (
                   <tr
                     key={vector.id ?? vector.tick}
-                    className={`ide-case-lab-row is-${evidence}${isSelected ? ' is-selected' : ''}`}
+                    className={`ide-case-lab-row is-${evidence}${isSelected ? ' is-selected' : ''}${selectedTicks.has(vector.tick) && bulkTicks.length > 1 ? ' is-multi' : ''}`}
                     data-testid={`ide-case-lab-row-${vector.tick}`}
-                    aria-selected={isSelected}
-                    onClick={() => onSelectCase(vector.tick)}
+                    aria-selected={isSelected || selectedTicks.has(vector.tick)}
+                    onClick={(event) => handleRowClick(vector.tick, event)}
                   >
-                    <td className="ide-case-lab-num">{index}</td>
+                    <td className="ide-case-lab-num" title={`Case ${vector.tick}`}>{vector.tick}</td>
                     {inputFields.map((field) => (
                       <td key={field.id} className="ide-case-lab-in">
                         <code>{asBit(vector.inputs[field.id]) || '0'}</code>
@@ -307,7 +401,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                             className="ide-case-lab-rowbtn"
                             data-testid={`ide-case-lab-duplicate-${vector.tick}`}
                             title="Duplicate this case"
-                            aria-label={`Duplicate case ${index + 1}`}
+                            aria-label={`Duplicate case ${vector.tick}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               onDuplicateCase(vector.tick);
@@ -322,7 +416,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                             className="ide-case-lab-rowbtn ide-case-lab-rowbtn--danger"
                             data-testid={`ide-case-lab-delete-${vector.tick}`}
                             title="Delete this case"
-                            aria-label={`Delete case ${index + 1}`}
+                            aria-label={`Delete case ${vector.tick}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               onDeleteCase(vector.tick);

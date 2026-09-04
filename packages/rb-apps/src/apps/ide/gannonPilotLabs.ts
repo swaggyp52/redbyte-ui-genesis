@@ -45,7 +45,7 @@ export const GANNON_PILOT_LABS: GannonPilotLab[] = [
     exampleId: 'full-adder',
     build: 'A full adder with carry-in, sum, and carry-out logic.',
     difficulty: 'intermediate',
-    submit: 'Submit the browser-E0 ZIP; Vivado proof is separate if assigned.',
+    submit: 'Submit the exported RedByte/Vivado ZIP; Vivado proof is separate if assigned.',
     proofScope: 'vivado-optional',
     startLabel: 'Start Full Adder',
   },

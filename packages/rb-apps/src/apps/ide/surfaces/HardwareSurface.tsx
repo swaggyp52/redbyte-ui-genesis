@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
 import { ProblemsPanel } from '../components/ProblemsPanel';
 import { useEngineeringProblems } from '../engineeringProblems';
@@ -26,7 +26,6 @@ import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenar
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
-import { VirtualBasys3Board, type VirtualBoardResourceMap } from '../components/VirtualBasys3Board';
 import { PinPlannerPanel } from '../components/PinPlannerPanel';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
@@ -459,7 +458,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     })
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
-  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(() => mappingRows[0]?.id ?? null);
+  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(() => {
+    // Adopt the followed object when it is one of ours; fall back to the first row.
+    const followed = useEngineeringSelection.getState().selected;
+    if (followed?.kind === 'signal' && mappingRows.some((row) => row.id === followed.fieldId)) return followed.fieldId;
+    return mappingRows[0]?.id ?? null;
+  });
+  const boardMountPublishRef = useRef(true);
 
   // ── Engineering-object continuity ──────────────────────────────────────
   const globalSelected = useEngineeringSelection((state) => state.selected);
@@ -468,6 +473,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const relationshipIndex = useEngineeringRelationshipIndex();
   useEffect(() => {
     if (!selectedMappingRowId) return;
+    if (boardMountPublishRef.current) {
+      // First render: never displace a selection made elsewhere with a local default.
+      boardMountPublishRef.current = false;
+      if (globalSelected && globalOrigin !== 'board-io') return;
+    }
     const row = mappingRows.find((entry) => entry.id === selectedMappingRowId);
     if (!row) return;
     const relation = relationshipIndex.resolveField(row.id);
@@ -733,6 +743,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? formatBoardResourceChip(selectedMappingRow.boardResourceType) ??
         (selectedMappingRow.direction === 'in' ? 'Input control' : 'Output control')
       : null;
+  // A new row means a new pending choice: the previous row's resource never narrates this one.
+  useEffect(() => {
+    setSelectedBoardResourceAlias(null);
+  }, [selectedMappingRowId]);
   const selectedMappedBoardResource = selectedMappingRow
     ? getBasys3BoardResource(selectedMappingRow.pin)
     : null;
@@ -1111,28 +1125,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   // Cross-probe map: board resource alias → mapped logical signal + package pin,
   // derived from the same mapping rows the export pipeline consumes.
-  const virtualBoardResourceMap = useMemo(() => {
-    const rowByNodeId = new Map(mappingRows.map((row) => [row.nodeId, row] as const));
-    const map: Record<string, VirtualBoardResourceMap> = {};
-    const bind = (alias: string, nodeId: string | null) => {
-      if (!nodeId) return;
-      const row = rowByNodeId.get(nodeId);
-      if (!row) return;
-      map[alias] = {
-        signalLabel: getStudentFacingIoLabel(row, row.id),
-        pin: row.pin?.trim() ? row.pin.trim().toUpperCase() : null,
-      };
-    };
-    ioBus.meta.swNodeIds.forEach((nodeId, i) => bind(`SW${i}`, nodeId));
-    ioBus.meta.ldNodeIds.forEach((nodeId, i) => bind(`LD${i}`, nodeId));
-    const btnLabels = ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'];
-    ioBus.meta.btnNodeIds.forEach((nodeId, i) => bind(btnLabels[i], nodeId));
-    return map;
-  }, [mappingRows, ioBus.meta.swNodeIds, ioBus.meta.ldNodeIds, ioBus.meta.btnNodeIds]);
-  const anyVirtualBoardMapping = useMemo(
-    () => mappedSw.some(Boolean) || mappedLd.some(Boolean),
-    [mappedSw, mappedLd]
-  );
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
   const inferredReadiness = useMemo(
     () => ({
@@ -3164,19 +3156,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 <HardwareBusPlanner rows={mappingRows} declaredBuses={declaredBuses} onSetMappingPin={onSetMappingPin} />
                 {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
                   <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} />
-                ) : null}
-                {anyVirtualBoardMapping ? (
-                  <VirtualBasys3Board
-                    switches={ioBus.state.sw}
-                    leds={ioBus.state.ld}
-                    buttons={ioBus.state.btn}
-                    mappedSwitches={mappedSw}
-                    mappedLeds={mappedLd}
-                    resourceMap={virtualBoardResourceMap}
-                    onToggleSwitch={(i) => ioBus.actions.toggleSwitch(i)}
-                    onPressButton={(i, pressed) => ioBus.actions.setButton(i, pressed ? 1 : 0)}
-                    onFocusResource={(alias) => setSelectedBoardResourceAlias(alias)}
-                  />
                 ) : null}
                 {mapModeGroups.length === 0 ? (
                   <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">

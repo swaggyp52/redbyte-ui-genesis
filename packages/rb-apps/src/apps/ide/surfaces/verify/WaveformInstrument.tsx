@@ -288,7 +288,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
           stroke="var(--rb-wave-grid)" strokeWidth="1" />
       ))}
-      {ticks.map((tick, i) => i % 5 === 0 ? (
+      {ticks.map((tick, i) => (ticks.length <= 32 || i % 5 === 0) ? (
         <line key={`grid-major-${tick}`}
           x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
           stroke="var(--rb-wave-grid-strong)" strokeWidth="1.2" />

@@ -8,6 +8,7 @@ import {
   type ProjectIoRow,
   type RunVerificationInput,
   type RuntimeVerifyRun,
+  type VerifyRunLedgerEntry,
 } from '../projectRuntime';
 import { buildVerifyTickSignalIndex, normalizeSignalKey, type VerifyTickSignalIndexEntry } from '../verifyReport';
 import { adaptVerifyPreflightIssue } from '../diagnostics';
@@ -225,6 +226,8 @@ interface VerifyMappedInput {
 }
 
 export interface VerifySurfaceProps {
+  /** Run ledger (newest first) for the Case Lab history line. */
+  readonly runHistory?: readonly VerifyRunLedgerEntry[];
   deterministicHash: string;
   /** Current project display name — fed into the Verify context header. */
   projectName?: string;
@@ -390,6 +393,7 @@ const VERIFY_WAVEFORM_LABEL_ALLOWANCE = 104;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
+  runHistory,
   deterministicHash,
   projectName,
   board,
@@ -2760,7 +2764,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedFailureRepairCaseLabel =
     selectedFailureExplanationCase?.caseIndex !== undefined &&
     selectedFailureExplanationCase.caseIndex !== null
-      ? `Case ${selectedFailureExplanationCase.caseIndex + 1}`
+      ? `Case ${selectedFailureExplanationCase.caseIndex}`
       : selectedFailureExplanationCase
         ? `Tick ${selectedFailureExplanationCase.tick}`
         : null;
@@ -2784,16 +2788,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedCaseTickLabel =
     selectedTick !== null
       ? stepIndex >= 0
-        ? `Case ${stepIndex + 1} \u00b7 t${selectedTick}`
+        ? `Case ${stepIndex} \u00b7 t${selectedTick}`
         : `t${selectedTick}`
       : null;
   const selectedCasePositionLabel =
     selectedTick !== null && stepIndex >= 0
-      ? `Case ${stepIndex + 1} / ${totalSteps} \u00b7 t${selectedTick}`
+      ? `Case ${stepIndex} of ${totalSteps} \u00b7 t${selectedTick}`
       : `${totalSteps} case${totalSteps === 1 ? '' : 's'}`;
   const selectedScopeCaseLabel =
     selectedTick !== null && stepIndex >= 0
-      ? `Case ${stepIndex + 1} / ${totalSteps}`
+      ? `Case ${stepIndex} of ${totalSteps}`
       : `${totalSteps} case${totalSteps === 1 ? '' : 's'}`;
 
   const goToPrevStep = useCallback(() => {
@@ -3314,6 +3318,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         const expected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
         if (next === null) delete expected[signalId];
         else expected[signalId] = next;
+        return { ...vector, expected };
+      });
+      onVectorsChange(updated);
+    },
+    [authoredVectors, onVectorsChange]
+  );
+
+  const handleCaseSetExpectedMany = useCallback(
+    (edits: readonly { tick: number; signalId: string; next: 0 | 1 | null }[]) => {
+      if (!onVectorsChange || edits.length === 0) return;
+      const byTick = new Map<number, typeof edits>();
+      for (const edit of edits) byTick.set(edit.tick, [...(byTick.get(edit.tick) ?? []), edit]);
+      const updated = authoredVectors.map((vector) => {
+        const own = byTick.get(vector.tick);
+        if (!own) return vector;
+        const expected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+        for (const edit of own) {
+          if (edit.next === null) delete expected[edit.signalId];
+          else expected[edit.signalId] = edit.next;
+        }
         return { ...vector, expected };
       });
       onVectorsChange(updated);
@@ -6047,6 +6071,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         ) : (
           <CaseLab
+            runHistory={runHistory}
             inputFields={stimulusPanelInputFields}
             outputFields={outputFields}
             vectors={authoredVectors}
@@ -6055,6 +6080,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             selectedTick={selectedTick}
             onSelectCase={handleStimulusSelectedTickChange}
             onSetExpected={handleCaseSetExpected}
+            onSetExpectedMany={handleCaseSetExpectedMany}
             onGenerateExhaustive={handleAutoGenerateVectors}
             onAddCase={onVectorsChange ? handleCaseAdd : undefined}
             onDuplicateCase={onVectorsChange ? handleCaseDuplicate : undefined}
@@ -6073,8 +6099,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         )}
         {studioMode !== 'bench' && isSequentialRun ? (
-        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-table-disclosure">
-          <summary>Open detailed event table</summary>
+        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-generators-disclosure">
+          <summary>Stimulus generators (sweep, hold, pulse) and the full event editor</summary>
           <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
@@ -6247,7 +6273,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     list.push({
                       id: 'coverage',
                       label: 'Coverage',
-                      value: commandBarCoverageLabel.trim(),
+                      value: commandBarCoverageLabel.trim().replace(/\s*coverage$/i, ''),
                       tone: 'neutral',
                     });
                   }
@@ -7484,20 +7510,23 @@ function normalizeVectors(
     .sort((left, right) => left.tick - right.tick);
 }
 
+/**
+ * Field identity: the canonical id is the project io-row id, byte for byte.
+ * Vectors written back to the runtime must carry the row's own key — the
+ * runtime canonicalizes by a punctuation-stripping alias rule, so a rewritten
+ * id (`carry-out` → `carry_out`) is pruned as an unknown output and the
+ * authored expectation is silently lost. Normalized forms are only ever used
+ * for comparison (see `normalizeFieldId`), never as a stored key.
+ */
 function normalizeVerifyFields(
   seed: Array<{ id: string; label?: string; pin?: string }>
 ): VerifyVectorDraftInput[] {
-  const normalized = seed
-    .map((entry) => ({
-      id: normalizeFieldId(entry.id),
-      label: (entry.label ?? entry.id).trim() || entry.id,
-      pin: entry.pin,
-    }))
-    .filter((entry) => entry.id.length > 0);
-
   const deduped = new Map<string, VerifyVectorDraftInput>();
-  for (const entry of normalized) {
-    if (!deduped.has(entry.id)) deduped.set(entry.id, entry);
+  for (const entry of seed) {
+    const id = entry.id.trim();
+    const key = normalizeFieldId(id);
+    if (!key || deduped.has(key)) continue;
+    deduped.set(key, { id, label: (entry.label ?? id).trim() || id, pin: entry.pin });
   }
   return Array.from(deduped.values());
 }
@@ -7507,7 +7536,7 @@ function buildVerifyFieldAliasMap(
   seed: Array<{ id: string; label?: string; pin?: string; nodeId?: string }>
 ): Map<string, string> {
   const ownersByAlias = new Map<string, Set<string>>();
-  const validIds = new Set(fields.map((field) => field.id));
+  const canonicalByKey = new Map(fields.map((field) => [normalizeFieldId(field.id), field.id] as const));
 
   const register = (canonicalId: string, ...candidates: Array<string | undefined>) => {
     for (const candidate of candidates) {
@@ -7524,8 +7553,8 @@ function buildVerifyFieldAliasMap(
   }
 
   for (const entry of seed) {
-    const canonicalId = normalizeFieldId(entry.id);
-    if (!validIds.has(canonicalId)) continue;
+    const canonicalId = canonicalByKey.get(normalizeFieldId(entry.id));
+    if (!canonicalId) continue;
     register(
       canonicalId,
       entry.id,

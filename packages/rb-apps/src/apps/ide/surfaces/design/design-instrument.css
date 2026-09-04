@@ -454,3 +454,7 @@
 .ide-root .ide-design-probe-value { color: var(--wb-text); font-weight: 700; }
 .ide-root .rb-design-dock-tabs { overflow-x: auto; scrollbar-width: none; }
 .ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 7px; }
+
+/* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
+.ide-root .rb-design-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); row-gap: 2px; }
+.ide-root .rb-design-toolbar .wb-btn, .ide-root .rb-design-toolbar .wb-segment, .ide-root .rb-design-toolbar .rb-design-menu, .ide-root .rb-design-toolbar .rb-design-trace { flex: none; }

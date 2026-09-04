@@ -26,6 +26,10 @@
   display: none;
 }
 
+.resourceMappedUnavailable {
+  opacity: 0.7;
+}
+
 .resourceUnavailable {
   opacity: 0.48;
 }

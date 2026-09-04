@@ -50,6 +50,7 @@ export const HardwareBusPlanner: React.FC<HardwareBusPlannerProps> = ({ rows, de
   const [startIndex, setStartIndex] = useState(0);
   const [reverse, setReverse] = useState(false);
   const [lastApplied, setLastApplied] = useState<AppliedSnapshot | null>(null);
+  const [remapOpen, setRemapOpen] = useState(false);
 
   const activeGroup: IoBusGroup | null = useMemo(() => {
     if (groups.length === 0) return null;
@@ -111,6 +112,39 @@ export const HardwareBusPlanner: React.FC<HardwareBusPlannerProps> = ({ rows, de
   }, [lastApplied, onSetMappingPin]);
 
   if (groups.length === 0) return null;
+
+  // A fully mapped bus reads as a fact; the plan (with its hypothetical
+  // conflicts) only appears when someone asks to remap it.
+  const everyMemberMapped = activeGroup !== null && activeGroup.members.length > 0 && activeGroup.members.every((member) => (member.pin ?? '').trim().length > 0);
+  if (activeGroup && everyMemberMapped && !remapOpen) {
+    const pins = activeGroup.members.map((member) => member.pin ?? '').filter(Boolean);
+    return (
+      <section className="ide-hw-bus-planner is-collapsed" data-testid="ide-hw-bus-planner" aria-label="Bus mapping">
+        <div className="ide-hw-bus-planner__summary" data-testid="ide-hw-bus-planner-summary">
+          <span className="ide-surface-block-label">Bus mapping</span>
+          <strong>{activeGroup.baseName}[{activeGroup.members.length - 1}:0]</strong>
+          <span>mapped</span>
+          <code>{pins.join(' ')}</code>
+          {groups.length > 1 ? (
+            <select
+              className="ide-hw-bus-planner__pick"
+              value={activeGroup.baseName}
+              onChange={(event) => setActiveBase(event.target.value)}
+              aria-label="Bus"
+              data-testid="ide-hw-bus-planner-pick"
+            >
+              {groups.map((group) => (
+                <option key={group.baseName} value={group.baseName}>{group.baseName}</option>
+              ))}
+            </select>
+          ) : null}
+          <button type="button" className="wb-btn wb-btn--ghost" onClick={() => setRemapOpen(true)} data-testid="ide-hw-bus-planner-remap">
+            Remap…
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="ide-hw-bus-planner" data-testid="ide-hw-bus-planner" aria-label="Bus mapping">

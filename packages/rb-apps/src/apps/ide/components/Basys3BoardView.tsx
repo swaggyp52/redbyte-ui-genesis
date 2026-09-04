@@ -64,7 +64,7 @@ function isAllowed(alias: string, allowedAliases?: Set<string>): boolean {
   return !allowedAliases || allowedAliases.has(alias);
 }
 
-type ResourceVisualState = 'selected' | 'conflict' | 'mapped' | 'available' | 'idle' | 'unavailable';
+type ResourceVisualState = 'selected' | 'conflict' | 'mapped' | 'mapped-unavailable' | 'available' | 'idle' | 'unavailable';
 
 function resourceVisualState(
   alias: string,
@@ -74,9 +74,9 @@ function resourceVisualState(
   assignmentMode = false,
   conflictAliases?: Set<string>
 ): ResourceVisualState {
-  if (!isAllowed(alias, allowedAliases)) return 'unavailable';
   if (alias === highlightedAlias) return 'selected';
   if (conflictAliases?.has(alias)) return 'conflict';
+  if (!isAllowed(alias, allowedAliases)) return mappedAliases.has(alias) ? 'mapped-unavailable' : 'unavailable';
   if (mappedAliases.has(alias)) return 'mapped';
   return assignmentMode ? 'available' : 'idle';
 }
@@ -86,6 +86,7 @@ function resourceClassName(state: ResourceVisualState): string {
     styles.resource,
     state === 'selected' ? styles.resourceSelected : '',
     state === 'mapped' ? styles.resourceMapped : '',
+    state === 'mapped-unavailable' ? styles.resourceMappedUnavailable : '',
     state === 'conflict' ? styles.resourceConflict : '',
     state === 'unavailable' ? styles.resourceUnavailable : '',
     state === 'selected' ? 'map-hl' : '',
@@ -105,6 +106,7 @@ function regionFill(
   if (state === 'selected') return 'rgba(245,158,11,0.94)';
   if (state === 'conflict') return 'rgba(239,68,68,0.86)';
   if (state === 'mapped') return 'rgba(34,197,94,0.86)';
+  if (state === 'mapped-unavailable') return 'rgba(34,197,94,0.42)';
   if (state === 'available') return 'rgba(56,189,248,0.3)';
   return 'rgba(148,163,184,0.26)';
 }
@@ -122,6 +124,7 @@ function regionStroke(
   if (state === 'selected') return '#fff7d6';
   if (state === 'conflict') return '#fecaca';
   if (state === 'mapped') return '#86efac';
+  if (state === 'mapped-unavailable') return 'rgba(134,239,172,0.6)';
   if (state === 'available') return '#7dd3fc';
   return '#94a3b8';
 }
@@ -155,6 +158,7 @@ function labelFill(
   if (state === 'selected') return '#fff7d6';
   if (state === 'conflict') return '#fecaca';
   if (state === 'mapped') return '#bbf7d0';
+  if (state === 'mapped-unavailable') return 'rgba(187,247,208,0.7)';
   if (state === 'available') return '#e0f2fe';
   return '#cbd5e1';
 }

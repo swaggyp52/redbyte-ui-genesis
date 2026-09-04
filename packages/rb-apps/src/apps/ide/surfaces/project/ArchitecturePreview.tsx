@@ -145,6 +145,27 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
       for (const item of items) item.y += offset;
     }
     const byId = new Map(placed.map((p) => [p.id, p]));
+    // Each load pin gets its own landing row on the block; each net (driver)
+    // gets its own vertical track in the column gap, so two nets never share
+    // a segment and no vertical runs under a block body.
+    const loadsByTarget = new Map<string, string[]>();
+    for (const edge of edges) {
+      const list = loadsByTarget.get(edge.to) ?? [];
+      if (!list.includes(edge.from)) list.push(edge.from);
+      loadsByTarget.set(edge.to, list);
+    }
+    const trackByNet = new Map<string, number>();
+    const tracksPerGap = new Map<number, number>();
+    for (const edge of edges) {
+      if (trackByNet.has(edge.from)) continue;
+      const from = byId.get(edge.from);
+      if (!from) continue;
+      const gapKey = Math.round(from.x + from.w);
+      const track = tracksPerGap.get(gapKey) ?? 0;
+      trackByNet.set(edge.from, track);
+      tracksPerGap.set(gapKey, track + 1);
+    }
+    const TRACK_STEP = 7;
     const wires = edges.map((edge, index) => {
       const from = byId.get(edge.from);
       const to = byId.get(edge.to);
@@ -152,19 +173,26 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
       const x1 = from.x + from.w;
       const y1 = from.y + from.h / 2;
       const x2 = to.x;
-      const y2 = to.y + to.h / 2;
-      const midX = x2 > x1 + 16 ? Math.round((x1 + x2) / 2) : x1 + 12;
-      const d = x2 > x1 + 16
+      const loads = loadsByTarget.get(edge.to) ?? [edge.from];
+      const pinIndex = Math.max(0, loads.indexOf(edge.from));
+      const y2 = to.y + (to.h * (pinIndex + 1)) / (loads.length + 1);
+      const track = trackByNet.get(edge.from) ?? 0;
+      const forward = x2 > x1 + 16;
+      const midX = forward ? Math.min(x2 - 6, x1 + 10 + track * TRACK_STEP) : x1 + 10 + track * TRACK_STEP;
+      const d = forward
         ? `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`
-        : `M ${x1} ${y1} H ${x1 + 10} V ${Math.min(y1, y2) - 12} H ${x2 - 10} V ${y2} H ${x2}`;
-      return { key: `${edge.from}-${edge.to}-${index}`, d, from: edge.from, to: edge.to };
+        : `M ${x1} ${y1} H ${midX} V ${Math.min(from.y, to.y) - 12 - track * TRACK_STEP} H ${x2 - 10 - track * TRACK_STEP} V ${y2} H ${x2}`;
+      return { key: `${edge.from}-${edge.to}-${index}`, d, from: edge.from, to: edge.to, midX, y1 };
     }).filter((wire): wire is NonNullable<typeof wire> => wire !== null);
     // Junctions: a driver with more than one load gets a dot where its net fans out.
     const fanout = new Map<string, number>();
     for (const wire of wires) fanout.set(wire.from, (fanout.get(wire.from) ?? 0) + 1);
     const junctions = placed
       .filter((p) => (fanout.get(p.id) ?? 0) > 1)
-      .map((p) => ({ id: p.id, x: p.x + p.w + 12, y: p.y + p.h / 2 }));
+      .map((p) => {
+        const first = wires.find((wire) => wire.from === p.id);
+        return { id: p.id, x: first?.midX ?? p.x + p.w + 12, y: first?.y1 ?? p.y + p.h / 2 };
+      });
     const width = Math.max(240, x - COL_GAP + 8);
     const height = Math.max(120, maxY);
     return { placed, wires, junctions, width, height };
