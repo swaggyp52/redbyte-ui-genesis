@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   documentKey,
   documentMode,
@@ -17,6 +17,9 @@ export interface WorkbenchDocumentTabStripProps {
   readonly markFor?: (doc: WorkbenchDocument) => WorkbenchDocumentMark;
   readonly onActivate: (key: string) => void;
   readonly onClose: (key: string) => void;
+  readonly onCloseOthers?: (key: string) => void;
+  readonly onReopenClosed?: () => void;
+  readonly canReopenClosed?: boolean;
   /** Engineering-location history. Rendered only when a handler is supplied. */
   readonly history?: {
     readonly canBack: boolean;
@@ -64,6 +67,9 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
   markFor,
   onActivate,
   onClose,
+  onCloseOthers,
+  onReopenClosed,
+  canReopenClosed = false,
   history,
   trail,
 }) => {
@@ -73,6 +79,21 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
     const active = listRef.current?.querySelector<HTMLElement>('.wb-doctab.is-active');
     if (active && typeof active.scrollIntoView === 'function') active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [activeKey, open.length]);
+
+  const [menu, setMenu] = useState<{ key: string; label: string; x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menu]);
 
   const onTabKey = (event: React.KeyboardEvent, index: number) => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Home' && event.key !== 'End') return;
@@ -132,6 +153,10 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
               onAuxClick={(event) => {
                 if (event.button === 1 && closable) onClose(key);
               }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setMenu({ key, label, x: event.clientX, y: event.clientY });
+              }}
             >
               <button
                 type="button"
@@ -168,6 +193,32 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
           );
         })}
       </div>
+      {menu ? (
+        <div
+          className="wb-menu wb-doctab-menu"
+          role="menu"
+          aria-label={`${menu.label} document`}
+          style={{ position: 'fixed', left: menu.x, top: menu.y }}
+          onMouseDown={(event) => event.stopPropagation()}
+          data-testid="ide-doc-tab-menu"
+        >
+          {open.some((doc) => documentKey(doc) === menu.key && doc.kind !== 'project-overview') ? (
+            <button type="button" role="menuitem" className="wb-menu-item" onClick={() => { onClose(menu.key); setMenu(null); }} data-testid="ide-doc-menu-close">
+              Close
+            </button>
+          ) : null}
+          {onCloseOthers && open.length > 2 ? (
+            <button type="button" role="menuitem" className="wb-menu-item" onClick={() => { onCloseOthers(menu.key); setMenu(null); }} data-testid="ide-doc-menu-close-others">
+              Close others
+            </button>
+          ) : null}
+          {onReopenClosed ? (
+            <button type="button" role="menuitem" className="wb-menu-item" disabled={!canReopenClosed} onClick={() => { onReopenClosed(); setMenu(null); }} data-testid="ide-doc-menu-reopen">
+              Reopen closed
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {showTrail && trail ? (
         <nav className="wb-doctabs-trail" aria-label="Module path" data-testid="ide-location-path">
           {trail.map((segment, index) => {

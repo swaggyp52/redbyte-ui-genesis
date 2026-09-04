@@ -40,6 +40,7 @@ import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { buildEngineeringProblems, countProblems, useEngineeringProblems } from './ide/engineeringProblems';
 import { buildNavigatorIndex, type NavigatorEntry } from './ide/workbenchNavigator';
 import { computeDesignIssues } from './ide/designIssues';
+import { useWorkbenchDocuments } from './ide/workbenchDocumentStore';
 import { documentKey as workbenchDocumentKey, documentMode as workbenchDocumentMode } from './ide/workbenchDocuments';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
@@ -290,6 +291,10 @@ interface IdeShellCommandContext {
   hasCircuit: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  /** Document host facts, so document commands resolve from context, not from a store read. */
+  openDocumentCount: number;
+  activeDocumentClosable: boolean;
+  recentlyClosedCount: number;
 }
 
 export const IdeApp: React.FC = () => {
@@ -2366,13 +2371,21 @@ export const IdeApp: React.FC = () => {
     workspacePreferencesStore.reset();
   }, []);
 
+  const openDocumentCount = useWorkbenchDocuments((state) => state.open.length);
+  const activeDocumentClosable = useWorkbenchDocuments((state) =>
+    state.open.some((doc) => workbenchDocumentKey(doc) === state.activeKey && doc.kind !== 'project-overview')
+  );
+  const recentlyClosedCount = useWorkbenchDocuments((state) => state.recentlyClosed.length);
   const commandContext = useMemo<IdeShellCommandContext>(
     () => ({
       hasCircuit,
       canUndo: designUndoDepth > 0,
       canRedo: designRedoDepth > 0,
+      openDocumentCount,
+      activeDocumentClosable,
+      recentlyClosedCount,
     }),
-    [designRedoDepth, designUndoDepth, hasCircuit]
+    [activeDocumentClosable, designRedoDepth, designUndoDepth, hasCircuit, openDocumentCount, recentlyClosedCount]
   );
 
   const commandRegistry = useMemo(() => {
@@ -2436,6 +2449,47 @@ export const IdeApp: React.FC = () => {
       { id: IDE_COMMAND_IDS.useAuthoringPreset, title: 'Workspace Preset: Authoring', category: 'workspace', keywords: ['layout'], execute: () => handleApplyWorkspacePreset('authoring') },
       { id: IDE_COMMAND_IDS.useSimulationPreset, title: 'Workspace Preset: Simulation', category: 'workspace', keywords: ['layout', 'waveform'], execute: () => handleApplyWorkspacePreset('simulation') },
       { id: IDE_COMMAND_IDS.useBoardPreset, title: 'Workspace Preset: Board', category: 'workspace', keywords: ['layout', 'constraints'], execute: () => handleApplyWorkspacePreset('board') },
+      {
+        id: IDE_COMMAND_IDS.closeDocument,
+        title: 'Close Document',
+        category: 'workspace',
+        keywords: ['tab', 'close'],
+        availability: (context) =>
+          context.activeDocumentClosable
+            ? { state: 'available' }
+            : { state: 'disabled', reason: 'The Overview stays open.' },
+        execute: () => {
+          const { activeKey, closeDocument } = useWorkbenchDocuments.getState();
+          closeDocument(activeKey);
+        },
+      },
+      {
+        id: IDE_COMMAND_IDS.closeOtherDocuments,
+        title: 'Close Other Documents',
+        category: 'workspace',
+        keywords: ['tabs', 'close', 'others'],
+        availability: (context) =>
+          context.openDocumentCount > 2
+            ? { state: 'available' }
+            : { state: 'disabled', reason: 'No other documents are open.' },
+        execute: () => {
+          const { activeKey, closeOtherDocuments } = useWorkbenchDocuments.getState();
+          closeOtherDocuments(activeKey);
+        },
+      },
+      {
+        id: IDE_COMMAND_IDS.reopenClosedDocument,
+        title: 'Reopen Closed Document',
+        category: 'workspace',
+        keywords: ['tab', 'reopen', 'restore', 'closed'],
+        availability: (context) =>
+          context.recentlyClosedCount > 0
+            ? { state: 'available' }
+            : { state: 'disabled', reason: 'Nothing was closed this session.' },
+        execute: () => {
+          useWorkbenchDocuments.getState().reopenClosedDocument();
+        },
+      },
       { id: IDE_COMMAND_IDS.useCodePreset, title: 'Workspace Preset: Code', category: 'workspace', keywords: ['layout', 'hdl'], execute: () => handleApplyWorkspacePreset('code') },
       {
         id: IDE_COMMAND_IDS.runSimulation,
@@ -2926,6 +2980,9 @@ export const IdeApp: React.FC = () => {
           activeKey={documentHost.activeKey}
           labelFor={documentHost.labelFor}
           onActivate={documentHost.activate}
+          onCloseOthers={(key) => useWorkbenchDocuments.getState().closeOtherDocuments(key)}
+          onReopenClosed={() => useWorkbenchDocuments.getState().reopenClosedDocument()}
+          canReopenClosed={recentlyClosedCount > 0}
           onClose={documentHost.close}
           history={{
             canBack: locationPast.length > 0,

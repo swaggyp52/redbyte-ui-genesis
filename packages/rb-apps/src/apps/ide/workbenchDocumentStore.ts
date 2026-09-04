@@ -36,6 +36,12 @@ interface WorkbenchDocumentsState {
   activateDocument: (key: string) => void;
   /** Close a closable document; the previous-index neighbor activates. */
   closeDocument: (key: string) => void;
+  /** Close every closable document except `key` (and the pinned overview). */
+  closeOtherDocuments: (key: string) => void;
+  /** Reopen the most recently closed document that still exists. */
+  reopenClosedDocument: () => WorkbenchDocument | null;
+  /** Documents closed this session, newest first (bounded). Session-only. */
+  recentlyClosed: WorkbenchDocument[];
   /**
    * Mode changed by another owner (stage nav, URL, Back/Forward): activate that
    * workspace's most recent open document, or open `makeDefault()`. Returns the
@@ -120,6 +126,7 @@ export const useWorkbenchDocuments = create<WorkbenchDocumentsState>((set, get) 
     open: initial.open,
     activeKey: initial.activeKey,
     lastActiveByMode: {},
+    recentlyClosed: [],
 
     openDocument: (doc) => {
       const { open, lastActiveByMode } = get();
@@ -143,16 +150,43 @@ export const useWorkbenchDocuments = create<WorkbenchDocumentsState>((set, get) 
       const { open, activeKey, lastActiveByMode } = get();
       const index = open.findIndex((entry) => documentKey(entry) === key);
       if (index === -1) return;
+      const closed = open[index];
       const nextOpen = open.filter((_, i) => i !== index);
       const nextLast: Partial<Record<IdeMode, string>> = Object.fromEntries(
         Object.entries(lastActiveByMode).filter(([, value]) => value !== key)
       );
+      set({ recentlyClosed: [closed, ...get().recentlyClosed.filter((entry) => documentKey(entry) !== key)].slice(0, 12) });
       if (activeKey !== key) {
         commit(nextOpen, activeKey, nextLast);
         return;
       }
       const neighbor = nextOpen[Math.max(0, index - 1)] ?? OVERVIEW;
       commit(nextOpen, documentKey(neighbor), touchMode(nextLast, neighbor));
+    },
+
+    closeOtherDocuments: (key) => {
+      const { open, lastActiveByMode, recentlyClosed } = get();
+      const keep = open.filter((entry) => {
+        const entryKey = documentKey(entry);
+        return entryKey === key || entryKey === OVERVIEW_KEY;
+      });
+      const closed = open.filter((entry) => !keep.includes(entry));
+      if (closed.length === 0) return;
+      const keptKeys = new Set(keep.map(documentKey));
+      const nextLast: Partial<Record<IdeMode, string>> = Object.fromEntries(
+        Object.entries(lastActiveByMode).filter(([, value]) => value && keptKeys.has(value))
+      );
+      set({ recentlyClosed: [...closed.reverse(), ...recentlyClosed].slice(0, 12) });
+      const active = keptKeys.has(key) ? key : OVERVIEW_KEY;
+      commit(keep, active, nextLast);
+    },
+
+    reopenClosedDocument: () => {
+      const { recentlyClosed } = get();
+      const [doc, ...rest] = recentlyClosed;
+      if (!doc) return null;
+      set({ recentlyClosed: rest });
+      return get().openDocument(doc);
     },
 
     activateForMode: (mode, makeDefault) => {

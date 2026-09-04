@@ -1051,3 +1051,7 @@
 @media (max-width: 899px) {
   .ide-root .rb-problems-meta { display: none; }
 }
+
+/* Document tab context menu: the same menu grammar as the frame menus. */
+.ide-root .wb-doctab-menu { z-index: 60; min-width: 160px; }
+.ide-root .wb-doctab-menu .wb-menu-item[disabled] { color: var(--wb-text-3); cursor: default; }

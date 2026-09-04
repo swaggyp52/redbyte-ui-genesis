@@ -64,6 +64,7 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
     label: 'View',
     sections: [
       [IDE_COMMAND_IDS.showDesignCanvas, IDE_COMMAND_IDS.showDesignCode, IDE_COMMAND_IDS.showDesignSplit],
+      [IDE_COMMAND_IDS.closeDocument, IDE_COMMAND_IDS.closeOtherDocuments, IDE_COMMAND_IDS.reopenClosedDocument],
       [IDE_COMMAND_IDS.fitDesignCanvas, IDE_COMMAND_IDS.zoomInDesignCanvas, IDE_COMMAND_IDS.zoomOutDesignCanvas],
       [
         IDE_COMMAND_IDS.toggleWorkspacePanel,
