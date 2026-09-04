@@ -202,3 +202,12 @@
 .ide-root .rb-sch-stage[data-learning-mode='edit'] .rb-logic-canvas-svg[data-renderer='schematic'] .rb-net[data-signal='1'] .rb-net-line { stroke: var(--rb-schematic-net); stroke-width: 1.5px; }
 .ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='traced'] .rb-sym-ring,
 .ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym[data-tone='changed'] .rb-sym-ring { display: none; }
+
+
+/* ── Bus brackets: grouping + width, drawn outside the bit symbols. Not a trunk wire. ── */
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-bus-bracket-line,
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-bus-bracket-tick { fill: none; stroke: var(--rb-sch-ink-2, #55606c); stroke-width: 1.25; vector-effect: non-scaling-stroke; }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-bus-bracket-label { fill: var(--rb-sch-ink, #1c2430); }
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-bus-bracket-width { fill: var(--rb-sch-ink-2, #55606c); }
+/* ── Hierarchy boundary: another module lives here. ── */
+.ide-root .rb-logic-canvas-svg[data-renderer='schematic'] .rb-sym-hier { fill: none; stroke: var(--rb-sch-ink-2, #55606c); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: 0.7; }

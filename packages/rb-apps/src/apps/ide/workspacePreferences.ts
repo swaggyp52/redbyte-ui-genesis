@@ -28,6 +28,23 @@ export const WORKSPACE_PRESET_IDS = ['authoring', 'simulation', 'board', 'code']
 export type WorkspacePresetId = (typeof WORKSPACE_PRESET_IDS)[number];
 
 export type DesignWorkspaceView = 'canvas' | 'code' | 'split';
+export type DesignLayerId = 'netLabels' | 'values' | 'boardBindings' | 'diagnostics' | 'hierarchy' | 'buses';
+export type DesignLayers = Readonly<Record<DesignLayerId, boolean>>;
+export const DESIGN_LAYER_IDS: readonly DesignLayerId[] = ['netLabels', 'values', 'boardBindings', 'diagnostics', 'hierarchy', 'buses'];
+export const DEFAULT_DESIGN_LAYERS: DesignLayers = Object.freeze({
+  netLabels: true,
+  values: true,
+  boardBindings: true,
+  diagnostics: true,
+  hierarchy: true,
+  buses: true,
+});
+function normalizeDesignLayers(raw: unknown): DesignLayers {
+  const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const next: Record<DesignLayerId, boolean> = { ...DEFAULT_DESIGN_LAYERS };
+  for (const id of DESIGN_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
+  return Object.freeze(next);
+}
 export type DesignCanvasAppearance = 'dark' | 'light' | 'system';
 export type DesignCanvasDensity = 'comfortable' | 'compact';
 
@@ -44,6 +61,8 @@ export interface DesignWorkspacePreferences {
   readonly view: DesignWorkspaceView;
   readonly toolbarCommandIds: readonly IdeCommandId[];
   readonly canvasAppearance: DesignCanvasAppearance;
+  /** Schematic presentation layers (persisted with the workspace). */
+  readonly layers: DesignLayers;
   readonly canvasDensity: DesignCanvasDensity;
 }
 
@@ -167,6 +186,7 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
     // inside the light Studio shell rather than a separate dark application.
     canvasAppearance: 'light',
     canvasDensity: 'compact',
+    layers: DEFAULT_DESIGN_LAYERS,
   },
 });
 
@@ -212,6 +232,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
       canvasDensity: isDesignCanvasDensity(rawDesign.canvasDensity)
         ? rawDesign.canvasDensity
         : defaults.design.canvasDensity,
+      layers: normalizeDesignLayers(rawDesign.layers),
     },
   });
 }
@@ -300,6 +321,13 @@ export class WorkspacePreferencesStore {
     });
   }
 
+  setDesignLayer(id: DesignLayerId, on: boolean): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, layers: Object.freeze({ ...this.#preferences.design.layers, [id]: on }) },
+    });
+  }
+
   setDesignView(view: DesignWorkspaceView): WorkspacePreferencesV1 {
     return this.#replace({
       ...this.#preferences,
@@ -366,6 +394,7 @@ export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
       toolbarCommandIds: [...DEFAULT_WORKSPACE_PREFERENCES.design.toolbarCommandIds],
       canvasAppearance: DEFAULT_WORKSPACE_PREFERENCES.design.canvasAppearance,
       canvasDensity: DEFAULT_WORKSPACE_PREFERENCES.design.canvasDensity,
+      layers: DEFAULT_WORKSPACE_PREFERENCES.design.layers,
     },
   });
 }

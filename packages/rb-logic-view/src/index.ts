@@ -61,5 +61,6 @@ export {
   type RoutedNet,
   type RoutedWire,
 } from './routing/orthogonalRouter';
-export { SchematicNodeView, schematicLodForZoom, type SchematicLod, type SchematicNodeViewProps } from './components/SchematicNodeView';
+export { SchematicNodeView, schematicLodForZoom, DEFAULT_SCHEMATIC_LAYERS, type SchematicLod, type SchematicLayers, type SchematicNodeViewProps } from './components/SchematicNodeView';
+export { SchematicBusBrackets, layoutBusBrackets, type SchematicBusGroup, type BusBracketLayout } from './components/SchematicBusBrackets';
 export { SchematicWireView, type SchematicWireViewProps } from './components/SchematicWireView';

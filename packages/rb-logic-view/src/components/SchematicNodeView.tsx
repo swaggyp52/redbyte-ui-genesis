@@ -20,6 +20,34 @@ import type { LogicDisplayValue, NodeIoPresentation } from './NodeView';
 
 export type SchematicLod = 'overview' | 'read' | 'edit' | 'detail';
 
+/**
+ * Presentation layers a document can switch on and off. They never change
+ * what the circuit is — only which facts are drawn beside it.
+ */
+export interface SchematicLayers {
+  /** Signal / net names beside symbols. */
+  readonly netLabels: boolean;
+  /** Live and replay values at pins and I/O tips. */
+  readonly values: boolean;
+  /** Board resource / package pin under boundary I/O. */
+  readonly boardBindings: boolean;
+  /** Diagnostic badges on symbols. */
+  readonly diagnostics: boolean;
+  /** Dashed frames around module instances. */
+  readonly hierarchy: boolean;
+  /** Bus brackets and width labels at the boundary. */
+  readonly buses: boolean;
+}
+
+export const DEFAULT_SCHEMATIC_LAYERS: SchematicLayers = Object.freeze({
+  netLabels: true,
+  values: true,
+  boardBindings: true,
+  diagnostics: true,
+  hierarchy: true,
+  buses: true,
+});
+
 export function schematicLodForZoom(zoom: number): SchematicLod {
   if (zoom < 0.45) return 'overview';
   if (zoom < 0.85) return 'read';
@@ -59,6 +87,7 @@ export interface SchematicNodeViewProps {
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   /** Show the value beside every pin (detail LOD) or only for interesting pins. */
   showAllValues?: boolean;
+  layers?: SchematicLayers;
 }
 
 const FONT_MONO = 'var(--rb-font-mono, Consolas, monospace)';
@@ -99,6 +128,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
   onNodeContextMenu,
   onProbeToggle,
   showAllValues = false,
+  layers = DEFAULT_SCHEMATIC_LAYERS,
 }) => {
   const [hovered, setHovered] = React.useState(false);
   const pos = dragPosition ?? node.position ?? { x: node.x ?? 0, y: node.y ?? 0 };
@@ -116,6 +146,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
   const simValue = isOutputSymbol ? inputValue : outputValue;
   const simText = valueText(simValue);
   const showPinNames = isBlock && lod !== 'overview';
+  const isModuleInstance = geometry.kind === 'module';
   const showGateType = !isBlock && !isInputSymbol && !isOutputSymbol && lod === 'detail';
   const title = geometry.title;
   const typeLabel = geometry.typeLabel;
@@ -168,6 +199,20 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
           height={geometry.bounds.maxY - geometry.bounds.minY + 8}
           rx={2}
           pointerEvents="none"
+        />
+      ) : null}
+
+      {/* Hierarchy boundary: a dashed frame says "another module lives here". */}
+      {layers.hierarchy && isModuleInstance ? (
+        <rect
+          className="rb-sym-hier"
+          x={minX - 3}
+          y={minY - 3}
+          width={bodyW + 6}
+          height={bodyH + 6}
+          rx={1}
+          pointerEvents="none"
+          data-testid={`sym-hier-${node.id}`}
         />
       ) : null}
 
@@ -236,6 +281,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
             {ioLabel}
           </text>
           {/* Value cell at the tip. */}
+          {layers.values ? (
           <text
             className={`rb-sym-value${simText === '1' ? ' is-high' : simText === 'X' || simText === 'Z' ? ' is-unknown' : ''}`}
             x={isInputSymbol ? maxX - bodyH / 2 - 2 : maxX - 6}
@@ -249,7 +295,8 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
           >
             {simText}
           </text>
-          {pinAlias && lod !== 'overview' ? (
+          ) : null}
+          {pinAlias && layers.boardBindings && lod !== 'overview' ? (
             <text className="rb-sym-alias" x={0} y={maxY + 11} textAnchor="middle" fontFamily={FONT_MONO} fontSize={9} pointerEvents="none">
               {pinAlias}
             </text>
@@ -257,7 +304,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
         </>
       ) : (
         <>
-          {title && lod !== 'overview' ? (
+          {title && layers.netLabels && lod !== 'overview' ? (
             <text className="rb-sym-title" x={0} y={minY - 5} textAnchor="middle" fontFamily={FONT_MONO} fontSize={10} fontWeight={600} pointerEvents="none">
               {title}
             </text>
@@ -280,7 +327,10 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
         const isMismatch = mismatchPortKeys?.has(colonKey) ?? false;
         const issue = issuePortSeverities?.get(colonKey) ?? null;
         const value = signals?.get(key);
-        const showValue = lod === 'detail' && (showAllValues || isProbed || isHighlighted || isMismatch || isSelected || hovered);
+        const showValue =
+          layers.values &&
+          (lod === 'detail' || lod === 'edit') &&
+          (showAllValues || isProbed || isHighlighted || isMismatch || isSelected || hovered);
         const hitX = pin.side === 'left' ? pin.x - 6 : Math.min(pin.x, pin.bodyX) - 2;
         const hitW = STUB + 8;
         return (
@@ -359,7 +409,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
       })}
 
       {/* Diagnostics: a small glyph at the top-right corner, click opens the problem. */}
-      {(diagnosticBadge?.total ?? 0) > 0 ? (
+      {layers.diagnostics && (diagnosticBadge?.total ?? 0) > 0 ? (
         <g
           className="rb-sym-diag"
           data-severity={(diagnosticBadge?.error ?? 0) > 0 ? 'error' : 'warn'}

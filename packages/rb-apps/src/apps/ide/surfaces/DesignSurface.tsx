@@ -24,6 +24,7 @@ import {
   type NodeIoPresentation,
   buildGeometryIndex,
   unionBounds,
+  type SchematicBusGroup,
 } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
@@ -1151,6 +1152,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, []);
   const canvasAppearance = workspacePreferences.design.canvasAppearance;
   const canvasDensity = workspacePreferences.design.canvasDensity;
+  const designLayers = workspacePreferences.design.layers;
+  // Boundary buses, derived from signal identity: one bracket per NAME[i] family.
+  const designBusGroups = useMemo<SchematicBusGroup[]>(() => {
+    const groups = new Map<string, { name: string; direction: 'in' | 'out'; bits: { nodeId: string; bit: number }[] }>();
+    for (const relation of relationshipIndex.signals) {
+      if (!relation.bus) continue;
+      const key = `${relation.direction}:${relation.bus.name}`;
+      const group = groups.get(key) ?? { name: relation.bus.name, direction: relation.direction, bits: [] };
+      group.bits.push({ nodeId: relation.nodeId, bit: relation.bus.bit });
+      groups.set(key, group);
+    }
+    return Array.from(groups.values()).filter((group) => group.bits.length > 1);
+  }, [relationshipIndex.signals]);
   const toolbarCommandIds = workspacePreferences.design.toolbarCommandIds;
   const toolbarCommandSet = useMemo(() => new Set(toolbarCommandIds), [toolbarCommandIds]);
   const toolbarVisible = useCallback(
@@ -7575,6 +7589,45 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </button>
                   <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomIn} data-testid="ide-design-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
                   <span className="wb-toolbar-sep" />
+                  <details className="rb-design-menu" data-testid="ide-design-layers" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
+                    <summary className="wb-btn wb-btn--ghost" title="Presentation layers (persisted with the workspace)">Layers ▾</summary>
+                    <div className="wb-menu rb-design-menu-popup" aria-label="Schematic layers">
+                      {(
+                        [
+                          ['netLabels', 'Net labels'],
+                          ['values', 'Live values'],
+                          ['boardBindings', 'Board bindings'],
+                          ['hierarchy', 'Hierarchy boundaries'],
+                          ['buses', 'Bus brackets'],
+                          ['diagnostics', 'Diagnostics'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={designLayers[id]}
+                          className="wb-menu-item"
+                          onClick={() => workspacePreferencesStore.setDesignLayer(id, !designLayers[id])}
+                          data-testid={`ide-design-layer-${id}`}
+                        >
+                          <span className="wb-menu-item-check" aria-hidden="true">{designLayers[id] ? '●' : ''}</span>
+                          <span className="wb-menu-item-label">{label}</span>
+                        </button>
+                      ))}
+                      <div className="wb-menu-sep" />
+                      <button
+                        type="button"
+                        className="wb-menu-item"
+                        onClick={() => {
+                          for (const id of ['netLabels', 'values', 'boardBindings', 'hierarchy', 'buses', 'diagnostics'] as const) workspacePreferencesStore.setDesignLayer(id, true);
+                        }}
+                        data-testid="ide-design-layers-reset"
+                      >
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Show all layers</span>
+                      </button>
+                    </div>
+                  </details>
                   <details className="rb-design-menu" data-testid="ide-design-toolbar-overflow" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
                     <summary className="wb-btn wb-btn--ghost">Layout ▾</summary>
                     <div className="wb-menu rb-design-menu-popup" aria-label="Layout and canvas">
@@ -8357,6 +8410,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         beginNodeLabelEdit(node, 'canvas');
                       }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
+                      layers={designLayers}
+                      busGroups={designBusGroups}
                       changedNodeIds={changedNodeIds}
                       nodeIssueSeverities={nodeIssueSeverities}
                       issuePortSeverities={issuePortSeverities}

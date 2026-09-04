@@ -28,7 +28,8 @@ import { useCanvasInput } from './useCanvasInput';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { buildGeometryIndex, pinWorldPoint, unionBounds, type GeometryIndexEntry } from './symbols/portGeometry';
 import { routeBounds, routeCircuit, type RoutedWire } from './routing/orthogonalRouter';
-import { SchematicNodeView, schematicLodForZoom } from './components/SchematicNodeView';
+import { SchematicNodeView, schematicLodForZoom, DEFAULT_SCHEMATIC_LAYERS, type SchematicLayers } from './components/SchematicNodeView';
+import { SchematicBusBrackets, type SchematicBusGroup } from './components/SchematicBusBrackets';
 import { SchematicWireView } from './components/SchematicWireView';
 
 export interface LogicCanvasProps {
@@ -103,6 +104,10 @@ export interface LogicCanvasProps {
   nodeIssueSeverities?: Map<string, 'error' | 'warn'>;
   /** Batch 1: explicit per-port issue severity for authoring feedback. */
   issuePortSeverities?: Map<string, 'error' | 'warn'> | null;
+  /** Presentation layers for the schematic renderer (all on by default). */
+  layers?: SchematicLayers;
+  /** Boundary buses to bracket (derived by the host from signal identity). */
+  busGroups?: readonly SchematicBusGroup[];
 }
 
 interface PortClusterPickerState {
@@ -232,6 +237,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   nodeIssueSeverities,
   issuePortSeverities,
   onDeleteFeedback,
+  layers = DEFAULT_SCHEMATIC_LAYERS,
+  busGroups,
 }) => {
   trackRender('LogicCanvas');
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -294,6 +301,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     return map;
   }, [routedNets]);
   const schematicLod = schematicLodForZoom(camera.zoom);
+  const nodeById = React.useMemo(() => new Map(circuit.nodes.map((node) => [node.id, node])), [circuit.nodes]);
   const pinScreenPoint = React.useCallback(
     (nodeId: string, portName: string): { x: number; y: number } | null => {
       if (!geometryIndex) return null;
@@ -2009,6 +2017,9 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         ) : null}
 
         {/* Nodes — stable container */}
+        {isSchematic && layers.buses && busGroups && busGroups.length > 0 && geometryIndex ? (
+          <SchematicBusBrackets groups={busGroups} nodes={nodeById} geometry={geometryIndex} camera={camera} lod={schematicLod} />
+        ) : null}
         <g key="node-layer">
           {visibleNodes.map((node) => isSchematic && geometryIndex?.get(node.id) ? (
             <SchematicNodeView
@@ -2047,6 +2058,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               }
               onProbeToggle={onProbeToggle}
               showAllValues={isRunning || isReplayMode}
+              layers={layers}
             />
           ) : (
             <NodeView
