@@ -167,6 +167,8 @@
   .ide-root .rb-board-assignments { border-right: 0; border-bottom: 1px solid var(--wb-border-strong); }
   .ide-root .rb-board-side { border-left: 0; border-top: 1px solid var(--wb-border-strong); }
   .ide-root .rb-board-stage { min-height: 160px; }
+  .ide-root .rb-board-canvas { display: flex; align-items: center; justify-content: center; }
+  .ide-root .rb-board-canvas svg { max-height: 100%; height: 100%; }
 }
 
 .ide-root .rb-board-layers { order: 2; margin-left: auto; }
