@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ProblemsPanel } from '../components/ProblemsPanel';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import type { ProjectIoMappingKind } from '../examplesCatalog';
@@ -533,7 +534,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       layoutIntent="workbench"
       leftDockMode="visible"
       rightDockMode={inspectorHasContent ? 'visible' : 'hidden'}
-      consoleMode="hidden"
+      consoleMode={problems.length > 0 ? 'collapsed' : 'hidden'}
+      console={<ProblemsPanel origin="bottom-panel" />}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
       dock={

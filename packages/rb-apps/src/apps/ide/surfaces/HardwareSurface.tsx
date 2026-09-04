@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { ProblemsPanel } from '../components/ProblemsPanel';
+import { useEngineeringProblems } from '../engineeringProblems';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
 import { normalizeSignalId } from '../signalIdentity';
@@ -688,6 +690,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return s;
   }, [mappingRows]);
+  const problemsLedgerCount = useEngineeringProblems((state) => state.problems.length);
   const mappingProjectionById = useMemo(
     () => new Map(mappingProjection.map((projection) => [projection.logicalSignalId, projection])),
     [mappingProjection]
@@ -2740,7 +2743,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       leftDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
       rightDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
       rightDockCanCollapse
-      consoleMode="hidden"
+      consoleMode={problemsLedgerCount > 0 ? 'collapsed' : 'hidden'}
+      console={<ProblemsPanel origin="bottom-panel" />}
       productSpine={{
         statusLabel: failureTruth.statusLabel,
         statusTone: failureTruth.severity === 'ready'

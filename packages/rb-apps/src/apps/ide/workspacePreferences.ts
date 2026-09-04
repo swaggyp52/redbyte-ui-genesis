@@ -90,7 +90,7 @@ const AUTHORING_SURFACES = createSurfacePreferences({
   },
   verify: {
     left: { visible: true, sizePx: 240 },
-    bottom: { visible: true, sizePx: 280 },
+    bottom: { visible: false, sizePx: 260 },
   },
   hardware: { right: { visible: true, sizePx: 300 } },
   export: { left: { visible: true, sizePx: 240 } },

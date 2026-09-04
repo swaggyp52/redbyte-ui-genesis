@@ -927,3 +927,127 @@
   .ide-root .wb-cmdbar-right kbd { display: none; }
   .ide-root .wb-cmdbar-fact-label { display: none; }
 }
+
+/* ── Universal Navigator (Ctrl+K) ────────────────────────────────────────
+   Objects come first when the user typed an identifier; commands follow.
+   Identifiers are monospace; facts are short mono chips; ambiguity is a
+   visible mark, never a guess. */
+.ide-root .ide-navigator-option .ide-command-palette-option-copy strong.is-mono {
+  font: 600 var(--wb-text-md) var(--wb-font-mono);
+  letter-spacing: 0;
+}
+.ide-root .ide-navigator-option .ide-command-palette-option-copy small { text-transform: none; }
+.ide-root .ide-navigator-facts { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 2px; }
+.ide-root .ide-navigator-facts code {
+  color: var(--wb-text-2);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  white-space: nowrap;
+}
+.ide-root .ide-navigator-option.is-ambiguous .ide-command-palette-option-copy strong { color: var(--wb-warn); }
+.ide-root .ide-navigator-ambiguous {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--wb-warn);
+  border-radius: 50%;
+  color: var(--wb-warn);
+  font: 700 var(--wb-text-xs) var(--wb-font-mono);
+  line-height: 16px;
+  text-align: center;
+}
+.ide-root .ide-command-palette .ide-shortcuts-section-label { display: flex; align-items: center; gap: 6px; }
+
+/* ── Problems tool window ────────────────────────────────────────────────
+   One ledger, one presentation. Severity is a letter and a colour, never
+   colour alone. Rows are a grid so message, object and authority align. */
+.ide-root .rb-problems-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ide-root .rb-problems-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: 28px;
+  padding: 2px var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-tool-header-bg);
+}
+.ide-root .rb-problems-severities { display: inline-flex; gap: 2px; }
+.ide-root .rb-problems-sevbtn { gap: 5px; padding: 0 7px; }
+.ide-root .rb-problems-sevbtn.is-active { background: var(--wb-active-bg); color: var(--wb-text); }
+.ide-root .rb-problems-sevbtn[data-severity='error'].is-active { box-shadow: inset 0 -2px 0 var(--wb-err); }
+.ide-root .rb-problems-sevbtn[data-severity='warning'].is-active { box-shadow: inset 0 -2px 0 var(--wb-warn); }
+.ide-root .rb-problems-category select,
+.ide-root .rb-problems-search {
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border);
+  border-radius: 3px;
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+.ide-root .rb-problems-search { flex: 1 1 160px; min-width: 100px; max-width: 320px; margin-left: auto; }
+.ide-root .rb-problems-search:focus-visible,
+.ide-root .rb-problems-category select:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
+.ide-root .rb-problems-empty { margin: 0; padding: var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-problems-panel .rb-problems { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-problems-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 3px var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-tool-bg);
+}
+.ide-root .rb-problems-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-xs) var(--wb-font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ide-root .rb-problems-panel .rb-problems-row {
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  min-height: 28px;
+  padding: 3px var(--wb-space-3);
+}
+.ide-root .rb-problems-panel .rb-problems-row.is-selected { background: var(--wb-active-bg); }
+.ide-root .rb-problems-panel .rb-problems-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-problems-panel .rb-problems-sev {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  color: var(--wb-on-accent, #fff);
+  background: var(--wb-text-3);
+  font: 700 10px/16px var(--wb-font-mono);
+  text-align: center;
+}
+.ide-root .rb-problems-panel .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }
+.ide-root .rb-problems-panel .rb-problems-row[data-severity='warning'] .rb-problems-sev { background: var(--wb-warn); color: var(--wb-text); }
+.ide-root .rb-problems-main { display: grid; min-width: 0; gap: 1px; }
+.ide-root .rb-problems-panel .rb-problems-title,
+.ide-root .rb-problems-panel .rb-problems-msg { white-space: normal; overflow: visible; }
+.ide-root .rb-problems-panel .rb-problems-msg { font: var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-problems-meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; max-width: 42%; }
+.ide-root .rb-problems-stale {
+  padding: 0 5px;
+  border: 1px solid var(--wb-warn);
+  border-radius: 3px;
+  color: var(--wb-text);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+}
+.ide-root .rb-problems-authority { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-problems-row[data-freshness='stale'] .rb-problems-title { color: var(--wb-text-2); }
+.ide-root .wb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .ide-root .rb-problems-meta { display: none; }
+}

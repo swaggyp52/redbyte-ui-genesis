@@ -45,7 +45,7 @@ export type EngineeringObjectRef =
   | { readonly kind: 'problem'; readonly problemId: string };
 
 /** Where a selection came from — consumers skip echoes of their own selections. */
-export type SelectionOrigin = WorkbenchDocumentKind | 'explorer' | 'status-bar' | 'inspector' | 'bottom-panel';
+export type SelectionOrigin = WorkbenchDocumentKind | 'explorer' | 'status-bar' | 'inspector' | 'bottom-panel' | 'navigator' | 'problems';
 
 interface EngineeringSelectionState {
   selected: EngineeringObjectRef | null;

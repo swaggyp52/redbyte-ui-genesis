@@ -7,6 +7,8 @@ import React, {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { ProblemsPanel } from '../components/ProblemsPanel';
+import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
 import { busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
@@ -3373,6 +3375,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => [...designIssueMap.all].sort(compareDesignIssues),
     [designIssueMap]
   );
+  const problemsLedgerCount = useEngineeringProblems(selectProblemCount);
   const authoringIssueCounts = useMemo(() => {
     let errorCount = 0;
     let warningCount = 0;
@@ -6539,50 +6542,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             data-testid={`ide-design-bottom-tab-${tab}`}
           >
             {tab === 'problems' ? (
-              <>Problems <span className="wb-toolwindow-count">{authoringIssues.length + compilerDiagnostics.length}</span></>
+              <>Problems <span className="wb-toolwindow-count">{problemsLedgerCount}</span></>
             ) : tab === 'simulation' ? 'Simulation' : 'Output'}
           </button>
         ))}
       </div>
       <div className="ide-design-bottom-content">
         {activeBottomDockTab === 'problems' ? (
-          authoringIssues.length === 0 && compilerDiagnostics.length === 0 ? (
-            <IdeEmptyState title="No current problems" body="The circuit has no reported structural or compiler diagnostics." primaryAction={null} />
-          ) : (
-            <div className="rb-problems" role="list" data-testid="ide-design-problem-list">
-              {authoringIssues.map((issue) => (
-                <button
-                  type="button"
-                  role="listitem"
-                  className="rb-problems-row"
-                  data-severity={issue.severity}
-                  key={`${issue.kind}:${issue.portKey}`}
-                  onClick={() => selectMultipleNodes([issue.nodeId], false)}
-                  title="Select the affected part on the schematic"
-                >
-                  <span className="rb-problems-sev" aria-hidden="true" />
-                  <span className="rb-problems-title">{issue.title}</span>
-                  <span className="rb-problems-msg">{issue.message}</span>
-                  <code className="rb-problems-ref">{issue.portKey}</code>
-                </button>
-              ))}
-              {compilerDiagnostics.map((diagnostic) => (
-                <button
-                  type="button"
-                  role="listitem"
-                  className="rb-problems-row"
-                  data-severity={diagnostic.severity}
-                  key={diagnostic.id}
-                  onClick={() => onDiagnosticAction?.(diagnostic)}
-                >
-                  <span className="rb-problems-sev" aria-hidden="true" />
-                  <span className="rb-problems-title">{diagnostic.title}</span>
-                  <span className="rb-problems-msg">{diagnostic.message}</span>
-                  <code className="rb-problems-ref">{diagnostic.location?.nodeId ?? diagnostic.location?.signal ?? ''}</code>
-                </button>
-              ))}
-            </div>
-          )
+          <ProblemsPanel origin="bottom-panel" />
         ) : activeBottomDockTab === 'console' ? (
           <div className="ide-design-console-readout">
             <strong>{liveHdlResult.error ? 'HDL generation stopped' : 'HDL preview is current'}</strong>

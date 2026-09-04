@@ -37,6 +37,10 @@ import { describeEngineeringObject, useEngineeringSelection } from './ide/engine
 import { describeSignalRelationPath, useEngineeringRelationshipIndex } from './ide/engineeringRelationships';
 import { useWorkbenchNavigation } from './ide/workbenchNavigation';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
+import { buildEngineeringProblems, countProblems, useEngineeringProblems } from './ide/engineeringProblems';
+import { buildNavigatorIndex, type NavigatorEntry } from './ide/workbenchNavigator';
+import { computeDesignIssues } from './ide/designIssues';
+import { documentKey as workbenchDocumentKey, documentMode as workbenchDocumentMode } from './ide/workbenchDocuments';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
 import { ExamplesBrowser } from './ide/components/ProjectSurfacePrimitives';
@@ -2566,30 +2570,103 @@ export const IdeApp: React.FC = () => {
     () => exportViewModel.artifacts.map((artifact) => ({ path: artifact.path, bytes: artifact.content.length })),
     [exportViewModel.artifacts]
   );
-  const projectProblems = useMemo(() => {
-    const seen = new Set<string>();
-    const problems: Array<{ id: string; severity: 'error' | 'warning' | 'info'; code: string; message: string; fixMode?: IdeMode }> = [];
-    for (const issue of projectHealth.blockingIssues) {
-      const id = `issue:${issue.code}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      const mode = issue.fixPath?.mode;
-      problems.push({ id, severity: 'error', code: issue.code, message: issue.message, fixMode: mode === 'project' ? 'hardware' : (mode as IdeMode | undefined) });
+  const designAuthoringIssues = useMemo(() => (circuit ? computeDesignIssues(circuit).all : []), [circuit]);
+  const runIsStale = Boolean(verifyLastRun) && projectHealthCore.dirtySinceVerify;
+  // One ledger over every authority. ProjectSurface, the status bar, the
+  // navigator and the Problems tool window all read this list.
+  const projectProblems = useMemo(
+    () =>
+      buildEngineeringProblems({
+        blockingIssues: projectHealth.blockingIssues,
+        designDiagnostics: designCompilerStatus.diagnostics,
+        designIssues: designAuthoringIssues,
+        relationships: relationshipIndex,
+        exportErrors: hasCircuit ? exportViewModel.errors : [],
+        exportWarnings: hasCircuit ? exportViewModel.warnings : [],
+        mappingProjection: hasCircuit ? exportViewModel.mappingProjection : [],
+        lastRun: verifyLastRun ?? null,
+        runIsStale,
+        activeConstraintSetId: constraintSetsDoc?.activeId ?? null,
+        importFidelity,
+        isSequential: isSequentialProject,
+        hasCircuit,
+      }),
+    [
+      constraintSetsDoc?.activeId,
+      designAuthoringIssues,
+      designCompilerStatus.diagnostics,
+      exportViewModel.errors,
+      exportViewModel.mappingProjection,
+      exportViewModel.warnings,
+      hasCircuit,
+      importFidelity,
+      isSequentialProject,
+      projectHealth.blockingIssues,
+      relationshipIndex,
+      runIsStale,
+      verifyLastRun,
+    ]
+  );
+  const publishProblems = useEngineeringProblems((state) => state.publish);
+  useEffect(() => {
+    publishProblems(projectProblems);
+  }, [projectProblems, publishProblems]);
+  const problemCounts = useMemo(() => countProblems(projectProblems), [projectProblems]);
+  const navigatorEntries = useMemo<NavigatorEntry[]>(() => {
+    const documentLabels: Record<string, string> = {};
+    for (const doc of documentHost.open) {
+      const label = documentHost.labelFor(doc);
+      if (label) documentLabels[workbenchDocumentKey(doc)] = label;
     }
-    for (const diagnostic of designCompilerStatus.diagnostics) {
-      const id = `diag:${diagnostic.id}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      problems.push({
-        id,
-        severity: diagnostic.severity === 'error' ? 'error' : diagnostic.severity === 'warn' ? 'warning' : 'info',
-        code: diagnostic.code,
-        message: diagnostic.title ? `${diagnostic.title}: ${diagnostic.message}` : diagnostic.message,
-        fixMode: 'design',
-      });
-    }
-    return problems;
-  }, [designCompilerStatus.diagnostics, projectHealth.blockingIssues]);
+    return buildNavigatorIndex({
+      relationships: relationshipIndex,
+      hierarchy: hierarchy ?? null,
+      topNodes: circuit?.nodes ?? [],
+      topModuleName: fpgaConfig.top || 'top',
+      scenarios: projectScenarioSummaries,
+      lastRun: verifyLastRun ?? null,
+      runIsStale,
+      runHistory: verifyRunHistory ?? [],
+      constraintSets: constraintSetsDoc ?? null,
+      sourceModel: sourceModel ?? null,
+      artifacts: hasCircuit ? projectArtifactSummaries : [],
+      problems: projectProblems,
+      openDocuments: documentHost.open,
+      documentLabels,
+    });
+  }, [
+    circuit?.nodes,
+    constraintSetsDoc,
+    documentHost,
+    fpgaConfig.top,
+    hasCircuit,
+    hierarchy,
+    projectArtifactSummaries,
+    projectProblems,
+    projectScenarioSummaries,
+    relationshipIndex,
+    runIsStale,
+    sourceModel,
+    verifyLastRun,
+    verifyRunHistory,
+  ]);
+  const selectEngineeringObject = useEngineeringSelection((state) => state.select);
+  const handleNavigate = useCallback(
+    (entry: NavigatorEntry) => {
+      if (entry.document) {
+        documentHost.openDocument(entry.document);
+        if (entry.kind === 'problem') {
+          workspacePreferencesStore.setDock(workbenchDocumentMode(entry.document), 'bottom', { visible: true });
+        }
+      }
+      if (entry.selection) {
+        // Publish after the document mounts so the landing surface sees it.
+        const ref = entry.selection;
+        window.setTimeout(() => selectEngineeringObject(ref, 'navigator'), 0);
+      }
+    },
+    [documentHost, selectEngineeringObject]
+  );
   const checkedCommandIds = useMemo(() => {
     const ids = new Set<string>();
     ids.add(
@@ -2828,6 +2905,8 @@ export const IdeApp: React.FC = () => {
         registry={commandRegistry}
         context={commandContext}
         onClose={() => setCommandPaletteOpen(false)}
+        navigator={navigatorEntries}
+        onNavigate={handleNavigate}
       />
 
       <div className="wb-body">
@@ -3202,7 +3281,7 @@ export const IdeApp: React.FC = () => {
       </div>
 
       <WorkbenchStatusBar
-        problemsCount={designCompilerStatus.errorCount + designCompilerStatus.warningCount}
+        problemsCount={problemCounts.error + problemCounts.warning}
         onShowProblems={() => workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true })}
         runState={statusRunState}
       />

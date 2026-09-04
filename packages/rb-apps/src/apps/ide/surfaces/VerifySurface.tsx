@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ProblemsPanel } from '../components/ProblemsPanel';
+import { useEngineeringProblems } from '../engineeringProblems';
 import type { TestVector } from '@redbyte/rb-utils';
 import {
   getRuntimeVerifyRunKind,
@@ -4462,6 +4464,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : ` ${lastRun.waveform.length} waveform tick${lastRun.waveform.length === 1 ? '' : 's'} recorded.`;
     setRunAnnouncement(`Simulation run ${ordinal}. ${outcome}${detail}`);
   }, [lastRun, totalAssertedCheckCount]);
+  const problemsLedgerCount = useEngineeringProblems((state) => state.problems.length);
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep the compact signal browser stable beside the primary workspace. */
@@ -5387,7 +5390,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
       rightDockCanCollapse={false}
-      consoleMode={verifyLayoutPolicy.consoleMode}
+      consoleMode={problemsLedgerCount > 0 ? 'collapsed' : 'hidden'}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
       productSpine={{
@@ -5550,7 +5553,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </div>
       }
       inspector={null}
-      console={null}
+      console={<ProblemsPanel origin="bottom-panel" />}
     >
       <div
         className="ide-verify-run-announcer"
