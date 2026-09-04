@@ -1181,6 +1181,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return map;
   }, [mappedSignals]);
+  const [signalFilter, setSignalFilter] = useState('');
   const relevantSignalTimeline = useMemo(() => {
     const filtered = signalTimeline.filter((entry) => {
       const normalized = normalizeFieldId(entry.signal);
@@ -5493,6 +5494,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </div>
             </div>
+            <input
+              className="rb-sig-filter"
+              type="search"
+              value={signalFilter}
+              onChange={(event) => setSignalFilter(event.target.value)}
+              placeholder="Filter signals"
+              aria-label="Filter signals"
+              data-testid="ide-verify-signal-filter"
+            />
             <p className="rb-sig-focus" data-testid="ide-verify-signal-rail-summary">
               {selectedSignal ? (
                 <>
@@ -5521,7 +5531,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {groupedVisibleSignals[group].length === 0 ? (
                         <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
                       ) : (
-                        groupedVisibleSignals[group].map((signalRow) => (
+                        groupedVisibleSignals[group]
+                          .filter((signalRow) => !signalFilter.trim() || signalRow.signal.toLowerCase().includes(signalFilter.trim().toLowerCase()))
+                          .map((signalRow) => (
                           <div
                             key={signalRow.signal}
                             className="rb-sig-entry"
@@ -6252,128 +6264,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 {repairPanel}
               </section>
             ) : null}
-            {lastRun ? (
-              <div
-                className="rb-wave-actions"
-                data-testid="ide-vcb-utilities-panel"
-                aria-label="Run inspection and repair actions"
-              >
-                {!sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs) ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={handleGoToDesignFromVerify}
-                    testId="ide-verify-inspect-design"
-                  >
-                    Open in Design
-                  </IdeButton>
-                ) : null}
-                <button
-                  type="button"
-                  className={`wb-btn wb-btn--ghost rb-wave-drawer-toggle${drawerOpen ? ' is-open' : ''}`}
-                  onClick={() => setDrawerOpen((previous) => !previous)}
-                  data-testid="ide-verify-drawer-toggle"
-                  aria-expanded={drawerOpen}
-                  aria-pressed={drawerOpen}
-                >
-                  <span className="ide-vcb-analysis-label">
-                    {drawerOpen ? 'Close run inspector' : 'Inspect run'}
-                  </span>
-                  {!drawerOpen && analysisDrawerHint ? (
-                    <span className="ide-vcb-analysis-hint" data-testid="ide-verify-drawer-hint">
-                      {analysisDrawerHint}
-                    </span>
-                  ) : null}
-                </button>
-                {hasSessionFailureEvidence ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={handleEditExpectedOutputs}
-                    testId="ide-verify-run-proof-edit-vectors"
-                  >
-                    Edit expected outputs
-                  </IdeButton>
-                ) : null}
-                {compactPrimaryStatusAction ? (
-                  <IdeButton
-                    tone={compactPrimaryStatusAction.tone === 'primary' ? 'secondary' : compactPrimaryStatusAction.tone}
-                    onClick={compactPrimaryStatusAction.onClick}
-                    testId={compactPrimaryStatusAction.testId}
-                  >
-                    Board & Constraints
-                  </IdeButton>
-                ) : null}
-              </div>
-            ) : null}
             <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
-              {/* ── Oscilloscope instrument header ── */}
-              <div className="wb-toolbar rb-wave-header" data-testid="ide-verify-scope-header">
-                <div className="rb-wave-header-copy">
-                  <span
-                    className="rb-wave-label"
-                    data-testid="ide-verify-scope-label"
-                    title={
-                      isSequentialRun
-                        ? 'Observed output viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing assertions, and blue marks the selected tick.'
-                        : 'Observed output viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing assertions, and blue marks the selected tick.'
-                    }
-                  >
-                    Waveform truth
-                  </span>
-                </div>
-                <div className="rb-wave-header-right">
-                  {selectedScopeCaseLabel ? (
-                    <span className="rb-wave-chip" data-testid="ide-verify-scope-case">
-                      {selectedScopeCaseLabel}
-                    </span>
-                  ) : null}
-                  {selectedCaseTickLabel ? (
-                    <code className="rb-wave-tick">{selectedCaseTickLabel}</code>
-                  ) : null}
-                  {selectedSignal ? (
-                    <span className="rb-wave-chip rb-wave-chip--signal" data-testid="ide-verify-scope-signal">
-                      {selectedSignal}
-                    </span>
-                  ) : null}
-                  <button
-                    ref={createCheckTriggerRef}
-                    type="button"
-                    className="wb-btn wb-btn--ghost rb-wave-check-trigger"
-                    disabled={!canCreateCheckFromSelection}
-                    onClick={() => setCreateCheckDialogOpen(true)}
-                    data-testid="ide-verify-create-check-from-value"
-                    title={
-                      canCreateCheckFromSelection
-                        ? 'Create one optional check from the selected output value.'
-                        : 'Select an output lane and an event with an observed 0 or 1.'
-                    }
-                  >
-                    Create check from this value…
-                  </button>
-                  <button
-                    type="button"
-                    className="ide-verify-probe-trigger"
-                    disabled={!selectedSignal || !onToggleProbe}
-                    onClick={() => {
-                      if (!selectedSignal) return;
-                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
-                    }}
-                    data-testid="ide-verify-toggle-selected-probe"
-                    aria-pressed={selectedSignalIsProbed}
-                    title={
-                      selectedSignal
-                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
-                        : 'Select a signal lane to watch it in this scenario.'
-                    }
-                  >
-                    {selectedSignalIsProbed ? 'Unwatch signal' : 'Watch signal'}
-                  </button>
-                  {isSequentialRun && (
-                    <span className="rb-wave-seq-badge" data-testid="ide-verify-seq-badge">
-                      Sequential
-                    </span>
-                  )}
-                </div>
-              </div>
+              {/* One command bar: case stepping, tick range, scrubber, failures, zoom, rows, cursors, check/watch. */}
+              <div className="rb-wave-cmd" data-testid="ide-verify-waveform-cmd" role="toolbar" aria-label="Waveform">
               <div className="rb-wave-bar" data-testid="ide-verify-waveform-bar">
                 <div className="rb-wave-primary" data-testid="ide-verify-waveform-primary">
                 {canStepThroughCases ? (
@@ -6413,7 +6306,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div className="rb-wave-transport" data-testid="ide-verify-waveform-transport">
                 {/* Center: Zoom + Row density */}
                 <div className="rb-wave-group">
-                  <span className="ide-copy">Tick range</span>
                   {(['all', 'fail', 'window'] as const).map((mode) => (
                     <button
                       key={mode}
@@ -6479,18 +6371,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           {selectedFailurePositionLabel}
                         </span>
                       )}
-                      <span
-                        className="ide-verify-fail-nav-waveform-hint ide-copy"
-                        data-testid="ide-verify-fail-nav-waveform-hint"
-                      >
-                        Same names appear as lanes in the chart under this bar.
-                      </span>
                     </>
                   ) : (
-                    <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
-                      {signalTimeline.length} signals · {allWaveformTicks.length} ticks · {runState.toUpperCase()}
-                      {displaySignalTimeline.length > 4 ? ' · scroll lanes' : ''}
-                    </span>
+                    null
                   )}
                 </div>
               </div>
@@ -6565,7 +6448,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           onClick={() => setCursorFromSelected('A')}
                           data-testid="ide-verify-set-cursor-a"
                         >
-                          Set A
+                          A
                         </button>
                         <button
                           type="button"
@@ -6573,7 +6456,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           onClick={() => setCursorFromSelected('B')}
                           data-testid="ide-verify-set-cursor-b"
                         >
-                          Set B
+                          B
                         </button>
                         <button
                           type="button"
@@ -6582,7 +6465,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           disabled={cursorA === null}
                           data-testid="ide-verify-jump-cursor-a"
                         >
-                          Jump A
+                          Go A
                         </button>
                         <button
                           type="button"
@@ -6591,7 +6474,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           disabled={cursorB === null}
                           data-testid="ide-verify-jump-cursor-b"
                         >
-                          Jump B
+                          Go B
                         </button>
                         <button
                           type="button"
@@ -6599,13 +6482,68 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           onClick={clearCursors}
                           data-testid="ide-verify-clear-cursors"
                         >
-                          Clear AB
+                          Clear
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
               )}
+
+                <div className="rb-wave-group rb-wave-group--tail" data-testid="ide-verify-waveform-tail">
+                  <button
+                    ref={createCheckTriggerRef}
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    disabled={!canCreateCheckFromSelection}
+                    onClick={() => setCreateCheckDialogOpen(true)}
+                    data-testid="ide-verify-create-check-from-value"
+                    title={
+                      canCreateCheckFromSelection
+                        ? 'Create one optional check from the selected output value.'
+                        : 'Select an output lane and an event with an observed 0 or 1.'
+                    }
+                  >
+                    Check…
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    disabled={!selectedSignal || !onToggleProbe}
+                    onClick={() => {
+                      if (!selectedSignal) return;
+                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
+                    }}
+                    data-testid="ide-verify-toggle-selected-probe"
+                    aria-pressed={selectedSignalIsProbed}
+                    title={
+                      selectedSignal
+                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
+                        : 'Select a signal lane to watch it in this scenario.'
+                    }
+                  >
+                    {selectedSignalIsProbed ? 'Unwatch' : 'Watch'}
+                  </button>
+                  {lastRun ? (
+                    <button
+                      type="button"
+                      className={`wb-btn wb-btn--ghost rb-wave-drawer-toggle${drawerOpen ? ' is-open' : ''}`}
+                      onClick={() => setDrawerOpen((previous) => !previous)}
+                      data-testid="ide-verify-drawer-toggle"
+                      aria-expanded={drawerOpen}
+                      aria-pressed={drawerOpen}
+                      title={analysisDrawerHint ?? undefined}
+                    >
+                      {drawerOpen ? 'Close inspector' : 'Inspect run'}
+                    </button>
+                  ) : null}
+                  {isSequentialRun ? (
+                    <span className="rb-wave-seq-badge" data-testid="ide-verify-seq-badge">
+                      Sequential
+                    </span>
+                  ) : null}
+                </div>
+              </div>
 
               {/* No-trace diagnostic — shown when run produced no waveform data */}
               {verifyPreflightDiagnostics.length > 0 && (

@@ -232,3 +232,22 @@
 .ide-root .ide-vwp-lane-empty-label { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--rb-wave-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 
 .ide-root .ide-vwp { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+
+/* ── One command bar. The old header, bar and tools rows flow into a single wrapping row. ── */
+.ide-root .rb-wave-cmd { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; flex: none; min-height: var(--wb-toolbar-h); padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
+.ide-root .rb-wave-cmd .rb-wave-bar { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-primary { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-transport { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-group--right { margin-left: 0; }
+.ide-root .rb-wave-cmd .rb-wave-tools { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-tools-section { gap: 3px; }
+.ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: auto; }
+.ide-root .rb-wave-cmd .rb-wave-scrubber input[type='range'] { width: 120px; }
+@media (max-width: 1100px) { .ide-root .rb-wave-cmd .rb-wave-scrubber input[type='range'] { width: 80px; } }
+
+@media (max-width: 1400px) {
+  .ide-root .rb-wave-cmd { gap: 2px 6px; }
+  .ide-root .rb-wave-cmd .rb-wave-tools-label { display: none; }
+  .ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: 0; }
+  .ide-root .rb-wave-cmd .rb-wave-group--tail .wb-btn { padding: 0 6px; }
+}

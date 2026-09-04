@@ -409,3 +409,6 @@
 /* Cases/Timing document: the evidence row is the verdict line and repair panels, sized to content. */
 .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] { grid-template-rows: minmax(0, 1fr) minmax(0, 36%); }
 .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] > .rb-sim-region--waveform { max-height: 40%; }
+
+.ide-root .rb-sig-filter { display: block; width: 100%; height: 22px; margin: 4px 0 2px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: 3px; color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-sig-filter:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
