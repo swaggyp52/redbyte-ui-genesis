@@ -133,6 +133,19 @@ Live (2-bit counter): run length 6 → 7-tick run, q counts 1,2,3,0 while EN is 
 should, chip REPLAYING → RECORDED · CURRENT. Tests: `timingLab` (7).
 Open for Timing: state lanes for registers, a reset-pulse generator, run-range window selection.
 
+**Constraints tool (Wave Two, `f86e831be`).** Constraints is a section of the Board side panel
+(`ide-hw-constraints-tool`): the packaged clock constraint line, then every signal's exact XDC lines from
+the export contract's mapping projection (`exactXdcLine` + IOSTANDARD; unmapped signals read "no pin
+assigned yet" and are dashed). Selecting a line selects its signal (`chooseMappingRow`) — the table, board
+highlight and binding chain follow; selecting a signal marks its line (`aria-current`). The named sets panel
+lives inside the tool with the active set named in the header ("Live mapping" otherwise); the permanent
+footer `ConstraintSetsPanel` is gone. Truth fix found on the way: a captured set recorded only the
+`create_clock` line (`liveXdcText` was the clock text) — it now records the packaged `.xdc` artifact
+(`packagedXdcText` in IdeApp), so a set's pin count matches the live mapping it captured. Live (counter,
+Board): clock line + CLK100MHZ/EN/LD0/LD1/RST lines; selecting the EN line selects EN everywhere; sets
+panel inside the tool, one panel in the DOM. Tests: `hardwareSurface.constraintsTool` (3); Board suites
+keep the five inherited reds.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
