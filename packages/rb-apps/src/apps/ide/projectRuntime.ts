@@ -7,6 +7,7 @@ import type { HardwareMappingDocumentV2, IoMapping, TestVector } from '@redbyte/
 import {
   applyMaterializedPinToHardwareMappingV2,
   migrateIoMappingToHardwareMappingV2,
+  normalizeBoardRowId,
   resolveIoMappingFromProjectFields,
 } from '@redbyte/rb-utils';
 import type { CustomTestVector } from './components/VectorEditor';
@@ -5408,14 +5409,7 @@ function normalizeAliasToken(value: string): string {
   return value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
 }
 
-function normalizeBoardRowId(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return normalized.length > 0 ? normalized : 'io';
-}
+// normalizeBoardRowId now lives in @redbyte/rb-utils (one rule, shared with the export generator).
 
 function normalizePortToken(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, '');

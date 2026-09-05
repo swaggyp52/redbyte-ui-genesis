@@ -15,7 +15,7 @@ import {
   type VerifySchedule,
 } from './verifySchedule';
 import { buildTopLevelBindingRefs, toSignalName } from './basys3ExportModel';
-import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
+import { normalizeBoardRowId, resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
 
 interface SignalCatalog {
   inputs: string[];
@@ -251,6 +251,11 @@ function buildLabelToEntityRef(
       registerAlias(toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`), ref);
       registerAlias(entry.label, ref, false);
       registerAlias(nodeLabel, ref, false);
+      // The runtime keys rows, vectors and checks by the label-derived row id
+      // (SUM[0] -> sum_0); a project whose rows were derived that way must
+      // resolve its assertion targets to the same port.
+      registerAlias(entry.label ? normalizeBoardRowId(entry.label) : undefined, ref);
+      registerAlias(nodeLabel ? normalizeBoardRowId(nodeLabel) : undefined, ref);
     }
   };
 
