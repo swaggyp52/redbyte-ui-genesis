@@ -146,6 +146,25 @@ Board): clock line + CLK100MHZ/EN/LD0/LD1/RST lines; selecting the EN line selec
 panel inside the tool, one panel in the DOM. Tests: `hardwareSurface.constraintsTool` (3); Board suites
 keep the five inherited reds.
 
+**Package provenance (Wave Three, `0519916a7`).** Derived documents only; no ZIP or golden change.
+(1) *Dependency graph*: `artifactDependencyGraph.ts` derives, from the bundle's own artifact categories,
+which workbench inputs each generated file depends on (Design → design sources; Board & Constraints +
+Design → .xdc; Simulate + Design → testbench; Project + Design + Board → .tcl; metadata from all inputs) and
+which generated files reference others (testbench → design sources; tcl → sources, constraints, testbench;
+metadata references none — it describes the package). `ArtifactProvenanceGraph` draws it as an SVG figure
+in the Package workspace (`ide-export-provenance-section`): inputs left, files right, one curve per
+dependency; a selected file emphasises its edges and dims the rest; file nodes select the artifact; input
+nodes open Design / Board / Runs / Project documents; inputs changed since the last package and files
+changed against the previous package are marked. (2) *File-by-file comparison*: every recorded package now
+carries `artifactHashes` (path → content digest, additive on `ProjectHealthExportResult`, carried by the
+runtime normalizer); `compareExportArtifacts` reports changed / same / added / removed / no digest recorded,
+and the Package history panel lists it under the hash changes with each file selectable. Live (counter,
+Package): 4 inputs, 9 files, 27 input edges; selecting top.xdc emphasises its two edges (Board, Design) and
+opens its preview; selecting the Board input switches to the Board workspace. Tests:
+`artifactDependencyGraph` (4), `exportHistoryModel.artifacts` (3); existing exportHistory suites green;
+exportSurface reds compared against the baseline worktree (see the commit). Note: `ExportSurface.tsx` is a
+CRLF-blob file too. Open for Package: previous/current *content* diff of a selected file, dossier depth.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
