@@ -9,11 +9,16 @@ import type { Circuit } from '@redbyte/rb-logic-core';
  * the architecture of a loaded project without opening Design.
  */
 
+/** Which part of the graph to isolate around the selected block. */
+export type ArchitectureTraceMode = 'drivers' | 'loads' | 'path';
+
 export interface ArchitecturePreviewProps {
   readonly circuit: Circuit;
   readonly ioLabelByNodeId: ReadonlyMap<string, string>;
   readonly moduleNameByNodeId: ReadonlyMap<string, string>;
   readonly selectedNodeId?: string | null;
+  /** With a selected block: dim everything outside its driver cone, load cone, or both. */
+  readonly trace?: ArchitectureTraceMode | null;
   readonly onSelectNode?: (nodeId: string) => void;
   readonly onOpenDesign?: () => void;
 }
@@ -45,6 +50,7 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
   ioLabelByNodeId,
   moduleNameByNodeId,
   selectedNodeId = null,
+  trace = null,
   onSelectNode,
   onOpenDesign,
 }) => {
@@ -195,11 +201,34 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
       });
     const width = Math.max(240, x - COL_GAP + 8);
     const height = Math.max(120, maxY);
-    return { placed, wires, junctions, width, height };
+    return { placed, wires, junctions, width, height, preds, succs };
   }, [circuit, ioLabelByNodeId, moduleNameByNodeId]);
+  // The isolated set: the selected block plus its upstream closure (drivers),
+  // downstream closure (loads), or both (path). Null = nothing isolated.
+  const isolated = useMemo(() => {
+    if (!trace || !selectedNodeId || !layout.preds.has(selectedNodeId)) return null;
+    const walk = (map: Map<string, string[]>) => {
+      const seen = new Set<string>([selectedNodeId]);
+      const queue = [selectedNodeId];
+      while (queue.length > 0) {
+        const id = queue.shift() as string;
+        for (const next of map.get(id) ?? []) {
+          if (!seen.has(next)) {
+            seen.add(next);
+            queue.push(next);
+          }
+        }
+      }
+      return seen;
+    };
+    const set = new Set<string>([selectedNodeId]);
+    if (trace === 'drivers' || trace === 'path') for (const id of walk(layout.preds)) set.add(id);
+    if (trace === 'loads' || trace === 'path') for (const id of walk(layout.succs)) set.add(id);
+    return set;
+  }, [layout.preds, layout.succs, selectedNodeId, trace]);
 
   return (
-    <figure className="rb-arch" data-testid="ide-project-circuit-preview">
+    <figure className="rb-arch" data-testid="ide-project-circuit-preview" data-trace={isolated ? trace ?? undefined : undefined} data-isolated-count={isolated ? isolated.size : undefined}>
       <svg
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         role="img"
@@ -211,6 +240,8 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
             key={wire.key}
             className="rb-arch-wire"
             data-selected={selectedNodeId === wire.from || selectedNodeId === wire.to ? 'true' : undefined}
+            data-traced={isolated && isolated.has(wire.from) && isolated.has(wire.to) ? 'true' : undefined}
+            data-dimmed={isolated && !(isolated.has(wire.from) && isolated.has(wire.to)) ? 'true' : undefined}
             d={wire.d}
           />
         ))}
@@ -222,6 +253,7 @@ export const ArchitecturePreview: React.FC<ArchitecturePreviewProps> = ({
             key={block.id}
             className={`rb-arch-block is-${block.category}`}
             data-selected={selectedNodeId === block.id ? 'true' : undefined}
+            data-dimmed={isolated && !isolated.has(block.id) ? 'true' : undefined}
             data-testid={`ide-project-arch-${block.id}`}
             onClick={() => onSelectNode?.(block.id)}
             onDoubleClick={() => onOpenDesign?.()}

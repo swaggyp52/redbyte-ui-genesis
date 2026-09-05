@@ -4,7 +4,7 @@ import { sameEngineeringObject, type EngineeringObjectRef } from '../../engineer
 import { parseBusLabel } from '../../engineeringRelationships';
 import { TOP_MODULE_ID, type ProjectHierarchyDocument } from '../../projectHierarchy';
 import type { WorkbenchDocument } from '../../workbenchDocuments';
-import { ArchitecturePreview } from './ArchitecturePreview';
+import { ArchitecturePreview, type ArchitectureTraceMode } from './ArchitecturePreview';
 import type { ProjectMappingRowLike } from './projectWorkbenchModel';
 
 export interface ProjectArchitectureDocumentProps {
@@ -160,6 +160,9 @@ export const ProjectArchitectureDocument: React.FC<ProjectArchitectureDocumentPr
   }, [current, mappingRows]);
 
   const selectedNodeId = selected?.kind === 'node' ? selected.nodeId : selected?.kind === 'signal' ? selected.nodeId ?? null : null;
+  // Trace around the selected block: drivers (upstream), loads (downstream), or the whole path.
+  const [trace, setTrace] = useState<ArchitectureTraceMode | null>(null);
+  const toggleTrace = (mode: ArchitectureTraceMode) => setTrace((current) => (current === mode ? null : mode));
   const currentIoLabels = current?.id === TOP_MODULE_ID ? ioLabelByNodeId : buildModuleIoLabels(current);
   const currentModuleNames = current?.id === TOP_MODULE_ID ? moduleNameByNodeId : new Map<string, string>();
 
@@ -173,6 +176,26 @@ export const ProjectArchitectureDocument: React.FC<ProjectArchitectureDocumentPr
           {current ? `${current.circuit.nodes.length} components · ${current.circuit.connections.length} nets` : 'no circuit'}
         </span>
         <span className="wb-toolbar-spacer" />
+        <div className="wb-segment" role="group" aria-label="Trace" data-testid="ide-project-architecture-trace">
+          {([
+            ['drivers', 'Drivers', 'Isolate the blocks that drive the selected block'],
+            ['loads', 'Loads', 'Isolate the blocks the selected block drives'],
+            ['path', 'Path', 'Isolate the full path through the selected block'],
+          ] as const).map(([mode, label, title]) => (
+            <button
+              key={mode}
+              type="button"
+              className="wb-btn"
+              onClick={() => toggleTrace(mode)}
+              disabled={!selectedNodeId}
+              aria-pressed={trace === mode}
+              title={selectedNodeId ? title : 'Select a block first'}
+              data-testid={`ide-project-architecture-trace-${mode}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           className="wb-btn"
@@ -250,6 +273,7 @@ export const ProjectArchitectureDocument: React.FC<ProjectArchitectureDocumentPr
               ioLabelByNodeId={currentIoLabels}
               moduleNameByNodeId={currentModuleNames}
               selectedNodeId={selectedNodeId}
+              trace={selectedNodeId ? trace : null}
               onSelectNode={(nodeId) => onSelect({ kind: 'node', moduleId: current.id, nodeId })}
               onOpenDesign={() => onOpenDocument({ kind: 'schematic', moduleId: current.id })}
             />

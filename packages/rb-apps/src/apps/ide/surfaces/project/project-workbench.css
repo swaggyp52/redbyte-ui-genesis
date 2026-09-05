@@ -330,3 +330,8 @@
   .ide-root .rb-start-list-pane { border-right: 0; border-bottom: 1px solid var(--wb-border); }
   .ide-root .rb-start-row-meta { display: none; }
 }
+
+/* Architecture isolate: everything outside the traced cone recedes; traced nets carry the accent. */
+.ide-root .rb-arch-block[data-dimmed='true'] { opacity: 0.22; }
+.ide-root .rb-arch-wire[data-dimmed='true'] { opacity: 0.18; }
+.ide-root .rb-arch-wire[data-traced='true'] { stroke: var(--wb-accent); stroke-width: 1.8; }
