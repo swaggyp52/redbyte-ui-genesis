@@ -477,3 +477,11 @@
   .ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) minmax(0, 30%) auto 0; }
   .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 minmax(0, 30%) auto minmax(0, 1fr); }
 }
+/* Timing bar: the auto clock's run length is a direct control, not a buried panel. */
+.ide-root .rb-timing-run-length { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-timing-run-length input { width: 52px; height: 20px; padding: 0 4px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-timing-run-length input:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
+/* Generated lanes: what the run will use, drawn as such, not editable here. */
+.ide-root .rb-timing-generated { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px dashed var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
+.ide-root .rb-tl-cell.is-generated { cursor: default; }

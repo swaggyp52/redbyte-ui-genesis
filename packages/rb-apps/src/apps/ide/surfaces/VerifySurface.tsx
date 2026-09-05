@@ -2514,6 +2514,55 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => new Set(clockSignalNames.map((signalName) => normalizeFieldId(signalName))),
     [clockSignalNames]
   );
+  // Lanes the auto clock policy generates at run time. The Timing document shows them
+  // as the run will use them and refuses edits, instead of accepting an authored reset
+  // the materializer would silently overwrite.
+  // Policy names may be labels (CLK100MHZ), ids (clk) or node ids; lanes are keyed by field id.
+  const timingGeneratedLanes = useMemo(() => {
+    const clocks = new Set<string>();
+    const resets = new Set<string>();
+    if (clockOverrideMode !== 'auto') return { clocks, resets };
+    const token = (value: string | undefined) => (value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const resolveLane = (name: string): string | null => {
+      const wanted = token(name);
+      if (!wanted) return null;
+      // The policy names a row by id, label or boundary node id (the materializer's own rule).
+      const signal = (mappedSignals ?? []).find(
+        (candidate) =>
+          token(candidate.id) === wanted || token(candidate.label) === wanted || token(candidate.nodeId) === wanted
+      );
+      if (signal) return signal.id;
+      const field = stimulusPanelInputFields.find(
+        (candidate) => token(candidate.id) === wanted || token(candidate.label) === wanted
+      );
+      return field?.id ?? null;
+    };
+    for (const name of clockSignalNames) {
+      const laneId = resolveLane(name);
+      if (laneId) clocks.add(laneId);
+    }
+    if (effectiveClockPolicy?.resetBehavior === 'auto-sequence' && effectiveClockPolicy.resetSignalName) {
+      const laneId = resolveLane(effectiveClockPolicy.resetSignalName);
+      if (laneId) resets.add(laneId);
+    }
+    return { clocks, resets };
+  }, [clockOverrideMode, clockSignalNames, effectiveClockPolicy?.resetBehavior, effectiveClockPolicy?.resetSignalName, mappedSignals, stimulusPanelInputFields]);
+  const timingGeneratedFieldIds = useMemo(
+    () => new Set<string>([...timingGeneratedLanes.clocks, ...timingGeneratedLanes.resets]),
+    [timingGeneratedLanes]
+  );
+  const timingGeneratedValueAt = useCallback(
+    (fieldId: string, tick: number): 0 | 1 | null => {
+      if (timingGeneratedLanes.clocks.has(fieldId)) return 1;
+      if (timingGeneratedLanes.resets.has(fieldId)) return tick === 0 ? 1 : 0;
+      return null;
+    },
+    [timingGeneratedLanes]
+  );
+  const timingGeneratedNote =
+    timingGeneratedFieldIds.size > 0
+      ? `Auto board clock: the clock${effectiveClockPolicy?.resetBehavior === 'auto-sequence' ? ' and the reset sequence (reset high at t0)' : ''} are generated at run time. Switch the clock to Manual pulses to author them.`
+      : undefined;
   const clockActivitySummary = useMemo(
     () => buildClockActivitySummary(effectiveNextRunVectors, clockSignalNames),
     [clockSignalNames, effectiveNextRunVectors]
@@ -6521,6 +6570,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             caseEvidenceByTick={testbenchCaseEvidenceByTick}
             observedValuesByTick={testbenchObservedValuesByTick}
             clockFieldIds={clockSignalNames}
+            runCycles={clockOverrideMode === 'auto' ? clockRunCycles : null}
+            onRunCyclesChange={handleClockRunCyclesChange}
+            generatedFieldIds={timingGeneratedFieldIds}
+            generatedValueAt={timingGeneratedValueAt}
+            generatedNote={timingGeneratedNote}
           />
         ) : (
           <CaseLab
