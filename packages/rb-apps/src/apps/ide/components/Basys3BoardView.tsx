@@ -11,6 +11,8 @@ export interface Basys3BoardLayers {
   readonly compatible: boolean;
   /** Conflict highlighting (two signals on one pin, wrong direction). */
   readonly conflicts: boolean;
+  /** Simulated values from the followed run tick: LED cores lit, switch knobs up or down. */
+  readonly values: boolean;
 }
 
 export const DEFAULT_BASYS3_BOARD_LAYERS: Basys3BoardLayers = Object.freeze({
@@ -18,6 +20,7 @@ export const DEFAULT_BASYS3_BOARD_LAYERS: Basys3BoardLayers = Object.freeze({
   mapped: true,
   compatible: true,
   conflicts: true,
+  values: true,
 });
 
 const EMPTY_ALIASES: Set<string> = new Set();
@@ -26,6 +29,8 @@ export interface Basys3BoardViewProps {
   mappedAliases: Set<string>;
   /** Aliases whose mapping is in conflict; drawn in the failure colour when the layer is on. */
   conflictAliases?: Set<string>;
+  /** Board state at the followed tick (index = resource number). null = no run to show. */
+  values?: { readonly sw: readonly (0 | 1)[]; readonly ld: readonly (0 | 1)[] } | null;
   layers?: Basys3BoardLayers;
   highlightedAlias?: string | null;
   allowedAliases?: Set<string>;
@@ -180,6 +185,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
   onSelectAlias,
   conflictAliases: conflictAliasesProp,
   layers = DEFAULT_BASYS3_BOARD_LAYERS,
+  values = null,
 }) => {
   // Layers gate what the renderer sees; the mapping itself is untouched.
   const mappedAliases = layers.mapped ? mappedAliasesProp : EMPTY_ALIASES;
@@ -390,6 +396,21 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               strokeWidth={regionStrokeWidth(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, false, conflictAliases)}
               className={resourceClassName(state)}
             />
+            {layers.values && values && values.ld[idx] != null ? (
+              <circle
+                data-testid={`ide-hw-map-ld-${idx}-value`}
+                data-value={values.ld[idx]}
+                cx={cx}
+                cy={cy}
+                r={values.ld[idx] ? 4.5 : 3}
+                fill={values.ld[idx] ? 'var(--rb-board-led-on, #4ade80)' : 'transparent'}
+                stroke={values.ld[idx] ? 'var(--rb-board-led-on, #4ade80)' : 'var(--rb-board-led-off, rgba(148, 163, 184, 0.55))'}
+                strokeWidth={1}
+                style={{ pointerEvents: 'none' }}
+              >
+                <title>{`${alias} = ${values.ld[idx]}`}</title>
+              </circle>
+            ) : null}
             {/* expanded hitbox */}
             <circle
               data-testid={`ide-hw-map-ld-${idx}-hit`}
@@ -461,6 +482,21 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               strokeWidth={regionStrokeWidth(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, false, conflictAliases)}
               className={resourceClassName(state)}
             />
+            {layers.values && values && values.sw[idx] != null ? (
+              <rect
+                data-testid={`ide-hw-map-sw-${idx}-value`}
+                data-value={values.sw[idx]}
+                x={trackX + 3}
+                y={values.sw[idx] ? trackY + 3 : trackY + trackH - 9}
+                width={trackW - 6}
+                height={6}
+                rx={2}
+                fill={values.sw[idx] ? 'var(--rb-board-led-on, #4ade80)' : 'var(--rb-board-knob-off, rgba(148, 163, 184, 0.75))'}
+                style={{ pointerEvents: 'none' }}
+              >
+                <title>{`${alias} = ${values.sw[idx]}`}</title>
+              </rect>
+            ) : null}
             {/* expanded hitbox */}
             <rect data-testid={`ide-hw-map-sw-${idx}-hit`}
               x={trackX - 11} y={trackY - 8} width={trackW + 22} height={trackH + 16}

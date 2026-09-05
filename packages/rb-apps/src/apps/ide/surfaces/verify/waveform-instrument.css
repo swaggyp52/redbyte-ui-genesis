@@ -254,3 +254,21 @@
 
 /* Edge navigation: a compact count beside the two step buttons. */
 .ide-root .rb-wave-edges__count { font-size: 11px; color: var(--wb-text-3); white-space: nowrap; }
+
+/* Playback + live readout: what is happening at the selected tick. The bar
+   fills as the cursor walks the run; a mismatch turns the readout warm. */
+.ide-root .rb-wave-play { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+.ide-root .rb-wave-play__speed { height: 24px; font: var(--wb-text-xs) var(--wb-font-mono); padding: 0 4px; border: 1px solid var(--wb-border); border-radius: 4px; background: var(--wb-surface); color: var(--wb-text-2); }
+.ide-root .rb-wave-play__toggle.is-on { color: var(--wb-text-1, var(--wb-text-2)); box-shadow: inset 0 -2px 0 var(--wb-focus); }
+.ide-root .rb-wave-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 10px; border-bottom: 1px solid var(--wb-border); font: var(--wb-text-xs) var(--wb-font-ui); color: var(--wb-text-2); min-height: 26px; }
+.ide-root .rb-wave-readout code { font: var(--wb-text-xs) var(--wb-font-mono); padding: 1px 5px; border-radius: 3px; background: var(--wb-surface-2, var(--wb-surface)); color: var(--wb-text-2); }
+.ide-root .rb-wave-readout code.is-muted { opacity: 0.6; }
+.ide-root .rb-wave-readout code.is-followed { box-shadow: inset 0 -2px 0 var(--wb-focus); }
+.ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; color: var(--wb-text-3); }
+.ide-root .rb-wave-readout__pos { display: inline-flex; align-items: center; gap: 6px; }
+.ide-root .rb-wave-readout__progress { display: inline-block; width: 72px; height: 4px; border-radius: 2px; background: var(--wb-border); overflow: hidden; }
+.ide-root .rb-wave-readout__progress > span { display: block; height: 100%; background: var(--wb-focus); transition: width 120ms linear; }
+.ide-root .rb-wave-readout__group { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ide-root .rb-wave-readout.has-failure .rb-wave-readout__fail code { background: color-mix(in srgb, var(--wb-danger, #b91c1c) 12%, transparent); color: var(--wb-danger, #b91c1c); }
+.ide-root .rb-wave-readout.is-playing .rb-wave-readout__pos code { box-shadow: inset 0 -2px 0 var(--wb-focus); }
+@media (prefers-reduced-motion: reduce) { .ide-root .rb-wave-readout__progress > span { transition: none; } }

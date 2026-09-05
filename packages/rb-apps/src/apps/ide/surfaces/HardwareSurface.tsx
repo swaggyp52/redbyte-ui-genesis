@@ -464,7 +464,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (followed?.kind === 'signal' && mappingRows.some((row) => row.id === followed.fieldId)) return followed.fieldId;
     return mappingRows[0]?.id ?? null;
   });
-  const boardMountPublishRef = useRef(true);
+  // The row chosen at mount is a local default: it never displaces a selection
+  // made elsewhere. A row the user picks (or a later change) always publishes.
+  // A ref that flips on first run is not enough — development double-invokes
+  // effects — so the guard compares against the mount-time row itself.
+  const mountedRowIdRef = useRef<string | null | undefined>(undefined);
+  const chooseMappingRow = useCallback((rowId: string | null) => {
+    mountedRowIdRef.current = null;
+    setSelectedMappingRowId(rowId);
+  }, []);
 
   // ── Engineering-object continuity ──────────────────────────────────────
   const globalSelected = useEngineeringSelection((state) => state.selected);
@@ -473,11 +481,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const relationshipIndex = useEngineeringRelationshipIndex();
   useEffect(() => {
     if (!selectedMappingRowId) return;
-    if (boardMountPublishRef.current) {
-      // First render: never displace a selection made elsewhere with a local default.
-      boardMountPublishRef.current = false;
-      if (globalSelected && globalOrigin !== 'board-io') return;
-    }
+    if (mountedRowIdRef.current === undefined) mountedRowIdRef.current = selectedMappingRowId;
+    if (selectedMappingRowId === mountedRowIdRef.current && globalSelected && globalOrigin !== 'board-io') return;
     const row = mappingRows.find((entry) => entry.id === selectedMappingRowId);
     if (!row) return;
     const relation = relationshipIndex.resolveField(row.id);
@@ -496,7 +501,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           : null;
     if (!fieldId) return;
     const row = mappingRows.find((entry) => entry.id === fieldId);
-    if (row && row.id !== selectedMappingRowId) setSelectedMappingRowId(row.id);
+    if (row && row.id !== selectedMappingRowId) chooseMappingRow(row.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globalSelected, globalOrigin]);
 
@@ -1733,6 +1738,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     [verifyLastRun?.reportHash, verifyLastRun?.waveform]
   );
   const simulatedBoardTrace = sim.trace?.length ? sim.trace : recordedVerifyTrace;
+  // The twin follows the selected case/tick (Cases, Timing, Waveform playback):
+  // the LEDs and switches show the run's state at that tick, not a stale slider.
+  const followedCaseTick = useEngineeringSelection((state) =>
+    state.selected?.kind === 'case-tick' ? state.selected.tick : null
+  );
+  useEffect(() => {
+    if (followedCaseTick == null) return;
+    const index = simulatedBoardTrace.findIndex((sample) => sample.tick === followedCaseTick);
+    if (index >= 0) setSimulatedBoardTraceIndex(index);
+  }, [followedCaseTick, simulatedBoardTrace]);
   const boundedSimulatedBoardTraceIndex = Math.min(
     simulatedBoardTraceIndex,
     Math.max(0, simulatedBoardTrace.length - 1)
@@ -3122,7 +3137,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         ? onOpenExport
                         : () => {
                             if (!nextMappingIssueRow) return;
-                            setSelectedMappingRowId(nextMappingIssueRow.id);
+                            chooseMappingRow(nextMappingIssueRow.id);
                             setSelectedBoardResourceAlias(resolveBoardControlAlias(nextMappingIssueRow.pin));
                           }}
                     disabled={
@@ -3221,7 +3236,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                               data-required={row.required ? 'true' : 'false'}
                               aria-selected={selectedMappingRowId === row.id}
                               onClick={() => {
-                                setSelectedMappingRowId(row.id);
+                                chooseMappingRow(row.id);
                                 setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin));
                               }}
                             >
@@ -3243,7 +3258,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                                   data-testid={'ide-hw-map-row-action-' + row.id}
                                   aria-pressed={selectedMappingRowId === row.id}
                                   onClick={() => {
-                                    setSelectedMappingRowId(row.id);
+                                    chooseMappingRow(row.id);
                                     setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin));
                                   }}
                                 >
@@ -3271,6 +3286,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           ['mapped', 'Mapped resources'],
                           ['compatible', 'Compatible targets'],
                           ['conflicts', 'Conflicts'],
+                          ['values', 'Simulated values'],
                         ] as const
                       ).map(([id, label]) => (
                         <button
@@ -3303,6 +3319,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 >
                   <Basys3BoardView
                     layers={boardLayers}
+                    values={verifyLastRun ? simulatedBoardState : null}
                     conflictAliases={conflictAliases}
                     mappedAliases={mapModeAliases}
                     highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}

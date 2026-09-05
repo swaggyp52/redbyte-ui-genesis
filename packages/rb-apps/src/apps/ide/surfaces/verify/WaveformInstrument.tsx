@@ -34,6 +34,8 @@ export interface WaveformViewerProps {
   onTogglePinSignal?: (signal: string) => void;
   /** Hides a lane; the surface offers the restore affordance. */
   onHideSignal?: (signal: string) => void;
+  /** Lanes whose value changes at the selected tick — marked while the run plays. */
+  changedSignals?: Set<string>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   ghostSignals,
   onTogglePinSignal,
   onHideSignal,
+  changedSignals,
 }) => {
   const LABEL_W = 128;
   const ROW_H = rowHeight;
@@ -400,6 +403,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
             data-testid={`ide-verify-waveform-row-${toTestId(signalRow.signal)}`}
             data-selected={selectedSignal === signalRow.signal ? 'true' : 'false'}
             data-direction={signalDirection}
+            data-changing={changedSignals?.has(signalRow.signal) ? 'true' : 'false'}
           >
             {/* Alternating row background */}
             <rect
@@ -459,12 +463,24 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 y={y + (signalMeta?.has(signalRow.signal) ? Math.round(ROW_H * 0.38) : Math.round(ROW_H / 2) + 4)}
                 textAnchor="end"
                 fontSize="11"
+                fontWeight={changedSignals?.has(signalRow.signal) ? 700 : undefined}
                 fill={isFailing ? 'var(--rb-wave-fail-text)' : isClockSignal ? 'var(--rb-wave-clock)' : 'var(--rb-wave-text)'}
               >
                 {`${isPinned && !onTogglePinSignal ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
                   signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
                 }`}
               </text>
+              {changedSignals?.has(signalRow.signal) ? (
+                <circle
+                  cx={LABEL_W - 3}
+                  cy={y + Math.round(ROW_H / 2)}
+                  r={2.5}
+                  fill="var(--rb-wave-cursor-a)"
+                  data-testid={`ide-verify-lane-changing-${toTestId(signalRow.signal)}`}
+                >
+                  <title>{`${signalRow.signal} changes at this tick`}</title>
+                </circle>
+              ) : null}
               {/* Direction + pin sub-line */}
               {(() => {
                 const meta = signalMeta?.get(signalRow.signal);

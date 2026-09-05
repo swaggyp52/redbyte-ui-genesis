@@ -690,6 +690,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [cursorB, setCursorB] = useState<number | null>(null);
   const [previewingVectorId, setPreviewingVectorId] = useState<string | null>(null);
   const [isStepMode, setIsStepMode] = useState(false);
+  // Playback: the browser run completes at once; playing it back tick by tick is
+  // how a student sees the run happen — inputs change, outputs follow, the
+  // cursor moves, and it stops at the first mismatch. Deterministic, stops when
+  // nothing is active, never runs on its own under reduced motion.
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState<0.5 | 1 | 2>(1);
+  const [playLoop, setPlayLoop] = useState(false);
+  const [playStopAtFailure, setPlayStopAtFailure] = useState(true);
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
   const [pendingCaptureScope, setPendingCaptureScope] = useState<(CaptureScope & {
     awaitNextRunKey: string | null;
   }) | null>(null);
@@ -918,6 +930,52 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => (waveformTicks.length > 0 ? waveformTicks : timelineTicks),
     [waveformTicks, timelineTicks]
   );
+  // The ticks playback walks: the A/B range when both cursors are set, else every tick.
+  const playbackTicks = useMemo(() => {
+    if (cursorA != null && cursorB != null && cursorA !== cursorB) {
+      const lo = Math.min(cursorA, cursorB);
+      const hi = Math.max(cursorA, cursorB);
+      const inRange = allWaveformTicks.filter((tick) => tick >= lo && tick <= hi);
+      if (inRange.length > 0) return inRange;
+    }
+    return allWaveformTicks;
+  }, [allWaveformTicks, cursorA, cursorB]);
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (playbackTicks.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+    const interval = window.setInterval(() => {
+      setSelectedTick((current) => {
+        const index = current == null ? -1 : playbackTicks.indexOf(current);
+        const next = playbackTicks[index + 1];
+        if (next == null) {
+          if (playLoop) return playbackTicks[0];
+          setIsPlaying(false);
+          return current;
+        }
+        if (playStopAtFailure && index >= 0 && lastRun?.report.rows.some((row) => row.tick === next && row.status === 'fail')) {
+          setIsPlaying(false);
+        }
+        return next;
+      });
+    }, Math.round(650 / playSpeed));
+    return () => window.clearInterval(interval);
+  }, [isPlaying, lastRun, playLoop, playSpeed, playStopAtFailure, playbackTicks]);
+  const togglePlayback = useCallback(() => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      return;
+    }
+    if (playbackTicks.length === 0) return;
+    // Restart from the first tick when the cursor sits at the end.
+    const index = selectedTick == null ? -1 : playbackTicks.indexOf(selectedTick);
+    if (index < 0 || index >= playbackTicks.length - 1) setSelectedTick(playbackTicks[0]);
+    setIsPlaying(true);
+  }, [isPlaying, playbackTicks, selectedTick]);
+  // Any manual navigation ends playback: the user has taken the cursor.
+  const stopPlayback = useCallback(() => setIsPlaying(false), []);
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     const waveformSource = lastRun?.waveform ?? [];
@@ -1288,6 +1346,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return visibleSignalTimeline.filter((entry) => !hiddenSignalSet.has(entry.signal));
   }, [hiddenSignalSet, visibleSignalTimeline]);
   const visibleSignalCount = displaySignalTimeline.length;
+  const liveReadout = useMemo(() => {
+    if (!lastRun || selectedTick == null) return null;
+    const index = allWaveformTicks.indexOf(selectedTick);
+    const previousTick = index > 0 ? allWaveformTicks[index - 1] : null;
+    const inputsNow = lastRun.report.inputsAtTick?.[selectedTick] ?? {};
+    const inputsBefore = previousTick != null ? lastRun.report.inputsAtTick?.[previousTick] ?? {} : {};
+    const changedInputs = Object.keys(inputsNow).filter((key) => String(inputsNow[key]) !== String(inputsBefore[key] ?? ''));
+    const inputLabel = (key: string) => inputFields.find((field) => normalizeFieldId(field.id) === normalizeFieldId(key))?.label ?? key;
+    const outputs = displaySignalTimeline
+      .filter((lane) => mappedSignalDirectionKeys.get(normalizeFieldId(lane.signal)) === 'out')
+      .map((lane) => ({ signal: lane.signal, value: lane.values.find((entry) => entry.tick === selectedTick)?.value ?? '-' }));
+    const failures = lastRun.report.rows.filter((row) => row.tick === selectedTick && row.status === 'fail');
+    return {
+      index,
+      total: allWaveformTicks.length,
+      changedInputs: changedInputs.map((key) => ({ label: inputLabel(key), value: String(inputsNow[key]) })),
+      outputs,
+      failures: failures.map((row) => ({ signal: row.signal, expected: row.expected, actual: row.actual })),
+    };
+  }, [allWaveformTicks, displaySignalTimeline, inputFields, lastRun, mappedSignalDirectionKeys, selectedTick]);
+  // Lanes that change at the selected tick (against the previous tick).
+  const changedSignalsAtTick = useMemo(() => {
+    const set = new Set<string>();
+    if (selectedTick == null) return set;
+    const index = allWaveformTicks.indexOf(selectedTick);
+    if (index <= 0) return set;
+    const previousTick = allWaveformTicks[index - 1];
+    for (const lane of displaySignalTimeline) {
+      const now = lane.values.find((entry) => entry.tick === selectedTick)?.value;
+      const before = lane.values.find((entry) => entry.tick === previousTick)?.value;
+      if (now != null && before != null && now !== before) set.add(lane.signal);
+    }
+    return set;
+  }, [allWaveformTicks, displaySignalTimeline, selectedTick]);
   const boardSignalByLane = useMemo(() => {
     const mapping = new Map<string, ReturnType<typeof resolveBoardSignal>>();
     for (const sig of mappedSignals ?? []) {
@@ -1587,6 +1679,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (appliedRunKeyRef.current === (lastRunWorkbenchKey ?? null)) return;
     appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
     openWaveformDocument();
+    if (!prefersReducedMotion && allWaveformTicks.length > 1) {
+      // Show the run happen: walk the ticks from the first one; stop at the first mismatch.
+      setSelectedTick(allWaveformTicks[0]);
+      setIsPlaying(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRunWorkbenchKey]);
 
@@ -6438,6 +6535,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           const nextIndex = Number(event.target.value);
                           const nextTick = allWaveformTicks[nextIndex];
                           if (typeof nextTick === 'number') {
+                            stopPlayback();
                             setSelectedTick(nextTick);
                           }
                         }}
@@ -6448,10 +6546,98 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </code>
                     </label>
                   ) : null}
+                  {lastRun && allWaveformTicks.length > 1 ? (
+                    <div className="rb-wave-play" data-testid="ide-verify-playback" role="group" aria-label="Playback">
+                      <IdeButton
+                        tone={isPlaying ? 'secondary' : 'ghost'}
+                        onClick={togglePlayback}
+                        testId="ide-verify-play"
+                        title={isPlaying ? 'Stop playback' : 'Play the run tick by tick'}
+                        aria-pressed={isPlaying}
+                      >
+                        {isPlaying ? '■ Stop' : '▶ Play'}
+                      </IdeButton>
+                      <select
+                        className="rb-wave-play__speed"
+                        value={String(playSpeed)}
+                        onChange={(event) => setPlaySpeed(Number(event.target.value) as 0.5 | 1 | 2)}
+                        aria-label="Playback speed"
+                        data-testid="ide-verify-play-speed"
+                      >
+                        <option value="0.5">0.5×</option>
+                        <option value="1">1×</option>
+                        <option value="2">2×</option>
+                      </select>
+                      <button
+                        type="button"
+                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playLoop ? ' is-on' : ''}`}
+                        onClick={() => setPlayLoop((value) => !value)}
+                        aria-pressed={playLoop}
+                        title={cursorA != null && cursorB != null ? 'Loop the A–B range' : 'Loop all ticks'}
+                        data-testid="ide-verify-play-loop"
+                      >
+                        Loop
+                      </button>
+                      <button
+                        type="button"
+                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playStopAtFailure ? ' is-on' : ''}`}
+                        onClick={() => setPlayStopAtFailure((value) => !value)}
+                        aria-pressed={playStopAtFailure}
+                        title="Stop at the first mismatch"
+                        data-testid="ide-verify-play-stop-at-failure"
+                      >
+                        Stop at fail
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
                 </div>
                 </div>
 
+                {liveReadout ? (
+                  <div
+                    className={`rb-wave-readout${isPlaying ? ' is-playing' : ''}${liveReadout.failures.length > 0 ? ' has-failure' : ''}`}
+                    data-testid="ide-verify-live-readout"
+                    role="status"
+                    aria-live={isPlaying ? 'polite' : 'off'}
+                  >
+                    <span className="rb-wave-readout__pos">
+                      <code>t{selectedTick}</code>
+                      <span className="rb-wave-readout__progress" aria-label="Progress">
+                        <span style={{ width: `${liveReadout.total > 1 ? Math.round((liveReadout.index / (liveReadout.total - 1)) * 100) : 100}%` }} />
+                      </span>
+                      <small>{liveReadout.index + 1} / {liveReadout.total}</small>
+                    </span>
+                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-changed">
+                      <small>changed</small>
+                      {liveReadout.changedInputs.length === 0 ? (
+                        <code className="is-muted">{liveReadout.index === 0 ? 'initial' : 'none'}</code>
+                      ) : (
+                        liveReadout.changedInputs.slice(0, 8).map((entry) => (
+                          <code key={entry.label}>{entry.label}={entry.value}</code>
+                        ))
+                      )}
+                      {liveReadout.changedInputs.length > 8 ? <small>+{liveReadout.changedInputs.length - 8}</small> : null}
+                    </span>
+                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-outputs">
+                      <small>observed</small>
+                      {liveReadout.outputs.slice(0, 8).map((entry) => (
+                        <code key={entry.signal} className={entry.signal === selectedSignal ? 'is-followed' : undefined}>
+                          {entry.signal}={entry.value}
+                        </code>
+                      ))}
+                      {liveReadout.outputs.length > 8 ? <small>+{liveReadout.outputs.length - 8}</small> : null}
+                    </span>
+                    {liveReadout.failures.length > 0 ? (
+                      <span className="rb-wave-readout__group rb-wave-readout__fail" data-testid="ide-verify-live-failure">
+                        <small>mismatch</small>
+                        {liveReadout.failures.slice(0, 3).map((entry) => (
+                          <code key={entry.signal}>{entry.signal} expected {entry.expected} got {entry.actual}</code>
+                        ))}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
                 {/* Edge navigation: the followed lane's transitions. */}
                 <div className="rb-wave-group rb-wave-edges" data-testid="ide-verify-edge-nav" aria-label="Transitions of the followed signal">
                   <IdeButton
@@ -6782,6 +6968,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   selectedTick={selectedTick}
                   cursorA={cursorA}
                   cursorB={cursorB}
+                  changedSignals={changedSignalsAtTick}
                   pinnedSignals={pinnedSignals}
                   onSelectTick={setSelectedTick}
                   onSelectSignal={handleSignalSelect}

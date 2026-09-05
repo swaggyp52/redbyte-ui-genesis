@@ -45,10 +45,10 @@ function normalizeDesignLayers(raw: unknown): DesignLayers {
   for (const id of DESIGN_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
   return Object.freeze(next);
 }
-export type BoardLayerId = 'labels' | 'mapped' | 'compatible' | 'conflicts';
+export type BoardLayerId = 'labels' | 'mapped' | 'compatible' | 'conflicts' | 'values';
 export type BoardLayers = Readonly<Record<BoardLayerId, boolean>>;
-export const BOARD_LAYER_IDS: readonly BoardLayerId[] = ['labels', 'mapped', 'compatible', 'conflicts'];
-export const DEFAULT_BOARD_LAYERS: BoardLayers = Object.freeze({ labels: true, mapped: true, compatible: true, conflicts: true });
+export const BOARD_LAYER_IDS: readonly BoardLayerId[] = ['labels', 'mapped', 'compatible', 'conflicts', 'values'];
+export const DEFAULT_BOARD_LAYERS: BoardLayers = Object.freeze({ labels: true, mapped: true, compatible: true, conflicts: true, values: true });
 function normalizeBoardLayers(raw: unknown): BoardLayers {
   const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   const next: Record<BoardLayerId, boolean> = { ...DEFAULT_BOARD_LAYERS };
