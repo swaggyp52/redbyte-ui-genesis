@@ -10,7 +10,7 @@ import React, {
 import { ProblemsPanel } from '../components/ProblemsPanel';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
-import { busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
+import { BUS_MEMBER_SPACING, busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
   FIT_ZOOM_STEPS,
@@ -2272,7 +2272,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       x: (canvasSize.width / 2 - camera.x) / camera.zoom,
       y: (canvasSize.height / 2 - camera.y) / camera.zoom,
     };
-    const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+    // A bus creates one symbol per bit, stacked downwards, so the spawn search has to
+    // clear the whole column. Clearing only the first bit left the rest on top of
+    // whatever already occupied the canvas below it.
+    const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, {
+      slots: busDialog.width,
+      spacing: BUS_MEMBER_SPACING,
+    });
     const outcome = onRuntimeCreateBus({
       name: busDialog.name.trim(),
       direction: busDialog.direction,
