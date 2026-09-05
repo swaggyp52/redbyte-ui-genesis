@@ -2327,7 +2327,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         };
   }, [activeScenario?.sequentialPolicy, activeScheduleContract?.schedule, clockOverrideMode, clockRunCycles, detectedClockPolicy, totalVectorCount]);
   const persistScenarioSequentialPolicy = useCallback(
-    (overrideMode: VerifyClockOverrideMode, runCycles: number) => {
+    (
+      overrideMode: VerifyClockOverrideMode,
+      runCycles: number,
+      resetBehaviorOverride?: 'auto-sequence' | 'custom'
+    ) => {
       const preserveSavedAuto =
         overrideMode === 'auto' && activeScenario?.sequentialPolicy?.overrideMode === 'auto';
       const sourcePolicy =
@@ -2353,11 +2357,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         overrideMode,
         runCycles: Math.max(1, Math.min(4096, Math.floor(runCycles))),
         activeEdge: 'rising',
+        // Auto clock: the reset is either the policy's sequence (high at t0) or authored
+        // in the Timing lanes ('custom'); the materializer only overwrites the sequence.
         resetBehavior: authoredClock
           ? canonicalResetSignal
             ? 'custom'
             : 'none'
-          : autoPolicy.resetBehavior,
+          : canonicalResetSignal && resetBehaviorOverride
+            ? resetBehaviorOverride
+            : autoPolicy.resetBehavior,
         sourceType: sourcePolicy.sourceType,
         executionModel: authoredClock ? 'manual' : autoPolicy.executionModel,
         signalId: canonicalSignalId,
@@ -2381,6 +2389,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       persistScenarioSequentialPolicy(overrideMode, clockRunCycles);
     },
     [autoClockAvailable, clockRunCycles, persistScenarioSequentialPolicy]
+  );
+  const handleResetBehaviorChange = useCallback(
+    (behavior: 'auto-sequence' | 'custom') => {
+      if (clockOverrideMode !== 'auto') return;
+      persistScenarioSequentialPolicy('auto', clockRunCycles, behavior);
+    },
+    [clockOverrideMode, clockRunCycles, persistScenarioSequentialPolicy]
   );
   const handleClockRunCyclesChange = useCallback(
     (runCycles: number) => {
@@ -2561,7 +2576,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const timingGeneratedNote =
     timingGeneratedFieldIds.size > 0
-      ? `Auto board clock: the clock${effectiveClockPolicy?.resetBehavior === 'auto-sequence' ? ' and the reset sequence (reset high at t0)' : ''} are generated at run time. Switch the clock to Manual pulses to author them.`
+      ? effectiveClockPolicy?.resetBehavior === 'auto-sequence'
+        ? 'Auto board clock: the clock and the reset sequence (reset high at t0) are generated at run time. Choose "Author reset pulses" to author the reset, or Manual pulses to author both.'
+        : 'Auto board clock: the clock is generated at run time; the reset pulses are yours to author in the lanes.'
       : undefined;
   const clockActivitySummary = useMemo(
     () => buildClockActivitySummary(effectiveNextRunVectors, clockSignalNames),
@@ -5472,9 +5489,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 Reset: {effectiveClockPolicy.resetBehavior === 'auto-sequence'
                   ? 'reset sequence applied'
                   : effectiveClockPolicy.resetBehavior === 'custom'
-                    ? 'custom reset'
+                    ? 'authored in the Timing lanes'
                     : 'no reset detected'}
               </span>
+              {clockOverrideMode === 'auto' && effectiveClockPolicy.resetSignalName ? (
+                <div className="ide-verify-clock-policy-mode-buttons" role="group" aria-label="Reset with the auto clock" data-testid="ide-verify-reset-mode">
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${effectiveClockPolicy.resetBehavior === 'auto-sequence' ? ' is-active' : ''}`}
+                    aria-pressed={effectiveClockPolicy.resetBehavior === 'auto-sequence'}
+                    onClick={() => handleResetBehaviorChange('auto-sequence')}
+                    data-testid="ide-verify-reset-mode-sequence"
+                    title="The policy asserts the reset at t0 and releases it; the RST lane is generated"
+                  >
+                    Reset at t0
+                  </button>
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${effectiveClockPolicy.resetBehavior === 'custom' ? ' is-active' : ''}`}
+                    aria-pressed={effectiveClockPolicy.resetBehavior === 'custom'}
+                    onClick={() => handleResetBehaviorChange('custom')}
+                    data-testid="ide-verify-reset-mode-authored"
+                    title="Author the reset pulses yourself in the Timing lanes while the clock stays generated"
+                  >
+                    Author reset pulses
+                  </button>
+                </div>
+              ) : null}
               <div className="ide-verify-clock-policy-controls" data-testid="ide-verify-clock-policy-controls">
                 <span className="ide-verify-clock-policy-copy" data-testid="ide-verify-clock-policy-copy">
                   {clockPolicyCopy}
