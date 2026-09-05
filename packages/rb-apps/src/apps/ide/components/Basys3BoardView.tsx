@@ -36,6 +36,10 @@ export interface Basys3BoardViewProps {
   allowedAliases?: Set<string>;
   assignmentMode?: boolean;
   onSelectAlias: (alias: string) => void;
+  /** Camera-derived viewBox; defaults to the native frame. */
+  viewBox?: string;
+  /** Below the label-density zoom the alias labels give way to the board shape. */
+  density?: 'normal' | 'compact';
 }
 
 const BTN_DEFS = [
@@ -186,6 +190,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
   conflictAliases: conflictAliasesProp,
   layers = DEFAULT_BASYS3_BOARD_LAYERS,
   values = null,
+  viewBox = '0 -48 620 308',
+  density = 'normal',
 }) => {
   // Layers gate what the renderer sees; the mapping itself is untouched.
   const mappedAliases = layers.mapped ? mappedAliasesProp : EMPTY_ALIASES;
@@ -196,7 +202,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
       data-testid="ide-hw-board-map"
       className={styles.board}
       data-layer-labels={layers.labels ? '1' : '0'}
-      viewBox="0 -48 620 308"
+      data-density={density}
+      viewBox={viewBox}
       preserveAspectRatio="xMidYMid meet"
       width="100%"
     >

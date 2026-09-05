@@ -70,7 +70,17 @@
 .ide-root .rb-board-row-action { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
 
 /* Board stage: the Basys3 canvas fills the centre. */
-.ide-root .rb-board-canvas { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: auto; background: var(--rb-schematic-bg, #f4f6f9); }
+.ide-root .rb-board-canvas { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: hidden; background: var(--rb-schematic-bg, #f4f6f9); cursor: grab; touch-action: none; }
+.ide-root .rb-board-canvas:active { cursor: grabbing; }
+.ide-root .rb-board-canvas:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+/* Semantic density: far out, the board shape reads; the alias labels return as the camera comes in. */
+.ide-root .rb-board-canvas svg[data-density='compact'] text[data-board-alias] { display: none; }
+.ide-root .rb-board-camera-bar { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
+.ide-root .rb-board-camera-tool { height: 20px; min-width: 20px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; cursor: default; }
+.ide-root .rb-board-camera-tool:hover { color: var(--wb-text); border-color: var(--wb-border-strong); }
+.ide-root .rb-board-camera-tool:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-board-camera-tool:disabled { opacity: 0.45; }
+.ide-root .rb-board-camera-zoom { min-width: 38px; text-align: center; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-board-canvas > * { max-width: 100%; }
 
 /* Side: selected-signal editor as key/value rows + consequence. */

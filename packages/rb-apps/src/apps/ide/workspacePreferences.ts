@@ -93,9 +93,27 @@ export interface SimulateLayoutUpdate {
   readonly maximized?: SimulateDeckMaximized;
 }
 
+/** Board document camera: zoom factor over the native board frame and a pan in board units. */
+export interface BoardCameraPreferences {
+  readonly zoom: number;
+  readonly x: number;
+  readonly y: number;
+}
+export const BOARD_CAMERA_ZOOM_MIN = 0.5;
+export const BOARD_CAMERA_ZOOM_MAX = 4;
+export const DEFAULT_BOARD_CAMERA: BoardCameraPreferences = Object.freeze({ zoom: 1, x: 0, y: 0 });
+export function normalizeBoardCamera(raw: unknown): BoardCameraPreferences {
+  const record = isRecord(raw) ? raw : {};
+  const zoomRaw = typeof record.zoom === 'number' && Number.isFinite(record.zoom) ? record.zoom : DEFAULT_BOARD_CAMERA.zoom;
+  const zoom = Math.round(Math.min(BOARD_CAMERA_ZOOM_MAX, Math.max(BOARD_CAMERA_ZOOM_MIN, zoomRaw)) * 1000) / 1000;
+  const clampPan = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.round(Math.min(2000, Math.max(-2000, value)) * 10) / 10 : 0;
+  return Object.freeze({ zoom, x: clampPan(record.x), y: clampPan(record.y) });
+}
 export interface BoardWorkspacePreferences {
   /** Board twin presentation layers (persisted with the workspace). */
   readonly layers: BoardLayers;
+  readonly camera: BoardCameraPreferences;
 }
 export type DesignCanvasAppearance = 'dark' | 'light' | 'system';
 export type DesignCanvasDensity = 'comfortable' | 'compact';
@@ -242,7 +260,7 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
     canvasDensity: 'compact',
     layers: DEFAULT_DESIGN_LAYERS,
   },
-  board: { layers: DEFAULT_BOARD_LAYERS },
+  board: { layers: DEFAULT_BOARD_LAYERS, camera: DEFAULT_BOARD_CAMERA },
   simulate: DEFAULT_SIMULATE_LAYOUT,
 });
 
@@ -292,7 +310,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
         : defaults.design.canvasDensity,
       layers: normalizeDesignLayers(rawDesign.layers),
     },
-    board: { layers: normalizeBoardLayers(rawBoard.layers) },
+    board: { layers: normalizeBoardLayers(rawBoard.layers), camera: normalizeBoardCamera(rawBoard.camera) },
     simulate: normalizeSimulateLayout(rawSimulate),
   });
 }
@@ -400,8 +418,22 @@ export class WorkspacePreferencesStore {
   setBoardLayer(id: BoardLayerId, on: boolean): WorkspacePreferencesV1 {
     return this.#replace({
       ...this.#preferences,
-      board: { layers: Object.freeze({ ...this.#preferences.board.layers, [id]: on }) },
+      board: { ...this.#preferences.board, layers: Object.freeze({ ...this.#preferences.board.layers, [id]: on }) },
     });
+  }
+
+  setBoardCamera(camera: Partial<BoardCameraPreferences>): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      board: {
+        ...this.#preferences.board,
+        camera: normalizeBoardCamera({ ...this.#preferences.board.camera, ...camera }),
+      },
+    });
+  }
+
+  resetBoardCamera(): WorkspacePreferencesV1 {
+    return this.setBoardCamera(DEFAULT_BOARD_CAMERA);
   }
 
   setDesignLayer(id: DesignLayerId, on: boolean): WorkspacePreferencesV1 {
@@ -479,7 +511,7 @@ export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
       canvasDensity: DEFAULT_WORKSPACE_PREFERENCES.design.canvasDensity,
       layers: DEFAULT_WORKSPACE_PREFERENCES.design.layers,
     },
-    board: { layers: DEFAULT_WORKSPACE_PREFERENCES.board.layers },
+    board: { layers: DEFAULT_WORKSPACE_PREFERENCES.board.layers, camera: DEFAULT_WORKSPACE_PREFERENCES.board.camera },
     simulate: DEFAULT_WORKSPACE_PREFERENCES.simulate,
   });
 }

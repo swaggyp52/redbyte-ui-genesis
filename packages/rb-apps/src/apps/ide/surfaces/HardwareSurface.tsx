@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
+import {
+  BOARD_CAMERA_ZOOM_STEP,
+  boardCameraDensity,
+  computeBoardViewBox,
+  fitBoardCameraToBounds,
+  isDefaultBoardCamera,
+  panBoardCamera,
+  zoomBoardCamera,
+} from '../boardCamera';
 import { ProblemsPanel } from '../components/ProblemsPanel';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import { useEngineeringSelection } from '../engineeringSelection';
@@ -713,6 +722,88 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     workspacePreferencesStore.getSnapshot
   );
   const boardLayers = workspacePreferences.board.layers;
+  // ── Board document camera ────────────────────────────────────────────────
+  // Zoom and pan are workspace presentation owned by the preferences (with the
+  // layers); the surface owns the mechanics. A drag previews locally and commits
+  // once on release; wheel, keys and the bar commit per gesture.
+  const boardCamera = workspacePreferences.board.camera;
+  const [liveBoardCamera, setLiveBoardCamera] = useState<typeof boardCamera | null>(null);
+  const shownBoardCamera = liveBoardCamera ?? boardCamera;
+  const boardViewBox = computeBoardViewBox(shownBoardCamera);
+  const boardDensity = boardCameraDensity(shownBoardCamera);
+  const boardCanvasRef = useRef<HTMLDivElement | null>(null);
+  const boardPanRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: boolean; camera: typeof boardCamera } | null>(null);
+  const boardPanMovedRef = useRef(false);
+  const boardZoomBy = useCallback(
+    (factor: number) => {
+      workspacePreferencesStore.setBoardCamera(zoomBoardCamera(workspacePreferencesStore.getSnapshot().board.camera, factor));
+    },
+    []
+  );
+  const boardPanBy = useCallback((deltaX: number, deltaY: number) => {
+    workspacePreferencesStore.setBoardCamera(panBoardCamera(workspacePreferencesStore.getSnapshot().board.camera, deltaX, deltaY));
+  }, []);
+  const resetBoardCamera = useCallback(() => {
+    workspacePreferencesStore.resetBoardCamera();
+  }, []);
+  /** Screen pixels per board unit for the current viewBox — the pan scale for pointer deltas. */
+  const boardUnitsPerPixel = useCallback(() => {
+    const svg = boardCanvasRef.current?.querySelector('svg');
+    const rect = svg?.getBoundingClientRect();
+    if (!svg || !rect || rect.width <= 0) return 1;
+    const width = Number(boardViewBox.split(' ')[2]);
+    return Number.isFinite(width) && width > 0 ? width / rect.width : 1;
+  }, [boardViewBox]);
+  const handleBoardCanvasPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      boardPanMovedRef.current = false;
+      boardPanRef.current = {
+        pointerId: event.pointerId,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        moved: false,
+        camera: workspacePreferencesStore.getSnapshot().board.camera,
+      };
+    },
+    []
+  );
+  const handleBoardCanvasPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const pan = boardPanRef.current;
+      if (!pan || pan.pointerId !== event.pointerId) return;
+      const deltaX = event.clientX - pan.lastX;
+      const deltaY = event.clientY - pan.lastY;
+      if (!pan.moved && Math.hypot(deltaX, deltaY) < 4) return;
+      if (!pan.moved) {
+        pan.moved = true;
+        boardPanMovedRef.current = true;
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          /* pointer capture is unavailable in some test environments */
+        }
+      }
+      pan.lastX = event.clientX;
+      pan.lastY = event.clientY;
+      const scale = boardUnitsPerPixel();
+      // Dragging the board moves it with the pointer: the camera pans the other way.
+      pan.camera = panBoardCamera(pan.camera, -deltaX * scale * pan.camera.zoom, -deltaY * scale * pan.camera.zoom);
+      setLiveBoardCamera(pan.camera);
+    },
+    [boardUnitsPerPixel]
+  );
+  const handleBoardCanvasPointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = boardPanRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+    boardPanRef.current = null;
+    setLiveBoardCamera(null);
+    if (pan.moved) workspacePreferencesStore.setBoardCamera(pan.camera);
+    // A pan is not a click: resource handlers check the flag on this same event turn.
+    window.setTimeout(() => {
+      boardPanMovedRef.current = false;
+    }, 0);
+  }, []);
   const mappingProjectionById = useMemo(
     () => new Map(mappingProjection.map((projection) => [projection.logicalSignalId, projection])),
     [mappingProjection]
@@ -724,6 +815,68 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     const row = mappingRows.find((r) => r.id === selectedMappingRowId);
     return resolveBoardControlAlias(row?.pin) ?? null;
   }, [selectedMappingRowId, mappingRows]);
+  // Camera: frame the selected resource (reads the selection declared above).
+  const fitBoardCameraToSelected = useCallback(() => {
+    const alias = (selectedBoardResourceAlias ?? selectedMappingRowPin ?? '').trim();
+    const svg = boardCanvasRef.current?.querySelector('svg');
+    if (!alias || !svg) return;
+    const target =
+      svg.querySelector<SVGGraphicsElement>(`[data-board-alias="${alias}"]`) ??
+      svg.querySelector<SVGGraphicsElement>(`[data-testid="ide-hw-map-${alias.toLowerCase()}"]`) ??
+      svg.querySelector<SVGGraphicsElement>(`[data-testid="ide-hw-map-${alias.toLowerCase().replace(/^(ld|sw)(\d+)$/, '$1-$2')}"]`) ??
+      svg.querySelector<SVGGraphicsElement>(`[data-testid="ide-hw-map-${alias.toLowerCase().replace(/^btn(.)$/, 'btn-$1')}"]`);
+    const ctm = svg.getScreenCTM?.();
+    if (!target || !ctm) return;
+    // Screen box → board units through the SVG's own matrix; independent of group transforms.
+    const box = target.getBoundingClientRect();
+    const inverse = ctm.inverse();
+    const toBoard = (x: number, y: number) => {
+      const point = svg.createSVGPoint();
+      point.x = x;
+      point.y = y;
+      const mapped = point.matrixTransform(inverse);
+      return { x: mapped.x, y: mapped.y };
+    };
+    const topLeft = toBoard(box.left, box.top);
+    const bottomRight = toBoard(box.right, box.bottom);
+    workspacePreferencesStore.setBoardCamera(
+      fitBoardCameraToBounds({
+        x: Math.min(topLeft.x, bottomRight.x),
+        y: Math.min(topLeft.y, bottomRight.y),
+        width: Math.abs(bottomRight.x - topLeft.x),
+        height: Math.abs(bottomRight.y - topLeft.y),
+      })
+    );
+  }, [selectedBoardResourceAlias, selectedMappingRowPin]);
+  const handleBoardCanvasWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      boardZoomBy(event.deltaY < 0 ? BOARD_CAMERA_ZOOM_STEP : 1 / BOARD_CAMERA_ZOOM_STEP);
+    },
+    [boardZoomBy]
+  );
+  const handleBoardCanvasKey = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget) return;
+      const step = event.shiftKey ? 60 : 20;
+      let handled = true;
+      if (event.key === '+' || event.key === '=') boardZoomBy(BOARD_CAMERA_ZOOM_STEP);
+      else if (event.key === '-' || event.key === '_') boardZoomBy(1 / BOARD_CAMERA_ZOOM_STEP);
+      else if (event.key === '0') resetBoardCamera();
+      else if (event.key === 'f' || event.key === 'F') fitBoardCameraToSelected();
+      else if (event.key === 'ArrowLeft') boardPanBy(-step, 0);
+      else if (event.key === 'ArrowRight') boardPanBy(step, 0);
+      else if (event.key === 'ArrowUp') boardPanBy(0, -step);
+      else if (event.key === 'ArrowDown') boardPanBy(0, step);
+      else handled = false;
+      if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [boardPanBy, boardZoomBy, fitBoardCameraToSelected, resetBoardCamera]
+  );
   const selectedMappingRow = useMemo(
     () => (selectedMappingRowId ? mappingRows.find((row) => row.id === selectedMappingRowId) ?? null : null),
     [mappingRows, selectedMappingRowId]
@@ -3381,14 +3534,33 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     {selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
                     </p>
                   </div>
+                  <div className="rb-board-camera-bar" role="group" aria-label="Board camera" data-testid="ide-hw-board-camera">
+                    <button type="button" className="rb-board-camera-tool" onClick={() => boardZoomBy(1 / BOARD_CAMERA_ZOOM_STEP)} title="Zoom out (−)" aria-label="Zoom out" data-testid="ide-hw-board-zoom-out">−</button>
+                    <span className="rb-board-camera-zoom" data-testid="ide-hw-board-zoom" aria-live="off">{Math.round(shownBoardCamera.zoom * 100)}%</span>
+                    <button type="button" className="rb-board-camera-tool" onClick={() => boardZoomBy(BOARD_CAMERA_ZOOM_STEP)} title="Zoom in (+)" aria-label="Zoom in" data-testid="ide-hw-board-zoom-in">+</button>
+                    <button type="button" className="rb-board-camera-tool" onClick={fitBoardCameraToSelected} disabled={!(selectedBoardResourceAlias ?? selectedMappingRowPin)} title="Frame the selected resource (F)" data-testid="ide-hw-board-fit-selected">Fit selected</button>
+                    <button type="button" className="rb-board-camera-tool" onClick={resetBoardCamera} disabled={isDefaultBoardCamera(boardCamera)} title="Whole board (0)" data-testid="ide-hw-board-fit">Fit board</button>
+                  </div>
                 </header>
                 <div
+                  ref={boardCanvasRef}
                   className="rb-board-canvas"
                   data-testid="ide-hw-board-reference-graphic"
+                  data-density={boardDensity}
+                  data-zoom={Math.round(shownBoardCamera.zoom * 100)}
                   role="region"
-                  aria-label="Interactive Basys3 board assignment canvas"
+                  aria-label="Interactive Basys3 board assignment canvas. Drag to pan; Ctrl+wheel, + and − zoom; 0 fits the board; F frames the selected resource"
+                  tabIndex={0}
+                  onWheel={handleBoardCanvasWheel}
+                  onKeyDown={handleBoardCanvasKey}
+                  onPointerDown={handleBoardCanvasPointerDown}
+                  onPointerMove={handleBoardCanvasPointerMove}
+                  onPointerUp={handleBoardCanvasPointerUp}
+                  onPointerCancel={handleBoardCanvasPointerUp}
                 >
                   <Basys3BoardView
+                    viewBox={boardViewBox}
+                    density={boardDensity}
                     layers={boardLayers}
                     values={verifyLastRun ? boardValuesAtTick : null}
                     conflictAliases={conflictAliases}
@@ -3397,6 +3569,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : undefined}
                     assignmentMode={Boolean(selectedMappingRow)}
                     onSelectAlias={(alias) => {
+                      if (boardPanMovedRef.current) return;
                       if (!selectedMappingRow) {
                         // No signal selected: the resource itself is the object. Its owner row (if mapped) follows.
                         setSelectedBoardResourceAlias(alias);
