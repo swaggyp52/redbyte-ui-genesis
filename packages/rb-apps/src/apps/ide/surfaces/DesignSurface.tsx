@@ -2987,6 +2987,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   // Related… follows the selected boundary signal into its other representations.
   const designRelated = selectedNode ? relationshipIndex.resolveNode(selectedNode.id) : null;
+  // Failing checks of the current replay, as schematic nodes. A stale replay
+  // (the design changed since) draws nothing: the failure may no longer exist.
+  const replayMismatchNodeIds = useMemo(() => {
+    const rows = replaySession?.report?.rows ?? [];
+    if (rows.length === 0 || staleReplayBreadcrumb) return null;
+    const nodeIds = new Set<string>();
+    for (const row of rows) {
+      if (row.status !== 'fail') continue;
+      const relation = relationshipIndex.resolveRunSignal(row.signal) ?? relationshipIndex.resolveField(row.signal);
+      if (relation?.nodeId) nodeIds.add(relation.nodeId);
+    }
+    return nodeIds.size > 0 ? nodeIds : null;
+  }, [relationshipIndex, replaySession?.report?.rows, staleReplayBreadcrumb]);
 
   const handleInspectorInputToggle = useCallback(() => {
     if (!selectedNode || !onRuntimeSimSetInput) return;
@@ -4739,10 +4752,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const focusSelectedPath = useCallback(() => {
     const nodeId = selectedNode?.id ?? selectedWireContext?.targetNodeId ?? null;
     if (!nodeId) return;
+    // Driver = what drives this node (its fan-in cone). Loads is the fan-out trace.
     const fanin = getFaninCone(editorCircuit, nodeId);
-    const fanout = getFanoutCone(editorCircuit, nodeId);
-    const nodeIds = new Set([...fanin.nodeIds, ...fanout.nodeIds, nodeId]);
-    const wireIds = new Set([...fanin.wireIds, ...fanout.wireIds]);
+    const nodeIds = new Set([...fanin.nodeIds, nodeId]);
+    const wireIds = new Set([...fanin.wireIds]);
     if (selectedWireContext) wireIds.add(selectedWireContext.wireId);
     const wireHighlights = new Map<string, string[]>();
     wireIds.forEach((wireId) => wireHighlights.set(wireId, ['#fbbf24']));
@@ -7310,10 +7323,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             : null}
                           {' '}waiting in build status. Select a part or jump from the top status deck to resolve them.
                         </p>
-                      ) : !isEmptyCanvas ? (
-                        <p className="ide-copy rb-insp-idle-tip">
-                          Select a part, a wire, or a Verify-linked signal to open actions and live state.
-                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -7598,6 +7607,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 7h5M6.5 7l4-3.5M6.5 7l4 3.5M10.5 3.5h2M10.5 10.5h2" /></svg>
                       Loads
                     </button>
+                    {designRelated ? (
+                      <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-trace-related" />
+                    ) : null}
                   </div>
                   <span className="wb-toolbar-sep" />
                   <details className="rb-design-menu" data-testid="ide-design-layers" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
@@ -8422,6 +8434,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
                       layers={designLayers}
+                      mismatchNodeIds={replayMismatchNodeIds}
                       busGroups={designBusGroups}
                       changedNodeIds={changedNodeIds}
                       nodeIssueSeverities={nodeIssueSeverities}
