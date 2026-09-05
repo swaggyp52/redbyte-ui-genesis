@@ -1,5 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ProblemsPanel } from '../components/ProblemsPanel';
+import {
+  SIMULATE_EVIDENCE_FRACTION_MAX,
+  SIMULATE_EVIDENCE_FRACTION_MIN,
+  DEFAULT_SIMULATE_LAYOUT,
+  workspacePreferencesStore,
+} from '../workspacePreferences';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { TestVector } from '@redbyte/rb-utils';
 import {
@@ -668,6 +674,128 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const [verifyTab, setVerifyTab] = useState<VerifyDrawerTab>('why');
   const [layoutMode, setLayoutMode] = useState<VerifyLayoutMode>(() => resolveVerifyLayoutMode());
+
+  // ── Cases + evidence deck composition ─────────────────────────────────────
+  // The split, collapse and maximize state is workspace presentation, owned by
+  // the workspace preferences (persisted with the docks); Simulate only reads
+  // it and asks for changes. A drag previews the fraction locally and commits
+  // once on release, so the store is written per gesture, not per pointer move.
+  const simulateLayout = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  ).simulate;
+  const evidenceCollapsed = simulateLayout.evidenceCollapsed;
+  const deckMaximized = simulateLayout.maximized;
+  const labGridRef = useRef<HTMLDivElement | null>(null);
+  const deckDragRef = useRef<{ pointerId: number; live: number } | null>(null);
+  const [liveEvidenceFraction, setLiveEvidenceFraction] = useState<number | null>(null);
+  const evidenceFraction = liveEvidenceFraction ?? simulateLayout.evidenceFraction;
+  const deckLayoutIsDefault =
+    simulateLayout.evidenceFraction === DEFAULT_SIMULATE_LAYOUT.evidenceFraction &&
+    !evidenceCollapsed &&
+    deckMaximized === null;
+  const clampDeckFraction = useCallback((fraction: number) => {
+    const height = labGridRef.current?.getBoundingClientRect().height ?? 0;
+    let min = SIMULATE_EVIDENCE_FRACTION_MIN;
+    let max = SIMULATE_EVIDENCE_FRACTION_MAX;
+    if (height > 0) {
+      // Neither pane drops below a usable instrument height.
+      min = Math.max(min, SIMULATE_EVIDENCE_MIN_PX / height);
+      max = Math.min(max, 1 - SIMULATE_CASES_MIN_PX / height);
+    }
+    if (min > max) {
+      min = SIMULATE_EVIDENCE_FRACTION_MIN;
+      max = SIMULATE_EVIDENCE_FRACTION_MAX;
+    }
+    return Math.min(max, Math.max(min, fraction));
+  }, []);
+  const commitDeckFraction = useCallback(
+    (fraction: number) => {
+      workspacePreferencesStore.setSimulateLayout({
+        evidenceFraction: clampDeckFraction(fraction),
+        evidenceCollapsed: false,
+        maximized: null,
+      });
+    },
+    [clampDeckFraction]
+  );
+  const resetDeckLayout = useCallback(() => {
+    workspacePreferencesStore.resetSimulateLayout();
+  }, []);
+  const beginDeckResize = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || deckMaximized !== null) return;
+      const grid = labGridRef.current;
+      if (!grid) return;
+      event.preventDefault();
+      const handle = event.currentTarget;
+      try {
+        handle.setPointerCapture(event.pointerId);
+      } catch {
+        /* pointer capture is unavailable in some test environments */
+      }
+      deckDragRef.current = { pointerId: event.pointerId, live: simulateLayout.evidenceFraction };
+      const onMove = (moveEvent: PointerEvent) => {
+        const drag = deckDragRef.current;
+        if (!drag || moveEvent.pointerId !== drag.pointerId) return;
+        const rect = grid.getBoundingClientRect();
+        if (rect.height <= 0) return;
+        drag.live = clampDeckFraction((rect.bottom - moveEvent.clientY) / rect.height);
+        setLiveEvidenceFraction(drag.live);
+      };
+      const finish = () => {
+        const drag = deckDragRef.current;
+        deckDragRef.current = null;
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', finish);
+        handle.removeEventListener('pointercancel', finish);
+        setLiveEvidenceFraction(null);
+        if (drag) commitDeckFraction(drag.live);
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', finish);
+      handle.addEventListener('pointercancel', finish);
+    },
+    [clampDeckFraction, commitDeckFraction, deckMaximized, simulateLayout.evidenceFraction]
+  );
+  const handleDeckKey = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = event.shiftKey ? 0.1 : 0.02;
+      const current = simulateLayout.evidenceFraction;
+      let next: number | null = null;
+      if (event.key === 'ArrowUp') next = current + step;
+      else if (event.key === 'ArrowDown') next = current - step;
+      else if (event.key === 'Home') next = SIMULATE_EVIDENCE_FRACTION_MIN;
+      else if (event.key === 'End') next = SIMULATE_EVIDENCE_FRACTION_MAX;
+      else if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        resetDeckLayout();
+        return;
+      }
+      if (next === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      commitDeckFraction(next);
+    },
+    [commitDeckFraction, resetDeckLayout, simulateLayout.evidenceFraction]
+  );
+  const toggleDeckCollapsed = useCallback(() => {
+    workspacePreferencesStore.setSimulateLayout({ evidenceCollapsed: !evidenceCollapsed, maximized: null });
+  }, [evidenceCollapsed]);
+  const expandDeck = useCallback(() => {
+    workspacePreferencesStore.setSimulateLayout({ evidenceCollapsed: false, maximized: null });
+  }, []);
+  const toggleDeckMaximized = useCallback(
+    (pane: 'cases' | 'waveform') => {
+      workspacePreferencesStore.setSimulateLayout({
+        maximized: deckMaximized === pane ? null : pane,
+        evidenceCollapsed: false,
+      });
+    },
+    [deckMaximized]
+  );
   const [waveformDensity, setWaveformDensity] = useState<'small' | 'normal' | 'large'>('normal');
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
   const [tickWidth, setTickWidth] = useState(DEFAULT_VERIFY_TICK_WIDTH);
@@ -6090,12 +6218,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
         >
         <div
+          ref={labGridRef}
           className="rb-sim-lab-grid"
           data-testid="ide-verify-lab-grid"
           data-stimulus-layout="stable"
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
+          data-evidence-collapsed={evidenceCollapsed ? 'true' : undefined}
+          data-evidence-maximized={deckMaximized ?? undefined}
+          data-evidence-fraction={Math.round(evidenceFraction * 100)}
+          style={{ '--rb-sim-evidence-fr': `${(evidenceFraction * 100).toFixed(2)}%` } as React.CSSProperties}
         >
         {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
         {studioMode !== 'replay' ? (
@@ -6378,7 +6511,78 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </VerifyStimulusRegion>
         ) : null}
 
+        {studioMode !== 'replay' ? (
+        <div className="rb-sim-deck-split" data-testid="ide-verify-deck-split">
+          <div
+            role="separator"
+            tabIndex={0}
+            className="rb-sim-deck-handle"
+            data-testid="ide-verify-deck-handle"
+            aria-label={`Resize the evidence deck below the ${isSequentialRun ? 'timing' : 'cases'} table`}
+            aria-orientation="horizontal"
+            aria-valuemin={Math.round(SIMULATE_EVIDENCE_FRACTION_MIN * 100)}
+            aria-valuemax={Math.round(SIMULATE_EVIDENCE_FRACTION_MAX * 100)}
+            aria-valuenow={Math.round(evidenceFraction * 100)}
+            aria-valuetext={`Evidence deck ${Math.round(evidenceFraction * 100)}% of the workspace`}
+            aria-disabled={deckMaximized !== null ? 'true' : undefined}
+            title="Drag to resize · Arrow keys ±2% · Shift ±10% · Enter resets"
+            onPointerDown={beginDeckResize}
+            onKeyDown={handleDeckKey}
+            onDoubleClick={resetDeckLayout}
+          />
+          <div className="rb-sim-deck-tools" role="group" aria-label="Evidence deck layout">
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-collapse"
+              aria-pressed={evidenceCollapsed}
+              onClick={toggleDeckCollapsed}
+            >
+              {evidenceCollapsed ? 'Expand evidence' : 'Collapse evidence'}
+            </button>
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-maximize-cases"
+              aria-pressed={deckMaximized === 'cases'}
+              onClick={() => toggleDeckMaximized('cases')}
+            >
+              {deckMaximized === 'cases' ? 'Restore split' : `${isSequentialRun ? 'Timing' : 'Cases'} only`}
+            </button>
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-maximize-waveform"
+              aria-pressed={deckMaximized === 'waveform'}
+              onClick={() => toggleDeckMaximized('waveform')}
+            >
+              {deckMaximized === 'waveform' ? 'Restore split' : 'Evidence only'}
+            </button>
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-reset"
+              onClick={resetDeckLayout}
+              disabled={deckLayoutIsDefault}
+            >
+              Reset layout
+            </button>
+          </div>
+        </div>
+        ) : null}
+
         <VerifyWaveformRegion>
+          {evidenceCollapsed && studioMode !== 'replay' ? (
+            <div className="rb-sim-evidence-strip" data-testid="ide-verify-evidence-strip">
+              <span>
+                Evidence deck collapsed
+                {lastRun ? ` · ${lastRun.status === 'pass' ? 'PASS' : 'FAIL'} · ${lastRun.scenarioName}` : ' · no run yet'}
+              </span>
+              <button type="button" className="rb-sim-deck-tool" data-testid="ide-verify-evidence-expand" onClick={expandDeck}>
+                Expand
+              </button>
+            </div>
+          ) : null}
           {isDraftSession ? (
             <VerifyWaveformPlaceholder
               inputNames={stimulusPanelInputFields.map((f) => f.label ?? f.id)}
@@ -8638,6 +8842,10 @@ function formatTickWindowReason(input: {
   }
   return `Showing ${shownTicks.length} ticks for local context.`;
 }
+
+/** Smallest usable heights for the two panes of the lab grid, in CSS pixels. */
+const SIMULATE_EVIDENCE_MIN_PX = 120;
+const SIMULATE_CASES_MIN_PX = 160;
 
 function resolveVerifyLayoutMode(width?: number, height?: number): VerifyLayoutMode {
   const nextWidth =

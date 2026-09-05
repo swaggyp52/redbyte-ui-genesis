@@ -272,14 +272,29 @@
 .ide-root .rb-sim-inspector > .ide-button:last-child { margin-bottom: 8px; }
 .ide-root .rb-sim-inspector > .ide-button:disabled { opacity: 0.45; }
 
-/* Cases document: cases beside the inspector; the evidence deck below, capped. */
+/* Cases document: cases beside the inspector; a splitter row; the evidence deck below.
+   The deck's share is a workspace preference (--rb-sim-evidence-fr, set inline by Simulate). */
 .ide-root .rb-sim-lab-grid {
+  --rb-sim-evidence-fr: 36%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 296px;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 280px);
-  grid-template-areas: 'cases inspector' 'evidence evidence';
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, var(--rb-sim-evidence-fr));
+  grid-template-areas: 'cases inspector' 'split split' 'evidence evidence';
   gap: 0;
 }
+.ide-root .rb-sim-lab-grid > .rb-sim-deck-split { grid-area: split; display: flex; align-items: center; height: 22px; min-height: 22px; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-sim-deck-handle { flex: 1 1 auto; align-self: stretch; position: relative; cursor: row-resize; touch-action: none; }
+.ide-root .rb-sim-deck-handle::before { content: ''; position: absolute; left: 50%; top: 50%; width: 36px; height: 3px; margin: -1px 0 0 -18px; border-radius: 2px; background: var(--wb-border-strong); }
+.ide-root .rb-sim-deck-handle:hover::before, .ide-root .rb-sim-deck-handle:focus-visible::before { background: var(--wb-focus); }
+.ide-root .rb-sim-deck-handle:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-sim-deck-handle[aria-disabled='true'] { cursor: default; }
+.ide-root .rb-sim-deck-tools { display: flex; align-items: center; gap: 4px; flex: none; padding: 0 var(--wb-space-2); }
+.ide-root .rb-sim-deck-tool { height: 18px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; cursor: default; }
+.ide-root .rb-sim-deck-tool:hover { color: var(--wb-text); border-color: var(--wb-border-strong); }
+.ide-root .rb-sim-deck-tool:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-sim-deck-tool[aria-pressed='true'] { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-active-bg); }
+.ide-root .rb-sim-deck-tool:disabled { opacity: 0.45; }
+.ide-root .rb-sim-evidence-strip { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 28px; padding: 0 var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); white-space: nowrap; }
 .ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-sim-lab-grid > .rb-sim-inspector { grid-area: inspector; min-height: 0; }
 .ide-root .rb-sim-lab-grid > .rb-sim-region--waveform { grid-area: evidence; min-height: 0; overflow: auto; border-top: 1px solid var(--wb-border-strong); }
@@ -293,7 +308,7 @@
 /* Waveform tab: the evidence deck becomes the document; cases shrink to a strip. */
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr); grid-template-areas: 'evidence inspector'; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] > .rb-sim-region--waveform { border-top: 0; }
-.ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { grid-template-rows: minmax(0, 1fr) minmax(0, 220px); }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] > .rb-sim-deck-split { display: none; }
 
 /* Timing Lab: events in time — a dense table plus an editor strip for the selected event. */
 .ide-root .rb-timing { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; outline: none; background: var(--wb-surface); }
@@ -370,7 +385,7 @@
 .ide-root .rb-timing-in-group { letter-spacing: 0.04em; }
 /* Narrow viewports: the Cases/Timing grid stacks; the toolbar wraps. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) minmax(0, 30%) minmax(0, 150px); grid-template-areas: 'cases' 'inspector' 'evidence'; }
+  .ide-root .rb-sim-lab-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) minmax(0, 30%) auto minmax(0, 150px); grid-template-areas: 'cases' 'inspector' 'split' 'evidence'; }
   .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
   .ide-root .rb-sim-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); }
 }
@@ -406,8 +421,7 @@
 .ide-root .rb-timing-table-details { border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details > summary { padding: 4px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); cursor: default; }
 
-/* Cases/Timing document: the evidence row is the verdict line and repair panels, sized to content. */
-.ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] { grid-template-rows: minmax(0, 1fr) minmax(0, 36%); }
+/* Cases/Timing document: the evidence row shares the base rows; the deck share is the preference. */
 .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'] > .rb-sim-region--waveform { min-height: 0; }
 
 .ide-root .rb-sig-filter { display: block; width: 100%; height: 22px; margin: 4px 0 2px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: 3px; color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-ui); }
@@ -448,3 +462,18 @@
 .ide-root .rb-sig-move { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0; opacity: 0; }
 .ide-root .rb-sig-entry:hover .rb-sig-move, .ide-root .rb-sig-entry:focus-within .rb-sig-move { opacity: 1; }
 .ide-root .rb-sig-move .wb-btn { padding: 0 4px; min-width: 0; height: 18px; font-size: 9px; line-height: 18px; }
+
+/* Evidence deck collapsed: a one-line strip keeps the verdict and an Expand control; cases take the height. */
+.ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(0, 1fr) auto 28px; }
+.ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] > .rb-sim-region--waveform { overflow: hidden; }
+.ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] > .rb-sim-region--waveform > :not(.rb-sim-evidence-strip) { display: none; }
+/* One pane maximized: the other pane keeps its state but takes no height. */
+.ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0; }
+.ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] > .rb-sim-region--waveform { overflow: hidden; border-top: 0; }
+.ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr); }
+.ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] > .rb-sim-region--stimulus { overflow: hidden; }
+@media (max-width: 899px) {
+  .ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) minmax(0, 30%) auto 28px; }
+  .ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) minmax(0, 30%) auto 0; }
+  .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 minmax(0, 30%) auto minmax(0, 1fr); }
+}

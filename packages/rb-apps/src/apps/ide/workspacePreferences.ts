@@ -55,6 +55,44 @@ function normalizeBoardLayers(raw: unknown): BoardLayers {
   for (const id of BOARD_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
   return Object.freeze(next);
 }
+/** Cases/Timing + evidence deck composition in Simulate (persisted with the workspace). */
+export type SimulateDeckMaximized = 'cases' | 'waveform' | null;
+export interface SimulateWorkspacePreferences {
+  /** Share of the lab grid height given to the evidence deck (waveform / verdict). */
+  readonly evidenceFraction: number;
+  /** The deck is folded to a one-line strip; the cases take the height. */
+  readonly evidenceCollapsed: boolean;
+  /** One pane takes the whole grid; null = split. */
+  readonly maximized: SimulateDeckMaximized;
+}
+export const SIMULATE_EVIDENCE_FRACTION_MIN = 0.15;
+export const SIMULATE_EVIDENCE_FRACTION_MAX = 0.85;
+export const DEFAULT_SIMULATE_EVIDENCE_FRACTION = 0.36;
+export const DEFAULT_SIMULATE_LAYOUT: SimulateWorkspacePreferences = Object.freeze({
+  evidenceFraction: DEFAULT_SIMULATE_EVIDENCE_FRACTION,
+  evidenceCollapsed: false,
+  maximized: null,
+});
+export function clampSimulateEvidenceFraction(value: unknown): number {
+  const fraction = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_SIMULATE_EVIDENCE_FRACTION;
+  const clamped = Math.min(SIMULATE_EVIDENCE_FRACTION_MAX, Math.max(SIMULATE_EVIDENCE_FRACTION_MIN, fraction));
+  return Math.round(clamped * 1000) / 1000;
+}
+export function normalizeSimulateLayout(raw: unknown): SimulateWorkspacePreferences {
+  const record = isRecord(raw) ? raw : {};
+  const maximized = record.maximized === 'cases' || record.maximized === 'waveform' ? record.maximized : null;
+  return Object.freeze({
+    evidenceFraction: clampSimulateEvidenceFraction(record.evidenceFraction),
+    evidenceCollapsed: record.evidenceCollapsed === true,
+    maximized,
+  });
+}
+export interface SimulateLayoutUpdate {
+  readonly evidenceFraction?: number;
+  readonly evidenceCollapsed?: boolean;
+  readonly maximized?: SimulateDeckMaximized;
+}
+
 export interface BoardWorkspacePreferences {
   /** Board twin presentation layers (persisted with the workspace). */
   readonly layers: BoardLayers;
@@ -87,6 +125,7 @@ export interface WorkspacePreferencesV1 {
   readonly surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>;
   readonly design: DesignWorkspacePreferences;
   readonly board: BoardWorkspacePreferences;
+  readonly simulate: SimulateWorkspacePreferences;
 }
 
 export interface WorkspacePresetDefinition {
@@ -204,6 +243,7 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
     layers: DEFAULT_DESIGN_LAYERS,
   },
   board: { layers: DEFAULT_BOARD_LAYERS },
+  simulate: DEFAULT_SIMULATE_LAYOUT,
 });
 
 export function parseWorkspacePreferences(raw: string | null | undefined): WorkspacePreferencesV1 {
@@ -230,6 +270,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
 
   const rawDesign = isRecord(value.design) ? value.design : {};
   const rawBoard = isRecord(value.board) ? value.board : {};
+  const rawSimulate = isRecord(value.simulate) ? value.simulate : {};
   const activePresetId = isWorkspacePresetId(value.activePresetId)
     ? value.activePresetId
     : value.activePresetId === null
@@ -252,6 +293,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
       layers: normalizeDesignLayers(rawDesign.layers),
     },
     board: { layers: normalizeBoardLayers(rawBoard.layers) },
+    simulate: normalizeSimulateLayout(rawSimulate),
   });
 }
 
@@ -339,6 +381,22 @@ export class WorkspacePreferencesStore {
     });
   }
 
+  setSimulateLayout(update: SimulateLayoutUpdate): WorkspacePreferencesV1 {
+    const current = this.#preferences.simulate;
+    return this.#replace({
+      ...this.#preferences,
+      simulate: normalizeSimulateLayout({
+        evidenceFraction: update.evidenceFraction ?? current.evidenceFraction,
+        evidenceCollapsed: update.evidenceCollapsed ?? current.evidenceCollapsed,
+        maximized: update.maximized === undefined ? current.maximized : update.maximized,
+      }),
+    });
+  }
+
+  resetSimulateLayout(): WorkspacePreferencesV1 {
+    return this.#replace({ ...this.#preferences, simulate: DEFAULT_SIMULATE_LAYOUT });
+  }
+
   setBoardLayer(id: BoardLayerId, on: boolean): WorkspacePreferencesV1 {
     return this.#replace({
       ...this.#preferences,
@@ -422,6 +480,7 @@ export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
       layers: DEFAULT_WORKSPACE_PREFERENCES.design.layers,
     },
     board: { layers: DEFAULT_WORKSPACE_PREFERENCES.board.layers },
+    simulate: DEFAULT_WORKSPACE_PREFERENCES.simulate,
   });
 }
 
