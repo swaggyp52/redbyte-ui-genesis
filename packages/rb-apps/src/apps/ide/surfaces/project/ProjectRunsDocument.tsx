@@ -89,13 +89,13 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
                       key={run.runId}
                       aria-selected={sameEngineeringObject(selected, ref)}
                       data-testid={`ide-project-run-${run.runId}`}
-                      data-tone={run.status === 'pass' ? 'ok' : 'error'}
+                      data-tone={isCompare ? (run.status === 'pass' ? 'ok' : 'error') : undefined}
                       data-current={isCurrent ? 'true' : 'false'}
                       className={isCurrent ? undefined : 'is-stale'}
                       onClick={() => onSelect(ref)}
-                      onDoubleClick={() => evidence && onOpenDocument(evidence)}
+                      onDoubleClick={() => evidence && index === 0 && onOpenDocument(evidence)}
                     >
-                      <td className="is-mono" data-tone={run.status === 'pass' ? 'ok' : 'error'}>{run.status === 'pass' ? 'PASS' : 'FAIL'}</td>
+                      <td className="is-mono" data-tone={isCompare ? (run.status === 'pass' ? 'ok' : 'error') : undefined}>{isCompare ? (run.status === 'pass' ? 'PASS' : 'FAIL') : 'observed'}</td>
                       <td className="is-mono">{isCompare ? 'compare' : 'observe'}</td>
                       <td className="is-mono">{run.scenarioName ?? '—'}</td>
                       <td className="is-mono">{isCompare ? `${run.passedRows}/${run.passedRows + run.failedRows}` : '—'}</td>
@@ -111,13 +111,13 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
                       </td>
                       <td className="is-mono" title={run.ranAtIso}>{formatRelative(run.ranAtIso)}</td>
                       <td>
-                        {evidence ? (
+                        {evidence && index === 0 ? (
                           <button
                             type="button"
                             className="wb-btn wb-btn--ghost"
                             onClick={(event) => { event.stopPropagation(); onOpenDocument(evidence); }}
                             data-testid={`ide-project-run-evidence-${run.runId}`}
-                            title={`Open the waveform of scenario ${run.scenarioName ?? ''}`.trim()}
+                            title={`Open the current waveform of scenario ${run.scenarioName ?? ''}`.trim()}
                           >
                             Evidence
                           </button>

@@ -1263,16 +1263,22 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     );
     return recommendBoardResource({ row: selectedMappingRow, compatibleResources: compatiblePlannerResources, occupiedPins });
   }, [compatiblePlannerResources, mappingRows, selectedMappingRow]);
-  const [lastAssignment, setLastAssignment] = useState<{ rowId: string; label: string; previousPin: string } | null>(null);
+  const [lastAssignment, setLastAssignment] = useState<{ rowId: string; label: string; previousPin: string; assignedPin: string } | null>(null);
   const assignPin = useCallback(
     (rowId: string, packagePin: string) => {
       if (!onSetMappingPin) return;
       const row = mappingRows.find((entry) => entry.id === rowId);
-      setLastAssignment({ rowId, label: row?.label ?? rowId, previousPin: row?.pin ?? '' });
+      setLastAssignment({ rowId, label: row?.label ?? rowId, previousPin: row?.pin ?? '', assignedPin: packagePin });
       onSetMappingPin(rowId, packagePin);
     },
     [mappingRows, onSetMappingPin]
   );
+  // Undo is offered only while the row still holds what this step assigned; a bus
+  // plan or any other write in between retires it (it would restore a stale pin).
+  const undoableAssignment =
+    lastAssignment && (mappingRows.find((row) => row.id === lastAssignment.rowId)?.pin ?? '') === lastAssignment.assignedPin
+      ? lastAssignment
+      : null;
   const undoLastAssignment = useCallback(() => {
     if (!lastAssignment || !onSetMappingPin) return;
     onSetMappingPin(lastAssignment.rowId, lastAssignment.previousPin);
@@ -1820,6 +1826,44 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     mappingRows,
     selectedSimulatedBoardSample,
   ]);
+
+  // Values for the board twin: only mapped resources, only from the recorded run
+  // at the followed tick (the last sample when nothing is followed). Unmapped
+  // resources stay null and draw nothing; the interactive Live trace never leaks in.
+  const boardValuesAtTick = useMemo(() => {
+    const sw: (0 | 1 | null)[] = Array.from({ length: 16 }, () => null);
+    const ld: (0 | 1 | null)[] = Array.from({ length: 16 }, () => null);
+    if (recordedVerifyTrace.length === 0) return { sw, ld };
+    const sample =
+      (followedCaseTick != null ? recordedVerifyTrace.find((entry) => entry.tick === followedCaseTick) : null) ??
+      recordedVerifyTrace[recordedVerifyTrace.length - 1];
+    if (!sample) return { sw, ld };
+    const signalEntries = Object.entries(sample.signals);
+    for (const row of mappingRows) {
+      if (!row.pin.trim()) continue;
+      const lookupKeys = new Set(
+        [
+          ...getIoSignalLookupKeys(row, mappingRows),
+          row.id,
+          row.label,
+          row.nodeId,
+          row.nodeId ? `${row.nodeId}.out` : '',
+          row.nodeId ? `${row.nodeId}.in` : '',
+        ]
+          .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
+          .map(normalizeIoSignalKey)
+      );
+      const matched = signalEntries.find(([key]) => lookupKeys.has(normalizeIoSignalKey(key)));
+      if (!matched) continue;
+      const value = matched[1] === 1 ? 1 : 0;
+      const alias = resolveBoardControlAlias(row.pin);
+      const switchMatch = /^SW(\d+)$/i.exec(alias ?? '');
+      const ledMatch = /^LD(\d+)$/i.exec(alias ?? '');
+      if (switchMatch && row.direction === 'in') sw[Number(switchMatch[1])] = value;
+      if (ledMatch && row.direction === 'out') ld[Number(ledMatch[1])] = value;
+    }
+    return { sw, ld };
+  }, [followedCaseTick, mappingRows, recordedVerifyTrace]);
 
   interface SignalChangeEvent {
     tick: number;
@@ -3346,7 +3390,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 >
                   <Basys3BoardView
                     layers={boardLayers}
-                    values={verifyLastRun ? simulatedBoardState : null}
+                    values={verifyLastRun ? boardValuesAtTick : null}
                     conflictAliases={conflictAliases}
                     mappedAliases={mapModeAliases}
                     highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
@@ -3390,21 +3434,28 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       ) : null}
                       <div className="rb-fact"><dt>Signal</dt><dd>{mappingRows.find((row) => row.pin.trim() === selectedBoardResource.packagePin)?.label ?? 'Unassigned'}</dd></div>
                     </dl>
-                    {nextMappingIssueRow && onSetMappingPin ? (
-                      <div className="rb-board-editor-actions">
-                        <IdeButton
-                          tone="secondary"
-                          onClick={() => {
-                            assignPin(nextMappingIssueRow.id, selectedBoardResource.packagePin);
-                            chooseMappingRow(nextMappingIssueRow.id);
-                          }}
-                          testId="ide-hw-map-next-here"
-                          title={`Assign ${nextMappingIssueRow.label} to ${selectedBoardResource.alias}`}
-                        >
-                          Map {nextMappingIssueRow.label} here
-                        </IdeButton>
-                      </div>
-                    ) : null}
+                    {nextMappingIssueRow && onSetMappingPin ? (() => {
+                      const compatible = buildAllowedBoardAliasesForRow(nextMappingIssueRow)?.has(selectedBoardResource.alias) ?? false;
+                      const owner = mappingRows.find((row) => row.pin.trim() === selectedBoardResource.packagePin && row.id !== nextMappingIssueRow.id) ?? null;
+                      const reason = owner ? `owned by ${owner.label}` : !compatible ? `not compatible with ${nextMappingIssueRow.label}` : null;
+                      return (
+                        <div className="rb-board-editor-actions">
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() => {
+                              assignPin(nextMappingIssueRow.id, selectedBoardResource.packagePin);
+                              chooseMappingRow(nextMappingIssueRow.id);
+                            }}
+                            disabled={Boolean(reason)}
+                            testId="ide-hw-map-next-here"
+                            title={reason ? `${selectedBoardResource.alias} is ${reason}` : `Assign ${nextMappingIssueRow.label} to ${selectedBoardResource.alias}`}
+                          >
+                            Map {nextMappingIssueRow.label} here
+                          </IdeButton>
+                          {reason ? <span className="ide-copy">{selectedBoardResource.alias} is {reason}.</span> : null}
+                        </div>
+                      );
+                    })() : null}
                   </section>
                 ) : null}
                 <section
@@ -3455,7 +3506,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         <div className="rb-board-recommend" data-testid="ide-hw-recommendation">
                           <span className="ide-surface-block-label">Recommended</span>
                           <code>{recommendedResource.alias}</code>
-                          <span className="ide-copy">package pin {recommendedResource.packagePin} · first free {selectedMappingRow.direction === 'in' ? 'switch' : 'LED'} in order</span>
+                          <span className="ide-copy">
+                            package pin {recommendedResource.packagePin} ·{' '}
+                            {(() => {
+                              const family = /^SW/.test(recommendedResource.alias) ? 'switch' : /^BTN/.test(recommendedResource.alias) ? 'button' : /^LD/.test(recommendedResource.alias) ? 'LED' : /^CLK/.test(recommendedResource.alias) ? 'clock pin' : 'resource';
+                              const indexMatch = /\[(\d+)\]/.exec(selectedMappingRow.label) ?? /(\d+)$/.exec(selectedMappingRow.id);
+                              const byIndex = indexMatch && recommendedResource.alias.endsWith(indexMatch[1]);
+                              return byIndex ? `${family} matching bit ${indexMatch[1]}` : `first free ${family} in order`;
+                            })()}
+                          </span>
                           <IdeButton
                             tone="primary"
                             onClick={() => {
@@ -3483,12 +3542,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             Next: {nextMappingIssueRow.label} →
                           </IdeButton>
                         ) : null}
-                        {lastAssignment ? (
+                        {undoableAssignment ? (
                           <IdeButton
                             tone="ghost"
                             onClick={undoLastAssignment}
                             testId="ide-hw-undo-assignment"
-                            title={`Restore ${lastAssignment.label} to ${lastAssignment.previousPin || 'unmapped'}`}
+                            title={`Restore ${undoableAssignment.label} to ${undoableAssignment.previousPin || 'unmapped'}`}
                           >
                             Undo
                           </IdeButton>

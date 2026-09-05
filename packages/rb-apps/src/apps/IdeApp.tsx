@@ -2706,16 +2706,17 @@ export const IdeApp: React.FC = () => {
   }, [projectProblems, publishProblems]);
   const problemCounts = useMemo(() => countProblems(projectProblems), [projectProblems]);
   // The bottom panel reveals itself once when something newly actionable appears
-  // (the error + warning count rises) — never merely because it exists. Hiding
-  // it again sticks until the next such event.
+  // (the error count rises; draft warnings from placing parts do not count) —
+  // never merely because it exists. Hiding it again sticks until the next such
+  // event; a blocking state (compiler error, failed compare) still keeps it open.
   const lastActionableCountRef = useRef<number>(-1);
   useEffect(() => {
-    const count = problemCounts.error + problemCounts.warning;
+    const count = problemCounts.error;
     const previous = lastActionableCountRef.current;
     lastActionableCountRef.current = count;
     if (previous < 0 || count <= previous) return;
     workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true });
-  }, [activeMode, problemCounts.error, problemCounts.warning]);
+  }, [activeMode, problemCounts.error]);
   const navigatorEntries = useMemo<NavigatorEntry[]>(() => {
     const documentLabels: Record<string, string> = {};
     for (const doc of documentHost.open) {

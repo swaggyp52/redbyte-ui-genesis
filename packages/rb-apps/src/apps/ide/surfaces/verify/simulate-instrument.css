@@ -442,3 +442,9 @@
 /* A stale case (design, stimulus or mapping changed since the run): observed cells recede. */
 .ide-root .ide-case-lab-row.is-stale .ide-case-lab-obs { opacity: 0.55; }
 .ide-root .ide-case-lab-row.is-stale .ide-case-lab-result { color: var(--wb-text-3); font-style: italic; }
+
+/* Lane reorder controls appear on hover or focus; the row itself takes Alt+Up/Down. */
+.ide-root .rb-sig-entry { position: relative; }
+.ide-root .rb-sig-move { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0; opacity: 0; }
+.ide-root .rb-sig-entry:hover .rb-sig-move, .ide-root .rb-sig-entry:focus-within .rb-sig-move { opacity: 1; }
+.ide-root .rb-sig-move .wb-btn { padding: 0 4px; min-width: 0; height: 18px; font-size: 9px; line-height: 18px; }

@@ -23,6 +23,7 @@ export interface HandoffOverviewDocumentProps {
   readonly packageHash: string;
   readonly stateTitle: string;
   readonly stateReason: string;
+  /** Simulation evidence is stale: the design, stimulus or mapping changed after the last run. */
   readonly isStale: boolean;
   readonly activeConstraintSetName: string | null;
   /** Constraint-set id the Board document opens on. */
@@ -38,6 +39,14 @@ export interface HandoffOverviewDocumentProps {
 }
 
 const PRESENT_CLASS = 'rb-presenting';
+
+/** Enter or Space activates a row that acts as a link. */
+const rowKeyHandler = (activate: () => void) => (event: React.KeyboardEvent) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    activate();
+  }
+};
 
 /**
  * Handoff Overview — the engineering dossier derived entirely from canonical
@@ -112,7 +121,20 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
   const visibleDiagnostics = diagnostics ?? [...viewModel.errors, ...viewModel.warnings];
   const errorCount = visibleDiagnostics.filter((entry) => entry.severity === 'error').length;
   const warningCount = visibleDiagnostics.length - errorCount;
-  const xdcLines = viewModel.pinTable.filter((row) => row.status === 'mapped').length * 2;
+  // Constraint facts come from the generated artifact itself, never from arithmetic.
+  const xdcArtifact = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase().endsWith('.xdc')) ?? null;
+  const xdcLineCount = xdcArtifact ? xdcArtifact.content.split(/\r?\n/).filter((line) => line.trim().length > 0).length : null;
+  const packageShaText = downloadEvidence?.packageHash ?? (downloadEvidence ? 'downloaded · legacy receipt, hash unavailable' : 'not downloaded yet');
+
+  // Figures and tables are numbered in render order; only what renders counts.
+  const hasArchitecture = Boolean(circuit && circuit.nodes.length > 0);
+  const hasWaveform = Boolean(lastRun && (lastRun.waveform?.length ?? 0) > 0);
+  const figArchitecture = hasArchitecture ? 1 : 0;
+  const figWaveform = hasWaveform ? figArchitecture + 1 : 0;
+  const figBoard = Math.max(figArchitecture, figWaveform) + 1;
+  const tableChecks = reportRows.length > 0 ? 1 : 0;
+  const tableMapping = tableChecks + 1;
+  const tableManifest = tableMapping + 1;
 
   // Presentation mode: the same page without workbench chrome, on screen. Escape ends it.
   const [presenting, setPresenting] = useState(false);
@@ -147,7 +169,15 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
     onOpenDocument?.(waveformDocument);
     onSelect?.({ kind: 'case-tick', scenarioId, tick });
   };
+  const openArtifacts = () => {
+    onOpenFiles?.();
+    onOpenDocument?.({ kind: 'package-artifact' });
+  };
   const linkable = Boolean(onOpenDocument);
+  const linkRowProps = (activate: () => void) =>
+    linkable
+      ? { role: 'button' as const, tabIndex: 0, onClick: activate, onKeyDown: rowKeyHandler(activate) }
+      : {};
 
   return (
     <article
@@ -192,7 +222,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
         <div className="rb-fact" data-tone={downloadEvidence?.packageHash ? 'ok' : undefined}>
           <dt>Package SHA-256</dt>
           <dd className="is-mono" title="SHA-256 of the exact ZIP bytes of the last download that still matches this design" data-testid="ide-package-handoff-package-sha">
-            {downloadEvidence?.packageHash ?? 'not downloaded yet'}
+            {packageShaText}
           </dd>
         </div>
         <div className="rb-fact" data-tone={isStale ? 'warn' : undefined}><dt>State</dt><dd>{stateReason}</dd></div>
@@ -201,7 +231,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
           <dt>Mapping</dt>
           <dd className="is-mono">{mapped}/{required} required</dd>
         </div>
-        <div className="rb-fact" data-tone={lastRun ? (lastRun.status === 'pass' ? 'ok' : 'error') : undefined}>
+        <div className="rb-fact" data-tone={lastRun ? (runIsCompare ? (lastRun.status === 'pass' ? 'ok' : 'error') : undefined) : undefined}>
           <dt>Simulation</dt>
           <dd className="is-mono">
             {lastRun
@@ -213,7 +243,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
         </div>
         <div className="rb-fact">
           <dt>Constraints</dt>
-          <dd>{activeConstraintSetName ?? 'Live mapping'} · {xdcLines} XDC lines · LVCMOS33</dd>
+          <dd>
+            {activeConstraintSetName ?? 'Live mapping'}
+            {xdcArtifact && xdcLineCount != null ? ` · ${xdcLineCount} lines in ${xdcArtifact.path}` : ''}
+          </dd>
         </div>
       </dl>
 
@@ -230,7 +263,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
               </button>
             ) : null}
           </header>
-          {circuit && circuit.nodes.length > 0 ? (
+          {hasArchitecture && circuit ? (
             <figure className="rb-handoff-figure">
               <ArchitecturePreview
                 circuit={circuit}
@@ -241,7 +274,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                   onSelect?.({ kind: 'node', moduleId: 'top', nodeId });
                 } : undefined}
               />
-              <figcaption>Figure 1 — Architecture of {topName}: boundary signals, module instances and the nets between them. Click a block to open it in Design.</figcaption>
+              <figcaption>
+                Figure {figArchitecture} — Architecture of {topName}: boundary signals, module instances and the nets between them.
+                {linkable ? <span className="rb-handoff-click"> Click a block to open it in Design.</span> : null}
+              </figcaption>
             </figure>
           ) : (
             <div className="wb-empty">No circuit.</div>
@@ -270,7 +306,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
           </header>
           {lastRun ? (
             <>
-              <HandoffWaveformFigure run={lastRun} onSelectTick={linkable ? openWaveformTick : undefined} />
+              {hasWaveform ? <HandoffWaveformFigure run={lastRun} figureNumber={figWaveform} onSelectTick={linkable ? openWaveformTick : undefined} /> : null}
               {reportRows.length > 0 ? (
                 <div className="wb-table-frame">
                   <table className="wb-table" data-testid="ide-package-handoff-checks">
@@ -282,9 +318,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                         <tr
                           key={`${row.signal}-${row.tick}-${index}`}
                           className={`${row.status === 'fail' ? 'is-fail' : ''}${linkable ? ' is-link' : ''}`}
-                          onClick={linkable ? () => openCase(row.tick) : undefined}
-                          tabIndex={linkable ? 0 : undefined}
-                          onKeyDown={linkable ? (event) => { if (event.key === 'Enter') openCase(row.tick); } : undefined}
+                          {...linkRowProps(() => openCase(row.tick))}
                         >
                           <td className="is-mono">{row.signal}</td>
                           <td className="is-mono">t{row.tick}</td>
@@ -295,7 +329,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                       ))}
                     </tbody>
                   </table>
-                  {reportRows.length > 32 ? <p className="wb-toolbar-meta">Table 1 shows 32 of {reportRows.length} checks; the Cases document lists them all.</p> : <p className="wb-toolbar-meta">Table 1 — Checks compared by the browser simulation.</p>}
+                  <p className="wb-toolbar-meta">
+                    Table {tableChecks} — {reportRows.length > 32 ? `32 of ${reportRows.length} checks compared by the browser simulation; the Cases document lists them all.` : 'Checks compared by the browser simulation.'}
+                    {linkable ? <span className="rb-handoff-click"> A row opens its case.</span> : null}
+                  </p>
                 </div>
               ) : null}
             </>
@@ -324,7 +361,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                 else onOpenDocument?.(boardDocument);
               }}
             />
-            <figcaption>Figure 3 — {boardLabel} with the {mapped} mapped resources highlighted. Click a resource to open its signal in Board & Constraints.</figcaption>
+            <figcaption>
+              Figure {figBoard} — {boardLabel} with the {mapped} mapped resources highlighted.
+              {linkable ? <span className="rb-handoff-click"> Click a resource to open its signal in Board & Constraints.</span> : null}
+            </figcaption>
           </figure>
           <div className="wb-table-frame">
             <table className="wb-table" data-testid="ide-package-handoff-mapping">
@@ -336,9 +376,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                   <tr
                     key={row.rowId ?? row.port}
                     className={`${row.status === 'missing' ? 'is-stale' : ''}${linkable ? ' is-link' : ''}`}
-                    onClick={linkable ? () => openSignalRow(row) : undefined}
-                    tabIndex={linkable ? 0 : undefined}
-                    onKeyDown={linkable ? (event) => { if (event.key === 'Enter') openSignalRow(row); } : undefined}
+                    {...linkRowProps(() => openSignalRow(row))}
                   >
                     <td className="is-mono">{row.logicalLabel ?? row.port}</td>
                     <td className="is-mono">{row.direction}</td>
@@ -350,7 +388,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                 ))}
               </tbody>
             </table>
-            <p className="wb-toolbar-meta">Table 2 — Logical signals, their artifact ports and package pins; each row opens the signal in Board & Constraints.</p>
+            <p className="wb-toolbar-meta">
+              Table {tableMapping} — Logical signals, their artifact ports and package pins.
+              {linkable ? <span className="rb-handoff-click"> A row opens the signal in Board & Constraints.</span> : null}
+            </p>
           </div>
         </section>
 
@@ -370,9 +411,8 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                   <tr
                     key={artifact.path}
                     className={linkable ? 'is-link' : undefined}
-                    onClick={linkable ? () => { onOpenFiles?.(); onOpenDocument?.({ kind: 'package-artifact' }); } : undefined}
-                    tabIndex={linkable ? 0 : undefined}
                     data-testid={`ide-package-handoff-artifact-${artifact.path.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`}
+                    {...linkRowProps(openArtifacts)}
                   >
                     <td className="is-mono">{artifact.path}</td>
                     <td className="is-mono">{artifact.kind}</td>
@@ -383,7 +423,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                 ))}
               </tbody>
             </table>
-            <p className="wb-toolbar-meta">Table 3 — Every file of the package with its role; a row opens the artifact document.</p>
+            <p className="wb-toolbar-meta">
+              Table {tableManifest} — Every file of the package with its role.
+              {linkable ? <span className="rb-handoff-click"> A row opens the artifact document.</span> : null}
+            </p>
           </div>
         </section>
 
@@ -423,7 +466,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                     : `browser simulation observed scenario ${lastRun.scenarioName} without checks`
                   : 'no simulation run recorded'}
                 ; {mapped}/{required} required ports mapped
-                {downloadEvidence?.packageHash ? '; the downloaded ZIP matches this design' : '; no current download'}.
+                {downloadEvidence ? '; the last download matches this design' : '; no current download'}.
               </dd>
             </div>
             <div>

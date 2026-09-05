@@ -30,7 +30,7 @@ export interface Basys3BoardViewProps {
   /** Aliases whose mapping is in conflict; drawn in the failure colour when the layer is on. */
   conflictAliases?: Set<string>;
   /** Board state at the followed tick (index = resource number). null = no run to show. */
-  values?: { readonly sw: readonly (0 | 1)[]; readonly ld: readonly (0 | 1)[] } | null;
+  values?: { readonly sw: readonly (0 | 1 | null)[]; readonly ld: readonly (0 | 1 | null)[] } | null;
   layers?: Basys3BoardLayers;
   highlightedAlias?: string | null;
   allowedAliases?: Set<string>;

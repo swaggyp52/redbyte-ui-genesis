@@ -685,6 +685,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [selectedVectorId, setSelectedVectorId] = useState<string | null>(null);
   const [pinnedSignalOrder, setPinnedSignalOrder] = useState<string[]>([]);
   const [manualLaneOrder, setManualLaneOrder] = useState<string[]>([]);
+  const moveLaneRef = useRef<(signal: string, direction: -1 | 1) => void>(() => undefined);
+  /** Move a lane one step up or down in the display order (persisted with the session). */
+  const moveLane = useCallback((signal: string, direction: -1 | 1) => moveLaneRef.current(signal, direction), []);
   const [hiddenSignals, setHiddenSignals] = useState<string[]>([]);
   const [cursorA, setCursorA] = useState<number | null>(null);
   const [cursorB, setCursorB] = useState<number | null>(null);
@@ -695,6 +698,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // cursor moves, and it stops at the first mismatch. Deterministic, stops when
   // nothing is active, never runs on its own under reduced motion.
   const [isPlaying, setIsPlaying] = useState(false);
+  // The tick most recently set by playback itself (not by the user). Such a tick is
+  // never published as the workbench selection: a replay must not displace what
+  // the user chose to follow. A manual choice clears it.
+  const autoTickRef = useRef<number | null>(null);
   const [playSpeed, setPlaySpeed] = useState<0.5 | 1 | 2>(1);
   const [playLoop, setPlayLoop] = useState(false);
   const [playStopAtFailure, setPlayStopAtFailure] = useState(true);
@@ -951,13 +958,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         const index = current == null ? -1 : playbackTicks.indexOf(current);
         const next = playbackTicks[index + 1];
         if (next == null) {
-          if (playLoop) return playbackTicks[0];
+          if (playLoop) {
+            autoTickRef.current = playbackTicks[0];
+            return playbackTicks[0];
+          }
           setIsPlaying(false);
           return current;
         }
         if (playStopAtFailure && index >= 0 && lastRun?.report.rows.some((row) => row.tick === next && row.status === 'fail')) {
           setIsPlaying(false);
         }
+        autoTickRef.current = next;
         return next;
       });
     }, Math.round(650 / playSpeed));
@@ -976,6 +987,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [isPlaying, playbackTicks, selectedTick]);
   // Any manual navigation ends playback: the user has taken the cursor.
   const stopPlayback = useCallback(() => setIsPlaying(false), []);
+  const selectTickManually = useCallback((tick: number) => {
+    setIsPlaying(false);
+    autoTickRef.current = null;
+    setSelectedTick(tick);
+  }, []);
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     const waveformSource = lastRun?.waveform ?? [];
@@ -1346,13 +1362,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return visibleSignalTimeline.filter((entry) => !hiddenSignalSet.has(entry.signal));
   }, [hiddenSignalSet, visibleSignalTimeline]);
   const visibleSignalCount = displaySignalTimeline.length;
+  moveLaneRef.current = (signal, direction) => {
+    const order = displaySignalTimeline.map((entry) => entry.signal);
+    const index = order.indexOf(signal);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= order.length) return;
+    const next = [...order];
+    next.splice(index, 1);
+    next.splice(target, 0, signal);
+    setManualLaneOrder(next);
+  };
   const liveReadout = useMemo(() => {
     if (!lastRun || selectedTick == null) return null;
     const index = allWaveformTicks.indexOf(selectedTick);
     const previousTick = index > 0 ? allWaveformTicks[index - 1] : null;
     const inputsNow = lastRun.report.inputsAtTick?.[selectedTick] ?? {};
     const inputsBefore = previousTick != null ? lastRun.report.inputsAtTick?.[previousTick] ?? {} : {};
-    const changedInputs = Object.keys(inputsNow).filter((key) => String(inputsNow[key]) !== String(inputsBefore[key] ?? ''));
+    const changedInputs = index <= 0 ? [] : Object.keys(inputsNow).filter((key) => String(inputsNow[key]) !== String(inputsBefore[key] ?? ''));
     const inputLabel = (key: string) => inputFields.find((field) => normalizeFieldId(field.id) === normalizeFieldId(key))?.label ?? key;
     const outputs = displaySignalTimeline
       .filter((lane) => mappedSignalDirectionKeys.get(normalizeFieldId(lane.signal)) === 'out')
@@ -1681,6 +1707,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     openWaveformDocument();
     if (!prefersReducedMotion && allWaveformTicks.length > 1) {
       // Show the run happen: walk the ticks from the first one; stop at the first mismatch.
+      autoTickRef.current = allWaveformTicks[0];
       setSelectedTick(allWaveformTicks[0]);
       setIsPlaying(true);
     }
@@ -2813,8 +2840,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     onSignalSelected?.(selectedSignal != null ? normalizeSignalKey(selectedSignal) : null);
   }, [onSignalSelected, selectedSignal]);
   const handleStimulusSelectedTickChange = useCallback((tick: number) => {
-    setSelectedTick(tick);
-  }, []);
+    selectTickManually(tick);
+  }, [selectTickManually]);
 
   // Navigate to Design: inject selected-tick inputs into the runtime sim when available,
   // giving the student immediate propagation context for the observed stimulus.
@@ -2928,14 +2955,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const goToPrevStep = useCallback(() => {
     if (allWaveformTicks.length === 0) return;
     const idx = stepIndex > 0 ? stepIndex - 1 : allWaveformTicks.length - 1;
-    setSelectedTick(allWaveformTicks[idx]);
-  }, [allWaveformTicks, stepIndex]);
+    selectTickManually(allWaveformTicks[idx]);
+  }, [allWaveformTicks, selectTickManually, stepIndex]);
 
   const goToNextStep = useCallback(() => {
     if (allWaveformTicks.length === 0) return;
     const idx = stepIndex < allWaveformTicks.length - 1 ? stepIndex + 1 : 0;
-    setSelectedTick(allWaveformTicks[idx]);
-  }, [allWaveformTicks, stepIndex]);
+    selectTickManually(allWaveformTicks[idx]);
+  }, [allWaveformTicks, selectTickManually, stepIndex]);
 
   const stepSnapshotRows = useMemo((): VerifyTickSignalIndexEntry[] => {
     if (!isStepMode || selectedTick === null) return [];
@@ -4954,13 +4981,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const timelineLaneKey = useMemo(() => displaySignalTimeline.map((entry) => entry.signal).join('|'), [displaySignalTimeline]);
   useEffect(() => {
     if (selectedTick == null || !activeScenarioId) return;
+    // A replaying cursor is not a selection: a tick set by playback (including the
+    // one it stopped on) is never published; the followed object stays what it was.
+    if (isPlaying || autoTickRef.current === selectedTick) return;
     if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
     if (restoredTickRef.current === selectedTick && globalSelected?.kind === 'signal' && globalOrigin !== continuityOrigin) return;
     const next = { kind: 'case-tick' as const, scenarioId: activeScenarioId, tick: selectedTick };
     if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
     publishSelection(next, continuityOrigin);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTick, activeScenarioId]);
+  }, [selectedTick, activeScenarioId, isPlaying]);
   useEffect(() => {
     if (!selectedSignal) return;
     if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
@@ -5740,10 +5770,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                               type="button"
                               aria-pressed={selectedSignal === signalRow.signal}
                               onClick={() => handleSignalSelect(signalRow.signal)}
+                              onKeyDown={(event) => {
+                                if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                                  event.preventDefault();
+                                  moveLane(signalRow.signal, event.key === 'ArrowUp' ? -1 : 1);
+                                }
+                              }}
+                              title="Select this lane · Alt+Up/Down moves it"
                               data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
                             >
                               {signalRow.signal}
                             </button>
+                            <span className="rb-sig-move" role="group" aria-label={`Move ${signalRow.signal}`}>
+                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, -1)} aria-label={`Move ${signalRow.signal} up`} data-testid={`ide-verify-signal-up-${toTestId(signalRow.signal)}`}>▲</button>
+                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, 1)} aria-label={`Move ${signalRow.signal} down`} data-testid={`ide-verify-signal-down-${toTestId(signalRow.signal)}`}>▼</button>
+                            </span>
                             {hasSessionFailureEvidence &&
                             failingRows.some((row) => row.signal === signalRow.signal) ? (
                               <span className="rb-sig-badge">Mismatch</span>
@@ -6599,7 +6640,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     className={`rb-wave-readout${isPlaying ? ' is-playing' : ''}${liveReadout.failures.length > 0 ? ' has-failure' : ''}`}
                     data-testid="ide-verify-live-readout"
                     role="status"
-                    aria-live={isPlaying ? 'polite' : 'off'}
+                    aria-live="off"
                   >
                     <span className="rb-wave-readout__pos">
                       <code>t{selectedTick}</code>
@@ -6642,7 +6683,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div className="rb-wave-group rb-wave-edges" data-testid="ide-verify-edge-nav" aria-label="Transitions of the followed signal">
                   <IdeButton
                     tone="secondary"
-                    onClick={() => { if (previousEdgeTick != null) setSelectedTick(previousEdgeTick); }}
+                    onClick={() => { if (previousEdgeTick != null) selectTickManually(previousEdgeTick); }}
                     disabled={previousEdgeTick == null}
                     testId="ide-verify-edge-prev"
                     title={selectedSignal ? `Previous transition of ${selectedSignal}${previousEdgeTick != null ? ` (t${previousEdgeTick})` : ''}` : 'Select a signal to step its transitions'}
@@ -6651,7 +6692,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   </IdeButton>
                   <IdeButton
                     tone="secondary"
-                    onClick={() => { if (nextEdgeTick != null) setSelectedTick(nextEdgeTick); }}
+                    onClick={() => { if (nextEdgeTick != null) selectTickManually(nextEdgeTick); }}
                     disabled={nextEdgeTick == null}
                     testId="ide-verify-edge-next"
                     title={selectedSignal ? `Next transition of ${selectedSignal}${nextEdgeTick != null ? ` (t${nextEdgeTick})` : ''}` : 'Select a signal to step its transitions'}
@@ -6924,7 +6965,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <BusWordLanesPanel
                   lanes={busWordLanes}
                   selectedTick={selectedTick}
-                  onSelectTick={setSelectedTick}
+                  onSelectTick={selectTickManually}
                 />
                 <div
                   className="rb-wave-scroll"
@@ -6970,7 +7011,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   cursorB={cursorB}
                   changedSignals={changedSignalsAtTick}
                   pinnedSignals={pinnedSignals}
-                  onSelectTick={setSelectedTick}
+                  onSelectTick={selectTickManually}
                   onSelectSignal={handleSignalSelect}
                   rowHeight={ROW_H_MAP[waveformDensity]}
                   tickWidth={tickWidth}
@@ -7554,7 +7595,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     rows={truthRows}
                     isSequential={isSequentialRun}
                     selectedTick={selectedTick}
-                    onSelectTick={setSelectedTick}
+                    onSelectTick={selectTickManually}
                     onModeChange={setTruthTableMode}
                     emptyReason={truthTableEmptyReason}
                     combosRows={comboRows}
@@ -7576,7 +7617,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       rows={truthRows}
                       isSequential={false}
                       selectedTick={selectedTick}
-                      onSelectTick={setSelectedTick}
+                      onSelectTick={selectTickManually}
                       onModeChange={setTruthTableMode}
                       emptyReason={truthTableEmptyReason}
                       combosRows={comboRows}

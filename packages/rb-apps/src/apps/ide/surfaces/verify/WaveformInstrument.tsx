@@ -506,7 +506,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   cx={LABEL_W - VALUE_W - 3}
                   cy={y + Math.round(ROW_H / 2)}
                   r={2.5}
-                  fill="var(--rb-wave-cursor-a)"
+                  fill="var(--rb-wave-text)"
                   data-testid={`ide-verify-lane-changing-${toTestId(signalRow.signal)}`}
                 >
                   <title>{`${signalRow.signal} changes at this tick`}</title>

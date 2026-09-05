@@ -247,3 +247,12 @@ html.rb-presenting .ide-root .rb-handoff { height: 100%; overflow: auto; }
 /* The architecture figure in the dossier sizes to its drawing, not to the Overview's preview cap. */
 .ide-root .rb-handoff-arch .rb-arch { max-height: none; overflow: visible; }
 .ide-root .rb-handoff-arch .rb-arch svg { height: auto; max-height: 380px; }
+
+/* Print: the frame is one page-tall grid; let the document grow and the chain overflow. */
+@media print {
+  html, body, .ide-root { height: auto !important; min-height: 0 !important; overflow: visible !important; display: block !important; }
+  .ide-root .wb-body, .ide-root .wb-document-column, .ide-root .ide-surface-shell, .ide-root .ide-workbench-main, .ide-root .ide-workbench-workspace,
+  .ide-root .ide-panel, .ide-root .ide-panel-body, .ide-root .rb-pkg-hero, .ide-root .rb-pkg-files, .ide-root .rb-handoff { height: auto !important; max-height: none !important; overflow: visible !important; display: block !important; }
+  .ide-root .rb-handoff-click { display: none; }
+}
+html.rb-presenting .ide-root .rb-handoff-click { display: none; }
