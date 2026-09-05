@@ -2785,7 +2785,7 @@ describe('VerifySurface workstation controls', () => {
     );
   });
 
-  it('labels restored browser-session evidence stale even when its hashes still match', () => {
+  it('renders the reload guidance when the app marks restored evidence stale', () => {
     const passRun = makePassRun();
     const rerun = vi.fn();
     const activeScenario = {

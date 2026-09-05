@@ -38,6 +38,7 @@ import { describeSignalRelationPath, useEngineeringRelationshipIndex } from './i
 import { useWorkbenchNavigation } from './ide/workbenchNavigation';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { buildEngineeringProblems, countProblems, useEngineeringProblems } from './ide/engineeringProblems';
+import { deriveRunScope } from './ide/runScope';
 import { buildNavigatorIndex, type NavigatorEntry } from './ide/workbenchNavigator';
 import { computeDesignIssues } from './ide/designIssues';
 import { useWorkbenchDocuments } from './ide/workbenchDocumentStore';
@@ -1989,17 +1990,48 @@ export const IdeApp: React.FC = () => {
       }
     }
     if (reloadRun) {
-      useProjectRuntime.setState((state) => ({
-        verifyLastRun: reloadRun,
-        verifyRunHistory: reloadRunHistory,
-        projectHealthCore: {
-          ...state.projectHealthCore,
-          lastVerify: reloadLastVerify,
-          dirtySinceVerify: true,
-        },
-        scenarioAuthority: 'stale',
-      }));
-      setReloadEvidenceStale(true);
+      // The restored run is judged by the hashes stamped on it against the live
+      // project (the same rule every surface uses): an unchanged project keeps
+      // current evidence across a reload; a changed input makes it stale; a run
+      // owned by another project is dropped rather than shown as stale.
+      const restored = useProjectRuntime.getState();
+      const scope = deriveRunScope({
+        projectId: restored.projectId,
+        run: reloadRun,
+        simulationCircuit,
+        projectIoRows,
+        hardwareMappingV2,
+        scenarios,
+        dirtySinceVerify: restored.projectHealthCore.dirtySinceVerify,
+        latestVerifyLedgerEntry: reloadRunHistory[reloadRunHistory.length - 1] ?? null,
+        currentVerifyProjectHash,
+      });
+      if (scope.kind === 'foreign') {
+        useProjectRuntime.setState((state) => ({
+          verifyLastRun: undefined,
+          verifyRunHistory: [],
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            lastVerify: undefined,
+            dirtySinceVerify: true,
+          },
+        }));
+        setReloadEvidenceStale(false);
+      } else if (scope.kind === 'stale') {
+        useProjectRuntime.setState((state) => ({
+          verifyLastRun: reloadRun,
+          verifyRunHistory: reloadRunHistory,
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            lastVerify: reloadLastVerify,
+            dirtySinceVerify: true,
+          },
+          scenarioAuthority: 'stale',
+        }));
+        setReloadEvidenceStale(true);
+      } else {
+        setReloadEvidenceStale(false);
+      }
     }
     if (requestedMode) {
       setLastSavedAt(`Resumed "${resumedProjectName}" and opened ${requestedMode}.`);
@@ -2664,7 +2696,32 @@ export const IdeApp: React.FC = () => {
     [exportViewModel.artifacts]
   );
   const designAuthoringIssues = useMemo(() => (circuit ? computeDesignIssues(circuit).all : []), [circuit]);
-  const runIsStale = Boolean(verifyLastRun) && projectHealthCore.dirtySinceVerify;
+  const runScope = useMemo(
+    () =>
+      deriveRunScope({
+        projectId,
+        run: verifyLastRun,
+        simulationCircuit,
+        projectIoRows,
+        hardwareMappingV2,
+        scenarios,
+        dirtySinceVerify: projectHealthCore.dirtySinceVerify,
+        latestVerifyLedgerEntry: verifyRunHistory[verifyRunHistory.length - 1] ?? null,
+        currentVerifyProjectHash,
+      }),
+    [
+      currentVerifyProjectHash,
+      hardwareMappingV2,
+      projectHealthCore.dirtySinceVerify,
+      projectId,
+      projectIoRows,
+      scenarios,
+      simulationCircuit,
+      verifyLastRun,
+      verifyRunHistory,
+    ]
+  );
+  const runIsStale = runScope.kind === 'stale';
   // One ledger over every authority. ProjectSurface, the status bar, the
   // navigator and the Problems tool window all read this list.
   const projectProblems = useMemo(
@@ -2679,6 +2736,7 @@ export const IdeApp: React.FC = () => {
         mappingProjection: hasCircuit ? exportViewModel.mappingProjection : [],
         lastRun: verifyLastRun ?? null,
         runIsStale,
+        runStaleDetail: runScope.detail,
         activeConstraintSetId: constraintSetsDoc?.activeId ?? null,
         importFidelity,
         isSequential: isSequentialProject,
@@ -2757,6 +2815,17 @@ export const IdeApp: React.FC = () => {
   ]);
   const selectEngineeringObject = useEngineeringSelection((state) => state.select);
   const clearEngineeringSelection = useEngineeringSelection((state) => state.clear);
+  // A project switch ends the previous project's selection and tick context. A
+  // case-tick or signal from the previous project must not be re-applied to the
+  // next one (same scenario ids, different tick domains): that is foreign
+  // evidence, and re-applying it against a project that cannot hold it loops.
+  const selectionProjectRef = useRef(projectId);
+  useEffect(() => {
+    if (selectionProjectRef.current === projectId) return;
+    selectionProjectRef.current = projectId;
+    clearEngineeringSelection();
+    setVerifySelectedTick(null);
+  }, [clearEngineeringSelection, projectId]);
   // A different project is a different set of objects: nothing from the last one stays selected.
   useEffect(() => {
     clearEngineeringSelection();
@@ -3209,6 +3278,7 @@ export const IdeApp: React.FC = () => {
               lastRun={verifyLastRun}
               runHistory={verifyRunHistory}
               forceRunStale={reloadEvidenceStale}
+              runStaleDetail={runScope.detail}
               designBlockingIssue={blockingDesignIssue ?? undefined}
               mappingComplete={verifyMappingComplete}
               unmappedOutputLabels={unmappedOutputLabels}

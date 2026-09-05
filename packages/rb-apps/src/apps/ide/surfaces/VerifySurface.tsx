@@ -238,6 +238,8 @@ export interface VerifySurfaceProps {
   lastRun?: RuntimeVerifyRun;
   /** A restored browser-session run is replayable history, but requires one direct rerun. */
   forceRunStale?: boolean;
+  /** Why the restored run is stale (run scope read-model); shown with the reload guidance. */
+  runStaleDetail?: string | null;
   /** Structural Design authority. Checked runs are inconclusive while present. */
   designBlockingIssue?: {
     title: string;
@@ -401,6 +403,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   vectors,
   lastRun: persistedLastRun,
   forceRunStale = false,
+  runStaleDetail = null,
   designBlockingIssue,
   mappingComplete = true,
   hasFloatingOutputWarning = false,
@@ -1570,11 +1573,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     );
   }, [allWaveformTicks, lastRun?.firstFailingTick]);
 
+  const allWaveformTicksRef = useRef(allWaveformTicks);
+  allWaveformTicksRef.current = allWaveformTicks;
   useEffect(() => {
     if (selectedTickOverride === null) return;
-    if (allWaveformTicks.length > 0 && !allWaveformTicks.includes(selectedTickOverride)) return;
+    const ticks = allWaveformTicksRef.current;
+    if (ticks.length > 0 && !ticks.includes(selectedTickOverride)) return;
     setSelectedTick((previous) => (previous === selectedTickOverride ? previous : selectedTickOverride));
-  }, [allWaveformTicks, selectedTickOverride]);
+    // Applied once per override value; the tick domain is read through the ref so a
+    // rebuilt timeline array (windowing) does not re-apply a tick the user moved off.
+  }, [selectedTickOverride]);
 
   useEffect(() => {
     onSelectedTickChange?.(selectedTick);
@@ -4689,8 +4697,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return {
         tone: 'warn',
         title: 'Browser reloaded — rerun simulation',
-        message:
-          'The previous waveform remains available as stale history. Rerun the saved scenario before trusting it as current evidence.',
+        message: `${runStaleDetail ? `${runStaleDetail} ` : ''}The previous waveform remains available as stale history. Rerun the saved scenario before trusting it as current evidence.`,
         actions: [
           {
             label: 'Rerun simulation',

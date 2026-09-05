@@ -16,6 +16,7 @@ import {
   buildVerifyCircuitEvidenceHash,
   buildVerifyMappingEvidenceHash,
 } from './verifyProjectHash';
+import { restampRunEvidenceProject, scopeRunEvidenceToProject } from './runScope';
 import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import {
   createEmptyProjectSourceModel,
@@ -75,7 +76,6 @@ import type {
   ProjectHealthCore,
   ProjectHealthExportResult,
   ProjectHealthExportSourceState,
-  ProjectHealthVerifyResult,
   VerifyRunKind,
 } from './projectHealth';
 import {
@@ -207,18 +207,34 @@ function deriveAuthoritativeHardwareState(
   circuit: Circuit,
   doc: HardwareMappingDocumentV2
 ): { hardwareMappingV2: HardwareMappingDocumentV2; projectIoRows: ProjectIoRow[] } {
-  const candidateRows = deriveProjectIoRowsFromCircuitAndV2(circuit, doc);
-  const hardwareMappingV2 = synchronizeScalarHardwareMappingV2WithProjectIoRows(doc, candidateRows);
-  return {
-    hardwareMappingV2,
-    projectIoRows: deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2),
-  };
+  // Row ids follow the student label (`A[0]` -> `a_0`), and a label can only be
+  // normalized once the V2 document has been synchronized with the rows. A single
+  // sync therefore returns a V2 document whose ids still predate that rekey while
+  // the rows already carry it — two identities for one signal. Converge so the
+  // document and the rows agree before either becomes an authority.
+  let hardwareMappingV2 = doc;
+  let projectIoRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
+  for (let pass = 0; pass < 4; pass += 1) {
+    hardwareMappingV2 = synchronizeScalarHardwareMappingV2WithProjectIoRows(hardwareMappingV2, projectIoRows);
+    const nextRows = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
+    const stable =
+      nextRows.length === projectIoRows.length &&
+      nextRows.every((row, index) => {
+        const previous = projectIoRows[index];
+        return row.id === previous.id && row.label === previous.label && row.pin === previous.pin;
+      });
+    projectIoRows = nextRows;
+    if (stable) break;
+  }
+  return { hardwareMappingV2, projectIoRows };
 }
 
 export type ProjectIoRow = IdeExampleIoRow;
 
 export interface VerifyRunLedgerEntry {
   runId: string;
+  /** Owning project; see RuntimeVerifyRun.projectId. */
+  projectId?: string;
   /** Which scenario ran and how (observe = 'trace', compare = 'verify'); older ledgers lack these. */
   scenarioId?: string;
   scenarioName?: string;
@@ -253,6 +269,9 @@ export interface VerifyRunMeta {
 }
 
 export interface RuntimeVerifyRun {
+  /** Project that produced this run. Loaders drop runs owned by another project;
+   *  legacy runs are stamped by the envelope that carried them (see runScope.ts). */
+  projectId?: string;
   scenarioId: string;
   scenarioName: string;
   runKind?: VerifyRunKind;
@@ -478,7 +497,6 @@ export interface ProjectRuntimeState {
   }) => void;
   runVerification: (input: RunVerificationInput) => RuntimeVerifyRun;
   clearVerification: () => void;
-  recordVerification: (result: ProjectHealthVerifyResult) => void;
   recordExport: (result: ProjectHealthExportResult) => void;
   setProjectIdentity: (input: {
     projectId?: string;
@@ -813,7 +831,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         const example = getIdeExampleById(exampleId);
         if (!example) return;
         set({
-          ...stateFromExample(example, createProjectId(example.id)),
+          ...canonicalizeSeedState(stateFromExample(example, createProjectId(example.id))),
           lastSavedAt: `Example loaded: ${example.name}`,
         });
       },
@@ -1921,6 +1939,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 } satisfies VerifyEvidenceCapsule)
               : undefined;
           runtimeRun = {
+            projectId: state.projectId,
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
             runKind,
@@ -1968,6 +1987,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
           const ledgerEntry: VerifyRunLedgerEntry = {
             runId: `run-${ranAtIso}-${report.reportHash.slice(0, 8)}`,
+            projectId: state.projectId,
             scenarioId: runtimeRun.scenarioId,
             scenarioName: runtimeRun.scenarioName,
             runKind,
@@ -2104,60 +2124,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           },
         }));
       },
-      recordVerification: (result) => {
-        set((state) => {
-          const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
-          const scheduleContract = buildDeterministicVerifyContext(
-            simulationCircuit,
-            toIoMapping(state.projectIoRows)
-          ).schedule;
-          const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
-          const nextRun =
-            result.report
-              ? ({
-                  scenarioId: result.report.scenarioId,
-                  scenarioName: result.report.scenarioName,
-                  runKind: result.runKind ?? getRuntimeVerifyRunKind(state.verifyLastRun) ?? 'verify',
-                  status: result.status,
-                  deterministicHash: result.hash,
-                  reportHash: result.reportHash ?? result.report.reportHash,
-                  firstFailingTick:
-                    typeof result.failingTick === 'number'
-                      ? result.failingTick
-                      : result.report.firstFailingTick,
-                  generatedAtIso: result.ranAtIso,
-                  schedule: scheduleContract.schedule,
-                  scheduleContract: cloneVerifyScheduleContract(scheduleContract),
-                  meta: buildVerifyRunMeta(scheduleContract),
-                  report: { ...result.report, signalRoles },
-                  waveform: buildCanonicalVerifyWaveSamples(result.report, []),
-                  evidence: state.verifyLastRun?.evidence,
-                } satisfies RuntimeVerifyRun)
-              : state.verifyLastRun;
-
-          return {
-            verifyLastRun: nextRun,
-            scenarioAuthority:
-              result.status === 'pass' && (result.runKind ?? 'verify') === 'verify'
-                ? 'verified'
-                : deriveScenarioAuthority({
-                    projectKind: state.projectKind,
-                    activeExampleId: state.activeExampleId,
-                    hasVectors: state.projectVectors.length > 0,
-                    hasAssertions: state.projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
-                    dirtySinceVerify: false,
-                    verifyStatus: result.status,
-                    vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
-                  }),
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              lastVerify: result,
-              dirtySinceVerify: false,
-              dirtySinceExport: true,
-            },
-          };
-        });
-      },
       recordExport: (result) => {
         set((state) => ({
           projectHealthCore: {
@@ -2182,8 +2148,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const hasActiveExampleId = Object.prototype.hasOwnProperty.call(input, 'activeExampleId');
           const shouldMarkDirty = input.markDirty ?? true;
           const changesCircuitTruth = nextProjectKind !== undefined || hasSourceExampleId || hasScenarioAuthority;
+          const resolvedProjectId = nextProjectId.length > 0 ? nextProjectId : state.projectId;
+          // Save As / Duplicate rename the owner. The evidence was produced from this
+          // exact content, so it follows the new id instead of becoming foreign.
+          const rescopedEvidence =
+            resolvedProjectId !== state.projectId
+              ? restampRunEvidenceProject({
+                  projectId: resolvedProjectId,
+                  run: state.verifyLastRun,
+                  history: state.verifyRunHistory,
+                })
+              : null;
           return {
-            projectId: nextProjectId.length > 0 ? nextProjectId : state.projectId,
+            projectId: resolvedProjectId,
+            ...(rescopedEvidence
+              ? { verifyLastRun: rescopedEvidence.run, verifyRunHistory: rescopedEvidence.history }
+              : {}),
             projectName: nextName.length > 0 ? nextName : state.projectName,
             projectDescription:
               typeof nextDescription === 'string'
@@ -2358,7 +2338,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             (state.activeExampleId ? getIdeExampleById(state.activeExampleId) : undefined) ??
             DEFAULT_EXAMPLE;
           return {
-            ...stateFromExample(example, createProjectId(example.id)),
+            ...canonicalizeSeedState(stateFromExample(example, createProjectId(example.id))),
             lastSavedAt: `Reset to example: ${example.name}`,
           };
         });
@@ -2831,10 +2811,11 @@ export function mergePersistedRuntimeState(
         labId: normalizeGuidedLabTaskId(candidate.activeLabTaskId) ?? undefined,
       },
     });
-  } catch {
+  } catch (error) {
+    // A candidate that cannot be normalized keeps the current state; say so instead of hiding it.
+    console.warn('Persisted runtime state could not be normalized; current state kept.', error);
     return currentState;
   }
-
   const circuit = cloneCircuit(normalizedProject.circuit);
   const hierarchy = normalizeProjectHierarchy(
     normalizedProject.hierarchy,
@@ -2855,8 +2836,17 @@ export function mergePersistedRuntimeState(
   );
   const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
-  const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
-  const verifyRunHistory = invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory);
+  // Run evidence is scoped to the project that carried it. An envelope whose run
+  // names another project loses that run instead of rendering foreign evidence
+  // under a STALE strip; runs without an owner are stamped by this envelope.
+  const ownerProjectId = normalizedProject.meta?.projectId?.trim() || currentState.projectId;
+  const scopedEvidence = scopeRunEvidenceToProject({
+    projectId: ownerProjectId,
+    run: invalidateVerifyTrust ? undefined : rawVerifyLastRun,
+    history: invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory),
+  });
+  const verifyLastRun = scopedEvidence.run;
+  const verifyRunHistory = scopedEvidence.history;
   const restoredVerifyProjectHash = buildCurrentVerifyProjectHash({
     circuit: elaboratedCircuit,
     projectVectors,
@@ -2879,7 +2869,7 @@ export function mergePersistedRuntimeState(
     candidate.projectHealthCore,
     verifyLastRun,
     currentState.projectHealthCore,
-    invalidateVerifyTrust
+    invalidateVerifyTrust || scopedEvidence.droppedForeign
   );
   const hasExplicitLegacyVerifyLedgerGap =
     candidate.verifyLastRun === undefined &&
@@ -3334,6 +3324,29 @@ function stateFromExample(
     macros: [],
     macroInsertionCounts: {},
     customComponents: hierarchyComponents,
+  };
+}
+
+/**
+ * A fresh load must already be the form rehydration produces — the same io-row
+ * order, the same mapping labels, vectors keyed by io-row id. Otherwise the
+ * first reload rewrites those inputs without any user edit and the run
+ * recorded before it honestly reads as "the pin mapping and the scenario
+ * changed". Rehydrating the seed through the one normalizer makes the two
+ * paths one; `projectRuntime.canonicalLoad.test.ts` holds the contract.
+ */
+function canonicalizeSeedState(seed: RuntimeSeedState): RuntimeSeedState {
+  const merged = mergePersistedRuntimeState(seed, seed as unknown as ProjectRuntimeState);
+  return {
+    ...seed,
+    circuit: merged.circuit,
+    hierarchy: merged.hierarchy,
+    hardwareMappingV2: merged.hardwareMappingV2,
+    projectIoRows: merged.projectIoRows,
+    projectVectors: merged.projectVectors,
+    scenarios: merged.scenarios,
+    activeScenarioId: merged.activeScenarioId,
+    customVectors: merged.customVectors,
   };
 }
 
@@ -4612,9 +4625,14 @@ function commitModuleDefinitionSnapshot(
   );
 }
 
+function normalizeOwnerProjectId(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
 function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
+    projectId: normalizeOwnerProjectId(run.projectId),
     runKind: getRuntimeVerifyRunKind(run),
     scenarioVersion:
       Number.isFinite(run.scenarioVersion) ? Math.max(0, Math.floor(Number(run.scenarioVersion))) : undefined,
@@ -5034,6 +5052,7 @@ function normalizeVerifyRunLedgerEntry(value: unknown): VerifyRunLedgerEntry | n
   const firstFailure = candidate.firstFailure;
   return {
     runId: candidate.runId,
+    projectId: normalizeOwnerProjectId(candidate.projectId),
     scenarioId: typeof candidate.scenarioId === 'string' ? candidate.scenarioId : undefined,
     scenarioName: typeof candidate.scenarioName === 'string' ? candidate.scenarioName : undefined,
     runKind: candidate.runKind === 'verify' || candidate.runKind === 'trace' ? candidate.runKind : undefined,

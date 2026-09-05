@@ -76,6 +76,8 @@ export interface EngineeringProblemsInput {
   readonly mappingProjection: readonly Basys3SemanticMappingProjection[];
   readonly lastRun: RuntimeVerifyRun | null;
   readonly runIsStale: boolean;
+  /** Why the run is stale (from the run scope read-model); null when unknown. */
+  readonly runStaleDetail?: string | null;
   readonly activeConstraintSetId: string | null;
   readonly importFidelity: 'full' | 'reconstructed' | 'partial' | null;
   readonly isSequential: boolean;
@@ -434,7 +436,7 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
         category: 'simulation',
         code: 'evidence-stale',
         message: `${run.scenarioName} evidence is stale`,
-        detail: 'The design, stimulus or mapping changed after this run',
+        detail: input.runStaleDetail ?? 'The design, stimulus or mapping changed after this run',
         object: { kind: 'scenario', scenarioId: run.scenarioId },
         document: evidenceDocument,
         freshness: 'stale',

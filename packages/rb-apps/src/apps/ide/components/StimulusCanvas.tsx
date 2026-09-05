@@ -362,12 +362,11 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     onSelectedTickChange?.(tick);
   }, [isTickControlled, onSelectedTickChange]);
 
-  useEffect(() => {
-    if (!isTickControlled || normalizedControlledTick === null) return;
-    if (normalizedControlledTick !== controlledSelectedTick) {
-      onSelectedTickChange?.(normalizedControlledTick);
-    }
-  }, [controlledSelectedTick, isTickControlled, normalizedControlledTick, onSelectedTickChange]);
+  // A controlled tick the canvas does not have (a timeline tick between authored
+  // cases, or a tick from before a project switch) is shown as the nearest
+  // authored tick locally. It is never written back: the parent owns the tick
+  // domain, and a write-back against a parent that re-applies its own tick
+  // loops until React aborts the render.
 
   useEffect(() => {
     if (isTickControlled) return;
