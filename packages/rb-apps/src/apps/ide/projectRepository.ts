@@ -12,6 +12,7 @@ import {
   parsePersistedIdeProjectSnapshot,
   type PersistedIdeProjectIndexEntry,
   type PersistedIdeProjectSnapshot,
+  type PersistedIdeRunEvidence,
 } from './projectPersistence';
 
 /**
@@ -78,6 +79,8 @@ export interface ProjectRepositorySaveInput {
   project: RBProject;
   scenarios?: VerifyScenario[];
   activeScenarioId?: string;
+  /** This project's own run evidence, so reopening it restores the trace, not just a row. */
+  runEvidence?: PersistedIdeRunEvidence;
   savedAtIso?: string;
 }
 
@@ -362,6 +365,7 @@ export function createProjectRepository(
         rbprojJson: encodeRBProject(input.project),
         scenarios: input.scenarios ? structuredClone(input.scenarios) : undefined,
         activeScenarioId: input.activeScenarioId,
+        runEvidence: input.runEvidence ? structuredClone(input.runEvidence) : undefined,
       };
       snapshotJson = JSON.stringify(snapshot);
     } catch {

@@ -268,6 +268,19 @@ export interface VerifyRunMeta {
   clockSignalName: string | null;
 }
 
+/**
+ * Workspace-local state restored with a saved project. Unlike the portable RBProject this
+ * is what the student did in this workspace: which run proved the design, and the history
+ * behind it. Opening a project without it restores no evidence, which is what importing a
+ * foreign project should do and what reopening your own project should not.
+ */
+export interface ProjectWorkspaceSnapshot {
+  runEvidence?: {
+    lastRun?: RuntimeVerifyRun;
+    history?: readonly VerifyRunLedgerEntry[];
+  };
+}
+
 export interface RuntimeVerifyRun {
   /** Project that produced this run. Loaders drop runs owned by another project;
    *  legacy runs are stamped by the envelope that carried them (see runScope.ts). */
@@ -442,7 +455,11 @@ export interface ProjectRuntimeState {
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
   loadExample: (exampleId: string) => void;
-  loadFromProject: (project: RBProject, testbench?: ProjectTestbenchSnapshot) => void;
+  loadFromProject: (
+    project: RBProject,
+    testbench?: ProjectTestbenchSnapshot,
+    workspace?: ProjectWorkspaceSnapshot
+  ) => void;
   setMappingPin: (rowId: string, pin: string) => void;
   setMappingPins: (updates: Record<string, string>) => void;
   applyHardwareMappingEdit: (operation: HardwareMappingV2EditOperation) => void;
@@ -835,7 +852,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           lastSavedAt: `Example loaded: ${example.name}`,
         });
       },
-      loadFromProject: (project, testbench) => {
+      loadFromProject: (project, testbench, workspace) => {
         const circuit = cloneCircuit(project.circuit);
         const legacyProjectIoRows = ioRowsFromProject(project);
         const {
@@ -957,11 +974,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             console.warn('Failed to register custom component:', def.name, e);
           }
         }
+        const loadedProjectId =
+          incomingProjectId.length > 0
+            ? incomingProjectId
+            : createProjectId(loadedProjectName || 'imported');
+        const restoredRunEvidence = workspace?.runEvidence
+          ? restampRunEvidenceProject({
+              projectId: loadedProjectId,
+              run: workspace.runEvidence.lastRun,
+              history: workspace.runEvidence.history ?? [],
+            })
+          : { run: undefined, history: [] as VerifyRunLedgerEntry[] };
+
         set({
-          projectId:
-            incomingProjectId.length > 0
-              ? incomingProjectId
-              : createProjectId(loadedProjectName || 'imported'),
+          projectId: loadedProjectId,
           projectName: loadedProjectName,
           projectDescription: loadedProjectDescription,
           lastSavedAt: `Imported: ${loadedProjectName || 'project'}`,
@@ -996,15 +1022,21 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           designPast: [],
           designFuture: [],
           designRevision: 0,
-          verifyLastRun: undefined,
-          verifyRunHistory: [],
+          // Evidence saved beside this project is its own, so it is restored and re-owned to
+          // the identity being opened. Anything else - an import, a project saved before
+          // evidence was stored - restores empty, exactly as before.
+          verifyLastRun: restoredRunEvidence.run,
+          verifyRunHistory: restoredRunEvidence.history,
           exportHistory: [],
           sim: initializeSimulationStateForCircuit(
             elaborateProjectHierarchy(circuit, hierarchy),
             projectIoRows,
           ),
           projectHealthCore: {
-            dirtySinceVerify: true,
+            // A project opened with no evidence has nothing proving it. One opened with its
+            // own restored run is judged by that run's hashes, the same authority a reload
+            // uses, rather than being declared stale on arrival.
+            dirtySinceVerify: !restoredRunEvidence.run,
             dirtySinceExport: true,
           },
           macros: project.macros ?? [],

@@ -99,6 +99,9 @@ import {
   useProjectRuntime,
   type ProjectIoRow,
   type ProjectTestbenchSnapshot,
+  type ProjectWorkspaceSnapshot,
+  type RuntimeVerifyRun,
+  type VerifyRunLedgerEntry,
 } from './ide/projectRuntime';
 import { parseVcd } from './ide/vcdImport';
 import { waveformFromVcd } from './ide/simulationProvider';
@@ -355,6 +358,8 @@ export const IdeApp: React.FC = () => {
   const projectHashRef = useRef('');
   const scenariosRef = useRef<VerifyScenario[]>([]);
   const activeScenarioIdRef = useRef('');
+  const verifyLastRunRef = useRef<RuntimeVerifyRun | undefined>(undefined);
+  const verifyRunHistoryRef = useRef<VerifyRunLedgerEntry[]>([]);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   // Pending project-format migration awaiting the user's choice (Chapter G).
   const [pendingMigration, setPendingMigration] = useState<
@@ -1107,6 +1112,7 @@ export const IdeApp: React.FC = () => {
         backupCurrent?: boolean;
         importMeta?: IdeImportMeta | null;
         testbenchSnapshot?: ProjectTestbenchSnapshot;
+        workspaceSnapshot?: ProjectWorkspaceSnapshot;
       }
     ) => {
       const sourceLabel = options?.sourceLabel ?? project.name ?? 'project';
@@ -1123,7 +1129,7 @@ export const IdeApp: React.FC = () => {
       }
 
       try {
-        loadFromProject(project, options?.testbenchSnapshot);
+        loadFromProject(project, options?.testbenchSnapshot, options?.workspaceSnapshot);
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'unknown project error';
         setLastSavedAt(`Could not load ${sourceLabel}: ${reason}`);
@@ -1481,6 +1487,8 @@ export const IdeApp: React.FC = () => {
   projectHashRef.current = projectHash;
   scenariosRef.current = scenarios;
   activeScenarioIdRef.current = activeScenarioId;
+  verifyLastRunRef.current = verifyLastRun;
+  verifyRunHistoryRef.current = verifyRunHistory;
   sessionMetaRef.current = {
     version: 1,
     savedAt: Date.now(),
@@ -1541,6 +1549,10 @@ export const IdeApp: React.FC = () => {
       project: exportProject,
       scenarios,
       activeScenarioId,
+      // Store the evidence with the project. Without it, reopening the project restores the
+      // design and the checks but not the run that proved them, so the student is told to
+      // re-run work they already did.
+      runEvidence: { lastRun: verifyLastRun, history: verifyRunHistory },
     });
     if (!result.ok) {
       setLastSavedAt(`Save failed: ${result.error.message}`);
@@ -1584,6 +1596,7 @@ export const IdeApp: React.FC = () => {
         project: renamedProject,
         scenarios,
         activeScenarioId,
+        runEvidence: { lastRun: verifyLastRun, history: verifyRunHistory },
       });
 
       if (saved.ok) {
@@ -1651,6 +1664,10 @@ export const IdeApp: React.FC = () => {
       project: nextProject,
       scenarios,
       activeScenarioId,
+      runEvidence: {
+        lastRun: verifyLastRun ? { ...verifyLastRun, projectId: nextProjectId } : undefined,
+        history: verifyRunHistory.map((entry) => ({ ...entry, projectId: nextProjectId })),
+      },
     });
     if (!saved.ok) {
       setLastSavedAt(`Save As failed: ${saved.error.message}`);
@@ -1694,6 +1711,10 @@ export const IdeApp: React.FC = () => {
       project: duplicateProject,
       scenarios,
       activeScenarioId,
+      runEvidence: {
+        lastRun: verifyLastRun ? { ...verifyLastRun, projectId: duplicateId } : undefined,
+        history: verifyRunHistory.map((entry) => ({ ...entry, projectId: duplicateId })),
+      },
     });
     if (!result.ok) {
       setLastSavedAt(`Duplicate failed: ${result.error.message}`);
@@ -1806,6 +1827,9 @@ export const IdeApp: React.FC = () => {
           scenarios: snapshot.scenarios,
           activeScenarioId: snapshot.activeScenarioId,
         },
+        // Reopening your own project restores your own evidence. Foreign projects and
+        // snapshots saved before evidence was stored simply have none.
+        workspaceSnapshot: { runEvidence: snapshot.runEvidence },
       });
     },
     [handleSafeLoadIntoIde, refreshSavedProjects, setLastSavedAt]
@@ -3024,6 +3048,10 @@ export const IdeApp: React.FC = () => {
           project: exportProjectRef.current,
           scenarios: scenariosRef.current,
           activeScenarioId: activeScenarioIdRef.current,
+          runEvidence: {
+            lastRun: verifyLastRunRef.current,
+            history: verifyRunHistoryRef.current,
+          },
         });
       }
       if (sessionMetaRef.current) {
