@@ -89,6 +89,22 @@ no `setTimeout` in the Simulate run path). HISTORICAL remains the Runs document'
 Simulate can only replay the latest run; opening an older ledger entry as a replay is a later slice.
 Live: RECORDED · CURRENT → Play → REPLAYING → stop → RECORDED · CURRENT. Test: `verifySurface.evidenceState` (2).
 
+**Waveform depth — buses, radix, expected overlay (`1250b740a`).** Simulate folds indexed lanes of one
+direction (SUM[0]..SUM[3] / sum_0..sum_3) into a bus lane SUM[3:0], MSB first, formatted in the chosen
+radix (Bin/Hex/Dec on the command row; session UI state beside zoom/density in `rb.verify-ui.v2`). A
+collapsed bus hides its bits; its label (`ide-verify-bus-toggle-<id>`) expands the member bits underneath
+(`data-kind` bus/bit/scalar on rows). The instrument draws a bus as a value band per tick with transition
+marks and a wider value slot; the fail band and selected column are shared with scalar lanes. The expected
+overlay reads the run's own report rows keyed by lane: scalar lanes get a dashed fail-colour rail at the
+saved level only where it differs from the observed one; bus lanes get "exp N" under the observed word where
+every member had a check and the words differ; one "Expected" toggle hides it. Live (hierarchical adder,
+Compare PASS): SUM[3:0]/A[3:0]/B[3:0] buses in hex (0,2,8,0,F,E…), bin shows 0000/0010/1000, expanding
+SUM lists sum_3..sum_0 as bits, no expected marks on a passing run, expansion persisted in session storage.
+Tests: `waveformInstrument.buses` (3), `verifySurface.waveformDepth` (3). Note: `WaveformInstrument.tsx` is
+committed with CRLF in its blob (git skips normalization for it) — keep the worktree CRLF when editing it.
+Open in this area: lane groups by user choice, bus lanes for internal probes, the Timing Lab clock
+generator / reset pulse / run range (next).
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
