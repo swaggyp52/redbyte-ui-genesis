@@ -353,6 +353,31 @@ other would be worse than the hazard; it is test-only.
 "0 confirmed" was an artifact of empty vote arrays, not a clean result. When a workflow's verify stage dies, treat
 its raw findings as a triage list and check them by hand — as done here — rather than reading the summary count.
 
+**Accessibility + scale, and imported evidence made reachable (`57b740ee3`).** The a11y/scale journey could not run
+here at all: 23 of the 24 `rb-e2e` journeys pinned `executablePath: '/opt/pw-browsers/chromium'`, a cloud sandbox
+path. They now use it only on Linux and Playwright's own resolution elsewhere (no CI or package script referenced
+them, so this is zero-risk and unblocks every journey on the ThinkStation).
+
+**Defect it found — imported external evidence was unreachable.** `VcdAnalyzerPanel` owns two states: with nothing
+loaded it collapses to one compact row carrying "Load .vcd file"; only an actual import takes workspace. But
+`VerifySurface` rendered it `{importedWaveform ? … : null}`, and `SimulationProviderBar` returns null unless
+`hasImportedWaveform` — so **you could not import a .vcd at all**. There is no other entry point: the code comment
+claiming "Load .vcd lives in the More menu" describes a menu that does not exist (grepped: zero hits). The panel now
+renders either way and decides its own weight. Live: a 49px row at the foot of Simulate, "Provider: Imported VCD —
+Optional external waveform evidence, replayed never executed. [Load .vcd file]", no overflow. This restores the P2
+Chapter A claim ("imported-VCD Analyzer live in Simulate") to something true at HEAD — worth noting that the claim
+had become false without any test catching it, because nothing asserted reachability.
+
+**Accessibility + scale now proven** at 1440×900 and 1366×768: one `<main>` landmark, a 500-signal VCD bounded to
+~200 rows with an honest "showing N of M" hint, keyboard-focusable controls, and no horizontal overflow under
+reduced motion or at an effective 200% zoom (halved viewport). Contract: `verifySurface.importedEvidence` (3) pins
+the compact entry state, the replayed-never-executed boundary wording, and that the panel hands the file to the
+container rather than parsing it.
+
+**Seam note:** the new `runIsStale` prop is deliberately separate from the existing `forceRunStale`, which carries
+one specific signal (evidence restored after a reload) and renders its own reload-guidance banner. Conflating them
+would show that banner for every authority-stale run — a false message.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
