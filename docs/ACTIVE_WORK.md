@@ -180,7 +180,9 @@ accepted.
   waveform buses / radix / expected overlay, timing run length + generated lanes + reset modes, the Board
   camera and the Constraints tool (signal ↔ constraint ↔ XDC line), the Package provenance graph and
   file-by-file comparison, and the Simulate inner-grid owner (`simulate-instrument.css`; 265 dead verify
-  rules retired from `ide-root.css`, `!important` 3489 → 3008). HEAD `e3b0eb701`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  rules retired from `ide-root.css`, `!important` 3489 → 3008), and the Design inspector as named sections
+  (Identity → Actions → Selection details → Connectivity → Evidence → Mapping → Source → Related; board
+  relations name the package pin). HEAD `432c19cbc`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is

@@ -196,6 +196,28 @@ family → new owner `simulate-instrument.css` (`.rb-sim-panel`, `.rb-sim-region
 Connectivity / Evidence / Mapping / Source / Related — today Actions / Selection details / Live · Signal State),
 and the Timing toolbar wraps awkwardly under 900px (cosmetic).
 
+**Design inspector sections (Wave Four, `432c19cbc`).** The inspector is now named sections over existing
+authorities, in reading order: Identity (the properties surface — the contract forbids a standalone
+`ide-design-inspector-properties` section; rename stays in the identity card) → Actions → Selection details →
+**Connectivity** (pin values + input drivers moved out of the state section, plus "Drives" from the canvas
+connections) → **Evidence** (the former "Live / Signal State"; same test id `ide-design-context-inspector`) →
+**Mapping** (resource, package pin, constraint set, the constraint lines, "Open in Board & Constraints" which
+publishes the signal selection then opens `{kind:'board-io'}`) → **Source** (up to four generated VHDL lines
+naming the signal with line numbers, "Show HDL beside the schematic" → split view; internal logic says so) →
+**Related** (the Related… menu's documents as a flat list; selection published before `openWorkbenchDocument`).
+Root repair found while proving it: the relationship index built the board link from the raw row pin, so an
+alias-mapped row (pin `LD0`) reported `PACKAGE_PIN LD0` in Related and in the new Mapping section;
+`engineeringRelationships.ts` now resolves the Basys3 resource and names the package pin (`U16`), and the details
+model's package pin does the same. Live (counter, LD0 at 1440×900): seven sections in order, Mapping `U16` with
+both constraint lines, Related "LED LD0 · U16", Source collapsed by default. Tests: `designSurface.inspectorSections`
+(6), `engineeringRelationships.aliasPin` (3); inspectorHierarchy / inspectorIntelligence / gateSwap / debugNav /
+sequentialInspector green; the nine fanout / workstation reds (`ide-design-context-trace`, `ide-design-workspace-
+header`, verify-linked focus copy, diagnostics dialog) fail identically with the HEAD DesignSurface — inherited.
+tsc 777; css:audit clean. Note for future patches: `String.prototype.replace` with a string replacement expands
+`$&` — the first apply corrupted the `escapeForRegExp` line; use a function replacer for inserted TSX.
+Open: Design left rail (Components / Hierarchy / Sources / Board I/O) review at 200%; the Evidence section is
+long (≈390px) and could fold its replay rows under a disclosure.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
