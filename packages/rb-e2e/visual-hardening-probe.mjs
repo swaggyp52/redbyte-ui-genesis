@@ -9,7 +9,13 @@ const browser = await chromium.launch(process.platform === 'linux' ? { executabl
 const fail = (m) => { throw new Error(m); };
 
 async function overflowAt(width, height, zoom) {
-  const ctx = await browser.newContext({ viewport: { width, height } });
+  // Browser zoom does not magnify content inside a fixed viewport — it shrinks the CSS
+  // viewport, so a responsive layout reflows. Emulate it the way the rest of the suite does,
+  // by halving the viewport. (The previous method set `body { zoom: 2 }`, which scales content
+  // within an unchanged 1440px viewport and therefore reports exactly 2x overflow for any app.)
+  const ctx = await browser.newContext({
+    viewport: { width: Math.round(width / zoom), height: Math.round(height / zoom) },
+  });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 160)));
@@ -22,7 +28,6 @@ async function overflowAt(width, height, zoom) {
     rt.autoSuggestMapping();
   });
   await page.waitForTimeout(300);
-  if (zoom !== 1) await page.evaluate((z) => { document.body.style.zoom = String(z); }, zoom);
 
   const results = {};
   const surfaces = [
