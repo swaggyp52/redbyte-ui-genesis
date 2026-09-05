@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
 import { ProblemsPanel } from '../components/ProblemsPanel';
-import { useEngineeringProblems } from '../engineeringProblems';
+import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
 import { normalizeSignalId } from '../signalIdentity';
@@ -706,7 +706,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return s;
   }, [mappingRows]);
-  const problemsLedgerCount = useEngineeringProblems((state) => state.problems.length);
+  const problemsLedgerCount = useEngineeringProblems(selectProblemCount);
   const workspacePreferences = useSyncExternalStore(
     workspacePreferencesStore.subscribe,
     workspacePreferencesStore.getSnapshot,

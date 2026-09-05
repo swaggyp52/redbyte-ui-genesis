@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ProblemsPanel } from '../components/ProblemsPanel';
-import { useEngineeringProblems } from '../engineeringProblems';
+import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { TestVector } from '@redbyte/rb-utils';
 import {
   getRuntimeVerifyRunKind,
@@ -4614,7 +4614,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : ` ${lastRun.waveform.length} waveform tick${lastRun.waveform.length === 1 ? '' : 's'} recorded.`;
     setRunAnnouncement(`Simulation run ${ordinal}. ${outcome}${detail}`);
   }, [lastRun, totalAssertedCheckCount]);
-  const problemsLedgerCount = useEngineeringProblems((state) => state.problems.length);
+  const problemsLedgerCount = useEngineeringProblems(selectProblemCount);
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep the compact signal browser stable beside the primary workspace. */

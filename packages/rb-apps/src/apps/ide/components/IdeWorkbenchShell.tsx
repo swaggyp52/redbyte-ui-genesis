@@ -203,6 +203,11 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             Show right panel
           </button>
         ) : null}
+        {console && !showConsole && consoleMode !== 'hidden' ? (
+          <button type="button" onClick={() => setDockVisible('bottom', true)} data-testid="ide-show-bottom-dock">
+            Show bottom panel
+          </button>
+        ) : null}
       </div>
       <div
         className={`ide-workbench-main${showLeftDock ? '' : ' hide-left-dock'}${

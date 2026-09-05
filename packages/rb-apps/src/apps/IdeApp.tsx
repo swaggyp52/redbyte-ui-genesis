@@ -2705,6 +2705,17 @@ export const IdeApp: React.FC = () => {
     publishProblems(projectProblems);
   }, [projectProblems, publishProblems]);
   const problemCounts = useMemo(() => countProblems(projectProblems), [projectProblems]);
+  // The bottom panel reveals itself once when something newly actionable appears
+  // (the error + warning count rises) — never merely because it exists. Hiding
+  // it again sticks until the next such event.
+  const lastActionableCountRef = useRef<number>(-1);
+  useEffect(() => {
+    const count = problemCounts.error + problemCounts.warning;
+    const previous = lastActionableCountRef.current;
+    lastActionableCountRef.current = count;
+    if (previous < 0 || count <= previous) return;
+    workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true });
+  }, [activeMode, problemCounts.error, problemCounts.warning]);
   const navigatorEntries = useMemo<NavigatorEntry[]>(() => {
     const documentLabels: Record<string, string> = {};
     for (const doc of documentHost.open) {
