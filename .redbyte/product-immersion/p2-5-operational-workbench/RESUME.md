@@ -165,6 +165,37 @@ opens its preview; selecting the Board input switches to the Board workspace. Te
 exportSurface reds compared against the baseline worktree (see the commit). Note: `ExportSurface.tsx` is a
 CRLF-blob file too. Open for Package: previous/current *content* diff of a selected file, dossier depth.
 
+**Inner grid owner (Wave Four, `e3b0eb701`).** The 200% case traced to two owners fighting: at a 720×450
+CSS viewport the Simulate result region (fail diagnosis + three callouts, 362px, `min-height: auto`) could
+not shrink and pushed the document to 0px below the panel, and the <900px stacked template omitted the
+splitter row (implicit row/columns, `160px 0 0 0 22px`). `simulate-instrument.css` now owns the whole inner
+layout: the result region is bounded (`min-height: 0; overflow: auto`), the document keeps a floor of
+`clamp(182px, 60%, 240px)` (160px row + 22px splitter, up to 240px or 60% of the panel), one stacked template
+(`'cases' 'split' 'evidence' 'inspector'`, one column) with the collapsed / maximized variants restating only
+the rows, and a named gap owner (`… .ide-workbench-workspace > .rb-sim-panel > .ide-panel-body { gap: 0 }`
+outranks the shell's `[data-layout-intent] … > .ide-panel > .ide-panel-body` section gap — the base rule lost
+on specificity, which is why a 14px gap survived the first pass). The `ide-root.css` verify cap block
+(`display: grid !important` on `.ide-verify-workspace`, region flex caps, oscilloscope/waveform frame minimums)
+targeted classes that no longer render — the panel and lab grid carry `ide-verify-panel` / `ide-verify-lab-grid`
+as test ids, never as classes. A brace-aware prune removed 265 rules / 357 selectors / 5 empty media blocks for
+the dead family (`.ide-verify-region--*`, `.ide-verify-workspace`, `.ide-verify-lab-grid`, `.ide-verify-panel`,
+status strip, stale banners, kit tip, oscilloscope stage, waveform frame, scope header, console frame, dock
+toggle rail); the eight live caps were deleted where a plain rule already owns the value (`.ide-verify-
+workbench-body`, `.ide-stimulus-grid-scroll` min-height 0; the 260px/150px first-run stimulus minimums are
+gone) or re-homed as plain rules (supporting strip 38px closed, drawer body `min(34vh, 320px)`).
+`!important` in `ide-root.css`: 3489 → 3008. Live (counter, Timing, failing run): 1440×900 header 31 / result
+245 / document 240 (cases 132, split 22, evidence 86, inspector 132); 1366×768 with Problems open: result 95
+(scrolls) / document 230; 720×450: header 46 / result 26 (scroll strip) / document 182 (cases 160 + split 22,
+evidence and inspector rows 0 — the deck tools remain to maximize the evidence). No page scroll at any size.
+Tests: `simulateInstrument.compactGrid` (20; both stylesheets read as text — one stacked owner, bound + floor,
+gap owner, retired selectors absent, no `!important` in simulate-instrument.css, ratchet ≤3010 on ide-root).
+tsc 777; `css:audit:ide` clean; evidenceDeck / evidenceState / waveformDepth / timingLab / simulate prefs green.
+Owner record: old owner `ide-root.css` verify block (2491–2620 at `3c6e4ee04`) and the `.ide-verify-panel`
+family → new owner `simulate-instrument.css` (`.rb-sim-panel`, `.rb-sim-region--*`, `.rb-sim-workspace`,
+`.rb-sim-lab-grid` and its media block). Still open in Wave Four: Design inspector named sections (Properties /
+Connectivity / Evidence / Mapping / Source / Related — today Actions / Selection details / Live · Signal State),
+and the Timing toolbar wraps awkwardly under 900px (cosmetic).
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.

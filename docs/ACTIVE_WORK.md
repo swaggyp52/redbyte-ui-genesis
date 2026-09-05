@@ -175,7 +175,12 @@ accepted.
   evidence is scoped to its owning project (stamped runs/ledger, foreign evidence dropped on rehydrate,
   Save As re-owns), one `deriveRunScope` read-model names why evidence is stale, a reload keeps an
   unchanged run current, and a fresh starter load is now the canonical document rehydration produces
-  (row order, V2 ids/labels, vector keys). HEAD `f1f6c1965`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  (row order, V2 ids/labels, vector keys). Then Waves One–Four on the same branch: the Cases/Waveform deck
+  composite with a resizable splitter, evidence state words (RUNNING / REPLAYING / RECORDED · CURRENT / STALE),
+  waveform buses / radix / expected overlay, timing run length + generated lanes + reset modes, the Board
+  camera and the Constraints tool (signal ↔ constraint ↔ XDC line), the Package provenance graph and
+  file-by-file comparison, and the Simulate inner-grid owner (`simulate-instrument.css`; 265 dead verify
+  rules retired from `ide-root.css`, `!important` 3489 → 3008). HEAD `e3b0eb701`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
