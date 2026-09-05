@@ -4,6 +4,79 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-04 — P2.5G product completion, public launch and repository convergence (Fable 5.1 ultracode, desktop session)
+
+**Label:** INTERIM REDBYTE PRODUCT AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED.
+HEAD `bf051d808` on `claude/redbyte-operational-workbench-convergence-w9k2r4`; origin still `2ef5e5ee8`;
+safety tag `safety/redbyte-before-product-release-convergence-32b7b987a`. Nothing pushed; PR #84/#85, `main`,
+the product branch, the public site and Cloudflare untouched; format version 1; both classroom goldens
+byte-identical. **The §16 local product gate is not met, so the GitHub/release phase (§17–§22) was not
+started** — the directive gates push/PR/site/deploy behind that gate.
+
+**Method:** read-only gate census (workflow `wf_54a8d79a-78c`, six readers, 122 gaps; digest in the session
+scratchpad `census.md`, regenerable from the census JSON in the task output), then implementation in
+dependency order, then three read-only reviewers (workflow `wf_7a8033a3-9e3`, 36 findings) with every P0/P1
+repaired in `bf051d808`.
+
+**Landed (oldest → newest):**
+- `2139c282d` Simulate playback over the completed run (auto-play after Run, 0.5×/1×/2×, loop, stop at
+  mismatch, reduced motion honoured), live readout (tick/progress, changed inputs, observed outputs,
+  mismatch), changing-lane markers; the board twin follows the selected case/tick with a Simulated-values
+  layer; Board mount guard keyed on the mount-time row.
+- `2657fbdb3` One Problems count everywhere (errors + warnings); bottom panel reveals once on a rise, with
+  a Show-bottom-panel restore control.
+- `e483e44dc` Export generator resolves label-derived row ids (`normalizeBoardRowId` shared in rb-utils):
+  the twelve false "assertion target not declared" rows are gone. Goldens byte-identical.
+- `c43aaeff6` Board guided loop: deterministic recommendation (bit-index aware), Next unmapped, Undo,
+  resources selectable on their own with a resource card; resource-kind inference matches whole tokens
+  (CARRY was read as a seven-segment cathode when its pin was cleared). Regression test.
+- `28f07ad0a` Design: failing checks drawn on the schematic; Related in the trace toolbar; Driver = fan-in.
+- `7a131f72d` Package: the Handoff overview is a dossier — figures (architecture, waveform, board), evidence
+  table, click-through to Design/Cases/Waveform/Board/artifacts/Problems, Present mode, print keeps the
+  document.
+- `7ab489336` + `428f199d6` Runs ledger records scenario, kind, ticks, failed signals; Runs document shows
+  them; the newest run is current by the runtime's own staleness, older ones superseded.
+- `ea6c17adc` Architecture document isolates drivers / loads / path of the selected block.
+- `450708b4b` Timing snaps to clock edges (Shift+Arrow); Case Lab keyboard editing (0/1/Backspace on the
+  followed column); workspace digit shortcuts ignore handled keys; stale cases read as stale.
+- `a2003310b` Waveform value slot beside every lane name.
+- `bf051d808` Reviewer round: dossier stale flag = simulation staleness only; real .xdc line count; SHA
+  wording; numbered figures by render order; operable rows; print grows; waveform figure windowed with
+  IN/OUT tags; a replaying tick is never published (followed object survives a run); manual navigation
+  stops playback; board values from the run only, mapped resources only; guarded "Map here"; honest Undo;
+  observe runs read "observed"; bottom panel reveals on errors only; lane reorder (Alt+Up/Down, ▲▼).
+
+**Validation at each commit:** rb-apps typecheck 779 (= baseline) under pinned Node 20.19.0; both classroom
+golden Basys3 export gates byte-identical; new green tests: verifySurface.fieldIdentity, fieldAlias,
+followColumn, hardwareMappingBridge token inference; every remaining red in the touched suites fails
+identically in `.redbyte/worktrees/baseline-b635` (Design 16, Export 37 incl. timing-authority, history-
+authority 7, waveform-priority 4, observe-first 1, simulationStudio/v3, hardware trust-clarity/readiness).
+Live proof at 1366×768 and 720×450 emulation on the hierarchical adder: Design SUM[2] → Run → replay
+(chip stays SUM[2]) → Board keeps SUM[2], LEDs 01111 from the last sample → Cases t3 → Board LEDs 00001;
+CARRY cleared → recommendation LD4 → Use → W18; Handoff facts/figures/click-through; Present/print;
+Runs "current"/"superseded"; Architecture isolate 1 → 10 blocks; keyboard 0/1 editing without switching
+workspace. Captures: `evidence/p25d` regenerated at 1440×900 + 1366×768.
+
+**Open, in order (from the census; all still unmet gate items):** Simulate — Run selected (deferred: a
+partial run would overclaim scenario evidence; needs a per-case coverage model), resizable Cases/Timing +
+Waveform composition, Live I/O + Waveform, Timing clock generator/reset pulse/run range/state lanes,
+Waveform explorer hierarchy/groups/radix, expected overlay, dead oscilloscope CSS; Design — Layers tab,
+Place tool, recent components, camera + layers per document, Schematic+HDL cross-reveal, Schematic+Waveform
+split, buses as trunks (needs a multi-bit net), 200% inner grid; Board — camera (pan/zoom/fit), Constraints
+bottom tool + XDC↔resource sync, Guided/Expert toggle, banks, bulk family select, filters; Package —
+artifact dependency graph, previous/current package comparison, derived exports (SVG/HTML), validation
+table, Handoff tests + spec; Project — Explorer Files view, context commands, used-in, compile-order
+reasons, per-source diagnostics, Start Center Imported origin + richer peek; Shared — navigator coverage
+(projects/filesets/components/lanes), history of document jumps, safe quick fixes, task presets, split
+document groups, persisted selection/camera/waveform scroll; scale proof; accessibility audit; legacy
+sweep (ScenarioBuilderPanel, ide-polish-pass remnants); duplicate Related menu (toolbar + inspector)
+kept deliberately (inspector serves wire/signal selections) — reviewer P2. Then the release layer (§17–§22).
+
+**Must not be reset:** everything above is committed; dev server on :5173; browser pane tab "seed" at
+1366×768 emulation (reset with preset desktop); baseline worktree `.redbyte/worktrees/baseline-b635`;
+scratch patch scripts are disposable. Exact next seam: the resizable Cases+Waveform splitter
+(`rb-sim-lab-grid` rows in simulate-instrument.css → a persisted `--rb-sim-evidence-h`) or the Board camera.
+
 ## 2026-09-04 — P2.5F maximum product depth (Fable 5.1 ultracode, desktop session)
 
 **Label:** INTERIM REDBYTE MAX-DEPTH RECONSTRUCTION / NOT A REVIEW CANDIDATE / NOT PUSHED.

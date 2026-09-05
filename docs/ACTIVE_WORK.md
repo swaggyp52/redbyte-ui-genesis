@@ -161,6 +161,14 @@ accepted.
   NOT A REVIEW CANDIDATE / NOT PUSHED**. Browser-E0 only; both goldens byte-identical; format
   version 1. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5G desktop session (2026-09-04, not pushed):** product completion on the same branch — Simulate
+  playback + live readout, board twin follows the tick, guided Board mapping loop, failing checks on the
+  schematic, Handoff dossier with figures and click-through, Runs ledger truth, Architecture isolate,
+  keyboard editing, and a three-lens reviewer round with every P0/P1 repaired. Export lint repaired at the
+  root (shared row-id rule). HEAD `bf051d808`, 81 commits ahead of origin, label **INTERIM REDBYTE PRODUCT
+  AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED**. The §16 local product gate
+  is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
   proven (`full-adder-operational-journey.mjs`, both viewports, zero store actions):
   first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector
