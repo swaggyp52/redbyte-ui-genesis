@@ -5199,6 +5199,14 @@ function normalizePersistedLastExport(
     manifestHash: typeof candidate.manifestHash === 'string' ? candidate.manifestHash : undefined,
     bundleHash: typeof candidate.bundleHash === 'string' ? candidate.bundleHash : undefined,
     packageHash: typeof candidate.packageHash === 'string' ? candidate.packageHash : undefined,
+    artifactHashes:
+      candidate.artifactHashes && typeof candidate.artifactHashes === 'object'
+        ? Object.fromEntries(
+            Object.entries(candidate.artifactHashes as Record<string, unknown>).filter(
+              (entry): entry is [string, string] => typeof entry[1] === 'string'
+            )
+          )
+        : undefined,
     verificationTrust:
       candidate.verificationTrust === 'draft' ||
       candidate.verificationTrust === 'unverified' ||

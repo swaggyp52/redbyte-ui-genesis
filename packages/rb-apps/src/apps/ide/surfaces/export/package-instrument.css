@@ -256,3 +256,33 @@ html.rb-presenting .ide-root .rb-handoff { height: 100%; overflow: auto; }
   .ide-root .rb-handoff-click { display: none; }
 }
 html.rb-presenting .ide-root .rb-handoff-click { display: none; }
+/* Provenance figure: inputs → generated files, one curve per dependency; operable nodes. */
+.ide-root .rb-pkg-provenance-map { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--wb-space-3) 8px; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-provenance-graph { display: block; }
+.ide-root .rb-pkg-provenance-edge { stroke: var(--wb-border-strong); stroke-width: 1.25; }
+.ide-root .rb-pkg-provenance-edge.is-artifact { stroke-dasharray: 3 3; }
+.ide-root .rb-pkg-provenance-edge.is-emphasised { stroke: var(--wb-focus); stroke-width: 2; }
+.ide-root .rb-pkg-provenance-edge.is-dim { opacity: 0.25; }
+.ide-root .rb-pkg-provenance-node rect { fill: var(--wb-surface); stroke: var(--wb-border-strong); stroke-width: 1; }
+.ide-root .rb-pkg-provenance-node text { fill: var(--wb-text); font: 11px var(--wb-font-mono); }
+.ide-root .rb-pkg-provenance-node.is-input text { font: 600 11px var(--wb-font-ui); }
+.ide-root .rb-pkg-provenance-node.is-input rect { fill: var(--wb-surface-2); }
+.ide-root .rb-pkg-provenance-node.is-selected rect { stroke: var(--wb-focus); stroke-width: 2; fill: var(--wb-active-bg); }
+.ide-root .rb-pkg-provenance-node.is-emphasised rect { stroke: var(--wb-focus); }
+.ide-root .rb-pkg-provenance-node.is-blocked rect, .ide-root .rb-pkg-provenance-node.is-pending rect { stroke-dasharray: 3 2; }
+.ide-root .rb-pkg-provenance-node.is-changed rect { stroke: var(--wb-warn); }
+.ide-root .rb-pkg-provenance-node:focus-visible { outline: none; }
+.ide-root .rb-pkg-provenance-node:focus-visible rect { stroke: var(--wb-focus); stroke-width: 2; }
+.ide-root .rb-pkg-provenance-status { fill: var(--wb-text-3); font: 10px var(--wb-font-ui); }
+.ide-root .rb-pkg-provenance-node.is-changed .rb-pkg-provenance-status { fill: var(--wb-warn); }
+.ide-root .rb-pkg-provenance-dot { fill: var(--wb-warn); }
+.ide-root .rb-pkg-provenance-empty { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .ide-export-comparison-files { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ide-root .ide-export-comparison-file { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--wb-text-xs); }
+.ide-root .ide-export-comparison-file code { font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .ide-export-comparison-file-open { padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; }
+.ide-root .ide-export-comparison-file-open:hover code { text-decoration: underline; }
+.ide-root .ide-export-comparison-file-open:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .ide-export-comparison-file-state { color: var(--wb-text-3); white-space: nowrap; }
+.ide-root .ide-export-comparison-file.is-changed .ide-export-comparison-file-state, .ide-root .ide-export-comparison-file.is-added .ide-export-comparison-file-state { color: var(--wb-warn); }
+.ide-root .ide-export-comparison-file.is-removed .ide-export-comparison-file-state { color: var(--wb-err); }

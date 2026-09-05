@@ -5,6 +5,9 @@ import { useEngineeringSelection } from '../engineeringSelection';
 import { workspacePreferencesStore } from '../workspacePreferences';
 import type { WorkbenchDocument } from '../workbenchDocuments';
 import { HandoffOverviewDocument } from './export/HandoffOverviewDocument';
+import { ArtifactProvenanceGraph } from './export/ArtifactProvenanceGraph';
+import { compareExportArtifacts } from '../exportHistoryModel';
+import { digestValue } from '../../../utils/digest';
 import type { IdeExampleDefinition } from '../examplesCatalog';
 import type { RBProject } from '../../../export/projectFormat';
 import { buildDeterministicZip, sha256Hex } from '../../../export/deterministicZip';
@@ -950,6 +953,25 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     : persistedDownloadIsCurrent
       ? lastExport
       : undefined;
+  // Files whose recorded digest differs between the two newest recorded packages.
+  const changedArtifactPaths = useMemo(() => {
+    const set = new Set<string>();
+    if (exportHistory.length < 2) return set;
+    const previous = exportHistory[exportHistory.length - 2];
+    const current = exportHistory[exportHistory.length - 1];
+    for (const entry of compareExportArtifacts(previous, current)) {
+      if (entry.state === 'changed' || entry.state === 'added') set.add(entry.path);
+    }
+    return set;
+  }, [exportHistory]);
+  // Inputs that changed since the last recorded package, from the runtime's own flags.
+  const changedProvenanceInputs = useMemo(() => {
+    const set = new Set<'design' | 'board' | 'simulate' | 'project'>();
+    if (dirtySinceVerify) set.add('design');
+    if (currentDownloadEvidence?.sourceCurrentness?.mapping && currentDownloadEvidence.sourceCurrentness.mapping !== 'current') set.add('board');
+    if (currentDownloadEvidence?.sourceCurrentness?.verify && currentDownloadEvidence.sourceCurrentness.verify !== 'current') set.add('simulate');
+    return set;
+  }, [currentDownloadEvidence, dirtySinceVerify]);
   const downloadDone = Boolean(currentDownloadEvidence);
   const lastDownloadKind = currentDownloadEvidence?.downloadKind ?? null;
   const exportTrustAxes = deriveExportTrustAxes({
@@ -1339,6 +1361,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ),
         },
         artifacts: viewModel.artifacts.map((a) => a.path),
+        artifactHashes: Object.fromEntries(viewModel.artifacts.map((a) => [a.path, digestValue(a.content)])),
         ranAtIso,
       };
       setSessionDownloadEvidence(exportResult);
@@ -1356,6 +1379,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         status: 'blocked',
         hash: packageSourceHashes.project,
         artifacts: viewModel.artifacts.map((a) => a.path),
+        artifactHashes: Object.fromEntries(viewModel.artifacts.map((a) => [a.path, digestValue(a.content)])),
         ranAtIso,
       });
     } finally {
@@ -1856,7 +1880,33 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </IdeCallout>
           ) : null}
 
-          {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} /> : null}
+          <section className="rb-pkg-provenance-map" data-testid="ide-export-provenance-section" aria-label="Package provenance">
+            <header className="rb-pkg-section-header">
+              <h3>Provenance</h3>
+              <p className="ide-copy ide-copy--flush">
+                What each generated file depends on. Select a file to open it; select an input to open its workspace.
+                {exportHistory.length >= 2 ? ' Files marked changed differ from the previous recorded package.' : ''}
+              </p>
+            </header>
+            <ArtifactProvenanceGraph
+              artifacts={viewModel.artifacts}
+              selectedPath={selectedArtifact?.path ?? null}
+              changedPaths={changedArtifactPaths}
+              changedInputs={changedProvenanceInputs}
+              onSelectArtifact={setSelectedArtifactPath}
+              onOpenInput={
+                onOpenDocument
+                  ? (input) => {
+                      if (input === 'design') onOpenDocument({ kind: 'schematic', moduleId: 'top' });
+                      else if (input === 'board') onOpenDocument({ kind: 'board-io', constraintSetId: 'default' });
+                      else if (input === 'simulate') onOpenDocument({ kind: 'runs' });
+                      else onOpenDocument({ kind: 'project-overview' });
+                    }
+                  : undefined
+              }
+            />
+          </section>
+          {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} onOpenArtifact={setSelectedArtifactPath} /> : null}
 
           <section
             className="rb-pkg-files"
