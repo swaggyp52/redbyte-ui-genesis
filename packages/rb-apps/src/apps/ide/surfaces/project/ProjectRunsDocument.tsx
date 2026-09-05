@@ -14,6 +14,8 @@ export interface ProjectRunsDocumentProps {
   readonly onSelect: (ref: EngineeringObjectRef) => void;
   readonly onOpenDocument: (doc: WorkbenchDocument) => void;
   readonly onNavigateMode: (mode: IdeMode) => void;
+  /** The present project hash: a run whose hash matches is current, any other is stale. */
+  readonly currentProjectHash?: string | null;
 }
 
 /**
@@ -30,8 +32,13 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
   onSelect,
   onOpenDocument,
   onNavigateMode,
+  currentProjectHash = null,
 }) => {
   const ordered = [...runs].reverse();
+  const evidenceDocumentFor = (run: VerifyRunLedgerEntry): WorkbenchDocument | null => {
+    const scenarioId = run.scenarioId ?? waveformScenarioId;
+    return scenarioId ? { kind: 'waveform', scenarioId } : null;
+  };
   const waveformScenarioId = activeScenarioId ?? scenarios[0]?.id ?? null;
 
   return (
@@ -51,16 +58,20 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
             <thead>
               <tr>
                 <th scope="col">Result</th>
+                <th scope="col">Type</th>
+                <th scope="col">Scenario</th>
                 <th scope="col">Checks</th>
-                <th scope="col">First mismatch</th>
+                <th scope="col">Ticks</th>
+                <th scope="col">Failed</th>
                 <th scope="col">Changed since previous</th>
-                <th scope="col">Project hash</th>
+                <th scope="col">State</th>
                 <th scope="col">When</th>
+                <th scope="col" aria-label="Evidence" />
               </tr>
             </thead>
             <tbody>
               {ordered.length === 0 ? (
-                <tr><td colSpan={6} className="wb-table-empty">No runs recorded yet. Run a scenario in Simulate.</td></tr>
+                <tr><td colSpan={10} className="wb-table-empty">No runs recorded yet. Run a scenario in Simulate.</td></tr>
               ) : (
                 ordered.map((run) => {
                   const ref: EngineeringObjectRef = { kind: 'run', runId: run.runId };
@@ -69,21 +80,48 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
                     run.didVectorsChangeSinceLast ? 'cases' : null,
                     run.didMappingChangeSinceLast ? 'mapping' : null,
                   ].filter(Boolean);
+                  const evidence = evidenceDocumentFor(run);
+                  const isCurrent = currentProjectHash != null && run.projectHash === currentProjectHash;
+                  const isCompare = run.runKind ? run.runKind === 'verify' : run.passedRows + run.failedRows > 0;
                   return (
                     <tr
                       key={run.runId}
                       aria-selected={sameEngineeringObject(selected, ref)}
                       data-testid={`ide-project-run-${run.runId}`}
                       data-tone={run.status === 'pass' ? 'ok' : 'error'}
+                      data-current={isCurrent ? 'true' : 'false'}
+                      className={isCurrent ? undefined : 'is-stale'}
                       onClick={() => onSelect(ref)}
-                      onDoubleClick={() => waveformScenarioId && onOpenDocument({ kind: 'waveform', scenarioId: waveformScenarioId })}
+                      onDoubleClick={() => evidence && onOpenDocument(evidence)}
                     >
                       <td className="is-mono" data-tone={run.status === 'pass' ? 'ok' : 'error'}>{run.status === 'pass' ? 'PASS' : 'FAIL'}</td>
-                      <td className="is-mono">{run.passedRows}/{run.passedRows + run.failedRows}</td>
-                      <td className="is-mono">{run.firstFailure ? `${run.firstFailure.signal} @ t${run.firstFailure.tick}` : '—'}</td>
+                      <td className="is-mono">{isCompare ? 'compare' : 'observe'}</td>
+                      <td className="is-mono">{run.scenarioName ?? '—'}</td>
+                      <td className="is-mono">{isCompare ? `${run.passedRows}/${run.passedRows + run.failedRows}` : '—'}</td>
+                      <td className="is-mono">{run.tickCount ?? '—'}</td>
+                      <td className="is-mono" title={run.failedSignals?.join(', ')}>
+                        {run.failedSignals && run.failedSignals.length > 0
+                          ? `${run.failedSignals.slice(0, 3).join(', ')}${run.failedSignals.length > 3 ? ` +${run.failedSignals.length - 3}` : ''}`
+                          : run.firstFailure ? `${run.firstFailure.signal} @ t${run.firstFailure.tick}` : '—'}
+                      </td>
                       <td className="is-mono">{changed.length ? changed.join(', ') : 'nothing'}</td>
-                      <td className="is-mono">{run.projectHash.slice(0, 8)}</td>
+                      <td className="is-mono" data-tone={isCurrent ? 'ok' : 'warn'} title={`Project hash ${run.projectHash.slice(0, 12)}`}>
+                        {currentProjectHash == null ? '—' : isCurrent ? 'current' : 'stale'}
+                      </td>
                       <td className="is-mono" title={run.ranAtIso}>{formatRelative(run.ranAtIso)}</td>
+                      <td>
+                        {evidence ? (
+                          <button
+                            type="button"
+                            className="wb-btn wb-btn--ghost"
+                            onClick={(event) => { event.stopPropagation(); onOpenDocument(evidence); }}
+                            data-testid={`ide-project-run-evidence-${run.runId}`}
+                            title={`Open the waveform of scenario ${run.scenarioName ?? ''}`.trim()}
+                          >
+                            Evidence
+                          </button>
+                        ) : null}
+                      </td>
                     </tr>
                   );
                 })

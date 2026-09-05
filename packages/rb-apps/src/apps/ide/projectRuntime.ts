@@ -219,6 +219,12 @@ export type ProjectIoRow = IdeExampleIoRow;
 
 export interface VerifyRunLedgerEntry {
   runId: string;
+  /** Which scenario ran and how (observe = 'trace', compare = 'verify'); older ledgers lack these. */
+  scenarioId?: string;
+  scenarioName?: string;
+  runKind?: 'trace' | 'verify';
+  tickCount?: number;
+  failedSignals?: string[];
   ranAtIso: string;
   status: 'pass' | 'fail';
   passedRows: number;
@@ -1962,6 +1968,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
           const ledgerEntry: VerifyRunLedgerEntry = {
             runId: `run-${ranAtIso}-${report.reportHash.slice(0, 8)}`,
+            scenarioId: runtimeRun.scenarioId,
+            scenarioName: runtimeRun.scenarioName,
+            runKind,
+            tickCount: runtimeRun.waveform?.length ?? 0,
+            failedSignals: Array.from(new Set(report.rows.filter((row) => row.status === 'fail').map((row) => row.signal))),
             ranAtIso,
             status: report.status,
             passedRows: report.rows.filter((row) => row.status === 'pass').length,
@@ -5023,6 +5034,13 @@ function normalizeVerifyRunLedgerEntry(value: unknown): VerifyRunLedgerEntry | n
   const firstFailure = candidate.firstFailure;
   return {
     runId: candidate.runId,
+    scenarioId: typeof candidate.scenarioId === 'string' ? candidate.scenarioId : undefined,
+    scenarioName: typeof candidate.scenarioName === 'string' ? candidate.scenarioName : undefined,
+    runKind: candidate.runKind === 'verify' || candidate.runKind === 'trace' ? candidate.runKind : undefined,
+    tickCount: typeof candidate.tickCount === 'number' && Number.isFinite(candidate.tickCount) ? Math.max(0, Math.floor(candidate.tickCount)) : undefined,
+    failedSignals: Array.isArray(candidate.failedSignals)
+      ? candidate.failedSignals.filter((signal): signal is string => typeof signal === 'string')
+      : undefined,
     ranAtIso: candidate.ranAtIso,
     status: candidate.status,
     passedRows: Number.isFinite(candidate.passedRows) ? Math.max(0, Math.floor(Number(candidate.passedRows))) : 0,

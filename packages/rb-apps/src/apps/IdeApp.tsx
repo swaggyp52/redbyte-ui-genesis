@@ -3088,6 +3088,7 @@ export const IdeApp: React.FC = () => {
                 onRestore: handleRecoverProject,
               }}
               runHistory={verifyRunHistory}
+              currentProjectHash={projectHash}
               sourceModel={sourceModel}
               crossProbe={{ index: crossProbeIndex, sourceLabels: crossProbeSourceLabels }}
               fpgaConfig={fpgaConfig}
