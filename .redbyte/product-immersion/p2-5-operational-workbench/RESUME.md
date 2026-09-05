@@ -80,6 +80,15 @@ Evidence only → 0 / 528; Timing only → 528 / 0; Reset → 36% and `localStor
 page body never scrolls. Tests: `workspacePreferences.simulate` (4), `verifySurface.evidenceDeck` (4),
 existing `workspacePreferences` (5) green; tsc 777; CSS audit exit 0.
 
+**Replay / inspection state words (`bdec7bafe`).** The evidence row carries one chip
+(`ide-verify-evidence-state`, `data-state`): RUNNING (runtime run state), REPLAYING (playback flag),
+RECORDED · CURRENT (a run whose inputs are unchanged; title carries the UTC record time), STALE + the
+run-scope reason inline ("The design changed after this run."). NOT RUN otherwise. It is separate from
+the PASS/FAIL verdict chip in the header. No timers or pretended delays exist in the run flow (checked:
+no `setTimeout` in the Simulate run path). HISTORICAL remains the Runs document's "superseded" state —
+Simulate can only replay the latest run; opening an older ledger entry as a replay is a later slice.
+Live: RECORDED · CURRENT → Play → REPLAYING → stop → RECORDED · CURRENT. Test: `verifySurface.evidenceState` (2).
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
