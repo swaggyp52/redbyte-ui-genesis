@@ -11,21 +11,23 @@ const VIEWPORTS = [
 const MODES = [
   {
     id: 'project',
-    primary: ['[data-testid="ide-project-professional-overview"]'],
+    primary: ['[data-testid="ide-project-overview-document"]', '[data-testid="ide-project-panel"]'],
     support: [
       ['[data-testid="ide-project-professional-facts"]'],
-      ['[data-testid="ide-project-workspace-grid"]'],
+      ['[data-testid="ide-project-explorer"]'],
     ],
   },
   {
     id: 'design',
     primary: ['[data-testid="ide-design-live-canvas"]'],
     support: [
-      ['[data-testid="ide-design-dock-palette"]'],
       [
-        '[data-testid="ide-design-toolbar"]',
-        '[data-testid="ide-design-selection-inspector"]',
+        '[data-testid="ide-design-palette-section-io"]',
+        '[data-testid="ide-design-board-io-palette"]',
+      ],
+      [
         '[data-testid="ide-design-inspector-canvas-default"]',
+        '[data-testid="ide-design-selection-inspector"]',
         '[data-testid="ide-design-inspector-selection-details"]',
         '[data-testid="ide-design-inspector-actions"]',
       ],
@@ -35,13 +37,10 @@ const MODES = [
     id: 'verify',
     primary: ['[data-testid="ide-verify-lab-grid"]'],
     support: [
-      [
-        '[data-testid="ide-verify-command-bar"]',
-        '[data-testid="ide-verify-signal-shelf"]',
-      ],
+      ['[data-testid="ide-left-dock"]'],
       [
         '[data-testid="ide-verify-region-stimulus"]',
-        '[data-testid="ide-verify-region-waveform"]',
+        '[data-testid="ide-verify-workspace-waveform"]',
         '[data-testid="ide-verify-waveform-placeholder"]',
       ],
     ],
@@ -56,10 +55,10 @@ const MODES = [
   },
   {
     id: 'export',
-    primary: ['[data-testid="ide-export-package-inspector-v1"]'],
+    primary: ['[data-testid="ide-export-package-files"]'],
     support: [
+      ['[data-testid="ide-export-package-inspector-v1"]'],
       ['[data-testid="ide-export-upstream-readiness"]'],
-      ['[data-testid="ide-export-package-files"]'],
     ],
   },
   {
@@ -128,6 +127,7 @@ async function activateMode(page, baseUrl, mode, routeOnly) {
 }
 
 async function assertShellHierarchy(page, viewport, mode) {
+  if (mode.id === 'design') await selectFirstDesignNode(page);
   const state = await readHierarchyState(page, mode);
 
   assert(state.currentMode === mode.id, `${viewport.label}/${mode.id}: expected mode ${mode.id}, got ${state.currentMode}`);
@@ -158,9 +158,9 @@ async function assertShellHierarchy(page, viewport, mode) {
   );
   assert(state.productSpineCount === 0, `${viewport.label}/${mode.id}: duplicate page product spine is visible`);
   assert(
-    state.layoutShell.top >= state.stageNav.bottom - 10 && state.layoutShell.top <= state.stageNav.bottom + 2,
-    `${viewport.label}/${mode.id}: workbench shell must begin directly under stage navigation (${JSON.stringify({
-      stageNav: state.stageNav,
+    state.layoutShell.top >= state.topBar.bottom - 2 && state.layoutShell.top <= state.topBar.bottom + 40,
+    `${viewport.label}/${mode.id}: workbench shell must begin under the top bar, with at most the document tab strip between (${JSON.stringify({
+      topBar: state.topBar,
       layoutShell: state.layoutShell,
     })})`
   );
@@ -169,7 +169,7 @@ async function assertShellHierarchy(page, viewport, mode) {
     `${viewport.label}/${mode.id}: workbench starts too low in first viewport (${state.layoutShell.top}px)`
   );
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']),
+    JSON.stringify(state.stageLabels) === JSON.stringify(['project', 'design', 'verify', 'hardware', 'export']),
     `${viewport.label}/${mode.id}: stage navigation must be the one five-stage authority, got ${JSON.stringify(state.stageLabels)}`
   );
   assert(state.importIsUtility, `${viewport.label}/${mode.id}: Import must be a utility, not step 6`);
@@ -177,6 +177,18 @@ async function assertShellHierarchy(page, viewport, mode) {
   assert(state.primaryActionCount <= 1, `${viewport.label}/${mode.id}: ${state.primaryActionCount} competing primary actions are visible`);
 }
 
+
+// The Design inspector dock is contextual: it opens with a selection. Click the first schematic
+// node's body with a real pointer (synthetic events carry no pointer id), then wait for the inspector.
+async function selectFirstDesignNode(page) {
+  const node = page.locator('[data-node-id]').first();
+  await node.waitFor({ state: 'visible', timeout: 10000 });
+  const body = node.locator('.rb-sym-body, rect, path').first();
+  const box = (await body.boundingBox().catch(() => null)) ?? (await node.boundingBox());
+  assert(box, 'schematic node must have a bounding box to select');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 10000 });
+}
 async function readHierarchyState(page, mode) {
   return page.evaluate(
     ({ expectedMode, regions }) => {
@@ -229,7 +241,7 @@ async function readHierarchyState(page, mode) {
       const surface = document.querySelector(`[data-ide-mode-marker="${expectedMode}"]`)
         ?? document.querySelector(`[data-testid="ide-mode-${expectedMode}"]`);
       const topBar = document.querySelector('[data-testid="ide-top-bar"]');
-      const stageNav = document.querySelector('[data-testid="ide-stage-nav"]');
+      const stageNav = document.querySelector('[data-testid="ide-workspace-rail"]');
       const importButton = document.querySelector('[data-testid="mode-button-import"]');
 
       return {
@@ -246,14 +258,14 @@ async function readHierarchyState(page, mode) {
         ).length,
         proofRibbon: rectJson(document.querySelector('[data-testid="ide-proof-ribbon"]')?.getBoundingClientRect?.()),
         statusBar: rectJson(document.querySelector('[data-testid="ide-status-bar"]')?.getBoundingClientRect?.()),
-        layoutShell: rectJson(document.querySelector('.ide-layout-shell')?.getBoundingClientRect?.()),
+        layoutShell: rectJson(document.querySelector('.ide-workbench-shell')?.getBoundingClientRect?.()),
         focal: firstVisibleRect(regions.primary),
         support: regions.support.map((selectors) => firstRenderedRect(selectors)),
         productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter(visible).length,
-        stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-stage-nav"] .ide-stage-nav-label'))
+        stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-workspace-rail"] button[data-stage]'))
           .filter(visible)
-          .map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
-        importIsUtility: Boolean(importButton && topBar?.contains(importButton) && !stageNav?.contains(importButton)),
+          .map((element) => element.getAttribute('data-stage') ?? ''),
+        importIsUtility: Boolean(importButton && importButton.classList.contains('wb-rail-btn--utility') && !importButton.closest('[role="tablist"]')),
         pageCommandHeaderCount: surface
           ? Array.from(surface.querySelectorAll('.ide-surface-command-strip, .ide-workbench-page-header')).filter(visible).length
           : 0,

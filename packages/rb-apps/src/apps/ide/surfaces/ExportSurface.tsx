@@ -2066,7 +2066,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <span>Vivado next</span>
                   <ol><li>Download and unzip the package.</li><li>Run the included import Tcl or open the generated project.</li><li>Review synthesis and implementation warnings before bitstream generation.</li></ol>
                 </section>
-                <IdeButton tone="primary" onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
+                <IdeButton tone="secondary" onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
                   {isRebuilding ? 'Building package…' : 'Download package'}
                 </IdeButton>
               </aside>

@@ -12,24 +12,36 @@ const PRIMARY_MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 
 const MODE_REGIONS = {
   project: {
-    primary: ['[data-testid="ide-project-professional-overview"]'],
+    primary: ['[data-testid="ide-project-overview-document"]', '[data-testid="ide-project-panel"]'],
     support: [
       ['[data-testid="ide-project-professional-facts"]'],
-      ['[data-testid="ide-project-workspace-grid"]'],
+      ['[data-testid="ide-project-explorer"]'],
     ],
   },
   design: {
     primary: ['[data-testid="ide-design-live-canvas"]'],
     support: [
-      ['[data-testid="ide-design-dock-palette"]'],
-      ['[data-testid="ide-design-toolbar"]'],
+      [
+        '[data-testid="ide-design-palette-section-io"]',
+        '[data-testid="ide-design-board-io-palette"]',
+      ],
+      [
+        '[data-testid="ide-design-inspector-canvas-default"]',
+        '[data-testid="ide-design-selection-inspector"]',
+        '[data-testid="ide-design-inspector-selection-details"]',
+        '[data-testid="ide-design-inspector-actions"]',
+      ],
     ],
   },
   verify: {
     primary: ['[data-testid="ide-verify-lab-grid"]'],
     support: [
-      ['[data-testid="ide-verify-signal-shelf"]'],
-      ['[data-testid="ide-verify-region-stimulus"]', '[data-testid="ide-verify-no-circuit-task"]'],
+      ['[data-testid="ide-left-dock"]'],
+      [
+        '[data-testid="ide-verify-region-stimulus"]',
+        '[data-testid="ide-verify-workspace-waveform"]',
+        '[data-testid="ide-verify-waveform-placeholder"]',
+      ],
     ],
   },
   hardware: {
@@ -40,10 +52,10 @@ const MODE_REGIONS = {
     ],
   },
   export: {
-    primary: ['[data-testid="ide-export-package-inspector-v1"]'],
+    primary: ['[data-testid="ide-export-package-files"]'],
     support: [
+      ['[data-testid="ide-export-package-inspector-v1"]'],
       ['[data-testid="ide-export-upstream-readiness"]'],
-      ['[data-testid="ide-export-package-files"]'],
     ],
   },
 };
@@ -88,7 +100,7 @@ await runIdeGate('IDE shell layout integrity satisfied', async ({ page, baseUrl 
 
 async function assertShellModeIntegrity(page, viewport, mode) {
   if (mode === 'design') {
-    await clearDesignSelection(page);
+    await selectFirstDesignNode(page);
   }
   const state = await readShellModeState(page, mode);
 
@@ -128,6 +140,18 @@ async function assertShellModeIntegrity(page, viewport, mode) {
   }
 }
 
+
+// The Design inspector dock is contextual: it opens with a selection. Click the first schematic
+// node's body with a real pointer (synthetic events carry no pointer id), then wait for the inspector.
+async function selectFirstDesignNode(page) {
+  const node = page.locator('[data-node-id]').first();
+  await node.waitFor({ state: 'visible', timeout: 10000 });
+  const body = node.locator('.rb-sym-body, rect, path').first();
+  const box = (await body.boundingBox().catch(() => null)) ?? (await node.boundingBox());
+  assert(box, 'schematic node must have a bounding box to select');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 10000 });
+}
 async function clearDesignSelection(page) {
   const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
   assert(canvas, 'Design canvas must be visible before clearing contextual selection');
@@ -199,7 +223,7 @@ async function readShellModeState(page, mode) {
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
         topBar: rectJson(document.querySelector('[data-testid="ide-top-bar"]')?.getBoundingClientRect?.()),
-        stageNav: rectJson(document.querySelector('[data-testid="ide-stage-nav"]')?.getBoundingClientRect?.()),
+        stageNav: rectJson(document.querySelector('[data-testid="ide-workspace-rail"]')?.getBoundingClientRect?.()),
         mainCount: document.querySelectorAll('main').length,
         retiredRailCount: document.querySelectorAll(
           '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
@@ -209,7 +233,7 @@ async function readShellModeState(page, mode) {
         ).length,
         contextualDockViolationCount: (() => {
           if (expectedMode === 'verify') {
-            return document.querySelectorAll('[data-testid="ide-left-dock"]').length;
+            return document.querySelectorAll('[data-testid="ide-left-dock"]:not(:has([data-testid="ide-verify-signal-rail-header"]))').length;
           }
           if (expectedMode !== 'design') return 0;
           const dock = document.querySelector('[data-testid="ide-right-dock"]');
