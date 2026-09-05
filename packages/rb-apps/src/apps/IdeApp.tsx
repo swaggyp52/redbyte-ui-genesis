@@ -2812,7 +2812,8 @@ export const IdeApp: React.FC = () => {
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       const isEditable = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable;
-      if (isEditable || commandPaletteOpen) return;
+      // A key a document already handled (and prevented) is not a workspace shortcut.
+      if (isEditable || commandPaletteOpen || event.defaultPrevented) return;
       const primary = event.ctrlKey || event.metaKey;
       if (primary && event.key.toLowerCase() === 's') {
         event.preventDefault();

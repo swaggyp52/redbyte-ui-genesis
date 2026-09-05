@@ -302,6 +302,18 @@ export const CaseLab: React.FC<CaseLabProps> = ({
             else if (event.key === 'Home') { event.preventDefault(); if (orderedTicks[0] != null) onSelectCase(orderedTicks[0]); }
             else if (event.key === 'End') { event.preventDefault(); const last = orderedTicks[orderedTicks.length - 1]; if (last != null) onSelectCase(last); }
             else if (event.key === 'f' || event.key === 'F') { event.preventDefault(); stepFailure(event.shiftKey ? -1 : 1); }
+            else if ((event.key === '1' || event.key === '0' || event.key === 'Backspace' || event.key === 'Delete') && focusFieldId && !(event.target instanceof HTMLInputElement)) {
+              // Typing 0 / 1 sets the followed column's expectation for the selected case(s); Backspace/Delete clears it.
+              // The grid owns these keys: they never reach workspace shortcuts.
+              event.preventDefault();
+              event.stopPropagation();
+              const value: 0 | 1 | null = event.key === '1' ? 1 : event.key === '0' ? 0 : null;
+              const targets = bulkTicks.length > 1 ? bulkTicks : selectedTick != null ? [selectedTick] : [];
+              if (targets.length === 0) return;
+              const edits = targets.map((tick) => ({ tick, signalId: focusFieldId, next: value }));
+              if (edits.length > 1 && onSetExpectedMany) onSetExpectedMany(edits);
+              else for (const edit of edits) onSetExpected(edit.tick, edit.signalId, edit.next);
+            }
           }}
         >
           <thead>

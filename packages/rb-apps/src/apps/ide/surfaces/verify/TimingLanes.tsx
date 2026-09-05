@@ -103,9 +103,12 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
         if (inputAt(clock.id, tick - 1) === 0 && inputAt(clock.id, tick) === 1) edges.add(tick);
       }
     }
+    // A generated (board) clock rises once per tick: every tick is an edge.
+    if (generatedClocks.length > 0) for (let tick = 1; tick <= maxTick; tick += 1) edges.add(tick);
     return edges;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lanes, ordered, maxTick, clockFieldIds]);
+  }, [lanes, ordered, maxTick, clockFieldIds, generatedClocks.length]);
+  const sortedEdges = useMemo(() => Array.from(risingEdges).sort((left, right) => left - right), [risingEdges]);
 
   const width = LABEL_W + ticks.length * TICK_W;
   const stimulusLaneCount = generatedClocks.length + lanes.length;
@@ -142,10 +145,18 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
       className="rb-tl"
       data-testid="ide-timing-lanes"
       role="grid"
-      aria-label="Timing lanes — left and right move the selected tick"
+      aria-label="Timing lanes — left and right move the selected tick; with Shift, to the next or previous clock edge"
       tabIndex={0}
       onKeyDown={(event) => {
-        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        if ((event.key === 'ArrowRight' || event.key === 'ArrowLeft') && event.shiftKey && sortedEdges.length > 0) {
+          // Shift+Arrow snaps to the next/previous rising edge.
+          event.preventDefault();
+          const current = selectedTick ?? 0;
+          const next = event.key === 'ArrowRight'
+            ? sortedEdges.find((tick) => tick > current)
+            : [...sortedEdges].reverse().find((tick) => tick < current);
+          if (next != null && next !== current) onSelectTick(next);
+        } else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault();
           const current = selectedTick ?? 0;
           const next = Math.min(maxTick, Math.max(0, current + (event.key === 'ArrowRight' ? 1 : -1)));

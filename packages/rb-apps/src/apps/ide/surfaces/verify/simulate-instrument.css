@@ -438,3 +438,7 @@
 .ide-root .ide-case-lab-group--out { cursor: pointer; }
 .ide-root .ide-case-lab th.is-followed, .ide-root .ide-case-lab td.is-followed { background: color-mix(in srgb, var(--wb-focus) 9%, transparent); }
 .ide-root .ide-case-lab-group.is-followed { box-shadow: inset 0 -2px 0 var(--wb-focus); }
+
+/* A stale case (design, stimulus or mapping changed since the run): observed cells recede. */
+.ide-root .ide-case-lab-row.is-stale .ide-case-lab-obs { opacity: 0.55; }
+.ide-root .ide-case-lab-row.is-stale .ide-case-lab-result { color: var(--wb-text-3); font-style: italic; }
