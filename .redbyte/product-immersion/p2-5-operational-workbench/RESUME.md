@@ -4,6 +4,75 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-05 — P2.5H away-mode product-gate closure (Fable 5.1 ultracode, desktop session, Connor away)
+
+**Label:** INTERIM REDBYTE AWAY-MODE CONVERGENCE / SOURCE PUSHED / NOT A RELEASE CANDIDATE.
+HEAD `f1f6c1965` on `claude/redbyte-operational-workbench-convergence-w9k2r4`. Feature-branch checkpoints are
+pushed (never force); PR #85 stays DRAFT and is updated only to stay truthful. Safety tag
+`safety/redbyte-away-mode-eab7f8c1f` marks the pre-push head. Format version 1; both classroom goldens
+byte-identical. Away-mode freeze: no merge/retarget of #84/#85/#80, no `main`/product push, no production
+Cloudflare deploy, no public-site/branding/repo-root change, no release tag, no format v2, no golden regeneration.
+
+**Source preservation (done first):** `eab7f8c1f` pushed and verified (remote == local, 0/0); PR #85 body
+rewritten (IN PROGRESS / NOT A REVIEW CANDIDATE). The branch preview pipeline fired on its own:
+`https://claude-redbyte-operational-w.redbyte-ui-genesis.pages.dev` (deployment alias
+`https://d9977960.redbyte-ui-genesis.pages.dev`) serves `/os/version.json` sha `eab7f8c1f…` == HEAD at that push;
+`/` 302 → `/os/` 200. Verified once with curl; CI not polled. (An earlier note that the preview was SKIPPED
+was wrong: the "SKIPPED — credentials unavailable" job is the no-credentials notice, itself skipped.)
+
+**P0 — run evidence scope and reload truth (this commit).** Three defects, one authority each:
+1. *Ownership.* Every run and ledger entry is stamped with the owning `projectId` (`RuntimeVerifyRun.projectId`,
+   `VerifyRunLedgerEntry.projectId`); rehydration (`mergePersistedRuntimeState`) drops evidence owned by another
+   project and clears its verify trust, and stamps legacy unowned runs with the envelope's project; Save As /
+   Duplicate re-own the evidence (`restampRunEvidenceProject`); the dead `recordVerification` action (no
+   callers; it re-used the previous run's evidence capsule) is deleted — owner is `runVerification`.
+2. *One read-model.* `deriveRunScope` (`packages/rb-apps/src/apps/ide/runScope.ts`) reuses the workflow
+   authority's `deriveVerifyCurrent` verdict and names the changed input (design / pin mapping / scenario /
+   edited) by recomputing the producer's own hashes. IdeApp: `runIsStale = runScope.kind === 'stale'` feeds
+   Problems, Runs, Board values and the dossier; the boot restore no longer forces a restored run stale — it is
+   judged by its hashes (current → kept current, stale → reload guidance with the reason, foreign → dropped).
+   Problems row detail and the Simulate reload guidance carry the reason.
+3. *Canonical load.* A freshly loaded starter was not the document rehydration produces: io-row order differed
+   (`normalizeRBProject` sorts nodes), V2 entries carried "A[0] (SW0)"-style labels, scenario vectors were keyed
+   by boundary node id, and `deriveAuthoritativeHardwareState` returned a V2 document whose ids predated the
+   label-driven row rekey (`a0` vs `a_0`) — the export lint aliasing of P2.5G was a symptom of this. Now the seed
+   is canonicalized through the one normalizer (`canonicalizeSeedState`) and the hardware-state derivation
+   converges until V2 ids and row ids agree. Contract: `projectRuntime.canonicalLoad.test.ts` — rehydrating a
+   fresh starter is a no-op for every input the run hashes are built from (all 15 starters).
+   Consequence: starter vectors are keyed by io-row id; `projectRuntime.persistence.test.ts` authored on the
+   canonical id instead of the node alias (an alias never overrides an explicit canonical value).
+   The silent `catch {}` in the rehydrate normalizer now warns.
+4. *Project switch.* Found while proving 3: switching starters with Simulate open crashed the surface
+   ("Maximum update depth exceeded" in StimulusCanvas). Two owners fought over one tick: the stimulus
+   canvas wrote its nearest-authored-case substitute back to Simulate whenever the controlled tick was not
+   one of its cases, while the app kept re-applying the previous project's tick (`verifySelectedTick`) and
+   selection (same scenario id `default`, a different tick domain). Fixes: the canvas never writes the
+   substitute back (it is display-only; the parent owns the tick domain — `StimulusCanvas.test.tsx`
+   contract rewritten); Simulate applies the app override once per value instead of on every rebuilt
+   timeline array; IdeApp clears the engineering selection and the tick override when `projectId` changes.
+   The previous project's selection is foreign evidence too.
+
+**Proof (Browser-E0, live app at 1366×768):** hierarchical adder A: Run → owner stamped, current; reload →
+run kept, `dirtySinceVerify` false, authority `verified`, no `sim:stale` Problems row, no reload guidance,
+waveform `data-state=pass`; delete SUM[3] output in Design → Problems "Default evidence is stale — The design
+and the pin mapping changed after this run."; undo → "The project changed after this run." (flag-only, the
+authority's rule); Open Starter → counter B: no A evidence; Open Existing → A: no B evidence. Counter B before
+the canonical-load fix: reload → "The pin mapping and the scenario changed after this run." with no user edit
+(the loader had changed them); after the fix: fresh counter → Run → reload → current (see the tail of the
+proof record below). Tests: runScope (15), canonicalLoad (16), persistence (33), engineeringProblems,
+exportHistory green; history-authority 7, hardware trust-clarity 4, readiness 1 and verifySurface.workstation
+reds are inherited (identical in the baseline worktree / testids absent at HEAD). rb-apps tsc 777 (baseline
+779); goldens 2/2 byte-identical; rb-apps build green.
+
+**Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
+active project; reopening a project from the repository starts without its previous runs (the repository
+snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
+
+**Next (P2.5H order):** Wave One — resizable Cases + Waveform composite (`rb-sim-lab-grid` rows →
+accessible splitter, persisted ratio, collapse/maximize, keyboard); replay/inspection state words;
+Waveform/Timing depth; Board camera + Constraints tool; Package provenance; Design geometry; persistence /
+accessibility / scale / legacy.
+
 ## 2026-09-04 — P2.5G product completion, public launch and repository convergence (Fable 5.1 ultracode, desktop session)
 
 **Label:** INTERIM REDBYTE PRODUCT AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED.

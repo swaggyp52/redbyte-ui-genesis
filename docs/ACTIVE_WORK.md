@@ -169,6 +169,15 @@ accepted.
   AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED**. The §16 local product gate
   is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5H away-mode session (2026-09-05, pushed as checkpoints):** source preserved remotely first
+  (`eab7f8c1f` pushed, safety tag `safety/redbyte-away-mode-eab7f8c1f`, PR #85 body truthful, branch
+  preview `https://claude-redbyte-operational-w.redbyte-ui-genesis.pages.dev` SHA-verified). P0: run
+  evidence is scoped to its owning project (stamped runs/ledger, foreign evidence dropped on rehydrate,
+  Save As re-owns), one `deriveRunScope` read-model names why evidence is stale, a reload keeps an
+  unchanged run current, and a fresh starter load is now the canonical document rehydration produces
+  (row order, V2 ids/labels, vector keys). HEAD `f1f6c1965`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
+  production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
   proven (`full-adder-operational-journey.mjs`, both viewports, zero store actions):
   first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector
