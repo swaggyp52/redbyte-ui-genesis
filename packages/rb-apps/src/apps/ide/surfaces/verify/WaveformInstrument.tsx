@@ -77,7 +77,9 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   onHideSignal,
   changedSignals,
 }) => {
-  const LABEL_W = 128;
+  // Name column plus a value slot: the value at the selected tick sits beside every name.
+  const LABEL_W = 156;
+  const VALUE_W = 22;
   const ROW_H = rowHeight;
   const ROW_HI = Math.round(ROW_H * 0.22);
   const ROW_LO = Math.round(ROW_H * 0.78);
@@ -459,7 +461,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               ) : null}
               {/* Name */}
               <text
-                x={LABEL_W - 8}
+                x={LABEL_W - VALUE_W - 12}
                 y={y + (signalMeta?.has(signalRow.signal) ? Math.round(ROW_H * 0.38) : Math.round(ROW_H / 2) + 4)}
                 textAnchor="end"
                 fontSize="11"
@@ -470,9 +472,38 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
                 }`}
               </text>
+              {selectedTick != null ? (() => {
+                const raw = signalRow.values.find((point) => point.tick === selectedTick)?.value ?? '-';
+                const shown = raw.length > 2 ? raw.slice(0, 2) : raw;
+                const cy = y + Math.round(ROW_H / 2);
+                return (
+                  <g data-testid={`ide-verify-lane-value-${toTestId(signalRow.signal)}`} data-value={raw}>
+                    <rect
+                      x={LABEL_W - VALUE_W - 6}
+                      y={cy - 7}
+                      width={VALUE_W}
+                      height={14}
+                      rx={3}
+                      fill={selectedSignal === signalRow.signal ? 'var(--rb-wave-select-soft)' : 'transparent'}
+                      stroke="var(--rb-wave-row-line)"
+                    />
+                    <text
+                      x={LABEL_W - VALUE_W / 2 - 6}
+                      y={cy + 4}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fontFamily="var(--wb-font-mono)"
+                      fill={raw === '1' ? 'var(--rb-wave-text)' : raw === '0' ? 'var(--rb-wave-text-3)' : 'var(--rb-wave-fail-text)'}
+                    >
+                      <title>{`${signalRow.signal} = ${raw} at t${selectedTick}`}</title>
+                      {shown}
+                    </text>
+                  </g>
+                );
+              })() : null}
               {changedSignals?.has(signalRow.signal) ? (
                 <circle
-                  cx={LABEL_W - 3}
+                  cx={LABEL_W - VALUE_W - 3}
                   cy={y + Math.round(ROW_H / 2)}
                   r={2.5}
                   fill="var(--rb-wave-cursor-a)"
@@ -489,7 +520,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 const pinLabel = meta.pin ? ` · ${meta.pin}` : '';
                 return (
                   <text
-                    x={LABEL_W - 8}
+                    x={LABEL_W - VALUE_W - 12}
                     y={y + Math.round(ROW_H * 0.7)}
                     textAnchor="end"
                     fontSize="9"
