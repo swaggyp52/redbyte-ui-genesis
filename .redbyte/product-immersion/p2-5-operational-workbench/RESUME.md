@@ -105,6 +105,19 @@ committed with CRLF in its blob (git skips normalization for it) — keep the wo
 Open in this area: lane groups by user choice, bus lanes for internal probes, the Timing Lab clock
 generator / reset pulse / run range (next).
 
+**Board camera (Wave Two, `e128326ba`).** The Board document has a camera: Ctrl+wheel / + / − zoom, drag
+to pan, Fit board (0), Fit selected (F, frames the selected resource at about a third of the frame), arrow
+keys pan. Owned by the workspace preferences beside the board layers (`board.camera` {zoom 0.5–4, x, y};
+`setBoardCamera`, `resetBoardCamera`); geometry is pure in `boardCamera.ts` (viewBox from camera, zoom about
+the centre, pan in board units, fit to bounds). Below 85% zoom the alias labels give way to the board shape
+(`data-density=compact` on the svg; CSS in board-instrument.css). A pan never counts as a resource click
+(`boardPanMovedRef`). Live (counter, Board): 100% → 156% → 51% with labels hidden → Fit → Fit selected 121%
+(viewBox 200.74 −156.2 514.52 255.6 around CLK100MHZ) → key 0 → Ctrl+wheel 125% → drag pan persisted
+(x −50.5, y −25.3) → reset. Tests: `boardCamera` (5), `workspacePreferences.boardCamera` (3); Board suites
+keep the five inherited reds. Note: `Basys3BoardView.tsx` is also a CRLF-blob file (see the waveform note).
+Open for Board: the Constraints tool (Board signal ↔ constraint ↔ XDC line sync, no empty permanent footer),
+guided/expert workflows over the one mapping authority, 200% board.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
