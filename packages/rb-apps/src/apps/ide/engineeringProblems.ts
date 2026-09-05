@@ -3,6 +3,8 @@ import type { IdeDiagnostic } from './diagnostics';
 import type { DesignIssue } from './designIssues';
 import type { EngineeringObjectRef } from './engineeringSelection';
 import type { EngineeringRelationshipIndex } from './engineeringRelationships';
+import { capabilityForFile, isReconstructable } from './languageCapability';
+import type { ProjectSourceModel } from './projectSourceModel';
 import type { RuntimeVerifyRun } from './projectRuntime';
 import type { WorkbenchDocument } from './workbenchDocuments';
 import type { IdeMode } from './workflowStages';
@@ -79,6 +81,8 @@ export interface EngineeringProblemsInput {
   /** Why the run is stale (from the run scope read-model); null when unknown. */
   readonly runStaleDetail?: string | null;
   readonly activeConstraintSetId: string | null;
+  /** Source files, so the language capability matrix can state its boundaries here too. */
+  readonly sourceModel?: ProjectSourceModel | null;
   readonly importFidelity: 'full' | 'reconstructed' | 'partial' | null;
   readonly isSequential: boolean;
   readonly hasCircuit: boolean;
@@ -443,6 +447,43 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
         action: 'Run again to refresh the evidence',
         authority: 'simulation run',
         fixMode: 'verify',
+      });
+    }
+  }
+
+  // ── Source capability boundaries ────────────────────────────────────────────
+  // One fact is one row: the fact is "these N .tcl files are preserved and never
+  // executed", not one row per file. Never an error — a preserved file is not a
+  // fault, it is a boundary the student is entitled to see without hunting for it.
+  const sourceFiles = input.sourceModel?.files ?? [];
+  if (sourceFiles.length > 0) {
+    const byLanguage = new Map<string, { count: number; names: string[] }>();
+    for (const file of sourceFiles) {
+      if (isReconstructable(file.language)) continue;
+      const entry = byLanguage.get(file.language) ?? { count: 0, names: [] };
+      entry.count += 1;
+      if (entry.names.length < 3) entry.names.push(file.path);
+      byLanguage.set(file.language, entry);
+    }
+    for (const [language, entry] of byLanguage) {
+      const capability = capabilityForFile({ language } as Parameters<typeof capabilityForFile>[0]);
+      const plural = entry.count === 1 ? 'file is' : 'files are';
+      const shown = entry.names.join(', ');
+      const more = entry.count > entry.names.length ? `, +${entry.count - entry.names.length} more` : '';
+      push({
+        id: `source:capability:${language}`,
+        severity: 'info',
+        category: 'source',
+        code: capability.executes ? 'source-read-only' : 'source-never-executed',
+        message: capability.executes
+          ? `${entry.count} ${capability.displayName} ${plural} read for structure, not simulated`
+          : `${entry.count} ${capability.displayName} ${plural} preserved and never executed`,
+        detail: `${capability.notes} (${shown}${more})`,
+        document: { kind: 'sources' },
+        freshness: 'current',
+        action: 'Open Sources to see what each file contributes',
+        authority: 'language capability matrix',
+        fixMode: 'project',
       });
     }
   }
