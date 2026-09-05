@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Bit } from '../ioBus';
 import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
@@ -29,6 +29,10 @@ const BTN_POSITIONS: [number, number][] = [
 ];
 const BTN_LABELS = ['C', 'U', 'D', 'L', 'R'];
 
+// How far a press must travel before it counts as sliding the switch rather than tapping it.
+// Below this, a pointer gesture is an ordinary click and the switch simply toggles.
+const SWITCH_DRAG_THRESHOLD_PX = 4;
+
 export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
   sw,
   ld,
@@ -54,11 +58,23 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
     return () => window.removeEventListener('pointerup', stopDrag);
   }, [draggingSwitch]);
 
-  const applyDraggedSwitchValue = (index: number, event: React.PointerEvent<SVGGElement>) => {
-    if (!onSetSwitch) return;
+  // One authority per gesture. A press used to set the switch absolutely from where it landed and
+  // the click React dispatches right after it toggled the same switch again, undoing the press:
+  // clicking the lower half of an ON switch was a silent no-op, and a centre click - the hitbox
+  // midpoint is the on/off boundary - could never turn a switch off. So a plain click toggles, and
+  // only a gesture that actually travels reads its value from the pointer, which is the slide
+  // metaphor the drag handler was written for. The ref survives pointerup because the click follows
+  // it; the next press on any switch resets it and the next click clears it.
+  const switchGestureRef = useRef<{ index: number; startY: number; dragged: boolean } | null>(null);
+
+  // Returns whether the pointer position actually decided this switch's value. When the host
+  // supplies no `onSetSwitch`, it did not, and the click that follows must still toggle.
+  const applyDraggedSwitchValue = (index: number, event: React.PointerEvent<SVGGElement>): boolean => {
+    if (!onSetSwitch) return false;
     const rect = event.currentTarget.getBoundingClientRect();
     const nextValue: Bit = event.clientY <= rect.top + rect.height / 2 ? 1 : 0;
     onSetSwitch(index, nextValue);
+    return true;
   };
 
   return (
@@ -226,6 +242,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             {/* LED body with lens gradient */}
             <circle
               data-testid={`ide-hw-ld-${idx}`}
+              data-on={isOn ? '1' : '0'}
               data-active={isActiveLd ? 'true' : undefined}
               className={ledClassName}
               cx={cx}
@@ -423,6 +440,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           <g
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
+            data-on={isOn ? '1' : '0'}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}
             opacity={isMapped ? 1 : 0.82}
@@ -437,14 +455,25 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fill="transparent"
               style={{ cursor: 'pointer', pointerEvents: 'auto' }}
               className={styles.swHitbox}
-              onClick={() => onToggleSwitch(idx)}
+              onClick={() => {
+                const gesture = switchGestureRef.current;
+                switchGestureRef.current = null;
+                // A drag already decided this switch value; toggling here would undo it.
+                if (gesture?.index === idx && gesture.dragged) return;
+                onToggleSwitch(idx);
+              }}
               onPointerDown={(event) => {
                 setDraggingSwitch(idx);
-                applyDraggedSwitchValue(idx, event);
+                switchGestureRef.current = { index: idx, startY: event.clientY, dragged: false };
               }}
               onPointerMove={(event) => {
                 if (draggingSwitch !== idx) return;
-                applyDraggedSwitchValue(idx, event);
+                const gesture = switchGestureRef.current;
+                if (!gesture || gesture.index !== idx) return;
+                if (!gesture.dragged && Math.abs(event.clientY - gesture.startY) < SWITCH_DRAG_THRESHOLD_PX) {
+                  return;
+                }
+                if (applyDraggedSwitchValue(idx, event)) gesture.dragged = true;
               }}
               onPointerUp={() => setDraggingSwitch(null)}
               onMouseEnter={() => onHoverSignal?.({ type: 'sw', index: idx })}
