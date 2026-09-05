@@ -195,10 +195,18 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace { padding: 0; }
 .ide-root .rb-sim-panel { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
 .ide-root .rb-sim-panel > .ide-panel-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; }
+/* The regions separate themselves (header border, result padding); the workbench section gap does not apply.
+   The selector outranks the shell's `[data-layout-intent] … > .ide-panel > .ide-panel-body` gap rule. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace > .rb-sim-panel > .ide-panel-body { gap: 0; }
 .ide-root .rb-sim-command-stack { display: flex; flex-direction: column; margin: 0; padding: 0; background: transparent; }
 .ide-root .rb-sim-region { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .ide-root .rb-sim-region--header { flex: none; border-bottom: 1px solid var(--wb-border-strong); }
-.ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; border: 0; }
+/* The result region (diagnosis and notes) is bounded and scrolls; the document below it always keeps a
+   floor: 182px (a 160px document row plus the splitter) up to 240px or 60% of the panel. Before this rule
+   the callouts could not shrink and, at 200% zoom or with the Problems panel open, pushed the whole
+   Case Lab / Timing document out of the panel. */
+.ide-root .rb-sim-region--result { flex: 0 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 1 0; min-height: clamp(182px, 60%, 240px); padding: 0; border: 0; }
 .ide-root .rb-sim-lab-frame { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background: transparent; }
 .ide-root .rb-sim-lab-grid { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; gap: 0; }
 .ide-root .rb-sim-primary { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
@@ -383,10 +391,8 @@
 .ide-root .rb-timing-grouphead th { border-bottom: 1px solid var(--wb-border-strong); }
 .ide-root .rb-timing-colhead th { top: 24px; }
 .ide-root .rb-timing-in-group { letter-spacing: 0.04em; }
-/* Narrow viewports: the Cases/Timing grid stacks; the toolbar wraps. */
+/* Narrow viewports: the toolbar wraps. The stacked grid template has one owner further down. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) minmax(0, 30%) auto minmax(0, 150px); grid-template-areas: 'cases' 'inspector' 'split' 'evidence'; }
-  .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
   .ide-root .rb-sim-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); }
 }
 
@@ -438,9 +444,11 @@
 .ide-root .ide-case-lab-history .is-better { color: var(--wb-ok); }
 .ide-root .ide-case-lab-history .is-worse { color: var(--wb-err); }
 
-/* Studio modes stack under 900px too: the document keeps the height, the inspector becomes a bottom strip. */
+/* Under 900px (200% zoom on a laptop display) the grid stacks in one column: the document keeps the
+   height, the splitter and evidence deck follow it, and the inspector becomes a bottom strip. This is the
+   single owner of the stacked template; the collapsed / maximized variants below restate only the rows. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) minmax(0, 32%) minmax(0, 140px); grid-template-areas: 'cases' 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) auto minmax(0, var(--rb-sim-evidence-fr)) minmax(0, 32%); grid-template-areas: 'cases' 'split' 'evidence' 'inspector'; }
   .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr) minmax(0, 140px); grid-template-areas: 'evidence' 'inspector'; }
   .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
 }
@@ -473,9 +481,9 @@
 .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr); }
 .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] > .rb-sim-region--stimulus { overflow: hidden; }
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) minmax(0, 30%) auto 28px; }
-  .ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) minmax(0, 30%) auto 0; }
-  .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 minmax(0, 30%) auto minmax(0, 1fr); }
+  .ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }
+  .ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }
+  .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }
 }
 /* Timing bar: the auto clock's run length is a direct control, not a buried panel. */
 .ide-root .rb-timing-run-length { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
@@ -485,3 +493,9 @@
 .ide-root .rb-timing-generated { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px dashed var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
 .ide-root .rb-tl-cell.is-generated { cursor: default; }
+
+/* Legacy verify drawer caps, moved here from ide-root.css (their previous owner used !important). The
+   supporting strip and drawer body belong to the Simulate surface; the mode-marker selector already outranks
+   the generic drawer rules, so no cap is needed. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip:not(.is-open) { max-height: 38px; }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { max-height: min(34vh, 320px); }

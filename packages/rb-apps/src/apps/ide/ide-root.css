@@ -714,9 +714,6 @@
 }
 
 /* Verify panel-body must clip (not scroll) so the workbench + oscilloscope fill the viewport */
-.ide-workbench-workspace > .ide-verify-panel .ide-panel-body {
-  overflow: hidden;
-}
 
 .ide-workbench-divider {
   appearance: none;
@@ -2489,134 +2486,6 @@
   font-weight: var(--rb-font-weight-semibold);
   min-width: 1.2em;
   text-align: right;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-toggle-rail {
-  width: 100%;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  background: linear-gradient(180deg, rgba(7, 15, 25, 0.98), rgba(4, 10, 18, 0.98));
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace {
-  padding: 0;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
-  min-height: 0 !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 0 !important;
-  align-items: stretch !important;
-  min-height: 0 !important;
-  height: 100%;
-}
-
-@media (min-width: 1600px) {
-  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace {
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 0 !important;
-  }
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace > .ide-verify-region--stimulus {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: none !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  min-height: 0 !important;
-  height: 100%;
-  overflow: hidden;
-  border-right: 1px solid rgba(48, 77, 107, 0.22);
-  background:
-    linear-gradient(180deg, rgba(8, 16, 28, 0.96), rgba(5, 11, 19, 0.98)),
-    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.028) 0 1px, transparent 1px 48px),
-    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.024) 0 1px, transparent 1px 72px);
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workspace > .ide-verify-region--waveform {
-  display: flex !important;
-  flex-direction: column !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  padding-left: 0 !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus:has(.ide-verify-workbench-live) {
-  flex: 1 1 auto !important;
-  max-height: none !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun {
-  max-height: none !important;
-  height: 100%;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[open] {
-  max-height: none !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-body,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form--canvas-only,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-stimulus-canvas,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-grid-scroll {
-  flex: 1 1 auto;
-  min-height: 0 !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-workbench,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-three-panel,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-three-panel-center,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-console-frame,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-oscilloscope-stage,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-frame {
-  min-height: 0 !important;
-  height: 100% !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-oscilloscope-stage {
-  padding: 10px 12px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-frame {
-  min-height: clamp(420px, 62vh, 900px) !important;
-  background:
-    linear-gradient(180deg, rgba(4, 11, 20, 0.96), rgba(3, 8, 15, 0.99)),
-    repeating-linear-gradient(0deg, rgba(56, 189, 248, 0.03) 0 1px, transparent 1px 52px),
-    repeating-linear-gradient(90deg, rgba(56, 189, 248, 0.024) 0 1px, transparent 1px 88px);
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-scroll {
-  flex: 1 1 auto !important;
-  min-height: clamp(400px, 58vh, 840px) !important;
-  padding: 8px 10px 12px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-scope-header {
-  min-height: 36px !important;
-  padding: 0 10px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-bar {
-  min-height: 52px !important;
-  padding: 6px 8px !important;
-  row-gap: 6px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip:not(.is-open) {
-  max-height: 38px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body {
-  max-height: min(34vh, 320px) !important;
 }
 
 .ide-verify-banner {
@@ -5288,27 +5157,6 @@ details[open] summary .details-arrow {
    ════════════════════════════════════════════════════════════════ */
 
 /* Compact status strip — replaces the big summary card */
-.ide-verify-status-strip {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  padding: 4px var(--ide-space-2);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  flex-wrap: wrap;
-  min-height: 28px;
-  max-height: 32px;
-}
-.ide-verify-status-strip .ide-copy {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ide-verify-status-strip .ide-inline-actions {
-  margin-left: auto;
-  flex-shrink: 0;
-}
 
 /* ── FAIL summary card — dominant block above waveform ── */
 .ide-verify-fail-summary {
@@ -7456,17 +7304,6 @@ details[open] summary .details-arrow {
    (was hidden) so the rightmost chips drop onto a second row instead of
    being clipped under the right rail seam. row-gap added so wrapped rows
    don't touch the row above. */
-.ide-verify-status-strip {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 5px var(--ide-space-2);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  flex-shrink: 0;
-  min-height: 36px;
-  flex-wrap: wrap;
-  row-gap: 4px;
-}
 .ide-verify-strip-sep {
   margin: 0 6px;
   color: rgba(255,255,255,0.2);
@@ -7495,50 +7332,6 @@ details[open] summary .details-arrow {
 }
 
 /* ── Phase 19A: Kit tip strip — collapsible one-liner ── */
-.ide-verify-kit-tip {
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  background: rgba(14,25,45,0.5);
-  flex-shrink: 0;
-}
-.ide-verify-kit-tip-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-1);
-  width: 100%;
-  padding: 5px var(--ide-space-2);
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  font-size: 11px;
-  color: rgba(148,180,220,0.7);
-}
-.ide-verify-kit-tip-toggle:hover {
-  color: rgba(180,210,240,0.9);
-  background: rgba(255,255,255,0.03);
-}
-.ide-verify-kit-tip-icon {
-  font-size: 11px;
-  color: rgba(96,165,250,0.7);
-  flex-shrink: 0;
-}
-.ide-verify-kit-tip-arrow {
-  margin-left: auto;
-  font-size: 9px;
-  opacity: 0.5;
-}
-.ide-verify-kit-tip-body {
-  margin: 0;
-  padding: var(--ide-space-1) var(--ide-space-2) var(--ide-space-2) var(--ide-space-3);
-  list-style: disc;
-  display: grid;
-  gap: 3px;
-}
-.ide-verify-kit-tip-body li {
-  font-size: 11px;
-  color: rgba(160,190,225,0.75);
-  margin: 0;
-}
 
 /* ── Phase 19B: Waveform control bar ── */
 .ide-verify-waveform-bar {
@@ -7632,21 +7425,6 @@ details[open] summary .details-arrow {
   font-weight: 600;
 }
 /* Empty state */
-.ide-verify-panel .ide-panel-body {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.ide-verify-panel .ide-panel-body > .ide-verify-kit-tip,
-.ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
-  flex-shrink: 0;
-}
-.ide-verify-panel .ide-panel-body > .ide-verify-workbench,
-.ide-verify-panel .ide-panel-body > .ide-empty-stack {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
 
 /* ══════════════════════════════════════════════════════════════════
    Phase 20 — PASS hero · mismatch table calm · waveform framing ·
@@ -7708,9 +7486,6 @@ details[open] summary .details-arrow {
 }
 
 /* Include pass hero in panel flex stack */
-.ide-verify-panel .ide-panel-body > .ide-verify-pass-hero {
-  flex-shrink: 0;
-}
 
 /* ── Phase 20B: Mismatch table — calm rows (left-border accent only) ── */
 .ide-table tbody tr[data-status="fail"] {
@@ -7752,10 +7527,6 @@ details[open] summary .details-arrow {
 /* Scope watermark — keep at low opacity, no override needed */
 
 /* ── Phase 20E: Status strip breathing room ── */
-.ide-verify-status-strip {
-  gap: var(--ide-space-2);
-  padding: 8px var(--ide-space-3);
-}
 .ide-verify-strip-meta {
   font-size: 10px;
   font-weight: 500;
@@ -7800,19 +7571,6 @@ details[open] summary .details-arrow {
 }
 
 /* ── oscilloscope stage (left column) ── */
-.ide-verify-oscilloscope-stage {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-right: 1px solid rgba(24,44,72,0.7);
-  background: rgba(8, 16, 30, 0.92);
-}
-.ide-verify-oscilloscope-stage .ide-waveform-outer {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  border-color: rgba(20,40,68,0.8);
-}
 /* Sprint 11: named scroll wrapper for the SVG waveform — handles horizontal overflow */
 .ide-verify-waveform-scroll {
   overflow: auto;
@@ -7995,17 +7753,7 @@ details[open] summary .details-arrow {
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Oscilloscope bezel + inner shadow ── */
-.ide-verify-oscilloscope-stage {
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.04),
-    inset 0 1px 0 rgba(56,189,248,0.04),
-    inset 0 0 32px rgba(1,5,14,0.6);
-}
 /* Scope header area (waveform bar) acts as the instrument panel */
-.ide-verify-oscilloscope-stage > .ide-verify-waveform-bar {
-  background: rgba(4,10,20,0.9);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-}
 /* Waveform empty state centered in stage */
 .ide-verify-waveform-empty {
   display: flex;
@@ -8083,25 +7831,6 @@ details[open] summary .details-arrow {
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Console frame — binds scope + truth table into one visual unit ── */
-.ide-verify-console-frame {
-  border: 1px solid rgba(20,40,70,0.9);
-  border-radius: 4px;
-  overflow: hidden;
-  background: rgba(2,6,14,0.96);
-}
-.ide-verify-panel .ide-panel-body > .ide-verify-workbench > .ide-verify-console-frame {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.ide-verify-console-frame > .ide-verify-instrument-deck {
-  flex: 1 1 auto;
-  min-height: 0;
-  /* ── Sprint 11 height fix: explicit row so the grid fills its flex-allocated height ── */
-  grid-template-rows: minmax(0, 1fr);
-  align-items: stretch;
-}
 
 /* ── 70/30 deck (authoritative column split) ── */
 .ide-verify-instrument-deck {
@@ -8109,16 +7838,6 @@ details[open] summary .details-arrow {
 }
 
 /* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
-.ide-verify-scope-header {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  padding: 5px var(--ide-space-2);
-  background: rgba(3,8,18,0.95);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  flex-shrink: 0;
-  min-height: 28px;
-}
 .ide-verify-scope-label {
   font-size: 9px;
   font-weight: 700;
@@ -8139,12 +7858,6 @@ details[open] summary .details-arrow {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.ide-verify-scope-header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  margin-left: auto;
 }
 .ide-verify-scope-tick {
   font-size: 10px;
@@ -8403,9 +8116,6 @@ details[open] summary .details-arrow {
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Phase 25A: Scope — fills available flex space, scrolls internally ── */
-.ide-verify-oscilloscope-stage {
-  min-height: 0;
-}
 
 /* ── Phase 25B: Waveform control bar — tighter, less "dashboard" ── */
 .ide-verify-waveform-bar {
@@ -10439,20 +10149,6 @@ details[open] summary .details-arrow {
   font-size: var(--rb-font-size-1);
 }
 
-.ide-verify-stale-banner {
-  margin-bottom: var(--ide-space-2);
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  border-color: var(--rb-warning, #fa0);
-  background: color-mix(in srgb, var(--rb-warning, #fa0) 15%, transparent);
-  font-size: var(--rb-font-size-1);
-}
-
-.ide-verify-stale-banner-label {
-  color: var(--rb-warning, #fa0);
-}
-
 .ide-hw-live-design-link {
   margin-top: var(--ide-space-2);
 }
@@ -11529,11 +11225,6 @@ details[open].ide-export-evidence-details > summary::before {
   border-radius: 3px;
   padding: 1px 5px;
 }
-.ide-verify-scope-header-right .ide-verify-scope-cursor:nth-of-type(2) {
-  color: rgba(248, 113, 113, 0.9);
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.25);
-}
 
 .ide-verify-cursor-controls {
   display: inline-flex;
@@ -12073,10 +11764,6 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 /* Console-frame fills available height — oscilloscope scrolls internally */
-.ide-verify-panel .ide-panel-body > .ide-verify-workbench > .ide-verify-console-frame {
-  flex: 1 1 auto;
-  min-height: 0;
-}
 
 /* Phase 26B — Project: horizontal pipeline + compact metrics */
 
@@ -14507,32 +14194,12 @@ details[open].ide-export-evidence-details > summary::before {
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── B2.1: Status strip → compact 36px run bar ── */
-.ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 var(--ide-space-3, 16px);
-  min-height: 36px;
-  background: rgba(3, 8, 18, 0.98);
-  border-bottom: 1px solid rgba(30, 60, 110, 0.45);
-  flex-shrink: 0;
-}
 .ide-verify-strip-sep { color: rgba(80,120,160,0.45); }
 .ide-verify-strip-pass { color: rgba(46, 196, 182, 0.9); font-weight: 600; font-size: 13px; }
 .ide-verify-strip-fail { color: rgba(255, 100, 100, 0.9); font-weight: 600; font-size: 13px; }
 .ide-verify-strip-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
 /* ── B2.2: Scope header → instrument-style ── */
-.ide-verify-oscilloscope-stage > .ide-verify-scope-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  min-height: 34px;
-  background: rgba(3, 8, 19, 0.98);
-  border-bottom: 1px solid rgba(18, 44, 80, 0.6);
-  flex-shrink: 0;
-}
 .ide-verify-scope-label {
   font-size: 9px;
   font-weight: 700;
@@ -14575,25 +14242,12 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 /* ── B2.4: Waveform outer fill ── */
-.ide-verify-oscilloscope-stage > .ide-waveform-outer {
-  flex: 1 1 auto;
-  min-height: 450px !important;
-  overflow: auto;
-}
 .ide-verify-waveform-scroll {
   display: block;
   min-height: 450px !important;
 }
 
 /* ── B2.5: Oscilloscope ambient state coloring ── */
-.ide-verify-oscilloscope-stage[data-state="pass"] {
-  border-bottom: 2px solid rgba(46, 196, 182, 0.4);
-  box-shadow: inset 0 -2px 24px rgba(46, 196, 182, 0.04);
-}
-.ide-verify-oscilloscope-stage[data-state="fail"] {
-  border-bottom: 2px solid rgba(255, 80, 80, 0.4);
-  box-shadow: inset 0 -2px 24px rgba(255, 80, 80, 0.04);
-}
 
 /* ── B2.6: Waveform control bar ── */
 .ide-verify-waveform-bar {
@@ -14705,25 +14359,6 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 /* ── B2.8: Stale banner ── */
-.ide-verify-stale-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px var(--ide-space-3);
-  background: rgba(180, 130, 0, 0.1);
-  border-top: none;
-  border-bottom: 2px solid rgba(200, 160, 0, 0.35);
-  flex-shrink: 0;
-}
-.ide-verify-stale-banner-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: rgba(220, 180, 0, 0.9);
-  background: rgba(220, 180, 0, 0.12);
-  padding: 2px 8px;
-  border-radius: 3px;
-}
 
 /* ── B2.9: Bottom drawer ── */
 .ide-verify-supporting-strip {
@@ -15822,12 +15457,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   overflow: hidden;
 }
 
-.ide-workbench-workspace > .ide-panel:not(.ide-verify-panel) > .ide-panel-body {
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-}
-
 .ide-panel-header {
   padding: 12px 14px 10px;
 }
@@ -15943,32 +15572,13 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   flex: 1;
 }
 
-.ide-verify-console-frame,
-.ide-verify-instrument-deck,
-.ide-verify-oscilloscope-stage {
+.ide-verify-instrument-deck {
   min-height: 0;
-}
-
-.ide-verify-console-frame {
-  display: grid;
 }
 
 .ide-verify-instrument-deck {
   display: grid;
   min-height: 0;
-}
-
-.ide-verify-oscilloscope-stage {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid rgba(45, 84, 122, 0.45);
-  border-radius: 16px;
-  min-height: 0;
-  background:
-    linear-gradient(180deg, rgba(7, 18, 31, 0.98), rgba(5, 13, 24, 0.98)),
-    radial-gradient(circle at top, rgba(56, 189, 248, 0.08), transparent 55%);
 }
 
 .ide-verify-waveform-bar {
@@ -16076,10 +15686,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 [data-layout-mode='compact'] .ide-verify-drawer-body {
   max-height: 42vh;
-}
-
-[data-layout-mode='compact'] .ide-verify-oscilloscope-stage {
-  padding: 10px;
 }
 
 /* Design authoring redesign: layout, inspector, split fallback, and trace tools */
@@ -16570,14 +16176,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 8px 10px;
 }
 
-@supports selector(:has(*)) {
-  .ide-verify-oscilloscope-stage:has(.ide-verify-first-run-hero),
-  .ide-verify-oscilloscope-stage:has(.ide-verify-pass-hero) {
-    grid-template-rows: auto;
-    align-content: start;
-  }
-}
-
 .ide-verify-waveform-bar {
   gap: 8px;
 }
@@ -16590,12 +16188,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   max-height: min(34vh, 360px);
   overflow: auto;
   scrollbar-gutter: stable both-edges;
-}
-
-.ide-workbench-shell[data-layout-mode='standard'] .ide-verify-oscilloscope-stage,
-.ide-workbench-shell[data-layout-mode='compact'] .ide-verify-oscilloscope-stage {
-  padding: 10px;
-  gap: 8px;
 }
 
 .ide-workbench-shell[data-layout-mode='standard'] .ide-verify-waveform-scroll,
@@ -16778,19 +16370,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   max-height: none;
   flex: 1 1 auto;
 }
-.ide-verify-oscilloscope-stage .ide-waveform-outer {
-  flex: 1 1 auto;
-  min-height: 600px !important;
-  overflow: auto;
-}
 
 /* --- A1: Console frame: become a flex column so instrument deck can flex-grow --- */
-.ide-verify-console-frame {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-}
 
 /* --- A1: Instrument deck: grow to fill console frame, keep 2-column grid --- */
 .ide-verify-instrument-deck {
@@ -16853,10 +16434,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* --- A1: Oscilloscope instrument framing --- */
-.ide-verify-oscilloscope-stage {
-  border: 1px solid rgba(46, 196, 182, 0.12);
-  border-radius: 4px;
-}
 
 /* --- A1: Lane group separators in signal list --- */
 .ide-signal-group-header {
@@ -16905,22 +16482,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 16px;
 }
 
-.ide-verify-console-frame {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
 .ide-verify-instrument-deck {
   display: grid;
   grid-template-columns: minmax(0, 2.35fr) minmax(248px, 0.82fr);
   gap: 16px;
   min-height: 0;
-}
-
-.ide-verify-status-strip {
-  min-height: 52px;
-  padding: 10px 14px;
 }
 
 .ide-verify-authority-note-inline {
@@ -17004,31 +16570,9 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: rgba(117, 230, 183, 0.92);
 }
 
-.ide-verify-oscilloscope-stage {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 18px;
-}
-
 .ide-verify-waveform-bar {
   gap: 12px;
   padding: 12px 14px;
-}
-
-.ide-verify-waveform-frame {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(450px, 1fr);
-  gap: 12px;
-  min-height: 550px !important;
-  overflow: visible;
-}
-
-.ide-verify-oscilloscope-stage .ide-waveform-outer,
-.ide-verify-waveform-frame {
-  overflow: visible;
-  min-height: 500px !important;
 }
 
 .ide-verify-waveform-scroll {
@@ -17224,9 +16768,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Keep center panel non-scrolling; waveform rail handles horizontal scroll itself */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck {
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -17250,13 +16792,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   overflow: visible;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: inherit;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck {
   flex: 1 1 auto;
   /* Keep the waveform area visible even when other panels compete for vertical space. */
@@ -17264,12 +16799,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   align-content: start;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  min-height: clamp(420px, 52vh, 760px) !important;
-  align-content: start;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
   min-height: clamp(360px, 44vh, 640px) !important;
 }
@@ -17283,11 +16812,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
     min-height: clamp(360px, 60vh, 920px) !important;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-    min-height: clamp(300px, 52vh, 760px) !important;
-  }
-
-  .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame,
   .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
     min-height: clamp(260px, 44vh, 640px) !important;
   }
@@ -17340,8 +16864,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   max-width: 100%;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame > .ide-verify-instrument-deck {
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
@@ -17366,7 +16889,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   min-height: 280px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-authority-note-inline,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-pass-summary {
   margin-bottom: 10px;
@@ -17764,19 +17286,15 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    the inline Verify side panel was still crushing the oscilloscope and clipping
    the lower-right analysis region on real 1920x1080 screenshots. The lower deck
    now owns the analysis workflow, so the instrument deck must stay single-column. */
-.ide-verify-console-frame > .ide-verify-instrument-deck,
 .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
 .ide-verify-workbench-v2,
-.ide-verify-console-frame,
 .ide-verify-instrument-deck,
-.ide-verify-oscilloscope-stage,
 .ide-verify-supporting-strip,
 .ide-verify-drawer-body,
 .ide-verify-tab-panel,
-.ide-verify-waveform-frame,
 .ide-verify-waveform-scroll {
   min-width: 0;
   max-width: 100%;
@@ -17862,10 +17380,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-verify-side-panel-body {
   max-height: 224px;
-}
-
-.ide-verify-oscilloscope-stage {
-  min-height: 0;
 }
 
 .ide-verify-waveform-scroll {
@@ -17969,11 +17483,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   }
 }
 
-[data-layout-mode='standard'] .ide-verify-oscilloscope-stage,
-[data-layout-mode='compact'] .ide-verify-oscilloscope-stage {
-  padding: 14px;
-}
-
 [data-layout-mode='standard'] .ide-verify-waveform-scroll,
 [data-layout-mode='compact'] .ide-verify-waveform-scroll {
   min-height: clamp(320px, 44vh, 520px);
@@ -17988,11 +17497,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    default open lower analysis, reduce top chrome, and give the waveform more authority. */
 .ide-verify-instrument-deck {
   grid-template-columns: minmax(0, 2.7fr) minmax(220px, 0.68fr);
-}
-
-.ide-verify-status-strip {
-  min-height: 44px;
-  padding: 8px 12px;
 }
 
 .ide-verify-authority-note-inline {
@@ -18018,11 +17522,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-verify-pass-summary-meta {
   font-size: 11px;
-}
-
-.ide-verify-oscilloscope-stage {
-  gap: 10px;
-  padding: 14px;
 }
 
 .ide-verify-waveform-scroll {
@@ -18387,20 +17886,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: rgba(196, 245, 239, 0.82);
 }
 
-.ide-workbench-shell .ide-workbench-dock-toggle-rail {
-  min-width: 46px !important;
-  padding: 14px 6px !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-label {
-  font-size: 10px !important;
-  line-height: 1.25 !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
-  font-size: 9px !important;
-}
-
 /* ── Design — selection identity heading ─────────────────────────────────────── */
 .ide-design-selection-identity {
   padding-bottom: var(--rb-space-2);
@@ -18640,12 +18125,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    ════════════════════════════════════════════════════════════════ */
 
 /* Oscilloscope stage: flex with min-height floor that fits in viewport */
-.ide-verify-oscilloscope-stage {
-  min-height: clamp(180px, 38vh, 520px) !important;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-}
 
 /* Waveform scroll: always reachable, horizontally scrollable */
 .ide-verify-waveform-scroll {
@@ -19624,61 +19103,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 0;
 }
 
-.ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 5;
-}
-
-.ide-workbench-dock-toggle-rail {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: stretch;
-  width: 26px;
-  border: 0;
-  background: linear-gradient(180deg, rgba(8, 17, 30, 0.98), rgba(5, 11, 20, 0.98));
-  color: rgba(165, 191, 219, 0.88);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  transition:
-    color 120ms ease,
-    background 120ms ease,
-    border-color 120ms ease;
-  padding: 10px 0;
-}
-
-.ide-workbench-dock-toggle-rail:hover {
-  color: rgba(224, 236, 249, 0.96);
-  background: linear-gradient(180deg, rgba(12, 24, 40, 0.98), rgba(7, 16, 29, 0.98));
-}
-
-.ide-workbench-dock-toggle-rail:focus-visible {
-  outline: 1px solid rgba(142, 199, 255, 0.82);
-  outline-offset: -1px;
-}
-
-.ide-workbench-dock-toggle-rail-left {
-  border-right: 1px solid rgba(74, 109, 142, 0.42);
-  border-left: 1px solid rgba(74, 109, 142, 0.24);
-  writing-mode: vertical-rl;
-}
-
-.ide-workbench-dock-toggle-rail-right {
-  grid-column: 3;
-  border-left: 1px solid rgba(74, 109, 142, 0.42);
-  border-right: 1px solid rgba(74, 109, 142, 0.24);
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
-
 .ide-workbench-dock-collapse-btn {
   width: 100%;
   min-height: 36px;
@@ -19726,43 +19150,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
     var(--ide-workbench-left-slot-width)
     minmax(0, 1fr)
     26px;
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail {
-  align-self: stretch;
-  width: 26px;
-  border: 0;
-  border-left: 1px solid rgba(74, 109, 142, 0.42);
-  border-right: 1px solid rgba(74, 109, 142, 0.24);
-  background: linear-gradient(180deg, rgba(8, 17, 30, 0.98), rgba(5, 11, 20, 0.98));
-  color: rgba(165, 191, 219, 0.88);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  transition:
-    color 120ms ease,
-    background 120ms ease,
-    border-color 120ms ease;
-  padding: 10px 0;
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail:hover {
-  color: rgba(224, 236, 249, 0.96);
-  border-left-color: rgba(106, 152, 194, 0.58);
-  border-right-color: rgba(106, 152, 194, 0.4);
-  background: linear-gradient(180deg, rgba(12, 24, 40, 0.98), rgba(7, 16, 29, 0.98));
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail:focus-visible {
-  outline: 1px solid rgba(142, 199, 255, 0.82);
-  outline-offset: -1px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-control-bar {
@@ -20169,13 +19556,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Lab-day stabilization: keep Design code/split layout unclipped and width-reclaimed. */
-[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 6;
-}
 
 [data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-pane--canvas,
 [data-ide-mode-marker='design'] .ide-design-pane-row[data-design-view='split'] .ide-design-pane--hdl,
@@ -20211,15 +19591,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   }
 
 /* Verify redesign — waveform-first evidence layout */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-panel-body {
-  gap: 10px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip {
-  align-items: flex-start;
-  gap: 8px 10px;
-  padding: 10px 12px;
-}
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-strip-actions {
   margin-left: auto;
@@ -20391,7 +19762,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 10px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck {
   min-width: 0;
   min-height: 0;
@@ -20403,21 +19773,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 12px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  gap: 10px;
-  padding: 12px;
-  min-height: clamp(360px, 48vh, 720px) !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-header,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
   row-gap: 8px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
-  display: grid;
-  gap: 8px;
-  min-height: clamp(340px, 44vh, 680px) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
@@ -20534,11 +19891,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    ════════════════════════════════════════════════════════════════ */
 
 /* Panel body: flex column, scroll allowed so tall waveforms aren't clipped */
-.ide-workbench-workspace > .ide-verify-panel .ide-panel-body {
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-}
 
 .ide-verify-region {
   display: block;
@@ -20576,73 +19928,14 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   color: #f28b8b;
 }
 
-.ide-verify-region--stimulus {
-  order: 2;
-  flex-shrink: 0;
-  overflow-y: auto;
-  transition: max-height 0.2s ease;
-}
-.ide-verify-region--stimulus:has(.ide-vfr-panel) {
-  max-height: none;
-  overflow: visible;
-}
-.ide-verify-region--stimulus.is-collapsed {
-  max-height: 40px;
-  overflow: hidden;
-}
 /* Post-run workbench: let it shrink so waveform fills remaining space */
-.ide-verify-region--stimulus:has(.ide-verify-workbench-live) {
-  flex-shrink: 1;
-  max-height: min(42vh, 380px);
-  overflow: hidden;
-}
 /* When workbench is collapsed (no body), shrink to header only */
-.ide-verify-region--stimulus:has(.ide-verify-workbench-live:not(:has(.ide-verify-workbench-body))) {
-  max-height: 40px;
-  flex-shrink: 0;
-}
-
-.ide-verify-region--waveform {
-  order: 3;
-  flex: 1;
-  min-height: 120px;
-}
 
 /* ── Workspace: side-by-side stimulus (left) + waveform (right) ────────────── */
-.ide-verify-workspace {
-  order: 3;
-  display: flex;
-  flex-direction: row;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
 
 /* Left panel: stimulus editor at fixed width */
-.ide-verify-workspace > .ide-verify-region--stimulus {
-  flex: 0 0 460px;
-  max-width: 460px;
-  min-width: 220px;
-  overflow: hidden;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='wide'] .ide-verify-workspace > .ide-verify-region--stimulus {
-  flex-basis: 430px;
-  max-width: 430px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-verify-workspace > .ide-verify-region--stimulus {
-  flex-basis: 400px;
-  max-width: 400px;
-}
 
 /* Right panel: waveform fills remaining width */
-.ide-verify-workspace > .ide-verify-region--waveform {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
 
 .ide-verify-region--inspector {
   order: 4;
@@ -20697,72 +19990,21 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 /* ── Stacking order: status strip → waveform → supporting sections ── */
 
 /* Reference-mode callout: demote to bottom, very compact */
-.ide-verify-panel .ide-panel-body > .ide-callout {
-  order: 10;
-  flex-shrink: 0;
-  padding: 6px var(--rb-space-4);
-  font-size: 12px;
-  display: none; /* hide it entirely — already explained in status strip */
-}
 
 /* Known Verify feedback banners: below status. Keep this list explicit so new
    components do not inherit layout behavior merely from a class substring. */
-.ide-verify-panel .ide-panel-body > .ide-verify-preview-banner,
-.ide-verify-panel .ide-panel-body > .ide-verify-schema-change-banner,
-.ide-verify-panel .ide-panel-body > .ide-verify-unsupported-feedback-banner {
-  order: 1;
-  flex-shrink: 0;
-}
 
 /* Status strip: always first, compact */
-.ide-verify-panel .ide-panel-body > .ide-verify-status-strip {
-  order: 2;
-  flex-shrink: 0;
-}
 
 /* Workbench (waveform): PRIMARY — order 3 so it renders immediately after strip */
-.ide-verify-panel .ide-panel-body > .ide-verify-workbench {
-  order: 3;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
 
 /* Run-proof evidence block: below the waveform, compact & scrollable */
-.ide-verify-panel .ide-panel-body > .ide-verify-run-proof {
-  order: 4;
-  flex: 0 0 auto;
-  max-height: 96px;
-  overflow: hidden;
-  border-top: 1px solid rgba(30, 60, 110, 0.35);
-}
 
 /* Scenario library header: below proof */
-.ide-verify-panel .ide-panel-body > .ide-scenario-library-header {
-  order: 5;
-  flex-shrink: 0;
-}
 
 /* ScenarioBuilderPanel details: at bottom, scrollable */
-.ide-verify-panel .ide-panel-body > .ide-verify-scenario-builder-details {
-  order: 6;
-  flex: 0 0 auto;
-  max-height: 200px;
-  overflow-y: auto;
-  border-top: 1px solid rgba(30, 60, 110, 0.35);
-}
 
 /* Kit tip, clocked banner, fail-diagnosis, hint callouts: below status */
-.ide-verify-panel .ide-panel-body > .ide-verify-kit-tip,
-.ide-verify-panel .ide-panel-body > .ide-callout--clocked,
-.ide-verify-panel .ide-panel-body > .ide-verify-fail-diagnosis,
-.ide-verify-panel .ide-panel-body > .ide-callout--hint,
-.ide-verify-panel .ide-panel-body > .ide-verify-incomplete-banner,
-.ide-verify-panel .ide-panel-body > .ide-verify-scenario-stale-banner,
-.ide-verify-panel .ide-panel-body > .ide-verify-wrong-scenario-banner {
-  order: 1;
-  flex-shrink: 0;
-}
 
 /* ── Scope / instrument styles ── */
 
@@ -20773,10 +20015,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Scope header: taller for better instrument feel */
-.ide-verify-oscilloscope-stage > .ide-verify-scope-header {
-  min-height: 40px;
-  padding: 0 16px;
-}
 
 /* Run-proof: compact header only, no overflow scroll */
 .ide-verify-run-proof-eyebrow {
@@ -20946,52 +20184,18 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* 2. Zero the workbench's own min-height floor (beats 520px !important) */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel .ide-panel-body > .ide-verify-workbench {
-  min-height: 0 !important;
-}
 
 /* 3. Zero all inner waveform subtree clamp floors */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
   min-height: 0 !important;
   overflow-y: auto; /* scrollable so all signals are reachable */
 }
 
 /* 4. Collapse zero-testid secondary content in panel-body */
-.ide-verify-panel .ide-panel-body > .ide-scenario-library-header {
-  max-height: 0;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
-  border: none;
-}
-.ide-verify-panel .ide-panel-body > .ide-verify-run-proof {
-  max-height: 0 !important;
-  overflow: hidden;
-  padding: 0;
-  margin: 0;
-  border: none;
-}
 
 /* 5. Scenario builder: pull OUT of flex flow via absolute positioning so workbench
       (flex:1) fills all remaining height. Gate testids remain in DOM and queryable. */
-.ide-verify-panel .ide-panel-body {
-  position: relative; /* anchor for the absolutely-positioned scenario builder */
-}
-.ide-verify-panel .ide-panel-body > .ide-verify-scenario-builder-details {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 80px;
-  overflow-y: auto;
-  z-index: 2;
-  background: var(--rb-elevation-2, #0d1520);
-  border-top: 1px solid rgba(48, 77, 107, 0.4);
-  border-radius: 0 0 var(--ide-radius-s, 6px) var(--ide-radius-s, 6px);
-}
 
 /* ════════════════════════════════════════════════════════════════
    Slice 2 — Waveform visibility fix
@@ -21036,13 +20240,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Console-frame: fill center */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame {
-  flex: 1 !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-}
 
 /* Instrument-deck: fill console-frame */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck {
@@ -21054,19 +20251,13 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 /* Oscilloscope-stage: fill instrument-deck, keep existing grid for row layout */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  flex: 1 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
 
 /* Waveform frame: override grid→flex so scroll fills available height.
    The original grid has 4 rows (auto auto auto minmax(450px,1fr)).
    With legend+cursor hidden, scroll lands in row 2 (auto=25px) while
    the 450px minmax row sits empty, clipped by overflow:hidden.
    Switching to flex column bypasses the misaligned grid entirely. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer {
   display: flex !important;
   flex-direction: column !important;
   flex: 1 !important;
@@ -21086,12 +20277,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    The (0,4,0) rule clamp(400px,54vh,680px) still wins. Beat it
    with (0,5,0) specificity: two attrs + three classes.
    ════════════════════════════════════════════════════════════════ */
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='standard'] .ide-verify-panel .ide-verify-waveform-scroll,
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-panel .ide-verify-waveform-scroll {
-  min-height: 0 !important;
-  overflow-x: auto !important;
-  overflow-y: auto !important;
-}
 
 /* ════════════════════════════════════════════════════════════════
    Slice 2 — Reclaim waveform height: collapse redundant header rows
@@ -21100,10 +20285,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    ════════════════════════════════════════════════════════════════ */
 
 /* Tighten oscilloscope-stage internal spacing */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  gap: 6px !important;
-  padding: 8px !important;
-}
 
 /* Condense the waveform-bar — it currently renders at 63px */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
@@ -21123,83 +20304,19 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* ── Root: force full height down to panel ── */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
 
 /* ── Panel body: flex column host for the two zones ── */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  overflow: var(--ide-verify-panel-body-overflow, hidden);
-  padding: 0 !important;
-  gap: 0 !important;
-}
 
 /* ── Status strip: fixed-height header ── */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-status-strip {
-  order: 1 !important;
-  flex: 0 0 auto !important;
-  min-height: 0 !important;
-  padding: 6px 12px !important;
-  border-bottom: 1px solid rgba(48, 77, 107, 0.5) !important;
-  background: var(--rb-elevation-2, #0c1623) !important;
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 6px !important;
-}
 
 /* ── Scenario library tabs: fixed height ── */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-scenario-library-header {
-  order: 2 !important;
-  flex: 0 0 auto !important;
-  min-height: 0 !important;
-}
 
 /* ── Stale banners: keep visible, compact, before status strip ── */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-stale-banner,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-stale-banner,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-wrong-scenario-banner {
-  order: 0 !important;
-  flex: 0 0 auto !important;
-  min-height: 0 !important;
-  padding: 5px 12px !important;
-  font-size: 11px !important;
-}
 
 /* ════════════════════════════════════════════════════════════════════════════
    ZONE A — Testbench / StimulusCanvas (top ~34%)
    Works for both isFirstRun=true (div) and isFirstRun=false (details).
    ════════════════════════════════════════════════════════════════════════════ */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details {
-  order: 3 !important;
-  /* Cancel any previous absolute overlay */
-  position: static !important;
-  bottom: auto !important;
-  left: auto !important;
-  right: auto !important;
-  z-index: auto !important;
-  max-height: none !important;
-  /* Zone sizing — 42% of panel body height (bumped from 34% for canvas room) */
-  flex: 0 0 42% !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-  /* Internal flex layout */
-  display: flex !important;
-  flex-direction: column !important;
-  /* Visual identity */
-  background: var(--rb-elevation-2, #0c1623) !important;
-  border-top: 1px solid rgba(56, 189, 248, 0.10) !important;
-  border-bottom: 2px solid rgba(56, 189, 248, 0.22) !important;
-  border-radius: 0 !important;
-}
 
 /* Workstation run bar (first-run state compact header).
    Slice N1 — chrome rebuild: flex-wrap:wrap (was nowrap), max-height removed
@@ -21356,26 +20473,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 /* ════════════════════════════════════════════════════════════════════════════
    ZONE B — Oscilloscope Waveform (fills remaining screen)
    ════════════════════════════════════════════════════════════════════════════ */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
-  order: 4 !important;
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
 
 /* ════════════════════════════════════════════════════════════════════════════
    COLLAPSE NOISE — callouts, run evidence, failure panels
    These use display:none but remain in DOM so getByTestId() still finds them.
    ════════════════════════════════════════════════════════════════════════════ */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-callout,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-run-proof,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-fail-diagnosis,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-export-available-note,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-preview-banner,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-kit-tip,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-incomplete-banner {
-  display: none !important;
-}
 
 /* ════════════════════════════════════════════════════════════════════════════
    OSCILLOSCOPE STAGE — visual upgrade
@@ -21383,25 +20485,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
    ════════════════════════════════════════════════════════════════════════════ */
 
 /* Stage fills workbench fully */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench .ide-verify-oscilloscope-stage {
-  background: #010810 !important;
-  border-radius: 0 !important;
-  border: none !important;
-  padding: 0 !important;
-  gap: 0 !important;
-}
 
 /* Scope header: instrument panel bar */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-header {
-  background: #020c1a !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.18) !important;
-  padding: 5px 12px !important;
-  min-height: 36px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
-}
 
 /* Scope label: instrument brand */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-label {
@@ -21798,7 +20883,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
     0 4px 20px rgba(2,8,16,0.5) !important;
 }
 /* Run result: animate in with presence */
-[data-ide-mode-marker='verify'] [data-testid='ide-verify-status-strip'],
 [data-ide-mode-marker='verify'] [data-testid='ide-verify-run-strip'] {
   transition: background 200ms ease, color 200ms ease !important;
 }
@@ -23301,17 +22385,11 @@ button:disabled,
   ─────────────────────────────────────────────────────────── */
 
 /* Shared header background */
-.ide-verify-scope-header,
 .ide-verify-waveform-bar {
   background: rgba(8,20,34,0.55) !important;
 }
 
 /* Scope header: no bottom border (digest follows immediately) */
-.ide-verify-scope-header {
-  border-bottom: none !important;
-  padding-bottom: 6px !important;
-  padding-top: 8px !important;
-}
 
 /* Waveform bar: single thin separator marks end of header zone */
 .ide-verify-waveform-bar {
@@ -23461,9 +22539,6 @@ button:disabled,
 }
 
 /* Scope header left meta cluster: tighter gap */
-.ide-verify-scope-header .ide-verify-scope-meta {
-  gap: 8px !important;
-}
 
 /* ── D. Right rail — Vectors companion panel ───────────────────
    Style the Vectors inspector as a deliberate reference monitor:
@@ -23563,24 +22638,10 @@ button:disabled,
 }
 
 /* Scenario builder: when open, cap at 28% height max so waveform dominates */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details {
-  flex: 0 0 auto !important;
-  max-height: 28% !important;
-  min-height: 0 !important;
-}
 
 /* Scenario builder collapsed state: just the summary bar (~32px) */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details:not([open]) {
-  max-height: 36px !important;
-  overflow: hidden !important;
-}
 
 /* Waveform workbench: flex:1 fills all remaining space */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
 
 /* Keep the three-panel workspace horizontal; the center waveform owns the height. */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel {
@@ -23614,13 +22675,6 @@ button:disabled,
 }
 
 /* Oscilloscope stage fills its container */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-}
 
 /* Waveform scroll area: flex:1 inside oscilloscope */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
@@ -23630,11 +22684,6 @@ button:disabled,
 }
 
 /* Status strip: compact, never shrinks */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip {
-  flex: 0 0 auto !important;
-  min-height: 32px !important;
-  max-height: 42px !important;
-}
 
 /* Summary bar: clear affordance to expand/collapse testbench */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-summary {
@@ -23735,21 +22784,8 @@ button:disabled,
    ════════════════════════════════════════════════════════════ */
 
 /* ── Verify: Run strip — 3 grouped clusters ─────────────────── */
-.ide-verify-status-strip {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0 !important;
-  flex-wrap: wrap !important;
-  row-gap: 4px !important;
-}
 
 /* Status + meta stays left */
-.ide-verify-status-strip > .ide-status-pill,
-.ide-verify-status-strip > .ide-verify-strip-sep,
-.ide-verify-status-strip > .ide-verify-strip-meta,
-.ide-verify-status-strip > .ide-verify-incomplete-notice {
-  flex-shrink: 0;
-}
 
 /* Strip actions: flex row of groups */
 .ide-verify-strip-actions {
@@ -23849,14 +22885,6 @@ button:disabled,
 
 /* ── Verify waveform header: unified zone ───────────────────── */
 /* Remove visual gap between chip bar and waveform */
-.ide-verify-scope-header {
-  padding-bottom: 4px !important;
-  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
-  margin-bottom: 0 !important;
-}
-.ide-verify-oscilloscope-stage {
-  border-top: none !important;
-}
 
 /* ── Contextual-only: debug/step controls stay compact ──────── */
 .ide-verify-step-controls,
@@ -24093,13 +23121,6 @@ button:disabled,
 }
 
 /* ── A4. Scope header: unified instrument band ───────────────── */
-.ide-verify-scope-header {
-  min-height: 30px !important;
-  gap: 8px !important;
-  padding: 5px 12px !important;
-  background: rgba(8,15,30,0.35) !important;
-  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
-}
 .ide-verify-scope-label {
   font-size: 9px !important;
   font-weight: 800 !important;
@@ -24504,14 +23525,6 @@ button:disabled,
 /* ─── CRITICAL: first-run container is a <div>, not <details>.
    The :not([open]) rule has specificity 0,6,0 (includes [open] attr inside :not).
    This rule chains BOTH classes to reach 0,6,0 and win by document order. ─── */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-scenario-builder-details.ide-verify-scenario-builder-details--first-run {
-  max-height: none !important;
-  flex: 0 0 65% !important;    /* pre-run: ghost waveform is decorative, give testbench the space */
-  overflow: hidden !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-}
 
 /* Canvas-only form variant: no padding, just flex so canvas fills it */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-vector-form--canvas-only {
@@ -24671,16 +23684,6 @@ button:disabled,
    restore the horizontal three-panel workspace after older slice resets
    forced it into a vertical flex stack. The waveform must own the center
    area while keeping failure aids available but secondary. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body > .ide-verify-workbench {
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-}
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel {
   display: grid !important;
@@ -24714,29 +23717,19 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-left,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-center,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-right,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
   min-width: 0;
   min-height: 0;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-center,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-waveform-outer {
   display: flex !important;
   flex-direction: column !important;
   height: 100%;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  flex: 1 1 0 !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
@@ -24793,12 +23786,6 @@ button:disabled,
   color: rgba(148, 163, 184, 0.78);
   max-width: 340px;
   text-align: right;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-status-strip {
-  align-items: center !important;
-  gap: 8px 10px !important;
-  padding: 8px 12px !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-strip-actions {
@@ -25062,41 +24049,6 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-stimulus-cell.is-clock {
   box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.14);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
-  flex: 0 0 43% !important;
-  min-width: 460px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
-  flex: 1 1 57% !important;
-}
-
-@media (max-width: 1279px) {
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-    grid-template-columns: minmax(420px, 1.06fr) minmax(0, 1.14fr) !important;
-  }
-
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
-    flex-basis: 46% !important;
-    min-width: 420px !important;
-  }
-
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
-    flex-basis: 54% !important;
-  }
-}
-
-@media (max-width: 959px) {
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  [data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
-  [data-ide-mode-marker='verify'] .ide-verify-region--waveform {
-    min-width: 0 !important;
-  }
 }
 
 .ide-stimulus-mini-btn:hover:not(:disabled) {
@@ -26367,39 +25319,12 @@ button:disabled,
    ════════════════════════════════════════════════════════════════ */
 
 /* Scenario library: show it properly (un-hide the broken max-height:0 rule) */
-.ide-verify-region--stimulus .ide-scenario-library-header {
-  flex: 0 0 auto;
-  min-height: 0;
-}
 
 /* Scenario builder details: restore proper sizing inside region wrapper */
-.ide-verify-region--stimulus .ide-verify-scenario-builder-details {
-  position: static;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  max-height: none;
-  background: var(--rb-elevation-2, #0c1623);
-  border-top: 1px solid rgba(56, 189, 248, 0.10);
-}
 
 /* Zone labels inside stimulus region */
-.ide-verify-region--stimulus .ide-verify-zone-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--rb-text-muted, #7a95b0);
-  padding: 3px 10px 1px;
-  margin: 0;
-  font-weight: 600;
-  opacity: 0.7;
-}
 
 /* Stimulus region internal layout */
-.ide-verify-region--stimulus {
-  display: flex;
-  flex-direction: column;
-}
 
 /* ════════════════════════════════════════════════════════════════
    Hide old status-strip inline actions — replaced by VerifyCommandBar
@@ -26418,18 +25343,6 @@ button:disabled,
 /* ════════════════════════════════════════════════════════════════
    Status strip cleanup — compact, single-line, no overflow
    ════════════════════════════════════════════════════════════════ */
-
-.ide-verify-region--header .ide-verify-status-strip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  min-height: 28px;
-  max-height: 36px;
-  overflow: hidden;
-  flex-wrap: nowrap;
-  border-bottom: 1px solid rgba(48, 77, 107, 0.25);
-}
 
 /* Truncate long status messages */
 .ide-verify-region--header .ide-verify-status-chip {
@@ -26459,60 +25372,10 @@ button:disabled,
    ════════════════════════════════════════════════════════════════ */
 
 /* First-run container (div, not details) — fill stimulus region */
-.ide-verify-region--stimulus .ide-verify-scenario-builder-details--first-run {
-  max-height: none !important;
-  flex: 1 1 auto;
-  overflow: hidden;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-}
 
 /* Post-run details — collapsed state shows summary, open state shows editor */
-.ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun {
-  flex: 0 0 auto !important;
-  min-height: 0 !important;
-  position: static !important;
-  background: var(--rb-elevation-2, #0c1623) !important;
-  border-top: 1px solid rgba(56, 189, 248, 0.10) !important;
-}
-.ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[data-state='collapsed'] {
-  max-height: none !important;
-  overflow: visible !important;
-}
-.ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[data-state='expanded'] {
-  max-height: 45vh;
-  overflow-y: auto;
-}
 
 /* Summary bar — strong interactive affordance */
-.ide-verify-region--stimulus .ide-verify-scenario-builder-summary {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 0 12px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  color: rgba(120, 175, 220, 0.85) !important;
-  background: rgba(4, 12, 24, 0.7) !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.15) !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  list-style: none !important;
-  transition: background 0.12s !important;
-}
-.ide-verify-region--stimulus .ide-verify-scenario-builder-summary:hover {
-  background: rgba(59, 130, 246, 0.12) !important;
-  color: #93c5fd !important;
-}
-.ide-verify-region--stimulus .ide-verify-scenario-builder-summary::marker,
-.ide-verify-region--stimulus .ide-verify-scenario-builder-summary::-webkit-details-marker {
-  display: none !important;
-}
 
 /* Summary label */
 .ide-verify-scenario-builder-summary-label {
@@ -26545,45 +25408,12 @@ button:disabled,
 }
 
 /* Vector form inside open details — fill available space */
-.ide-verify-region--stimulus .ide-verify-vector-form {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: var(--ide-verify-vector-form-flex, 1 1 0);
-  min-height: 0 !important;
-  overflow-y: auto;
-  padding: 6px 10px 4px !important;
-  gap: 6px !important;
-}
 
 /* Canvas-only variant */
-.ide-verify-region--stimulus .ide-verify-vector-form--canvas-only {
-  padding: 0 !important;
-  gap: 0 !important;
-}
 
 /* Seq chip */
-.ide-verify-region--stimulus .ide-verify-seq-chip {
-  flex: 0 0 auto !important;
-  font-size: 10px !important;
-  color: rgba(147, 197, 253, 0.8) !important;
-  background: rgba(56, 189, 248, 0.07) !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
-  padding: 3px 10px !important;
-  min-height: 0 !important;
-}
 
 /* Run footer — always visible at bottom of stimulus */
-.ide-verify-region--stimulus .ide-verify-run-footer {
-  flex: 0 0 auto !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px !important;
-  padding: 4px 10px !important;
-  background: rgba(4, 12, 24, 0.5) !important;
-  border-top: 1px solid rgba(48, 77, 107, 0.3) !important;
-  min-height: 32px !important;
-}
 .ide-verify-run-footer-status {
   font-size: 11px;
   color: var(--rb-text-muted, #7a95b0);
@@ -26699,81 +25529,16 @@ button:disabled,
    ════════════════════════════════════════════════════════════════ */
 
 /* First-run: stimulus gets more space, waveform is just a placeholder */
-.ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--first-run) {
-  max-height: none !important;
-  flex: 1 1 55%;
-  overflow: hidden;
-}
 
 /* Post-run: stimulus is compact, waveform dominates */
-.ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun) {
-  max-height: none !important;
-  flex: 0 1 auto;
-  overflow: visible;
-}
 
 /* Verify case-editor clarity: make the workbench use desktop width and keep
    post-run editing visually primary instead of yielding to the waveform stack. */
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-shell-density='immersive'] .ide-verify-panel {
-  background:
-    linear-gradient(180deg, rgba(8, 17, 30, 0.96), rgba(5, 11, 20, 0.98)),
-    var(--rb-elevation-1, #08111e) !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-shell-density='immersive'] .ide-verify-panel > .ide-panel-body {
-  gap: 0 !important;
-}
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result {
   position: relative;
   z-index: 1;
   order: 2;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {
-  position: relative;
-  z-index: 3;
-  min-height: 0 !important;
-  max-height: none !important;
-  overflow: hidden;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun) {
-  flex: 1 1 auto !important;
-  overflow: hidden;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus[data-panel-state='collapsed'] {
-  flex: 0 0 auto !important;
-  height: auto !important;
-  overflow: visible !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun {
-  display: grid !important;
-  grid-template-rows: auto minmax(0, 1fr);
-  flex: 1 1 auto !important;
-  height: 100%;
-  min-height: 0 !important;
-  overflow: hidden;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus[data-panel-state='collapsed'] .ide-verify-scenario-builder-details--postrun {
-  grid-template-rows: auto auto !important;
-  flex: 0 0 auto !important;
-  height: auto !important;
-  overflow: visible !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
-  position: relative;
-  z-index: 1;
-  min-height: 0 !important;
-  overflow: hidden !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-scenario-builder-details--postrun[data-state='expanded'] {
-  max-height: none !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-stimulus-header {
@@ -26786,20 +25551,6 @@ button:disabled,
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-verify-vector-form--canvas-only,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-stimulus-canvas {
-  min-height: 0 !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus .ide-stimulus-canvas {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  z-index: 4;
   overflow: hidden;
 }
 
@@ -26871,28 +25622,10 @@ button:disabled,
 }
 
 @media (min-width: 1280px) {
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-panel > .ide-panel-body {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto auto !important;
-    grid-template-areas:
-      "header"
-      "workspace"
-      "result"
-      "inspector" !important;
-    align-items: stretch !important;
-    overflow: var(--ide-verify-panel-body-overflow, hidden);
-  }
 
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--header {
     grid-area: header;
     min-width: 0;
-  }
-
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-workspace {
-    grid-area: workspace;
-    min-width: 0;
-    min-height: 0;
   }
 
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--result {
@@ -26915,27 +25648,6 @@ button:disabled,
     max-height: none;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus {
-    min-width: 0;
-    min-height: 0;
-    border-right: 1px solid rgba(48, 77, 107, 0.22);
-  }
-
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--waveform {
-    min-width: 0;
-    min-height: 0;
-    padding-left: 10px;
-  }
-
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-vfr-panel) {
-    max-height: none !important;
-  }
-
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun[open]) [data-testid='ide-verify-io-summary'],
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun[open]) [data-testid='ide-verify-prerun-lanes'],
-  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--stimulus:has(.ide-verify-scenario-builder-details--postrun[open]) .ide-scenario-library-header {
-    display: none !important;
-  }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -26954,16 +25666,6 @@ button:disabled,
 .ide-verify-region--header .ide-verify-session-title,
 .ide-verify-region--header .ide-verify-reference-mode {
   display: none;
-}
-
-.ide-verify-region--header .ide-verify-status-strip {
-  background: rgba(3, 7, 15, 0.85);
-  border-bottom: 1px solid rgba(24, 44, 70, 0.55);
-  min-height: 26px;
-  max-height: none;
-  padding: 2px 10px;
-  align-items: center;
-  gap: 8px;
 }
 
 .ide-verify-region--header .ide-verify-strip-pass,
@@ -27004,29 +25706,8 @@ button:disabled,
 /* ── 4. Workspace panel tone differentiation ──────────────────────
    Stimulus = "authoring space" — sky-blue left accent marks the editable workbench
    Waveform = "evidence space" — deep terminal dark, amber accent on scope header */
-.ide-verify-workspace > .ide-verify-region--stimulus {
-  background: rgba(4, 10, 21, 0.93) !important;
-  border-right: 1px solid rgba(20, 38, 62, 0.65) !important;
-}
-.ide-verify-workspace > .ide-verify-region--waveform {
-  background: rgba(1, 3, 10, 0.99) !important;
-}
 
 /* ── 5. Oscilloscope scope header: amber instrument frame (evidence readout) ── */
-.ide-verify-workspace .ide-verify-scope-header {
-  background: rgba(2, 7, 18, 0.98) !important;
-  border-bottom: 1px solid rgba(245, 158, 11, 0.22) !important;
-  border-left: 3px solid rgba(245, 158, 11, 0.42) !important;
-  padding: 4px 12px !important;
-  min-height: 30px !important;
-}
-.ide-verify-workspace .ide-verify-scope-label {
-  font-size: 10px !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
-  color: rgba(245, 158, 11, 0.72) !important;
-  font-weight: 700 !important;
-}
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
   padding: 6px 10px !important;
@@ -27062,11 +25743,6 @@ button:disabled,
 }
 
 /* ── 8. Panel border suppression: remove outer frame in immersive mode */
-.ide-workbench-shell[data-ide-mode-marker='verify'][data-shell-density='immersive'] .ide-verify-panel {
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-}
 
 /* ── 10. Action row hierarchy: save-expected demoted to ghost utility ──
    Now lives in the status group (right side), appears at ghost weight.
@@ -28348,10 +27024,6 @@ button:disabled,
   font-weight: 600;
 }
 
-[data-ide-mode-marker='verify'] .ide-surface-command-stack > .ide-verify-status-strip[data-testid='ide-verify-banner'] {
-  display: none !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-surface-command-stack > .ide-verify-command-bar {
   margin-top: 0;
   border: 1px solid rgba(44, 80, 112, 0.34);
@@ -28616,14 +27288,6 @@ button:disabled,
 }
 
 /* Verify status strip: single-line compact bar */
-.ide-verify-region--header .ide-verify-status-strip {
-  min-height: 22px !important;
-  max-height: 26px !important;
-  padding: 1px 12px !important;
-  gap: 8px !important;
-  font-size: 10px !important;
-  overflow: hidden !important;
-}
 
 .ide-verify-region--header .ide-verify-session-status,
 .ide-verify-region--header .ide-verify-session-mode,
@@ -28848,26 +27512,6 @@ button:disabled,
   }
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  padding: 14px 14px 12px !important;
-  gap: 12px !important;
-  border: 1px solid rgba(63, 108, 145, 0.28) !important;
-  border-radius: 18px !important;
-  background:
-    linear-gradient(180deg, rgba(6, 13, 24, 0.98), rgba(4, 9, 18, 0.98)) !important;
-  box-shadow:
-    0 22px 44px rgba(1, 7, 14, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-scope-header {
-  align-items: flex-start !important;
-  justify-content: space-between !important;
-  gap: 14px !important;
-  padding: 0 0 10px !important;
-  border-bottom: 1px solid rgba(63, 108, 145, 0.18) !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-scope-copy {
   min-width: 0 !important;
   display: grid !important;
@@ -28890,8 +27534,7 @@ button:disabled,
   color: rgba(214, 229, 244, 0.82) !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-scope-meta,
-[data-ide-mode-marker='verify'] .ide-verify-scope-header-right {
+[data-ide-mode-marker='verify'] .ide-verify-scope-meta {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
@@ -28965,12 +27608,6 @@ button:disabled,
   border: 1px solid rgba(63, 108, 145, 0.22) !important;
   border-radius: 14px !important;
   background: rgba(7, 15, 26, 0.94) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-waveform-frame {
-  border-radius: 16px !important;
-  border-color: rgba(70, 118, 158, 0.34) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-workbench-live {
@@ -29409,43 +28046,6 @@ button:disabled,
    Broad product pass — shared shell geometry and calmer Design ↔ Verify grammar
    ========================================================================== */
 
-.ide-workbench-shell .ide-workbench-dock-toggle-rail {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 4px !important;
-  writing-mode: initial !important;
-  transform: none !important;
-  width: 100% !important;
-  min-height: 100% !important;
-  padding: 12px 4px !important;
-  border: 0 !important;
-  background:
-    linear-gradient(180deg, rgba(9, 18, 31, 0.98), rgba(5, 10, 18, 0.98)) !important;
-  color: rgba(206, 225, 245, 0.88) !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1.2;
-  text-align: center;
-  text-transform: uppercase;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.62;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-}
-
 .ide-workbench-shell .ide-workbench-dock-collapse-btn {
   min-height: 36px !important;
   border-radius: 10px !important;
@@ -29454,34 +28054,10 @@ button:disabled,
   color: rgba(205, 224, 244, 0.84) !important;
 }
 
-.ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left,
-.ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
-  position: static !important;
-  inset: auto !important;
-  z-index: auto !important;
-}
-
 [data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-workspace,
 [data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-workspace {
   padding-left: 0 !important;
   padding-right: 0 !important;
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left,
-[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
-  position: absolute !important;
-  top: 0 !important;
-  bottom: 0 !important;
-  width: 26px !important;
-  z-index: 6 !important;
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left {
-  left: 38px !important;
-}
-
-[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
-  right: 26px !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-signal-toolbar {
@@ -29508,16 +28084,6 @@ button:disabled,
 [data-ide-mode-marker='verify'] .ide-verify-signal-visibility-btn {
   min-width: 50px !important;
   padding: 0 12px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-  padding: 18px 20px 22px !important;
-  background:
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 36%),
-    linear-gradient(180deg, rgba(5, 10, 18, 0.98), rgba(4, 8, 16, 0.98)) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-frame {
@@ -29596,58 +28162,6 @@ button:disabled,
   border-color: rgba(56, 189, 248, 0.28);
   background: rgba(56, 189, 248, 0.12);
   color: rgba(215, 243, 255, 0.94);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.48fr) minmax(480px, 1.52fr);
-  gap: 14px;
-  min-height: 0;
-  height: 100%;
-  align-items: stretch;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-stimulus-layout='collapsed'] {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(318px, 4fr) minmax(56px, 0.7fr);
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-stimulus-layout='collapsed'] .ide-verify-region--stimulus {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-stimulus-layout='collapsed'] .ide-verify-region--waveform {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 1px solid rgba(69, 103, 132, 0.14);
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(8, 16, 28, 0.9), rgba(6, 12, 21, 0.93));
-  box-shadow:
-    0 14px 28px rgba(1, 6, 12, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  overflow: hidden;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
-  min-width: 0 !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 1px solid rgba(72, 118, 158, 0.28) !important;
-  border-radius: 12px !important;
-  background:
-    linear-gradient(165deg, rgba(7, 16, 30, 0.92), rgba(4, 10, 20, 0.96)) !important;
-  box-shadow:
-    0 22px 44px rgba(1, 6, 14, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
-  overflow: hidden !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-scenario-library-header {
@@ -29778,41 +28292,11 @@ button:disabled,
   background: rgba(7, 14, 25, 0.9) !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
-  padding: 12px !important;
-  border: 1px solid rgba(76, 113, 145, 0.22) !important;
-  border-radius: 16px !important;
-  background:
-    linear-gradient(180deg, rgba(4, 9, 18, 0.98), rgba(2, 6, 12, 0.98)) !important;
-  box-shadow:
-    0 24px 42px rgba(1, 6, 12, 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-scope-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 10px !important;
-  padding: 0 0 8px !important;
-  border-bottom: 1px solid rgba(75, 110, 141, 0.18) !important;
-  background: transparent !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-scope-copy {
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
   min-width: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-scope-header-right {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-  flex: 0 1 auto;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-scope-case-chip,
@@ -29919,14 +28403,9 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-workspace-story,
-[data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-scope-header,
 [data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-testbench-zone-header,
 [data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-workbench-header {
   grid-template-columns: minmax(0, 1fr) !important;
-}
-
-[data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 [data-ide-mode-marker='verify'][data-layout-mode='compact'] .ide-verify-workbench-collapsed-strip {
@@ -29937,13 +28416,9 @@ button:disabled,
   justify-content: flex-start;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-three-panel-center,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-console-frame,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-body {
   min-height: 0 !important;
   height: 100%;
@@ -30287,33 +28762,7 @@ button:disabled,
   justify-self: stretch !important;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
-  padding-inline: 16px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.58fr) !important;
-  gap: 16px !important;
-  align-items: stretch;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
-[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
-  min-width: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {
-  border-radius: 20px !important;
-  border: 1px solid rgba(79, 114, 145, 0.18) !important;
-  background:
-    linear-gradient(180deg, rgba(11, 19, 31, 0.96), rgba(7, 13, 22, 0.98)) !important;
-  box-shadow:
-    0 18px 34px rgba(1, 6, 12, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-workbench-live,
-[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage,
 [data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open {
   border-radius: 20px !important;
   border: 1px solid rgba(79, 114, 145, 0.18) !important;
@@ -30337,15 +28786,8 @@ button:disabled,
   margin-top: 12px !important;
 }
 
-@media (max-width: 1480px) {
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-    grid-template-columns: minmax(288px, 0.94fr) minmax(0, 1.46fr) !important;
-  }
-}
-
 @media (max-width: 1260px) {
-  [data-ide-mode-marker='project'] .ide-project-flightdeck,
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+  [data-ide-mode-marker='project'] .ide-project-flightdeck {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
@@ -30600,62 +29042,7 @@ button:disabled,
 
 /* ── Verify: Workspace mode layout states ────────────────────────────────── */
 
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='waveform-focus'] .ide-verify-region--stimulus {
-  flex: 0 0 auto !important;
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='waveform-focus'] .ide-verify-region--waveform {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='stimulus-focus'] .ide-verify-region--stimulus {
-  flex: 1 1 auto !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='stimulus-focus'] .ide-verify-region--waveform {
-  min-height: clamp(180px, 26vh, 320px) !important;
-  flex: 0 0 auto !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
-  flex: 1 1 38% !important;
-  min-height: 0 !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
-  flex: 1 1 62% !important;
-  min-height: 0 !important;
-}
-
 /* ── Verify: Collapsed stimulus summary bar ──────────────────────────────── */
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus[data-panel-state='collapsed'] .ide-verify-scenario-builder-summary {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 7px 12px !important;
-  background: rgba(4, 12, 24, 0.6) !important;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
-  cursor: pointer !important;
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  color: rgba(160, 200, 235, 0.75) !important;
-  min-height: 36px !important;
-  list-style: none !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus[data-panel-state='collapsed'] .ide-verify-scenario-builder-summary::marker,
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus[data-panel-state='collapsed'] .ide-verify-scenario-builder-summary::-webkit-details-marker {
-  display: none !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus[data-panel-state='collapsed'] .ide-verify-scenario-builder-summary:hover {
-  color: rgba(200, 228, 255, 0.9) !important;
-  background: rgba(10, 24, 42, 0.7) !important;
-}
 
 /* ── Verify: Command bar text quality ────────────────────────────────────── */
 
@@ -30675,12 +29062,6 @@ button:disabled,
 
 /* ── Verify: Scope header + tick readout ─────────────────────────────────── */
 
-[data-ide-mode-marker='verify'] .ide-verify-scope-header {
-  font-size: 10px !important;
-  padding: 4px 12px !important;
-  min-height: 28px !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-tick-readout {
   padding: 5px 12px !important;
   min-height: 36px !important;
@@ -30689,14 +29070,6 @@ button:disabled,
 }
 
 /* ── Panel geometry ──────────────────────────────────────────────────────── */
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace {
-  border-top: 1px solid rgba(40, 65, 95, 0.35) !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus {
-  border-right: 1px solid rgba(40, 65, 95, 0.35) !important;
-}
 
 /* END 2026-04-13 quality pass */
 
@@ -31813,10 +30186,6 @@ button:disabled,
 .ide-workbench-shell[data-layout-intent='workbench'] .ide-workbench-workspace > .ide-panel > .ide-panel-body {
   padding: 0;
   gap: var(--ide-workbench-section-gap);
-}
-
-.ide-workbench-shell[data-layout-intent='workbench'] .ide-workbench-workspace > .ide-verify-panel > .ide-panel-body {
-  overflow: var(--ide-verify-panel-body-overflow, hidden);
 }
 
 .ide-workbench-shell[data-layout-intent='workbench'] .ide-panel-title {
@@ -32938,14 +31307,7 @@ button:disabled,
   }
 }
 
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-panel > .ide-panel-body {
-  gap: clamp(12px, 0.9vw, 18px);
-}
-
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-run-proof,
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-region--stimulus,
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-region--waveform,
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-console-frame {
+[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-run-proof {
   border-radius: 14px !important;
   box-shadow: none !important;
 }
@@ -32959,30 +31321,12 @@ button:disabled,
   max-width: 280px !important;
 }
 
-[data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-scope-header {
-  font-size: 11px !important;
-}
-
 [data-ide-mode-marker='verify'][data-layout-intent='workbench'] .ide-verify-tick-readout {
   font-size: 12px !important;
 }
 
 /* Verify targeted correction pass: compact rails, stronger two-zone workspace,
    and a lighter observation-stage draft state. */
-[data-ide-mode-marker='verify'] .ide-verify-workspace {
-  gap: 12px;
-  --ide-workbench-left-slot-width: 228px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(360px, 0.78fr) minmax(0, 1.42fr);
-  gap: 14px;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
-[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
-  border-radius: 14px;
-}
 
 [data-ide-mode-marker='verify'] .ide-verify-group-toggle {
   font-size: 11px;
@@ -33006,23 +31350,6 @@ button:disabled,
 /* Verify legitimacy reset:
    restore a real desktop authoring lane while keeping waveform dominant, and
    trim post-run chrome that was spending height without improving the next action. */
-[data-ide-mode-marker='verify'] .ide-verify-workspace {
-  gap: 10px !important;
-  padding: 14px 16px 16px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(392px, 1fr) minmax(0, 1.4fr) !important;
-  gap: 12px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
-  flex: 1 1 40% !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
-  flex: 1 1 60% !important;
-}
 
 [data-ide-mode-marker='verify'] .ide-verify-command-bar {
   gap: 6px !important;
@@ -33198,9 +31525,6 @@ button:disabled,
   color: rgba(163, 206, 238, 0.88);
   overflow-wrap: anywhere;
 }
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(460px, 1.02fr) minmax(0, 1.34fr) !important;
-}
 
 [data-ide-mode-marker='verify'] .ide-verify-workbench-body {
   gap: 8px !important;
@@ -33250,10 +31574,6 @@ button:disabled,
   font-weight: 700;
 }
 
-[data-ide-mode-marker='verify'] .ide-stimulus-grid-scroll {
-  min-height: 260px !important;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept-strip {
   gap: 5px;
   margin: 4px 0;
@@ -33278,14 +31598,7 @@ button:disabled,
   display: none;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-stimulus-grid-scroll {
-  min-height: 150px !important;
-}
-
 @media (max-width: 1180px) {
-  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
 
   [data-ide-mode-marker='verify'] .ide-verify-testbench-summary-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -33444,10 +31757,6 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-toolbar-note {
   display: none !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-grid-scroll {
-  min-height: 0 !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
@@ -33687,14 +31996,6 @@ button:disabled,
     minmax(0, 1fr) !important;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
-  position: static !important;
-  inset: auto !important;
-  width: 100% !important;
-  z-index: auto !important;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed {
   grid-template-columns:
@@ -33705,81 +32006,6 @@ button:disabled,
 
 /* 2026-06-16 Side dock affordance: collapsed rails are compact restore buttons,
    not sideways labels. */
-.ide-workbench-shell .ide-workbench-dock-toggle-rail,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail {
-  display: grid !important;
-  grid-template-rows: auto auto auto !important;
-  align-content: center !important;
-  justify-items: center !important;
-  gap: 3px !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 100% !important;
-  padding: 10px 5px !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-  transform: none !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-left,
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-right,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-left,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-right {
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-  transform: none !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-glyph {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 18px !important;
-  height: 18px !important;
-  border-radius: 6px !important;
-  border: 1px solid rgba(126, 247, 227, 0.42) !important;
-  background: rgba(17, 199, 185, 0.14) !important;
-  color: rgba(126, 247, 227, 0.92) !important;
-  font-size: 14px !important;
-  font-weight: 800 !important;
-  line-height: 1 !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-label,
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-label,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-hint {
-  max-width: 100% !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  text-align: center !important;
-  text-overflow: clip !important;
-  white-space: nowrap !important;
-  letter-spacing: 0 !important;
-  writing-mode: horizontal-tb !important;
-  text-orientation: mixed !important;
-  transform: none !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-label,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-label {
-  color: rgba(226, 237, 249, 0.96) !important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  line-height: 1 !important;
-  text-transform: uppercase !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint,
-[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-hint {
-  color: rgba(166, 190, 216, 0.82) !important;
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  line-height: 1 !important;
-  text-transform: uppercase !important;
-}
 
 /* 2026-06-16 Open side panel density: compact inspectors remain side tools.
    Hardware/Export support panels should not turn into full-width bottom cards. */
@@ -33817,33 +32043,6 @@ button:disabled,
   box-shadow:
     inset 1px 0 0 rgba(255, 255, 255, 0.03),
     0 18px 34px rgba(1, 6, 12, 0.22) !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail {
-  padding: 6px 3px !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-label {
-  font-size: 9px !important;
-}
-
-.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
-  font-size: 8px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-workspace {
-  padding: 8px 8px 10px !important;
-  gap: 8px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
-  grid-template-columns: minmax(0, 1fr) !important;
-  grid-template-rows: minmax(0, 1fr) minmax(124px, 0.24fr);
-  gap: 10px !important;
-}
-
-[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-region--waveform {
-  min-height: 124px !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
@@ -34553,27 +32752,6 @@ button:disabled,
 }
 
 /* Round 14A: keep fail-state repair visible without pushing waveform evidence below 1366x768. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] {
-  gap: 2px !important;
-  padding-top: 2px !important;
-  padding-bottom: 4px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] .ide-verify-waveform-frame {
-  margin-top: 0 !important;
-  transform: none !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] .ide-verify-waveform-bar {
-  max-height: 52px !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-  row-gap: 2px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] .ide-verify-fail-nav-waveform-hint {
-  display: none !important;
-}
 
 /* v2A.1: keep replay diagnosis compact so the circuit remains the teaching surface. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-debug-context-banner {
