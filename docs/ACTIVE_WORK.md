@@ -185,9 +185,10 @@ accepted.
   relations name the package pin), and a census-driven legacy CSS deletion (1,909 rules whose classes no element
   renders; `ide-root.css` 32,786 → 24,329 lines; owner record `css-owner-record-w10.json` beside RESUME). Three shell
   `ide-persistence-contract` passes again (harness opens File → Open Starter…; the overview hash fact carries
-  `ide-project-hash-short`); the two shell layout/hierarchy gates still assert the retired rail/ribbon ids
-  (`ide-stage-nav`, `ide-proof-ribbon`) — inherited, gate rewrite pending.
-  HEAD `69bbe7ed1`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  `ide-project-hash-short`); the shell layout-integrity and workbench-hierarchy gates were rewritten to the
+  P2.5 grammar (workspace rail, contextual Design inspector, package files as the work object) and pass at
+  1366×768 / 1440×900 / 1920×1080; Package keeps one primary action.
+  HEAD `b96434537`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is

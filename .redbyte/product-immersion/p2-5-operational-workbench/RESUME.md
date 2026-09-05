@@ -255,6 +255,24 @@ still resolve those. Rewriting the rail/ribbon assertions to `ide-workspace-rail
 gate change (scripts/gates), not a product change; not started. Gate runs need `pnpm --filter @redbyte/playground
 build` first (the harness previews `apps/playground/dist` with `vite preview`).
 
+**Shell gates in the P2.5 grammar (`b96434537`).** `ide-shell-layout-integrity` and `ide-shell-workbench-hierarchy` PASS
+at 1366×768, 1440×900 and 1920×1080 for all five workspaces (+ Import as a route). Grammar changes: stage navigation
+= `ide-workspace-rail` (five-stage authority checked by `data-stage`, Import is a utility outside the tablist);
+the shell (`.ide-workbench-shell`) starts under the top bar with at most the document tab strip between and
+within 112px; Simulate's left dock is legitimate when it carries `ide-verify-signal-rail-header`; Design's
+inspector is contextual (the shell hides the right dock without a selection), so both gates select the first
+schematic node with a **real pointer click** before reading Design; regions per workspace: overview document +
+facts + explorer; canvas + IO palette + inspector; lab grid + left dock + cases/waveform; mapping table + editor +
+board; package files (the work object — the decision row is 59px tall at 1920) + decision row + readiness;
+import workbench + stepper + dropzone. Product finding fixed: Package showed two primaries at 1366 (decision-row
+next step + Handoff inspector "Download package"); the inspector's download is now secondary — one primary per
+surface. **Hardening noted, not done:** synthetic pointer events (no pointer id) make `setPointerCapture` /
+`releasePointerCapture` throw `NotFoundError` uncaught (11 call sites: DesignSurface 9019/9033, HardwareSurface
+783, VerifySurface 734, rb-logic-view `useCanvasInput.ts` ×7); real pointers never hit it, but a try/catch guard
+would make automation and pointercancel edge cases quiet. Gate runs: `pnpm --filter @redbyte/playground build`
+then `node scripts/gates/<gate>.mjs` (the harness previews `apps/playground/dist`). Persistence + both shell gates
+are now green in the current grammar; the other ~170 gates were not re-run in this lane.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
