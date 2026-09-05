@@ -218,6 +218,28 @@ tsc 777; css:audit clean. Note for future patches: `String.prototype.replace` wi
 Open: Design left rail (Components / Hierarchy / Sources / Board I/O) review at 200%; the Evidence section is
 long (≈390px) and could fold its replay rows under a disclosure.
 
+**Legacy CSS deletion (Wave Four, `66a899659`).** A census (scratch `css-census.js`, method recorded here) classified
+every class selector in the IDE stylesheets against two signals — the full source corpus of every package (870
+ts/tsx/js/mjs/html files, tests excluded) and a live DOM sample of the five workspaces (766 distinct classes) —
+and kept anything whose exact token or family prefix appears in source, plus every runtime-composed state class
+(`is-*`, `has-*`, `not-*`, `map-*`, `board-*`; the first pass wrongly flagged `is-replaying`, `is-added`, `is-not-run`,
+which are built as `is-${state}`). Rules whose every selector carries a dead class were removed with the same
+brace-aware pruner as the verify block; selector lists trimmed; empty media blocks dropped. Removed: ide-root.css
+745 classes / 1,378 rules (32,786 → 24,329 lines; `!important` 3,008 → 2,222 — families: ide-verify-run/strip/
+workbench, ide-hw-map/structured, ide-project-example/showcase/overview, ide-design-starter, legacy inspector cards);
+ide-polish-pass.css 153 / 272 (5,782 → 4,239); simulation-studio-v3 26 / 68; design-workbench-v3 26 / 57;
+export-handoff-workspace-v3 22 / 81 (878 → 457; the `ide-export-v3__*` file list replaced by `rb-pkg-*`);
+product-system-v3 19 / 28; hardware-mapping-workspace-v3 9 / 25. Instrument stylesheets untouched (their flags were
+dynamic state classes). Exact removed-class list: `css-owner-record-w10.json` beside this file (old owner: those
+stylesheets; new owner: none — the classes render nowhere; where a surface was rebuilt, the `rb-*` instrument
+stylesheet already owns it). Validation: css:audit clean; compactGrid ratchet ≤2,230 + professionalUiStandards
+green; rb-apps and playground builds green; live smoke of all five workspaces at 1440×900 and Design/Simulate at
+720×450 unchanged. **Baseline-red disposition (shell gates):** `ide-persistence-contract`, `ide-shell-layout-
+integrity` and `ide-shell-workbench-hierarchy` fail before and after — they wait for `ide-project-hash-short` and
+`ide-project-load-start-*` / `ide-project-landing-example-*`, test ids no source file has carried since the Start
+Center replaced the Project landing (0 files at `3c6e4ee04` too). Rewriting those gates to the Start Center
+grammar is the next persistence-gate step; it is a gate repair, not a product change.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.

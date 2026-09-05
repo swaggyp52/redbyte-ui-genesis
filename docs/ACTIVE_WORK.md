@@ -182,7 +182,10 @@ accepted.
   file-by-file comparison, and the Simulate inner-grid owner (`simulate-instrument.css`; 265 dead verify
   rules retired from `ide-root.css`, `!important` 3489 → 3008), and the Design inspector as named sections
   (Identity → Actions → Selection details → Connectivity → Evidence → Mapping → Source → Related; board
-  relations name the package pin). HEAD `432c19cbc`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  relations name the package pin), and a census-driven legacy CSS deletion (1,909 rules whose classes no element
+  renders; `ide-root.css` 32,786 → 24,329 lines; owner record `css-owner-record-w10.json` beside RESUME). Three shell
+  Playwright gates fail before and after on retired Project-landing test ids (inherited; gate repair pending).
+  HEAD `66a899659`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
