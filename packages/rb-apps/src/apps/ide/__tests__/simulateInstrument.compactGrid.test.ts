@@ -54,11 +54,21 @@ describe('Simulate inner grid — one owner at every viewport', () => {
     expect(template).toContain('grid-template-rows: minmax(160px, 1fr) auto minmax(0, var(--rb-sim-evidence-fr)) minmax(0, 32%)');
   });
 
+  it('excludes replay from every deck variant (replay has no cases row and no splitter)', () => {
+    const css = stripComments(simulateCss);
+    const variants = css.match(/\.rb-sim-lab-grid[^{]*\[data-evidence-[^{]*\{/g) ?? [];
+    expect(variants.length).toBeGreaterThanOrEqual(6);
+    for (const selector of variants) {
+      expect(selector, `${selector} must not apply in replay`).toContain("not([data-studio-mode='replay'])");
+    }
+  });
+
   it('keeps the collapsed and maximized deck variants in the same stacked row order', () => {
     const compact = compactBlocks(stripComments(simulateCss)).join('\n');
-    expect(compact).toContain(".rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }");
-    expect(compact).toContain(".rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }");
-    expect(compact).toContain(".rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }");
+    const variant = (state: string) => `.rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-${state}]`;
+    expect(compact).toContain(`${variant("collapsed='true'")} { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }`);
+    expect(compact).toContain(`${variant("maximized='cases'")} { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }`);
+    expect(compact).toContain(`${variant("maximized='waveform'")} { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }`);
   });
 
   it('bounds the result region and guarantees the document a floor (182px up to 240px or 60%)', () => {

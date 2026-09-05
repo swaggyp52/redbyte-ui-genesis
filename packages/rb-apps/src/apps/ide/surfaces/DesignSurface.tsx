@@ -4295,6 +4295,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         const srcNode = editorCircuit.nodes.find((n) => n.id === src.nodeId);
         return {
           port: resolveConnectionEndpoint(conn.to).portName,
+          driverNodeId: src.nodeId,
           driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId)),
           value: liveSignals.get(`${src.nodeId}.${src.portName}`) ?? null,
         };
@@ -6211,10 +6212,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         {selectedNodeInputDrivers.length > 0 ? (
           <div className="rb-insp-sel-drivers" data-testid="ide-design-input-drivers">
             {selectedNodeInputDrivers.map((d) => (
-              <div key={d.port} className="rb-insp-row" data-testid={`ide-design-driver-row-${d.port}`}>
+              // Follow the causality upstream: selecting a driver row selects the driving part.
+              <button
+                key={d.port}
+                type="button"
+                className="rb-insp-row rb-insp-row--link"
+                data-testid={`ide-design-driver-row-${d.port}`}
+                title={`Select ${d.driverLabel}`}
+                onClick={() => selectNodeInStore(d.driverNodeId, false)}
+              >
                 <span>{describePortForStudents(d.port)}</span>
                 <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
-              </div>
+              </button>
             ))}
           </div>
         ) : null}

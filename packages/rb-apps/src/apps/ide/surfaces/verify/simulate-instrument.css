@@ -471,19 +471,21 @@
 .ide-root .rb-sig-entry:hover .rb-sig-move, .ide-root .rb-sig-entry:focus-within .rb-sig-move { opacity: 1; }
 .ide-root .rb-sig-move .wb-btn { padding: 0 4px; min-width: 0; height: 18px; font-size: 9px; line-height: 18px; }
 
-/* Evidence deck collapsed: a one-line strip keeps the verdict and an Expand control; cases take the height. */
-.ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(0, 1fr) auto 28px; }
-.ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] > .rb-sim-region--waveform { overflow: hidden; }
-.ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] > .rb-sim-region--waveform > :not(.rb-sim-evidence-strip) { display: none; }
+/* Evidence deck collapsed: a one-line strip keeps the verdict and an Expand control; cases take the height.
+   Every deck variant excludes replay: there the grid is the evidence document plus the inspector, with no
+   cases row and no splitter, so a persisted "waveform only" or "cases only" state would zero the document. */
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] { grid-template-rows: minmax(0, 1fr) auto 28px; }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] > .rb-sim-region--waveform { overflow: hidden; }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] > .rb-sim-region--waveform > :not(.rb-sim-evidence-strip) { display: none; }
 /* One pane maximized: the other pane keeps its state but takes no height. */
-.ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0; }
-.ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] > .rb-sim-region--waveform { overflow: hidden; border-top: 0; }
-.ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr); }
-.ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] > .rb-sim-region--stimulus { overflow: hidden; }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0; }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='cases'] > .rb-sim-region--waveform { overflow: hidden; border-top: 0; }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr); }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='waveform'] > .rb-sim-region--stimulus { overflow: hidden; }
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }
-  .ide-root .rb-sim-lab-grid[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }
-  .ide-root .rb-sim-lab-grid[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }
+  .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }
+  .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }
+  .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }
 }
 /* Timing bar: the auto clock's run length is a direct control, not a buried panel. */
 .ide-root .rb-timing-run-length { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }

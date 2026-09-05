@@ -3283,6 +3283,7 @@ export const IdeApp: React.FC = () => {
               lastRun={verifyLastRun}
               runHistory={verifyRunHistory}
               forceRunStale={reloadEvidenceStale}
+              runIsStale={runIsStale}
               runStaleDetail={runScope.detail}
               designBlockingIssue={blockingDesignIssue ?? undefined}
               mappingComplete={verifyMappingComplete}

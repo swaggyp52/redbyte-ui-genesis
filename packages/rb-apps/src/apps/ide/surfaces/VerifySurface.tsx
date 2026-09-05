@@ -245,6 +245,8 @@ export interface VerifySurfaceProps {
   /** A restored browser-session run is replayable history, but requires one direct rerun. */
   forceRunStale?: boolean;
   /** Why the restored run is stale (run scope read-model); shown with the reload guidance. */
+  /** The workflow authority's verdict for this run. Simulate may add reasons, never remove them. */
+  runIsStale?: boolean;
   runStaleDetail?: string | null;
   /** Structural Design authority. Checked runs are inconclusive while present. */
   designBlockingIssue?: {
@@ -409,6 +411,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   vectors,
   lastRun: persistedLastRun,
   forceRunStale = false,
+  runIsStale = false,
   runStaleDetail = null,
   designBlockingIssue,
   mappingComplete = true,
@@ -4873,7 +4876,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       waveformTicks.length,
     ]
   );
-  const runProofIsStale = runEvidenceIsStale;
+  // One authority for "is this evidence current": Project, the status bar and Package read
+  // `deriveVerifyCurrent`; Simulate must not claim CURRENT while they say stale. Simulate may
+  // still add reasons of its own (wrong scenario, stale authored reference), never remove one.
+  const runProofIsStale = runIsStale || runEvidenceIsStale;
   // The evidence row states what the waveform *is* — separately from the PASS/FAIL
   // verdict: a run in progress, a replay walking a recorded run, a recorded run
   // that still describes the current project, or a recorded run whose inputs

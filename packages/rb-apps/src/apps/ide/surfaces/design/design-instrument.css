@@ -472,3 +472,7 @@
 .ide-root .rb-insp-link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
 .ide-root .rb-insp-link-label { font-weight: 600; }
 .ide-root .rb-insp-link-detail { color: var(--wb-text-3); white-space: nowrap; }
+/* A fact row that is also a navigation: the driver rows select the driving part. */
+.ide-root .rb-insp-row--link { width: 100%; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ide-root .rb-insp-row--link:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-row--link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }

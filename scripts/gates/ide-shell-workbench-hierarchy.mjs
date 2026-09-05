@@ -181,7 +181,9 @@ async function assertShellHierarchy(page, viewport, mode) {
 // The Design inspector dock is contextual: it opens with a selection. Click the first schematic
 // node's body with a real pointer (synthetic events carry no pointer id), then wait for the inspector.
 async function selectFirstDesignNode(page) {
-  const node = page.locator('[data-node-id]').first();
+  // A logic gate, never a board input: clicking an input's body toggles its value, which would
+  // mutate the loaded project (and stale its evidence) in the middle of a layout assertion.
+  const node = page.locator('[data-node-id]:not([data-node-type="INPUT"]):not([data-node-type="OUTPUT"]):not([data-node-type="Switch"]):not([data-node-type="Lamp"])').first();
   await node.waitFor({ state: 'visible', timeout: 10000 });
   const body = node.locator('.rb-sym-body, rect, path').first();
   const box = (await body.boundingBox().catch(() => null)) ?? (await node.boundingBox());
