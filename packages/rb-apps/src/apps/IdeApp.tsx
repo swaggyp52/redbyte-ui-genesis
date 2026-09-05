@@ -2125,6 +2125,11 @@ export const IdeApp: React.FC = () => {
     () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined),
     [activeScenario, exportProject, verifyLastRun]
   );
+  // The constraints a captured set records are the packaged XDC (pins + clock), not the clock line alone.
+  const packagedXdcText = useMemo(
+    () => exportViewModel.artifacts.find((artifact) => artifact.path.toLowerCase().endsWith('.xdc'))?.content ?? xdcText,
+    [exportViewModel.artifacts, xdcText]
+  );
   const currentExportPackageSourceHash = useMemo(
     () => buildProjectExportPackageSourceHash(exportProject, exportViewModel.artifacts),
     [exportProject, exportViewModel.artifacts]
@@ -3376,7 +3381,7 @@ export const IdeApp: React.FC = () => {
               projectName={projectName}
               constraintSets={{
                 doc: constraintSetsDoc,
-                liveXdcText: xdcText,
+                liveXdcText: packagedXdcText,
                 onAdd: addConstraintSetToStore,
                 onRemove: removeConstraintSetFromStore,
                 onRename: renameConstraintSetInStore,

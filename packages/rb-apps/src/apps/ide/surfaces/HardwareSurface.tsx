@@ -28,6 +28,7 @@ import {
 } from '../components/IdePrimitives';
 import { HardwareBusPlanner } from '../components/HardwareBusPlanner';
 import { ConstraintSetsPanel, type ConstraintSetsPanelProps } from '../components/ConstraintSetsPanel';
+import { activeConstraintSet } from '../constraintSets';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
@@ -3770,6 +3771,65 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     <p className="ide-copy ide-copy--flush">Select Assign or Edit in the table to begin.</p>
                   )}
                 </section>
+                <section className="rb-board-editor rb-board-xdc" data-testid="ide-hw-constraints-tool" aria-label="Constraints">
+                  <div className="rb-board-editor-head">
+                    <span className="ide-surface-block-label">Constraints</span>
+                    <strong data-testid="ide-hw-constraints-active">
+                      {constraintSets ? activeConstraintSet(constraintSets.doc)?.name ?? 'Live mapping' : 'Live mapping'}
+                    </strong>
+                  </div>
+                  <p className="ide-copy ide-copy--flush">
+                    {constraintSets && activeConstraintSet(constraintSets.doc)
+                      ? 'The active set is what Build & Export packages as top.xdc; the lines below are the live mapping.'
+                      : 'Each signal’s pin becomes these lines in top.xdc. Select a line to select its signal.'}
+                  </p>
+                  <ol className="rb-board-xdc-lines" data-testid="ide-hw-xdc-lines">
+                    {constraintSets?.liveXdcText
+                      ? constraintSets.liveXdcText
+                          .split(/\r?\n/)
+                          .filter((line) => /^create_clock\b/.test(line.trim()))
+                          .slice(0, 1)
+                          .map((line) => (
+                            <li key="clock" className="rb-board-xdc-line is-clock" data-testid="ide-hw-xdc-line-clock">
+                              <span className="rb-board-xdc-signal">Clock</span>
+                              <code>{line.trim()}</code>
+                            </li>
+                          ))
+                      : null}
+                    {mappingRows.map((row) => {
+                      const projection = mappingProjectionById.get(row.id);
+                      const isSelected = selectedMappingRowId === row.id;
+                      const hasPin = row.pin.trim().length > 0 && Boolean(projection?.exactXdcLine);
+                      return (
+                        <li
+                          key={row.id}
+                          className={`rb-board-xdc-line${isSelected ? ' is-selected' : ''}${hasPin ? '' : ' is-pending'}`}
+                          data-testid={`ide-hw-xdc-line-${row.id}`}
+                          aria-current={isSelected ? 'true' : undefined}
+                        >
+                          <button
+                            type="button"
+                            className="rb-board-xdc-select"
+                            onClick={() => chooseMappingRow(row.id)}
+                            title={hasPin ? `Select ${getStudentFacingIoLabel(row, row.id)}` : `${getStudentFacingIoLabel(row, row.id)} has no pin yet — select it to assign one`}
+                            data-testid={`ide-hw-xdc-select-${row.id}`}
+                          >
+                            <span className="rb-board-xdc-signal">{getStudentFacingIoLabel(row, row.id)}</span>
+                            {hasPin && projection ? (
+                              <>
+                                <code>{projection.exactXdcLine}</code>
+                                <code>{`set_property IOSTANDARD ${projection.ioStandard} [get_ports {${projection.artifactPortName}}]`}</code>
+                              </>
+                            ) : (
+                              <code className="is-pending">{'# no pin assigned yet'}</code>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  {constraintSets ? <ConstraintSetsPanel {...constraintSets} livePinCount={mappedRequiredCount} /> : null}
+                </section>
 
               </aside>
             </div>
@@ -3873,8 +3933,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         </div>
         )}
-        {/* ── Constraint sets: named XDC sets (Vivado constrs_N), one active ── */}
-        {constraintSets ? <ConstraintSetsPanel {...constraintSets} livePinCount={mappedRequiredCount} /> : null}
         {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
         {hardwareWorkflowRibbon}
       </IdePanel>

@@ -188,3 +188,16 @@
 .ide-root .rb-board-recommend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 0; border-top: 1px solid var(--wb-border); }
 .ide-root .rb-board-recommend code { font: var(--wb-text-sm) var(--wb-font-mono); }
 .ide-root .rb-board-recommend .ide-copy { color: var(--wb-text-3); font-size: 11px; }
+/* Constraints tool: every signal's exact XDC lines, selection-synced; no permanent footer. */
+.ide-root .rb-board-xdc-lines { list-style: none; margin: 0 var(--wb-space-3); padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ide-root .rb-board-xdc-line { margin: 0; }
+.ide-root .rb-board-xdc-line.is-clock { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface-2); }
+.ide-root .rb-board-xdc-select { display: flex; flex-direction: column; gap: 1px; width: 100%; padding: 4px 6px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); text-align: left; cursor: default; }
+.ide-root .rb-board-xdc-select:hover { border-color: var(--wb-border-strong); }
+.ide-root .rb-board-xdc-select:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-board-xdc-line.is-selected .rb-board-xdc-select { border-color: var(--wb-focus); background: var(--wb-active-bg); }
+.ide-root .rb-board-xdc-line.is-pending .rb-board-xdc-select { color: var(--wb-text-3); border-style: dashed; }
+.ide-root .rb-board-xdc-signal { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.03em; }
+.ide-root .rb-board-xdc-line code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-board-xdc-line code.is-pending { color: var(--wb-text-3); }
+.ide-root .rb-board-xdc .ide-constraint-sets { margin: 4px var(--wb-space-3) 0; }
