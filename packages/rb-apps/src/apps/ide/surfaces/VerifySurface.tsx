@@ -4740,6 +4740,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ]
   );
   const runProofIsStale = runEvidenceIsStale;
+  // The evidence row states what the waveform *is* — separately from the PASS/FAIL
+  // verdict: a run in progress, a replay walking a recorded run, a recorded run
+  // that still describes the current project, or a recorded run whose inputs
+  // changed since (with the changed input named). No timers, no pretence.
+  const evidenceStateWord = useMemo<{
+    kind: 'running' | 'replaying' | 'recorded' | 'stale' | 'none';
+    label: string;
+    detail: string | null;
+  }>(() => {
+    if (runState === 'running') return { kind: 'running', label: 'RUNNING', detail: 'The simulation is executing now.' };
+    if (isPlaying) {
+      return {
+        kind: 'replaying',
+        label: 'REPLAYING',
+        detail: 'Playback is walking the recorded run. The evidence itself is not changing.',
+      };
+    }
+    if (lastRun && runProofIsStale) {
+      return {
+        kind: 'stale',
+        label: 'STALE',
+        detail: runStaleDetail ?? 'The design, stimulus or mapping changed after this run.',
+      };
+    }
+    if (lastRun) {
+      return {
+        kind: 'recorded',
+        label: 'RECORDED · CURRENT',
+        detail: `Recorded ${lastRun.generatedAtIso.replace('T', ' ').slice(0, 19)} UTC; every input it depends on is unchanged.`,
+      };
+    }
+    return { kind: 'none', label: 'NOT RUN', detail: null };
+  }, [isPlaying, lastRun, runProofIsStale, runStaleDetail, runState]);
   const simulationEvidenceSummary = useMemo(
     () => lastRun ? buildSimulationEvidenceSummary(lastRun, runProofIsStale) : null,
     [lastRun, runProofIsStale]
@@ -6853,6 +6886,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     role="status"
                     aria-live="off"
                   >
+                    <span
+                      className={`rb-wave-evidence-state is-${evidenceStateWord.kind}`}
+                      data-testid="ide-verify-evidence-state"
+                      data-state={evidenceStateWord.kind}
+                      title={evidenceStateWord.detail ?? undefined}
+                    >
+                      <strong>{evidenceStateWord.label}</strong>
+                      {evidenceStateWord.kind === 'stale' && evidenceStateWord.detail ? (
+                        <small data-testid="ide-verify-evidence-state-reason">{evidenceStateWord.detail}</small>
+                      ) : null}
+                    </span>
                     <span className="rb-wave-readout__pos">
                       <code>t{selectedTick}</code>
                       <span className="rb-wave-readout__progress" aria-label="Progress">

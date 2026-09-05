@@ -272,3 +272,12 @@
 .ide-root .rb-wave-readout.has-failure .rb-wave-readout__fail code { background: color-mix(in srgb, var(--wb-danger, #b91c1c) 12%, transparent); color: var(--wb-danger, #b91c1c); }
 .ide-root .rb-wave-readout.is-playing .rb-wave-readout__pos code { box-shadow: inset 0 -2px 0 var(--wb-focus); }
 @media (prefers-reduced-motion: reduce) { .ide-root .rb-wave-readout__progress > span { transition: none; } }
+/* Evidence row: what the waveform is (running / replaying / recorded current / stale + reason), apart from the verdict. */
+.ide-root .rb-wave-evidence-state { display: inline-flex; align-items: center; gap: 6px; max-width: 320px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-wave-evidence-state strong { font-weight: 600; letter-spacing: 0.04em; color: var(--wb-text); }
+.ide-root .rb-wave-evidence-state small { overflow: hidden; text-overflow: ellipsis; font-size: inherit; color: var(--wb-text-2); }
+.ide-root .rb-wave-evidence-state.is-running strong { color: var(--wb-accent); }
+.ide-root .rb-wave-evidence-state.is-replaying strong { color: var(--wb-accent); }
+.ide-root .rb-wave-evidence-state.is-recorded strong { color: var(--wb-ok); }
+.ide-root .rb-wave-evidence-state.is-stale { border-color: var(--wb-warn); }
+.ide-root .rb-wave-evidence-state.is-stale strong { color: var(--wb-warn); }
