@@ -147,7 +147,8 @@ import {
 import { workspacePreferencesStore } from '../workspacePreferences';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { RelatedMenu } from '../components/RelatedMenu';
-import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { relatedDocumentsForSignal, useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { openWorkbenchDocument } from '../workbenchNavigation';
 import {
   TOP_MODULE_ID,
   analyzeModuleSelection,
@@ -985,6 +986,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // follows node/signal selections made elsewhere (Cases, Board, Package).
   const selectNodeInStore = useLogicViewStore((state) => state.selectNode);
   const globalSelected = useEngineeringSelection((state) => state.selected);
+  const publishEngineeringSelection = useEngineeringSelection((state) => state.select);
   const globalOrigin = useEngineeringSelection((state) => state.origin);
   const publishSelection = useEngineeringSelection((state) => state.select);
   const clearGlobalSelection = useEngineeringSelection((state) => state.clear);
@@ -5162,7 +5164,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         const selectedBoardResource = mappedBoardResource?.alias
           ?? (selectedNodeIoRow ? 'Unassigned board resource' : 'Not mapped to a board resource');
         const selectedPackagePin = selectedNodeIoRow?.pin?.trim()
-          ? selectedNodeIoRow.pin.trim()
+          ? (mappedBoardResource?.packagePin ?? selectedNodeIoRow.pin.trim())
           : 'No package pin yet';
         const showSelectedSignalModel = Boolean(
           selectedNodeIoRow ||
@@ -6151,6 +6153,204 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return { text: traceState!.label, title: undefined as string | undefined };
   };
+  // ── Named inspector sections (P2.5H Wave Four) ──────────────────────────────
+  // Connectivity, Mapping, Source and Related read the authorities the inspector already
+  // uses (the canvas circuit, the io rows, the relationship index, the generated HDL). They
+  // own no state: each is a projection placed where a reader expects it. Identity stays the
+  // properties surface (name, kind, rename); Evidence is the live / replayed signal state.
+  const followSelectedRelation = (document: Parameters<typeof openWorkbenchDocument>[0]) => {
+    if (designRelated) {
+      publishEngineeringSelection(
+        {
+          kind: 'signal',
+          fieldId: designRelated.fieldId,
+          runSignal: designRelated.run?.resolution.runSignal ?? null,
+          nodeId: designRelated.nodeId,
+        },
+        'schematic'
+      );
+    }
+    openWorkbenchDocument(document);
+  };
+
+  const renderConnectivitySection = () => {
+    if (!hasSingleSelectedNode || !selectedNode) return null;
+    const loads = editorCircuit.connections
+      .filter((conn) => resolveConnectionEndpoint(conn.from).nodeId === selectedNode.id)
+      .map((conn) => {
+        const to = resolveConnectionEndpoint(conn.to);
+        const target = editorCircuit.nodes.find((node) => node.id === to.nodeId);
+        return {
+          key: `${to.nodeId}.${to.portName}`,
+          label: target ? describeEndpointLabel(to.nodeId, target, ioRowByNodeId.get(to.nodeId)) : to.nodeId,
+          port: to.portName,
+        };
+      });
+    const pins = selectedNodeSignals ?? [];
+    if (pins.length === 0 && selectedNodeInputDrivers.length === 0 && loads.length === 0) return null;
+    return (
+      <div className="rb-insp-section-stack">
+        {pins.length > 0 ? (
+          <div className="rb-insp-sel-pins" data-testid="ide-design-selection-pins">
+            {pins.map((entry) => {
+              const val = entry.value;
+              const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
+              return (
+                <span
+                  key={`${selectedNode.id}-${entry.port}`}
+                  className={`rb-insp-pin rb-insp-pin--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                  data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
+                >
+                  {entry.port}
+                  <span className="rb-insp-pin-value">{valStr}</span>
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
+        {selectedNodeInputDrivers.length > 0 ? (
+          <div className="rb-insp-sel-drivers" data-testid="ide-design-input-drivers">
+            {selectedNodeInputDrivers.map((d) => (
+              <div key={d.port} className="rb-insp-row" data-testid={`ide-design-driver-row-${d.port}`}>
+                <span>{describePortForStudents(d.port)}</span>
+                <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className="rb-insp-facts">
+          <div className="rb-insp-row" data-testid="ide-design-inspector-loads">
+            <span>Drives</span>
+            <span>
+              {loads.length === 0
+                ? 'nothing yet'
+                : loads.map((load) => `${load.label} · ${describePortForStudents(load.port)}`).join(', ')}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMappingSection = () => {
+    if (!hasSingleSelectedNode || !selectedNode) return null;
+    const board = designRelated?.board ?? null;
+    const row = selectedNodeIoRow;
+    if (!board && !row) return null;
+    const pin = (board?.pin ?? row?.pin ?? '').trim();
+    const resource = board?.resource?.alias ?? selectedNodeInspectorModel?.selectedBoardResource ?? null;
+    return (
+      <div className="rb-insp-section-stack">
+        <div className="rb-insp-facts">
+          <div className="rb-insp-row">
+            <span>Board resource</span>
+            <strong data-testid="ide-design-inspector-mapping-resource">{resource ?? 'not assigned'}</strong>
+          </div>
+          <div className="rb-insp-row">
+            <span>Package pin</span>
+            <code data-testid="ide-design-inspector-mapping-pin">{pin || '—'}</code>
+          </div>
+          {board ? (
+            <div className="rb-insp-row">
+              <span>Constraint set</span>
+              <span data-testid="ide-design-inspector-mapping-set">{board.constraintSetId ?? 'default'}</span>
+            </div>
+          ) : null}
+        </div>
+        {board && board.xdcLines.length > 0 ? (
+          <pre className="rb-insp-xdc" data-testid="ide-design-inspector-mapping-xdc">{board.xdcLines.join('\n')}</pre>
+        ) : (
+          <p className="rb-insp-note" data-testid="ide-design-inspector-mapping-note">
+            {pin
+              ? 'The constraint lines are written when the package is built.'
+              : 'Assign a pin in Board & Constraints to write the constraint lines.'}
+          </p>
+        )}
+        <div className="ide-inline-actions">
+          <IdeButton
+            tone="secondary"
+            testId="ide-design-inspector-mapping-open"
+            onClick={() => followSelectedRelation({ kind: 'board-io', constraintSetId: board?.constraintSetId ?? 'default' })}
+          >
+            Open in Board &amp; Constraints
+          </IdeButton>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSourceSection = () => {
+    if (!hasSingleSelectedNode || !selectedNode) return null;
+    const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const identifiers = Array.from(
+      new Set(
+        [
+          designRelated?.board?.artifactPort,
+          designRelated?.fieldId,
+          designRelated?.label,
+          selectedNode.label,
+          selectedNodeInspectorModel?.displayName,
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 1)
+          .map((value) => value.trim())
+      )
+    );
+    const matches: Array<{ line: number; text: string }> = [];
+    if (identifiers.length > 0 && primaryVhdlText) {
+      const pattern = new RegExp(`(?<![\\w])(?:${identifiers.map(escapeForRegExp).join('|')})(?![\\w])`, 'i');
+      primaryVhdlText.split(/\r?\n/).forEach((text, index) => {
+        if (matches.length < 4 && pattern.test(text)) matches.push({ line: index + 1, text: text.trim() });
+      });
+    }
+    return (
+      <div className="rb-insp-section-stack">
+        {matches.length > 0 ? (
+          <ol className="rb-insp-source-lines" data-testid="ide-design-inspector-source-lines">
+            {matches.map((match) => (
+              <li key={match.line} className="rb-insp-source-line">
+                <span className="rb-insp-source-ln">L{match.line}</span>
+                <code>{match.text}</code>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="rb-insp-note" data-testid="ide-design-inspector-source-empty">
+            Not named in the generated source; internal logic is written inline in the architecture body.
+          </p>
+        )}
+        <div className="ide-inline-actions">
+          <IdeButton tone="secondary" testId="ide-design-inspector-source-open" onClick={() => setDesignView('split')}>
+            Show HDL beside the schematic
+          </IdeButton>
+        </div>
+      </div>
+    );
+  };
+
+  const renderRelatedSection = () => {
+    if (!hasSingleSelectedNode || !selectedNode || !designRelated) return null;
+    const links = relatedDocumentsForSignal(designRelated, { activeScenarioId: null, hasRun: designRelated.run !== null });
+    if (links.length === 0) return null;
+    return (
+      <ul className="rb-insp-links" data-testid="ide-design-inspector-related-list">
+        {links.map((link) => (
+          <li key={`${link.document.kind}:${link.label}`}>
+            <button
+              type="button"
+              className="rb-insp-link"
+              data-testid={`ide-design-inspector-related-${link.document.kind}`}
+              title={link.detail}
+              onClick={() => followSelectedRelation(link.document)}
+            >
+              <span className="rb-insp-link-label">{link.label}</span>
+              <span className="rb-insp-link-detail">{link.detail}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
       if (selectedSequentialInspector) {
@@ -6242,24 +6442,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {renderReplayContextRows()}
               </div>
             </div>
-            {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-              <div className="rb-insp-sel-pins" data-testid="ide-design-selection-pins">
-                {selectedNodeSignals.map((entry) => {
-                  const val = entry.value;
-                  const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
-                  return (
-                    <span
-                      key={`${selectedNode.id}-${entry.port}`}
-                      className={`rb-insp-pin rb-insp-pin--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
-                      data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
-                    >
-                      {entry.port}
-                      <span className="rb-insp-pin-value">{valStr}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            ) : null}
             {renderReplayContextActions()}
           </div>
         );
@@ -6304,34 +6486,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {renderReplayContextRows()}
             </div>
           </div>
-          {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-            <div className="rb-insp-sel-pins" data-testid="ide-design-selection-pins">
-              {selectedNodeSignals.map((entry) => {
-                const val = entry.value;
-                const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
-                return (
-                  <span
-                    key={`${selectedNode.id}-${entry.port}`}
-                    className={`rb-insp-pin rb-insp-pin--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
-                    data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
-                  >
-                    {entry.port}
-                    <span className="rb-insp-pin-value">{valStr}</span>
-                  </span>
-                );
-              })}
-            </div>
-          ) : null}
-          {selectedNodeInputDrivers.length > 0 && (
-            <div className="rb-insp-sel-drivers" data-testid="ide-design-input-drivers">
-              {selectedNodeInputDrivers.map((d) => (
-                <div key={d.port} className="rb-insp-row" data-testid={`ide-design-driver-row-${d.port}`}>
-                  <span>{describePortForStudents(d.port)}</span>
-                  <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
-                </div>
-              ))}
-            </div>
-          )}
           {renderReplayContextActions()}
         </div>
       );
@@ -7175,9 +7329,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {renderSelectedNodeDetails()}
             </IdeInspectorSection>
           ) : null}
+          {(() => {
+            const content = renderConnectivitySection();
+            return content ? (
+              <IdeInspectorSection title="Connectivity" testId="ide-design-inspector-connectivity" defaultOpen>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
           {hasInspectorSelectionContext ? (
             <React.Fragment key="design-inspector-selection-context">
-              <IdeInspectorSection title="Live / Signal State" testId="ide-design-context-inspector" collapsible={false}>
+              <IdeInspectorSection title="Evidence" testId="ide-design-context-inspector" collapsible={false}>
                 {renderSelectionState()}
                 {selectedSignalKey ? (
                   <div className="ide-inline-actions ide-copy-top-gap">
@@ -7330,6 +7492,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               })()}
             </React.Fragment>
           )}
+          {(() => {
+            const content = renderMappingSection();
+            return content ? (
+              <IdeInspectorSection title="Mapping" testId="ide-design-inspector-mapping" defaultOpen>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          {(() => {
+            const content = renderSourceSection();
+            return content ? (
+              <IdeInspectorSection title="Source" testId="ide-design-inspector-source" defaultOpen={false}>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          {(() => {
+            const content = renderRelatedSection();
+            return content ? (
+              <IdeInspectorSection title="Related" testId="ide-design-inspector-related" defaultOpen>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
           </div>
           {activeRightDockTab === 'properties' ? (
             <div className="rb-insp-props" data-testid="ide-design-properties-panel">

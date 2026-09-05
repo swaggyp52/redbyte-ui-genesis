@@ -259,10 +259,13 @@ export function buildEngineeringRelationshipIndex(input: EngineeringRelationship
     if (pin) {
       const owners = pinOwners.get(pin) ?? [];
       if (owners.length > 1) ambiguity.push(`pin ${pin} is also assigned to ${owners.filter((id) => id !== row.id).join(', ')}`);
-      const xdcLines = xdcLinesForAssignment(row.label, pin, 'LVCMOS33');
+      // A row may carry the board alias (LD0) or the package pin (U16); constraints name the package pin.
+      const resource = getBasys3BoardResource(pin);
+      const packagePin = resource?.packagePin ?? pin;
+      const xdcLines = xdcLinesForAssignment(row.label, packagePin, 'LVCMOS33');
       board = {
-        pin,
-        resource: getBasys3BoardResource(pin),
+        pin: packagePin,
+        resource,
         ioStandard: 'LVCMOS33',
         artifactPort: xdcPortToken(row.label),
         xdcLines,
