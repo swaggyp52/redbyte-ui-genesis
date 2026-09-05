@@ -5,6 +5,12 @@ import React, { useEffect, useRef, useState } from 'react';
 export interface WaveformSignalRow {
   signal: string;
   values: Array<{ tick: number; value: string }>;
+  /** A bus lane composed from indexed scalar lanes (SUM[3:0]); values are already formatted in the chosen radix. */
+  kind?: 'bus';
+  width?: number;
+  members?: string[];
+  /** Set on member lanes shown under an expanded bus. */
+  memberOf?: string;
 }
 
 export type SignalLaneGroup = 'Inputs' | 'Outputs' | 'Internal';
@@ -36,6 +42,12 @@ export interface WaveformViewerProps {
   onHideSignal?: (signal: string) => void;
   /** Lanes whose value changes at the selected tick — marked while the run plays. */
   changedSignals?: Set<string>;
+  /** Saved expected values per lane and tick; drawn over the observed trace where they differ. */
+  expectedValues?: Map<string, Map<number, string>>;
+  showExpected?: boolean;
+  /** Bus lanes currently showing their member bits. */
+  expandedBuses?: Set<string>;
+  onToggleBus?: (bus: string) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -76,6 +88,10 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   onTogglePinSignal,
   onHideSignal,
   changedSignals,
+  expectedValues,
+  showExpected = true,
+  expandedBuses,
+  onToggleBus,
 }) => {
   // Name column plus a value slot: the value at the selected tick sits beside every name.
   const LABEL_W = 156;
@@ -398,11 +414,15 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         const isClockSignal = clockSignals?.has(normalizedKey) ?? false;
         const signalDirection = signalGroups?.get(signalRow.signal)?.toLowerCase() ?? 'unknown';
         const isInputSignal = signalDirection === 'inputs';
-
+        const isBus = signalRow.kind === 'bus';
+        const slotW = isBus ? 34 : VALUE_W;
+        const expectedForLane = showExpected ? expectedValues?.get(signalRow.signal) : undefined;
+        const laneColor = isClockSignal ? 'var(--rb-wave-clock)' : isInputSignal ? 'var(--rb-wave-in)' : 'var(--rb-wave-out)';
         return (
           <g
             key={signalRow.signal}
             data-testid={`ide-verify-waveform-row-${toTestId(signalRow.signal)}`}
+            data-kind={isBus ? 'bus' : signalRow.memberOf ? 'bit' : 'scalar'}
             data-selected={selectedSignal === signalRow.signal ? 'true' : 'false'}
             data-direction={signalDirection}
             data-changing={changedSignals?.has(signalRow.signal) ? 'true' : 'false'}
@@ -422,7 +442,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           {/* Signal label column */}
             <g
               style={{ cursor: 'pointer' }}
-              onClick={() => onSelectSignal(signalRow.signal)}
+              onClick={() => (isBus && onToggleBus ? onToggleBus(signalRow.signal) : onSelectSignal(signalRow.signal))}
+              data-testid={isBus ? `ide-verify-bus-toggle-${toTestId(signalRow.signal)}` : undefined}
               onMouseEnter={() => onHoverSignal?.(signalRow.signal)}
               onMouseLeave={() => onHoverSignal?.(null)}
             >
@@ -461,39 +482,39 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               ) : null}
               {/* Name */}
               <text
-                x={LABEL_W - VALUE_W - 12}
+                x={LABEL_W - slotW - 12}
                 y={y + (signalMeta?.has(signalRow.signal) ? Math.round(ROW_H * 0.38) : Math.round(ROW_H / 2) + 4)}
                 textAnchor="end"
                 fontSize="11"
                 fontWeight={changedSignals?.has(signalRow.signal) ? 700 : undefined}
                 fill={isFailing ? 'var(--rb-wave-fail-text)' : isClockSignal ? 'var(--rb-wave-clock)' : 'var(--rb-wave-text)'}
               >
-                {`${isPinned && !onTogglePinSignal ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
+                {`${isBus ? (expandedBuses?.has(signalRow.signal) ? '▾ ' : '▸ ') : signalRow.memberOf ? '· ' : ''}${isPinned && !onTogglePinSignal ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
                   signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
                 }`}
               </text>
               {selectedTick != null ? (() => {
                 const raw = signalRow.values.find((point) => point.tick === selectedTick)?.value ?? '-';
-                const shown = raw.length > 2 ? raw.slice(0, 2) : raw;
+                const shown = raw.length > (isBus ? 4 : 2) ? `${raw.slice(0, isBus ? 3 : 2)}${isBus ? '…' : ''}` : raw;
                 const cy = y + Math.round(ROW_H / 2);
                 return (
                   <g data-testid={`ide-verify-lane-value-${toTestId(signalRow.signal)}`} data-value={raw}>
                     <rect
-                      x={LABEL_W - VALUE_W - 6}
+                      x={LABEL_W - slotW - 6}
                       y={cy - 7}
-                      width={VALUE_W}
+                      width={slotW}
                       height={14}
                       rx={3}
                       fill={selectedSignal === signalRow.signal ? 'var(--rb-wave-select-soft)' : 'transparent'}
                       stroke="var(--rb-wave-row-line)"
                     />
                     <text
-                      x={LABEL_W - VALUE_W / 2 - 6}
+                      x={LABEL_W - slotW / 2 - 6}
                       y={cy + 4}
                       textAnchor="middle"
                       fontSize="11"
                       fontFamily="var(--wb-font-mono)"
-                      fill={raw === '1' ? 'var(--rb-wave-text)' : raw === '0' ? 'var(--rb-wave-text-3)' : 'var(--rb-wave-fail-text)'}
+                      fill={isBus ? (raw === '-' || raw === 'X' ? 'var(--rb-wave-fail-text)' : 'var(--rb-wave-text)') : raw === '1' ? 'var(--rb-wave-text)' : raw === '0' ? 'var(--rb-wave-text-3)' : 'var(--rb-wave-fail-text)'}
                     >
                       <title>{`${signalRow.signal} = ${raw} at t${selectedTick}`}</title>
                       {shown}
@@ -503,7 +524,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               })() : null}
               {changedSignals?.has(signalRow.signal) ? (
                 <circle
-                  cx={LABEL_W - VALUE_W - 3}
+                  cx={LABEL_W - slotW - 3}
                   cy={y + Math.round(ROW_H / 2)}
                   r={2.5}
                   fill="var(--rb-wave-text)"
@@ -520,7 +541,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 const pinLabel = meta.pin ? ` · ${meta.pin}` : '';
                 return (
                   <text
-                    x={LABEL_W - VALUE_W - 12}
+                    x={LABEL_W - slotW - 12}
                     y={y + Math.round(ROW_H * 0.7)}
                     textAnchor="end"
                     fontSize="9"
@@ -534,6 +555,75 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
             {/* Signal trace */}
             {signalRow.values.map((point, i) => {
+              if (isBus) {
+                const tickX = LABEL_W + i * TICK_W;
+                const isFail = failTicks.has(point.tick);
+                const isSelected = point.tick === selectedTick;
+                const prevValue = i > 0 ? signalRow.values[i - 1]?.value : null;
+                const changed = i > 0 && prevValue !== point.value;
+                const unknown = point.value === 'X' || point.value === '-';
+                const expected = expectedForLane?.get(point.tick);
+                const mismatch = expected !== undefined && expected !== point.value;
+                return (
+                  <g key={`${signalRow.signal}-${point.tick}`} data-testid={`ide-verify-bus-point-${toTestId(signalRow.signal)}-${point.tick}`} data-value={point.value}>
+                    {isFail && <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="var(--rb-wave-fail-band)" />}
+                    {isSelected && stripeIndex === 0 && (
+                      <rect x={tickX} y={HEADER_H} width={TICK_W} height={height - HEADER_H} fill="var(--rb-wave-select-soft)" />
+                    )}
+                    <rect
+                      x={tickX + (changed ? 3 : 1)}
+                      y={y + ROW_HI}
+                      width={Math.max(TICK_W - (changed ? 4 : 2), 2)}
+                      height={ROW_LO - ROW_HI}
+                      rx={2}
+                      fill={unknown ? 'transparent' : isInputSignal ? 'var(--rb-wave-in-soft)' : 'var(--rb-wave-out-soft)'}
+                      stroke={mismatch ? 'var(--rb-wave-fail)' : laneColor}
+                      strokeWidth={mismatch ? 2 : 1.25}
+                      strokeDasharray={unknown ? '4 3' : undefined}
+                    />
+                    {changed && (
+                      <line x1={tickX} y1={y + ROW_HI} x2={tickX} y2={y + ROW_LO} stroke={laneColor} strokeWidth="2.5" strokeLinecap="round" />
+                    )}
+                    <text
+                      x={tickX + TICK_W / 2}
+                      y={y + Math.round(ROW_H / 2) + (mismatch ? 1 : 4)}
+                      textAnchor="middle"
+                      fontSize={mismatch ? 10 : 11}
+                      fontFamily="var(--wb-font-mono)"
+                      fontWeight="700"
+                      fill={mismatch ? 'var(--rb-wave-fail-text)' : 'var(--rb-wave-text)'}
+                      style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
+                    >
+                      {point.value.length > 6 ? `${point.value.slice(0, 5)}…` : point.value}
+                    </text>
+                    {mismatch ? (
+                      <text
+                        x={tickX + TICK_W / 2}
+                        y={y + ROW_LO + 9}
+                        textAnchor="middle"
+                        fontSize="8"
+                        fontFamily="var(--wb-font-mono)"
+                        fill="var(--rb-wave-fail-text)"
+                        data-testid={`ide-verify-expected-${toTestId(signalRow.signal)}-${point.tick}`}
+                        style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
+                      >
+                        {`exp ${expected}`}
+                      </text>
+                    ) : null}
+                    <rect
+                      x={tickX}
+                      y={y}
+                      width={TICK_W}
+                      height={ROW_H}
+                      fill="transparent"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => onSelectTick(point.tick)}
+                      data-testid="ide-verify-waveform-point"
+                      data-value={String(point.value)}
+                    />
+                  </g>
+                );
+              }
               const isHigh = point.value === '1';
               const isUnknown = point.value === 'X' || point.value === 'Z';
               const tickX = LABEL_W + i * TICK_W;
@@ -617,6 +707,27 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                     />
                   )}
 
+                  {/* Expected overlay: the saved level, dashed, only where it differs from what was observed */}
+                  {(() => {
+                    const expected = expectedForLane?.get(point.tick);
+                    if (expected === undefined || expected === point.value || (expected !== '0' && expected !== '1')) return null;
+                    const ey = expected === '1' ? y + ROW_HI : y + ROW_LO;
+                    return (
+                      <line
+                        x1={tickX + 2}
+                        y1={ey}
+                        x2={tickX + TICK_W - 2}
+                        y2={ey}
+                        stroke="var(--rb-wave-fail)"
+                        strokeWidth="2"
+                        strokeDasharray="4 3"
+                        strokeLinecap="round"
+                        data-testid={`ide-verify-expected-${toTestId(signalRow.signal)}-${point.tick}`}
+                      >
+                        <title>{`Expected ${expected}, observed ${point.value}`}</title>
+                      </line>
+                    );
+                  })()}
                   {/* Transparent click target */}
                   <rect
                     x={tickX}

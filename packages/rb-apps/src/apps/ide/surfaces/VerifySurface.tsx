@@ -798,6 +798,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const [waveformDensity, setWaveformDensity] = useState<'small' | 'normal' | 'large'>('normal');
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
+  const [waveformRadix, setWaveformRadix] = useState<WaveformRadix>('hex');
+  const [expandedBuses, setExpandedBuses] = useState<string[]>([]);
+  const [showExpectedOverlay, setShowExpectedOverlay] = useState(true);
+  const expandedBusSet = useMemo(() => new Set(expandedBuses), [expandedBuses]);
+  const toggleBus = useCallback((bus: string) => {
+    setExpandedBuses((previous) => (previous.includes(bus) ? previous.filter((entry) => entry !== bus) : [...previous, bus]));
+  }, []);
   const [tickWidth, setTickWidth] = useState(DEFAULT_VERIFY_TICK_WIDTH);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
@@ -900,6 +907,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (typeof s.tickZoom === 'string' && ['all', 'fail', 'window'].includes(s.tickZoom)) {
         setTickZoom(s.tickZoom as 'all' | 'fail' | 'window');
       }
+      if (typeof s.waveformRadix === 'string' && ['bin', 'hex', 'dec'].includes(s.waveformRadix)) {
+        setWaveformRadix(s.waveformRadix as WaveformRadix);
+      }
+      if (Array.isArray(s.expandedBuses)) setExpandedBuses(s.expandedBuses.filter((entry): entry is string => typeof entry === 'string'));
+      if (typeof s.showExpectedOverlay === 'boolean') setShowExpectedOverlay(s.showExpectedOverlay);
     } catch { /* silent — sessionStorage unavailable */ }
   }, []); // mount-only
 
@@ -918,10 +930,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           tickZoom,
           manualLaneOrder,
           hiddenSignals,
+          waveformRadix,
+          expandedBuses,
+          showExpectedOverlay,
         })
       );
     } catch { /* silent — storage quota or unavailable */ }
-  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals]);
+  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals, waveformRadix, expandedBuses, showExpectedOverlay]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1493,6 +1508,59 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return visibleSignalTimeline.filter((entry) => !hiddenSignalSet.has(entry.signal));
   }, [hiddenSignalSet, visibleSignalTimeline]);
   const visibleSignalCount = displaySignalTimeline.length;
+  // Bus lanes: SUM[0]..SUM[3] (or sum_0..sum_3) of one direction fold into SUM[3:0], MSB first,
+  // formatted in the chosen radix. A collapsed bus hides its bits; an expanded bus lists them under it.
+  const waveformLanes = useMemo<WaveformSignalRow[]>(
+    () => composeBusLanes(displaySignalTimeline, mappedSignalDirectionKeys, waveformRadix, expandedBusSet),
+    [displaySignalTimeline, expandedBusSet, mappedSignalDirectionKeys, waveformRadix]
+  );
+  const laneGroupsForViewer = useMemo(() => {
+    const groups = new Map(laneGroupBySignal);
+    for (const lane of waveformLanes) {
+      if (lane.kind === 'bus' && lane.members?.length) {
+        groups.set(lane.signal, laneGroupBySignal.get(lane.members[0]) ?? 'Internal');
+      }
+    }
+    return groups;
+  }, [laneGroupBySignal, waveformLanes]);
+  const signalMetaForViewer = useMemo(() => {
+    const meta = new Map(signalMetaMap);
+    for (const lane of waveformLanes) {
+      if (lane.kind === 'bus' && lane.members?.length) {
+        const member = signalMetaMap.get(lane.members[0]);
+        if (member) meta.set(lane.signal, { direction: member.direction, pin: `${lane.width ?? lane.members.length} bits` });
+      }
+    }
+    return meta;
+  }, [signalMetaMap, waveformLanes]);
+  // Saved expected values per lane and tick, from the run's own report rows (the check authority).
+  const expectedValuesByLane = useMemo(() => {
+    const byLane = new Map<string, Map<number, string>>();
+    if (!lastRun) return byLane;
+    const laneByKey = new Map<string, string>();
+    for (const lane of displaySignalTimeline) laneByKey.set(normalizeFieldId(lane.signal), lane.signal);
+    for (const row of lastRun.report.rows) {
+      const lane =
+        laneByKey.get(normalizeFieldId(row.signal)) ??
+        laneByKey.get(normalizeFieldId(canonicalWaveformSignalByRawKey.get(normalizeFieldId(row.signal)) ?? ''));
+      if (!lane || row.expected === undefined || row.expected === null || row.expected === '') continue;
+      const perTick = byLane.get(lane) ?? new Map<number, string>();
+      perTick.set(row.tick, String(row.expected));
+      byLane.set(lane, perTick);
+    }
+    // Bus lanes: the expected word exists only where every member has a saved check at that tick.
+    for (const lane of waveformLanes) {
+      if (lane.kind !== 'bus' || !lane.members) continue;
+      const perTick = new Map<number, string>();
+      for (const point of lane.values) {
+        const bits = lane.members.map((member) => byLane.get(member)?.get(point.tick));
+        if (bits.some((bit) => bit !== '0' && bit !== '1')) continue;
+        perTick.set(point.tick, formatBusValue(bits.join(''), waveformRadix));
+      }
+      if (perTick.size > 0) byLane.set(lane.signal, perTick);
+    }
+    return byLane;
+  }, [canonicalWaveformSignalByRawKey, displaySignalTimeline, lastRun, waveformLanes, waveformRadix]);
   moveLaneRef.current = (signal, direction) => {
     const order = displaySignalTimeline.map((entry) => entry.signal);
     const index = order.indexOf(signal);
@@ -6806,6 +6874,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ))}
                 </div>
 
+                <div className="rb-wave-group" role="group" aria-label="Bus radix" data-testid="ide-verify-radix">
+                  {(['bin', 'hex', 'dec'] as const).map((radix) => (
+                    <button
+                      key={radix}
+                      type="button"
+                      className={`rb-wave-zoom${waveformRadix === radix ? ' is-active' : ''}`}
+                      aria-pressed={waveformRadix === radix}
+                      onClick={() => setWaveformRadix(radix)}
+                      data-testid={`ide-verify-radix-${radix}`}
+                      title={radix === 'bin' ? 'Bus values as bits' : radix === 'hex' ? 'Bus values in hexadecimal' : 'Bus values in decimal'}
+                    >
+                      {radix === 'bin' ? 'Bin' : radix === 'hex' ? 'Hex' : 'Dec'}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`rb-wave-zoom${showExpectedOverlay ? ' is-active' : ''}`}
+                    aria-pressed={showExpectedOverlay}
+                    onClick={() => setShowExpectedOverlay((previous) => !previous)}
+                    data-testid="ide-verify-expected-overlay"
+                    title="Draw the saved expected value over the observed trace where they differ"
+                  >
+                    Expected
+                  </button>
+                </div>
+
                 {/* Right: Tick scrubber + advanced tools */}
                 <div className="rb-wave-group rb-wave-group--right">
                   {allWaveformTicks.length > 0 && selectedTick !== null ? (
@@ -7257,7 +7351,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   </div>
                 ) : null}
                 <WaveformViewer
-                  signals={displaySignalTimeline}
+                  signals={waveformLanes}
                   ticks={zoomedTicks}
                   failTicks={sessionShowsCompareEvidence ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
                   failingSignalKeys={sessionShowsCompareEvidence ? failingSignalKeys : new Set<string>()}
@@ -7265,15 +7359,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   cursorA={cursorA}
                   cursorB={cursorB}
                   changedSignals={changedSignalsAtTick}
+                  expectedValues={expectedValuesByLane}
+                  showExpected={showExpectedOverlay}
+                  expandedBuses={expandedBusSet}
+                  onToggleBus={toggleBus}
                   pinnedSignals={pinnedSignals}
                   onSelectTick={selectTickManually}
                   onSelectSignal={handleSignalSelect}
                   rowHeight={ROW_H_MAP[waveformDensity]}
                   tickWidth={tickWidth}
-                  signalMeta={signalMetaMap}
+                  signalMeta={signalMetaForViewer}
                   isSequential={isSequentialRun}
                   clockSignals={clockSignals}
-                  signalGroups={laneGroupBySignal}
+                  signalGroups={laneGroupsForViewer}
                   onHoverSignal={handleSignalHover}
                   selectedSignal={selectedSignal}
                   onTogglePinSignal={(signal) =>
@@ -7332,7 +7430,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 {selectedTick !== null && lastRun && !isStepMode && displaySignalTimeline.length > 0 && (
                   <TickReadoutStrip
                     tick={selectedTick}
-                    signals={displaySignalTimeline}
+                    signals={waveformLanes}
                     signalGroups={laneGroupBySignal}
                   />
                 )}
@@ -8885,6 +8983,77 @@ function formatTickWindowReason(input: {
     return `Centered on selected tick t${selectedTick}.`;
   }
   return `Showing ${shownTicks.length} ticks for local context.`;
+}
+
+type WaveformRadix = 'bin' | 'hex' | 'dec';
+
+/** Format a binary word (MSB first) in the chosen radix. Non-binary bits yield 'X'. */
+function formatBusValue(bits: string, radix: WaveformRadix): string {
+  if (bits.length === 0) return '-';
+  if (!/^[01]+$/.test(bits)) return bits.split('').every((bit) => bit === '-') ? '-' : 'X';
+  if (radix === 'bin') return bits;
+  const value = Number.parseInt(bits, 2);
+  if (radix === 'dec') return String(value);
+  return value.toString(16).toUpperCase().padStart(Math.ceil(bits.length / 4), '0');
+}
+
+const BUS_MEMBER_PATTERN = /^(.*?)(?:\[(\d+)\]|[_-](\d+))$/;
+
+/**
+ * Fold indexed scalar lanes of one direction (SUM[0]..SUM[3], sum_0..sum_3) into a bus
+ * lane, MSB first. Collapsed buses hide their bits; expanded ones list them underneath.
+ * Lanes that are not part of a bus pass through unchanged, in their original order.
+ */
+function composeBusLanes(
+  lanes: WaveformSignalRow[],
+  directionByKey: Map<string, 'in' | 'out'>,
+  radix: WaveformRadix,
+  expanded: Set<string>
+): WaveformSignalRow[] {
+  const groups = new Map<string, Array<{ lane: WaveformSignalRow; bit: number }>>();
+  for (const lane of lanes) {
+    const match = BUS_MEMBER_PATTERN.exec(lane.signal.trim());
+    if (!match) continue;
+    const bit = Number.parseInt(match[2] ?? match[3] ?? '', 10);
+    if (!Number.isFinite(bit)) continue;
+    const direction = directionByKey.get(normalizeFieldId(lane.signal)) ?? 'internal';
+    const key = `${direction}:${match[1].trim().toLowerCase()}`;
+    const entries = groups.get(key) ?? [];
+    entries.push({ lane, bit });
+    groups.set(key, entries);
+  }
+  const busByMember = new Map<string, { name: string; members: WaveformSignalRow[]; width: number; bits: number[] }>();
+  for (const entries of groups.values()) {
+    if (entries.length < 2) continue;
+    const sorted = [...entries].sort((left, right) => right.bit - left.bit);
+    const base = BUS_MEMBER_PATTERN.exec(sorted[0].lane.signal.trim())?.[1]?.trim() ?? sorted[0].lane.signal;
+    const name = `${base}[${sorted[0].bit}:${sorted[sorted.length - 1].bit}]`;
+    const bus = { name, members: sorted.map((entry) => entry.lane), width: sorted.length, bits: sorted.map((entry) => entry.bit) };
+    for (const entry of sorted) busByMember.set(entry.lane.signal, bus);
+  }
+  const out: WaveformSignalRow[] = [];
+  const emitted = new Set<string>();
+  for (const lane of lanes) {
+    const bus = busByMember.get(lane.signal);
+    if (!bus) {
+      out.push(lane);
+      continue;
+    }
+    if (emitted.has(bus.name)) continue;
+    emitted.add(bus.name);
+    const tickCount = bus.members[0].values.length;
+    const values: Array<{ tick: number; value: string }> = [];
+    for (let index = 0; index < tickCount; index += 1) {
+      const tick = bus.members[0].values[index]?.tick ?? index;
+      const bits = bus.members.map((member) => member.values[index]?.value ?? '-').join('');
+      values.push({ tick, value: formatBusValue(bits, radix) });
+    }
+    out.push({ signal: bus.name, values, kind: 'bus', width: bus.width, members: bus.members.map((member) => member.signal) });
+    if (expanded.has(bus.name)) {
+      for (const member of bus.members) out.push({ ...member, memberOf: bus.name });
+    }
+  }
+  return out;
 }
 
 /** Smallest usable heights for the two panes of the lab grid, in CSS pixels. */
