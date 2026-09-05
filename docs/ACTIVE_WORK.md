@@ -183,12 +183,16 @@ accepted.
   rules retired from `ide-root.css`, `!important` 3489 → 3008), and the Design inspector as named sections
   (Identity → Actions → Selection details → Connectivity → Evidence → Mapping → Source → Related; board
   relations name the package pin), and a census-driven legacy CSS deletion (1,909 rules whose classes no element
-  renders; `ide-root.css` 32,786 → 24,329 lines; owner record `css-owner-record-w10.json` beside RESUME). Three shell
+  renders; `ide-root.css` 32,786 → 24,329 lines; owner record `css-owner-record-w10.json` beside RESUME).
   `ide-persistence-contract` passes again (harness opens File → Open Starter…; the overview hash fact carries
   `ide-project-hash-short`); the shell layout-integrity and workbench-hierarchy gates were rewritten to the
   P2.5 grammar (workspace rail, contextual Design inspector, package files as the work object) and pass at
-  1366×768 / 1440×900 / 1920×1080; Package keeps one primary action.
-  HEAD `b96434537`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  1366×768 / 1440×900 / 1920×1080; Package keeps one primary action. Finally the Full Adder operational journey now
+  runs the whole acceptance path UI-only at both viewports — Board mapping loop, a real 18-entry package download with
+  its SHA, and reload — which found and fixed one staleness authority split (Simulate said CURRENT while the status bar
+  and Package said stale), an inoperable driver row on the trace path, a replay-mode deck collapse, and a shell gate
+  that toggled a board input mid-assertion.
+  HEAD `bdf22ee0c`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is

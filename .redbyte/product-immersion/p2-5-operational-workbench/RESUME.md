@@ -273,6 +273,55 @@ would make automation and pointercancel edge cases quiet. Gate runs: `pnpm --fil
 then `node scripts/gates/<gate>.mjs` (the harness previews `apps/playground/dist`). Persistence + both shell gates
 are now green in the current grammar; the other ~170 gates were not re-run in this lane.
 
+**Journey tail + one staleness authority (`bdf22ee0c`).** `full-adder-operational-journey.mjs` now runs the whole
+§16 acceptance path UI-only at 1440×900 and 1366×768: A first use → Lab 3 → B Design → C Compare PASS → D wrong-logic
+gate swap → E Compare FAIL with a concrete mismatch → **F** Trace in Design → **G** Board mapping loop → **H** trusted
+package + real browser download → **I** reload. Driving it found four defects, all fixed in this commit:
+
+1. **One staleness authority.** Simulate computed its own currency verdict (`runEvidenceIsStale`) while Project, the
+   status bar and Package read `deriveVerifyCurrent`. Clear a pin and restore it: the same run read "RECORDED · CURRENT"
+   in Simulate and "Simulation stale" everywhere else, with Package trust demoted to draft. `VerifySurface` now takes
+   the authority as a floor (new `runIsStale` prop; `runIsStale || runEvidenceIsStale`) — it may add reasons, never
+   remove one. Direction chosen deliberately: the alternative (make `deriveVerifyCurrent` hash-first) would have
+   overturned a deliberate contract test (`history-authority`: after an undo back to the original hash, verify is still
+   NOT current) and widened package trust. The product rule the journey now states: **evidence becomes current by
+   running, not by undoing an edit.**
+2. **Trace in Design lands on the failing signal.** Step F asserted the failing *gate* arrived selected; the P2.5
+   selection model selects the failing *signal* (LD1 — what the check named). The inspector's Connectivity section
+   names that signal's driver, so driver rows are now operable (`rb-insp-row--link`): selecting one selects the driving
+   part. The journey follows causality upstream, then repairs via the compatible-gate swap.
+3. **Replay is not a deck.** The collapsed / maximized deck variants also applied in replay, where the grid is the
+   evidence document + inspector with no cases row and no splitter: a persisted "waveform only" state resolved row 1
+   to 0 and zeroed the replay document (present at the parent too). All ten variant rules are now scoped
+   `:not([data-studio-mode='replay'])`, with a contract test.
+4. **Shell gates select a logic gate.** `selectFirstDesignNode` clicked the first `[data-node-id]` — SW0 in the
+   logic-gates starter — and clicking an input's body toggles its value, mutating the loaded project mid-gate. Now
+   excludes INPUT/OUTPUT/Switch/Lamp.
+
+Live proof (both viewports, 0 page errors, 0 root overflow): G — clear LD1 → STALE naming the mapping, XDC line loses
+its pin → guided mapping recommends LD1 → line carries E19 again → still stale → re-run → CURRENT and the status bar
+agrees. H — trust `trusted` after Compare PASS, primary action builds, the browser downloads a real **18-entry ZIP**
+(top.vhd, top.xdc, the Vivado import Tcl; SHA-256 in the success callout), state `ready`. I — after reload the run is
+CURRENT, the mapping complete, the package ready. Gates: persistence-contract, shell-layout-integrity and
+shell-workbench-hierarchy all PASS against the rebuilt playground. tsc 777; css:audit clean; compactGrid 21, runScope
+15, projectWorkflowAuthority 17, evidenceState/evidenceDeck/inspector suites green; `verifySurface.workstation` fails
+20/53 identically with and against HEAD's VerifySurface (inherited).
+
+**Lane review (workflow `wf_40875e01-297`) — INCOMPLETE, read before trusting it.** Five review lenses over
+`3c6e4ee04..42d63a094` finished and produced **17 raw findings**; the adversarial verification stage then died
+(32/37 agents lost to a credit limit), so the run's "0 confirmed" means *nothing was verified*, not "nothing was
+wrong". The three lenses that completed their own reasoning (inspector, css-prune, simulate-layout) each concluded no
+defect within their scope, with concrete evidence recorded in the task output. Two of the raw P1s were real and are
+fixed above (the gate input-toggle; the replay deck collapse). **Open triage list, unverified:** pin-conflict
+ambiguity still keyed on the raw row pin while `board.pin` is normalized; duplicate `data-testid` in the Related list
+when the driver is a module instance; `02-design.md` says Source renders only with context but it renders for every
+single-node selection; a live light-theme `:is()` rule may have been deleted because sibling members were dead;
+the hierarchy gate no longer asserts student-visible stage *names* (only `data-stage` ids); the persistence gate's
+hash assertion is satisfied by the "—" placeholder and never compares before/after; the re-homed drawer caps may be
+inert (`:not(.is-open)` never matching, and a surviving `!important` in ide-root.css); the harness always opens the
+File-menu picker and never exercises the Start Center's own cards; and two doc fragments in RESUME/ACTIVE_WORK read
+as garbled. None of these is confirmed; each needs one focused check before it is either fixed or dismissed.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
