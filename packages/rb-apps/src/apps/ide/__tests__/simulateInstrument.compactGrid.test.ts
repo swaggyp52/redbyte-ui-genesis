@@ -102,9 +102,9 @@ describe('ide-root.css — the retired verify layout owners are gone', () => {
     expect(root).not.toMatch(/\.ide-stimulus-grid-scroll\s*\{[^}]*min-height:[^;]*!important/);
   });
 
-  it('keeps the !important count from growing back (ratchet after the Wave Four sweep)', () => {
+  it('keeps the !important count from growing back (ratchet after the Wave Four sweeps)', () => {
     const count = (root.match(/!important/g) ?? []).length;
-    expect(count).toBeLessThanOrEqual(3010);
+    expect(count).toBeLessThanOrEqual(2230);
   });
 });
 

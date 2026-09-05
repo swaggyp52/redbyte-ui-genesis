@@ -357,33 +357,6 @@
   height: 1px;
 }
 
-.ide-root .ide-theme-control {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 6px;
-  padding-left: 10px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: var(--rb-radius-control);
-  color: var(--rb-text-secondary);
-  background: var(--rb-surface-1);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.ide-root .ide-theme-control select {
-  min-height: 34px;
-  padding: 0 28px 0 4px;
-  border: 0;
-  color: var(--rb-text-primary);
-  background: transparent;
-  font: inherit;
-}
-
-.ide-root .ide-theme-control select:focus-visible {
-  outline-offset: -2px;
-}
-
 .ide-root .ide-command-palette-backdrop {
   position: fixed;
   z-index: 1000;
@@ -582,70 +555,8 @@
   font-size: 10px;
 }
 
-.ide-root .ide-topbar-menu-popover {
-  position: absolute;
-  z-index: 200;
-  top: calc(100% + 7px);
-  right: 0;
-  display: grid;
-  width: min(330px, calc(100vw - 24px));
-  padding: 7px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 9px;
-  background: var(--rb-surface-overlay);
-  box-shadow: var(--rb-shadow-float);
-}
-
-.ide-root .ide-topbar-menu-popover button {
-  display: grid;
-  gap: 2px;
-  min-height: 38px;
-  padding: 8px 9px;
-  border: 0;
-  border-radius: 6px;
-  color: var(--rb-text-primary);
-  background: transparent;
-  text-align: left;
-}
-
-.ide-root .ide-topbar-menu-popover button:hover,
-.ide-root .ide-topbar-menu-popover button:focus-visible,
-.ide-root .ide-topbar-menu-popover button[aria-checked='true'] {
-  background: color-mix(in srgb, var(--rb-action) 10%, var(--rb-surface-1));
-}
-
-.ide-root .ide-topbar-menu-popover button:disabled {
-  color: var(--rb-text-muted);
-  cursor: not-allowed;
-}
-
-.ide-root .ide-topbar-menu-popover small,
-.ide-root .ide-topbar-menu-storage {
-  color: var(--rb-text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.ide-root .ide-topbar-menu-heading,
-.ide-root .ide-topbar-menu-storage {
-  padding: 7px 9px;
-}
-
-.ide-root .ide-topbar-menu-heading {
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.03em;
-}
-
-.ide-root .ide-save-dot--failed {
-  background: var(--rb-state-danger);
-}
-
 @media (max-width: 1500px) {
-  .ide-root .ide-topbar-command kbd,
-  .ide-root .ide-topbar-fact-label,
-  .ide-root .ide-theme-control-label {
+  .ide-root .ide-topbar-command kbd {
     display: none;
   }
 
@@ -676,20 +587,6 @@
   .ide-root .ide-topbar-command::before {
     content: '⌘';
     color: var(--rb-text-primary);
-  }
-}
-
-@media (max-width: 1180px) {
-  .ide-root .ide-theme-control-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  .ide-root .ide-theme-control {
-    padding-left: 4px;
   }
 }
 
@@ -929,13 +826,6 @@
   padding: 9px 12px;
 }
 
-.ide-root .ide-design-problem-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 5px;
-}
-
-.ide-root .ide-design-problem-list button,
 .ide-root .ide-design-console-readout,
 .ide-root .ide-design-simulation-readout {
   display: grid;
@@ -949,11 +839,6 @@
   text-align: left;
 }
 
-.ide-root .ide-design-problem-list button {
-  cursor: pointer;
-}
-
-.ide-root .ide-design-problem-list span,
 .ide-root .ide-design-console-readout span,
 .ide-root .ide-design-console-readout p,
 .ide-root .ide-design-simulation-readout span {
@@ -985,71 +870,6 @@
   display: none;
 }
 
-.ide-root .ide-design-toolbar-customize-menu {
-  position: absolute;
-  z-index: 80;
-  top: calc(100% + 5px);
-  right: 0;
-  display: grid;
-  width: 230px;
-  gap: 3px;
-  padding: 8px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 8px;
-  background: var(--rb-surface-overlay);
-  box-shadow: var(--rb-shadow-float);
-}
-
-.ide-root .ide-design-toolbar-customize-menu label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 28px;
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-}
-
-.ide-root .ide-design-toolbar-customize-subheading {
-  margin-top: 5px;
-  padding-top: 7px;
-  border-top: 1px solid var(--rb-border-subtle);
-  color: var(--rb-text-primary);
-  font-size: 11px;
-}
-
-.ide-root .ide-design-toolbar-group-order {
-  display: grid;
-  gap: 4px;
-}
-
-.ide-root .ide-design-toolbar-group-order-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-}
-
-.ide-root .ide-design-toolbar-group-order-actions {
-  display: inline-flex;
-  gap: 3px;
-}
-
-.ide-root .ide-design-toolbar-group-order-actions button {
-  min-height: 25px;
-  padding: 3px 6px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 5px;
-  background: var(--rb-surface-2);
-  color: var(--rb-text-secondary);
-  font: 650 10px/1 inherit;
-}
-
-.ide-root .ide-design-toolbar-group-order-actions button:disabled {
-  opacity: 0.42;
-}
-
 .ide-root .ide-design-toolbar-overflow {
   display: none;
 }
@@ -1074,10 +894,8 @@
    primary circuit canvas begins inside the first workbench viewport. */
 @media (max-width: 1500px) {
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-    .ide-design-toolbar-view-tools,
-  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     [data-testid='ide-design-tool-snap'],
-  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     .ide-design-toolbar-layout {
     display: none !important;
   }
@@ -1102,9 +920,6 @@
 }
 
 /* Product System v3: restrained course-lab identity and Project Center hierarchy. */
-.ide-root .ide-brand-mark {
-  color: var(--rb-brand-red);
-}
 
 /* Design support panels stay in the application theme. Only the circuit
    canvas is an instrument surface; this prevents a second navy application
@@ -1152,7 +967,6 @@
   color: #056956;
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-problem-list span,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout span,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout p,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-simulation-readout span {
@@ -1192,33 +1006,6 @@
 
 /* Product System v3: keep legacy dark instrument treatments readable when the
    surrounding workbench uses the light palette. */
-:root[data-redbyte-mode='ide'][data-rb-theme='light']
-  .ide-root
-  [data-ide-mode-marker='verify']
-  :is(.ide-verify-region--header, .ide-verify-signal-shelf, .ide-verify-console-frame) {
-  --rb-text: var(--rb-shell);
-  --rb-text-strong: var(--rb-shell);
-  --rb-text-primary: var(--rb-shell);
-  --rb-text-secondary: color-mix(in srgb, var(--rb-shell) 82%, transparent);
-  --rb-text-muted: color-mix(in srgb, var(--rb-shell) 66%, transparent);
-  --rb-text-1: var(--rb-text-primary);
-  --rb-text-2: var(--rb-text-secondary);
-  --rb-text-3: var(--rb-text-muted);
-  --ide-text-strong: var(--rb-text-primary);
-  --ide-text-primary: var(--rb-text-primary);
-  --ide-text-secondary: var(--rb-text-secondary);
-  --ide-text-muted: var(--rb-text-muted);
-  --ide-text-soft: var(--rb-text-muted);
-  color: var(--rb-text-primary);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light']
-  .ide-root
-  [data-ide-mode-marker='verify']
-  :is(.ide-verify-region--header, .ide-verify-signal-shelf, .ide-verify-console-frame)
-  .ide-button-secondary {
-  color: var(--rb-action-pressed);
-}
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light']
   .ide-root
@@ -1300,12 +1087,6 @@
   color: var(--rb-text-primary) !important;
 }
 
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__file-list {
-  border-right-color: var(--rb-border-default);
-  background: var(--rb-surface-2);
-  color: var(--rb-text-primary);
-}
-
 .ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview > header {
   border-bottom-color: var(--rb-border-subtle);
   background: var(--rb-surface-1);
@@ -1316,14 +1097,8 @@
   background: var(--ide-surface-code);
 }
 
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview pre,
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__code-line {
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview pre {
   color: var(--rb-text-primary);
-}
-
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__line-number {
-  border-right-color: var(--rb-border-subtle);
-  color: var(--rb-text-muted);
 }
 
 /* A waveform viewport is intentionally scrollable; make that ownership

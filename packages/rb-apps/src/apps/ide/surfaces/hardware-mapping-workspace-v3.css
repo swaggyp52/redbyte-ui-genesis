@@ -38,16 +38,6 @@
   border-color: var(--ide-border-strong, rgba(148, 163, 184, 0.34));
 }
 
-.ide-hw-v3__progress-copy {
-  display: grid;
-  gap: 4px;
-}
-
-.ide-hw-v3__progress-copy h2 {
-  font-size: clamp(18px, 1.6vw, 24px);
-  line-height: 1.2;
-}
-
 .ide-hw-v3__metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(76px, 1fr));
@@ -114,31 +104,6 @@
   overflow: hidden;
 }
 
-.ide-hw-v3__section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--ide-border-subtle, rgba(148, 163, 184, 0.22));
-}
-
-.ide-hw-v3__section-header h3 {
-  margin-top: 3px;
-  font-size: 16px;
-}
-
-.ide-hw-v3__section-header > p {
-  max-width: 330px;
-  color: var(--ide-text-muted, #9da9bb);
-  font-size: 13px;
-}
-
-.ide-hw-v3__table-scroll {
-  max-width: 100%;
-  overflow: auto;
-}
-
 .ide-hw-v3__table {
   width: 100%;
   min-width: 790px;
@@ -165,35 +130,6 @@
   font-weight: 650;
 }
 
-.ide-hw-v3__table .ide-hw-v3__group-row th {
-  min-height: 0;
-  padding: 8px 12px;
-  background: var(--ide-surface-inset, rgba(2, 6, 12, 0.48));
-  color: var(--ide-text-secondary, #c5cfdd);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ide-hw-v3__table .ide-hw-v3__group-heading > strong {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.ide-hw-v3__table .ide-hw-v3__group-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.ide-hw-v3__table .ide-hw-v3__group-row small {
-  color: var(--ide-text-muted, #9da9bb);
-  font-size: 13px;
-  font-weight: 550;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
 .ide-hw-v3__table .ide-hw-v3__mapping-row:hover,
 .ide-hw-v3__table .ide-hw-v3__mapping-row.is-selected {
   background: rgba(70, 132, 246, 0.09);
@@ -213,26 +149,6 @@
   white-space: nowrap;
 }
 
-.ide-hw-v3__row-action {
-  min-width: 68px;
-  min-height: 36px;
-  padding: 6px 12px;
-  border: 1px solid var(--ide-border-strong, rgba(148, 163, 184, 0.34));
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ide-text-primary, #e8edf6);
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.ide-hw-v3__row-action:hover,
-.ide-hw-v3__row-action:focus-visible {
-  border-color: var(--ide-accent, #5f91ff);
-  background: rgba(70, 132, 246, 0.12);
-  outline: none;
-}
-
 .ide-hw-v3__side {
   display: grid;
   gap: 14px;
@@ -245,11 +161,6 @@
   display: grid;
   gap: 13px;
   padding-bottom: 16px;
-}
-
-.ide-hw-v3__editor > :not(.ide-hw-v3__section-header) {
-  margin-right: 16px;
-  margin-left: 16px;
 }
 
 .ide-hw-v3__editor.is-conflict {
@@ -283,13 +194,6 @@
   color: var(--ide-text-secondary, #c5cfdd);
   font-size: 13px;
   line-height: 1.45;
-}
-
-.ide-hw-v3__editor-actions,
-.ide-hw-v3__after-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .ide-hw-v3 .ide-hw-v3__side .ide-hw-v3__editor .ide-hardware-basys3-binding-chain {
@@ -328,11 +232,6 @@
 
 .ide-hw-v3__board {
   opacity: 0.88;
-}
-
-.ide-hw-v3__board-reference-graphic {
-  pointer-events: none;
-  user-select: none;
 }
 
 .ide-hw-v3__board > :last-child {
@@ -394,8 +293,7 @@
   }
 
   .ide-hw-v3__lab,
-  .ide-hw-v3__after,
-  .ide-hw-v3__section-header {
+.ide-hw-v3__after {
     align-items: stretch;
     flex-direction: column;
   }
@@ -428,12 +326,6 @@
     var(--rb-surface-1);
 }
 
-.ide-root .ide-hw-v3__progress-copy > strong {
-  color: var(--rb-map-pins);
-  font-size: 13px;
-  letter-spacing: 0.02em;
-}
-
 .ide-root .ide-hw-v3__metrics {
   border-color: rgba(231, 176, 75, 0.24);
   background: rgba(10, 14, 20, 0.54);
@@ -464,24 +356,8 @@
   order: 1;
 }
 
-.ide-root .ide-hw-v3__board-reference-graphic {
-  min-height: 300px;
-  padding: 16px;
-  pointer-events: none;
-  background:
-    linear-gradient(rgba(231, 176, 75, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(231, 176, 75, 0.025) 1px, transparent 1px),
-    #090d14;
-  background-size: 20px 20px;
-}
-
 .ide-root .ide-hw-v3__board > :last-child {
   max-height: none;
-}
-
-.ide-root .ide-hw-v3__board-reference-graphic svg {
-  width: 100%;
-  min-height: 270px;
 }
 
 .ide-root .ide-hw-v3__table .ide-hw-v3__mapping-row:hover {
@@ -491,12 +367,6 @@
 .ide-root .ide-hw-v3__table .ide-hw-v3__mapping-row.is-selected {
   background: rgba(231, 176, 75, 0.1);
   box-shadow: inset 3px 0 0 var(--rb-map-pins);
-}
-
-.ide-root .ide-hw-v3__row-action:hover,
-.ide-root .ide-hw-v3__row-action:focus-visible {
-  border-color: var(--rb-map-pins);
-  background: rgba(231, 176, 75, 0.1);
 }
 
 .ide-root .ide-hw-v3__status {
@@ -593,7 +463,6 @@
   background: var(--rb-surface);
 }
 .ide-root .ide-hw-v3__progress h2 { margin: 2px 0 6px; font-size: 22px; }
-.ide-root .ide-hw-v3__progress-copy > strong { color: var(--rb-map-pins); font-size: 12px; }
 .ide-root .ide-hw-v3__metrics { min-width: 300px; border: 1px solid var(--rb-border); background: var(--rb-surface-2); }
 .ide-root .ide-hw-v3__metrics span,
 .ide-root .ide-hw-v3__metrics small { color: var(--rb-text-muted); font-size: 12px; }
@@ -609,10 +478,7 @@
 .ide-root .ide-hw-v3__side { display: contents; }
 .ide-root .ide-hw-v3__board { grid-column: 2; grid-row: 1; min-width: 0; order: initial; }
 .ide-root .ide-hw-v3__editor { grid-column: 3; grid-row: 1; min-width: 0; order: initial; }
-.ide-root .ide-hw-v3__section-header { min-height: 68px; padding: 14px 16px; }
-.ide-root .ide-hw-v3__section-header h3 { margin: 2px 0 0; font-size: 17px; }
 
-.ide-root .ide-hw-v3__table-scroll { max-height: 610px; overflow: auto; }
 .ide-root .ide-hw-v3__table { min-width: 0; font-size: 13px; }
 .ide-root .ide-hw-v3__table th,
 .ide-root .ide-hw-v3__table td { padding: 10px 8px; font-size: 13px; }
@@ -622,14 +488,6 @@
 .ide-root .ide-hw-v3__table td:nth-child(4) { display: none; }
 .ide-root .ide-hw-v3__mapping-row > th small { font-size: 12px !important; }
 
-.ide-root .ide-hw-v3__board-reference-graphic {
-  min-height: 440px;
-  padding: 18px;
-  pointer-events: auto;
-  background: linear-gradient(var(--rb-canvas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--rb-canvas-grid) 1px, transparent 1px), var(--rb-surface-2);
-  background-size: 24px 24px;
-}
-.ide-root .ide-hw-v3__board-reference-graphic svg { min-height: 380px; }
 .ide-root .ide-hw-v3__field { font-size: 13px; }
 .ide-root .ide-hw-v3__field select { min-height: 40px; font-size: 14px; }
 .ide-root .ide-hw-v3__consequence { color: var(--rb-text-secondary); font-size: 13px; line-height: 1.5; }
