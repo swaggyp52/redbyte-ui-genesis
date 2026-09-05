@@ -118,8 +118,8 @@ export interface ProjectSurfaceProps {
   peekRecentProject?: (projectId: string) => StartCenterPeek | null;
   /** Recovery snapshot state for the Start Center's Recover section. */
   recovery?: { available: boolean; label: string | null; onRestore: () => void } | null;
-  /** The present project hash, so the Runs document can mark runs current or stale. */
-  currentProjectHash?: string | null;
+  /** Whether the newest run still describes the present design; the Runs document marks it current or stale. */
+  latestRunIsCurrent?: boolean | null;
   runHistory?: VerifyRunLedgerEntry[];
   /** First-class source/fileset authority (imported HDL, constraints, scripts). */
   sourceModel?: ProjectSourceModel;
@@ -174,7 +174,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   recentProjects = [],
   peekRecentProject,
   recovery = null,
-  currentProjectHash = null,
+  latestRunIsCurrent = null,
   onOpenSavedProjects,
   onOpenRecentProject,
   runHistory = [],
@@ -424,7 +424,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             onSelect={(ref) => select(ref, 'runs')}
             onOpenDocument={openDocument}
             onNavigateMode={navigateMode}
-            currentProjectHash={currentProjectHash ?? null}
+            latestRunIsCurrent={latestRunIsCurrent}
           />
         );
       case 'sources':

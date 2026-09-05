@@ -14,8 +14,8 @@ export interface ProjectRunsDocumentProps {
   readonly onSelect: (ref: EngineeringObjectRef) => void;
   readonly onOpenDocument: (doc: WorkbenchDocument) => void;
   readonly onNavigateMode: (mode: IdeMode) => void;
-  /** The present project hash: a run whose hash matches is current, any other is stale. */
-  readonly currentProjectHash?: string | null;
+  /** Whether the newest run still describes the present design (the runtime's own staleness). Older runs are superseded. */
+  readonly latestRunIsCurrent?: boolean | null;
 }
 
 /**
@@ -32,7 +32,7 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
   onSelect,
   onOpenDocument,
   onNavigateMode,
-  currentProjectHash = null,
+  latestRunIsCurrent = null,
 }) => {
   const ordered = [...runs].reverse();
   const evidenceDocumentFor = (run: VerifyRunLedgerEntry): WorkbenchDocument | null => {
@@ -73,7 +73,7 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
               {ordered.length === 0 ? (
                 <tr><td colSpan={10} className="wb-table-empty">No runs recorded yet. Run a scenario in Simulate.</td></tr>
               ) : (
-                ordered.map((run) => {
+                ordered.map((run, index) => {
                   const ref: EngineeringObjectRef = { kind: 'run', runId: run.runId };
                   const changed = [
                     run.didCircuitChangeSinceLast ? 'design' : null,
@@ -81,7 +81,8 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
                     run.didMappingChangeSinceLast ? 'mapping' : null,
                   ].filter(Boolean);
                   const evidence = evidenceDocumentFor(run);
-                  const isCurrent = currentProjectHash != null && run.projectHash === currentProjectHash;
+                  const isCurrent = index === 0 && latestRunIsCurrent === true;
+                  const stateWord = latestRunIsCurrent == null ? '—' : isCurrent ? 'current' : index === 0 ? 'stale' : 'superseded';
                   const isCompare = run.runKind ? run.runKind === 'verify' : run.passedRows + run.failedRows > 0;
                   return (
                     <tr
@@ -105,8 +106,8 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
                           : run.firstFailure ? `${run.firstFailure.signal} @ t${run.firstFailure.tick}` : '—'}
                       </td>
                       <td className="is-mono">{changed.length ? changed.join(', ') : 'nothing'}</td>
-                      <td className="is-mono" data-tone={isCurrent ? 'ok' : 'warn'} title={`Project hash ${run.projectHash.slice(0, 12)}`}>
-                        {currentProjectHash == null ? '—' : isCurrent ? 'current' : 'stale'}
+                      <td className="is-mono" data-tone={isCurrent ? 'ok' : index === 0 ? 'warn' : undefined} title={`Project hash ${run.projectHash.slice(0, 12)}`}>
+                        {stateWord}
                       </td>
                       <td className="is-mono" title={run.ranAtIso}>{formatRelative(run.ranAtIso)}</td>
                       <td>
