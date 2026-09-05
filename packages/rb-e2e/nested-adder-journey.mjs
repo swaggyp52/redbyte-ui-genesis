@@ -7,7 +7,9 @@ import { mkdirSync } from 'node:fs';
 
 const OUT = '/tmp/claude-0/-home-user-redbyte-ui-genesis/b4914bef-2a1a-55cb-97de-096a331aef03/scratchpad/shots';
 mkdirSync(OUT, { recursive: true });
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
+// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
+const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));

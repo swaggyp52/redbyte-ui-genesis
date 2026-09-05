@@ -6,7 +6,9 @@
 // is read only to find entry ids and assert; edits are real pin-field / button
 // interactions.
 import { chromium } from 'playwright';
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
+// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
+const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));

@@ -8209,10 +8209,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 : null
           }
         />
-        {/* Imported waveform Analyzer: an advanced, external-evidence feature. It
-            occupies the workspace only once a .vcd is actually loaded — on a native
-            project it stays out of the way (Load .vcd lives in the More menu). */}
-        {importedWaveform ? (
+        {/* Imported waveform Analyzer: an advanced, external-evidence feature. The panel
+            decides its own weight — with nothing loaded it collapses to a single compact
+            row carrying the "Load .vcd" affordance, and only occupies the workspace once a
+            file is actually imported. It must render either way: this is the one place a
+            .vcd can be brought in, and gating it behind an already-imported waveform made
+            the whole imported-evidence capability unreachable. */}
+        {(
           <VcdAnalyzerPanel
             waveform={importedWaveform}
             config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
@@ -8221,7 +8224,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onClear={onClearImportedWaveform ?? (() => {})}
             isActiveProvider={activeSimProvider === 'imported-vcd'}
           />
-        ) : null}
+        )}
       </IdePanel>
     </IdeSurfaceLayout>
   );

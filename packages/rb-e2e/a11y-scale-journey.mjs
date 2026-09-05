@@ -18,7 +18,9 @@ const dir = mkdtempSync(join(tmpdir(), 'rb-a11y-'));
 const vcdPath = join(dir, 'big.vcd');
 writeFileSync(vcdPath, vcdLines.join('\n'), 'utf8');
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
+// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
+const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 const fail = (m) => { throw new Error(m); };
 
 async function loadAndOpenSimulate(page) {
