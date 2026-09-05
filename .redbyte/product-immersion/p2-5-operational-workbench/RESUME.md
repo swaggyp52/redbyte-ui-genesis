@@ -64,6 +64,22 @@ exportHistory green; history-authority 7, hardware trust-clarity 4, readiness 1 
 reds are inherited (identical in the baseline worktree / testids absent at HEAD). rb-apps tsc 777 (baseline
 779); goldens 2/2 byte-identical; rb-apps build green.
 
+**Wave One — Cases + evidence deck composite (`7b31afe75`).** The lab grid is one resizable composite:
+cases/timing · a 22px splitter row · the evidence deck. The deck share, collapse and maximize state are a
+workspace preference (`WorkspacePreferencesV1.simulate`, persisted with the docks; `setSimulateLayout`,
+`resetSimulateLayout`; normalized + clamped 15–85%). The handle is `role=separator`, `aria-orientation=
+horizontal`, `aria-valuenow` = deck %, focusable; pointer drag previews locally and commits once on release;
+Arrow ±2%, Shift ±10%, Home/End, Enter and double-click reset; both panes keep a minimum (cases 160px,
+deck 120px) inside the clamp. Tools on the splitter row: Collapse/Expand evidence (a 28px strip with the
+verdict), Cases/Timing only, Evidence only, Reset layout. The replay (Waveform) document has no cases pane
+and no splitter. Legacy owners retired: the `checks` (220px) and `scenario` (36%) fixed row rules — one
+`--rb-sim-evidence-fr` rule drives every non-replay mode; narrow (≤899px) stacks keep the split row.
+Selection / tick / failure sync untouched (state stays in Simulate). Live proof (counter, Timing document,
+550px grid): 36% → cases 330 / deck 198; Shift+ArrowUp → 46% (275 / 253); collapsed → 500 / 28 strip;
+Evidence only → 0 / 528; Timing only → 528 / 0; Reset → 36% and `localStorage` holds the preference; the
+page body never scrolls. Tests: `workspacePreferences.simulate` (4), `verifySurface.evidenceDeck` (4),
+existing `workspacePreferences` (5) green; tsc 777; CSS audit exit 0.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
