@@ -123,7 +123,7 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
             <dt>{fact.label}</dt>
             <dd
               className={fact.mono ? 'is-mono' : undefined}
-              data-testid={fact.id === 'part' ? 'ide-project-fpga-part' : undefined}
+              data-testid={fact.id === 'part' ? 'ide-project-fpga-part' : fact.id === 'hash' ? 'ide-project-hash-short' : undefined}
               data-board-owned={fact.id === 'part' ? 'true' : undefined}
               title={fact.id === 'part' ? 'Owned by the target board profile' : undefined}
             >

@@ -160,6 +160,26 @@ async function openStarterCatalogIfPresent(page) {
     }
   }
 
+  // P2.5 Start Center: when the workspace already holds a project and no landing catalog is on
+  // screen, the starter library opens from File → Open Starter… (the same path a student takes).
+  const picker = page.locator('[data-testid="ide-project-starter-picker"]').first();
+  if (!catalogAlreadyVisible && !(await picker.isVisible().catch(() => false))) {
+    const catalogNow = page.locator('[data-testid="ide-project-starter-catalog"]').first();
+    if (!(await catalogNow.isVisible().catch(() => false))) {
+      const fileMenu = page.locator('[data-testid="ide-menu-file"]').first();
+      if (await fileMenu.isVisible().catch(() => false)) {
+        await clickLocatorElement(fileMenu);
+        const openStarterItem = page.locator('[data-testid="ide-menu-item-project.open-starter"]').first();
+        await openStarterItem.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
+        if (await openStarterItem.isVisible().catch(() => false)) {
+          await clickLocatorElement(openStarterItem);
+          await picker.waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
+          if (await picker.isVisible().catch(() => false)) return;
+        }
+      }
+    }
+  }
+
   const catalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
   if (!(await catalog.count().catch(() => 0))) return;
 
