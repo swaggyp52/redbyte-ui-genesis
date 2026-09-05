@@ -49,95 +49,100 @@ async function place(name, paletteTestId, type, x, y, map) {
   return id;
 }
 
-function nodeTestId(type, id) { return `node-${type}-${id}`; }
-async function renameNode(map, name, label, typeOf) {
-  await page.locator(`[data-testid="${nodeTestId(typeOf[name], map[name])}"]`).first().click({ force: true });
+// The schematic instrument gives every symbol one stable root and every pin its
+// own hit target: <g data-node-id> … <rect data-testid="port-{node}-{pin}">.
+const nodeSel = (id) => `[data-node-id="${id}"]`;
+const portOf = (id, portName) => page.getByTestId(`port-${id}-${portName}`);
+async function selectNode(id) {
+  await page.locator(nodeSel(id)).first().click();
   await page.waitForTimeout(120);
+}
+async function renameNode(map, name, label) {
+  await selectNode(map[name]);
   const editBtn = page.getByTestId('ide-design-label-edit-btn');
   if (await editBtn.count() === 0) throw new Error(`no label-edit-btn for ${name}`);
   await editBtn.first().click(); await page.waitForTimeout(100);
   await page.getByTestId('ide-design-label-input').fill(label);
   await page.getByTestId('ide-design-label-save').click(); await page.waitForTimeout(150);
 }
-async function wire(map, src, srcPort, dst, dstPort, typeOf) {
-  const s = page.locator(`[data-testid="${nodeTestId(typeOf[src], map[src])}"] [data-port-id="${srcPort}"]`).first();
-  const d = page.locator(`[data-testid="${nodeTestId(typeOf[dst], map[dst])}"] [data-port-id="${dstPort}"]`).first();
-  await s.click({ force: true }); await page.waitForTimeout(90);
-  await d.click({ force: true }); await page.waitForTimeout(120);
+// Pins are clicked unforced: a pin a student could not reach must fail loudly
+// rather than silently deliver the click to whatever symbol sits on top of it.
+async function wire(map, src, srcPort, dst, dstPort) {
+  await portOf(map[src], srcPort).click(); await page.waitForTimeout(90);
+  await portOf(map[dst], dstPort).click(); await page.waitForTimeout(120);
 }
 
 // ── Setup ───────────────────────────────────────────────────────────────────
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(800);
-await page.getByText('Build Fresh', { exact: false }).first().click(); await page.waitForTimeout(600);
+// Start Center → "Blank project" in the nav action row.
+await page.getByTestId('ide-project-build-fresh-primary').click(); await page.waitForTimeout(600);
 await page.getByTestId('mode-button-design').click(); await page.waitForTimeout(700);
+// Author at 100%, so placement coordinates land as a readable, non-overlapping
+// layout instead of a pile whose pins cover one another.
+await page.getByTestId('ide-design-zoom-readout').click(); await page.waitForTimeout(300);
 
 // ── Stage A: author FullAdder gates, then create the module from selection ────
 const fa = {};
-const T = {}; // logical name -> node type
-const def = (n, t) => { T[n] = t; };
-def('A', 'INPUT'); def('B', 'INPUT'); def('CIN', 'INPUT');
-def('x1', 'XOR'); def('x2', 'XOR'); def('a1', 'AND'); def('a2', 'AND'); def('o1', 'OR');
-def('SUM', 'OUTPUT'); def('COUT', 'OUTPUT');
-
-await place('A', 'ide-design-palette-input', 'INPUT', 80, 120, fa);
-await place('B', 'ide-design-palette-input', 'INPUT', 80, 250, fa);
-await place('CIN', 'ide-design-palette-input', 'INPUT', 80, 380, fa);
-await place('x1', 'ide-design-palette-xor', 'XOR', 280, 150, fa);
-await place('a1', 'ide-design-palette-and', 'AND', 280, 330, fa);
-await place('x2', 'ide-design-palette-xor', 'XOR', 470, 120, fa);
-await place('a2', 'ide-design-palette-and', 'AND', 470, 300, fa);
-await place('o1', 'ide-design-palette-or', 'OR', 640, 340, fa);
-await place('SUM', 'ide-design-palette-output', 'OUTPUT', 660, 120, fa);
-await place('COUT', 'ide-design-palette-output', 'OUTPUT', 820, 340, fa);
+await place('A', 'ide-design-palette-input', 'INPUT', 70, 70, fa);
+await place('B', 'ide-design-palette-input', 'INPUT', 70, 200, fa);
+await place('CIN', 'ide-design-palette-input', 'INPUT', 70, 330, fa);
+await place('x1', 'ide-design-palette-xor', 'XOR', 265, 105, fa);
+await place('a1', 'ide-design-palette-and', 'AND', 265, 300, fa);
+await place('x2', 'ide-design-palette-xor', 'XOR', 450, 70, fa);
+await place('a2', 'ide-design-palette-and', 'AND', 450, 250, fa);
+await place('o1', 'ide-design-palette-or', 'OR', 450, 430, fa);
+await place('SUM', 'ide-design-palette-output', 'OUTPUT', 690, 70, fa);
+await place('COUT', 'ide-design-palette-output', 'OUTPUT', 690, 430, fa);
 console.log('STAGE A placed:', JSON.stringify(fa));
 
 await page.getByTestId('ide-design-tool-wire').click(); await page.waitForTimeout(150);
-await wire(fa, 'A', 'out', 'x1', 'a', T);
-await wire(fa, 'B', 'out', 'x1', 'b', T);
-await wire(fa, 'x1', 'out', 'x2', 'a', T);
-await wire(fa, 'CIN', 'out', 'x2', 'b', T);
-await wire(fa, 'x2', 'out', 'SUM', 'in', T);
-await wire(fa, 'A', 'out', 'a1', 'a', T);
-await wire(fa, 'B', 'out', 'a1', 'b', T);
-await wire(fa, 'x1', 'out', 'a2', 'a', T);
-await wire(fa, 'CIN', 'out', 'a2', 'b', T);
-await wire(fa, 'a1', 'out', 'o1', 'a', T);
-await wire(fa, 'a2', 'out', 'o1', 'b', T);
-await wire(fa, 'o1', 'out', 'COUT', 'in', T);
+await wire(fa, 'A', 'out', 'x1', 'a');
+await wire(fa, 'B', 'out', 'x1', 'b');
+await wire(fa, 'x1', 'out', 'x2', 'a');
+await wire(fa, 'CIN', 'out', 'x2', 'b');
+await wire(fa, 'x2', 'out', 'SUM', 'in');
+await wire(fa, 'A', 'out', 'a1', 'a');
+await wire(fa, 'B', 'out', 'a1', 'b');
+await wire(fa, 'x1', 'out', 'a2', 'a');
+await wire(fa, 'CIN', 'out', 'a2', 'b');
+await wire(fa, 'a1', 'out', 'o1', 'a');
+await wire(fa, 'a2', 'out', 'o1', 'b');
+await wire(fa, 'o1', 'out', 'COUT', 'in');
 const afterWire = await G();
 console.log('STAGE A connections:', afterWire.conns);
+if (afterWire.conns !== 12) throw new Error(`STAGE A wired ${afterWire.conns}/12 connections`);
 
 // Name the boundary signals so the inferred module ports read A,B,CIN,SUM,COUT.
 await page.getByTestId('ide-design-tool-select').click(); await page.waitForTimeout(120);
-await renameNode(fa, 'A', 'A', T);
-await renameNode(fa, 'B', 'B', T);
-await renameNode(fa, 'CIN', 'CIN', T);
-await renameNode(fa, 'SUM', 'SUM', T);
-await renameNode(fa, 'COUT', 'COUT', T);
+await renameNode(fa, 'A', 'A');
+await renameNode(fa, 'B', 'B');
+await renameNode(fa, 'CIN', 'CIN');
+await renameNode(fa, 'SUM', 'SUM');
+await renameNode(fa, 'COUT', 'COUT');
 await page.waitForTimeout(150);
 
 // Back to select tool; select ONLY the 5 gates. Click the first gate plain to
 // replace whatever placement left selected, then shift-click the rest.
 await page.getByTestId('ide-design-tool-select').click(); await page.waitForTimeout(150);
 const gates = ['x1', 'x2', 'a1', 'a2', 'o1'];
-await page.locator(`[data-testid="${nodeTestId(T[gates[0]], fa[gates[0]])}"]`).first().click({ force: true });
+await page.locator(nodeSel(fa[gates[0]])).first().click();
 await page.waitForTimeout(100);
 await page.keyboard.down('Shift');
 for (const g of gates.slice(1)) {
-  await page.locator(`[data-testid="${nodeTestId(T[g], fa[g])}"]`).first().click({ force: true });
+  await page.locator(nodeSel(fa[g])).first().click();
   await page.waitForTimeout(80);
 }
 await page.keyboard.up('Shift');
 await page.waitForTimeout(200);
 
-// Diagnostic: dump exact connections + selection.
+// Diagnostic: dump exact connections + selection (the schematic marks the
+// current selection on each symbol root).
 const diag = await page.evaluate(() => {
   const st = window.__RB_PROJECT_RUNTIME__.getState();
   const conns = st.circuit.connections.map((c) => `${c.from.nodeId}.${c.from.portName}->${c.to.nodeId}.${c.to.portName}`);
-  let sel = null;
-  try { sel = [...(window.__RB_CIRCUIT_STORE__?.getState().selection.nodes ?? [])]; } catch {}
+  const sel = [...document.querySelectorAll('[data-node-selected="1"]')].map((e) => e.getAttribute('data-node-id'));
   return { conns, sel };
 });
 console.log('CONNS:', JSON.stringify(diag.conns));
@@ -178,12 +183,12 @@ await createBus('A', 'input', 4);
 await createBus('B', 'input', 4);
 await createBus('SUM', 'output', 4);
 // CARRY: a scalar output boundary, labeled CARRY.
-await placeVia('ide-design-palette-output', 980, 520);
+await placeVia('ide-design-palette-output', 880, 90);
 const carryId = await newestNodeId('OUTPUT', seen); seen.add(carryId);
-const carryMap = { CARRY: carryId }; const carryT = { CARRY: 'OUTPUT' };
-await renameNode(carryMap, 'CARRY', 'CARRY', carryT);
+const carryMap = { CARRY: carryId };
+await renameNode(carryMap, 'CARRY', 'CARRY');
 
-// Place four FullAdder instances via the library rail "Use" button.
+// Place four FullAdder instances via the library rail "Place" button.
 const faId = faDef.id;
 for (let i = 0; i < 4; i++) {
   await page.getByTestId(`ide-design-palette-place-${faId}`).first().click();
@@ -193,9 +198,10 @@ s = await G();
 const instances = s.nodes.filter((n) => n.mod === faId);
 console.log('placed instances:', instances.length, JSON.stringify(instances.map((n) => n.inst)));
 
-// Place a GROUND to tie stage-0 CIN low.
-await placeVia('ide-design-palette-ground', 120, 560);
-const gndId = await newestNodeId('GROUND', seen); seen.add(gndId);
+// Place a Ground to tie stage-0 CIN low.
+await placeVia('ide-design-palette-ground', 90, 90);
+const gndId = await newestNodeId('Ground', seen); seen.add(gndId);
+if (!gndId) throw new Error('ground placement failed');
 
 // Fit the camera so every placed node is on-screen and clickable.
 async function fitAll() {
@@ -219,45 +225,106 @@ const offscreen = Object.entries(rects).filter(([, r]) => !r.onScreen).map(([k])
 console.log('total node els:', Object.keys(rects).length, '| offscreen:', offscreen.length);
 await page.screenshot({ path: `${OUT}/91-structure.png` });
 
-// Compute node ids up front, then lay everything out on a clean grid so no
-// two port clusters overlap (packed defaults made adjacent clicks collide).
 s = await G();
 console.log('active after fit:', s.active);
 const instId = s.nodes.filter((n) => n.mod === faId).map((n) => n.id); // fa0..fa3
 const byLabel = {};
 for (const n of s.nodes) if (n.label) byLabel[n.label] = n.id;
 const gnd = s.nodes.find((n) => n.type === 'Ground');
+console.log('LABELS:', JSON.stringify(Object.keys(byLabel)), '| gnd', gnd && gnd.id, '| inst', JSON.stringify(instId));
 
 await page.getByTestId('ide-design-tool-select').click(); await page.waitForTimeout(100);
-await fitAll();
-async function dragNodeTo(tid, tx, ty) {
-  const el = page.locator(`[data-testid="${tid}"]`).first();
-  const box = await el.boundingBox();
-  if (!box) { console.log('drag: no box for', tid); return; }
-  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
-  await page.mouse.move(cx, cy); await page.mouse.down();
-  await page.mouse.move((cx + tx) / 2, (cy + ty) / 2, { steps: 6 });
-  await page.mouse.move(tx, ty, { steps: 6 }); await page.mouse.up();
-  await page.waitForTimeout(120);
-}
-// Left→right dataflow, kept below the top authoring overlay (which blocks
-// clicks on nodes beneath it): Ground, A col, B col, instances col, SUM col.
-await dragNodeTo(nodeTestId('Ground', gnd.id), 320, 360);
+
+// Bus members and module instances spawn in a cascade, so their symbols overlap
+// and cover one another's pins. Lay them out left-to-right on a clean grid —
+// exactly the tidy-up a student does by hand — so every pin is a real target.
+const SLOT = {};
+SLOT[gnd.id] = [350, 380];
 for (let i = 0; i < 4; i++) {
-  await dragNodeTo(nodeTestId('INPUT', byLabel[`A[${i}]`]), 470, 320 + i * 105);
-  await dragNodeTo(nodeTestId('INPUT', byLabel[`B[${i}]`]), 620, 320 + i * 105);
-  await dragNodeTo(nodeTestId('OUTPUT', byLabel[`SUM[${i}]`]), 1150, 320 + i * 105);
+  SLOT[byLabel[`A[${i}]`]] = [470, 215 + i * 110];
+  SLOT[byLabel[`B[${i}]`]] = [590, 215 + i * 110];
+  SLOT[instId[i]] = [760, 215 + i * 110];
+  SLOT[byLabel[`SUM[${i}]`]] = [940, 215 + i * 110];
 }
-for (let i = 0; i < 4; i++) {
-  await dragNodeTo(nodeTestId('FullAdder', instId[i]), 850, 335 + i * 128);
+SLOT[byLabel['CARRY']] = [1080, 215];
+
+// Move a symbol with the product's own precise affordance: select it, then nudge
+// with the arrow keys (Shift = four grid steps). The grid step is measured once
+// from a real key press, so this stays correct at whatever zoom the fit chose.
+const centerOf = async (nodeId) => {
+  const b = await page.locator(nodeSel(nodeId)).first().boundingBox();
+  if (!b) throw new Error(`no box for ${nodeId}`);
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+};
+let GRID_STEP_PX = 0;
+async function pressN(key, times, shift) {
+  for (let k = 0; k < times; k++) {
+    await page.keyboard.press(shift ? `Shift+${key}` : key);
+    await page.waitForTimeout(35);
+  }
 }
-await dragNodeTo(nodeTestId('OUTPUT', byLabel['CARRY']), 1150, 745);
-await page.screenshot({ path: `${OUT}/91b-grid.png` });
+async function moveNodeTo(nodeId, grab, tx, ty) {
+  await page.mouse.click(grab.x, grab.y);
+  await page.waitForTimeout(140);
+  if ((await page.locator(`${nodeSel(nodeId)}[data-node-selected="1"]`).count()) === 0) throw new Error(`could not select ${nodeId}`);
+  if (GRID_STEP_PX === 0) {
+    const before = await centerOf(nodeId);
+    await page.keyboard.press('ArrowRight'); await page.waitForTimeout(140);
+    const after = await centerOf(nodeId);
+    GRID_STEP_PX = Math.round(Math.abs(after.x - before.x)) || 12;
+    await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(140);
+    console.log('grid nudge step:', GRID_STEP_PX, 'px');
+  }
+  const coarse = GRID_STEP_PX * 4;
+  for (let round = 0; round < 6; round++) {
+    const c = await centerOf(nodeId);
+    const dx = tx - c.x, dy = ty - c.y;
+    if (Math.abs(dx) <= GRID_STEP_PX && Math.abs(dy) <= GRID_STEP_PX) return;
+    for (const [d, neg, pos] of [[dx, 'ArrowLeft', 'ArrowRight'], [dy, 'ArrowUp', 'ArrowDown']]) {
+      const key = d < 0 ? neg : pos;
+      const mag = Math.abs(d);
+      await pressN(key, Math.floor(mag / coarse), true);
+      await pressN(key, Math.round((mag % coarse) / GRID_STEP_PX), false);
+    }
+  }
+  const end = await centerOf(nodeId);
+  throw new Error(`could not move ${nodeId} to ${tx},${ty} (stuck at ${Math.round(end.x)},${Math.round(end.y)})`);
+}
+// Take a symbol by any part of its body that is genuinely exposed, so a
+// half-covered symbol is still reachable and the pile unwinds itself.
+const grabPoint = (nodeId) => page.evaluate((nid) => {
+  const body = document.querySelector(`[data-node-id="${nid}"] .rb-sym-body`);
+  if (!body) return null;
+  const r = body.getBoundingClientRect();
+  for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+    for (const fx of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+      const x = Math.round(r.x + r.width * fx), y = Math.round(r.y + r.height * fy);
+      const top = document.elementFromPoint(x, y);
+      if (!top || top.hasAttribute('data-port-id')) continue;
+      if (top.closest('[data-node-id]')?.getAttribute('data-node-id') === nid) return { x, y };
+    }
+  }
+  return null;
+}, nodeId);
+const pending = new Set(Object.keys(SLOT));
+while (pending.size > 0) {
+  const order = (await page.evaluate(() => [...document.querySelectorAll('[data-node-id]')].map((e) => e.getAttribute('data-node-id')))).reverse();
+  let progressed = false;
+  for (const id of order) {
+    if (!pending.has(id)) continue;
+    const grab = await grabPoint(id);
+    if (!grab) continue;
+    await moveNodeTo(id, grab, SLOT[id][0], SLOT[id][1]);
+    pending.delete(id);
+    progressed = true;
+    break;
+  }
+  if (!progressed) throw new Error(`layout deadlock, unplaced: ${[...pending].join(',')}`);
+}
 
 // Rename instances u_fa0..u_fa3 (positions are stable now; no re-fit).
 for (let i = 0; i < instId.length; i++) {
-  await page.locator(`[data-testid="${nodeTestId('FullAdder', instId[i])}"]`).first().click({ force: true });
-  await page.waitForTimeout(150);
+  await selectNode(instId[i]);
   const rn = page.getByTestId('ide-design-rename-module-instance');
   if (await rn.count() > 0) {
     await rn.click(); await page.waitForTimeout(120);
@@ -268,48 +335,42 @@ for (let i = 0; i < instId.length; i++) {
 console.log('active after rename:', (await G()).active);
 
 // ── Stage C: wire the 4-bit ripple-carry adder through the wire tool ───────────
-// Instance ports are dense-clustered, so wiring them uses the endpoint picker;
-// single-port bus members / ground / carry are sparse (direct data-port-id).
-// No re-fit: the grid positions above stay stable for precise port clicks.
+// Every pin now has its own hit target, so wiring addresses ports directly.
 await page.getByTestId('ide-design-tool-wire').click(); await page.waitForTimeout(150);
 
-// A sparse endpoint: { tid, port }. A dense (instance) endpoint: { id, side, portId }.
-async function clickEndpoint(ep) {
-  if (ep.tid) {
-    await page.locator(`[data-testid="${ep.tid}"] [data-port-id="${ep.port}"]`).first().click({ force: true });
-  } else {
-    await page.getByTestId(`logic-port-cluster-${ep.id}-${ep.side}`).first().click({ force: true });
-    await page.waitForTimeout(160);
-    await page.getByTestId(`logic-port-picker-choice-${ep.id}-${ep.portId}`).first().click({ force: true });
+// The layout above must have left every pin genuinely clickable.
+const blockedPorts = await page.evaluate(() => {
+  const bad = [];
+  for (const el of document.querySelectorAll('[data-port-id]')) {
+    const r = el.getBoundingClientRect();
+    const top = document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2));
+    if (top !== el) bad.push(el.getAttribute('data-testid') + ' -> ' + (top ? (top.getAttribute('data-testid') || top.tagName) : 'none'));
   }
-  await page.waitForTimeout(120);
-}
-async function connect(src, dst) { await clickEndpoint(src); await clickEndpoint(dst); }
+  return bad;
+});
+console.log('STAGE C blocked ports:', blockedPorts.length, JSON.stringify(blockedPorts));
 
-const inTid = (label) => nodeTestId('INPUT', byLabel[label]);
-const outTid = (label) => nodeTestId('OUTPUT', byLabel[label]);
-const faIn = (id, portId) => ({ id, side: 'input', portId });
-const faOut = (id, portId) => ({ id, side: 'output', portId });
-const sparse = (tid, port) => ({ tid, port });
-
-// Declare every wire with the connection key it should produce, so a single
-// flaky click can be detected and retried.
 const wires = [];
 for (let i = 0; i < 4; i++) {
-  wires.push({ src: sparse(inTid(`A[${i}]`), 'out'), dst: faIn(instId[i], 'A'), key: `${byLabel[`A[${i}]`]}.out->${instId[i]}.A` });
-  wires.push({ src: sparse(inTid(`B[${i}]`), 'out'), dst: faIn(instId[i], 'B'), key: `${byLabel[`B[${i}]`]}.out->${instId[i]}.B` });
-  wires.push({ src: faOut(instId[i], 'SUM'), dst: sparse(outTid(`SUM[${i}]`), 'in'), key: `${instId[i]}.SUM->${byLabel[`SUM[${i}]`]}.in` });
+  wires.push({ src: [byLabel[`A[${i}]`], 'out'], dst: [instId[i], 'A'] });
+  wires.push({ src: [byLabel[`B[${i}]`], 'out'], dst: [instId[i], 'B'] });
+  wires.push({ src: [instId[i], 'SUM'], dst: [byLabel[`SUM[${i}]`], 'in'] });
 }
-wires.push({ src: sparse(nodeTestId('Ground', gnd.id), 'out'), dst: faIn(instId[0], 'CIN'), key: `${gnd.id}.out->${instId[0]}.CIN` });
-for (let i = 0; i < 3; i++) wires.push({ src: faOut(instId[i], 'COUT'), dst: faIn(instId[i + 1], 'CIN'), key: `${instId[i]}.COUT->${instId[i + 1]}.CIN` });
-wires.push({ src: faOut(instId[3], 'COUT'), dst: sparse(outTid('CARRY'), 'in'), key: `${instId[3]}.COUT->${byLabel['CARRY']}.in` });
+wires.push({ src: [gnd.id, 'out'], dst: [instId[0], 'CIN'] });
+for (let i = 0; i < 3; i++) wires.push({ src: [instId[i], 'COUT'], dst: [instId[i + 1], 'CIN'] });
+wires.push({ src: [instId[3], 'COUT'], dst: [byLabel['CARRY'], 'in'] });
+for (const w of wires) w.key = `${w.src[0]}.${w.src[1]}->${w.dst[0]}.${w.dst[1]}`;
 
 const connSet = async () => new Set((await page.evaluate(() =>
   window.__RB_PROJECT_RUNTIME__.getState().circuit.connections.map(
     (c) => `${c.from.nodeId}.${c.from.portName}->${c.to.nodeId}.${c.to.portName}`))));
 
-for (const w of wires) await connect(w.src, w.dst);
-// Retry any wire that did not land (up to 2 passes) — clears stray picker first.
+async function connect(w) {
+  await portOf(w.src[0], w.src[1]).click(); await page.waitForTimeout(100);
+  await portOf(w.dst[0], w.dst[1]).click(); await page.waitForTimeout(120);
+}
+for (const w of wires) await connect(w);
+// Retry any wire that did not land (up to 2 passes) — clears stray state first.
 for (let pass = 0; pass < 2; pass++) {
   const have = await connSet();
   const todo = wires.filter((w) => !have.has(w.key));
@@ -317,7 +378,7 @@ for (let pass = 0; pass < 2; pass++) {
   console.log(`retry pass ${pass}: ${todo.length} missing`);
   for (const w of todo) {
     await page.keyboard.press('Escape'); await page.waitForTimeout(80);
-    await connect(w.src, w.dst);
+    await connect(w);
   }
 }
 
@@ -327,6 +388,7 @@ const cset = [...finalHave];
 const extra = cset.filter((c) => !wires.some((w) => w.key === c));
 console.log('STAGE C connections:', cset.length);
 console.log('EXPECTED:', wires.length, '| MISSING:', JSON.stringify(missing), '| EXTRA:', JSON.stringify(extra));
+if (missing.length > 0) throw new Error(`STAGE C left ${missing.length} wires unmade: ${missing.join(' ')}`);
 
 await page.getByTestId('ide-design-tool-select').click();
 await fitAll();
@@ -384,12 +446,12 @@ await page.waitForTimeout(600);
 await page.getByTestId('mode-button-export').click(); await page.waitForTimeout(1800);
 // Click through the generated files, capturing any that carry VHDL content.
 const files = await page.evaluate(() => {
-  const btns = [...document.querySelectorAll('.ide-export-v3__file-name')].map((e) => e.textContent.trim());
+  const btns = [...document.querySelectorAll('[data-testid^="ide-export-file-"] .rb-pkg-file-name')].map((e) => e.textContent.trim());
   return btns;
 });
 console.log('STAGE F files:', JSON.stringify(files));
 async function readFile(nameMatch) {
-  const btn = page.locator('.ide-export-v3__file-name', { hasText: nameMatch }).first();
+  const btn = page.locator('[data-testid^="ide-export-file-"] .rb-pkg-file-name', { hasText: nameMatch }).first();
   if (await btn.count() === 0) return null;
   await btn.click(); await page.waitForTimeout(400);
   return page.getByTestId('ide-export-preview-code').textContent();

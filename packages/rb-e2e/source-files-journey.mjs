@@ -56,31 +56,42 @@ if (model.top !== 'student_top') fail(`top entity not derived: ${JSON.stringify(
 if (model.paths.length !== 2) fail(`source files not populated: ${JSON.stringify(model)}`);
 console.log(`① store source authority populated from HDL: ${model.paths.join(', ')} (top ${model.top})`);
 
-// Navigate to the Project center where the explorer lives.
+// Navigate to the Project workspace, where the explorer and its documents live.
 await page.getByTestId('mode-button-project').click();
 await page.waitForTimeout(500);
 
-// The source files section renders with the honest tiers + compile order.
-const sources = page.getByTestId('ide-project-sources');
-if (await sources.count() === 0) fail('source files section not rendered in Project explorer');
-const count = (await page.getByTestId('ide-project-sources-count').textContent())?.trim();
-if (count !== '2 files') fail(`unexpected source count: ${count}`);
-const top = (await page.getByTestId('ide-project-sources-top').textContent()) ?? '';
+// Project opens on the Overview document, which projects the source authority:
+// how many files the project carries and the active top entity.
+const count = ((await page.getByTestId('ide-project-fact-sources').textContent()) ?? '').trim();
+if (!count.includes('2 files')) fail(`unexpected source count fact: ${count}`);
+const top = await page.getByTestId('ide-project-fpga-top').first().inputValue();
 if (!top.includes('student_top')) fail(`top entity not shown: ${top}`);
-console.log(`② Project explorer shows the Source files section: ${count}, ${top.trim()}`);
+console.log(`② Project Overview projects the source authority: ${count}, top ${top}`);
 
-// Both HDL files are classified as reconstructable (structural-subset, available).
+// One click on the explorer's Sources row opens the Sources document, which
+// renders the source files with fileset, language, library and capability.
+await page.getByTestId('ide-project-row-doc:sources').click();
+await page.waitForTimeout(400);
+const sources = page.getByTestId('ide-project-sources');
+if (await sources.count() === 0) fail('source files table not rendered in the Sources document');
+const sourceRows = await page.locator('[data-testid="ide-project-sources"] tbody tr').count();
+if (sourceRows !== 2) fail(`unexpected source row count: ${sourceRows}`);
+console.log(`③ Sources document lists both source files (${sourceRows} rows)`);
+
+// Both HDL files are classified structural-subset (reconstructable, available).
 const vhdlTier = (await page.getByTestId('ide-project-source-tier-src-rtl-student-top-vhd').textContent())?.trim();
 const vTier = (await page.getByTestId('ide-project-source-tier-src-rtl-and-gate-v').textContent())?.trim();
-if (vhdlTier !== 'reconstructable' || vTier !== 'reconstructable')
+if (vhdlTier !== 'structural-subset' || vTier !== 'structural-subset')
   fail(`unexpected tiers: vhd=${vhdlTier} v=${vTier}`);
-console.log(`③ honest capability tiers rendered: VHDL=${vhdlTier}, Verilog=${vTier}`);
+console.log(`④ honest capability tiers rendered: VHDL=${vhdlTier}, Verilog=${vTier}`);
 
 // The derived compile order lists both design sources.
-const order = await page.getByTestId('ide-project-sources-compile-order').textContent();
+await page.getByTestId('ide-project-open-compile-order').click();
+await page.waitForTimeout(400);
+const order = (await page.getByTestId('ide-project-compile-order').textContent()) ?? '';
 if (!order.includes('student_top.vhd') || !order.includes('and_gate.v'))
   fail(`compile order missing sources: ${order}`);
-console.log('④ derived compile order lists both design sources');
+console.log('⑤ derived compile order lists both design sources');
 
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 console.log('\nPASS — the first-class source authority is visible with honest tiers in Project.');

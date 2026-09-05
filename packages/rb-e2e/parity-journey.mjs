@@ -7,11 +7,27 @@
 // single workbench and that the imported artifacts surface in the shared
 // surfaces. Runs at 1440×900 and 1366×768.
 import { chromium } from 'playwright';
+import { writeFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
 // included) uses Playwright's own resolution, so these journeys run wherever they are opened.
 const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
 const fail = (m) => { throw new Error(m); };
+
+// External evidence for the Simulate step: the provider bar only renders once Simulate
+// actually has a choice of run-of-record (SimulationProviderBar.tsx:49), so parity is
+// proven by importing a waveform into the shared surface, not by a bar that is always on.
+const VCD = [
+  '$timescale 1ns $end',
+  '$var wire 1 A clk $end',
+  '$var wire 4 B data $end',
+  '$enddefinitions $end',
+  '#0', '0A', 'b0000 B', '#5', '1A', 'b1010 B',
+].join('\n');
+const vcdPath = join(mkdtempSync(join(tmpdir(), 'rb-parity-')), 'run.vcd');
+writeFileSync(vcdPath, VCD, 'utf8');
 
 const PROJECT = {
   kind: 'rb-project', version: 1,
@@ -65,10 +81,19 @@ async function run(width, height) {
   await page.getByTestId('mode-button-project').click();
   await page.waitForTimeout(400);
   if (await page.getByTestId('ide-mode-project').count() === 0) fail('project mode marker missing');
+  // P2.5 grammar: Project is explorer · document · inspector and opens on Overview. The
+  // imported artifacts live in real documents of the same surface, one click away.
+  await page.getByTestId('ide-project-row-doc:sources').click();
+  await page.waitForTimeout(300);
   if (await page.getByTestId('ide-project-sources').count() === 0) fail('imported source files not in Project surface');
-  if (await page.getByTestId('ide-crossprobe').count() === 0) fail('cross-probe not in Project surface');
+  if (await page.getByTestId('ide-project-row-file:src-constraints-pins-xdc').count() === 0)
+    fail('imported XDC not listed in the shared Project explorer');
+  // Cross-probe: opening the imported HDL file resolves design elements back to its source.
+  await page.getByTestId('ide-project-row-file:src-rtl-and-gate-vhd').dblclick();
+  await page.waitForTimeout(300);
+  if (await page.getByTestId('ide-project-source-links').count() === 0) fail('cross-probe not in Project surface');
   await assertOneShell(page, width, height, 'project');
-  console.log(`[${width}×${height}] ① Project: imported sources + cross-probe in the shared surface`);
+  console.log(`[${width}×${height}] ① Project: imported sources + XDC + cross-probe in the shared surface`);
 
   // ── Design: the same design surface a native project uses.
   await page.getByTestId('mode-button-design').click();
@@ -81,10 +106,15 @@ async function run(width, height) {
   await page.getByTestId('mode-button-verify').click();
   await page.waitForTimeout(400);
   if (await page.getByTestId('ide-mode-verify').count() === 0) fail('verify mode marker missing');
-  if (await page.getByTestId('ide-sim-provider-bar').count() === 0) fail('provider bar not in Simulate surface');
   if (await page.getByTestId('ide-vcd-analyzer').count() === 0) fail('VCD Analyzer not in Simulate surface');
+  // With only the native simulator there is nothing to choose, so the bar is deliberately absent.
+  if (await page.getByTestId('ide-sim-provider-bar').count() !== 0)
+    fail('provider bar rendered before Simulate had a second provider to choose');
+  await page.getByTestId('ide-vcd-analyzer-file-input').setInputFiles(vcdPath);
+  await page.waitForTimeout(400);
+  if (await page.getByTestId('ide-sim-provider-bar').count() === 0) fail('provider bar not in Simulate surface');
   await assertOneShell(page, width, height, 'verify');
-  console.log(`[${width}×${height}] ③ Simulate: provider bar + VCD Analyzer in the shared surface`);
+  console.log(`[${width}×${height}] ③ Simulate: VCD Analyzer + provider bar in the shared surface`);
 
   // ── Board & Constraints: constraint sets (seeded from the imported XDC) here.
   await page.getByTestId('mode-button-hardware').click();

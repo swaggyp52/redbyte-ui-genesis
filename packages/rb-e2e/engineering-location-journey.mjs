@@ -1,9 +1,13 @@
-// P1-G — engineering-location history. Through the real shell: the LocationBar
-// projects the current mode + module drill trail and its Back / Forward / Up
-// buttons re-apply prior locations. The store is read only to assert the
-// active module; every navigation below is a real LocationBar / mode-button
-// click. The two-module hierarchy is loaded as a starting fixture (like opening
-// a saved project); the drill + Up are real UI.
+// P1-G — engineering-location history. Through the real shell: where the
+// engineer is standing is projected by the workspace rail (current workspace)
+// and, inside a child module, by the document tab strip's module trail; the
+// strip's Back / Forward buttons and the trail's parent segment (Up) re-apply
+// prior locations. In the P2.5 workbench the trail is module-only and is
+// rendered ONLY when there is a parent to climb to — outside Design, and at
+// Design/Top, its absence is itself the "you are at the root" signal. The
+// store is read only to assert the active module; every navigation below is a
+// real tab-strip / rail / trail click. The two-module hierarchy is loaded as a
+// starting fixture (like opening a saved project); the drill + Up are real UI.
 import { chromium } from 'playwright';
 // The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
 // included) uses Playwright's own resolution, so these journeys run wherever they are opened.
@@ -13,7 +17,14 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 const fail = (m) => { throw new Error(m); };
 const activeModule = () => page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().hierarchy.activeModuleId);
-const pathText = async () => (await page.getByTestId('ide-location-path').textContent() ?? '').replace(/\s+/g, ' ').trim();
+// The module trail only exists inside a child module, so an absent trail is a
+// legitimate reading of "" — never a hang.
+const pathText = async () => {
+  const trail = page.getByTestId('ide-location-path');
+  if (await trail.count() === 0) return '';
+  return ((await trail.first().textContent()) ?? '').replace(/\s+/g, ' ').trim();
+};
+const railState = (stage) => page.getByTestId(`mode-button-${stage}`).getAttribute('data-state');
 const modeMarker = () => page.evaluate(() => document.querySelector('[data-ide-stage]')?.getAttribute('data-ide-stage'));
 
 await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
@@ -27,9 +38,14 @@ await page.getByTestId('mode-button-design').click(); await page.waitForTimeout(
 await page.getByTestId('mode-button-verify').click(); await page.waitForTimeout(500);
 await page.getByTestId('mode-button-hardware').click(); await page.waitForTimeout(500);
 if (await modeMarker() !== 'hardware') fail('expected hardware mode');
+// The workspace rail is the single current-workspace authority; it must mark
+// Board — and only Board — as current.
+if (await railState('hardware') !== 'current') fail('rail should mark Board as current');
+if (await railState('design') === 'current') fail('rail should not still mark Design as current');
 let path = await pathText();
-if (!path.includes('Board')) fail(`path should show Board & Constraints: "${path}"`);
-console.log(`① navigated to hardware; LocationBar path: "${path}"`);
+// The trail is module-only: outside Design there is no module to climb out of.
+if (path !== '') fail(`no module trail expected in Board & Constraints: "${path}"`);
+console.log('① navigated to Board & Constraints; rail marks it current, no module trail');
 
 // Back three times returns through verify → design → project.
 await page.getByTestId('ide-location-back').click(); await page.waitForTimeout(400);
@@ -52,13 +68,21 @@ console.log('③ Forward ×2 re-applied design → verify');
 // Design UI, then drill in and prove the LocationBar trail + Up.
 await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('half-adder'));
 await page.waitForTimeout(300);
-await page.getByTestId('mode-button-design').click(); await page.waitForTimeout(600);
-await page.keyboard.press('Shift+F'); await page.waitForTimeout(300);
+await page.getByTestId('mode-button-design').click(); await page.waitForTimeout(900);
+// No camera fit here: Shift+F (fit to view) frames the schematic across the
+// whole canvas, which extends beneath the floating left library dock, so a
+// fitted gate can end up under it. The default camera is what a student sees
+// on entering Design and is what the gate clicks below act on.
 
+if (await modeMarker() !== 'design') fail('expected design mode');
+if (await railState('design') !== 'current') fail('rail should mark Design as current');
 path = await pathText();
-if (!path.includes('Top')) fail(`design path should include Top: "${path}"`);
-if (await page.getByTestId('ide-location-up').isEnabled()) fail('Up should be disabled at Top');
-console.log(`④ Design at Top; path "${path}"; Up disabled`);
+// At Top there is no parent, so the workbench renders no trail at all. That
+// absence is the root signal: the old always-on (and always-disabled-at-Top)
+// Up button was replaced by climbable parent segments, and Top has none.
+if (path !== '') fail(`no module trail expected at Design/Top: "${path}"`);
+if (await page.getByTestId('ide-location-segment-btn-0').count() !== 0) fail('no Up target should exist at Top');
+console.log('④ Design at Top; rail marks Design current; no trail and no Up target above Top');
 
 const gateIds = await page.evaluate(() => {
   const st = window.__RB_PROJECT_RUNTIME__.getState();
@@ -91,13 +115,19 @@ await page.waitForTimeout(400);
 if (await activeModule() !== moduleId) fail('drill did not set active module');
 path = await pathText();
 if (!(path.includes('Top') && path.includes('SumCarry'))) fail(`drilled path should be Top › SumCarry: "${path}"`);
-if (!(await page.getByTestId('ide-location-up').isEnabled())) fail('Up should be enabled inside a module');
-console.log(`⑤ drilled into SumCarry; path "${path}"; Up enabled`);
+// Up is now the trail's parent segment: a real, enabled, clickable navigation.
+const upSegment = page.getByTestId('ide-location-segment-btn-0');
+if (await upSegment.count() !== 1) fail('trail should offer exactly one parent (Up) target inside a module');
+const upLabel = ((await upSegment.textContent()) ?? '').trim();
+if (upLabel !== 'Top') fail(`parent (Up) segment should read Top, got "${upLabel}"`);
+if (!(await upSegment.isEnabled())) fail('parent (Up) segment should be clickable inside a module');
+console.log(`⑤ drilled into SumCarry; path "${path}"; parent segment "${upLabel}" is the Up target`);
 
-// Up returns to Top through the real LocationBar button.
-await page.getByTestId('ide-location-up').click(); await page.waitForTimeout(400);
+// Up returns to Top through the real trail parent segment in the tab strip.
+await upSegment.click(); await page.waitForTimeout(400);
 if (await activeModule() !== 'top') fail(`Up expected top, got ${await activeModule()}`);
-console.log('⑥ Up returned to Top (active module = top)');
+if (await pathText() !== '') fail('trail should be gone once back at Top');
+console.log('⑥ Up (parent segment) returned to Top; trail gone (active module = top)');
 
 // Back returns into the module (Up was recorded as a navigation).
 await page.getByTestId('ide-location-back').click(); await page.waitForTimeout(400);
@@ -105,5 +135,5 @@ if (await activeModule() !== moduleId) fail(`Back after Up expected ${moduleId},
 console.log('⑦ Back re-entered SumCarry (Up is a recorded navigation)');
 
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
-console.log('\nPASS — engineering-location history: full path, Back/Forward/Up, all through the shell.');
+console.log('\nPASS — engineering-location history: rail + module trail, Back/Forward/Up, all through the shell.');
 await browser.close();
