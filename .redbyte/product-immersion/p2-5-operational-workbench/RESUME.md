@@ -118,6 +118,21 @@ keep the five inherited reds. Note: `Basys3BoardView.tsx` is also a CRLF-blob fi
 Open for Board: the Constraints tool (Board signal ↔ constraint ↔ XDC line sync, no empty permanent footer),
 guided/expert workflows over the one mapping authority, 200% board.
 
+**Timing Lab depth — Counter journey (`9eb660bdb`, `5eadc8129`).** Found while proving the journey: the
+auto clock policy with "reset sequence" overwrote an authored RST pulse at run time while the Timing lane
+accepted the edit, so the run read RECORDED · CURRENT for a stimulus that was never applied. Now: (1) the
+auto clock's run length is a direct control on the Timing bar (cycles); (2) lanes the policy generates
+(clock, and the reset under "Reset at t0") are drawn as the run will use them, marked `data-generated`,
+and refuse edits with the reason (`TimingLanes` `generatedFieldIds/generatedValueAt/generatedNote`; names
+resolved through `mappedSignals` id/label/nodeId like the materializer); (3) the clock panel offers
+"Reset at t0" vs "Author reset pulses" under the auto clock (`resetBehavior` auto-sequence vs custom,
+persisted in the scenario's sequential policy through the one `persistScenarioSequentialPolicy`).
+Live (2-bit counter): run length 6 → 7-tick run, q counts 1,2,3,0 while EN is high; "Author reset pulses"
+→ RST lane editable, reset at t4 → rerun: clk generated 1111111, rst 1000100, q0 0010011 / q1 0001000
+(count restarts after the reset), the saved checks authored for the old stimulus fail at t4–t6 as they
+should, chip REPLAYING → RECORDED · CURRENT. Tests: `timingLab` (7).
+Open for Timing: state lanes for registers, a reset-pulse generator, run-range window selection.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
