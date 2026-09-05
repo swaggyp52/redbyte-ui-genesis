@@ -4,10 +4,8 @@
 // the run appears in the Runs document. The store is read only to confirm the
 // ledger grew and that the document projects it faithfully; the run trigger,
 // the document navigation and the Runs list are real UI.
-import { chromium } from 'playwright';
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
@@ -26,7 +24,7 @@ const runsMeta = async () =>
   ((await page.locator('[data-testid="ide-project-runs-document"] .rb-doc-header .wb-toolbar-meta').textContent()) ?? '').trim();
 const runRows = () => page.locator('[data-testid="ide-project-runs-table"] tbody tr[data-testid^="ide-project-run-"]');
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('half-adder'));

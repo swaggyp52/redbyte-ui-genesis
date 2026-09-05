@@ -9,14 +9,12 @@
 // The Half Adder circuit is loaded through its own shipped load path
 // (loadExample — the exact action the Project example card's Load button
 // runs). Every DRIVE and every OBSERVE below is through real bench/board DOM.
-import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
+import { BASE_URL, evidenceDir, launchChromium } from './harness.mjs';
 
-const OUT = '/tmp/claude-0/-home-user-redbyte-ui-genesis/b4914bef-2a1a-55cb-97de-096a331aef03/scratchpad/shots';
+const OUT = evidenceDir('shots');
 mkdirSync(OUT, { recursive: true });
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
@@ -40,7 +38,7 @@ const sim = () => page.evaluate(() => {
 });
 
 // ── Setup: load the Half Adder through its shipped load path ──────────────────
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('half-adder'));

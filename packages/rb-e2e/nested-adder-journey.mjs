@@ -2,14 +2,12 @@
 // through the real RedByte UI (palette placement, wire tool, module dialog,
 // bus dialog, instance placement, rename). The project runtime store is READ
 // only to locate DOM targets and to assert results — never mutated to author.
-import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
+import { BASE_URL, evidenceDir, launchChromium } from './harness.mjs';
 
-const OUT = '/tmp/claude-0/-home-user-redbyte-ui-genesis/b4914bef-2a1a-55cb-97de-096a331aef03/scratchpad/shots';
+const OUT = evidenceDir('shots');
 mkdirSync(OUT, { recursive: true });
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
@@ -73,7 +71,7 @@ async function wire(map, src, srcPort, dst, dstPort) {
 }
 
 // ── Setup ───────────────────────────────────────────────────────────────────
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(800);
 // Start Center → "Blank project" in the nav action row.

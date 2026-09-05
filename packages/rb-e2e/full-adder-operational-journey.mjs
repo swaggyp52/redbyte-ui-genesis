@@ -17,6 +17,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import { BASE_URL } from './harness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -28,7 +29,8 @@ const EVIDENCE_DIR = path.resolve(
   'evidence'
 );
 fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-const BASE = process.env.RB_E2E_URL || 'http://localhost:5173';
+// One base-URL authority for every journey; RB_BASE_URL overrides it.
+const BASE = BASE_URL.replace(/\/+$/, '');
 // jszip is a first-party dependency of @redbyte/rb-apps (the package builder itself uses it).
 const JSZip = createRequire(new URL('../rb-apps/package.json', import.meta.url))('jszip');
 

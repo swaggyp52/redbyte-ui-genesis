@@ -3,10 +3,8 @@
 // legible `classroom` tier; zoom back in and it returns to compact `dense`.
 // Through the real UI: drive the zoom buttons and assert the canvas's
 // data-presentation-zoom tier tracks the model.
-import { chromium } from 'playwright';
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 160)));
@@ -23,7 +21,7 @@ const zoomPct = async () => {
   return parseInt(t.replace('%', ''), 10);
 };
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('half-adder'));

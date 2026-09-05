@@ -4,11 +4,9 @@
 // Importing a project with XDC sources seeds a set per file. This journey drives
 // the real UI: activate, rename, reload-persist, remove — reading set ids from
 // the store to target rows. Runs at 1440×900 and 1366×768.
-import { chromium } from 'playwright';
+import { BASE_URL, launchChromium } from './harness.mjs';
 
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 
 const PROJECT = {
@@ -41,7 +39,7 @@ async function run(width, height) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(500);

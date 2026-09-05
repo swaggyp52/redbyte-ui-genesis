@@ -13,10 +13,10 @@
 // design→source direction is the inspector's Source section for the selected
 // module, and the source→design direction is the source document's Relationships
 // list. Both directions are still asserted here, by their current owners.
-import { chromium } from 'playwright';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BASE_URL, launchChromium } from './harness.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'rb-complex-'));
 
@@ -59,9 +59,7 @@ const VCD = ['$timescale 1ns $end', '$var wire 1 A clk $end', '$var wire 4 B dat
 const vcdPath = join(dir, 'trace.vcd');
 writeFileSync(vcdPath, VCD, 'utf8');
 
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 let step = 0;
 const ok = (msg) => console.log(`  ${String(++step).padStart(2, '0')}. ${msg}`);
@@ -89,7 +87,7 @@ const inspectorRows = () => page.evaluate(() => {
 const TOP_ENTITY_PROBE = { label: 'Exact', value: 'rtl/gate_top.vhd:2' };
 const hasTopEntityProbe = (rows) => rows.some((r) => r.label === TOP_ENTITY_PROBE.label && r.value === TOP_ENTITY_PROBE.value);
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(500);

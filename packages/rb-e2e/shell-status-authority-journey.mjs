@@ -4,12 +4,10 @@
 // carries no per-stage status prose. Drives the real UI: loads the Full Adder,
 // walks the workspaces, asserts the single ownership in both directions, and
 // no horizontal overflow. 1440×900 and 1366×768.
-import { chromium } from 'playwright';
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+import { BASE_URL, evidenceDir, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
-const OUT = '/tmp/claude-0/-home-user-redbyte-ui-genesis/b4914bef-2a1a-55cb-97de-096a331aef03/scratchpad';
+const OUT = evidenceDir();
 
 async function run(width, height) {
   const context = await browser.newContext({ viewport: { width, height } });
@@ -17,7 +15,7 @@ async function run(width, height) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(500);

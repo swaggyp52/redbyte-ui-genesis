@@ -5,10 +5,8 @@
 // and confirm the ExportHistoryPanel shows both packages, their provenance, and
 // which artifacts changed. Store is read only to assert the ledger; downloads
 // are real download-button clicks.
-import { chromium } from 'playwright';
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const page = await ctx.newPage();
 const errors = [];
@@ -27,7 +25,7 @@ async function download() {
   return false;
 }
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => {

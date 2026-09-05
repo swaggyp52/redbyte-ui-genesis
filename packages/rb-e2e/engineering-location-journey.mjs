@@ -8,10 +8,8 @@
 // store is read only to assert the active module; every navigation below is a
 // real tab-strip / rail / trail click. The two-module hierarchy is loaded as a
 // starting fixture (like opening a saved project); the drill + Up are real UI.
-import { chromium } from 'playwright';
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
@@ -27,7 +25,7 @@ const pathText = async () => {
 const railState = (stage) => page.getByTestId(`mode-button-${stage}`).getAttribute('data-state');
 const modeMarker = () => page.evaluate(() => document.querySelector('[data-ide-stage]')?.getAttribute('data-ide-stage'));
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('half-adder'));

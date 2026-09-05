@@ -3,10 +3,10 @@
 // there is exactly one main landmark; the new surfaces are keyboard-reachable,
 // survive reduced-motion, and never overflow horizontally — including at an
 // effective 200% zoom (emulated with a halved viewport). Drives the real UI.
-import { chromium } from 'playwright';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BASE_URL, launchChromium } from './harness.mjs';
 
 // A 500-signal VCD.
 const vcdLines = ['$timescale 1ns $end'];
@@ -18,9 +18,7 @@ const dir = mkdtempSync(join(tmpdir(), 'rb-a11y-'));
 const vcdPath = join(dir, 'big.vcd');
 writeFileSync(vcdPath, vcdLines.join('\n'), 'utf8');
 
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 
 async function loadAndOpenSimulate(page) {
@@ -40,7 +38,7 @@ async function run(width, height) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(500);

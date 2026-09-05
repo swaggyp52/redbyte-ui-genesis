@@ -2,10 +2,8 @@
 // Checks that none of them force horizontal page overflow at the two supported
 // viewports or under 200% zoom, and that their primary controls are
 // keyboard-reachable. Store is read only to set up circuits/mappings.
-import { chromium } from 'playwright';
-// The cloud sandbox ships Chromium at a fixed path; every other machine (the ThinkStation
-// included) uses Playwright's own resolution, so these journeys run wherever they are opened.
-const browser = await chromium.launch(process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {});
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 
 async function overflowAt(width, height, zoom) {
@@ -19,7 +17,7 @@ async function overflowAt(width, height, zoom) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 160)));
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(600);
   await page.evaluate(() => {
@@ -71,7 +69,7 @@ for (const [w, h, z, label] of [[1440, 900, 1, '1440×900'], [1366, 768, 1, '136
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(600);
   await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('half-adder'));
