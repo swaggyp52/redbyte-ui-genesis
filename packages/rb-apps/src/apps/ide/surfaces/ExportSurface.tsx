@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ProblemsPanel } from '../components/ProblemsPanel';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import { useEngineeringSelection } from '../engineeringSelection';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import type { WorkbenchDocument } from '../workbenchDocuments';
 import { HandoffOverviewDocument } from './export/HandoffOverviewDocument';
 import type { IdeExampleDefinition } from '../examplesCatalog';
@@ -100,6 +101,9 @@ export interface ExportSurfaceProps {
   verifyLastRun?: RuntimeVerifyRun;
   /** Browser-local evidence for the last package download. */
   lastExport?: ProjectHealthExportResult;
+  /** Name and id of the active constraint set (null = live mapping). */
+  activeConstraintSetName?: string | null;
+  activeConstraintSetId?: string | null;
   /** Bounded ledger of prior generation/download events (newest last). */
   exportHistory?: ProjectHealthExportResult[];
   /** Structural Design authority. Prior Compare evidence is inconclusive while present. */
@@ -250,6 +254,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   verifyResult: persistedVerifyResult,
   verifyLastRun: persistedVerifyLastRun,
   lastExport,
+  activeConstraintSetName = null,
+  activeConstraintSetId = null,
   exportHistory = [],
   designBlockingIssue,
   designReady = true,
@@ -1875,9 +1881,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 packageHash={determinismHash}
                 stateTitle={surfaceStatusTitle}
                 stateReason={trustReason}
-                isStale={dirtySinceVerify}
-                activeConstraintSetName={null}
+                isStale={dirtySinceVerify || !downloadDone}
+                activeConstraintSetName={activeConstraintSetName}
+                boardConstraintSetId={activeConstraintSetId}
+                downloadEvidence={currentDownloadEvidence ?? null}
+                diagnostics={visibleDiagnosticsList}
                 onOpenFiles={onOpenDocument ? () => onOpenDocument({ kind: 'package-artifact' }) : undefined}
+                onOpenDocument={onOpenDocument}
+                onSelect={(ref) => publishSelection(ref, 'handoff')}
+                onOpenProblems={() => workspacePreferencesStore.setDock('export', 'bottom', { visible: true })}
               />
             ) : (
             <div className="rb-pkg-file-workspace" data-testid="ide-export-package-files">

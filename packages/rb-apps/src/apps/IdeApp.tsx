@@ -3362,6 +3362,8 @@ export const IdeApp: React.FC = () => {
               workflowAuthority={workflowAuthority}
               activeScenario={activeScenario ?? undefined}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}
+              activeConstraintSetName={constraintSetsDoc?.sets.find((set) => set.id === constraintSetsDoc.activeId)?.name ?? null}
+              activeConstraintSetId={constraintSetsDoc?.activeId ?? null}
               determinismHash={determinismHash}
               onExportResult={handleExportResult}
               onDiagnosticAction={handleDiagnosticAction}

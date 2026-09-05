@@ -210,7 +210,40 @@
 .ide-root .rb-handoff .wb-table td[data-tone='error'] { color: var(--wb-err); }
 .ide-root .rb-handoff .wb-table td[data-tone='warn'] { color: var(--wb-warn-text); }
 @media print {
-  .ide-root .wb-cmdbar, .ide-root .wb-rail, .ide-root .wb-status, .ide-root .wb-doctabs, .ide-root .ide-workbench-dock, .ide-root .rb-pkg-hero { display: none; }
+  .ide-root .wb-cmdbar, .ide-root .wb-rail, .ide-root .wb-status, .ide-root .wb-doctabs, .ide-root .ide-workbench-dock { display: none; }
+  /* The hero wraps the handoff document: hide its siblings, keep the dossier. */
+  .ide-root .rb-pkg-hero > :not(.rb-pkg-files), .ide-root .rb-pkg-files > :not(.rb-handoff) { display: none; }
+  .ide-root .rb-handoff .rb-doc-section { break-inside: avoid; }
+  .ide-root .rb-handoff .rb-handoff-figure { break-inside: avoid; }
+  @page { margin: 14mm; }
   .ide-root .rb-handoff { overflow: visible; }
   .ide-root .rb-handoff .wb-btn { display: none; }
 }
+
+/* Presentation mode: the dossier alone, on screen. Same rules as print, plus a reading width. */
+html.rb-presenting .ide-root .wb-cmdbar, html.rb-presenting .ide-root .wb-rail, html.rb-presenting .ide-root .wb-status,
+html.rb-presenting .ide-root .wb-doctabs, html.rb-presenting .ide-root .ide-workbench-dock, html.rb-presenting .ide-root .ide-workbench-console,
+html.rb-presenting .ide-root .rb-pkg-hero > :not(.rb-pkg-files), html.rb-presenting .ide-root .rb-pkg-files > :not(.rb-handoff) { display: none !important; }
+html.rb-presenting .ide-root .ide-workbench-main { grid-template-columns: minmax(0, 1fr) !important; }
+html.rb-presenting .ide-root .rb-handoff { max-width: 980px; margin: 0 auto; padding: 24px 32px; }
+
+/* Dossier figures: a caption under each, tables numbered in their meta line. */
+.ide-root .rb-handoff-figure { margin: 0; padding: 8px 0 4px; }
+.ide-root .rb-handoff-figure > figcaption { margin-top: 6px; font: var(--wb-text-xs) var(--wb-font-ui); color: var(--wb-text-3); }
+.ide-root .rb-handoff-board svg { max-width: 640px; display: block; }
+.ide-root .rb-handoff .wb-table tr.is-link { cursor: pointer; }
+.ide-root .rb-handoff .wb-table tr.is-link:hover td { background: color-mix(in srgb, var(--wb-focus) 8%, transparent); }
+.ide-root .rb-handoff .wb-table tr.is-fail td { background: color-mix(in srgb, var(--wb-danger, #b91c1c) 8%, transparent); }
+.ide-root .rb-handoff .wb-table-frame > .wb-toolbar-meta { display: block; padding: 4px 0 0; }
+/* Presenting: the frame grids collapse to one track each so the dossier owns the window. */
+html.rb-presenting .ide-root { grid-template-rows: minmax(0, 1fr) !important; }
+html.rb-presenting .ide-root .wb-body { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: minmax(0, 1fr) !important; }
+html.rb-presenting .ide-root .wb-document-column { grid-template-rows: minmax(0, 1fr) !important; }
+html.rb-presenting .ide-root .ide-workbench-shell,
+html.rb-presenting .ide-root .ide-workbench-main { grid-template-rows: minmax(0, 1fr) !important; }
+html.rb-presenting .ide-root .ide-panel-body, html.rb-presenting .ide-root .ide-panel { min-height: 0; }
+html.rb-presenting .ide-root .rb-pkg-hero { padding: 0 !important; }
+html.rb-presenting .ide-root .rb-handoff { height: 100%; overflow: auto; }
+/* The architecture figure in the dossier sizes to its drawing, not to the Overview's preview cap. */
+.ide-root .rb-handoff-arch .rb-arch { max-height: none; overflow: visible; }
+.ide-root .rb-handoff-arch .rb-arch svg { height: auto; max-height: 380px; }
