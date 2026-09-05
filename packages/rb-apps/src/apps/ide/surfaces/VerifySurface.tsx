@@ -6645,7 +6645,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <span className="rb-wave-readout__pos">
                       <code>t{selectedTick}</code>
                       <span className="rb-wave-readout__progress" aria-label="Progress">
-                        <span style={{ width: `${liveReadout.total > 1 ? Math.round((liveReadout.index / (liveReadout.total - 1)) * 100) : 100}%` }} />
+                        <span style={{ transform: `scaleX(${liveReadout.total > 1 ? liveReadout.index / (liveReadout.total - 1) : 1})` }} />
                       </span>
                       <small>{liveReadout.index + 1} / {liveReadout.total}</small>
                     </span>

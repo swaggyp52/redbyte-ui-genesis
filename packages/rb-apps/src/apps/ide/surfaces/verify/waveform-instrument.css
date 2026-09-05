@@ -267,7 +267,7 @@
 .ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; color: var(--wb-text-3); }
 .ide-root .rb-wave-readout__pos { display: inline-flex; align-items: center; gap: 6px; }
 .ide-root .rb-wave-readout__progress { display: inline-block; width: 72px; height: 4px; border-radius: 2px; background: var(--wb-border); overflow: hidden; }
-.ide-root .rb-wave-readout__progress > span { display: block; height: 100%; background: var(--wb-focus); transition: width 120ms linear; }
+.ide-root .rb-wave-readout__progress > span { display: block; width: 100%; height: 100%; background: var(--wb-focus); transform-origin: left center; transition: transform 120ms linear; }
 .ide-root .rb-wave-readout__group { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .ide-root .rb-wave-readout.has-failure .rb-wave-readout__fail code { background: color-mix(in srgb, var(--wb-danger, #b91c1c) 12%, transparent); color: var(--wb-danger, #b91c1c); }
 .ide-root .rb-wave-readout.is-playing .rb-wave-readout__pos code { box-shadow: inset 0 -2px 0 var(--wb-focus); }
