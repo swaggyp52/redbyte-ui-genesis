@@ -66,7 +66,7 @@ import {
   buildGuidedBoundaryOptions,
   buildGuidedHdlCatalogFromText,
   suggestEntryIdFromHdl,
-} from '../hardwareMappingGuidance';
+ recommendBoardResource } from '../hardwareMappingGuidance';
 import {
   getBasys3BoardResource,
   listBasys3BoardResources,
@@ -1253,6 +1253,33 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     conflictingMappingRows.find((row) => row.required) ??
     unmappedRequiredPins[0] ??
     null;
+  // Guided mapping: one deterministic recommendation for the selected signal,
+  // one assignment helper that remembers the previous pin so the last step can
+  // be undone, and the next unmapped signal one action away.
+  const recommendedResource = useMemo(() => {
+    if (!selectedMappingRow || selectedMappingRow.pin.trim().length > 0) return null;
+    const occupiedPins = new Set(
+      mappingRows.filter((row) => row.id !== selectedMappingRow.id && row.pin.trim().length > 0).map((row) => row.pin.trim())
+    );
+    return recommendBoardResource({ row: selectedMappingRow, compatibleResources: compatiblePlannerResources, occupiedPins });
+  }, [compatiblePlannerResources, mappingRows, selectedMappingRow]);
+  const [lastAssignment, setLastAssignment] = useState<{ rowId: string; label: string; previousPin: string } | null>(null);
+  const assignPin = useCallback(
+    (rowId: string, packagePin: string) => {
+      if (!onSetMappingPin) return;
+      const row = mappingRows.find((entry) => entry.id === rowId);
+      setLastAssignment({ rowId, label: row?.label ?? rowId, previousPin: row?.pin ?? '' });
+      onSetMappingPin(rowId, packagePin);
+    },
+    [mappingRows, onSetMappingPin]
+  );
+  const undoLastAssignment = useCallback(() => {
+    if (!lastAssignment || !onSetMappingPin) return;
+    onSetMappingPin(lastAssignment.rowId, lastAssignment.previousPin);
+    chooseMappingRow(lastAssignment.rowId);
+    setSelectedBoardResourceAlias(null);
+    setLastAssignment(null);
+  }, [chooseMappingRow, lastAssignment, onSetMappingPin]);
   const hasPresentedDesignBlocker = exportBlockingDiagnostics.some(
     (diagnostic) => isDesignOwnedExportDiagnostic(diagnostic.code, explicitTimingMode)
   );
@@ -3323,22 +3350,63 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     conflictAliases={conflictAliases}
                     mappedAliases={mapModeAliases}
                     highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
-                    allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : new Set<string>()}
+                    allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : undefined}
                     assignmentMode={Boolean(selectedMappingRow)}
                     onSelectAlias={(alias) => {
-                      if (!selectedMappingRow) return;
+                      if (!selectedMappingRow) {
+                        // No signal selected: the resource itself is the object. Its owner row (if mapped) follows.
+                        setSelectedBoardResourceAlias(alias);
+                        const clicked = getBasys3BoardResource(alias);
+                        const owner = clicked ? mappingRows.find((row) => row.pin.trim() === clicked.packagePin) : null;
+                        if (owner) chooseMappingRow(owner.id);
+                        return;
+                      }
                       const resource = compatiblePlannerResources.find((candidate) => candidate.alias === alias);
                       if (!resource) return;
                       const occupiedByAnotherSignal = (mappedRowsByPackagePin.get(resource.packagePin) ?? [])
                         .some((candidate) => candidate.id !== selectedMappingRow.id);
                       if (occupiedByAnotherSignal) return;
                       setSelectedBoardResourceAlias(alias);
-                      onSetMappingPin?.(selectedMappingRow.id, resource.packagePin);
+                      assignPin(selectedMappingRow.id, resource.packagePin);
                     }}
                   />
                 </div>
               </section>
               <aside className="rb-board-side" aria-label="Selected mapping and board reference">
+                {!selectedMappingRow && selectedBoardResource ? (
+                  <section className="rb-board-editor" data-testid="ide-hw-selected-resource-card">
+                    <div className="rb-board-editor-head">
+                      <span className="ide-surface-block-label">Selected resource</span>
+                      <strong>{selectedBoardResource.alias}</strong>
+                    </div>
+                    <dl className="rb-facts rb-facts--compact">
+                      <div className="rb-fact"><dt>Resource</dt><dd>{selectedBoardResource.label}</dd></div>
+                      <div className="rb-fact"><dt>Package pin</dt><dd className="is-mono">{selectedBoardResource.packagePin}</dd></div>
+                      <div className="rb-fact"><dt>Group</dt><dd>{selectedBoardResource.group}</dd></div>
+                      <div className="rb-fact"><dt>Type</dt><dd>{formatPlannerResourceKind(selectedBoardResource)}</dd></div>
+                      <div className="rb-fact"><dt>I/O standard</dt><dd className="is-mono">{selectedBoardResource.ioStandard}</dd></div>
+                      {selectedBoardResource.frequencyMHz ? (
+                        <div className="rb-fact"><dt>Clock</dt><dd>{selectedBoardResource.frequencyMHz} MHz</dd></div>
+                      ) : null}
+                      <div className="rb-fact"><dt>Signal</dt><dd>{mappingRows.find((row) => row.pin.trim() === selectedBoardResource.packagePin)?.label ?? 'Unassigned'}</dd></div>
+                    </dl>
+                    {nextMappingIssueRow && onSetMappingPin ? (
+                      <div className="rb-board-editor-actions">
+                        <IdeButton
+                          tone="secondary"
+                          onClick={() => {
+                            assignPin(nextMappingIssueRow.id, selectedBoardResource.packagePin);
+                            chooseMappingRow(nextMappingIssueRow.id);
+                          }}
+                          testId="ide-hw-map-next-here"
+                          title={`Assign ${nextMappingIssueRow.label} to ${selectedBoardResource.alias}`}
+                        >
+                          Map {nextMappingIssueRow.label} here
+                        </IdeButton>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
                 <section
                   className={'rb-board-editor' + (selectedSignalConflict ? ' is-conflict' : '')}
                   data-testid="ide-hw-selected-mapping-editor"
@@ -3383,7 +3451,48 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             '. Export will bind artifact port ' + (selectedMappingProjection?.artifactPortName ?? selectedXdcPortRef) + ' in top.xdc.'
                           : 'Choose from the selector or click a highlighted Basys3 resource. Both update the same saved mapping.'}
                       </p>
+                      {recommendedResource ? (
+                        <div className="rb-board-recommend" data-testid="ide-hw-recommendation">
+                          <span className="ide-surface-block-label">Recommended</span>
+                          <code>{recommendedResource.alias}</code>
+                          <span className="ide-copy">package pin {recommendedResource.packagePin} · first free {selectedMappingRow.direction === 'in' ? 'switch' : 'LED'} in order</span>
+                          <IdeButton
+                            tone="primary"
+                            onClick={() => {
+                              setSelectedBoardResourceAlias(recommendedResource.alias);
+                              assignPin(selectedMappingRow.id, recommendedResource.packagePin);
+                            }}
+                            disabled={!onSetMappingPin}
+                            testId="ide-hw-use-recommended"
+                          >
+                            Use {recommendedResource.alias}
+                          </IdeButton>
+                        </div>
+                      ) : null}
                       <div className="rb-board-editor-actions">
+                        {nextMappingIssueRow && nextMappingIssueRow.id !== selectedMappingRow.id ? (
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() => {
+                              setSelectedBoardResourceAlias(null);
+                              chooseMappingRow(nextMappingIssueRow.id);
+                            }}
+                            testId="ide-hw-next-unmapped"
+                            title={`Select ${nextMappingIssueRow.label} (next unmapped or conflicting signal)`}
+                          >
+                            Next: {nextMappingIssueRow.label} →
+                          </IdeButton>
+                        ) : null}
+                        {lastAssignment ? (
+                          <IdeButton
+                            tone="ghost"
+                            onClick={undoLastAssignment}
+                            testId="ide-hw-undo-assignment"
+                            title={`Restore ${lastAssignment.label} to ${lastAssignment.previousPin || 'unmapped'}`}
+                          >
+                            Undo
+                          </IdeButton>
+                        ) : null}
                         {(() => {
                           const boardRelated = relationshipIndex.resolveField(selectedMappingRow.id);
                           return boardRelated ? (
@@ -3394,7 +3503,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           tone="secondary"
                           onClick={() => {
                             if (!selectedBoardResource || !onSetMappingPin) return;
-                            onSetMappingPin(selectedMappingRow.id, selectedBoardResource.packagePin);
+                            assignPin(selectedMappingRow.id, selectedBoardResource.packagePin);
                           }}
                           disabled={!selectedResourceNeedsApply || !onSetMappingPin}
                           testId="ide-hw-assign-selected-resource"
@@ -3405,7 +3514,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           <IdeButton
                             tone="ghost"
                             onClick={() => {
-                              onSetMappingPin?.(selectedMappingRow.id, '');
+                              assignPin(selectedMappingRow.id, '');
                               setSelectedBoardResourceAlias(null);
                             }}
                             disabled={!onSetMappingPin}
