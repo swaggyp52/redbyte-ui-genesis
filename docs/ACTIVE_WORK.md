@@ -197,6 +197,27 @@ accepted.
     only rendered once a file was already imported — now fixed. HEAD `57b740ee3`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5H product-completion session (2026-09-05, pushed):** three product repairs, each with a contract
+  test that is red without it. (1) An unchanged reload no longer reports a current run as STALE:
+  `computeScenarioContentHash` hashed vector ids, which cloning and persistence drop, so a run could never
+  match its own scenario after a reopen. (2) The board twin's slide switches no longer fight themselves - the
+  press set the value absolutely and the click toggled it back, so clicking the lower half of an ON switch was
+  a silent no-op and a centre click could never turn one off; a press that does not travel now toggles, a
+  slide reads the pointer, and `data-on` is published on switches and LEDs. (3) Creating a bus no longer drops
+  its bits on top of existing symbols - the spawn search clears every slot the caller will fill, with
+  `BUS_MEMBER_SPACING` shared between the reservation and the creation.
+  **Journey denominator reconciled: 24 files in `packages/rb-e2e`, 24 executed against one build, 23 pass,
+  1 partial** (`nested-adder`: blank-project authoring stage A green, stage B layout unresolved). First
+  attempt was 8 pass / 14 fail; all 14 were harness-stale against the P2.5 grammar, none a lost capability,
+  and nothing was removed from the suite. **Harness portability closed:** `packages/rb-e2e/harness.mjs` owns
+  browser resolution (Playwright's own on every platform, `RB_CHROMIUM_PATH` as a validated override - the 23
+  copies of the `/opt/pw-browsers/chromium` Linux hardcoding are gone), `RB_BASE_URL`, and repo-relative
+  evidence. Two reported product defects (node drag, hide-bottom-panel) were investigated and are not defects.
+  HEAD `797bb405b`, label **INTERIM REDBYTE WORKFLOW COMPLETION / REMAINING BLOCKERS NAMED / SOURCE
+  PRESERVED**. Not run this session: full vitest, both golden gates (untouched), unified build, CI. Open:
+  §7 persistence beyond reload (Recent / Open Existing / Save As / Duplicate / imported open, project A/B
+  isolation), §9 keyboard operation and waveform scale beyond the 200-row cap, and the module-instance spawn
+  clearance. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
   proven (`full-adder-operational-journey.mjs`, both viewports, zero store actions):
   first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector

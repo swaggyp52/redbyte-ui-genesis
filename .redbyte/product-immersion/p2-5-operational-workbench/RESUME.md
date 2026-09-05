@@ -4,6 +4,122 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-05 — P2.5H product completion: board gesture, bus placement, journey reconciliation, harness portability (Opus 5, desktop session)
+
+**Label:** INTERIM REDBYTE WORKFLOW COMPLETION / REMAINING BLOCKERS NAMED / SOURCE PRESERVED.
+HEAD `797bb405b` on `claude/redbyte-operational-workbench-convergence-w9k2r4`, pushed (remote == local).
+PR #85 stays DRAFT. Format version 1; both classroom goldens untouched. No merge, no retarget, no
+`main`/product push, no production deploy.
+
+### Product repairs in this session
+
+1. **Unchanged reload reported a current run as STALE** (`ee5387175`). `computeScenarioContentHash` hashed
+   vector `id`s, which `cloneVector` drops and persistence never carries, so a run stamped while ids existed
+   could never match its own scenario after a reopen. The hash now covers content (tick, stimulus, checks,
+   steps, policy), matching why `buildCurrentVerifyProjectHash` already strips ids. Contract:
+   `projectRuntime.authoredCanonicalLoad.test.ts`.
+2. **Board twin switches fought themselves** (`0ef850300`). The hitbox wired `onPointerDown` (set the value
+   absolutely from the press position) and `onClick` (toggle) on the same gesture, so the click undid the
+   press. Clicking the lower half of an ON switch was a silent no-op, and because the hitbox midpoint is the
+   on/off boundary, a centre click could never turn a switch off. Now a press that does not travel is an
+   ordinary click and toggles; past a 4px threshold the gesture becomes a slide and the pointer decides.
+   `data-on` is published on the switch group and the LED, restoring a contract the retired
+   VirtualBasys3Board had. Nine tests, five of them red against the previous component.
+3. **Creating a bus buried existing symbols** (`86f1409a8`). `findSmartSpawnPosition` cleared one slot while
+   the bus created one symbol per bit, stacked 72px down. It now takes the footprint the caller will fill and
+   clears every slot. `BUS_MEMBER_SPACING` is exported from rb-logic-core so the reservation cannot drift from
+   the creation.
+
+### Journey reconciliation (§4) — one build, all files executed
+
+Denominator reconciled: **24 journey files in `packages/rb-e2e`, 24 executed, 23 pass, 1 partial.**
+Earlier "8/22" counted a subset against a stale build. Nothing was removed from the suite.
+
+First attempt (before repair): 8 passed, 14 failed. Every failure was classification **C, harness stale
+against the P2.5 grammar** — none was a lost capability. Rerun after repair: 23 pass, 1 partial.
+
+| Journey | First attempt | Class | Repair | Rerun |
+|---|---|---|---|---|
+| full-adder-operational | pass | — | strengthened separately (`ee5387175`) | pass, both viewports |
+| a11y-scale | pass | — | harness portability only | pass |
+| semantic-zoom | fail | C | document navigation | pass |
+| active-top-authority-probe | fail | C | document navigation | pass |
+| sim-provider | fail | C | provider selector re-anchored | pass |
+| bench-board-sync | fail | C | board state read via `data-on` | pass |
+| signature | fail | C | P2.5 owners | pass |
+| parity | fail | C | P2.5 owners | pass |
+| complex-import | fail | C | import review re-anchored | pass |
+| runs-document | fail | C | runs document opened, not the surface | pass |
+| source-files | fail | C | Project document navigation | pass |
+| shell-status-authority | fail | C | status authority moved surface | pass |
+| engineering-location | fail | C | path text owner | pass |
+| crossprobe | fail | C | `ide-crossprobe*` retired with CrossProbePanel | pass |
+| nested-adder | fail | C | stage A fully repaired; stage B unresolved | **partial** |
+| compare-verdict | pass | — | — | pass |
+| constraint-sets | pass | — | — | pass |
+| migration | pass | — | — | pass |
+| nested-create-module | pass | — | — | pass |
+| package-history | pass | — | — | pass |
+| pin-planner | pass | — | — | pass |
+| project-landing-proof | pass | — | — | pass |
+| vcd-analyzer | pass | — | — | pass |
+| visual-hardening-probe | pass | — | — | pass |
+
+**nested-adder (§6A blank-project authoring), exactly what is proven and what is not.** Proven: blank
+project from cleared storage, ten symbols placed from the real palette, twelve full-adder wires drawn
+through real pin targets (now asserted, previously only printed), five boundary signals renamed through the
+inspector, five gates selected on canvas and turned into a reusable `FullAdder` module whose ports read back
+A, B, CIN, SUM, COUT, the top cleared with the definition surviving, three 4-bit buses, four module
+instances and a ground created. Not proven: the ripple-carry wiring, the deterministic simulation of the
+UI-authored design, and the hierarchical VHDL inspection. Stage B's layout step cannot pick up two symbols
+because nothing of their body is exposed. The bus half of that pile is fixed; module instances still spawn
+on a clearance rule sized for a 48px symbol while an instance with five ports is much larger. That is the
+next Design item, named rather than worked around.
+
+**Two reported product defects were investigated and are not defects.** Node dragging was reported as
+stopping after one grid step; with the hit target verified immediately before each press, every symbol moved
+the full requested distance, and the earlier failures were presses against coordinates that went stale when
+the canvas resized. "Hide bottom panel" was reported as inert; the branch that would make it inert requires
+`consoleMode === 'expanded'`, which no surface passes, and in Design the console is not mounted at all.
+Neither was "fixed".
+
+### Harness portability (§10) — `797bb405b`
+
+`packages/rb-e2e/harness.mjs` is the single owner of how a journey starts. The 23 copies of
+`process.platform === 'linux' ? { executablePath: '/opt/pw-browsers/chromium' } : {}` are gone. Browser
+resolution is Playwright's own on every platform; `RB_CHROMIUM_PATH` is an explicit override, validated when
+supplied and reported by name when the path does not exist. `RB_BASE_URL` replaces the hardcoded port and the
+journey-local `RB_E2E_URL`. `evidenceDir()` writes under the repo instead of the cloud absolute path that
+created a stray `C:\tmp` tree on Windows.
+
+**Script classification (§10).**
+
+- *Student acceptance, no store injection:* full-adder-operational, nested-adder, project-landing-proof.
+- *Seeded integration (loads a starter or fixture through its shipped path, then drives real UI):*
+  bench-board-sync, compare-verdict, complex-import, constraint-sets, crossprobe, engineering-location,
+  migration, nested-create-module, package-history, parity, pin-planner, runs-document, semantic-zoom,
+  signature, sim-provider, source-files, vcd-analyzer, a11y-scale.
+- *Diagnostic probe (measures, does not claim a student workflow):* active-top-authority-probe,
+  shell-status-authority, visual-hardening-probe.
+- *Historical:* none retained.
+
+### Validation run this session
+
+- Journeys: 24 executed, 23 pass, 1 partial (above). Dev server, pinned Node 20.19.0, Windows.
+- Unit: `hardwareBoard2D.interaction.test.tsx` 9 green (5 red without the fix); `placement.test.ts` 5 green
+  (1 red without the fix); `projectRuntime.createBus.test.ts` 4 green.
+- Typecheck: 778 errors under TypeScript 5.9.3, measured with and without this session's product changes.
+  Unchanged by this work. The previously recorded 777 was measured on a different head.
+- Not run this session: the full vitest suite, both classroom golden gates (untouched since `ee5387175`,
+  where they were byte-identical), the unified build, and CI. A green PR fast-check lane is not a green
+  browser suite and is not claimed as one.
+
+### Exact next action
+
+§7 persistence beyond page reload: close/reopen from Recent, Open Existing, Save As, Duplicate, and opening
+an imported package are different operations, and project A/B isolation is unproven. Then §9 real keyboard
+operation and waveform scale beyond the 200-row cap, and the module-instance spawn clearance named above.
+
 ## 2026-09-05 — P2.5H away-mode product-gate closure (Fable 5.1 ultracode, desktop session, Connor away)
 
 **Label:** INTERIM REDBYTE AWAY-MODE CONVERGENCE / SOURCE PUSHED / NOT A RELEASE CANDIDATE.
