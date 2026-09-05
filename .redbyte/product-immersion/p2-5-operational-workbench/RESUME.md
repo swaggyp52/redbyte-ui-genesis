@@ -240,6 +240,21 @@ integrity` and `ide-shell-workbench-hierarchy` fail before and after — they wa
 Center replaced the Project landing (0 files at `3c6e4ee04` too). Rewriting those gates to the Start Center
 grammar is the next persistence-gate step; it is a gate repair, not a product change.
 
+**Persistence gate (`69bbe7ed1`).** `ide-persistence-contract` PASSES again against the pruned build: place an Input
+from the Design library (placement mode → canvas click), read the project hash in Project, reload, hash present,
+node count persisted. Two repairs: (1) the gate harness's universal starter loader opens File → Open Starter…
+(`ide-menu-file` → `ide-menu-item-project.open-starter`) and waits for `ide-project-starter-picker` when the
+workspace already holds a project and no landing catalog is on screen — the picker's cards already carry
+`ide-project-landing-example-*` / `ide-project-load-start-*`; (2) the overview's determinism-hash fact value carries
+`ide-project-hash-short` (the fact was already shown; only the hook was missing). Shell-gate disposition after
+the repair: `ide-shell-layout-integrity` and `ide-shell-workbench-hierarchy` get past the starter load and fail on
+"stage navigation missing" — they assert the pre-P2.5 shell (`ide-stage-nav`, `ide-left-rail`/`ide-right-rail`,
+`ide-proof-ribbon`, `ide-project-workspace-grid`, `ide-project-professional-overview`, `ide-verify-signal-shelf`);
+the shell kept `mode-button-*` (WorkspaceRail) and `ide-mode-*` (shell root), so 94/146 of the 176 gate scripts
+still resolve those. Rewriting the rail/ribbon assertions to `ide-workspace-rail` and the Problems ledger is a
+gate change (scripts/gates), not a product change; not started. Gate runs need `pnpm --filter @redbyte/playground
+build` first (the harness previews `apps/playground/dist` with `vite preview`).
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.

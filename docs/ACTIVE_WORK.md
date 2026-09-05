@@ -184,8 +184,10 @@ accepted.
   (Identity → Actions → Selection details → Connectivity → Evidence → Mapping → Source → Related; board
   relations name the package pin), and a census-driven legacy CSS deletion (1,909 rules whose classes no element
   renders; `ide-root.css` 32,786 → 24,329 lines; owner record `css-owner-record-w10.json` beside RESUME). Three shell
-  Playwright gates fail before and after on retired Project-landing test ids (inherited; gate repair pending).
-  HEAD `66a899659`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  `ide-persistence-contract` passes again (harness opens File → Open Starter…; the overview hash fact carries
+  `ide-project-hash-short`); the two shell layout/hierarchy gates still assert the retired rail/ribbon ids
+  (`ide-stage-nav`, `ide-proof-ribbon`) — inherited, gate rewrite pending.
+  HEAD `69bbe7ed1`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
