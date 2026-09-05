@@ -192,7 +192,7 @@ accepted.
   its SHA, and reload — which found and fixed one staleness authority split (Simulate said CURRENT while the status bar
   and Package said stale), an inoperable driver row on the trace path, a replay-mode deck collapse, and a shell gate
   that toggled a board input mid-assertion.
-  HEAD `bdf22ee0c`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
+  HEAD `353076e16`, label **INTERIM REDBYTE AWAY-MODE CONVERGENCE /
   SOURCE PUSHED / NOT A RELEASE CANDIDATE**. Away-mode freeze in force: no merge/retarget/main/product/
   production/site changes. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is

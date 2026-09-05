@@ -322,6 +322,37 @@ inert (`:not(.is-open)` never matching, and a surviving `!important` in ide-root
 File-menu picker and never exercises the Start Center's own cards; and two doc fragments in RESUME/ACTIVE_WORK read
 as garbled. None of these is confirmed; each needs one focused check before it is either fixed or dismissed.
 
+**Lane-review triage closed (`353076e16`).** The 17 unverified findings recorded above were triaged by hand.
+**Four were real and are fixed:**
+1. *The Wave Four "re-homed drawer cap" was inert and had silently uncapped the drawer.* Its predecessor in
+   `ide-root.css` carried `!important`; the plain re-homed rule lost to a surviving
+   `.ide-verify-drawer-body { max-height: none !important }` (an `!important` beats any specificity). Removing that
+   one declaration's `!important` restores `min(34vh, 320px)` and retires one more forced rule. The companion strip
+   rule is deleted: the supporting strip is only ever rendered with `is-open`, so `:not(.is-open)` never matched —
+   it was dead when written. The contract test now also asserts nothing in `ide-root.css` outranks the cap.
+2. *Pin conflicts were keyed on the raw row pin.* After board relations began naming the package pin, a row storing
+   `LD0` and a row storing `U16` no longer collided in `pinOwners`. Keyed on the resolved package pin now, with a
+   cross-notation conflict test.
+3. *`02-design.md` overstated Source*: it renders for any single selected node and says so when the signal is not
+   named in the generated source. Sentence corrected.
+4. *The hierarchy gate had stopped checking student-visible stage names* when the rail assertion moved to
+   `data-stage` ids. It asserts both again, against the rail's real labels (Project / Design / Simulate / Board /
+   Package).
+
+**Dismissed with evidence.** The CSS deletion orphaned nothing: an audit of the whole
+`3c6e4ee04..HEAD` stylesheet diff against the 766-class live DOM sample found **177 rendered classes touched by a
+removed rule and 0 left without a styling rule anywhere** (script `prune-audit2.js`, subject-class analysis including
+`:is()` members), and a light-theme pass over Design renders correctly — so the removed light-theme `:is()` rules
+were refinements whose live members keep their styling. The persistence gate's hash assertion is weak but not false
+(the overview's determinism-hash fact is non-empty in the live run); a before/after comparison would be stronger and
+is left open. **Deferred deliberately:** the Related list can emit a duplicate `data-testid` when a signal's driver
+lives in another module — it matches the existing `RelatedMenu` convention exactly, and changing one without the
+other would be worse than the hazard; it is test-only.
+
+**Method note for the next session:** the review workflow's verification stage is the part that failed, and its
+"0 confirmed" was an artifact of empty vote arrays, not a clean result. When a workflow's verify stage dies, treat
+its raw findings as a triage list and check them by hand — as done here — rather than reading the summary count.
+
 **Known gap (not in this slice):** a project's own run ledger lives only in the runtime envelope of the
 active project; reopening a project from the repository starts without its previous runs (the repository
 snapshot carries scenarios, not runs). Extending the snapshot is a repository-format decision, not a new store.
