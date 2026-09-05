@@ -48,6 +48,18 @@ describe('engineeringRelationships — board link pin', () => {
     expect(relation?.board?.resource?.alias).toBe('LD0');
   });
 
+  it('reports two rows on the same physical pin as a conflict however each was written', () => {
+    // One row stores the package pin, the other the board alias; both drive U16.
+    const built = index([
+      { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'U16', port: 'out', direction: 'in' },
+      { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'LD0', port: 'in', direction: 'out' },
+    ]);
+    expect(built.resolveField('ld0')?.board?.pin).toBe('U16');
+    expect(built.resolveField('ld0')?.ambiguity.join(' ')).toContain('U16');
+    expect(built.resolveField('ld0')?.ambiguity.join(' ')).toContain('sw0');
+    expect(built.resolveField('sw0')?.ambiguity.join(' ')).toContain('ld0');
+  });
+
   it('leaves an unknown pin untouched rather than inventing a resource', () => {
     const relation = index([
       { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'Z99', port: 'in', direction: 'out' },

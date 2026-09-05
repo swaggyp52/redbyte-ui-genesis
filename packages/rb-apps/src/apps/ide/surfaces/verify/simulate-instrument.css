@@ -496,8 +496,8 @@
 .ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
 .ide-root .rb-tl-cell.is-generated { cursor: default; }
 
-/* Legacy verify drawer caps, moved here from ide-root.css (their previous owner used !important). The
-   supporting strip and drawer body belong to the Simulate surface; the mode-marker selector already outranks
-   the generic drawer rules, so no cap is needed. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip:not(.is-open) { max-height: 38px; }
+/* The drawer height belongs to Simulate. Its previous owner in ide-root.css used !important; this rule
+   outranks every generic .ide-verify-drawer-body rule on specificity alone, now that the one competing
+   !important there is gone. (The supporting strip's closed-state cap was dropped with it: the strip is only
+   ever rendered open, so `:not(.is-open)` could never match.) */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { max-height: min(34vh, 320px); }

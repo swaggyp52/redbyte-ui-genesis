@@ -172,6 +172,10 @@ async function assertShellHierarchy(page, viewport, mode) {
     JSON.stringify(state.stageLabels) === JSON.stringify(['project', 'design', 'verify', 'hardware', 'export']),
     `${viewport.label}/${mode.id}: stage navigation must be the one five-stage authority, got ${JSON.stringify(state.stageLabels)}`
   );
+  assert(
+    JSON.stringify(state.stageNames) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board', 'Package']),
+    `${viewport.label}/${mode.id}: the rail must name the five stages a student sees, got ${JSON.stringify(state.stageNames)}`
+  );
   assert(state.importIsUtility, `${viewport.label}/${mode.id}: Import must be a utility, not step 6`);
   assert(state.pageCommandHeaderCount <= 1, `${viewport.label}/${mode.id}: duplicate page command headers are visible`);
   assert(state.primaryActionCount <= 1, `${viewport.label}/${mode.id}: ${state.primaryActionCount} competing primary actions are visible`);
@@ -264,6 +268,9 @@ async function readHierarchyState(page, mode) {
         focal: firstVisibleRect(regions.primary),
         support: regions.support.map((selectors) => firstRenderedRect(selectors)),
         productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter(visible).length,
+        stageNames: Array.from(document.querySelectorAll('[data-testid="ide-workspace-rail"] button[data-stage]'))
+          .filter(visible)
+          .map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
         stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-workspace-rail"] button[data-stage]'))
           .filter(visible)
           .map((element) => element.getAttribute('data-stage') ?? ''),

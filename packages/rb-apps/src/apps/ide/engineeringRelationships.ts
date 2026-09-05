@@ -182,8 +182,13 @@ export function buildEngineeringRelationshipIndex(input: EngineeringRelationship
   for (const row of ioRows) {
     const key = normalizeSignalId(row.id);
     fieldCounts.set(key, (fieldCounts.get(key) ?? 0) + 1);
+    // Key on the physical pin: a row may store the board alias (LD1) or the package pin (E19),
+    // and two rows that resolve to the same package pin are a conflict however they were written.
     const pin = row.pin?.trim();
-    if (pin) pinOwners.set(pin, [...(pinOwners.get(pin) ?? []), row.id]);
+    if (pin) {
+      const packagePin = getBasys3BoardResource(pin)?.packagePin ?? pin;
+      pinOwners.set(packagePin, [...(pinOwners.get(packagePin) ?? []), row.id]);
+    }
   }
 
   const resolver =
@@ -257,11 +262,11 @@ export function buildEngineeringRelationshipIndex(input: EngineeringRelationship
     let board: RelationBoardLink | null = null;
     const pin = row.pin?.trim() ?? '';
     if (pin) {
-      const owners = pinOwners.get(pin) ?? [];
-      if (owners.length > 1) ambiguity.push(`pin ${pin} is also assigned to ${owners.filter((id) => id !== row.id).join(', ')}`);
       // A row may carry the board alias (LD0) or the package pin (U16); constraints name the package pin.
       const resource = getBasys3BoardResource(pin);
       const packagePin = resource?.packagePin ?? pin;
+      const owners = pinOwners.get(packagePin) ?? [];
+      if (owners.length > 1) ambiguity.push(`pin ${packagePin} is also assigned to ${owners.filter((id) => id !== row.id).join(', ')}`);
       const xdcLines = xdcLinesForAssignment(row.label, packagePin, 'LVCMOS33');
       board = {
         pin: packagePin,

@@ -119,9 +119,10 @@ describe('ide-root.css — the retired verify layout owners are gone', () => {
 });
 
 describe('simulate-instrument.css — re-homed drawer caps carry no !important', () => {
-  it('states the supporting strip and drawer body limits as plain rules', () => {
-    expect(simulateCss).toContain(".ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip:not(.is-open) { max-height: 38px; }");
+  it('caps the drawer body from Simulate, with nothing in ide-root.css outranking it', () => {
     expect(simulateCss).toContain(".ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { max-height: min(34vh, 320px); }");
+    // A plain rule only wins if no `!important` competes: ide-root.css must not force the height.
+    expect(stripComments(rootCss)).not.toMatch(/\.ide-verify-drawer-body[^{]*\{[^}]*max-height:[^;]*!important/);
     expect(stripComments(simulateCss)).not.toContain('!important');
   });
 });

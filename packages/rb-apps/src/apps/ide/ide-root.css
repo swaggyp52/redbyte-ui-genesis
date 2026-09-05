@@ -13157,9 +13157,10 @@ details[open].ide-export-evidence-details > summary::before {
   align-items: center;
 }
 
+/* No cap here: the Simulate surface owns the drawer height (simulate-instrument.css). */
 .ide-verify-drawer-body {
   min-height: 320px;
-  max-height: none !important;
+  max-height: none;
   overflow: auto;
 }
 
