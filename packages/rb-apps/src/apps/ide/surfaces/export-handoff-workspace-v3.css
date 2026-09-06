@@ -401,7 +401,7 @@
 .ide-export-v3__handoff dl > div { display: grid; grid-template-columns: minmax(90px, .8fr) minmax(0, 1.2fr); gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--rb-border-subtle); }
 .ide-export-v3__handoff dl > div:last-child { border-bottom: 0; }
 .ide-export-v3__handoff dt { color: var(--rb-text-muted); font-size: 13px; }
-.ide-export-v3__handoff dd { margin: 0; overflow-wrap: anywhere; color: var(--rb-text-primary); font-size: 13px; font-weight: 650; }
+.ide-export-v3__handoff dd { margin: 0; overflow-wrap: anywhere; color: var(--rb-text-primary); font-size: 13px; font-weight: 600; }
 .ide-export-v3__handoff section { padding: 12px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface-2); }
 .ide-export-v3__handoff section span { font-size: 13px; font-weight: 700; }
 .ide-export-v3__handoff section p,
@@ -422,7 +422,7 @@
   border: 1px solid var(--rb-border); border-radius: 10px; background: var(--rb-surface);
 }
 .ide-export-history-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.ide-export-history-head span { font-size: 12px; font-weight: 700; color: var(--rb-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.ide-export-history-head span { font-size: 12px; font-weight: 700; color: var(--rb-text-muted); text-transform: none; letter-spacing: 0; }
 .ide-export-history-head strong { font-size: 12px; color: var(--rb-text-secondary); }
 .ide-export-history-empty { margin: 0; font-size: 12.5px; color: var(--rb-text-muted); line-height: 1.5; }
 .ide-export-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
@@ -435,22 +435,22 @@
 .ide-export-history-entry.is-blocked { opacity: 0.7; }
 .ide-export-history-ordinal { font-weight: 700; color: var(--rb-text-secondary); min-width: 26px; }
 .ide-export-history-kind { flex: 1 1 auto; }
-.ide-export-history-trust { font-size: 10.5px; padding: 1px 6px; border-radius: 5px; background: color-mix(in srgb, var(--rb-text-muted) 14%, transparent); color: var(--rb-text-secondary); }
+.ide-export-history-trust { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: color-mix(in srgb, var(--rb-text-muted) 14%, transparent); color: var(--rb-text-secondary); }
 .ide-export-history-trust.is-trusted { background: color-mix(in srgb, var(--rb-success) 16%, transparent); color: var(--rb-success); }
-.ide-export-history-hash { font-family: var(--rb-font-mono, monospace); font-size: 11px; color: var(--rb-text-muted); }
-.ide-export-history-time { font-size: 11px; color: var(--rb-text-muted); }
+.ide-export-history-hash { font-family: var(--rb-font-mono, monospace); font-size: 12px; color: var(--rb-text-muted); }
+.ide-export-history-time { font-size: 12px; color: var(--rb-text-muted); }
 
 .ide-export-provenance, .ide-export-comparison {
   border: 1px solid var(--rb-border-subtle, var(--rb-border)); border-radius: 8px; padding: 9px 11px; background: var(--rb-app-bg, var(--rb-surface));
 }
-.ide-export-provenance-title, .ide-export-comparison-title { margin: 0 0 6px; font-size: 11.5px; font-weight: 600; color: var(--rb-text-secondary); }
+.ide-export-provenance-title, .ide-export-comparison-title { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--rb-text-secondary); }
 .ide-export-provenance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin: 0; }
 .ide-export-provenance-grid > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.ide-export-provenance-grid dt { font-size: 11px; color: var(--rb-text-muted); margin: 0; }
+.ide-export-provenance-grid dt { font-size: 12px; color: var(--rb-text-muted); margin: 0; }
 .ide-export-provenance-grid dd { margin: 0; }
-.ide-export-provenance-grid code, .ide-export-comparison code { font-family: var(--rb-font-mono, monospace); font-size: 11px; color: var(--rb-text-primary); }
+.ide-export-provenance-grid code, .ide-export-comparison code { font-family: var(--rb-font-mono, monospace); font-size: 12px; color: var(--rb-text-primary); }
 .ide-export-comparison-identical { margin: 0; font-size: 12px; color: var(--rb-success); }
-.ide-export-comparison-none { margin: 8px 0 0; font-size: 11.5px; color: var(--rb-text-muted); }
+.ide-export-comparison-none { margin: 8px 0 0; font-size: 12px; color: var(--rb-text-muted); }
 .ide-export-comparison-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .ide-export-comparison-change { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .ide-export-comparison-field { min-width: 120px; color: var(--rb-text-secondary); }

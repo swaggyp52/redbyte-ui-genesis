@@ -1,0 +1,159 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   RedByte typography — the single owner.
+
+   Before this file, RedByte had no font of its own. `--rb-font-ui` was declared
+   three times in three files with different values, the system-font definition
+   won, and IBM Plex was never loaded at all. A computed-style audit across all
+   five workspaces measured what actually reached the screen:
+
+       Segoe UI Variable  572 elements   (a Windows fallback, not a choice)
+       Cascadia Mono      433 elements   (a terminal fallback, and more common
+                                          than the UI face on the Package surface)
+       ui-monospace         5
+       IBM Plex Sans        3
+
+   That is why the product read as an internal tool, and why it looked different
+   on every machine. The same audit found 11 distinct type sizes including 8.8px,
+   9px, 10.5px and 10.8px, and six weights including 650 and 900.
+
+   So: two families, loaded locally with the app (never from a CDN), one finite
+   scale, and a small set of weights. Everything else in the codebase points here.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root,
+.ide-root {
+  /* The two families. Nothing else may define these. */
+  --rb-font-ui:
+    'IBM Plex Sans Variable', 'IBM Plex Sans', 'Segoe UI Variable', 'Segoe UI', system-ui,
+    -apple-system, sans-serif;
+  --rb-font-mono:
+    'IBM Plex Mono', 'Cascadia Mono', 'SFMono-Regular', Consolas, ui-monospace, monospace;
+
+  /* ── The scale ──────────────────────────────────────────────────────────────
+     Six steps. Nothing essential renders below 12px at 100% zoom; `micro` is for
+     ornament only (a separator glyph, a shortcut hint) and never for an
+     engineering value, a command label, or a state word. */
+  --rb-text-micro: 11px;   /* ornament only */
+  --rb-text-meta: 12px;    /* status, metadata, secondary labels */
+  --rb-text-dense: 12.5px; /* dense table and grid values */
+  --rb-text-body: 13px;    /* ordinary UI text and controls */
+  --rb-text-head: 14px;    /* pane and document headings */
+  --rb-text-title: 16px;   /* the selected object, inspector titles */
+  --rb-text-doc: 19px;     /* document titles */
+
+  /* ── Weights ────────────────────────────────────────────────────────────────
+     400 / 500 / 600 for ordinary interface. 700 is reserved for product and
+     document titles. Synthetic weights (650, 800, 900) are gone: IBM Plex Sans
+     Variable covers 100-700 for real, so the browser never has to fake one. */
+  --rb-weight-normal: 400;
+  --rb-weight-medium: 500;
+  --rb-weight-strong: 600;
+  --rb-weight-title: 700;
+
+  /* ── Line heights ───────────────────────────────────────────────────────── */
+  --rb-lh-dense: 1.25;  /* table rows, grid cells */
+  --rb-lh-tight: 1.35;  /* headings, single-line controls */
+  --rb-lh-normal: 1.5;  /* prose and multi-line labels */
+
+  /* Legacy aliases, so the ~120 existing references keep working and resolve to
+     the one definition above instead of a competing fallback stack. */
+  --rb-font-sans: var(--rb-font-ui);
+  --ide-font-ui: var(--rb-font-ui);
+  --ide-font-mono: var(--rb-font-mono);
+  --wb-font-mono: var(--rb-font-mono);
+  --rb-mono: var(--rb-font-mono);
+}
+
+/* The application frame sets the family once; nothing inside needs to restate it. */
+.ide-root {
+  font-family: var(--rb-font-ui);
+  font-size: var(--rb-text-body);
+  line-height: var(--rb-lh-normal);
+  font-synthesis-weight: none;
+  font-synthesis-style: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Form controls do not inherit type by default in any browser. */
+.ide-root button,
+.ide-root input,
+.ide-root select,
+.ide-root textarea,
+.ide-root optgroup {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+
+/* Monospace is for technical identifiers and source, never for prose. */
+.ide-root code,
+.ide-root kbd,
+.ide-root samp,
+.ide-root pre {
+  font-family: var(--rb-font-mono);
+  font-variant-ligatures: none;
+}
+
+/* Engineering values line up in columns: pins, ticks, counts, hashes, bit values.
+   Proportional digits make a case table impossible to scan down. */
+.ide-root code,
+.ide-root kbd,
+.ide-root samp,
+.ide-root pre,
+.ide-root table,
+.ide-root .rb-num,
+.ide-root [data-rb-numeric='true'] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+}
+
+/* ── Section labels ─────────────────────────────────────────────────────────
+   232 rules in this codebase set `text-transform: uppercase`, and the result was a
+   Design inspector showing nine stacked all-caps eyebrows — SELECTION, PART LABEL,
+   ACTIONS, EDIT, SWAP TYPE, NET TRACING, DANGER, SELECTION DETAILS, CONNECTIVITY —
+   above the content they label. Caps as the DEFAULT heading treatment flattens
+   hierarchy: everything shouts, so nothing leads.
+
+   A section label is now sentence case, one weight step up, one colour step down.
+   Short state and kind chips keep their caps, because there a capital is a token
+   rather than a heading. This overrides the scattered rules from one place instead
+   of editing them all. */
+.ide-root .ide-inspector-title,
+.ide-root .rb-insp-group-label,
+.ide-root .rb-insp-io-state-kicker,
+.ide-root .rb-lib-toggle,
+.ide-root .wb-toolwindow-title,
+.ide-root .ide-panel-title,
+.ide-root .rb-pane-title,
+.ide-root .rb-section-title {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: var(--rb-weight-strong);
+  font-size: var(--rb-text-meta);
+  line-height: var(--rb-lh-tight);
+}
+
+/* The browser default for `strong` is `bolder`, which resolves against the parent: inside a
+   600-weight row it became 900, a weight the family does not have, so the browser synthesised
+   one. Emphasis is a defined step like every other. */
+.ide-root b,
+.ide-root strong {
+  font-weight: var(--rb-weight-strong);
+}
+
+/* Headings carry hierarchy through size and weight, not through capitalisation.
+   All-caps eyebrow text over every section is what made the surfaces read as a
+   wall of equal-weight labels. */
+.ide-root h1,
+.ide-root h2,
+.ide-root h3,
+.ide-root h4,
+.ide-root h5,
+.ide-root h6 {
+  font-weight: var(--rb-weight-strong);
+  line-height: var(--rb-lh-tight);
+  letter-spacing: 0;
+  margin: 0;
+}

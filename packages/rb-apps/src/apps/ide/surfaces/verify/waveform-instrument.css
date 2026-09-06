@@ -132,7 +132,7 @@
 /* Tools panel (zoom / density / cursors): one row of compact controls. */
 .ide-root .rb-wave-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px var(--wb-space-3); border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-wave-tools-section { display: inline-flex; align-items: center; gap: 4px; }
-.ide-root .rb-wave-tools-label { margin: 0; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-wave-tools-label { margin: 0; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-wave-tools button { height: 22px; padding: 0 7px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-ui); cursor: pointer; }
 .ide-root .rb-wave-tools button.is-active,
 .ide-root .rb-wave-tools button[aria-pressed='true'] { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
@@ -171,14 +171,14 @@
 /* Bus words: one 26px row per declared bus — id · hex · binary/decimal · per-tick strip. */
 .ide-root .rb-wave-bus-words { display: block; margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--wb-border); border-radius: 0; background: var(--wb-surface); }
 .ide-root .rb-wave-bus-words-header { display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 var(--wb-space-3); background: var(--wb-surface-2); border-bottom: 1px solid var(--wb-border); }
-.ide-root .rb-wave-bus-words-title { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-wave-bus-words-title { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-wave-bus-words-hint { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-wave-bus-words-list { margin: 0; padding: 0; list-style: none; }
 .ide-root .rb-wave-bus-word-lane { display: grid; grid-template-columns: 128px 72px minmax(120px, 0.6fr) minmax(0, 1fr); align-items: center; gap: 8px; min-height: 26px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-wave-bus-word-lane:last-child { border-bottom: 0; }
 .ide-root .rb-wave-bus-word-id { display: flex; flex-direction: column; min-width: 0; }
 .ide-root .rb-wave-bus-word-id code { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
-.ide-root .rb-wave-bus-word-dir { color: var(--wb-text-3); font-size: 10px; }
+.ide-root .rb-wave-bus-word-dir { color: var(--wb-text-3); font-size: 11px; }
 .ide-root .rb-wave-bus-word-lane.is-input .rb-wave-bus-word-id code { color: var(--rb-wave-in); }
 .ide-root .rb-wave-bus-word-lane.is-output .rb-wave-bus-word-id code { color: var(--rb-wave-out); }
 .ide-root .rb-wave-bus-word-value { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -214,7 +214,7 @@
 .ide-root .ide-vwp-empty-hero-icon { display: none; }
 .ide-root .ide-vwp-empty-hero-steps { margin: 0; padding-left: 16px; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
 .ide-root .ide-vwp-empty-hero-signals { display: inline-flex; flex-wrap: wrap; gap: 4px; }
-.ide-root .ide-vwp-empty-hero-signals-label { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.ide-root .ide-vwp-empty-hero-signals-label { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); text-transform: none; letter-spacing: 0; }
 .ide-root .ide-vwp-empty-signal-list { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .ide-root .ide-vwp-empty-signal-list li,
 .ide-root .ide-vwp-empty-signal-list code { padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
@@ -253,7 +253,7 @@
 }
 
 /* Edge navigation: a compact count beside the two step buttons. */
-.ide-root .rb-wave-edges__count { font-size: 11px; color: var(--wb-text-3); white-space: nowrap; }
+.ide-root .rb-wave-edges__count { font-size: 12px; color: var(--wb-text-3); white-space: nowrap; }
 
 /* Playback + live readout: what is happening at the selected tick. The bar
    fills as the cursor walks the run; a mismatch turns the readout warm. */
@@ -264,7 +264,7 @@
 .ide-root .rb-wave-readout code { font: var(--wb-text-xs) var(--wb-font-mono); padding: 1px 5px; border-radius: 3px; background: var(--wb-surface-2, var(--wb-surface)); color: var(--wb-text-2); }
 .ide-root .rb-wave-readout code.is-muted { opacity: 0.6; }
 .ide-root .rb-wave-readout code.is-followed { box-shadow: inset 0 -2px 0 var(--wb-focus); }
-.ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; color: var(--wb-text-3); }
+.ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; color: var(--wb-text-3); }
 .ide-root .rb-wave-readout__pos { display: inline-flex; align-items: center; gap: 6px; }
 .ide-root .rb-wave-readout__progress { display: inline-block; width: 72px; height: 4px; border-radius: 2px; background: var(--wb-border); overflow: hidden; }
 .ide-root .rb-wave-readout__progress > span { display: block; width: 100%; height: 100%; background: var(--wb-focus); transform-origin: left center; transition: transform 120ms linear; }

@@ -405,7 +405,7 @@
 
 .ide-root .ide-project-name-edit-cue {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -599,7 +599,7 @@
   border-radius: 50%;
   color: var(--rb-text-muted);
   font-family: var(--rb-font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -637,7 +637,7 @@
 .ide-root .ide-mode-hint {
   display: block;
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.25;
   white-space: nowrap;
@@ -645,7 +645,7 @@
 
 .ide-root .ide-mode-state {
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -725,7 +725,7 @@
   .ide-root .ide-mode-label {
     max-width: 64px;
     overflow: hidden;
-    font-size: 11px;
+    font-size: 12px;
     text-align: center;
     text-overflow: ellipsis;
   }

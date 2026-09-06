@@ -122,7 +122,7 @@
   border-radius: var(--wb-radius);
   color: var(--wb-text-2);
   background: var(--wb-surface);
-  font: 600 10px var(--wb-font-mono);
+  font: 600 11px var(--wb-font-mono);
 }
 .ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
@@ -164,8 +164,8 @@
   text-overflow: ellipsis;
   color: var(--wb-text-2);
   font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .ide-root .rb-lib-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
@@ -179,7 +179,7 @@
   border-radius: var(--wb-radius);
   color: var(--wb-text-3);
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
 }
 .ide-root .rb-lib-toggle:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
@@ -226,8 +226,8 @@
   color: var(--wb-text-2);
   background: var(--wb-surface-2);
   font: 600 var(--wb-text-xs) / 24px var(--wb-font-ui);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-content { padding: 4px var(--wb-space-3) 8px; }
 .ide-root .rb-insp-sel-inspector,
@@ -259,8 +259,8 @@
   margin: 4px 0 2px;
   color: var(--wb-text-3);
   font: 600 var(--wb-text-xs) / 16px var(--wb-font-ui);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .ide-root .rb-insp-identity-row { display: flex; align-items: flex-start; gap: 8px; }
 .ide-root .rb-insp-title-block { flex: 1; min-width: 0; }

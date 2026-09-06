@@ -455,7 +455,7 @@
   align-items: center;
   justify-content: center;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   pointer-events: none;
@@ -516,7 +516,7 @@
   border-radius: 4px;
   color: var(--rb-text-secondary);
   background: var(--rb-surface-2);
-  font: 600 11px/1.2 inherit;
+  font: 600 12px/1.2 inherit;
 }
 
 .ide-root .ide-command-palette-empty {
@@ -539,7 +539,7 @@
   color: var(--rb-text-primary);
   background: var(--rb-surface-1);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   list-style: none;
 }
@@ -552,7 +552,7 @@
   content: '▾';
   margin-left: 6px;
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 @media (max-width: 1500px) {
@@ -634,7 +634,7 @@
   border-radius: 5px;
   background: transparent;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 720;
   cursor: pointer;
 }
@@ -671,7 +671,7 @@
 .ide-root .ide-design-inline-board header p {
   margin: 3px 0 0;
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -728,7 +728,7 @@
 .ide-root .ide-design-board-binding-list small,
 .ide-root .ide-design-tree em {
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-style: normal;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -741,7 +741,7 @@
 
 .ide-root .ide-design-board-binding-list code {
   color: var(--rb-text-secondary);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-root .ide-design-inline-board,
@@ -755,7 +755,7 @@
   display: grid;
   gap: 5px;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 720;
 }
 
@@ -774,7 +774,7 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-inline-board-field select {
   font-size: 12px !important;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
@@ -802,13 +802,13 @@
 
 .ide-root .ide-design-inline-board-facts dt {
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-root .ide-design-inline-board-facts dd {
   margin: 0;
   color: var(--rb-text-primary);
-  font: 600 10px/1.35 var(--rb-font-mono, monospace);
+  font: 600 11px/1.35 var(--rb-font-mono, monospace);
   overflow-wrap: anywhere;
 }
 
@@ -844,7 +844,7 @@
 .ide-root .ide-design-simulation-readout span {
   margin: 0;
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-root .ide-design-toolbar-customize,
@@ -859,7 +859,7 @@
   border: 1px solid var(--rb-border-default);
   border-radius: 6px;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 720;
   cursor: pointer;
   list-style: none;
@@ -1240,7 +1240,7 @@
   background: color-mix(in srgb, var(--rb-action) 10%, transparent);
   color: var(--rb-action);
   padding: 2px 8px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -1267,10 +1267,10 @@
 
 .ide-root .ide-projectx-learning-path-label {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ide-root .ide-projectx-path-step {
@@ -1305,7 +1305,7 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
   color: var(--rb-action);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1371,7 +1371,7 @@
 
 .ide-format-migration-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ide-format-migration-head h2 { margin: 0; font-size: 16px; font-weight: 680; }
-.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: 11px; color: var(--rb-text-muted); }
+.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: 12px; color: var(--rb-text-muted); }
 
 .ide-format-migration-body { margin: 0; font-size: 13px; line-height: 1.55; color: var(--rb-text-secondary); }
 

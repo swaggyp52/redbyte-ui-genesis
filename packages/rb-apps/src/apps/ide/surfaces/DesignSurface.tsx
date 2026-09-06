@@ -4645,9 +4645,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? primarySelectionDiagnostic.severity === 'error'
         ? 'Compiler issue'
         : 'Compiler warning'
-      : hasInspectorSelectionContext
-        ? 'Ready'
-        : 'Idle';
+      : // A selection with nothing wrong needs no chip. "Ready" and "Idle" were decoration:
+        // they appeared beside every healthy object and told the student nothing they could
+        // not already see. The chip now exists only when it carries a problem.
+        null;
   const selectionStatusTone =
     (primarySelectionIssue?.severity === 'draft' ? 'warn' : primarySelectionIssue?.severity) ??
     (primarySelectionDiagnostic?.severity === 'error'
@@ -5257,7 +5258,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span data-testid="ide-design-selection-type">{typeName}</span>
                 </p>
               </div>
-              <span className={`rb-insp-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
@@ -5286,7 +5287,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   Use Arrow keys to nudge this group, align shared edges when it gets messy, or press Ctrl+D / Cmd+D to duplicate it.
                 </p>
               </div>
-              <span className={`rb-insp-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
@@ -5334,7 +5335,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
               </div>
-              <span className={`rb-insp-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
@@ -5364,7 +5365,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   Wire net from {selectedWireContext.sourceLabel} to {selectedWireContext.targetLabel}
                 </p>
               </div>
-              <span className={`rb-insp-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>

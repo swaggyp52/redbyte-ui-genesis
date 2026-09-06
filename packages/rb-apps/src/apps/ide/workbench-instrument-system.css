@@ -36,11 +36,14 @@
   /* type */
   --wb-font-ui: var(--rb-font-ui);
   --wb-font-mono: var(--rb-font-mono);
-  --wb-text-xs: 11px;
-  --wb-text-sm: 12px;
-  --wb-text-md: 12.5px;
-  --wb-text-lg: 13.5px;
-  --wb-text-title: 15px;
+  /* The workbench scale is the product scale. It used to be a second, slightly different
+     set of numbers, which is how labels ended up at 11px next to labels at 12px doing the
+     same job. Every step now points at redbyte-type.css. */
+  --wb-text-xs: var(--rb-text-meta);
+  --wb-text-sm: var(--rb-text-meta);
+  --wb-text-md: var(--rb-text-dense);
+  --wb-text-lg: var(--rb-text-body);
+  --wb-text-title: var(--rb-text-title);
 
   /* surfaces + separators (light) */
   --wb-bg: var(--rb-app-bg);
@@ -320,7 +323,7 @@
 .ide-root .wb-menu-item[data-active='true'] { background: var(--wb-accent-bg); outline: none; }
 .ide-root .wb-menu-item[aria-disabled='true'] { color: var(--wb-text-3); }
 .ide-root .wb-menu-item[aria-disabled='true']:hover { background: transparent; }
-.ide-root .wb-menu-item-check { font-size: 10px; color: var(--wb-accent); text-align: center; }
+.ide-root .wb-menu-item-check { font-size: 11px; color: var(--wb-accent); text-align: center; }
 .ide-root .wb-menu-item-label { overflow: hidden; text-overflow: ellipsis; }
 .ide-root .wb-menu-item-key { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .wb-menu-sep { height: 1px; margin: 4px 6px; background: var(--wb-border); }
@@ -398,7 +401,7 @@
   border-right: 2px solid transparent;
   color: var(--wb-text-2);
   background: transparent;
-  font: 500 10.5px / 1 var(--wb-font-ui);
+  font: 500 11px / 1 var(--wb-font-ui);
   letter-spacing: 0.01em;
   cursor: pointer;
 }
@@ -716,7 +719,7 @@
 .ide-root .wb-tree-row[aria-selected='true'],
 .ide-root .wb-tree-row.is-selected { background: var(--wb-accent-bg-strong); }
 .ide-root .wb-tree-row[aria-current='true'] { color: var(--wb-text); font-weight: 600; }
-.ide-root .wb-tree-chevron { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--wb-text-3); font-size: 10px; }
+.ide-root .wb-tree-chevron { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--wb-text-3); font-size: 11px; }
 .ide-root .wb-tree-icon { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--wb-text-2); }
 .ide-root .wb-tree-icon svg { width: 14px; height: 14px; }
 .ide-root .wb-tree-label { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1005,8 +1008,8 @@
   gap: 6px;
   color: var(--wb-text-2);
   font: 600 var(--wb-text-xs) var(--wb-font-ui);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .ide-root .rb-problems-panel .rb-problems-row {
   grid-template-columns: 18px minmax(0, 1fr) auto;
@@ -1021,7 +1024,7 @@
   border-radius: 3px;
   color: var(--wb-on-accent, #fff);
   background: var(--wb-text-3);
-  font: 700 10px/16px var(--wb-font-mono);
+  font: 700 11px/16px var(--wb-font-mono);
   text-align: center;
 }
 .ide-root .rb-problems-panel .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }

@@ -29,8 +29,8 @@
   },
   "dependencies": {
     "@redbyte/rb-board-profiles": "workspace:*",
-    "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-fpga-proof-core": "workspace:*",
+    "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
     "@redbyte/rb-instruments": "workspace:*",
     "@redbyte/rb-lab-engine": "workspace:*",
@@ -44,6 +44,8 @@
     "zustand": "5.0.9"
   },
   "devDependencies": {
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@types/jszip": "3.4.1",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",

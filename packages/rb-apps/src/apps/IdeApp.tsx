@@ -15,6 +15,14 @@ import { decodeRBProject, encodeRBProject, type RBProject } from '../export/proj
 import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
 import { buildVerifyDeterminismHash } from './ide/verifyDeterminism';
+// The two RedByte faces, bundled with the app rather than fetched from a CDN, and the
+// single owner of the type system. Loaded before every other sheet so the tokens exist
+// by the time any surface reads them.
+import '@fontsource-variable/ibm-plex-sans/wght.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
+import '@fontsource/ibm-plex-mono/600.css';
+import './ide/theme/redbyte-type.css';
 import './ide/ide-root.css';
 import './ide/ide-polish-pass.css';
 import './ide/theme/redbyte-theme.css';

@@ -87,7 +87,7 @@
   overflow: hidden;
   color: var(--rb-text-secondary);
   font-family: var(--rb-font-mono, ui-monospace, 'Cascadia Mono', 'JetBrains Mono', monospace);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.01em;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -101,7 +101,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--rb-warning, #b45309) 12%, transparent);
   color: var(--rb-warning, #b45309);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 640;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -224,7 +224,7 @@
   background: rgba(24, 40, 59, 0.92);
   color: #f8fbff;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.02em;
 }
 
@@ -293,7 +293,7 @@
   background: rgba(14, 116, 144, 0.2);
   color: #bae6fd;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -303,7 +303,7 @@
   overflow: hidden;
   color: #e0f2fe;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -423,7 +423,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-truth {
   color: #8ca1b6;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.2;
   text-align: center;
 }
@@ -1018,7 +1018,7 @@
 .ide-root .ide-design-replay-transport-heading span,
 .ide-root .ide-design-replay-speed {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-root .ide-design-replay-state-context {
@@ -1035,7 +1035,7 @@
   background: var(--rb-surface-2);
   color: var(--rb-text-muted);
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -1293,7 +1293,7 @@
   border-radius: 5px;
   color: var(--rb-text-primary);
   background: var(--rb-surface);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-tool-segment {
@@ -1373,7 +1373,7 @@
 .ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg { background: #f8fafc !important; }
 .ide-design-workspace[data-canvas-appearance='system'] .rb-logic-canvas-svg { background: var(--rb-canvas) !important; }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: 13px; font-weight: 650; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: 13px; font-weight: 600; }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-port-label { font-size: 12px; }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-sub-label { font-size: 12px; }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body { stroke: #f59e0b; stroke-width: 2.5px; filter: none; }
@@ -1467,7 +1467,7 @@
   border-radius: 4px;
   color: var(--rb-text-secondary);
   background: var(--rb-surface-3);
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']

@@ -4,7 +4,7 @@
    Package. No !important. */
 
 .ide-root .rb-pkg { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
-.ide-root .rb-pkg .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 
 /* Hero → status strip: state · decision · trust axes · actions. */
 .ide-root .rb-pkg-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; flex: none; min-height: var(--wb-toolbar-h); padding: 4px var(--wb-space-3); margin: 0; border: 0; border-bottom: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface-2); box-shadow: none; }
@@ -55,7 +55,7 @@
 .ide-root .rb-pkg-file-group > header { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 var(--wb-space-3) 0 8px; border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-pkg-file-group:first-child > header { border-top: 0; }
 .ide-root .rb-pkg-file-group > header h4,
-.ide-root .rb-pkg-file-group > header strong { margin: 0; flex: 1; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-pkg-file-group > header strong { margin: 0; flex: 1; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-file-group > header small,
 .ide-root .rb-pkg-file-group > header span { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-group ul { margin: 0; padding: 2px 0; list-style: none; }
@@ -79,7 +79,7 @@
 }
 .ide-root .rb-pkg-file-group button:hover { background: var(--wb-hover-bg); }
 .ide-root .rb-pkg-file-group button.is-selected { border-left-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
-.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 9px var(--wb-font-mono); }
+.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 11px var(--wb-font-mono); }
 .ide-root .rb-pkg-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--wb-font-mono); }
 .ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-availability.is-ready { color: var(--wb-ok); }
@@ -91,7 +91,7 @@
 .ide-root .rb-pkg-preview > header,
 .ide-root .rb-pkg-preview > div > header { display: flex; align-items: center; gap: 8px; flex: none; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-pkg-preview header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.ide-root .rb-pkg-preview header > div > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-preview header > div > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-preview header strong { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); }
 .ide-root .rb-pkg-preview header p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-pkg-preview-actions { display: inline-flex; gap: 4px; margin-left: auto; }
@@ -103,7 +103,7 @@
 /* Handoff inspector: key/value rows. */
 .ide-root .rb-pkg-handoff { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-left: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface); box-shadow: none; overflow: auto; }
 .ide-root .rb-pkg-handoff > header { display: flex; align-items: baseline; gap: 8px; height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
-.ide-root .rb-pkg-handoff > header span { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-handoff > header span { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-handoff > header strong { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-pkg-handoff > dl { display: block; margin: 0; padding: 2px var(--wb-space-3); }
 .ide-root .rb-pkg-handoff > dl > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 24px; border-bottom: 1px solid var(--wb-border); }
@@ -112,7 +112,7 @@
 .ide-root .rb-pkg-handoff dd { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-pkg-handoff > section { margin: 0; padding: 6px var(--wb-space-3); border-top: 1px solid var(--wb-border); }
 .ide-root .rb-pkg-handoff > section > span,
-.ide-root .rb-pkg-handoff > section > h4 { display: block; margin: 0 0 2px; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-handoff > section > h4 { display: block; margin: 0 0 2px; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-handoff > section p,
 .ide-root .rb-pkg-handoff > section li { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 15px var(--wb-font-ui); }
 .ide-root .rb-pkg-handoff > section ol,
@@ -265,7 +265,7 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-pkg-provenance-edge.is-dim { opacity: 0.25; }
 .ide-root .rb-pkg-provenance-node rect { fill: var(--wb-surface); stroke: var(--wb-border-strong); stroke-width: 1; }
 .ide-root .rb-pkg-provenance-node text { fill: var(--wb-text); font: 11px var(--wb-font-mono); }
-.ide-root .rb-pkg-provenance-node.is-input text { font: 600 11px var(--wb-font-ui); }
+.ide-root .rb-pkg-provenance-node.is-input text { font: 600 12px var(--wb-font-ui); }
 .ide-root .rb-pkg-provenance-node.is-input rect { fill: var(--wb-surface-2); }
 .ide-root .rb-pkg-provenance-node.is-selected rect { stroke: var(--wb-focus); stroke-width: 2; fill: var(--wb-active-bg); }
 .ide-root .rb-pkg-provenance-node.is-emphasised rect { stroke: var(--wb-focus); }

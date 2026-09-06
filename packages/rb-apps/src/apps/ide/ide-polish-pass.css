@@ -88,7 +88,7 @@
 .ide-root .ide-board-chip {
   border-radius: 6px;
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   background: rgba(140, 168, 196, 0.06);
@@ -118,14 +118,14 @@
 .ide-root .ide-mode-button .ide-mode-icon { width: 22px; height: 22px; }
 /* The 9px label was too small. Lift to 11px with proper letter-spacing. */
 .ide-root .ide-mode-button .ide-mode-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
   max-width: 68px;
 }
 .ide-root .ide-mode-button .ide-step-num {
   position: relative;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: rgba(122, 158, 192, 0.55);
@@ -397,7 +397,7 @@
   background: rgba(168, 189, 212, 0.06);
   border: 1px solid rgba(140, 168, 196, 0.22);
   color: var(--rb-text-2);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -424,7 +424,7 @@
   display: inline-block;
 }
 .ide-root .ide-projectx-meta-note {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--rb-text-3);
   letter-spacing: 0.01em;
 }
@@ -461,7 +461,7 @@
     linear-gradient(180deg, #0e1a28 0%, #0a1624 100%);
 }
 .ide-root .ide-projectx-next-status {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
@@ -487,7 +487,7 @@
 }
 .ide-root .ide-projectx-next-reason {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--rb-text-2);
   max-width: 80ch;
@@ -528,10 +528,10 @@
   background: linear-gradient(180deg, rgba(255, 107, 107, 0.04), rgba(255, 107, 107, 0)) , var(--rbp-surface-card);
 }
 .ide-root .ide-projectx-metric-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-text-3);
 }
 .ide-root .ide-projectx-metric-value {
@@ -648,7 +648,7 @@
   color: var(--rb-text-2);
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -711,7 +711,7 @@
   color: var(--rb-text-1);
 }
 .ide-root .ide-projectx-example-recommended {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -744,7 +744,7 @@
   margin-top: 2px;
 }
 .ide-root .ide-projectx-example-card-tag {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--rb-text-3);
@@ -775,10 +775,10 @@
   padding: 0;
 }
 .ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-text-3);
 }
 .ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-stats {
@@ -800,7 +800,7 @@
 }
 .ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-stat dt {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -954,7 +954,7 @@
 }
 .ide-root .ide-verify-context-next {
   color: var(--rb-text-3);
-  font-size: 10.5px;
+  font-size: 11px;
   max-width: 42ch;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1000,7 +1000,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -1026,7 +1026,7 @@
   text-overflow: ellipsis;
 }
 .ide-root .ide-verify-results-summary-subline {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-3);
   white-space: nowrap;
   overflow: hidden;
@@ -1044,14 +1044,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 10.5px;
+  font-size: 11px;
   gap: 1px;
 }
 .ide-root .ide-verify-results-summary-metric-label {
   color: var(--rb-text-3);
-  font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .ide-root .ide-verify-results-summary-metric-value {
   font-weight: 700;
@@ -1067,7 +1067,7 @@
   flex-shrink: 0;
 }
 .ide-root .ide-verify-results-summary-action {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 5px;
@@ -1197,18 +1197,18 @@
   min-width: 0;
 }
 .ide-hw-mapping-header-board {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--rb-text-1, #e3edf8);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
 .ide-hw-mapping-header-sep {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-3, #637d96);
 }
 .ide-hw-mapping-header-count {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-2, #a8bdd0);
   white-space: nowrap;
   overflow: hidden;
@@ -1224,10 +1224,10 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 .ide-hw-mapping-header-state-dot {
@@ -1242,7 +1242,7 @@
 .ide-hw-mapping-header-state.is-idle  { color: var(--rb-text-3, #637d96); }
 .ide-hw-mapping-header-state.is-error { color: #e05252; }
 .ide-hw-mapping-header-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-3, #637d96);
   white-space: nowrap;
   overflow: hidden;
@@ -1278,7 +1278,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
   background: var(--rb-surface-3, #243045);
@@ -1306,12 +1306,12 @@
   line-height: 1.3;
 }
 .ide-hw-guide-step-helper {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-3, #637d96);
   line-height: 1.4;
 }
 .ide-hw-guide-step-value {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-3, #637d96);
   font-style: italic;
 }
@@ -1428,9 +1428,9 @@
 .ide-summary-toggle {
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   color: var(--rb-text-3, #637d96);
-  text-transform: uppercase;
+  text-transform: none;
   padding: 6px 0;
   cursor: pointer;
   user-select: none;
@@ -1443,7 +1443,7 @@
 
 /* Handoff details: collapsed by default, slightly muted */
 .ide-export-handoff-advanced { margin-top: var(--ide-space-2, 8px); }
-.ide-export-handoff-advanced > summary { font-size: 11px; color: var(--rb-text-3, #637d96); }
+.ide-export-handoff-advanced > summary { font-size: 12px; color: var(--rb-text-3, #637d96); }
 
 /* Advanced details in right col: collapsed developer noise */
 .ide-export-advanced-details { margin-top: var(--ide-space-2, 8px); }
@@ -1474,9 +1474,9 @@
 }
 
 .ide-export-handoff-summary-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--rb-text-3, #9eb4cb);
 }
 
@@ -1488,7 +1488,7 @@
 
 .ide-export-handoff-summary-detail {
   grid-column: 2;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-2, #cfdbeb);
 }
 
@@ -1581,14 +1581,14 @@
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-mode-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
   opacity: 0.85;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-mode-value {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1600,14 +1600,14 @@
 
 .ide-root .ide-testbench-document-header { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--rb-border-1); border-radius: 10px; background: var(--rb-surface-1); }
 .ide-root .ide-testbench-document-identity { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
-.ide-root .ide-testbench-document-eyebrow { color: var(--rb-text-3); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.ide-root .ide-testbench-document-eyebrow { color: var(--rb-text-3); font-size: 12px; font-weight: 700; text-transform: none; }
 .ide-root .ide-testbench-document-identity h3 { margin: 2px 0 0; font-size: 18px; }
 .ide-root .ide-testbench-document-state { color: var(--rb-text-2); font-size: 13px; }
 .ide-root .ide-testbench-document-state.is-pass { color: var(--rb-accent); }
 .ide-root .ide-testbench-document-state.is-fail { color: var(--rb-danger, #e05252); }
 .ide-root .ide-testbench-document-purpose { margin: 0; color: var(--rb-text-2); font-size: 13px; }
 .ide-root .ide-testbench-document-manager { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-.ide-root .ide-scenario-library-label { color: var(--rb-text-3); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.ide-root .ide-scenario-library-label { color: var(--rb-text-3); font-size: 12px; font-weight: 700; text-transform: none; }
 .ide-root .ide-scenario-library-manage > summary { min-height: 36px; padding: 8px 10px; color: var(--rb-text-2); font-size: 13px; cursor: pointer; }
 .ide-root .ide-scenario-library-manage[open] { flex-basis: 100%; }
 .ide-root .ide-scenario-delete-confirmation,
@@ -1654,7 +1654,7 @@
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-header-copy {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-how {
@@ -1706,7 +1706,7 @@
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-clock-policy-copy {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--rb-text-3, #9eb4cb);
 }
 
@@ -1938,7 +1938,7 @@
 }
 
 .ide-root .ide-left-rail .ide-mode-label {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-start-hub {
@@ -2009,9 +2009,9 @@
 .ide-root [data-ide-mode-marker='project'] .ide-project-gannon-lab-card-header span,
 .ide-root [data-ide-mode-marker='project'] .ide-project-gannon-lab-card-header small {
   color: rgba(134, 189, 217, 0.8);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-gannon-lab-card-header strong {
@@ -2033,7 +2033,7 @@
 .ide-root [data-ide-mode-marker='project'] .ide-project-gannon-lab-card-body p {
   margin: 0;
   color: rgba(188, 210, 231, 0.78);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -2079,7 +2079,7 @@
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.25;
 }
 
@@ -2141,7 +2141,7 @@
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-sub,
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-empty {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -2245,7 +2245,7 @@
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-meta-chip,
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-meta-note {
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-meta-chip {
@@ -2264,7 +2264,7 @@
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-next-status {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-next-subline,
@@ -2300,7 +2300,7 @@
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metric-label {
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metric-value {
@@ -2531,7 +2531,7 @@
   }
 
   .ide-root .ide-mode-button .ide-mode-label {
-    font-size: 10px;
+    font-size: 11px;
     max-width: 58px;
   }
 
@@ -2722,7 +2722,7 @@
 .ide-root [data-ide-mode-marker='export'] .ide-export-action-buttons .ide-button {
   min-height: 36px !important;
   padding: 5px 8px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   white-space: normal !important;
 }
 
@@ -2736,7 +2736,7 @@
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
   padding: 3px 0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-other-outputs {
@@ -2754,7 +2754,7 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-pipeline-details > summary {
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.2 !important;
   text-align: right !important;
 }
@@ -2775,13 +2775,13 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-summary-copy .ide-export-handoff-summary-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   letter-spacing: 0.04em !important;
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-summary-copy .ide-export-handoff-summary-value {
   min-width: 0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   overflow-wrap: anywhere !important;
 }
 
@@ -2806,7 +2806,7 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-summary-stat-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-summary-stat-value {
@@ -3064,7 +3064,7 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-trust-draft-note {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(251, 191, 36, 0.9) !important;
 }
 
@@ -3075,12 +3075,12 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-facts dt {
-  font-size: 11px !important;
+  font-size: 12px !important;
   letter-spacing: 0.05em !important;
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-facts dd {
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.35 !important;
   overflow-wrap: anywhere !important;
 }
@@ -3161,7 +3161,7 @@
   min-width: 0 !important;
   padding: 3px 8px !important;
   border-radius: 999px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
 }
@@ -3328,7 +3328,7 @@
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-task-copy {
   padding: 5px 10px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.25 !important;
 }
 
@@ -3517,7 +3517,7 @@
 
 .ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__checks span {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(134, 189, 217, 0.78);
@@ -3808,7 +3808,7 @@
   .ide-verify-primary-status--embedded
   .ide-callout-title {
   min-width: 0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.15 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -3830,7 +3830,7 @@
   .ide-copy {
   max-width: min(460px, 40vw) !important;
   margin: 0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -3850,7 +3850,7 @@
   .ide-button {
   min-height: 26px !important;
   padding: 3px 8px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has([data-testid='ide-verify-primary-status-rerun']):not(:has([data-testid='ide-verify-repair-panel']))
@@ -3954,7 +3954,7 @@
   border-radius: 8px;
   color: rgba(181, 200, 219, 0.76);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-root .ide-button[data-hierarchy-role='secondary'],

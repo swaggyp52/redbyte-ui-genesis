@@ -92,8 +92,8 @@
   --rb-grid-columns: 12;
   --rb-grid-gutter: var(--rb-space-3);
   --rb-grid-panel-padding: var(--rb-space-2);
-  --rb-font-ui: 'IBM Plex Sans', 'Segoe UI', sans-serif;
-  --rb-font-mono: 'IBM Plex Mono', Consolas, monospace;
+
+
   /* Compatibility aliases for existing IDE classes */
   --ide-bg: var(--rb-surface-bg);
   --ide-surface-1: var(--rb-panel-bg);
@@ -218,8 +218,8 @@
 .ide-project-label {
   margin: 0;
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--ide-text-soft);
   line-height: 1;
 }
@@ -254,7 +254,7 @@
   border: 1px solid rgba(46, 196, 182, 0.45);
   color: #c5fff9;
   background: rgba(46, 196, 182, 0.12);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -333,12 +333,12 @@
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: var(--rb-font-weight-semibold);
 }
 
 .ide-mode-label {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 14px;
   font-weight: var(--rb-font-weight-semibold);
   text-align: center;
@@ -716,8 +716,8 @@
 .ide-guided-strip-label {
   font-size: var(--rb-font-size-1);
   color: var(--ide-text-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .ide-guided-strip-stage strong {
@@ -822,7 +822,7 @@
 
 .ide-guided-lab-check strong {
   color: var(--ide-text-soft);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0;
 }
 
@@ -873,13 +873,13 @@
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-guided-lab-check {
   min-height: 20px;
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-control-bar .ide-guided-lab-actions .ide-button {
   min-height: 24px;
   padding: 2px 7px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 @media (max-width: 760px) {
@@ -950,7 +950,7 @@
   height: 18px;
   border-radius: 4px;
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
   flex-shrink: 0;
@@ -1109,7 +1109,7 @@
   border: 1px solid rgba(143, 178, 210, 0.5);
   border-radius: 999px;
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.04em;
 }
 
@@ -1126,7 +1126,7 @@
 
 .ide-design-tool-text kbd {
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-soft);
 }
 
@@ -1187,7 +1187,7 @@
 
 .ide-design-diagnostic-row-header code {
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-soft);
 }
 
@@ -1295,8 +1295,8 @@
 .ide-design-subheader h3 {
   margin: 0;
   font-size: var(--rb-font-size-2);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--ide-text-soft);
 }
 
@@ -1381,7 +1381,7 @@
   background: rgba(7, 16, 26, 0.82);
   color: var(--ide-text-muted);
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-design-canvas-live.is-presentation-zoom {
@@ -1544,9 +1544,9 @@
 }
 
 .ide-design-empty-eyebrow {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(151, 205, 244, 0.74);
 }
 
@@ -1579,7 +1579,7 @@
   align-items: center;
   min-height: 24px;
   padding: 3px 9px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(205, 224, 239, 0.86);
   border: 1px solid rgba(76, 113, 145, 0.32);
   border-radius: 999px;
@@ -1630,13 +1630,13 @@
 
 .ide-design-selection-properties code {
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: #cde8ff;
 }
 
 .ide-design-live-pin {
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: #9fd6ff;
   letter-spacing: 0.03em;
 }
@@ -1687,7 +1687,7 @@
   border-radius: 999px;
   background: rgba(24, 42, 60, 0.7);
   color: #d7e6f6;
-  font-size: 11px;
+  font-size: 12px;
   padding: 5px 10px;
   cursor: pointer;
 }
@@ -1748,9 +1748,9 @@
 
 .ide-verify-label {
   margin: 0;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--ide-text-soft);
 }
 
@@ -1777,13 +1777,13 @@
 }
 
 .ide-verify-hash-block span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-soft);
 }
 
 .ide-verify-hash-block code {
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: #a9e8ff;
 }
 
@@ -2052,7 +2052,7 @@
   padding: 0 var(--ide-space-1);
   cursor: pointer;
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-soft);
   display: flex;
   align-items: center;
@@ -2084,7 +2084,7 @@
   border: none;
   cursor: pointer;
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   text-align: center;
   border-radius: 2px;
@@ -2144,7 +2144,7 @@
   align-items: center;
   gap: 4px;
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid rgba(58, 87, 116, 0.6);
@@ -2456,7 +2456,7 @@
   min-height: 22px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.2;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -2611,10 +2611,10 @@
 
 .ide-inspector-title {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--ide-text-soft);
 }
@@ -2643,7 +2643,7 @@
 }
 
 .ide-kv-row-hidden {
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.75;
 }
 
@@ -2663,7 +2663,7 @@
 }
 
 .ide-status-item {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-soft);
 }
 
@@ -2845,7 +2845,7 @@
 
 .ide-export-diagnostic-code {
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-strong);
 }
 
@@ -3088,7 +3088,7 @@
   }
 
   .ide-mode-label {
-    font-size: 10px;
+    font-size: 11px;
     line-height: var(--rb-line-height-1);
   }
 }
@@ -3210,7 +3210,7 @@ details[open] summary .details-arrow {
 .details-arrow {
   display: inline-block;
   transition: transform 150ms ease;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-soft);
 }
 
@@ -3232,7 +3232,7 @@ details[open] summary .details-arrow {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   font-family: var(--rb-font-mono);
   transition: background 0.15s ease, color 0.15s ease;
@@ -3295,14 +3295,14 @@ details[open] summary .details-arrow {
   margin-bottom: 6px;
 }
 .ide-verify-bus-words-title {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(120,180,230,0.7);
 }
 .ide-verify-bus-words-hint {
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(120,180,230,0.45);
 }
 .ide-verify-bus-words-list {
@@ -3341,7 +3341,7 @@ details[open] summary .details-arrow {
   color: rgba(150,224,214,0.92);
 }
 .ide-verify-bus-word-dir {
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(120,170,215,0.55);
@@ -3353,7 +3353,7 @@ details[open] summary .details-arrow {
 }
 .ide-verify-bus-word-value strong {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.02em;
   color: rgba(120,215,255,0.98);
 }
@@ -3364,7 +3364,7 @@ details[open] summary .details-arrow {
   color: rgba(251,191,36,0.95);
 }
 .ide-verify-bus-word-detail {
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(150,185,220,0.62);
 }
 .ide-verify-bus-word-strip {
@@ -3382,7 +3382,7 @@ details[open] summary .details-arrow {
   background: rgba(8,18,32,0.7);
   color: rgba(150,190,225,0.75);
   font-family: var(--ide-font-mono, ui-monospace, monospace);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.4;
   cursor: pointer;
 }
@@ -3402,7 +3402,7 @@ details[open] summary .details-arrow {
   align-items: center;
   border-radius: 999px;
   padding: 3px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   border: 1px solid transparent;
@@ -3429,8 +3429,8 @@ details[open] summary .details-arrow {
   font-size: 13px;
   font-weight: 700;
   color: var(--ide-danger, #ff6b6b);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* ── Blocker item rows ── */
@@ -3453,9 +3453,9 @@ details[open] summary .details-arrow {
 /* ── Section header uppercase treatment ── */
 .ide-section-header h3,
 .ide-export-section-header h3 {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
   font-weight: 600;
   color: var(--ide-text-soft);
 }
@@ -3497,8 +3497,8 @@ details[open] summary .details-arrow {
 .ide-export-readiness-banner.is-blocked .ide-export-readiness-label {
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: #ff9090;
 }
 
@@ -3515,8 +3515,8 @@ details[open] summary .details-arrow {
 
 .ide-export-readiness-banner.is-ready .ide-export-readiness-label {
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: #7de8dc;
 }
 
@@ -3541,10 +3541,10 @@ details[open] summary .details-arrow {
 
 /* ── Palette group headings — uppercase instrument style ── */
 .ide-palette-group h4 {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(160,190,210,0.5);
   border-bottom: 1px solid rgba(255,255,255,0.05);
   padding-bottom: 4px;
@@ -3553,10 +3553,10 @@ details[open] summary .details-arrow {
 
 /* ── Section header h3 — consistent uppercase instrument label ── */
 .ide-section-header h3 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--rb-text-3, rgba(160,185,210,0.55));
 }
 
@@ -3702,7 +3702,7 @@ details[open] summary .details-arrow {
 
 /* Project label (tiny "RedByte IDE" subtitle): 10px → 11px */
 .ide-project-label {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* Project subline (hash): bump to 600 weight for legibility */
@@ -3722,7 +3722,7 @@ details[open] summary .details-arrow {
 
 /* Mode label collapsed: 9px → 10px */
 .ide-mode-label {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 12px;
 }
 
@@ -3856,7 +3856,7 @@ details[open] summary .details-arrow {
   border: 1px solid rgba(88, 131, 166, 0.34);
   background: rgba(8, 16, 28, 0.84);
   color: rgba(214, 234, 255, 0.88);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3917,10 +3917,10 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-replay-scrubber-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(125, 211, 252, 0.76);
 }
 
@@ -3967,7 +3967,7 @@ details[open] summary .details-arrow {
 
 /* Section meta labels */
 .ide-export-section-meta,
-.ide-section-header-meta { font-size: 11px; font-weight: 500; }
+.ide-section-header-meta { font-size: 12px; font-weight: 500; }
 
 /* Verify label */
 .ide-verify-label { font-size: 12px; font-weight: 600; }
@@ -3983,11 +3983,11 @@ details[open] summary .details-arrow {
 /* Toolbar depth pill */
 
 /* Code gutter line numbers */
-.ide-code-gutter-line { font-size: 11px; }
+.ide-code-gutter-line { font-size: 12px; }
 
 /* KBD shortcut keys in toolbar */
 .ide-design-tool-text kbd {
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 4px;
   border-radius: 3px;
   border: 1px solid rgba(255,255,255,0.18);
@@ -4068,7 +4068,7 @@ details[open] summary .details-arrow {
 }
 .ide-verify-tab-btn {
   padding: 7px 14px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: rgba(180,200,220,0.6);
@@ -4089,7 +4089,7 @@ details[open] summary .details-arrow {
   margin-left: 5px;
   padding: 1px 5px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   background: rgba(255,107,107,0.18);
   color: #fca5a5;
 }
@@ -4134,7 +4134,7 @@ details[open] summary .details-arrow {
   color: #94d2ff;
 }
 .ide-why-tick {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(200, 223, 244, 0.6);
 }
 .ide-why-badge {
@@ -4142,7 +4142,7 @@ details[open] summary .details-arrow {
   align-items: center;
   padding: 1px 6px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -4276,7 +4276,7 @@ details[open] summary .details-arrow {
   margin-bottom: 2px;
 }
 .ide-import-sample-card-desc {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-muted);
 }
 
@@ -4293,7 +4293,7 @@ details[open] summary .details-arrow {
   flex-wrap: wrap;
 }
 .ide-verify-fail-nav-position {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(252,165,165,0.85);
   min-width: 0;
   white-space: nowrap;
@@ -4308,15 +4308,15 @@ details[open] summary .details-arrow {
   flex-wrap: wrap;
 }
 .ide-verify-zoom-label {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(180,200,220,0.45);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   user-select: none;
 }
 .ide-verify-zoom-btn {
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: rgba(180,200,220,0.55);
@@ -4365,7 +4365,7 @@ details[open] summary .details-arrow {
 }
 .ide-import-sample-card-learn {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(134,239,172,0.6);
   margin-top: 4px;
   line-height: 1.35;
@@ -4437,7 +4437,7 @@ details[open] summary .details-arrow {
 
 /* Project subline (ID hash): subtler */
 .ide-project-subline {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: rgba(180, 200, 220, 0.55);
 }
@@ -4513,11 +4513,11 @@ details[open] summary .details-arrow {
 
 /* Mapping header: smaller, instrument-label style */
 [data-testid='ide-project-panel-mapping'] .ide-export-section-header h3 {
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0;
   color: rgba(140, 170, 200, 0.55);
   font-weight: 600;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 /* Mapping status pill: compact microtext */
@@ -4550,7 +4550,7 @@ details[open] summary .details-arrow {
 
 /* Subline: deeply dimmed, smaller */
 .ide-project-subline {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(160, 185, 210, 0.35);
   margin: 0;
 }
@@ -4831,7 +4831,7 @@ details[open] summary .details-arrow {
 /* Toolbar buttons: tighter, crisper */
 .ide-design-toolbar .ide-button,
 .ide-design-toolbar button {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.03em;
 }
@@ -4840,10 +4840,10 @@ details[open] summary .details-arrow {
 .ide-palette-group h4,
 .ide-palette-section > h4,
 .ide-palette > h4 {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(140,180,220,0.45);
   padding: 6px 8px 3px;
   margin: 0;
@@ -4855,7 +4855,7 @@ details[open] summary .details-arrow {
   padding: var(--ide-space-3);
   text-align: center;
   color: rgba(140,170,200,0.3);
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   user-select: none;
 }
@@ -4920,7 +4920,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-inspector-sel-type {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #7dd3fc;
   text-transform: uppercase;
@@ -4928,7 +4928,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-inspector-sel-id {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(140,180,220,0.45);
   font-family: var(--rb-font-mono, monospace);
 }
@@ -4943,11 +4943,11 @@ details[open] summary .details-arrow {
 .ide-design-tool-hud {
   padding: 3px 10px;
   min-height: 26px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-design-canvas-mode-indicator {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 8px;
   min-height: 22px;
 }
@@ -4966,7 +4966,7 @@ details[open] summary .details-arrow {
 .ide-design-canvas:has(.ide-design-canvas-live[data-tool-mode='wire']) .ide-design-tool-hud {
   padding: 4px 10px;
   min-height: 0;
-  font-size: 10px;
+  font-size: 11px;
   background: rgba(7,21,34,0.88);
   border-color: rgba(56,189,248,0.2);
   border-radius: 0;
@@ -5012,7 +5012,7 @@ details[open] summary .details-arrow {
 /* Chip: tighter + more tactile */
 .ide-palette-chip {
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   min-height: 28px;
@@ -5058,7 +5058,7 @@ details[open] summary .details-arrow {
 }
 .ide-design-view-btn {
   padding: 4px 10px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -5100,26 +5100,26 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-hdl-header-title {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(148,197,255,0.8);
 }
 
 .ide-design-hdl-header-lang {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   padding: 1px 5px;
   border: 1px solid rgba(56,189,248,0.2);
   border-radius: 3px;
   color: rgba(56,189,248,0.65);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ide-design-sync-badge {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
@@ -5138,7 +5138,7 @@ details[open] summary .details-arrow {
 /* Action buttons in the HDL header */
 .ide-design-hdl-action-btn {
   padding: 3px 9px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   border-radius: 3px;
   cursor: pointer;
@@ -5350,14 +5350,14 @@ details[open] summary .details-arrow {
   min-height: 28px;
 }
 .ide-design-canvas-titlebar-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(200,220,255,0.7);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .ide-design-canvas-titlebar-stat {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--rb-font-mono);
   color: rgba(140,170,200,0.55);
   background: rgba(255,255,255,0.04);
@@ -5483,9 +5483,9 @@ details[open] summary .details-arrow {
 }
 /* Section headers: uniform 10px uppercase */
 .ide-verify-workbench-v2 .ide-section-header h3 {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(160,185,215,0.55);
   font-weight: 600;
 }
@@ -5533,7 +5533,7 @@ details[open] summary .details-arrow {
   letter-spacing: 0.01em;
 }
 .ide-verify-pass-hero-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(46,196,182,0.65);
 }
 .ide-verify-pass-hero-actions {
@@ -5544,7 +5544,7 @@ details[open] summary .details-arrow {
 }
 .ide-verify-pass-hero-hash {
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(46,196,182,0.35);
   padding: 0;
   background: none;
@@ -5564,10 +5564,10 @@ details[open] summary .details-arrow {
 /* ── Phase 20C: "Create Test Case" subheader in inspector ── */
 .ide-verify-section-subheader {
   margin: var(--ide-space-2) 0 var(--ide-space-1);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(140,165,200,0.5);
   border-bottom: 1px solid rgba(255,255,255,0.06);
   padding-bottom: 4px;
@@ -5644,10 +5644,10 @@ details[open] summary .details-arrow {
   background: rgba(6,14,26,0.92);
 }
 .ide-truth-table-title {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(56,150,200,0.5);
   flex: 1 1 auto;
 }
@@ -5657,7 +5657,7 @@ details[open] summary .details-arrow {
 }
 .ide-truth-table-mode-btn {
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: 11px;
   background: transparent;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 3px;
@@ -5682,7 +5682,7 @@ details[open] summary .details-arrow {
 .ide-truth-table-clock-note {
   margin: 0;
   padding: 3px 8px 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--rb-font-mono);
   color: var(--rb-c-text-dim, #555e6e);
   background: transparent;
@@ -5699,7 +5699,7 @@ details[open] summary .details-arrow {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--rb-font-mono);
-  font-size: 11px;
+  font-size: 12px;
 }
 .ide-truth-table-thead {
   position: sticky;
@@ -5709,7 +5709,7 @@ details[open] summary .details-arrow {
 }
 .ide-truth-table-th {
   padding: 5px 8px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -5738,7 +5738,7 @@ details[open] summary .details-arrow {
   border: 1px solid transparent;
   border-radius: 3px;
   padding: 1px 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(140,165,200,0.65);
   cursor: pointer;
   font-family: var(--rb-font-mono);
@@ -5751,7 +5751,7 @@ details[open] summary .details-arrow {
   color: rgba(200,225,255,0.9);
 }
 .ide-truth-table-signal {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(170,195,220,0.78);
 }
 .ide-truth-table-td-value { text-align: center; }
@@ -5776,11 +5776,11 @@ details[open] summary .details-arrow {
 }
 .ide-truth-table-empty-msg,
 .ide-truth-table-unavailable-msg {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(160,185,215,0.45);
 }
 .ide-truth-table-unavailable-sub {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(140,165,200,0.3);
 }
 
@@ -5812,7 +5812,7 @@ details[open] summary .details-arrow {
   border-bottom: 2px solid transparent;
   background: transparent;
   padding: 5px var(--ide-space-2);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: rgba(160,185,215,0.55);
   cursor: pointer;
@@ -5834,7 +5834,7 @@ details[open] summary .details-arrow {
   padding: 0 4px;
   min-width: 16px;
   height: 14px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   background: rgba(255,107,107,0.2);
   color: rgba(252,107,107,0.9);
@@ -5875,15 +5875,15 @@ details[open] summary .details-arrow {
 
 /* ── Oscilloscope instrument header (OSCILLOSCOPE label + chips) ── */
 .ide-verify-scope-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(100, 180, 230, 0.82);
   flex-shrink: 0;
 }
 .ide-verify-scope-tick {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(56,189,248,0.6);
   background: rgba(56,189,248,0.07);
   padding: 1px 5px;
@@ -5928,7 +5928,7 @@ details[open] summary .details-arrow {
   text-align: left;
 }
 .ide-verify-drawer-badge {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 6px;
   background: rgba(255,107,107,0.18);
@@ -5936,7 +5936,7 @@ details[open] summary .details-arrow {
   border-radius: 8px;
 }
 .ide-verify-drawer-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: rgba(200,220,240,0.5);
   display: none;  /* hidden; tabs serve as labels */
@@ -5946,7 +5946,7 @@ details[open] summary .details-arrow {
   gap: 2px;
 }
 .ide-verify-drawer-tab {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 8px;
   border-radius: 3px;
   color: rgba(160,185,215,0.5);
@@ -5959,7 +5959,7 @@ details[open] summary .details-arrow {
   background: rgba(56,189,248,0.07);
 }
 .ide-verify-drawer-chevron {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(140,165,200,0.4);
   flex-shrink: 0;
 }
@@ -5989,7 +5989,7 @@ details[open] summary .details-arrow {
 .ide-truth-table-th-fix { width: 40px; }
 .ide-truth-table-td-fix { width: 40px; padding: 2px 4px; }
 .ide-truth-table-fix-btn {
-  font-size: 9px;
+  font-size: 11px;
   padding: 2px 5px;
   background: transparent;
   border: 1px solid rgba(255,107,107,0.3);
@@ -6029,7 +6029,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-truth-table-failure-note {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   color: rgba(255,210,210,0.78);
   font-family: var(--rb-font-mono);
@@ -6045,22 +6045,22 @@ details[open] summary .details-arrow {
 }
 .ide-verify-mismatch-redirect .ide-copy {
   color: rgba(160,185,215,0.55);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* PR14: Mismatch inline list */
 .ide-verify-mismatch-list {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--rb-font-mono);
 }
 .ide-verify-mismatch-list thead th {
   text-align: left;
   padding: 4px 8px;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--ide-text-soft);
   border-bottom: 1px solid rgba(255,255,255,0.07);
   position: sticky;
@@ -6081,7 +6081,7 @@ details[open] summary .details-arrow {
   all: unset;
   cursor: pointer;
   color: var(--rb-accent);
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 4px;
   border-radius: 3px;
 }
@@ -6101,7 +6101,7 @@ details[open] summary .details-arrow {
 .ide-verify-mismatch-fix-btn {
   all: unset;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   font-family: var(--rb-font-sans);
   color: var(--rb-error, #ff6b6b);
   border: 1px solid rgba(255,107,107,0.3);
@@ -6128,14 +6128,14 @@ details[open] summary .details-arrow {
 }
 .ide-verify-zoom-btn {
   padding: 1px 7px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .ide-verify-zoom-label {
-  font-size: 9px;
+  font-size: 11px;
 }
 .ide-verify-fail-nav-position {
-  font-size: 10px;
+  font-size: 11px;
 }
 /* Scrubber is compact — shrink the tick badge */
 
@@ -6175,7 +6175,7 @@ details[open] summary .details-arrow {
 .ide-truth-table-actual-pill {
   padding: 1px 8px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   background: rgba(255,60,60,0.22);
   border-color: rgba(255,85,85,0.4);
   color: rgba(255,130,130,1);
@@ -6190,7 +6190,7 @@ details[open] summary .details-arrow {
   border-right: 1px solid rgba(56,189,248,0.12);
 }
 .ide-truth-table-tick-btn {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(56,189,248,0.75);
 }
@@ -6199,13 +6199,13 @@ details[open] summary .details-arrow {
 }
 /* Signal name — mono, dims vs exp/act */
 .ide-truth-table-signal {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(160,185,215,0.65);
 }
 
 /* ── Phase 25D: Drawer summary hint when collapsed ── */
 .ide-verify-drawer-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(200,220,240,0.42);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6214,7 +6214,7 @@ details[open] summary .details-arrow {
   min-width: 0;
 }
 .ide-verify-drawer-hint code {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(252,107,107,0.75);
   background: none;
 }
@@ -6236,7 +6236,7 @@ details[open] summary .details-arrow {
 .ide-verify-oracle-badge {
   display: inline-block;
   margin-top: 3px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6327,7 +6327,7 @@ details[open] summary .details-arrow {
 .ide-hw-mode-hint {
   margin: 0;
   padding: var(--ide-space-1) var(--ide-space-2);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   color: rgba(180, 208, 228, 0.6);
   background: rgba(0,0,0,0.08);
@@ -6335,7 +6335,7 @@ details[open] summary .details-arrow {
 }
 .ide-hw-mode-btn {
   padding: 6px 14px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: rgba(180, 208, 228, 0.7);
@@ -6366,11 +6366,11 @@ details[open] summary .details-arrow {
   padding: var(--ide-space-1) 0;
 }
 .ide-hw-step-counter {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-soft);
 }
 .ide-hw-step-tick {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(56,189,248,0.75);
 }
 .ide-hw-step-nav {
@@ -6391,13 +6391,13 @@ details[open] summary .details-arrow {
   gap: var(--ide-space-1);
   padding: 2px 0;
   border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 11px;
+  font-size: 12px;
 }
 .ide-hw-event-tick {
   flex-shrink: 0;
   min-width: 32px;
   color: rgba(56,189,248,0.6);
-  font-size: 10px;
+  font-size: 11px;
 }
 .ide-hw-event-signals {
   color: var(--ide-text-soft);
@@ -6413,7 +6413,7 @@ details[open] summary .details-arrow {
 /* 28A: Assertion summary in bring-up dock */
 .ide-hw-assert-summary {
   padding: var(--ide-space-1) 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -6437,16 +6437,16 @@ details[open] summary .details-arrow {
   gap: 4px;
   padding: 2px 0;
   border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 10px;
+  font-size: 11px;
 }
 .ide-hw-assert-row.is-pass { opacity: 0.6; }
 .ide-hw-assert-row.is-fail { background: rgba(255,80,80,0.06); }
 .ide-hw-assert-row.is-nodata { opacity: 0.4; }
-.ide-hw-assert-tick { color: rgba(56,189,248,0.6); font-size: 9px; }
+.ide-hw-assert-tick { color: rgba(56,189,248,0.6); font-size: 11px; }
 .ide-hw-assert-signal { color: var(--ide-text-soft); }
 .ide-hw-assert-exp { color: var(--ide-text-muted); text-align: center; }
 .ide-hw-assert-badge {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
@@ -6467,10 +6467,10 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .ide-hw-confidence-icon {
-  font-size: 11px;
+  font-size: 12px;
   width: 14px;
   flex-shrink: 0;
 }
@@ -6499,19 +6499,19 @@ details[open] summary .details-arrow {
   align-items: center;
   gap: var(--ide-space-2);
   padding: 2px 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 .ide-hw-cert-key {
   flex-shrink: 0;
   width: 48px;
   color: rgba(56,189,248,0.55);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   font-weight: 700;
 }
 .ide-hw-cert-val {
   color: rgba(200,230,255,0.75);
-  font-size: 10px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6545,7 +6545,7 @@ details[open] summary .details-arrow {
 .ide-hw-proof-verdict-label {
   font-family: var(--rb-font-mono, monospace);
   font-size: 26px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0.14em;
   line-height: 1;
   text-shadow: 0 0 40px currentColor;
@@ -6567,7 +6567,7 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* 29C: Tick badge in mode toggle bar */
@@ -6575,7 +6575,7 @@ details[open] summary .details-arrow {
   margin-left: auto;
   padding: 0 8px;
   font-family: var(--rb-font-mono, monospace);
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(56, 189, 248, 0.55);
   letter-spacing: 0.04em;
   align-self: center;
@@ -6588,7 +6588,7 @@ details[open] summary .details-arrow {
 }
 .ide-hw-assert-formal {
   font-family: var(--rb-font-mono, monospace);
-  font-size: 10px;
+  font-size: 11px;
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -6609,10 +6609,10 @@ details[open] summary .details-arrow {
   gap: 5px;
   padding: 2px 0;
   border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 10px;
+  font-size: 11px;
 }
 .ide-hw-event-tick { color: rgba(56,189,248,0.55); font-family: var(--rb-font-mono, monospace); min-width: 32px; flex-shrink: 0; }
-.ide-hw-event-dir  { flex-shrink: 0; width: 12px; font-size: 9px; }
+.ide-hw-event-dir  { flex-shrink: 0; width: 12px; font-size: 11px; }
 .ide-hw-event-dir.is-input  { color: rgba(56,189,248,0.7); }
 .ide-hw-event-dir.is-output { color: rgba(61,186,110,0.7); }
 .ide-hw-event-label  { font-family: var(--rb-font-mono, monospace); color: var(--ide-text-soft); }
@@ -6620,7 +6620,7 @@ details[open] summary .details-arrow {
 
 /* 30B: Bring-Up step instruction */
 .ide-hw-step-instruction {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(56,189,248,0.85);
   padding: var(--ide-space-1) 0 0;
@@ -6643,7 +6643,7 @@ details[open] summary .details-arrow {
   padding: 6px 10px;
 }
 .ide-hw-proof-verdict-row {
-  font-size: 9px;
+  font-size: 11px;
   gap: 8px;
 }
 
@@ -6676,7 +6676,7 @@ details[open] summary .details-arrow {
   gap: var(--ide-space-2);
   padding: 7px var(--ide-space-2);
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  font-size: 11px;
+  font-size: 12px;
 }
 .ide-export-gate-row:last-child { border-bottom: none; }
 .ide-export-gate-row.is-pass   { background: rgba(61,186,110,0.04); }
@@ -6734,11 +6734,11 @@ details[open] summary .details-arrow {
 }
 
 .ide-export-buildTitle {
-  font-size: 10px;
+  font-size: 11px;
   font-family: var(--ide-font-mono);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ide-text-muted);
 }
 
@@ -6777,7 +6777,7 @@ details[open] summary .details-arrow {
 .ide-export-stepLabel { flex: 1; }
 .ide-export-stepDetail {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-red-text, #f87171);
   padding-left: 36px;
   margin-top: 1px;
@@ -6809,7 +6809,7 @@ details[open] summary .details-arrow {
 
 .ide-export-capsuleSealLabel {
   font-family: var(--ide-font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -6822,7 +6822,7 @@ details[open] summary .details-arrow {
 
 .ide-export-capsuleHint {
   padding: var(--ide-space-2) var(--ide-space-3);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-muted);
   margin: 0;
   font-style: italic;
@@ -6838,11 +6838,11 @@ details[open] summary .details-arrow {
 
 .ide-export-determinismHeader {
   padding: 4px var(--ide-space-3);
-  font-size: 9px;
+  font-size: 11px;
   font-family: var(--ide-font-mono);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ide-text-muted);
   background: rgba(255,255,255,0.025);
   border-bottom: 1px solid var(--ide-border);
@@ -6854,7 +6854,7 @@ details[open] summary .details-arrow {
   align-items: center;
   gap: var(--ide-space-1);
   padding: 4px var(--ide-space-3);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--ide-font-mono);
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
@@ -6872,7 +6872,7 @@ details[open] summary .details-arrow {
 
 .ide-export-determinismLegend {
   padding: 2px var(--ide-space-3) 4px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ide-text-muted);
   border-bottom: 1px solid var(--ide-border);
 }
@@ -6908,7 +6908,7 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--ide-font-mono);
   color: var(--ide-text-muted);
   line-height: 1.4;
@@ -6922,7 +6922,7 @@ details[open] summary .details-arrow {
 .ide-import-step-mark  { flex-shrink: 0; width: 30px; font-weight: 700; }
 .ide-import-step-label { flex: 1; }
 .ide-import-step-detail {
-  font-size: 10px;
+  font-size: 11px;
   color: inherit;
   opacity: 0.75;
   padding-left: 36px;
@@ -6953,8 +6953,8 @@ details[open] summary .details-arrow {
   font-size: 12px;
   font-family: var(--ide-font-mono);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ide-text-muted);
 }
 
@@ -7005,7 +7005,7 @@ details[open] summary .details-arrow {
   align-items: center;
   gap: var(--ide-space-2);
   padding: 4px var(--ide-space-2);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--ide-font-mono);
   border-radius: 3px;
   background: rgba(255,255,255,0.02);
@@ -7014,9 +7014,9 @@ details[open] summary .details-arrow {
 .ide-import-xdc-gap-row--unmapped { background: rgba(250, 204, 21, 0.04); }
 .ide-import-xdc-gap-row--orphan   { background: rgba(248, 113, 113, 0.04); }
 
-.ide-import-xdc-gap-port { font-size: 11px; font-weight: 600; }
-.ide-import-xdc-gap-dir  { color: var(--ide-text-muted); font-size: 10px; }
-.ide-import-xdc-gap-hint { color: var(--ide-text-muted); font-size: 10px; font-style: italic; }
+.ide-import-xdc-gap-port { font-size: 12px; font-weight: 600; }
+.ide-import-xdc-gap-dir  { color: var(--ide-text-muted); font-size: 11px; }
+.ide-import-xdc-gap-hint { color: var(--ide-text-muted); font-size: 11px; font-style: italic; }
 
 /* ─── 33D: Clock candidate badge in dock ──────────────────────────────── */
 .ide-import-clock-candidate {
@@ -7024,7 +7024,7 @@ details[open] summary .details-arrow {
   align-items: center;
   gap: var(--ide-space-2);
   padding: 4px 0;
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--ide-font-mono);
   color: var(--ide-text-dim, var(--ide-text-muted));
 }
@@ -7049,11 +7049,11 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   color: var(--ide-text-soft);
-  text-transform: uppercase;
+  text-transform: none;
   padding-bottom: 3px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   margin-bottom: 2px;
@@ -7061,7 +7061,7 @@ details[open] summary .details-arrow {
 .ide-import-zip-auto-badge {
   padding: 1px 5px;
   border-radius: 3px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   background: rgba(56,189,248,0.15);
   color: rgba(56,189,248,0.85);
@@ -7075,7 +7075,7 @@ details[open] summary .details-arrow {
   border-radius: 3px;
   cursor: pointer;
   transition: background 80ms;
-  font-size: 10px;
+  font-size: 11px;
 }
 .ide-import-zip-radio-row:hover {
   background: rgba(255,255,255,0.04);
@@ -7090,12 +7090,12 @@ details[open] summary .details-arrow {
   flex: 1;
   min-width: 0;
   font-family: var(--rb-font-mono, monospace);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-soft);
 }
 .ide-import-zip-score-badge {
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(61,186,110,0.7);
   letter-spacing: 0.04em;
 }
@@ -7110,7 +7110,7 @@ details[open] summary .details-arrow {
   padding: var(--ide-space-2);
 }
 .ide-import-schematic-entity-header {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   font-family: var(--rb-font-mono, monospace);
   color: rgba(56,189,248,0.8);
@@ -7136,7 +7136,7 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .ide-import-schematic-out-col .ide-import-schematic-port-row {
   flex-direction: row-reverse;
@@ -7200,7 +7200,7 @@ details[open] summary .details-arrow {
 /* 34C: Import sample card learn line */
 .ide-import-sample-card-learn {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(56,189,248,0.55);
   margin-top: 2px;
 }
@@ -7218,7 +7218,7 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: baseline;
   gap: var(--ide-space-1);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--rb-font-mono, monospace);
   padding: 2px var(--ide-space-1);
   border-radius: 3px;
@@ -7230,7 +7230,7 @@ details[open] summary .details-arrow {
 .ide-import-pipeline-step--idle    { color: rgba(255,255,255,0.25); }
 .ide-import-step-mark  { flex-shrink: 0; width: 32px; }
 .ide-import-step-label { flex-shrink: 0; }
-.ide-import-step-detail { color: rgba(255,255,255,0.4); font-size: 10px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-import-step-detail { color: rgba(255,255,255,0.4); font-size: 11px; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 34E: Import → Verify CTA */
 .ide-import-verify-cta {
@@ -7298,7 +7298,7 @@ details[open] summary .details-arrow {
 
 /* Determinism block: reduce header visual weight */
 .ide-export-determinismHeader {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
 }
 
@@ -7386,7 +7386,7 @@ details[open] summary .details-arrow {
 /* Basys3 board chip: repositioned after project name */
 .ide-board-chip {
   margin-left: var(--ide-space-1);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: rgba(46, 196, 182, 0.75);
@@ -7408,7 +7408,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-save-label {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(180, 200, 220, 0.45);
   white-space: nowrap;
 }
@@ -7496,7 +7496,7 @@ details[open] summary .details-arrow {
 /* Step number badge */
 .ide-step-num {
   font-family: var(--rb-font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: rgba(100, 140, 175, 0.6);
@@ -7516,7 +7516,7 @@ details[open] summary .details-arrow {
 
 /* Label: always visible in collapsed rail */
 .ide-mode-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.03em;
@@ -7604,7 +7604,7 @@ details[open] summary .details-arrow {
 
 /* Status pills: smaller, less heavy */
 .ide-status-pill {
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   font-weight: 600;
 }
@@ -7703,8 +7703,8 @@ details[open] summary .details-arrow {
   font-size: 12px;
   font-weight: 500;
   color: rgba(140, 175, 210, 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* Hero status message: clear, not cramped */
@@ -7750,8 +7750,8 @@ details[open] summary .details-arrow {
   color: var(--ide-text-soft);
   font-size: var(--rb-font-size-1);
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ide-surface-callout {
@@ -7816,7 +7816,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-hw-proof-assert-ok {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-hw-proof-assert-fail-note {
@@ -7856,7 +7856,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-focus-banner-kind {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -7885,7 +7885,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-focus-banner-armed {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -7929,10 +7929,10 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-focus-inspector-subhead {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--ide-text-soft, #9fb2c2);
   margin: 0 0 4px;
 }
@@ -7953,13 +7953,13 @@ details[open] summary .details-arrow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ide-text, #e6f0fa);
 }
 
 .ide-design-focus-inspector-io-count {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ide-text-soft, #9fb2c2);
   background: rgba(15, 28, 40, 0.35);
   padding: 1px 6px;
@@ -7973,7 +7973,7 @@ details[open] summary .details-arrow {
 }
 
 .ide-design-focus-inspector-empty {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-soft, #9fb2c2);
   margin: 0;
   font-style: italic;
@@ -8061,13 +8061,13 @@ details[open] summary .details-arrow {
 
 .rb-logic-canvas-svg .logic-port-label {
   fill: #d6e6f8;
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.95;
 }
 
 .rb-logic-canvas-svg .logic-node-sub-label {
   fill: #b8cde5;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* Designer intent pass: clearer node hierarchy and board resource affordance */
@@ -8171,7 +8171,7 @@ details[open] summary .details-arrow {
 /* Step numbers: monospace, muted */
 .ide-step-num {
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--rb-text-3);
   min-width: 18px;
   text-align: right;
@@ -8234,7 +8234,7 @@ details.ide-export-evidence-details > summary {
 }
 details.ide-export-pipeline-details > summary::before {
   content: '▶  ';
-  font-size: 9px;
+  font-size: 11px;
 }
 details[open].ide-export-pipeline-details > summary::before,
 details[open].ide-export-evidence-details > summary::before {
@@ -8284,7 +8284,7 @@ details[open].ide-export-evidence-details > summary::before {
   position: absolute;
   top: 2px;
   right: 2px;
-  font-size: 8px;
+  font-size: 11px;
   font-family: var(--rb-font-mono);
   font-weight: var(--rb-font-weight-semibold);
   letter-spacing: 0.03em;
@@ -8345,8 +8345,8 @@ details[open].ide-export-evidence-details > summary::before {
   font-size: var(--rb-font-size-1);
   font-weight: var(--rb-font-weight-semibold);
   color: var(--rb-text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0;
   margin: var(--rb-space-3) 0 var(--rb-space-1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   padding-bottom: var(--rb-space-1);
@@ -8478,7 +8478,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 [data-ide-mode-marker='project'] .ide-project-overview-metric > span {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: rgba(129, 156, 181, 0.84);
@@ -8521,7 +8521,7 @@ details[open].ide-export-evidence-details > summary::before {
 /* Verify workstation additions: cursor rail, pinning, sweep controls, combos, k-maps */
 
 .ide-verify-scope-cursor {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(251, 191, 36, 0.9);
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.25);
@@ -8537,7 +8537,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-truth-table-th-sub {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   color: rgba(140, 165, 200, 0.7);
   margin-top: 2px;
   text-transform: none;
@@ -8581,7 +8581,7 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 2px;
 }
 .ide-verify-failure-explainer__grid > div > span {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: rgba(200, 170, 170, 0.78);
@@ -8596,7 +8596,7 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 5px;
 }
 .ide-verify-failure-explainer__inputs > span {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: rgba(200, 170, 170, 0.78);
@@ -8608,7 +8608,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-verify-failure-explainer__chips code {
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 6px;
   border-radius: 999px;
   border: 1px solid rgba(255, 150, 150, 0.25);
@@ -8649,10 +8649,10 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-verify-repair-panel__eyebrow,
 .ide-verify-repair-panel__inputs > span,
 .ide-verify-repair-panel__fact > span {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(255, 190, 190, 0.78);
 }
 
@@ -8686,11 +8686,11 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-verify-repair-panel__decision span,
 .ide-verify-repair-panel__path-copy {
   color: rgba(203, 213, 225, 0.76);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-verify-repair-panel__decision span {
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -8762,7 +8762,7 @@ details[open].ide-export-evidence-details > summary::before {
   border: 1px solid rgba(248, 113, 113, 0.24);
   border-radius: var(--rb-radius-1);
   background: rgba(127, 29, 29, 0.18);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-verify-repair-panel__actions {
@@ -8788,10 +8788,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-verify-repair-panel__path-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(255, 225, 225, 0.76);
 }
 
@@ -8805,7 +8805,7 @@ details[open].ide-export-evidence-details > summary::before {
   min-width: 34px;
   min-height: 34px;
   padding: 6px 8px;
-  font-size: 11px;
+  font-size: 12px;
   white-space: normal;
 }
 
@@ -8830,7 +8830,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__copy p {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -8898,7 +8898,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact strong,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact code {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.15;
 }
 
@@ -8925,7 +8925,7 @@ details[open].ide-export-evidence-details > summary::before {
   min-width: 34px;
   min-height: 34px;
   padding: 6px 8px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.15;
   white-space: nowrap;
 }
@@ -9098,10 +9098,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-verify-run-context__title {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(148, 187, 220, 0.72);
 }
 
@@ -9111,7 +9111,7 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(214, 236, 255, 0.9);
   border-radius: 999px;
   padding: 3px 9px;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
 }
 
@@ -9132,7 +9132,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-verify-run-context__item dt {
   margin: 0 0 3px;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: rgba(132, 154, 178, 0.62);
@@ -9140,7 +9140,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-verify-run-context__item dd {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   color: rgba(223, 236, 248, 0.9);
 }
@@ -9165,9 +9165,9 @@ details[open].ide-export-evidence-details > summary::before {
   padding: 6px 8px;
   background: rgba(6, 14, 26, 0.92);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(132, 154, 178, 0.72);
 }
 
@@ -9190,7 +9190,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-truth-table-input-chip {
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 6px;
   border-radius: 999px;
   border: 1px solid rgba(56, 189, 248, 0.12);
@@ -9200,7 +9200,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-truth-table-input-overflow,
 .ide-truth-table-input-empty {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(160, 185, 215, 0.66);
 }
 
@@ -9232,7 +9232,7 @@ details[open].ide-export-evidence-details > summary::before {
   margin: 0;
 }
 .ide-empty-body {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(140, 170, 200, 0.65);
   margin: 0;
 }
@@ -9246,7 +9246,7 @@ details[open].ide-export-evidence-details > summary::before {
    Phase 2 — Verify coverage meter
    ════════════════════════════════════════════════════════════════ */
 [data-testid="ide-verify-coverage-meter"] {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(167, 139, 250, 0.85);
   font-variant-numeric: tabular-nums;
 }
@@ -9528,7 +9528,7 @@ details[open].ide-export-evidence-details > summary::before {
    Phase 2 — Auto-save restore banner
    ───────────────────────────────────────────────────────────────────────────── */
 .ide-autosave-banner { display:flex; align-items:center; gap:8px; padding:6px 16px; background:rgba(167,139,250,0.12); border-bottom:1px solid rgba(167,139,250,0.25); font-size:12px; color:rgba(200,220,240,0.9); }
-.ide-autosave-banner button { padding:2px 10px; border-radius:4px; border:1px solid rgba(167,139,250,0.4); background:transparent; color:rgba(167,139,250,0.9); cursor:pointer; font-size:11px; }
+.ide-autosave-banner button { padding:2px 10px; border-radius:4px; border:1px solid rgba(167,139,250,0.4); background:transparent; color:rgba(167,139,250,0.9); cursor:pointer; font-size:12px; }
 .ide-autosave-banner button:hover { background:rgba(167,139,250,0.18); }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -9613,7 +9613,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-export-handoff-facts dt {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(148, 163, 184, 0.85);
@@ -9643,10 +9643,10 @@ details[open].ide-export-evidence-details > summary::before {
   justify-content: space-between;
   gap: 10px;
   color: rgba(191, 219, 254, 0.76);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ide-export-handoff-artifact-list {
@@ -9716,15 +9716,15 @@ details[open].ide-export-evidence-details > summary::before {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--rb-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 600;
   grid-column: 1 / -1;
 }
 
 .ide-export-handoff-artifact-state {
   color: rgba(191, 219, 254, 0.72);
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -9732,8 +9732,8 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-export-handoff-artifact-action {
   justify-self: end;
   color: rgba(125, 211, 252, 0.86);
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .ide-export-agreement-heading {
@@ -9830,9 +9830,9 @@ details[open].ide-export-evidence-details > summary::before {
   align-items: center;
   gap: var(--ide-space-2);
   flex-wrap: wrap;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(148, 163, 184, 0.9);
 }
 
@@ -9859,9 +9859,9 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-export-summary-stat-label {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(148, 163, 184, 0.85);
 }
 
@@ -9917,12 +9917,12 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-export-artifact-tab-name {
   font-family: var(--rb-font-mono, monospace);
-  font-size: 11px;
+  font-size: 12px;
   color: #d6ebff;
 }
 
 .ide-export-artifact-tab-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-muted);
 }
 
@@ -9945,7 +9945,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-export-artifact-preview-title span:last-child {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ide-text-soft);
 }
 
@@ -10009,7 +10009,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 /* Phase 2 — Pin validation warning */
-.ide-pin-warn { display: block; font-size: 10px; color: #fbbf24; margin-top: 2px; }
+.ide-pin-warn { display: block; font-size: 11px; color: #fbbf24; margin-top: 2px; }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Phase 2 — Global CSS polish
@@ -10069,7 +10069,7 @@ details[open].ide-export-evidence-details > summary::before {
   border-radius: 4px;
   color: rgba(96,165,250,0.8);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 5px;
   line-height: 1.4;
   transition: background 0.1s, border-color 0.1s;
@@ -10150,9 +10150,9 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-verify-snapshot-row--pass  { border-left-color: #34d399; }
 .ide-verify-snapshot-row--fail  { border-left-color: #f87171; }
-.ide-verify-snapshot-signal     { color: var(--ide-text, #c0cfe0); font-size: 11px; }
+.ide-verify-snapshot-signal     { color: var(--ide-text, #c0cfe0); font-size: 12px; }
 .ide-verify-snapshot-actual     { font-weight: 700; font-variant-numeric: tabular-nums; }
-.ide-verify-snapshot-expected   { color: rgba(160,180,210,0.65); font-size: 10px; }
+.ide-verify-snapshot-expected   { color: rgba(160,180,210,0.65); font-size: 11px; }
 
 /* ─── Tick Readout Strip ─────────────────────────────────────────────────── */
 /* Compact one-line instrument readout: appears below the waveform when a    */
@@ -10230,7 +10230,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-design-debug-banner-hint {
   color: rgba(160, 180, 210, 0.7);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-design-debug-context-banner {
@@ -10260,7 +10260,7 @@ details[open].ide-export-evidence-details > summary::before {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -10277,10 +10277,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-debug-context-eyebrow {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(252, 165, 165, 0.88);
 }
 
@@ -10302,7 +10302,7 @@ details[open].ide-export-evidence-details > summary::before {
   display: grid;
   gap: 3px;
   max-width: 760px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   color: rgba(230, 238, 255, 0.88);
 }
@@ -10344,8 +10344,8 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-debug-trace-depth {
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: rgba(252, 165, 165, 0.86);
@@ -10365,7 +10365,7 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-design-debug-trace-identity strong {
   overflow: hidden;
   color: rgba(255, 255, 255, 0.96);
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -10374,7 +10374,7 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-design-debug-trace-feed,
 .ide-design-debug-trace-open-inputs {
   color: rgba(203, 213, 225, 0.78);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.25;
 }
 
@@ -10412,7 +10412,7 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-design-failure-brief-pattern,
 .ide-design-failure-brief-inputs,
 .ide-design-failure-brief-next {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-design-failure-brief-summary code,
@@ -10471,16 +10471,16 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* ── B2.2: Scope header → instrument-style ── */
 .ide-verify-scope-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 0;
   color: rgba(100, 180, 230, 0.9);
-  text-transform: uppercase;
+  text-transform: none;
   font-family: var(--rb-font-mono, monospace);
   flex-shrink: 0;
 }
 .ide-verify-scope-tick {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(56, 189, 248, 0.85);
   background: rgba(56, 189, 248, 0.09);
   padding: 1px 6px;
@@ -10510,7 +10510,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-verify-zoom-btn {
   padding: 3px 9px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(120, 160, 205, 0.7);
   background: rgba(255, 255, 255, 0.04);
@@ -10530,13 +10530,13 @@ details[open].ide-export-evidence-details > summary::before {
   border-color: rgba(56, 130, 210, 0.55);
 }
 .ide-verify-zoom-label {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(80, 120, 160, 0.65);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 .ide-verify-fail-nav-position {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 120, 120, 0.85);
   font-family: var(--rb-font-mono);
 }
@@ -10588,14 +10588,14 @@ details[open].ide-export-evidence-details > summary::before {
   margin-top: 2px;
 }
 .ide-verify-pass-hero-hash {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(46, 196, 182, 0.4);
   font-family: var(--rb-font-mono);
   margin-top: var(--ide-space-1);
   display: block;
 }
 .ide-verify-oracle-badge {
-  font-size: 10px;
+  font-size: 11px;
   background: rgba(46, 196, 182, 0.12);
   color: rgba(46, 196, 182, 0.75);
   border: 1px solid rgba(46, 196, 182, 0.25);
@@ -10641,23 +10641,23 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(180, 210, 240, 1.0);
 }
 .ide-verify-drawer-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(80, 120, 160, 0.7);
 }
 .ide-verify-drawer-badge {
   background: rgba(255, 80, 80, 0.85);
   color: white;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 6px;
   line-height: 1.4;
 }
 .ide-verify-drawer-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 130, 130, 0.8);
   font-family: var(--rb-font-mono);
   overflow: hidden;
@@ -10672,7 +10672,7 @@ details[open].ide-export-evidence-details > summary::before {
   margin-left: auto;
 }
 .ide-verify-drawer-tab {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(100, 150, 200, 0.6);
   padding: 4px 12px;
   cursor: pointer;
@@ -10709,7 +10709,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-verify-tab-btn {
   padding: 7px 14px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(100, 145, 195, 0.6);
   background: transparent;
@@ -10731,8 +10731,8 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(255, 80, 80, 0.9);
   color: white;
   border-radius: 9px;
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   padding: 1px 5px;
   margin-left: 4px;
   vertical-align: middle;
@@ -10750,8 +10750,8 @@ details[open].ide-export-evidence-details > summary::before {
   flex-shrink: 0;
 }
 .ide-verify-fail-summary__status {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   color: rgba(255, 110, 110, 1.0);
   background: rgba(255, 80, 80, 0.12);
@@ -10765,7 +10765,7 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(255, 150, 150, 0.9);
 }
 .ide-verify-fail-summary__first {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(200, 180, 180, 0.75);
   font-family: var(--rb-font-mono);
 }
@@ -10780,7 +10780,7 @@ details[open].ide-export-evidence-details > summary::before {
   border-bottom: 1px solid rgba(255, 80, 80, 0.12);
 }
 .ide-verify-failure-explainer__header {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(200, 180, 180, 0.9);
   margin-bottom: 8px;
@@ -10795,17 +10795,17 @@ details[open].ide-export-evidence-details > summary::before {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(120, 160, 200, 0.7);
 }
 .ide-verify-failure-explainer__grid code {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(220, 200, 200, 0.9);
   font-family: var(--rb-font-mono);
   font-weight: 600;
 }
 .ide-verify-failure-explainer__inputs {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(120, 160, 200, 0.7);
   margin-bottom: 6px;
 }
@@ -10819,7 +10819,7 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(255, 255, 255, 0.06);
   padding: 2px 7px;
   border-radius: 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(200, 220, 240, 0.8);
   font-family: var(--rb-font-mono);
 }
@@ -10833,9 +10833,9 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-verify-mismatch-list thead th {
   background: rgba(3, 8, 18, 0.97);
   padding: 7px 10px;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(80, 130, 190, 0.75);
   font-weight: 700;
   border-bottom: 1px solid rgba(18, 44, 80, 0.55);
@@ -10845,13 +10845,13 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-verify-mismatch-row td {
   padding: 6px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 11px;
+  font-size: 12px;
 }
 .ide-verify-mismatch-row:hover td {
   background: rgba(56, 89, 140, 0.14);
 }
 .ide-verify-mismatch-tick-btn {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(56, 189, 248, 0.85);
   background: rgba(56, 189, 248, 0.08);
   border: 1px solid rgba(56, 189, 248, 0.2);
@@ -10871,7 +10871,7 @@ details[open].ide-export-evidence-details > summary::before {
   font-weight: 700;
 }
 .ide-verify-mismatch-fix-btn {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 130, 130, 0.85);
   background: rgba(255, 80, 80, 0.09);
   border: 1px solid rgba(255, 80, 80, 0.25);
@@ -10887,10 +10887,10 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* ── B2.14: Truth table panel header ── */
 .ide-truth-table-title {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(100, 180, 230, 0.82);
 }
 .ide-truth-table-header {
@@ -10910,10 +10910,10 @@ details[open].ide-export-evidence-details > summary::before {
   margin-bottom: 8px;
 }
 .ide-verify-run-context__title {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(80, 130, 180, 0.75);
 }
 .ide-verify-run-context__grid {
@@ -10927,13 +10927,13 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 2px;
 }
 .ide-verify-run-context__item dt {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: rgba(80, 120, 160, 0.6);
 }
 .ide-verify-run-context__item dd {
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--rb-font-mono);
   color: rgba(160, 200, 240, 0.85);
   margin: 0;
@@ -11085,7 +11085,7 @@ details[open].ide-export-evidence-details > summary::before {
 /* ── Tag ── */
 .ide-tag {
   display: inline-flex; align-items: center;
-  font-size: 10px; font-weight: 600;
+  font-size: 11px; font-weight: 600;
   padding: 2px 7px; border-radius: 4px;
   letter-spacing: 0.04em; white-space: nowrap;
   border: 1px solid transparent;
@@ -11141,11 +11141,11 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-hw-proof-verdict.is-pending { border: 1px solid rgba(30, 60, 110, 0.4); }
 .ide-hw-proof-verdict-label {
-  font-size: 1.1rem; font-weight: 800; letter-spacing: 0.05em;
+  font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em;
 }
 .ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(46,196,182,0.95); }
 .ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: rgba(255,100,100,0.95); }
-.ide-hw-proof-verdict-meta { font-size: 11px; color: rgba(120,160,200,0.6); }
+.ide-hw-proof-verdict-meta { font-size: 12px; color: rgba(120,160,200,0.6); }
 
 /* Cert slab */
 .ide-hw-cert-slab {
@@ -11155,7 +11155,7 @@ details[open].ide-export-evidence-details > summary::before {
   padding: var(--ide-space-2) var(--ide-space-3);
   font-family: var(--rb-font-mono);
 }
-.ide-hw-cert-row { display: flex; gap: 10px; padding: 3px 0; font-size: 11px; }
+.ide-hw-cert-row { display: flex; gap: 10px; padding: 3px 0; font-size: 12px; }
 .ide-hw-cert-key { color: rgba(80, 120, 160, 0.6); white-space: nowrap; }
 .ide-hw-cert-val { color: rgba(160, 200, 240, 0.85); word-break: break-all; }
 
@@ -11181,10 +11181,10 @@ details[open].ide-export-evidence-details > summary::before {
   display: flex; align-items: center; gap: 8px;
   padding: 4px 10px;
   border-bottom: 1px solid rgba(255,255,255,0.03);
-  font-size: 11px; font-family: var(--rb-font-mono);
+  font-size: 12px; font-family: var(--rb-font-mono);
 }
 .ide-hw-event-tick {
-  font-size: 10px; color: rgba(56, 189, 248, 0.7);
+  font-size: 11px; color: rgba(56, 189, 248, 0.7);
   background: rgba(56, 189, 248, 0.07);
   padding: 1px 5px; border-radius: 3px;
 }
@@ -11201,11 +11201,11 @@ details[open].ide-export-evidence-details > summary::before {
   border-bottom: 1px solid rgba(18, 44, 80, 0.45);
 }
 .ide-hw-step-counter {
-  font-size: 9px; font-weight: 800; color: rgba(80, 120, 160, 0.6);
+  font-size: 11px; font-weight: 700; color: rgba(80, 120, 160, 0.6);
   letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--rb-font-mono);
 }
 .ide-hw-step-tick {
-  font-size: 11px; font-family: var(--rb-font-mono);
+  font-size: 12px; font-family: var(--rb-font-mono);
   color: rgba(56, 189, 248, 0.8); background: rgba(56, 189, 248, 0.08);
   padding: 1px 6px; border-radius: 3px; margin-left: auto;
 }
@@ -11239,8 +11239,8 @@ details[open].ide-export-evidence-details > summary::before {
   border-bottom: 1px solid rgba(18, 44, 80, 0.5);
 }
 .ide-workbench-placeholder-header h3 {
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0; text-transform: none;
   color: rgba(80, 130, 180, 0.8); margin: 0;
 }
 
@@ -11267,7 +11267,7 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(10, 25, 55, 0.85);
 }
 .ide-project-lab-card-number {
-  font-size: 10px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: rgba(42, 103, 189, 0.8);
 }
@@ -11277,7 +11277,7 @@ details[open].ide-export-evidence-details > summary::before {
   line-height: 1.3;
 }
 .ide-project-lab-card-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(130, 165, 205, 0.75);
   line-height: 1.4;
   margin-top: 2px;
@@ -11287,17 +11287,17 @@ details[open].ide-export-evidence-details > summary::before {
   margin-top: 6px;
 }
 .ide-project-lab-card-badge {
-  font-size: 9px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
   letter-spacing: 0.07em; text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 3px;
 }
 .ide-project-lab-card-time {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(80, 120, 160, 0.7);
 }
 .ide-project-lab-card-cta {
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   color: rgba(42, 103, 189, 0.8);
   margin-top: 6px;
 }
@@ -11364,14 +11364,14 @@ details[open].ide-export-evidence-details > summary::before {
   padding: 10px 8px 4px;
   font-size: var(--rb-font-size-0, 11px);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--ide-text-soft, rgba(200,216,232,0.5));
   border-bottom: 1px solid var(--ide-border, rgba(46,196,182,0.1));
 }
 .ide-kbd {
   font-family: var(--rb-font-mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: 12px;
   background: rgba(46,196,182,0.07);
   border: 1px solid rgba(46,196,182,0.15);
   border-radius: 3px;
@@ -11426,8 +11426,8 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-import-secondary-tools-label {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(135, 165, 198, 0.72);
 }
 
@@ -11768,7 +11768,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-design-live-pin {
   color: rgba(108, 154, 214, 0.82);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-design-wire-context-menu {
@@ -12355,7 +12355,7 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(46, 196, 182, 0.12);
   border: 1px solid rgba(46, 196, 182, 0.25);
   color: #2ec4b6;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 .ide-design-verify-link-badge-dot {
@@ -12956,8 +12956,8 @@ details[open].ide-export-evidence-details > summary::before {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: #dbeafe;
 }
 
@@ -13037,8 +13037,8 @@ details[open].ide-export-evidence-details > summary::before {
   border: 1px solid rgba(120, 149, 179, 0.34);
   background: rgba(24, 40, 59, 0.92);
   color: #f8fbff;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.04em;
 }
 
@@ -13098,7 +13098,7 @@ details[open].ide-export-evidence-details > summary::before {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(159, 184, 210, 0.82);
 }
 
@@ -13325,7 +13325,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-verify-pass-summary-meta {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-verify-waveform-scroll {
@@ -13522,8 +13522,8 @@ details[open].ide-export-evidence-details > summary::before {
   font-size: var(--rb-font-size-1);
   font-weight: 600;
   color: var(--ide-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
+  letter-spacing: 0;
   margin-bottom: var(--rb-space-1);
 }
 
@@ -13573,7 +13573,7 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(18, 32, 49, 0.88);
   border: 1px solid rgba(88, 131, 166, 0.26);
   color: rgba(173, 201, 226, 0.82);
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.04em !important;
   margin-bottom: 0 !important;
@@ -13598,7 +13598,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-mode-label {
   max-width: none !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   line-height: 1.18 !important;
   text-align: center;
@@ -13607,7 +13607,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-mode-hint {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0.03em;
@@ -13679,15 +13679,15 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-hw-map-instructions {
   margin: 0 0 var(--rb-space-2) 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-subtle);
 }
 
 .ide-hw-map-group-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-text-subtle);
   cursor: pointer;
   padding: var(--rb-space-1) 0;
@@ -13709,7 +13709,7 @@ details[open].ide-export-evidence-details > summary::before {
   border: 1px solid transparent;
   background: transparent;
   color: var(--rb-text);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   text-align: left;
   width: 100%;
@@ -13759,10 +13759,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-hw-map-row-caption {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(155, 183, 206, 0.74);
 }
 
@@ -13771,7 +13771,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-hw-map-chip {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -13833,11 +13833,11 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* Drawer label: explicit show/hide indicator */
 .ide-verify-drawer-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(140,180,220,0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
+  letter-spacing: 0;
   margin-right: 8px;
   white-space: nowrap;
 }
@@ -13959,17 +13959,17 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-authoring-issues-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(222, 237, 255, 0.88);
 }
 
 .ide-design-authoring-issues-count {
   border-radius: 999px;
   padding: 3px 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
@@ -14041,7 +14041,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-authoring-issue-header code {
-  font-size: 11px;
+  font-size: 12px;
   color: #a5c9f3;
 }
 
@@ -14049,7 +14049,7 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-design-selection-issues-pill {
   border-radius: 999px;
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -14114,7 +14114,7 @@ details[open].ide-export-evidence-details > summary::before {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(188, 206, 227, 0.86);
 }
 
@@ -14135,10 +14135,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-inspector-eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(135, 176, 222, 0.7);
 }
 
@@ -14201,7 +14201,7 @@ details[open].ide-export-evidence-details > summary::before {
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -14305,10 +14305,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 [data-ide-mode-marker='design'] .ide-design-sim-story-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(200, 218, 238, 0.68);
 }
 
@@ -14341,7 +14341,7 @@ details[open].ide-export-evidence-details > summary::before {
 [data-ide-mode-marker='design'] .ide-design-verify-link-badge {
   min-height: 22px;
   padding: 2px 9px;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.05em;
 }
 
@@ -14355,7 +14355,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 [data-ide-mode-marker='design'] .ide-design-verify-focus-hint {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
   color: rgba(165, 198, 228, 0.78);
@@ -14421,7 +14421,7 @@ details[open].ide-export-evidence-details > summary::before {
 [data-ide-mode-marker='design'] .ide-design-view-btn.is-active {
   background: rgba(56, 189, 248, 0.22);
   color: #e8f4ff;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 /* Stacked notice — shown when split auto-collapses to column */
@@ -14545,13 +14545,13 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-design-code-context-label {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(180, 208, 238, 0.88);
 }
 
 .ide-design-code-context-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(160, 185, 212, 0.62);
 }
 
@@ -14600,7 +14600,7 @@ details[open].ide-export-evidence-details > summary::before {
   border: 1px solid rgba(76, 110, 143, 0.44);
   background: rgba(8, 16, 28, 0.8);
   color: rgba(192, 213, 236, 0.88);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -14677,13 +14677,13 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-code-context-label {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.07em;
 }
 
 .ide-design-code-context-desc {
   max-width: 70ch;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
   color: rgba(177, 202, 227, 0.7);
 }
@@ -14781,7 +14781,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-authoring-issues.is-compact-strip .ide-design-authoring-issues-status {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(186, 210, 236, 0.76);
 }
 
@@ -14822,7 +14822,7 @@ details[open].ide-export-evidence-details > summary::before {
   border-right: 1px solid rgba(71, 109, 146, 0.34);
   background: transparent;
   color: rgba(172, 196, 221, 0.8);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -14895,10 +14895,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-design-hdl-secondary-title {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(159, 189, 218, 0.78);
 }
 
@@ -14948,7 +14948,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 [data-ide-mode-marker='design'] .ide-design-frame-intent {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.3;
   color: rgba(182, 205, 229, 0.82);
 }
@@ -14966,7 +14966,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 [data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split'] .ide-design-frame-intent {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.24;
 }
 
@@ -15144,7 +15144,7 @@ details[open].ide-export-evidence-details > summary::before {
   justify-content: center;
   font-family: var(--rb-font-mono);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -15250,7 +15250,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* Scope label: stronger presence */
 .ide-verify-scope-label {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.12em;
 }
 
@@ -15312,15 +15312,15 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-verify-secondary-evidence-panel__copy p {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(186, 230, 253, 0.62);
 }
 
 .ide-verify-secondary-evidence-panel__eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(130, 170, 210, 0.54);
 }
 
@@ -15330,7 +15330,7 @@ details[open].ide-export-evidence-details > summary::before {
   border-radius: 999px;
   border: 1px solid rgba(46, 196, 182, 0.32);
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(214, 255, 250, 0.88);
   background: rgba(46, 196, 182, 0.08);
   white-space: nowrap;
@@ -15539,10 +15539,10 @@ details[open].ide-export-evidence-details > summary::before {
   display: flex !important;
   align-items: center !important;
   padding: 5px 12px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
   color: rgba(56, 189, 248, 0.7) !important;
   border-bottom: 1px solid rgba(48, 77, 107, 0.4) !important;
   cursor: pointer !important;
@@ -15582,7 +15582,7 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-sequential-context"] .ide-callout-title,
 .ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-sequential-context"] .ide-callout-body p {
   display: inline !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   line-height: 1.4 !important;
   color: rgba(147, 197, 253, 0.8) !important;
   font-weight: 400 !important;
@@ -15603,7 +15603,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 .ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-auto-vector-notice"] .ide-callout-body p,
 .ide-workbench-shell[data-ide-mode-marker='verify'] [data-testid="ide-verify-auto-vector-notice"] .ide-inline-actions {
-  font-size: 10px !important;
+  font-size: 11px !important;
   margin: 0 !important;
 }
 
@@ -15651,10 +15651,10 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* Scope label: instrument brand */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scope-label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.1em !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
   color: rgba(56, 189, 248, 0.6) !important;
 }
 
@@ -15776,7 +15776,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* ── Status pill: compact, right-aligned ── */
 [data-ide-mode-marker='design'] .ide-design-canvas-mode-indicator {
-  font-size: 9px !important;
+  font-size: 11px !important;
   padding: 2px 8px !important;
   min-height: 18px !important;
 }
@@ -15792,7 +15792,7 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* ── Tool HUD: more visible, decisive ── */
 [data-ide-mode-marker='design'] .ide-design-tool-hud {
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 /* ── Canvas background: darker, more instrument-like ── */
@@ -15977,8 +15977,8 @@ details[open].ide-export-evidence-details > summary::before {
   font-size: 12px !important;
   font-weight: 600 !important;
   color: rgba(180,208,232,0.6) !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
 }
 [data-ide-mode-marker='design'] .ide-design-frame-copy {
   gap: 0 !important;
@@ -16056,7 +16056,7 @@ details[open].ide-export-evidence-details > summary::before {
    ───────────────────────────────────── */
 
 [data-ide-mode-marker='export'] .ide-panel-description {
-  font-size: 11px !important;
+  font-size: 12px !important;
   opacity: 0.52 !important;
   line-height: 1.3 !important;
 }
@@ -16075,7 +16075,7 @@ details[open].ide-export-evidence-details > summary::before {
   width: 100% !important;
   min-height: 52px !important;
   font-size: 16px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   justify-content: center !important;
   background: rgba(46,196,182,0.2) !important;
   border-color: rgba(46,196,182,0.52) !important;
@@ -16099,7 +16099,7 @@ details[open].ide-export-evidence-details > summary::before {
   align-items: center !important;
 }
 [data-ide-mode-marker='export'] .ide-export-trust-row .ide-button {
-  font-size: 11px !important;
+  font-size: 12px !important;
   min-height: 26px !important;
   padding: 3px 10px !important;
 }
@@ -16116,7 +16116,7 @@ details[open].ide-export-evidence-details > summary::before {
    ───────────────────────────────────── */
 
 [data-ide-mode-marker='import'] .ide-panel-description {
-  font-size: 11px !important;
+  font-size: 12px !important;
   opacity: 0.52 !important;
 }
 [data-ide-mode-marker='import'] .ide-import-start-card {
@@ -16143,10 +16143,10 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 6px !important;
 }
 [data-ide-mode-marker='import'] .ide-import-workflow-step-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 [data-ide-mode-marker='import'] .ide-import-workflow-step-desc {
-  font-size: 10px !important;
+  font-size: 11px !important;
   opacity: 0.65 !important;
   line-height: 1.3 !important;
 }
@@ -16160,7 +16160,7 @@ details[open].ide-export-evidence-details > summary::before {
   min-height: 0 !important;
   gap: 10px !important;
   opacity: 1 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(195, 218, 238, 0.88) !important;
 }
 [data-ide-mode-marker='hardware'] .ide-hardware-provenance-axis {
@@ -16196,10 +16196,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 [data-ide-mode-marker='hardware'] .ide-hw-stage-kicker {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(130, 175, 210, 0.72);
 }
 [data-ide-mode-marker='hardware'] .ide-hw-stage-caption {
@@ -16216,7 +16216,7 @@ details[open].ide-export-evidence-details > summary::before {
   border-radius: 8px;
   border: 1px solid rgba(56, 189, 248, 0.35);
   background: rgba(8, 22, 36, 0.85);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(125, 220, 250, 0.92);
   align-self: center;
@@ -16278,15 +16278,15 @@ details[open].ide-export-evidence-details > summary::before {
   min-width: 0;
 }
 [data-ide-mode-marker='hardware'] .ide-hw-board-chrome-eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(130, 168, 200, 0.65);
 }
 [data-ide-mode-marker='hardware'] .ide-hw-board-chrome-title {
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: rgba(236, 246, 255, 0.96);
 }
@@ -16302,7 +16302,7 @@ details[open].ide-export-evidence-details > summary::before {
   min-height: 26px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -16464,7 +16464,7 @@ details[open].ide-export-evidence-details > summary::before {
   display: block !important;
 }
 [data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero .ide-copy {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(165,195,220,0.55) !important;
   margin: 0 !important;
   overflow: hidden !important;
@@ -16487,7 +16487,7 @@ details[open].ide-export-evidence-details > summary::before {
 [data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__actions .ide-button-secondary,
 [data-ide-mode-marker='hardware'] .ide-hardware-blocked-hero__actions .ide-button-ghost {
   min-height: 30px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 4px 10px !important;
   opacity: 0.7 !important;
 }
@@ -16503,21 +16503,21 @@ details[open].ide-export-evidence-details > summary::before {
 }
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td {
   padding: 1px 6px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   line-height: 1.55 !important;
   border: none !important;
   vertical-align: middle !important;
 }
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td:first-child {
   font-family: var(--rb-font-mono) !important;
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   color: rgba(140,180,215,0.55) !important;
   letter-spacing: 0.04em !important;
   width: 52px !important;
 }
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td:last-child {
   font-family: var(--rb-font-mono) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   color: rgba(46,196,182,0.78) !important;
   letter-spacing: 0.05em !important;
@@ -16553,15 +16553,15 @@ details[open].ide-export-evidence-details > summary::before {
   border-top: 1px solid rgba(56,189,248,0.07) !important;
 }
 [data-ide-mode-marker='hardware'] .ide-hw-live-design-link .ide-button {
-  font-size: 11px !important;
+  font-size: 12px !important;
   opacity: 0.62 !important;
   min-height: 26px !important;
 }
 /* Sim tick label */
 [data-ide-mode-marker='hardware'] .ide-workbench-placeholder-header h3 {
-  font-size: 9px !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.48) !important;
   font-weight: 600 !important;
 }
@@ -16582,7 +16582,7 @@ details[open].ide-export-evidence-details > summary::before {
 [data-ide-mode-marker='hardware'] .ide-hardware-provenance-summary {
   cursor: pointer !important;
   list-style: none !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   color: rgba(130,170,210,0.52) !important;
@@ -16593,7 +16593,7 @@ details[open].ide-export-evidence-details > summary::before {
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-export-status']:has-text,
 [data-ide-mode-marker='hardware'] [data-testid='ide-hardware-export-status'] {
   font-family: var(--rb-font-mono) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 /* ── 7. Board area — give the PCB visual maximum breathing room ── */
@@ -16735,7 +16735,7 @@ details[open].ide-export-evidence-details > summary::before {
 }
 /* AVAILABLE pill — slightly larger, amber weight */
 [data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-status-pill {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   letter-spacing: 0.06em !important;
   padding: 3px 8px !important;
@@ -16765,10 +16765,10 @@ details[open].ide-export-evidence-details > summary::before {
 }
 /* Eyebrow "Engineering handoff" — reinforce final-step framing */
 [data-ide-mode-marker='export'] .ide-export-summary-eyebrow span {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(46,196,182,0.62) !important;
   opacity: 1 !important;
 }
@@ -16812,8 +16812,8 @@ details[open].ide-export-evidence-details > summary::before {
 
 /* ── 2. AVAILABLE pill — anchors page state at a glance ── */
 [data-ide-mode-marker='export'] .ide-export-trust-row--available .ide-status-pill {
-  font-size: 11px !important;
-  font-weight: 800 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
   letter-spacing: 0.07em !important;
   padding: 4px 10px !important;
   background: rgba(244,185,66,0.12) !important;
@@ -16901,8 +16901,8 @@ details[open].ide-export-evidence-details > summary::before {
 }
 [data-ide-mode-marker='import'] .ide-import-dock-actions-header strong {
   font-size: 12px !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.48) !important;
   font-weight: 600 !important;
 }
@@ -16931,12 +16931,12 @@ details[open].ide-export-evidence-details > summary::before {
   display: block !important;
 }
 [data-ide-mode-marker='import'] .ide-import-sample-card-desc {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(150,185,220,0.58) !important;
   display: block !important;
 }
 [data-ide-mode-marker='import'] .ide-import-sample-card-learn {
-  font-size: 10px !important;
+  font-size: 11px !important;
   color: rgba(46,196,182,0.6) !important;
   display: block !important;
   margin-top: 2px !important;
@@ -16951,7 +16951,7 @@ details[open].ide-export-evidence-details > summary::before {
   text-align: left !important;
 }
 [data-ide-mode-marker='import'] .ide-import-start-guidance .ide-copy {
-  font-size: 10px !important;
+  font-size: 11px !important;
   color: rgba(120,155,190,0.35) !important;
   line-height: 1.4 !important;
   max-width: none !important;
@@ -17193,10 +17193,10 @@ select:focus-visible {
 /* ── 9. Section title consistency across all surfaces ──────── */
 .ide-workbench-placeholder-header h3,
 .ide-workbench-console-header h4 {
-  font-size: 9px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.45) !important;
 }
 
@@ -17267,26 +17267,26 @@ button:disabled,
 /* Muted group-label prefixes on first row of each group */
 [data-testid='ide-hardware-live-state-table'] tr:nth-child(1) td:first-child::before {
   content: 'SW  ';
-  font-size: 7.5px !important;
+  font-size: 11px !important;
   opacity: 0.3 !important;
   letter-spacing: 0.05em !important;
 }
 [data-testid='ide-hardware-live-state-table'] tr:nth-child(9) td:first-child::before {
   content: 'BTN  ';
-  font-size: 7.5px !important;
+  font-size: 11px !important;
   opacity: 0.3 !important;
   letter-spacing: 0.05em !important;
 }
 [data-testid='ide-hardware-live-state-table'] tr:nth-child(14) td:first-child::before {
   content: 'LD  ';
-  font-size: 7.5px !important;
+  font-size: 11px !important;
   opacity: 0.3 !important;
   letter-spacing: 0.05em !important;
 }
 
 /* ── A7. Hardware signal log empty state: guided, not abandoned ── */
 [data-testid='ide-hw-signal-log-empty'] {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(140,175,210,0.4) !important;
   font-style: italic !important;
   padding: 4px 2px !important;
@@ -17363,17 +17363,17 @@ button:disabled,
 
 .ide-stimulus-group-header:not(.ide-stimulus-group-header--asserted) {
   color: rgba(100,210,255,0.72) !important;
-  font-size: 9.5px !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   font-weight: 700 !important;
 }
 
 .ide-stimulus-group-header--asserted {
   color: rgba(46,196,182,0.72) !important;
-  font-size: 9.5px !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   font-weight: 700 !important;
 }
 
@@ -17382,16 +17382,16 @@ button:disabled,
    ─────────────────────────────────────────────────────────── */
 
 .ide-verify-scope-label {
-  font-size: 9px !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   font-weight: 700 !important;
   color: rgba(130,170,210,0.42) !important;
 }
 
 .ide-verify-scope-tick,
 .ide-verify-scope-cursor {
-  font-size: 10px !important;
+  font-size: 11px !important;
   opacity: 0.72 !important;
   font-family: var(--rb-font-mono) !important;
 }
@@ -17429,7 +17429,7 @@ button:disabled,
 /* Slightly lift the empty text contrast */
 .ide-verify-waveform-empty > span {
   color: rgba(130,175,215,0.40) !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   letter-spacing: 0.06em !important;
   font-style: normal !important;
   font-family: var(--rb-font-mono) !important;
@@ -17450,16 +17450,16 @@ button:disabled,
 
 /* Inspector section toggle headers: instrument label style */
 [data-ide-mode-marker='verify'] .ide-inspector-section .ide-inspector-toggle {
-  font-size: 9.5px !important;
-  letter-spacing: 0.10em !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.55) !important;
   font-weight: 700 !important;
 }
 
 /* Reference mode note: muted, italic */
 [data-testid='ide-verify-reference-mode-note'] {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(130,175,215,0.45) !important;
   font-style: italic !important;
   margin-top: 2px !important;
@@ -17470,10 +17470,10 @@ button:disabled,
 [data-testid='ide-verify-vectors-table'] td,
 [data-testid='ide-verify-vectors-table'] th {
   padding: 3px 6px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 [data-testid='ide-verify-vectors-table'] th {
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
   color: rgba(130,170,210,0.52) !important;
@@ -17482,7 +17482,7 @@ button:disabled,
 /* Tick snapshot: matches vector table density */
 .ide-verify-tick-snapshot .ide-kv-row {
   padding: 2px 0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 /* ── E. Visual family tightening across all three zones ────────
@@ -17503,7 +17503,7 @@ button:disabled,
 /* Stimulus tick header cell: same amber as clock signals for time axis */
 .ide-stimulus-tick-header {
   color: rgba(251,191,36,0.60) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-family: var(--rb-font-mono) !important;
 }
 
@@ -17568,7 +17568,7 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-summary {
   height: 34px !important;
   min-height: 34px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 0 14px !important;
   display: flex !important;
   align-items: center !important;
@@ -17617,7 +17617,7 @@ button:disabled,
 /* Palette group headers: clear but compact */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-group-header,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-subheader h3 {
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   letter-spacing: 0.10em !important;
   padding-top: 10px !important;
   padding-bottom: 4px !important;
@@ -17688,7 +17688,7 @@ button:disabled,
   padding: 4px 0 !important;
 }
 .ide-verify-signal-toolbar .ide-button {
-  font-size: 10px !important;
+  font-size: 11px !important;
   min-height: 22px !important;
   padding: 2px 7px !important;
   opacity: 0.55 !important;
@@ -17712,7 +17712,7 @@ button:disabled,
 }
 .ide-verify-step-controls .ide-button,
 [data-testid='ide-verify-step-controls'] .ide-button {
-  font-size: 11px !important;
+  font-size: 12px !important;
   min-height: 26px !important;
   padding: 3px 9px !important;
 }
@@ -17725,7 +17725,7 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-palette-card-subtitle {
   display: block;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -17741,7 +17741,7 @@ button:disabled,
 }
 [data-ide-mode-marker='design'] .ide-palette-card-glyph {
   font-size: 12px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   min-width: 28px !important;
   min-height: 24px !important;
   letter-spacing: 0 !important;
@@ -17814,7 +17814,7 @@ button:disabled,
 }
 
 .ide-verify-workbench-count {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(148, 163, 184, 0.65);
   background: rgba(56, 189, 248, 0.09);
@@ -17846,7 +17846,7 @@ button:disabled,
 
 /* ── Legacy summary classes (keep for existing count chip) ── */
 .ide-verify-scenario-builder-count {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(148,163,184,0.55) !important;
   background: rgba(56,189,248,0.07) !important;
   padding: 1px 7px !important;
@@ -17858,14 +17858,14 @@ button:disabled,
 
 /* ── A3. StimulusCanvas: stronger visual identity ────────────── */
 .ide-stimulus-tick-header {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   color: rgba(130,170,210,0.55) !important;
   background: rgba(8,15,30,0.5) !important;
   text-align: center !important;
 }
 .ide-stimulus-row-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   color: rgba(186,230,253,0.8) !important;
 }
@@ -17874,8 +17874,8 @@ button:disabled,
 .ide-verify-zoom-label {
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   opacity: 1;
   margin-right: 2px;
 }
@@ -17901,10 +17901,10 @@ button:disabled,
 
 /* ── A4. Scope header: unified instrument band ───────────────── */
 .ide-verify-scope-label {
-  font-size: 9px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.4) !important;
 }
 
@@ -17915,14 +17915,14 @@ button:disabled,
   border-top: 1px solid rgba(56,189,248,0.07) !important;
 }
 .ide-verify-drawer-label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   opacity: 0.4 !important;
   letter-spacing: 0.04em !important;
 }
 
 /* ── A6. Drawer tabs: clear active state ─────────────────────── */
 .ide-verify-drawer-tab {
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 3px 9px !important;
   border-radius: 4px !important;
   color: rgba(130,170,210,0.5) !important;
@@ -17966,8 +17966,8 @@ button:disabled,
 .ide-palette-section-header h4 {
   font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.09em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.38) !important;
   margin: 0 !important;
 }
@@ -17986,8 +17986,8 @@ button:disabled,
   color: rgba(130,170,210,0.52) !important;
   font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   padding: 6px 8px !important;
   min-height: 36px !important;
   cursor: pointer !important;
@@ -18032,8 +18032,8 @@ button:disabled,
 }
 .ide-design-inspector-eyebrow {
   font-size: 12px !important;
-  letter-spacing: 0.09em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(130,170,210,0.3) !important;
   display: block !important;
   margin-bottom: 8px !important;
@@ -18052,7 +18052,7 @@ button:disabled,
   border-bottom: 1px solid rgba(56,189,248,0.07) !important;
 }
 .ide-verify-step-bar .ide-button {
-  font-size: 11px !important;
+  font-size: 12px !important;
   min-height: 26px !important;
   padding: 2px 10px !important;
 }
@@ -18067,7 +18067,7 @@ button:disabled,
 /* ── D. Design "Focus" button in palette: demote ─────────────── */
 /* It's rarely needed, shouldn't compete with search */
 .ide-design-palette-header .ide-button {
-  font-size: 10px !important;
+  font-size: 11px !important;
   opacity: 0.55 !important;
   min-height: 24px !important;
   padding: 2px 8px !important;
@@ -18114,7 +18114,7 @@ button:disabled,
   max-height: 22px !important;
   overflow: hidden !important;
   padding: 3px 12px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   color: rgba(130,165,200,0.45) !important;
   background: transparent !important;
   border: none !important;
@@ -18127,7 +18127,7 @@ button:disabled,
   max-height: none !important;
   overflow: visible !important;
   padding: 7px 12px 9px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.35 !important;
   color: rgba(168, 198, 228, 0.82) !important;
   background: rgba(6, 14, 24, 0.72) !important;
@@ -18185,7 +18185,7 @@ button:disabled,
   padding: 6px 12px !important;
   background: rgba(245, 158, 11, 0.06) !important;
   border-bottom: 1px solid rgba(245, 158, 11, 0.2) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(253, 230, 138, 0.85) !important;
   line-height: 1.45 !important;
 }
@@ -18200,7 +18200,7 @@ button:disabled,
 }
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-sync-warning .ide-button {
   flex: 0 0 auto !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   min-height: 24px !important;
   padding: 2px 8px !important;
   color: rgba(253, 230, 138, 0.9) !important;
@@ -18236,7 +18236,7 @@ button:disabled,
 /* Seq chip: single-line compact badge */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-seq-chip {
   flex: 0 0 auto !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   color: rgba(147, 197, 253, 0.8) !important;
   background: rgba(56, 189, 248, 0.07) !important;
   border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
@@ -18264,7 +18264,7 @@ button:disabled,
   justify-content: space-between;
   gap: 8px;
   padding: 6px 12px;
-  font-size: 0.82em;
+  font-size: var(--rb-text-meta);
   color: var(--rb-text-secondary);
   background: rgba(56, 189, 248, 0.06);
   border-left: 3px solid var(--rb-info, #38bdf8);
@@ -18275,11 +18275,11 @@ button:disabled,
   cursor: pointer;
   color: var(--rb-text-secondary);
   padding: 0 4px;
-  font-size: 0.9em;
+  font-size: var(--rb-text-meta);
   flex-shrink: 0;
 }
 .ide-verify-compat-badge {
-  font-size: 9px;
+  font-size: 11px;
   margin-left: 3px;
   vertical-align: super;
 }
@@ -18292,7 +18292,7 @@ button:disabled,
 
 /* ── Batch 5: Vector-to-result connection ───────────────────────── */
 .ide-verify-row-badge {
-  font-size: 10px;
+  font-size: 11px;
   margin-left: 3px;
   font-weight: 700;
   vertical-align: middle;
@@ -18309,7 +18309,7 @@ button:disabled,
 }
 
 /* ── Batch 7: Export provenance rows ────────────────────────────── */
-.ide-export-provenance-row { font-size: 0.82em; }
+.ide-export-provenance-row { font-size: var(--rb-text-meta); }
 .ide-export-provenance-none { color: var(--rb-text-secondary); opacity: 0.6; }
 .ide-export-provenance-stale { color: var(--rb-text-secondary); font-style: italic; }
 .ide-export-provenance-pass { color: var(--rb-success, #4ade80); }
@@ -18416,9 +18416,9 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-empty-label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(130, 170, 210, 0.62);
 }
 
@@ -18450,7 +18450,7 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-right-detail-group > summary {
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(254, 202, 202, 0.84);
 }
@@ -18514,8 +18514,8 @@ button:disabled,
 .ide-stimulus-toolbar-label {
   font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(191, 219, 254, 0.68);
 }
 
@@ -18601,14 +18601,14 @@ button:disabled,
   background: rgba(37, 99, 235, 0.18);
   border: 1px solid rgba(96, 165, 250, 0.28);
   color: #dbeafe;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 [data-ide-mode-marker='verify'] .ide-stimulus-clock-detail {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(191, 219, 254, 0.72);
 }
 
@@ -18623,7 +18623,7 @@ button:disabled,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(191, 219, 254, 0.78);
 }
 
@@ -18731,7 +18731,7 @@ button:disabled,
 
 /* ─── UX Polish Pass — Change 3: Stale-not-failure sub-note ──────────── */
 .ide-verify-stale-note {
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   color: var(--ide-text-muted);
   margin-top: 4px;
@@ -18767,7 +18767,7 @@ button:disabled,
 }
 .ide-export-blocker-code {
   font-family: var(--ide-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--ide-text-muted);
   letter-spacing: 0.06em;
@@ -18831,7 +18831,7 @@ button:disabled,
   opacity: 0.6;
 }
 .ide-hardware-dep-step__num {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   opacity: 0.75;
   color: var(--ide-text-soft);
@@ -18842,7 +18842,7 @@ button:disabled,
   color: var(--ide-text-muted);
 }
 .ide-hardware-dep-step__status {
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--ide-font-mono);
   color: var(--ide-text-soft);
 }
@@ -19033,10 +19033,10 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(152, 220, 213, 0.84);
 }
 
@@ -19199,8 +19199,8 @@ button:disabled,
 .ide-vcb-mode-label {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(143, 173, 202, 0.72);
 }
 
@@ -19216,7 +19216,7 @@ button:disabled,
   background: transparent;
   border: none;
   color: var(--rb-text-muted, #7a95b0);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   padding: 4px 12px;
   cursor: pointer;
@@ -19226,7 +19226,7 @@ button:disabled,
 /* Inactive mode button: ghost weight — the active state IS the label */
 .ide-vcb-mode-btn:not(.is-active) {
   opacity: 0.42;
-  font-size: 10px;
+  font-size: 11px;
   padding: 4px 9px;
 }
 .ide-vcb-mode-btn:hover:not(:disabled) {
@@ -19255,7 +19255,7 @@ button:disabled,
   align-items: center;
   padding: 2px 10px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -19268,7 +19268,7 @@ button:disabled,
   align-items: center;
   padding: 2px 10px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -19434,7 +19434,7 @@ button:disabled,
   white-space: nowrap;
 }
 .ide-scenario-dropdown-item-meta {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--rb-text-muted, #7a95b0);
   flex-shrink: 0;
 }
@@ -19456,7 +19456,7 @@ button:disabled,
   border: 1px solid transparent;
   border-radius: 4px;
   color: var(--rb-text-muted, #7a95b0);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
@@ -19534,7 +19534,7 @@ button:disabled,
   align-items: center;
   padding: 1px 8px;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   background: rgba(56, 189, 248, 0.12);
   color: #7ec8f8;
@@ -19552,14 +19552,14 @@ button:disabled,
 
 /* Testbench zone header — compact labeled header */
 .ide-verify-empty-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0;
   color: rgba(56, 189, 248, 0.7);
 }
 .ide-verify-empty-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-muted, #7a95b0);
   opacity: 0.7;
 }
@@ -19572,7 +19572,7 @@ button:disabled,
   padding: 4px 10px;
   background: rgba(230, 172, 60, 0.08);
   border-left: 3px solid rgba(230, 172, 60, 0.5);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-muted, #7a95b0);
   flex-shrink: 0;
 }
@@ -19643,7 +19643,7 @@ button:disabled,
   border-radius: 999px;
   background: rgba(8, 20, 34, 0.74);
   color: rgba(191, 219, 254, 0.8);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -19799,13 +19799,13 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary code {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary__tick {
   color: rgba(125, 211, 252, 0.9);
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary__values {
@@ -19813,11 +19813,11 @@ button:disabled,
   align-items: center;
   gap: 4px;
   color: rgba(226, 232, 240, 0.74);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-fail-nav-position {
-  font-size: 10px !important;
+  font-size: 11px !important;
   opacity: 0.62;
 }
 
@@ -19840,10 +19840,10 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-label {
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0;
   opacity: 0.5;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-waveform-tools-readouts {
@@ -19860,7 +19860,7 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(191, 219, 254, 0.8);
 }
 
@@ -19883,7 +19883,7 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-open-hint {
   color: rgba(191, 219, 254, 0.78);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -19939,7 +19939,7 @@ button:disabled,
   border: 1px solid rgba(46, 196, 182, 0.36);
   color: rgba(141, 246, 229, 0.94);
   background: rgba(10, 38, 43, 0.62);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-product-spine__label,
@@ -19968,7 +19968,7 @@ button:disabled,
 .ide-product-spine__prompt {
   color: rgba(245, 250, 255, 0.98);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -20001,8 +20001,8 @@ button:disabled,
   color: rgba(186, 207, 228, 0.86);
   background: rgba(8, 18, 30, 0.76);
   cursor: pointer;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0;
   list-style: none;
 }
@@ -20034,8 +20034,8 @@ button:disabled,
 
 .ide-product-spine__facts dt {
   color: rgba(131, 168, 203, 0.82);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -20043,7 +20043,7 @@ button:disabled,
 .ide-product-spine__facts dd {
   margin: 0;
   color: rgba(224, 235, 248, 0.86);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -20069,7 +20069,7 @@ button:disabled,
   max-width: 220px;
   min-height: 28px;
   color: rgba(222, 234, 247, 0.86);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -20082,14 +20082,14 @@ button:disabled,
 
   .ide-product-spine__stage {
     gap: 6px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .ide-product-spine__progress {
     width: 34px;
     min-width: 34px;
     height: 22px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .ide-product-spine__main {
@@ -20102,7 +20102,7 @@ button:disabled,
 
   .ide-product-spine__job,
   .ide-product-spine__detail {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
@@ -20112,11 +20112,11 @@ button:disabled,
   }
 
   .ide-product-spine__facts dt {
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .ide-product-spine__facts dd {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.2;
   }
 
@@ -20131,14 +20131,14 @@ button:disabled,
   .ide-product-spine__actions .ide-button {
     min-height: 28px;
     padding: 5px 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .ide-product-spine__action-copy,
   .ide-product-spine__recovery-copy {
     max-width: 168px;
     min-height: 0;
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.2;
   }
 }
@@ -20183,7 +20183,7 @@ button:disabled,
 
 .ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__stage {
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 11px;
   flex-wrap: nowrap;
 }
 
@@ -20199,7 +20199,7 @@ button:disabled,
   width: 32px;
   min-width: 32px;
   height: 18px;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__main {
@@ -20230,7 +20230,7 @@ button:disabled,
   margin: 0;
   overflow: hidden;
   color: rgba(222, 234, 247, 0.9);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -20239,7 +20239,7 @@ button:disabled,
 .ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__main .ide-status-pill {
   min-height: 20px;
   padding: 2px 7px;
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -20250,7 +20250,7 @@ button:disabled,
 .ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__details > summary {
   min-height: 22px;
   padding: 2px 7px;
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -20282,7 +20282,7 @@ button:disabled,
 .ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__actions .ide-button {
   min-height: 22px;
   padding: 2px 7px;
-  font-size: 10.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -20290,7 +20290,7 @@ button:disabled,
 .ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__recovery-copy {
   max-width: 156px;
   min-height: 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -20329,10 +20329,10 @@ button:disabled,
 }
 
 .ide-surface-command-strip-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(131, 168, 203, 0.72);
 }
 
@@ -20628,7 +20628,7 @@ button:disabled,
   border-radius: 999px;
   border: 1px dashed rgba(111, 143, 173, 0.34);
   color: rgba(180, 202, 224, 0.8);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -20681,7 +20681,7 @@ button:disabled,
   color: var(--rb-accent) !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-sim-story-strip.has-replay-scrubber .ide-design-sim-story-pill {
@@ -20689,7 +20689,7 @@ button:disabled,
   background: rgba(46, 196, 182, 0.1) !important;
   border: 1px solid rgba(46, 196, 182, 0.22) !important;
   color: rgba(180, 245, 230, 0.9) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 3px 8px !important;
 }
 
@@ -20706,10 +20706,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-replay-scrubber-label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.1em !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
   color: var(--rb-accent) !important;
 }
 
@@ -20744,7 +20744,7 @@ button:disabled,
   max-height: none !important;
   overflow: visible !important;
   padding: 7px 12px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: rgba(165, 198, 228, 0.78) !important;
   background: rgba(6, 14, 24, 0.65) !important;
   border: 1px solid rgba(42, 68, 92, 0.32) !important;
@@ -20767,8 +20767,8 @@ button:disabled,
 
 .ide-vcb-status {
   font-size: 12px !important;
-  letter-spacing: 0.04em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
 }
 
 .ide-vcb-mode-toggle {
@@ -20857,7 +20857,7 @@ button:disabled,
   min-height: 20px !important;
   padding: 2px 9px !important;
   border-radius: 999px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.06em !important;
 }
@@ -20931,10 +20931,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-scope-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.16em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(111, 199, 255, 0.82) !important;
 }
 
@@ -21033,10 +21033,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-empty-label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.16em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(111, 199, 255, 0.78) !important;
 }
 
@@ -21068,7 +21068,7 @@ button:disabled,
   border-radius: 999px !important;
   border: 1px solid rgba(63, 108, 145, 0.2) !important;
   background: rgba(11, 19, 31, 0.92) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
@@ -21135,10 +21135,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-sim-story-label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.16em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(127, 200, 255, 0.72) !important;
 }
 
@@ -21155,7 +21155,7 @@ button:disabled,
   flex-wrap: wrap !important;
   justify-content: flex-end !important;
   gap: 8px 12px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.4 !important;
   color: rgba(165, 190, 214, 0.82) !important;
 }
@@ -21197,10 +21197,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-replay-scrubber-label {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.16em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(127, 200, 255, 0.76) !important;
 }
 
@@ -21439,8 +21439,8 @@ button:disabled,
 [data-ide-mode-marker='verify'] .ide-verify-empty-label {
   font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.14em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(111, 199, 255, 0.72) !important;
 }
 
@@ -21499,7 +21499,7 @@ button:disabled,
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   border: 1px solid rgba(77, 114, 147, 0.2);
   background: rgba(11, 18, 30, 0.84);
@@ -21635,7 +21635,7 @@ button:disabled,
   border: 1px solid rgba(79, 114, 145, 0.22);
   background: rgba(11, 19, 31, 0.84);
   color: rgba(222, 236, 249, 0.88);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -21686,16 +21686,16 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-header {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rb-text-primary);
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-kicker {
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-list {
@@ -21717,7 +21717,7 @@ button:disabled,
   gap: 6px;
   min-width: 0;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-label strong,
@@ -21736,7 +21736,7 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-label code {
   color: var(--rb-action);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-io-state-value {
@@ -21749,7 +21749,7 @@ button:disabled,
   border: 1px solid var(--rb-border-strong);
   background: var(--rb-surface-3);
   color: var(--rb-text-primary);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-action-grid {
@@ -21968,7 +21968,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-replay-scrubber-readout {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   color: rgba(147, 210, 248, 0.85) !important;
   flex-shrink: 0 !important;
@@ -21981,7 +21981,7 @@ button:disabled,
   align-items: center !important;
   padding: 1px 6px !important;
   border-radius: 4px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
@@ -21999,7 +21999,7 @@ button:disabled,
 }
 
 .ide-design-replay-guide-hint {
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.5 !important;
   color: rgba(180, 210, 240, 0.75) !important;
   margin: 0 !important;
@@ -22016,20 +22016,20 @@ button:disabled,
 }
 
 .ide-design-replay-failure-signal {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: rgba(252, 165, 165, 0.9);
   font-family: var(--font-mono, monospace);
 }
 
 .ide-design-replay-failure-verdict {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(220, 200, 200, 0.75);
   line-height: 1.4;
 }
 
 .ide-design-replay-failure-verdict code {
-  font-size: 10px;
+  font-size: 11px;
   padding: 0 3px;
   border-radius: 3px;
   background: rgba(255, 100, 100, 0.12);
@@ -22050,10 +22050,10 @@ button:disabled,
 }
 
 .ide-design-replay-causation-label {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(56, 189, 248, 0.7);
 }
 
@@ -22101,10 +22101,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-group-toggle {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(168, 198, 228, 0.76) !important;
   padding: 0 !important;
   background: transparent !important;
@@ -22119,7 +22119,7 @@ button:disabled,
 /* ── Verify: Command bar text quality ────────────────────────────────────── */
 
 [data-ide-mode-marker='verify'] .ide-vcb-evidence {
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.35 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -22199,7 +22199,7 @@ button:disabled,
   display: flex;
   align-items: center;
   gap: var(--rb-space-2);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-hw-map-progress-row > span:nth-child(2) {
@@ -22210,7 +22210,7 @@ button:disabled,
 .ide-hw-map-check {
   width: 14px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   flex-shrink: 0;
 }
 
@@ -22233,7 +22233,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='hardware'] .ide-hw-mode-toggle .ide-button-ghost {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 4px;
   opacity: 0.6;
@@ -22245,7 +22245,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='hardware'] .ide-hw-mode-toggle .ide-button-primary {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 4px;
 }
@@ -22267,10 +22267,10 @@ button:disabled,
 
 /* ── Export readiness section header: meta chip ─────────────────── */
 [data-ide-mode-marker='export'] .ide-export-section-meta {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 2px 6px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.06);
@@ -22307,7 +22307,7 @@ button:disabled,
 }
 
 .ide-verify-lab-chip {
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -22392,7 +22392,7 @@ button:disabled,
 
 .ide-verify-lab-step-kind {
   display: inline-block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -22428,7 +22428,7 @@ button:disabled,
 }
 
 .ide-verify-lab-state-kind {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--rb-text-subtle);
@@ -22473,7 +22473,7 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-workspace-title {
   font-size: 15px !important;
-  font-weight: 650 !important;
+  font-weight: 600 !important;
   letter-spacing: -0.01em !important;
   color: rgba(232, 242, 255, 0.94) !important;
   line-height: 1 !important;
@@ -22550,10 +22550,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip-label {
-  font-size: 10px !important;
-  font-weight: 800 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
   letter-spacing: 0 !important;
-  text-transform: uppercase !important;
+  text-transform: none !important;
   color: rgba(99, 229, 218, 0.86) !important;
 }
 
@@ -22573,7 +22573,7 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip .ide-button {
   min-height: 28px !important;
   padding: 4px 9px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-workspace-status-bar {
@@ -22619,10 +22619,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-workspace-health-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
-  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
   color: rgba(171, 203, 229, 0.72) !important;
 }
 
@@ -22633,7 +22633,7 @@ button:disabled,
   min-height: 22px !important;
   padding: 2px 8px !important;
   border-radius: 999px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1 !important;
 }
 
@@ -22667,7 +22667,7 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-workspace-status-note {
   margin: 0 !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   line-height: 1.45 !important;
   color: rgba(206, 225, 242, 0.78) !important;
 }
@@ -22684,7 +22684,7 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-workspace-runtime .ide-design-sim-story-summary {
   margin-top: 6px !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   line-height: 1.45 !important;
 }
 
@@ -22987,7 +22987,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-chrome-eyebrow {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-chrome-title {
@@ -23143,12 +23143,12 @@ button:disabled,
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-label {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: rgba(241, 248, 255, 0.98);
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-caption {
-  font-size: 9px;
+  font-size: 11px;
   color: rgba(148, 176, 199, 0.7);
 }
 
@@ -23190,7 +23190,7 @@ button:disabled,
   box-shadow: none;
   text-transform: none;
   letter-spacing: 0;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-badge::before {
@@ -23292,7 +23292,7 @@ button:disabled,
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-node span {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: rgba(143, 174, 201, 0.74);
@@ -23310,7 +23310,7 @@ button:disabled,
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-arrow {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: rgba(46, 196, 182, 0.74);
@@ -23324,7 +23324,7 @@ button:disabled,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-family: var(--ide-font-mono);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.25;
   color: rgba(199, 232, 229, 0.9);
 }
@@ -23351,7 +23351,7 @@ button:disabled,
   border: 1px solid rgba(58, 92, 120, 0.46);
   background: rgba(5, 12, 20, 0.8);
   color: rgba(210, 230, 246, 0.94);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -23472,7 +23472,7 @@ button:disabled,
   padding: 6px 0 10px;
   background: transparent;
   border-bottom: 1px solid rgba(72, 118, 152, 0.22);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 [data-ide-mode-marker='export'][data-layout-intent='workbench'] .ide-export-determinismRow {
@@ -23533,7 +23533,7 @@ button:disabled,
    and a lighter observation-stage draft state. */
 
 [data-ide-mode-marker='verify'] .ide-verify-group-toggle {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-command-bar {
@@ -23585,10 +23585,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-assist-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: rgba(196, 229, 248, 0.9);
 }
 
@@ -23599,14 +23599,14 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-assist-summary {
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 600;
   color: rgba(219, 234, 249, 0.86);
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-clock-preview {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   color: rgba(163, 206, 238, 0.88);
   overflow-wrap: anywhere;
@@ -23623,11 +23623,11 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept span {
   margin-bottom: 1px;
-  font-size: 8.5px;
+  font-size: 11px;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept strong {
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.16;
 }
 
@@ -23704,7 +23704,7 @@ button:disabled,
   border-radius: 999px !important;
   border: 1px solid rgba(72, 118, 158, 0.2) !important;
   background: rgba(9, 18, 30, 0.78) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
 }
@@ -23899,7 +23899,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-workspace-health-label {
-  font-size: 9px !important;
+  font-size: 11px !important;
   letter-spacing: 0.08em !important;
 }
 
@@ -23909,7 +23909,7 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-verify-link-badge {
   min-height: 18px !important;
   padding: 1px 6px !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-workspace-status-note,
@@ -23926,7 +23926,7 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-workspace-status-actions .ide-button {
   min-height: 24px !important;
   padding: 2px 8px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   border-radius: 8px !important;
   background: rgba(4, 12, 22, 0.86) !important;
 }
@@ -24181,7 +24181,7 @@ button:disabled,
   white-space: nowrap;
   font-family: var(--rb-font-mono, monospace);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file small {
@@ -24211,7 +24211,7 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__header span {
   font-family: var(--rb-font-mono, monospace);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__header p {
@@ -24233,7 +24233,7 @@ button:disabled,
   margin-bottom: 2px;
   color: rgba(152, 184, 211, 0.84);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -24247,7 +24247,7 @@ button:disabled,
 .ide-testbench-concept p {
   margin: 3px 0 0;
   color: rgba(177, 202, 224, 0.72);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.28;
 }
 
@@ -24262,8 +24262,8 @@ button:disabled,
 
 .ide-verify-repair-panel__scope span {
   color: rgba(246, 213, 124, 0.86);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -24275,7 +24275,7 @@ button:disabled,
 .ide-verify-repair-panel__scope p {
   margin: 0;
   color: rgba(214, 227, 238, 0.76);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__body {

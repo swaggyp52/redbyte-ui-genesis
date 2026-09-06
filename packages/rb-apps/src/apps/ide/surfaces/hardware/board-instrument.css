@@ -45,7 +45,7 @@
 .ide-root .rb-board-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; border-left: 1px solid var(--wb-border-strong); }
 .ide-root .rb-board-section-header { display: flex; align-items: baseline; gap: 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-board-section-header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.ide-root .rb-board-section-header .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-board-section-header .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-board-section-header .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-board-section-header > strong { margin-left: auto; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
@@ -55,10 +55,10 @@
 .ide-root .rb-board-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
 .ide-root .rb-board-table th,
 .ide-root .rb-board-table td { height: 24px; padding: 0 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ide-root .rb-board-table thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-board-table thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-table td code { font: var(--wb-text-sm) var(--wb-font-mono); }
 .ide-root .rb-board-group-row td { height: 22px; background: var(--wb-surface-2); border-top: 1px solid var(--wb-border-strong); }
-.ide-root .rb-board-group-heading { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-board-group-heading { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-table tbody tr:hover td { background: var(--wb-hover-bg); }
 .ide-root .rb-board-table tbody tr[aria-selected='true'] td,
 .ide-root .rb-board-table tbody tr.is-selected td { background: var(--wb-accent-bg-strong); }
@@ -92,7 +92,7 @@
 .ide-root .rb-board-consequence { margin: 0 var(--wb-space-3); color: var(--wb-text-2); font-size: var(--wb-text-sm); }
 .ide-root .rb-board-editor-actions { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 var(--wb-space-3); }
 .ide-root .ide-hardware-basys3-binding-chain { display: grid; grid-template-columns: auto auto auto auto auto; align-items: center; gap: 4px 6px; margin: 0 var(--wb-space-3); font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
-.ide-root .ide-hardware-basys3-binding-chain small { display: block; color: var(--wb-text-3); font: 600 10px var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .ide-hardware-basys3-binding-chain small { display: block; color: var(--wb-text-3); font: 600 11px var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
 .ide-root .ide-hardware-basys3-binding-chain pre { grid-column: 1 / -1; margin: 4px 0 0; padding: 6px 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface-2); color: var(--wb-text); font: var(--wb-text-xs) / 16px var(--wb-font-mono); white-space: pre-wrap; }
 
 /* Lab strip and after-mapping toolbar. */
@@ -101,7 +101,7 @@
 .ide-root .rb-board-lab > div,
 .ide-root .rb-board-after > div { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ide-root .rb-board-lab .ide-surface-block-label,
-.ide-root .rb-board-after .ide-surface-block-label { margin: 0; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-board-after .ide-surface-block-label { margin: 0; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-lab h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-ui); }
 .ide-root .rb-board-lab .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .rb-board-after-actions { display: inline-flex; gap: 4px; margin-left: auto; }
@@ -121,13 +121,13 @@
 .ide-root .rb-board-assignments .ide-pin-planner { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .ide-root .rb-board-assignments .ide-pin-planner-head { display: flex; align-items: baseline; gap: 8px; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-board-assignments .ide-pin-planner-head h3,
-.ide-root .rb-board-assignments .ide-pin-planner-head h2 { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-board-assignments .ide-pin-planner-head h2 { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-assignments .ide-pin-planner-head p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .rb-board-assignments .ide-pin-planner-stats { margin-left: auto; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-board-assignments table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
 .ide-root .rb-board-assignments th,
 .ide-root .rb-board-assignments td { height: 24px; padding: 0 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 24px; }
-.ide-root .rb-board-assignments thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .rb-board-assignments thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-assignments td code,
 .ide-root .rb-board-assignments td button { font: var(--wb-text-sm) var(--wb-font-mono); }
 .ide-root .rb-board-assignments td button { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); }
@@ -187,7 +187,7 @@
 /* Guided mapping: the recommendation reads as one line with one action. */
 .ide-root .rb-board-recommend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 0; border-top: 1px solid var(--wb-border); }
 .ide-root .rb-board-recommend code { font: var(--wb-text-sm) var(--wb-font-mono); }
-.ide-root .rb-board-recommend .ide-copy { color: var(--wb-text-3); font-size: 11px; }
+.ide-root .rb-board-recommend .ide-copy { color: var(--wb-text-3); font-size: 12px; }
 /* Constraints tool: every signal's exact XDC lines, selection-synced; no permanent footer. */
 .ide-root .rb-board-xdc-lines { list-style: none; margin: 0 var(--wb-space-3); padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .ide-root .rb-board-xdc-line { margin: 0; }

@@ -203,7 +203,7 @@
   border-radius: 6px;
   color: var(--ide-text-secondary, #c5cfdd);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -217,7 +217,7 @@
 .ide-import-v3__safe-state {
   margin-top: 7px;
   color: var(--ide-text-secondary, #c5cfdd);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-import-v3__zip-summary {
@@ -542,10 +542,10 @@
 }
 .ide-import-review-head > span {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .ide-import-review-head > strong { font-size: 12px; color: var(--rb-text); }
 .ide-import-review-apply { margin: 6px 0; font-size: 12px; color: var(--rb-text-muted); }
@@ -561,7 +561,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   flex-wrap: wrap;
 }
 .ide-import-review-source-path { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -569,7 +569,7 @@
 .ide-import-review-source-tier,
 .ide-import-review-source-action {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   border-radius: 999px;
   border: 1px solid var(--rb-border);
@@ -577,7 +577,7 @@
 }
 .ide-import-review-source-note {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--rb-warning, #9a6700);
 }
@@ -585,6 +585,6 @@
   margin: 8px 0 0;
   padding-top: 6px;
   border-top: 1px solid var(--rb-border);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--rb-text-muted);
 }
