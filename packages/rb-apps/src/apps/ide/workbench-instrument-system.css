@@ -14,18 +14,26 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 :root[data-redbyte-mode='ide'] {
-  /* geometry */
-  --wb-cmdbar-h: 32px;
-  --wb-status-h: 22px;
-  --wb-rail-w: 56px;
-  --wb-tabstrip-h: 30px;
-  --wb-toolbar-h: 30px;
-  --wb-toolwindow-header-h: 28px;
-  --wb-row-h: 26px;
-  --wb-row-h-dense: 24px;
-  --wb-control-h: 24px;
-  --wb-control-h-lg: 28px;
-  --wb-indent: 14px;
+  /* ── geometry ──────────────────────────────────────────────────────────────
+     Every one of these is a box built to hold one line of text, so each is
+     expressed in the same units the text is. They were absolute pixels, which is
+     why raising text size collided the application bar and clipped the
+     Observe/Compare control: the type doubled and its containers did not. At the
+     default 16px root every value below is identical to the pixel size it
+     replaces, so the 100% appearance does not move. Spacing and radius stay in
+     pixels on purpose - a wider gap is not what a reader needs at 200%, room for
+     the words is. */
+  --wb-cmdbar-h: 2rem;              /* 32px */
+  --wb-status-h: 1.375rem;          /* 22px */
+  --wb-rail-w: 3.5rem;              /* 56px */
+  --wb-tabstrip-h: 1.875rem;        /* 30px */
+  --wb-toolbar-h: 1.875rem;         /* 30px */
+  --wb-toolwindow-header-h: 1.75rem;/* 28px */
+  --wb-row-h: 1.625rem;             /* 26px */
+  --wb-row-h-dense: 1.5rem;         /* 24px */
+  --wb-control-h: 1.5rem;           /* 24px */
+  --wb-control-h-lg: 1.75rem;       /* 28px */
+  --wb-indent: 0.875rem;            /* 14px */
   --wb-space-1: 4px;
   --wb-space-2: 8px;
   --wb-space-3: 12px;
@@ -197,12 +205,43 @@
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.ide-root .wb-cmdbar-brand svg { width: 18px; height: 18px; color: var(--wb-brand); }
+/* Measured 0px wide at 200% text: the rule declared a width but no flex, so as a flex item
+   under pressure the mark was squeezed out of the row entirely. In compact chrome the mark is
+   the only identity left, so it is incompressible and sized in the reader's text. */
+.ide-root .wb-cmdbar-brand svg { flex: none; width: 1.125em; height: 1.125em; color: var(--wb-brand); }
+/* Compact chrome: the wordmark and the separators go first, because neither is one of the
+   six things that must survive. The mark stays, and the brand's accessible name is on the
+   container, so nothing is lost to a screen reader. */
+.ide-root .wb-cmdbar.is-compact .wb-cmdbar-wordmark,
+.ide-root .wb-cmdbar.is-compact .wb-cmdbar-sep { display: none; }
+.ide-root .wb-cmdbar.is-compact .wb-cmdbar-brand { padding-right: 0; }
+/* The one menu inherits the popup, and adds a heading per folded menu plus the two facts
+   the bar no longer has room to show. */
+.ide-root .wb-menu--compact { max-height: min(70vh, 32rem); overflow-y: auto; }
+.ide-root .wb-menu-group-heading {
+  padding: 6px 10px 2px;
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) var(--rb-font-ui);
+}
+.ide-root .wb-menu-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 10px 6px;
+  border-bottom: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  font-size: var(--rb-text-meta);
+}
+.ide-root .wb-menu-facts code { font: var(--rb-text-meta) var(--rb-font-mono); }
 .ide-root .wb-cmdbar-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--wb-frame-border); flex: none; }
 .ide-root .wb-cmdbar-project {
   display: inline-flex;
-  min-width: 0;
-  max-width: 220px;
+  /* The ellipsis is a last resort, not a mid-priority casualty: this used to shrink past its
+     own text while other items in the row kept theirs. The budget is in characters so it
+     grows with the reader's text instead of staying at an absolute 220px. */
+  flex: 0 1 auto;
+  min-width: min-content;
+  max-width: 22ch;
   height: var(--wb-control-h);
   align-items: center;
   padding: 0 6px;
@@ -265,6 +304,8 @@
 .ide-root .wb-cmdbar-right > .wb-btn { border-color: var(--wb-frame-border); color: var(--wb-frame-text-2); background: transparent; }
 .ide-root .wb-cmdbar-right > .wb-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
 .ide-root .wb-cmdbar-right > .wb-btn--primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+/* The dot accompanies the word; it is not a substitute for it, and at 200% text a 7px dot in
+   a 64px bar is not a state anyone can read. Sized in the reader's text like everything else. */
 .ide-root .wb-save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-text-3); flex: none; }
 .ide-root .wb-save-dot[data-state='saved'] { background: var(--wb-ok); }
 .ide-root .wb-save-dot[data-state='autosaving'],
@@ -619,7 +660,11 @@
 .ide-root .wb-toolbar-title code { font: var(--wb-text-md) var(--wb-font-mono); }
 .ide-root .wb-toolbar-meta { color: var(--wb-text-3); font-size: var(--wb-text-sm); white-space: nowrap; }
 .ide-root .wb-toolbar .wb-btn { height: var(--wb-control-h); }
-.ide-root .wb-segment { display: inline-flex; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); overflow: hidden; }
+/* A segmented control is one unit: it must not shrink below its own buttons. It used to be
+   an ordinary flex item with `overflow: hidden`, so a crowded bar clipped it in silence -
+   that is how the run intent rendered as "Cor" at 200% text. Something else in the bar
+   yields now, by an explicit rule rather than by accident. */
+.ide-root .wb-segment { flex: none; display: inline-flex; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); overflow: hidden; }
 .ide-root .wb-segment .wb-btn { border: 0; border-radius: 0; }
 .ide-root .wb-segment .wb-btn + .wb-btn { border-left: 1px solid var(--wb-border-strong); }
 .ide-root .wb-segment .wb-btn[aria-pressed='true'] { background: var(--wb-accent-bg-strong); }
@@ -881,14 +926,11 @@
   box-shadow: none;
 }
 
-/* Responsive: 1366×768 keeps every control; labels compress, nothing wraps. */
-@media (max-width: 1400px) {
-  .ide-root .wb-cmdbar-project { max-width: 160px; }
-  .ide-root .wb-cmdbar-fact-label { display: none; }
-}
+/* The project-name budget is expressed in characters on the rule itself, so it no longer
+   needs a pixel-width override here; the state word stays a word at every width, because the
+   compact composition is what decides when the bar is short of room. */
 @media (max-width: 1180px) {
-  .ide-root .wb-cmdbar-brand span { display: none; }
-  .ide-root .wb-cmdbar-project { max-width: 120px; }
+  .ide-root .wb-cmdbar-project { max-width: 16ch; }
   .ide-root .wb-btn kbd { display: none; }
 }
 
@@ -929,13 +971,12 @@
 .ide-root .rb-related-ambiguous { margin-left: auto; color: var(--wb-warn-text); }
 .ide-root .rb-related-detail { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 
-/* narrow frame bar */
+/* narrow frame bar. The selected object is the first thing that must survive a shortage, so
+   it is not hidden here any more - by this width the compact composition has already folded
+   the menubar, the wordmark and the two secondary facts, which is where the room comes from. */
 @media (max-width: 899px) {
-  .ide-root .wb-cmdbar-center { display: none; }
-  .ide-root .wb-cmdbar-project { max-width: 120px; }
-  .ide-root .wb-cmdbar-fact[data-testid='ide-topbar-target'] { display: none; }
+  .ide-root .wb-cmdbar-project { max-width: 14ch; }
   .ide-root .wb-cmdbar-right kbd { display: none; }
-  .ide-root .wb-cmdbar-fact-label { display: none; }
 }
 
 /* ── Universal Navigator (Ctrl+K) ────────────────────────────────────────

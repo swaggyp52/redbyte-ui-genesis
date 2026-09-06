@@ -192,24 +192,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      {onToggleLiveIo ? (
-        <button
-          type="button"
-          className={`wb-btn wb-btn--ghost${liveIoActive ? ' is-active' : ''}`}
-          aria-pressed={liveIoActive}
-          onClick={onToggleLiveIo}
-          data-testid="ide-vcb-workspace-bench"
-          title="Drive inputs and read outputs live — the same state as the simulated board."
-        >
-          Live I/O
-        </button>
-      ) : null}
-      {configuredCheckCount > 0 ? (
-        <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title="Saved expected outputs in this scenario">
-          <code>{configuredCheckCount}</code> checks
-        </span>
-      ) : null}
-      <span className="wb-toolbar-sep" />
       <div className="wb-segment rb-sim-seg" role="group" aria-label="Run intent" data-testid="ide-vcb-run-intent">
         <button
           type="button"
@@ -238,6 +220,24 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           Compare
         </button>
       </div>
+      <span className="wb-toolbar-sep" />
+      {onToggleLiveIo ? (
+        <button
+          type="button"
+          className={`wb-btn wb-btn--ghost${liveIoActive ? ' is-active' : ''}`}
+          aria-pressed={liveIoActive}
+          onClick={onToggleLiveIo}
+          data-testid="ide-vcb-workspace-bench"
+          title="Drive inputs and read outputs live — the same state as the simulated board."
+        >
+          Live I/O
+        </button>
+      ) : null}
+      {configuredCheckCount > 0 ? (
+        <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title="Saved expected outputs in this scenario">
+          <code>{configuredCheckCount}</code> checks
+        </span>
+      ) : null}
       <span className="wb-toolbar-spacer" />
       <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
         <IdeButton
@@ -258,6 +258,13 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       <span
         className={`wb-toolbar-meta rb-sim-explainer${!compareAvailable && compareUnavailableReason ? ' is-blocked-reason' : ''}`}
         data-testid="ide-vcb-mode-explainer"
+        title={
+          !compareAvailable && compareUnavailableReason
+            ? compareUnavailableReason
+            : isCompareMode
+              ? 'Check filled expected outputs against this run.'
+              : 'Record observed outputs without grading expected values.'
+        }
       >
         {!compareAvailable && compareUnavailableReason
           ? compareUnavailableReason

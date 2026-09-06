@@ -6,7 +6,6 @@
 .ide-root .rb-sim-toolbar { padding-left: var(--wb-space-3); }
 .ide-root .rb-sim-seg .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
 .ide-root .rb-sim-seg .wb-btn.is-blocked { color: var(--wb-text-3); }
-.ide-root .rb-sim-explainer { margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-sim-run .ide-button {
   height: var(--wb-control-h);
   min-height: 0;
@@ -636,4 +635,59 @@
 .ide-root .rb-wave-results-summary-metric.is-quiet .rb-wave-results-summary-metric-value {
   color: var(--wb-text-3);
   font-weight: var(--rb-weight-normal);
+}
+
+/* ── The transport under a compact frame ────────────────────────────────────
+   Priority here is: run intent, then Run, then the scenario and the reading, then the
+   explanation. When the frame is compact the bar becomes two deliberate rows - every
+   control on the first, the explanation on its own second row where it has space to be
+   a sentence - rather than wrapping into whatever order the widths happen to produce. */
+:root[data-rb-chrome='compact'] .ide-root .rb-sim-toolbar {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--wb-toolbar-h);
+  row-gap: 2px;
+  padding-bottom: 2px;
+}
+/* The ordinary hint restates what the pressed segment already says, so it is the first thing
+   to yield when the bar is short of room; it stays in the DOM and its full text is on the
+   element's title. A blocking reason is not a hint and keeps its row - see below. */
+:root[data-rb-chrome='compact'] .ide-root .rb-sim-toolbar .rb-sim-explainer:not(.is-blocked-reason) {
+  display: none;
+}
+/* The spacer stops pushing the explanation off the end once it owns its own row. */
+:root[data-rb-chrome='compact'] .ide-root .rb-sim-toolbar > .wb-toolbar-spacer { flex-basis: 0; min-width: 0; }
+
+/* A disabled primary action explains itself in full. Measured before this: the longest real
+   reason was 38.5% visible at 200% text with no title to recover the rest, and in one
+   intermediate layout it collapsed to zero width and vanished. An ordinary hint may still
+   ellipsise - it now carries a title - but a reason may not. */
+.ide-root .rb-sim-explainer.is-blocked-reason {
+  flex: 1 0 100%;
+  order: 9;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  padding: 0 2px 2px;
+}
+.ide-root .rb-sim-toolbar:has(.rb-sim-explainer.is-blocked-reason) {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--wb-toolbar-h);
+}
+
+/* The transport composes against its own width rather than the window's, so a wide window
+   with a narrow Simulate pane is treated as the narrow thing it is. Unlike a media query, a
+   container query resolves rem against the document's current root size, so the reader's
+   text size counts as narrowness here too. */
+.ide-root .rb-sim-command-stack { container-type: inline-size; container-name: sim-bar; }
+@container sim-bar (max-width: 34rem) {
+  /* The primary action must not be orphaned below the two chips it outranks: at this width
+     the workspace toggle and the check count step onto the second row and leave the intent
+     and Run together on the first. */
+  .ide-root .rb-sim-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); row-gap: 2px; }
+  .ide-root .rb-sim-toolbar > [data-testid="ide-vcb-workspace-bench"],
+  .ide-root .rb-sim-toolbar > [data-testid="ide-vcb-check-count"] { order: 8; }
+  .ide-root .rb-sim-toolbar > [data-testid="ide-vcb-workspace-bench"] { margin-left: -2px; }
+  .ide-root .rb-sim-toolbar > .wb-toolbar-sep { display: none; }
 }

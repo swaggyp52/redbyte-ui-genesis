@@ -112,6 +112,53 @@ const SAVE_LABEL: Record<WorkbenchSaveState, string> = {
  * derived from the command registry so the bar can never expose a command the
  * palette does not also expose (one command system, several entry points).
  */
+/** True when the frame has less room than its full composition needs - a narrow window, a
+ *  large text setting, or both, which are the same problem measured differently.
+ *
+ *  The width is measured in the reader's own text size rather than in pixels, so 64 means
+ *  "sixty-four lines of body text wide". At the default 16px root that is 1024px, so an
+ *  ordinary desktop is unaffected; at 200% text a 1366px window measures 42.7 and the
+ *  compact composition takes over.
+ *
+ *  This deliberately does not use a `rem` media query. Inside `@media`, `rem` resolves
+ *  against the browser's INITIAL font size rather than the document's current one, so a
+ *  query cannot see a page whose root has been enlarged. Reading the computed root size
+ *  answers the real question. The decision depends only on the viewport and that size,
+ *  never on the composition's own width, so it cannot oscillate. */
+const COMPACT_MENU_ID = '__compact__';
+const COMPACT_CHROME_MAX_TEXT_WIDTHS = 64;
+
+function useCompactChrome(ref: React.RefObject<HTMLElement | null>): boolean {
+  const [compact, setCompact] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const evaluate = () => {
+      const rootPx =
+        Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+      const next = window.innerWidth / rootPx < COMPACT_CHROME_MAX_TEXT_WIDTHS;
+      setCompact(next);
+      // Published on the document so every surface composes against one decision rather
+      // than each re-deriving it. Stylesheets read [data-rb-chrome='compact'].
+      document.documentElement.dataset.rbChrome = next ? 'compact' : 'full';
+    };
+    evaluate();
+    window.addEventListener('resize', evaluate);
+    // The bar's own height is expressed in the same unit, so it changes when the reader's
+    // text size does - the one event no resize listener would otherwise see.
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(evaluate);
+      if (ref.current) observer.observe(ref.current);
+      observer.observe(document.documentElement);
+    }
+    return () => {
+      window.removeEventListener('resize', evaluate);
+      if (observer) observer.disconnect();
+    };
+  }, [ref]);
+  return compact;
+}
+
 export function WorkbenchCommandBar<TContext>({
   projectName,
   saveState,
@@ -133,6 +180,7 @@ export function WorkbenchCommandBar<TContext>({
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [activeItemIndex, setActiveItemIndex] = React.useState(0);
   const barRef = React.useRef<HTMLElement | null>(null);
+  const compactChrome = useCompactChrome(barRef);
   const [editingName, setEditingName] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState(projectName);
   const nameInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -198,7 +246,9 @@ export function WorkbenchCommandBar<TContext>({
   );
 
   const flatItems = (menuId: string) =>
-    resolvedMenus.find((menu) => menu.id === menuId)?.sections.flat() ?? [];
+    menuId === COMPACT_MENU_ID
+      ? resolvedMenus.flatMap((menu) => menu.sections.flat())
+      : (resolvedMenus.find((menu) => menu.id === menuId)?.sections.flat() ?? []);
 
   const runCommand = (id: IdeCommandId) => {
     // Escape from a menu already returns focus to the menu button. Activating an item did not,
@@ -251,7 +301,10 @@ export function WorkbenchCommandBar<TContext>({
       event.preventDefault();
       const entry = items[activeItemIndex];
       if (entry && entry.availability.state === 'available') runCommand(entry.command.id);
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    } else if (
+      (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+      menuId !== COMPACT_MENU_ID
+    ) {
       const ids = resolvedMenus.map((menu) => menu.id);
       const index = ids.indexOf(menuId);
       event.preventDefault();
@@ -268,8 +321,9 @@ export function WorkbenchCommandBar<TContext>({
   return (
     <header
       ref={barRef}
-      className="wb-cmdbar"
+      className={`wb-cmdbar${compactChrome ? ' is-compact' : ''}`}
       data-testid="ide-top-bar"
+      data-chrome={compactChrome ? 'compact' : 'full'}
       data-save-state={saveState}
       data-build-sha={buildIdentity?.shortSha}
       data-build-full-sha={buildIdentity?.fullSha}
@@ -280,7 +334,7 @@ export function WorkbenchCommandBar<TContext>({
     >
       <div className="wb-cmdbar-brand" aria-label="RedByte">
         <RbLogomark />
-        <span>RedByte</span>
+        <span className="wb-cmdbar-wordmark">RedByte</span>
       </div>
       <span className="wb-cmdbar-sep" aria-hidden="true" />
       <h1 className="wb-cmdbar-project-h" style={{ display: 'contents', margin: 0, font: 'inherit' }}>
@@ -329,7 +383,86 @@ export function WorkbenchCommandBar<TContext>({
       <span className="wb-cmdbar-sep" aria-hidden="true" />
 
       <div className="wb-menubar" role="menubar" aria-label="Application menu" data-testid="ide-menubar">
-        {resolvedMenus.map((menu, menuIndex) => {
+        {compactChrome ? (
+          <div className="wb-menubar-item">
+            <button
+              type="button"
+              className="wb-menubar-btn"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={openMenuId === COMPACT_MENU_ID}
+              data-menu-id={COMPACT_MENU_ID}
+              data-testid="ide-menu-compact"
+              onClick={() =>
+                openMenuId === COMPACT_MENU_ID ? setOpenMenuId(null) : openMenu(COMPACT_MENU_ID)
+              }
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  openMenu(COMPACT_MENU_ID);
+                }
+              }}
+            >
+              Menu
+            </button>
+            {openMenuId === COMPACT_MENU_ID ? (
+              <ul
+                className="wb-menu wb-menu--compact"
+                role="menu"
+                aria-label="Application menu"
+                data-testid="ide-menu-compact-popup"
+                onKeyDown={(event) => onMenuListKey(event, COMPACT_MENU_ID)}
+              >
+                {runState || targetLabel ? (
+                  <li className="wb-menu-facts" role="none">
+                    {runState ? <span data-testid="ide-menu-compact-run">{runState.label}</span> : null}
+                    {targetLabel ? <code data-testid="ide-menu-compact-target">{targetLabel}</code> : null}
+                  </li>
+                ) : null}
+                {(() => {
+                  let compactIndex = -1;
+                  return resolvedMenus.map((menu) => (
+                    <React.Fragment key={menu.id}>
+                      <li className="wb-menu-group-heading" role="presentation">{menu.label}</li>
+                      {menu.sections.flat().map(({ command, availability }) => {
+                        compactIndex += 1;
+                        const itemIndex = compactIndex;
+                        const disabled = availability.state === 'disabled';
+                        const checked = checkedCommandIds?.has(command.id) ?? false;
+                        return (
+                          <li key={command.id} role="none">
+                            <button
+                              type="button"
+                              role="menuitemcheckbox"
+                              aria-checked={checked}
+                              aria-disabled={disabled}
+                              className="wb-menu-item"
+                              data-active={itemIndex === activeItemIndex ? 'true' : 'false'}
+                              data-testid={`ide-menu-item-${command.id}`}
+                              title={disabled ? availability.reason : undefined}
+                              tabIndex={itemIndex === activeItemIndex ? 0 : -1}
+                              ref={(node) => {
+                                if (node && itemIndex === activeItemIndex) node.focus();
+                              }}
+                              onPointerEnter={() => setActiveItemIndex(itemIndex)}
+                              onClick={() => {
+                                if (!disabled) runCommand(command.id);
+                              }}
+                            >
+                              <span className="wb-menu-item-check" aria-hidden="true">{checked ? '\u25CF' : ''}</span>
+                              <span className="wb-menu-item-label">{command.title}</span>
+                              <span className="wb-menu-item-key">{command.shortcut?.label ?? ''}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </React.Fragment>
+                  ));
+                })()}
+              </ul>
+            ) : null}
+          </div>
+        ) : resolvedMenus.map((menu, menuIndex) => {
           const isOpen = openMenuId === menu.id;
           const items = menu.sections.flat();
           let runningIndex = -1;
@@ -430,11 +563,15 @@ export function WorkbenchCommandBar<TContext>({
       </div>
 
       <div className="wb-cmdbar-right">
-        {runState ? (
+        {runState && !compactChrome ? (
           <span className="wb-cmdbar-fact" data-testid="ide-topbar-run" data-tone={runState.tone === 'idle' ? undefined : runState.tone}>
             {runState.label}
           </span>
         ) : null}
+        {/* The target stays in the bar even when the frame is short: it is one of the six, the
+            row has the room once the menubar and the wordmark fold, and a fact you have to
+            click for is not a fact you can glance at. The run state is the one that folds,
+            because the status bar carries it at the other end of the window. */}
         {targetLabel ? (
           <span className="wb-cmdbar-fact" data-testid="ide-topbar-target" title="Target board and part">
             <code>{targetLabel}</code>

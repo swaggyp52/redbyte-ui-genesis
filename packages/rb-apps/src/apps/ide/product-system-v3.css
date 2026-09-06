@@ -214,8 +214,15 @@
 }
 
 .ide-root .ide-workbench-shell {
-  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 216px) !important;
-  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 252px) !important;
+  /* A dock is as wide as the reader asked for, or as wide as its own words need - whichever
+     is greater. The stored preference is in pixels and governs an ordinary desktop, where it
+     always exceeds the floors below. The floors are in the reader's text size, so a dock that
+     would otherwise hold its pixel width while its contents doubled grows with them instead:
+     measured at 200% text before this, the Design library clipped "AND Gate" by 121px and
+     "D, CLK -> Q, Q_inv" by 172px inside a 264px pane, and the Simulate inspector clipped
+     "None at this event" by 90px inside 240px. */
+  --ide-workbench-left-width: max(var(--rb-workbench-pref-left-width, 216px), 15rem) !important;
+  --ide-workbench-right-width: max(var(--rb-workbench-pref-right-width, 252px), 16rem) !important;
   --ide-workbench-console-height: var(--rb-workbench-pref-bottom-height, 220px) !important;
   width: 100%;
   min-width: 0;
