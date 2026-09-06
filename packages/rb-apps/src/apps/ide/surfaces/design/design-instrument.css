@@ -107,7 +107,7 @@
   border-radius: 0;
   color: var(--wb-text);
   background: transparent;
-  font: var(--wb-text-md) / 1 var(--wb-font-ui);
+  font: var(--rb-text-body) / 1 var(--rb-font-ui);
   text-align: left;
   white-space: nowrap;
   cursor: grab;
@@ -126,7 +126,10 @@
   background: var(--wb-surface);
   font: 600 var(--rb-text-micro) var(--wb-font-mono);
 }
-.ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+/* The row is a fixed 28px and declares nowrap, but a later rule set the name back to
+   `normal`, so once the port signature took its column the name wrapped to 35px inside
+   a 28px row and the list rows visibly overlapped each other. */
+.ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rb-text-body); font-weight: 500; }
 .ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-lib-cap,
 .ide-root .rb-lib-badge { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
@@ -478,3 +481,21 @@
 .ide-root .rb-insp-row--link { width: 100%; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .ide-root .rb-insp-row--link:hover { background: var(--wb-hover-bg); }
 .ide-root .rb-insp-row--link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+
+/* Measured at 1366x768: the component library rendered a 276px grid column inside a 175px
+   box whose overflow is hidden, so 101px of every row - the port signature, and on badge-
+   carrying rows part of the name - was cut away with no scrollbar to reveal it. The palette
+   declared a grid with no column track, so the implicit auto track took the content's
+   min-content width and the container could not push back. The track follows the pane now. */
+.ide-root .ide-design-palette { grid-template-columns: minmax(0, 1fr); }
+.ide-root .ide-design-palette > * { min-width: 0; }
+
+/* Layers and Layout were two adjacent dropdown buttons in a toolbar that had to wrap to a
+   second row to hold them. They are one View menu now, and each half keeps a label. */
+.ide-root .wb-menu-group-label {
+  margin: 4px 0 2px;
+  padding: 0 8px;
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) / var(--rb-lh-tight) var(--rb-font-ui);
+}
+.ide-root .wb-menu-group-label:first-child { margin-top: 0; }

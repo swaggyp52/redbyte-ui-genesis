@@ -4297,8 +4297,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* A legacy rule still gives this button `width: 100%`, `justify-content: space-between` and
+     a bottom border from when it was a full-width section header, which pushed the caret to
+     one end of the shell and the label to the other. */
+  width: auto;
+  justify-content: flex-start;
   padding: 2px 4px;
   border: 0;
+  border-bottom: 0;
   color: var(--ide-text-soft);
   background: transparent;
   font-size: var(--rb-text-meta);
@@ -4311,3 +4317,14 @@
   outline-offset: 2px;
 }
 .ide-root .ide-workbench-console-toggle-caret { color: var(--ide-text-soft); }
+
+/* The hidden-console restore uses the same 28px strip as the collapsed console, in the
+   flow at the bottom of the shell, rather than a floating control that covered the last
+   rows of whichever inspector happened to be under it. */
+.ide-root .ide-workbench-console-bar--restore {
+  flex: none;
+  min-height: 28px;
+  padding: 0 var(--ide-space-2);
+  border-top: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface-2);
+}

@@ -96,11 +96,15 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     expect(view.queryByTestId('ide-workbench-focus-toggle')).toBeNull();
     const shell = view.getByTestId('ide-mode-design');
     const leftResize = view.getByTestId('ide-resize-left-dock');
-    expect(leftResize).toHaveAttribute('aria-valuenow', '220');
-    expect(shell.style.getPropertyValue('--rb-workbench-pref-left-width')).toBe('220px');
+    // The contract is that the handle reports the dock's current size and that an arrow key
+    // moves it by one step - not that Design's default happens to be a particular number.
+    // Reading the default from the preference authority keeps this test about the behaviour.
+    const defaultLeft = workspacePreferencesStore.getSnapshot().surfaces.design.docks.left.sizePx;
+    expect(leftResize).toHaveAttribute('aria-valuenow', String(defaultLeft));
+    expect(shell.style.getPropertyValue('--rb-workbench-pref-left-width')).toBe(`${defaultLeft}px`);
     fireEvent.keyDown(leftResize, { key: 'ArrowRight' });
-    expect(view.getByTestId('ide-resize-left-dock')).toHaveAttribute('aria-valuenow', '236');
-    expect(shell.style.getPropertyValue('--rb-workbench-pref-left-width')).toBe('236px');
+    expect(view.getByTestId('ide-resize-left-dock')).toHaveAttribute('aria-valuenow', String(defaultLeft + 16));
+    expect(shell.style.getPropertyValue('--rb-workbench-pref-left-width')).toBe(`${defaultLeft + 16}px`);
     expect(leakedArrowKey).not.toHaveBeenCalled();
 
     fireEvent.click(view.getByTestId('ide-hide-left-dock'));

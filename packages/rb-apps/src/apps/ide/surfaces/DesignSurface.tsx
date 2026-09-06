@@ -7836,23 +7836,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </button>
                   <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomIn} data-testid="ide-design-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
                   <span className="wb-toolbar-sep" />
-                  <div className="wb-segment rb-design-trace" role="group" aria-label="Trace" data-testid="ide-design-trace-toolbar">
-                    <button type="button" className="wb-btn" onClick={focusSelectedPath} disabled={!selectedNode} data-testid="ide-design-trace-driver" title="Focus the path that drives the selected object (Shift+D)">
-                      <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 7h6M7.5 4l3 3-3 3M10.5 3v8" /></svg>
-                      Driver
-                    </button>
-                    <button type="button" className="wb-btn" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} data-testid="ide-design-trace-loads" title="Highlight everything the selected object drives">
-                      <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 7h5M6.5 7l4-3.5M6.5 7l4 3.5M10.5 3.5h2M10.5 10.5h2" /></svg>
-                      Loads
-                    </button>
-                    {designRelated ? (
-                      <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-trace-related" />
-                    ) : null}
-                  </div>
-                  <span className="wb-toolbar-sep" />
-                  <details className="rb-design-menu" data-testid="ide-design-layers" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
-                    <summary className="wb-btn wb-btn--ghost" title="Presentation layers (persisted with the workspace)">Layers ▾</summary>
-                    <div className="wb-menu rb-design-menu-popup" aria-label="Schematic layers">
+                  {designRelated ? (
+                    <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-trace-related" />
+                  ) : null}
+                  <details className="rb-design-menu" data-testid="ide-design-toolbar-overflow" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
+                    <summary className="wb-btn wb-btn--ghost" title="Layers, arrangement and canvas appearance">View ▾</summary>
+                    <div className="wb-menu rb-design-menu-popup" aria-label="Layers, layout and canvas">
+                      <p className="wb-menu-group-label">Layers</p>
                       {(
                         [
                           ['netLabels', 'Net labels'],
@@ -7887,11 +7877,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       >
                         <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Show all layers</span>
                       </button>
-                    </div>
-                  </details>
-                  <details className="rb-design-menu" data-testid="ide-design-toolbar-overflow" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
-                    <summary className="wb-btn wb-btn--ghost">Layout ▾</summary>
-                    <div className="wb-menu rb-design-menu-popup" aria-label="Layout and canvas">
+                      <div className="wb-menu-sep" />
+                      <p className="wb-menu-group-label">Canvas</p>
                       <button type="button" className="wb-menu-item" onClick={handleArrangeCircuit} disabled={editorCircuit.nodes.length < 2 || isReplayMode} data-testid="ide-design-arrange">
                         <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Arrange by dependency</span><span className="wb-menu-item-key" />
                       </button>

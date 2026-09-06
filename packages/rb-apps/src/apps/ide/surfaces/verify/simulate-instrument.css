@@ -25,7 +25,13 @@
 
 /* Left dock: scenarios above the signal rail. */
 .ide-root .rb-sim-dock { display: flex; flex-direction: column; min-height: 0; height: 100%; }
-.ide-root .rb-sim-dock > .rb-scn { flex: 0 1 auto; max-height: 46%; min-height: 96px; border-bottom: 1px solid var(--wb-border-strong); }
+/* Measured at 1366x768: this panel was 302px tall and contained exactly one child - its own
+   28px header. With a single testbench there is no list to show (the header names it), but a
+   generic tool-window height stretched the panel anyway and the 46% cap became its height, so
+   the Simulate rail opened with 274px of nothing above the signals. The panel is its header
+   until it has a list; the cap and the scroll only apply when there is something to scroll. */
+.ide-root .rb-sim-dock > .rb-scn { flex: 0 0 auto; height: auto; min-height: 0; max-height: none; border-bottom: 1px solid var(--wb-border-strong); }
+.ide-root .rb-sim-dock > .rb-scn:has(.rb-scn-body) { flex: 0 1 auto; min-height: 96px; max-height: 46%; }
 .ide-root .rb-sim-dock > .ide-verify-left-dock { flex: 1 1 auto; min-height: 0; }
 
 /* Scenario explorer rows. */

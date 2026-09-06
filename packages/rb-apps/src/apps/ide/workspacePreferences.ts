@@ -176,7 +176,10 @@ const AUTHORING_SURFACES = createSurfacePreferences({
     right: { visible: true, sizePx: 288 },
   },
   design: {
-    left: { visible: true, sizePx: 220 },
+    // 220px gave the component library 177px of usable width once dock chrome was taken out,
+    // and one library row needs a 34px kind badge, a part name and a port signature such as
+    // "a, b to out". The rail was rendering a 276px row into a 175px box with hidden overflow.
+    left: { visible: true, sizePx: 264 },
     right: { visible: true, sizePx: 280 },
   },
   verify: {
