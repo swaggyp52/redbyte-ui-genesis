@@ -181,6 +181,18 @@ function selectAllowed(alias: string, allowedAliases: Set<string> | undefined, o
   onSelectAlias(alias);
 }
 
+/** Move the roving tabstop between board resources. DOM order is left-to-right within a bank
+ *  and bank-by-bank down the board, which is how the drawing reads. */
+function moveResourceFocus(from: Element, delta: number): void {
+  const svg = from.closest('svg');
+  if (!svg) return;
+  const options = [...svg.querySelectorAll<SVGGElement>('[role="option"]:not([aria-disabled="true"])')];
+  if (options.length === 0) return;
+  const here = options.indexOf(from as SVGGElement);
+  const next = options[(Math.max(0, here) + delta + options.length) % options.length];
+  next?.focus();
+}
+
 export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
   mappedAliases: mappedAliasesProp,
   highlightedAlias,
@@ -197,6 +209,45 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
   const mappedAliases = layers.mapped ? mappedAliasesProp : EMPTY_ALIASES;
   const allowedAliases = layers.compatible ? allowedAliasesProp : undefined;
   const conflictAliases = layers.conflicts ? conflictAliasesProp : undefined;
+  // One interactive contract for every resource on the board, so a keyboard reaches all of
+  // them and a screen reader is told what each one is and whether it can take this signal.
+  let rovingClaimed = false;
+  const resourceProps = (alias: string, label: string) => {
+    const allowed = isAllowed(alias, allowedAliases);
+    const isHighlighted = highlightedAlias === alias;
+    // Exactly one tabstop: the highlighted resource when there is one, otherwise the first
+    // the drawing offers. Two would make Tab land somewhere the reader did not expect.
+    const takesTabstop = allowed && (isHighlighted || (!rovingClaimed && !highlightedAlias));
+    if (takesTabstop) rovingClaimed = true;
+    return {
+      role: 'option' as const,
+      'aria-label': label,
+      'aria-selected': isHighlighted,
+      'aria-disabled': allowed ? undefined : (true as const),
+      tabIndex: takesTabstop ? 0 : -1,
+      onClick: () => selectAllowed(alias, allowedAliases, onSelectAlias),
+      onKeyDown: (event: React.KeyboardEvent<SVGGElement>) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectAllowed(alias, allowedAliases, onSelectAlias);
+          return;
+        }
+        const step =
+          event.key === 'ArrowRight' || event.key === 'ArrowDown'
+            ? 1
+            : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+              ? -1
+              : 0;
+        if (step === 0) return;
+        // The camera owns the arrows on the canvas itself; a focused resource owns them here.
+        event.preventDefault();
+        event.stopPropagation();
+        moveResourceFocus(event.currentTarget, step);
+      },
+      style: boardCursor(alias, allowedAliases),
+    };
+  };
+
   return (
     <svg
       data-testid="ide-hw-board-map"
@@ -206,7 +257,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
       viewBox={viewBox}
       preserveAspectRatio="xMidYMid meet"
       width="100%"
-    >
+     role="listbox" aria-label="Basys3 board resources">
       <defs>
         <pattern id="mapPcbGrid" width="12" height="12" patternUnits="userSpaceOnUse">
           <path d="M12 0 L0 0 0 12" fill="none" stroke="rgba(0,200,100,0.05)" strokeWidth="0.4" />
@@ -255,10 +306,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         fill="#93a9c3" style={{ pointerEvents: 'none' }}>BUTTONS</text>
 
       {/* === 100 MHz oscillator / system clock === */}
-      <g
-        onClick={() => selectAllowed('CLK100MHZ', allowedAliases, onSelectAlias)}
-        style={boardCursor('CLK100MHZ', allowedAliases)}
-      >
+      <g {...resourceProps('CLK100MHZ', 'Board resource CLK100MHZ, 100 MHz system clock')}>
         <rect
           data-testid="ide-hw-map-clock"
           data-resource-state={resourceVisualState('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
@@ -331,9 +379,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               fill={regionFill(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
               stroke={regionStroke(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
               strokeWidth={regionStrokeWidth(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, true, conflictAliases)}
-              style={boardCursor(seg.alias, allowedAliases)}
               className={resourceClassName(resourceVisualState(seg.alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases))}
-              onClick={() => selectAllowed(seg.alias, allowedAliases, onSelectAlias)}
+              {...resourceProps(seg.alias, `Board resource ${seg.alias}, seven-segment cathode`)}
             />
           ))}
 
@@ -347,9 +394,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             fill={regionFill('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
             stroke={regionStroke('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
             strokeWidth={regionStrokeWidth('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, true, conflictAliases)}
-            style={boardCursor('DP', allowedAliases)}
             className={resourceClassName(resourceVisualState('DP', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases))}
-            onClick={() => selectAllowed('DP', allowedAliases, onSelectAlias)}
+            {...resourceProps('DP', 'Board resource DP, seven-segment decimal point')}
           />
 
           {/* Digit-enable (AN) region */}
@@ -364,9 +410,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             fill={regionFill(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
             stroke={regionStroke(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
             strokeWidth={regionStrokeWidth(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, true, conflictAliases)}
-            style={boardCursor(an, allowedAliases)}
             className={resourceClassName(resourceVisualState(an, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases))}
-            onClick={() => selectAllowed(an, allowedAliases, onSelectAlias)}
+            {...resourceProps(an, `Board resource ${an}, seven-segment digit enable`)}
           />
           <text
             x={cx}
@@ -393,7 +438,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         const cy = 40;
         const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
         return (
-          <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
+          <g key={alias} {...resourceProps(alias, `Board resource ${alias}`)}>
             <circle
               data-testid={`ide-hw-map-ld-${idx}`}
               data-resource-state={state}
@@ -440,7 +485,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
       {BTN_DEFS.map(({ cx, cy, alias, label, labelX, labelY }) => {
         const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
         return (
-          <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
+          <g key={alias} {...resourceProps(alias, `Board resource ${alias}`)}>
             <circle
               data-testid={`ide-hw-map-btn-${label.toLowerCase()}`}
               data-resource-state={state}
@@ -479,7 +524,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         const trackH = 22;
         const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
         return (
-          <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
+          <g key={alias} {...resourceProps(alias, `Board resource ${alias}`)}>
             <rect
               data-testid={`ide-hw-map-sw-${idx}`}
               data-resource-state={state}

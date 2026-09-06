@@ -257,3 +257,21 @@
 .ide-root .rb-board-electrical > summary::before { content: '\25B8'; width: 12px; color: var(--wb-text-3); }
 .ide-root .rb-board-electrical[open] > summary::before { content: '\25BE'; }
 .ide-root .rb-board-electrical > summary small { margin-left: 0; color: var(--wb-text-3); font-weight: var(--rb-weight-normal); }
+
+/* Measured at 1440x900: the identity chain resolved to 580px of max-content tracks inside a
+   337px pane, and the XDC block - spanning every column - inherited 618px and ran 280px past
+   the viewport edge. One scroller carried both, so reading the constraint scrolled the
+   signal identity away with it. The chips wrap; the code region scrolls on its own. */
+.ide-root .ide-hardware-basys3-binding-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  overflow-x: visible;
+}
+.ide-root .ide-hardware-basys3-binding-chain > pre,
+.ide-root [data-testid="ide-hardware-basys3-binding-xdc"] {
+  flex: 1 0 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}

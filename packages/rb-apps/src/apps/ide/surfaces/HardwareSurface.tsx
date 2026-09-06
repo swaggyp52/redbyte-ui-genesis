@@ -1408,6 +1408,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     conflictingMappingRows.find((row) => row.required) ??
     unmappedRequiredPins[0] ??
     null;
+  /** Every signal still needing attention, in table order: conflicts first, then unmapped. */
+  const mappingIssueQueue = useMemo(() => {
+    const seen = new Set<string>();
+    const queue: typeof unmappedRequiredPins = [];
+    for (const row of [...conflictingMappingRows.filter((row) => row.required), ...unmappedRequiredPins]) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      queue.push(row);
+    }
+    return queue;
+  }, [conflictingMappingRows, unmappedRequiredPins]);
   // Guided mapping: one deterministic recommendation for the selected signal,
   // one assignment helper that remembers the previous pin so the last step can
   // be undone, and the next unmapped signal one action away.
@@ -3715,19 +3726,49 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         </div>
                       ) : null}
                       <div className="rb-board-editor-actions">
-                        {nextMappingIssueRow && nextMappingIssueRow.id !== selectedMappingRow.id ? (
-                          <IdeButton
-                            tone="secondary"
-                            onClick={() => {
-                              setSelectedBoardResourceAlias(null);
-                              chooseMappingRow(nextMappingIssueRow.id);
-                            }}
-                            testId="ide-hw-next-unmapped"
-                            title={`Select ${nextMappingIssueRow.label} (next unmapped or conflicting signal)`}
-                          >
-                            Next: {nextMappingIssueRow.label} →
-                          </IdeButton>
-                        ) : null}
+                        {(() => {
+                          // Relative to where the student is, not to the top of the list.
+                          if (mappingIssueQueue.length === 0) return null;
+                          const here = mappingIssueQueue.findIndex((row) => row.id === selectedMappingRow.id);
+                          const step = (delta: number) => {
+                            if (mappingIssueQueue.length === 0) return null;
+                            if (here < 0) return mappingIssueQueue[0];
+                            if (mappingIssueQueue.length === 1) return null;
+                            const index = (here + delta + mappingIssueQueue.length) % mappingIssueQueue.length;
+                            return mappingIssueQueue[index];
+                          };
+                          const previous = step(-1);
+                          const next = step(1);
+                          const go = (row: { id: string } | null) => () => {
+                            if (!row) return;
+                            setSelectedBoardResourceAlias(null);
+                            chooseMappingRow(row.id);
+                          };
+                          return (
+                            <>
+                              {previous ? (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={go(previous)}
+                                  testId="ide-hw-previous-unmapped"
+                                  title={`Select ${previous.label} (previous signal still needing attention)`}
+                                >
+                                  ← {previous.label}
+                                </IdeButton>
+                              ) : null}
+                              {next ? (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={go(next)}
+                                  testId="ide-hw-next-unmapped"
+                                  title={`Select ${next.label} (next signal still needing attention)`}
+                                >
+                                  Next: {next.label} →
+                                </IdeButton>
+                              ) : null}
+                            </>
+                          );
+                        })()}
                         {undoableAssignment ? (
                           <IdeButton
                             tone="ghost"
