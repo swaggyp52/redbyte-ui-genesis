@@ -169,6 +169,31 @@ accepted.
   AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED**. The §16 local product gate
   is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5J visual craft, spatial coherence and instrument finish (2026-09-06, desktop session,
+  pushed):** a visual-system pass against Connor's ~70% verdict, on the same branch, five
+  commits (`d6c67b386` → `d46d2350e`). The audit found three surface roles sharing two
+  values (`--wb-paper` == `--wb-surface` == `#fbfbfa`, widest palette step 1.09:1), four type
+  families reaching the screen with IBM Plex declared three times and loaded never, and a
+  200% text setting that left the page pixel-identical (WCAG 1.4.4 fail). Landed: three surface
+  planes, one rem scale with 1321 declarations moved onto it and both families bundled locally,
+  a Board assignment table that no longer renders 744px into a 339px pane, a Design palette that
+  no longer renders 276px into a 175px box with hidden overflow, one signal table on Board
+  instead of two, a Simulate scenario panel of 29px instead of 302px around a 28px header, a
+  Project architecture figure sized to its drawing instead of 72% empty, one-row Design toolbar,
+  no floating control over the inspector, and Package/Board/Simulate each stating their state
+  once rather than three to six times.
+  One functional defect found and made honest rather than hidden: **a single compatible gate swap
+  in Design clears all 16 of a lab's authored expected outputs** (deliberate starter-detach rule
+  in `reconcileTestbenchAfterDesignChange`, but silent, and path-dependent — running Compare once
+  first keeps them). Simulate now says what happened and how to get back. Five gate assertions
+  migrated to the behaviour they protected, none deleted.
+  Proof: `pnpm verify:gates` exit 0; Full Adder operational, package-history, pin-planner,
+  project-persistence, a11y-scale and layout-scale-probe journeys green; typecheck 778 unchanged;
+  every touched suite at its exact committed baseline; 0px document overflow at 1440×900,
+  1366×768, 1024×720 and 200% text. Browser-E0 only. Label: **REDBYTE VISUAL CRAFT CANDIDATE /
+  FUNCTIONAL FOUNDATION PRESERVED / FEATURE BRANCH PUSHED / PR #85 DRAFT / NO MERGE / NO
+  PRODUCTION.** Continuation:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **P2.5H away-mode session (2026-09-05, pushed as checkpoints):** source preserved remotely first
   (`eab7f8c1f` pushed, safety tag `safety/redbyte-away-mode-eab7f8c1f`, PR #85 body truthful, branch
   preview `https://claude-redbyte-operational-w.redbyte-ui-genesis.pages.dev` SHA-verified). P0: run

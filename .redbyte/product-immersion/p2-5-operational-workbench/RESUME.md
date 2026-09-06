@@ -4,6 +4,126 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-06 — P2.5J visual craft, spatial coherence, instrument finish (Opus 5, desktop session)
+
+**Label: REDBYTE VISUAL CRAFT CANDIDATE / FUNCTIONAL FOUNDATION PRESERVED / FEATURE BRANCH
+PUSHED / PREVIEW SHA VERIFIED / PR #85 DRAFT / NO MERGE / NO PRODUCTION.**
+
+Connor's verdict opening this session: functional depth 85–90%, workbench architecture 75–80%,
+visual system consistency 50–55%, layout ergonomics 55–60%, school-facing finish 50–55%,
+overall ~70%. "The engineering models have become sophisticated faster than the visual language
+used to present them." Functional proof was explicitly ruled out as a rebuttal.
+
+### What the audit measured, before any change
+
+- `--wb-paper` and `--wb-surface` were declared as the identical value `#fbfbfa`: three surface
+  roles, two values. The widest step in the whole light palette was **1.09:1**, so hierarchy was
+  being drawn with hairlines — 78 visible border edges on Project, 176 on Design, 273 on Board,
+  302 on Simulate.
+- Four type families reached the screen; the two most common were **Segoe UI Variable (572
+  elements)** and **Cascadia Mono (433)** — Windows and terminal fallbacks, not choices. IBM Plex
+  was declared three times in three files and loaded never. 11 distinct sizes including 8.8px,
+  9px, 10.5px; six weights including synthetic 650 and 900.
+- Setting text size to 200% left the page **pixel-identical** — every step of the scale was
+  absolute px. WCAG 1.4.4 failed outright while the surfaces "supported 200%".
+- 232 rules set `text-transform: uppercase`; the Design inspector alone stacked nine all-caps
+  eyebrows and the Start Center detail pane ten.
+
+### Landed (four commits on the same branch, all pushed)
+
+- `d6c67b386` — three surface planes (`#f2f4f7` / `#ffffff` / `#f7f9fb`); the rem scale with
+  1321 literal declarations moved onto it (rail label 11px → 22px at 200%); IBM Plex Sans
+  Variable + IBM Plex Mono bundled locally, never from a CDN; families 4 → 2, sizes 11 → 7,
+  weights 6 → 4; `small` given a rule at last (source of the 9.6px text and of
+  "Unassigned0all required mappings assigned"); the component library stops clipping its rows;
+  `.rb-board-editor-head` given the rule it never had ("ConstraintsLive mapping"); the collapsed
+  console repaired from a zero-height dead state to a 28px strip.
+- `7b3615d10` — Board: the assignment table measured **744px inside a 339px pane**, so four of
+  six columns including Action began off-pane (Action by 404px) with no horizontal scrollbar;
+  cells wrap at word boundaries now and the pane is 480px (measured after: 479px table, 479px
+  pane, `scrollWidth == clientWidth`). The Pin planner and the assignment table listed the same
+  five signals twice; one leads, the other is a disclosure that opens itself on a conflict. A
+  mapped signal was told to "Choose a compatible cont…" because the control was bound to the
+  *pending* canvas choice. The ribbon stated mapping-complete six times. Package said its state
+  three times in six rows, its handoff inspector truncated the values that identify the
+  artifact, and its provenance graph pushed "Download package" 39px below the fold.
+- `c5e9c4bb5` — Design: the palette rendered a **276px grid column into a 175px box with
+  `overflow: hidden`**, cutting away the port signature on every row; the left dock default is
+  264px. 180px of the toolbar was a second copy of the inspector's Net tracing group (`Driver`
+  → `focusSelectedPath`, `Loads` → `handleFanoutTrace` — the same handlers as `Focus path` and
+  `Trace net`); `Layers ▾` and `Layout ▾` became one `View ▾`; the toolbar is one row. The
+  bottom-panel restore floated at z-index 30 over the inspector's last rows and is now the same
+  28px strip the console uses. Simulate's scenario panel was **302px tall around a 28px header**
+  → 29px.
+- `c8e0dcfee` — the starter-detach honesty fix (below), Project's architecture figure (**668×411
+  box for a 734×128 drawing** — 72% empty) sized to its drawing, 13 more all-caps eyebrows in
+  sentence case, and every info callout's body made readable (`.ide-callout-info
+  .ide-callout-body` was pinned to `rgba(220,234,252,.92)`, a dark-shell near-white landing about
+  1.1:1 on the light workbench).
+- `d46d2350e` — Simulate's failure header: counted on a real Compare FAIL, **17
+  visible elements state the failure**, three of them on one line. Most are earned (`Fail
+  window`, `Stop at fail`, `First mismatch`, the mismatch cell itself). The subline now carries
+  the scenario instead of repeating the headline; run-shape metrics step back from the two
+  counts that matter. The Problems row stops breaking "LD1 (SUM) simulation run" across three
+  lines.
+
+### One functional defect found and made honest, not hidden
+
+Measured UI-only: **Lab 3 loads with 8 vectors carrying 16 authored expected outputs; one
+compatible gate swap in the Design inspector leaves 8 vectors and 0.** Simulate then greys out
+Compare and says "Author at least one expected output to compare against", as if the student
+never had any.
+
+The clearing is deliberate and is left alone — `reconcileTestbenchAfterDesignChange`, gated on
+`isDetachingFromExample && scenarioAuthority === 'starter'`: changing the behaviour detaches the
+project from its starter and the starter's answers stop describing the student's circuit. What
+was wrong was the silence, and the path-dependence it hid: **run Compare once before the edit and
+the same swap keeps all 16**, because the scenario is no longer on `'starter'` authority. Simulate
+now names what happened and how to get back, in a callout and in the command bar.
+
+This also corrects a standing reviewer claim that a gate swap drops the checks unconditionally
+through a prune in `VerifySurface.tsx`. It does not; the clearing lives in the runtime's detach
+path and only fires while the scenario is still the starter's.
+
+### Refuted while checking
+
+`ide-verify-summary-status` and `ide-verify-context-state` are **not** two renderings of the
+Simulate status: the first is a `<span>` nested inside the second. Two test ids, one element.
+
+### Assertions migrated, none deleted
+
+Five, each to the behaviour it protected rather than the wording it happened to use: "no
+`<details>` anywhere in the Package hero" → nothing expanded on arrival and no gate stack in the
+hero; "the next action reads 'Ready for export'" → it names Build & Export and does not demand a
+clock; the zero-copy on the Board ribbon; the shell resize test's hardcoded 220px dock → read
+from the preference authority; and the pass-run summary's "Checks passing" → the headline and the
+state chip that actually carry it. The pin-planner journey opens the new disclosure the way a
+student would and asserts it is closed on arrival.
+
+### Validation at this head
+
+`pnpm verify:gates` **exit 0** at every checkpoint. Full Adder operational, package-history,
+pin-planner, project-persistence, a11y-scale, visual-hardening and layout-scale-probe journeys
+green. Typecheck **778, unchanged from the session baseline**. Every touched suite left at its
+exact committed failing set (hardwareSurface 5/52, exportSurface 34/65, verifySurface 32,
+verify+project+startCenter 37, designSurface unchanged; ideWorkbenchShell 6/6 green).
+`docOverflowX` and `bodyOverflowX` are 0 at 1440×900, 1366×768, 1024×720 and at 200% text.
+
+### Honest remaining limits
+
+- At 200% text the workbench genuinely doubles — the typography change working — and is also
+  cramped: the title bar's items collide and the Observe/Compare control clips. Recorded, not
+  hidden.
+- The Simulate case grid and the board twin canvas still leave large empty areas at rest. Unlike
+  the panels fixed here, both are work areas a student fills or pans, so they were left alone.
+- The `ide:gate:*` shell gates outside `verify:gates` (console-autocollapse, shell-chrome,
+  layout, workbench-layout, design-workbench) still fail at the committed baseline too.
+- Visual craft is Browser-E0 evidence. No Vivado, bitstream, board or classroom claim.
+
+**Boundary held:** no merge, no retarget, no push to `main` or the product branch, no production
+deploy, no release, format version 1, both classroom goldens byte-identical, no golden
+regeneration.
+
 ## 2026-09-06 — P2.5I product-gate closure: every journey green, four data-loss defects closed (Opus 5, desktop session)
 
 **Label:** REDBYTE REMOTE REVIEW CANDIDATE / FEATURE BRANCH PUSHED / PREVIEW SHA VERIFIED /
