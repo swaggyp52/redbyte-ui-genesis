@@ -7339,6 +7339,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       inspector={
         <>
+          <div className="rb-design-dock-head">
           <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design inspector">
             {(['inspector', 'properties', 'constraints'] as const).map((tab) => (
               <button
@@ -7354,6 +7355,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </button>
             ))}
           </div>
+            {renderSelectionIdentityCard()}
+          </div>
+          <div className="rb-design-dock-body">
           <div hidden={activeRightDockTab !== 'inspector'}>
           {focusedAssetContext && (
             <DesignFocusInspector
@@ -7363,7 +7367,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               instanceCount={focusedComponentInstanceCount}
             />
           )}
-          {renderSelectionIdentityCard()}
           {(() => {
             const content = renderSelectionActions();
             return content ? (
@@ -7597,6 +7600,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           ) : null}
           {activeRightDockTab === 'constraints' ? renderInlineBoardAssignment() : null}
+          </div>
         </>
       }
     >
@@ -7884,6 +7888,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </button>
                       <button type="button" className="wb-menu-item" onClick={toggleSnapToGrid} data-testid="ide-design-tool-snap" aria-pressed={snapToGrid}>
                         <span className="wb-menu-item-check" aria-hidden="true">{snapToGrid ? '●' : ''}</span><span className="wb-menu-item-label">Snap to grid</span><span className="wb-menu-item-key">G</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={() => fitToCircuit()} data-testid="ide-design-menu-fit">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Fit design</span><span className="wb-menu-item-key">F</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-menu-fit-selection">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Fit selection</span><span className="wb-menu-item-key">S</span>
                       </button>
                       <button type="button" className="wb-menu-item" onClick={resetView} data-testid="ide-design-zoom-reset">
                         <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Reset view</span><span className="wb-menu-item-key" />

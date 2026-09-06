@@ -21,7 +21,12 @@
   overflow: hidden;
   background: var(--rb-app-bg, var(--rb-bg));
 }
+/* The console's remembered height belongs to the console when it is open. A collapsed one
+   is a 28px strip, and the track has to know that: measured with a single informational
+   problem, the strip drew itself 28px tall inside a 220px reserved row and handed the other
+   192px to nobody - a fifth of the workbench held for a panel that had folded itself away. */
 .ide-root .ide-workbench-shell:has(> .ide-workbench-console) { grid-template-rows: minmax(0, 1fr) minmax(96px, var(--rb-workbench-pref-bottom-height, 220px)); }
+.ide-root .ide-workbench-shell:has(> .ide-workbench-console.is-collapsed) { grid-template-rows: minmax(0, 1fr) auto; }
 .ide-root .ide-workbench-panel-controls { position: absolute; z-index: 30; right: 8px; bottom: 8px; display: flex; min-height: 0; align-items: center; justify-content: flex-end; padding: 3px; gap: 6px; border: 1px solid var(--rb-border-subtle); border-radius: 7px; background: color-mix(in srgb, var(--rb-surface-raised) 92%, transparent); box-shadow: 0 4px 16px rgba(15, 23, 42, .1); pointer-events: none; }
 .ide-root .ide-workbench-panel-controls:empty { display: none; }
 .ide-root .ide-workbench-panel-controls button { min-height: 28px; pointer-events: auto; }

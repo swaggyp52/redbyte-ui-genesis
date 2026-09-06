@@ -461,7 +461,36 @@
 .ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 7px; }
 
 /* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
-.ide-root .rb-design-toolbar { flex-wrap: wrap; height: auto; min-height: var(--wb-toolbar-h); row-gap: 2px; }
+/* ── The schematic toolbar keeps one row ────────────────────────────────────
+   Measured at 1366x768 with the inspector open: the bar is 734px and its groups need 805px
+   the moment the Related control appears after a run - so it wrapped, and the View menu
+   dropped to a second row. Wrapping was the fallback; a budget is the fix. The bar composes
+   against its OWN width, so a wide window with a narrow canvas is treated as narrow, and
+   the thresholds are in rem so a larger text size counts as narrowness too.
+
+   What yields, in order: the camera buttons, because both are in the View menu already and
+   both have keyboard shortcuts. Nothing yields that has no other way to reach it. */
+.ide-root .rb-design-toolbar {
+  container-type: inline-size;
+  container-name: design-bar;
+  /* Inline-size containment means the box can no longer take its width from its contents, so
+     it has to be told to fill the row - without this it collapsed to 230px at 200% text. */
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--wb-toolbar-h);
+  row-gap: 2px;
+}
+@container design-bar (max-width: 48rem) {
+  /* Fit selection folds first: it is the rarer of the two and needs a selection anyway. */
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-center-selection-canvas'] { display: none; }
+}
+@container design-bar (max-width: 42rem) {
+  /* Then Fit itself, and the separator that introduced the pair. */
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-fit-circuit-canvas'] { display: none; }
+  .ide-root .rb-design-toolbar > .wb-toolbar-sep:nth-of-type(3) { display: none; }
+}
 .ide-root .rb-design-toolbar .wb-btn, .ide-root .rb-design-toolbar .wb-segment, .ide-root .rb-design-toolbar .rb-design-menu, .ide-root .rb-design-toolbar .rb-design-trace { flex: none; }
 
 /* Inspector named sections: mapping constraint lines, source lines, related documents. */
@@ -499,3 +528,26 @@
   font: var(--rb-weight-strong) var(--rb-text-meta) / var(--rb-lh-tight) var(--rb-font-ui);
 }
 .ide-root .wb-menu-group-label:first-child { margin-top: 0; }
+
+/* The inspector reads its own subject. Measured with a gate selected: the dock itself was
+   the scroller, 1083px of content in a 779px box, so scrolling to a section carried the
+   tab strip and the identity of the thing being inspected off the top of the screen. The
+   tabs and the identity card are a head that does not move, the sections are a body that
+   does, and exactly one of the three scrolls. */
+.ide-root [data-ide-mode-marker="design"] .ide-workbench-dock-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-root .rb-design-dock-head {
+  flex: none;
+  border-bottom: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface);
+}
+.ide-root .rb-design-dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

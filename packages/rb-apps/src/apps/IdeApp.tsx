@@ -3548,6 +3548,7 @@ export const IdeApp: React.FC = () => {
 
       <WorkbenchStatusBar
         problemsCount={problemCounts.error + problemCounts.warning}
+        noteCount={problemCounts.info}
         onShowProblems={() => workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true })}
         runState={statusRunState}
       />
