@@ -189,7 +189,19 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-layout-mode={layoutMode}
       data-left-dock-state={showLeftDock ? 'visible' : 'hidden'}
       data-right-dock-state={showRightDock ? 'visible' : 'hidden'}
-      data-console-state={showConsole ? (consoleHasBlocking ? 'blocking' : 'expanded') : 'hidden'}
+      /* One fact, one answer. The section below publishes collapsed / expanded / blocking
+         from consoleIsExpanded; the root used to say 'expanded' whenever the panel existed,
+         so a reader of the root attribute was told the console was open while the panel
+         itself said it was a 28px strip. */
+      data-console-state={
+        showConsole
+          ? consoleHasBlocking
+            ? 'blocking'
+            : consoleIsExpanded
+              ? 'expanded'
+              : 'collapsed'
+          : 'hidden'
+      }
       data-shell-density={shellDensity}
       data-surface-frame={surfaceFrame}
       data-layout-intent={layoutIntent}

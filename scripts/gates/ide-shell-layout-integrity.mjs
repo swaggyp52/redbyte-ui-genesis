@@ -111,6 +111,18 @@ async function assertShellModeIntegrity(page, viewport, mode) {
   );
   assert(state.topBar.visible, `${viewport.label}/${mode}: top bar missing`);
   assert(state.stageNav.visible, `${viewport.label}/${mode}: stage navigation missing`);
+  // Migrated from ide:gate:shell-chrome-contract, which asserted a compact top bar and a
+  // narrow mode rail against `ide-left-rail` - a component deleted in 24de703b6 (2026-07-25),
+  // so the gate could never pass again. The behaviour it protected is real and is asserted
+  // here against the tokens that declare it, which also keeps it true at larger text sizes.
+  assert(
+    state.frameTokens.cmdbarH !== null && Math.abs(state.topBar.height - state.frameTokens.cmdbarH) <= 1,
+    `${viewport.label}/${mode}: top bar is ${state.topBar.height}px but --wb-cmdbar-h declares ${state.frameTokens.cmdbarH}px`
+  );
+  assert(
+    state.frameTokens.railW !== null && Math.abs(state.stageNav.width - state.frameTokens.railW) <= 1,
+    `${viewport.label}/${mode}: mode rail is ${state.stageNav.width}px but --wb-rail-w declares ${state.frameTokens.railW}px`
+  );
   assert(state.mainCount === 1, `${viewport.label}/${mode}: expected one main landmark, got ${state.mainCount}`);
   assert(state.retiredRailCount === 0, `${viewport.label}/${mode}: retired workflow rail returned`);
   assert(state.retiredToggleCount === 0, `${viewport.label}/${mode}: retired dock toggle returned`);
@@ -226,6 +238,24 @@ async function readShellModeState(page, mode) {
         clientWidth: document.documentElement.clientWidth,
         topBar: rectJson(document.querySelector('[data-testid="ide-top-bar"]')?.getBoundingClientRect?.()),
         stageNav: rectJson(document.querySelector('[data-testid="ide-workspace-rail"]')?.getBoundingClientRect?.()),
+        // The frame's declared geometry, so the gate can check the rendered chrome against the
+        // tokens rather than against numbers copied into the gate years ago. Both are in rem so
+        // that raising the reader's text size grows the frame with it; a literal pixel band here
+        // would fail the moment that works correctly.
+        frameTokens: (() => {
+          const root = getComputedStyle(document.documentElement);
+          const px = (name) => {
+            const raw = root.getPropertyValue(name).trim();
+            if (!raw) return null;
+            const probe = document.createElement('div');
+            probe.style.cssText = `position:absolute;visibility:hidden;height:${raw};width:${raw}`;
+            document.body.appendChild(probe);
+            const measured = probe.getBoundingClientRect().height;
+            probe.remove();
+            return Math.round(measured * 100) / 100;
+          };
+          return { cmdbarH: px('--wb-cmdbar-h'), railW: px('--wb-rail-w') };
+        })(),
         mainCount: document.querySelectorAll('main').length,
         retiredRailCount: document.querySelectorAll(
           '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'

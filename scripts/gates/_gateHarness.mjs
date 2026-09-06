@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import net from 'node:net';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const HOST = '127.0.0.1';
@@ -383,6 +386,10 @@ export async function runIdeGate(name, runScenario) {
   let previewLogs = '';
 
   try {
+    // Say "there is no build" in those words. A gate that navigates to an empty preview fails
+    // on its first selector, which reads exactly like a product regression and has sent more
+    // than one investigation looking for a test id that was never missing.
+    assertPreviewBuildExists();
     const port = await reservePort();
     const baseUrl = `http://${HOST}:${port}`;
     previewProcess = startPreviewProcess(port, (chunk) => {
@@ -558,6 +565,19 @@ function startPreviewProcess(port, onOutput) {
   return child;
 }
 
+const GATE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(GATE_DIR, '..', '..');
+const PREVIEW_ENTRY = path.join(REPO_ROOT, 'apps', 'playground', 'dist', 'index.html');
+
+function assertPreviewBuildExists() {
+  if (existsSync(PREVIEW_ENTRY)) return;
+  throw new Error(
+    `No preview build at ${PREVIEW_ENTRY}. `
+    + 'Run "corepack pnpm --filter @redbyte/playground build" before this gate. '
+    + 'Without it the preview serves 404 and every product selector looks missing.'
+  );
+}
+
 async function waitForPreview(baseUrl) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < START_TIMEOUT_MS) {
@@ -566,8 +586,14 @@ async function waitForPreview(baseUrl) {
       const timeout = setTimeout(() => controller.abort(), 1000);
       const response = await fetch(`${baseUrl}/`, { signal: controller.signal });
       clearTimeout(timeout);
-      if (response.ok || (response.status >= 200 && response.status < 500)) {
-        return;
+      if (response.ok) return;
+      // A 404 means the preview is serving an empty dist, not that it is still warming up.
+      // Say so once rather than letting the caller discover it as a missing selector.
+      if (response.status === 404) {
+        throw new Error(
+          `${baseUrl}/ returns 404 — the preview has nothing to serve. `
+          + `Run "pnpm --filter @redbyte/playground build" before this gate.`
+        );
       }
     } catch {
       // Preview process is still warming up.
