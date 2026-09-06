@@ -36,6 +36,15 @@ const ids = await page.evaluate(() => {
 if (!ids.sw0 || !ids.sw1) fail(`could not find two input scalars: ${JSON.stringify(ids)}`);
 
 await page.getByTestId('mode-button-hardware').click(); await page.waitForTimeout(1200);
+// The pane used to stack two tables over the same five signals. The assignment table now
+// leads and the electrical view is a disclosure beneath it, closed until asked for - so the
+// journey opens it the way a student would.
+const electrical = page.getByTestId('ide-hw-electrical-detail');
+if (await electrical.count() === 0) fail('electrical detail disclosure missing');
+if (await electrical.evaluate((el) => el.open)) fail('the electrical detail must not compete with the assignment table on arrival');
+await electrical.locator('summary').click();
+await page.waitForTimeout(300);
+if (!(await electrical.evaluate((el) => el.open))) fail('the electrical detail did not open');
 if (await page.getByTestId('ide-pin-planner').count() === 0) fail('Pin Planner did not render');
 if (await page.getByTestId('ide-pin-planner-table').count() === 0) fail('Pin Planner table missing');
 console.log('① Pin Planner renders in Board & Constraints');

@@ -13,10 +13,12 @@
 .ide-root .rb-pkg-decision-state { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .ide-root .rb-pkg-decision-state > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
 .ide-root .rb-pkg-decision-state > strong { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
-.ide-root .rb-pkg-decision-state dl { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 0; }
-.ide-root .rb-pkg-decision-state dl > div { display: inline-flex; align-items: baseline; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-decision-state dl { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0; }
+.ide-root .rb-pkg-decision-state dl > div { display: inline-flex; align-items: baseline; gap: 4px; font: var(--wb-text-xs) var(--wb-font-ui); }
+/* A separator instead of a border: the axes belong to the sentence before them. */
+.ide-root .rb-pkg-decision-state dl > div + div::before { content: '\00B7'; margin-right: 6px; color: var(--wb-text-3); }
 .ide-root .rb-pkg-decision-state dt { color: var(--wb-text-3); }
-.ide-root .rb-pkg-decision-state dd { margin: 0; color: var(--wb-text); }
+.ide-root .rb-pkg-decision-state dd { margin: 0; color: var(--wb-text-2); font-family: var(--wb-font-mono); }
 .ide-root .rb-pkg-decision-copy { margin: 0; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
 .ide-root .rb-pkg-primary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: auto; }
 .ide-root .rb-pkg-primary .ide-button,
@@ -48,7 +50,7 @@
 .ide-root .rb-pkg-section-header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ide-root .rb-pkg-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
 .ide-root .rb-pkg-section-header > p { margin: 0 0 0 auto; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
-.ide-root .rb-pkg-file-workspace { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(260px, 300px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-pkg-file-workspace { display: grid; grid-template-columns: minmax(210px, 240px) minmax(0, 1fr) minmax(300px, 340px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
 .ide-root .rb-pkg-file-list { display: flex; flex-direction: column; min-height: 0; overflow: auto; border-right: 1px solid var(--wb-border-strong); }
 .ide-root .rb-pkg-file-groups { display: block; }
 .ide-root .rb-pkg-file-group { display: block; }
@@ -104,12 +106,14 @@
 .ide-root .rb-pkg-handoff { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-left: 1px solid var(--wb-border-strong); border-radius: 0; background: var(--wb-surface); box-shadow: none; overflow: auto; }
 .ide-root .rb-pkg-handoff > header { display: flex; align-items: baseline; gap: 8px; height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-pkg-handoff > header span { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
-.ide-root .rb-pkg-handoff > header strong { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-handoff > header strong { min-width: 0; color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-pkg-handoff > dl { display: block; margin: 0; padding: 2px var(--wb-space-3); }
-.ide-root .rb-pkg-handoff > dl > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 24px; border-bottom: 1px solid var(--wb-border); }
+/* A truncated part number or board name is worse than a two-line one: the tail is the part
+   that identifies it. These values wrap now, and the rows grow to fit. */
+.ide-root .rb-pkg-handoff > dl > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: baseline; gap: 6px; min-height: 24px; padding: 3px 0; border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-pkg-handoff > dl > div:last-child { border-bottom: 0; }
 .ide-root .rb-pkg-handoff dt { margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
-.ide-root .rb-pkg-handoff dd { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-handoff dd { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow-wrap: anywhere; white-space: normal; }
 .ide-root .rb-pkg-handoff > section { margin: 0; padding: 6px var(--wb-space-3); border-top: 1px solid var(--wb-border); }
 .ide-root .rb-pkg-handoff > section > span,
 .ide-root .rb-pkg-handoff > section > h4 { display: block; margin: 0 0 2px; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
@@ -262,7 +266,21 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-pkg-provenance-edge { stroke: var(--wb-border-strong); stroke-width: 1.25; }
 .ide-root .rb-pkg-provenance-edge.is-artifact { stroke-dasharray: 3 3; }
 .ide-root .rb-pkg-provenance-edge.is-emphasised { stroke: var(--wb-focus); stroke-width: 2; }
-.ide-root .rb-pkg-provenance-edge.is-dim { opacity: 0.25; }
+/* 33 of 34 edges rendered at 0.25 opacity over white: 1.09:1, invisible, and carrying no
+   information because the graph was near-complete bipartite. A de-emphasised edge is a
+   lighter stroke, not an absent one. */
+.ide-root .rb-pkg-provenance-edge.is-dim { stroke: var(--wb-border); }
+
+/* The provenance view is a disclosure now; give its summary a real affordance. */
+.ide-root .rb-pkg-provenance-summary { cursor: pointer; list-style: none; }
+.ide-root .rb-pkg-provenance-summary::-webkit-details-marker { display: none; }
+.ide-root .rb-pkg-provenance-summary h3::before {
+  content: '\25B8';
+  display: inline-block;
+  width: 14px;
+  color: var(--wb-text-3);
+}
+.ide-root .rb-pkg-provenance-map[open] > .rb-pkg-provenance-summary h3::before { content: '\25BE'; }
 .ide-root .rb-pkg-provenance-node rect { fill: var(--wb-surface); stroke: var(--wb-border-strong); stroke-width: 1; }
 .ide-root .rb-pkg-provenance-node text { fill: var(--wb-text); font: var(--rb-text-micro) var(--wb-font-mono); }
 .ide-root .rb-pkg-provenance-node.is-input text { font: 600 var(--rb-text-meta) var(--wb-font-ui); }
@@ -286,3 +304,29 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .ide-export-comparison-file-state { color: var(--wb-text-3); white-space: nowrap; }
 .ide-root .ide-export-comparison-file.is-changed .ide-export-comparison-file-state, .ide-root .ide-export-comparison-file.is-added .ide-export-comparison-file-state { color: var(--wb-warn); }
 .ide-root .ide-export-comparison-file.is-removed .ide-export-comparison-file-state { color: var(--wb-err); }
+
+/* ── Handoff inspector ──────────────────────────────────────────────────────
+   Six property rows and two blocks of instructions were one undifferentiated
+   stack, and the single action sat below all of it. Properties are facts about
+   the artifact; the guidance is addressed to a person. They now read as two
+   different kinds of thing, and the action is always in reach. */
+.ide-root .rb-pkg-handoff-guidance { flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-pkg-handoff-guidance > section:first-child { border-top-width: 2px; border-top-color: var(--wb-border-strong); }
+.ide-root .rb-pkg-handoff-guidance > section { margin: 0; padding: 6px var(--wb-space-3); border-top: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-handoff-guidance > section h4 { display: block; margin: 0 0 2px; color: var(--wb-text-2); font: 600 var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-pkg-handoff-guidance > section p,
+.ide-root .rb-pkg-handoff-guidance > section li { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 1.45 var(--wb-font-ui); }
+.ide-root .rb-pkg-handoff-guidance > section ol,
+.ide-root .rb-pkg-handoff-guidance > section ul { margin: 0; padding-left: 16px; }
+
+/* The one action the surface exists for stays reachable however long the guidance
+   above it grows. */
+.ide-root .rb-pkg-handoff-action {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border-top: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface);
+}
+.ide-root .rb-pkg-handoff-action .ide-button { width: 100%; }

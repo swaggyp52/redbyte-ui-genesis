@@ -101,9 +101,11 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table').getAttribute('data-work-priority')).toBe('primary');
-    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain(
-      'all required mappings assigned'
-    );
+    // The behaviour this protects is that a zero is stated in words, not left as a bare
+    // digit. The words used to be 'all required mappings assigned' - a verbatim restatement
+    // of the MAPPING COMPLETE headline two chips to its left, in a ribbon that said the same
+    // thing six times. It still says it, once.
+    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain('none outstanding');
   });
 
   it('shows Incomplete state when a required signal has no pin', () => {

@@ -451,7 +451,11 @@
 }
 .ide-root .wb-doctabs-history { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; border-right: 1px solid var(--wb-border); }
 .ide-root .wb-doctabs-history .wb-btn { font-size: var(--rb-text-head); color: var(--wb-text-2); }
-.ide-root .wb-doctabs-history .wb-btn:disabled { color: var(--wb-border-strong); background: transparent; }
+/* These were tinted with a BORDER colour, which put the back/forward chevrons at 1.16:1
+   against the tab strip - the worst contrast in the product, on a control present in every
+   workspace. A disabled control should read as disabled, not as absent, so they use the same
+   disabled text tone as every other button. */
+.ide-root .wb-doctabs-history .wb-btn:disabled { color: var(--wb-text-3); background: transparent; }
 .ide-root .wb-doctabs-list {
   display: flex;
   align-items: stretch;

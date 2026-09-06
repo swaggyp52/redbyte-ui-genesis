@@ -491,7 +491,16 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(queryByTestId('ide-export-technical-dialog')).toBeNull();
-    expect(getByTestId('ide-export-readiness-hero').querySelector('details, summary')).toBeNull();
+    const hero = getByTestId('ide-export-readiness-hero');
+    // This used to assert that the hero contained no <details> at all, which was a proxy
+    // for "nothing technical unfolds in the default flow" — true only because the surface
+    // had no disclosures at the time. Provenance is now a disclosure precisely so that it
+    // stops occupying the top of the surface, so the tag-name proxy would forbid the
+    // improvement it was written to protect. The behaviour itself is asserted directly:
+    // nothing is expanded on arrival, and the technical evidence is not in the flow at all.
+    expect([...hero.querySelectorAll('details')].filter((el) => el.hasAttribute('open'))).toHaveLength(0);
+    expect(within(hero).queryByTestId('ide-export-gate-stack')).toBeNull();
+    expect(within(hero).queryByTestId('ide-export-deterministic-checks')).toBeNull();
     fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
     expect(getByTestId('ide-export-technical-dialog')).toBeTruthy();
   });

@@ -39,7 +39,7 @@
 .ide-root .rb-board-editor .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
 
 /* Workspace grid: assignments | board | side. */
-.ide-root .rb-board-grid { display: grid; grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(280px, 320px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-board-grid { display: grid; grid-template-columns: minmax(400px, 480px) minmax(0, 1fr) minmax(300px, 340px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
 .ide-root .rb-board-assignments { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--wb-border-strong); }
 .ide-root .rb-board-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-board-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; border-left: 1px solid var(--wb-border-strong); }
@@ -54,7 +54,10 @@
 .ide-root .rb-board-table-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .ide-root .rb-board-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
 .ide-root .rb-board-table th,
-.ide-root .rb-board-table td { height: 24px; padding: 0 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-board-table td { min-height: 24px; padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: normal; overflow-wrap: break-word; vertical-align: baseline; }
+/* Package pins and resource aliases are single tokens; breaking "xc7a35tcpg236-1" mid-token
+   would be worse than a narrow column, so those cells keep their run and get the space. */
+.ide-root .rb-board-table td code { overflow-wrap: normal; }
 .ide-root .rb-board-table thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-table td code { font: var(--wb-text-sm) var(--wb-font-mono); }
 .ide-root .rb-board-group-row td { height: 22px; background: var(--wb-surface-2); border-top: 1px solid var(--wb-border-strong); }
@@ -125,8 +128,10 @@
 .ide-root .rb-board-assignments .ide-pin-planner-head p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .rb-board-assignments .ide-pin-planner-stats { margin-left: auto; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-board-assignments table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
+/* This later rule was overriding the wrapping above with the same specificity, which is why
+   the assignment table still measured 744px in a 399px pane. Both tables in this pane wrap. */
 .ide-root .rb-board-assignments th,
-.ide-root .rb-board-assignments td { height: 24px; padding: 0 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 24px; }
+.ide-root .rb-board-assignments td { min-height: 24px; padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--wb-border); white-space: normal; overflow-wrap: break-word; line-height: var(--rb-lh-dense); vertical-align: baseline; }
 .ide-root .rb-board-assignments thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-assignments td code,
 .ide-root .rb-board-assignments td button { font: var(--wb-text-sm) var(--wb-font-mono); }
@@ -170,7 +175,7 @@
 
 /* ── The centre board never collapses. Side panes yield first, then stack. ── */
 @media (max-width: 1180px) {
-  .ide-root .rb-board-grid { grid-template-columns: minmax(220px, 260px) minmax(280px, 1fr) minmax(220px, 250px); }
+  .ide-root .rb-board-grid { grid-template-columns: minmax(260px, 300px) minmax(240px, 1fr) minmax(240px, 280px); }
 }
 @media (max-width: 899px) {
   .ide-root .rb-board-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 24%) minmax(0, 1fr) minmax(0, 26%); }
@@ -221,3 +226,34 @@
   overflow-wrap: anywhere;
   text-overflow: clip;
 }
+
+/* When the mapping is complete the two exception counters are reporting the absence of
+   exceptions. Boxed and bordered they read as two more states to check; unboxed and one
+   step back they read as what they are - nothing outstanding. The count that still
+   carries information keeps its box. */
+.ide-root .rb-board-metrics.is-ready > div:not(:first-child) {
+  border-color: transparent;
+  background: none;
+  color: var(--wb-text-3);
+}
+.ide-root .rb-board-metrics.is-ready > div:not(:first-child) strong { color: var(--wb-text-3); font-weight: var(--rb-weight-normal); }
+
+/* The electrical view is reference detail under the assignment table, not a second
+   table competing with it. */
+.ide-root .rb-board-electrical { flex: none; border-top: 1px solid var(--wb-border-strong); }
+.ide-root .rb-board-electrical > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: var(--wb-toolwindow-header-h, 30px);
+  padding: 0 var(--wb-space-3);
+  color: var(--wb-text-2);
+  font: 600 var(--rb-text-meta) var(--rb-font-ui);
+  background: var(--wb-surface-2);
+  cursor: pointer;
+  list-style: none;
+}
+.ide-root .rb-board-electrical > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-board-electrical > summary::before { content: '\25B8'; width: 12px; color: var(--wb-text-3); }
+.ide-root .rb-board-electrical[open] > summary::before { content: '\25BE'; }
+.ide-root .rb-board-electrical > summary small { margin-left: 0; color: var(--wb-text-3); font-weight: var(--rb-weight-normal); }

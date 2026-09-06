@@ -261,8 +261,8 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 44px;
-  padding: 6px var(--wb-space-3);
+  min-height: 54px;
+  padding: 7px var(--wb-space-3);
   border: 0;
   border-bottom: 1px solid var(--wb-border);
   color: var(--wb-text);
@@ -277,7 +277,20 @@
 .ide-root .rb-start-row-kind { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-mono); letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
 .ide-root .rb-start-row-main { display: grid; min-width: 0; gap: 1px; }
 .ide-root .rb-start-row-main strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ide-root .rb-start-row-main small { color: var(--wb-text-2); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Every one of the six lab descriptions on the product's first screen was cut mid-sentence -
+   "A clocked 2-bit counter using CLK100MHZ / W5, SW0 enable, and BTNC" - 228px of a 419px
+   string hidden, in a list with two thirds of its height empty. Two lines costs 48px of that
+   slack and lets the student read what the lab actually is. */
+.ide-root .rb-start-row-main small {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--wb-text-2);
+  font-size: var(--wb-text-xs);
+  line-height: 1.35;
+  white-space: normal;
+}
 .ide-root .rb-start-row-meta { display: grid; justify-items: end; gap: 1px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
 .ide-root .rb-start-row-meta code { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-start-empty { margin: 0; padding: var(--wb-space-4) var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-md) var(--wb-font-ui); }

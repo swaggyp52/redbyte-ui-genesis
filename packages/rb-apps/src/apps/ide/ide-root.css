@@ -20808,10 +20808,22 @@ button:disabled,
   padding: 6px 0 4px !important;
 }
 
+/* These five rewire the student's circuit, and they rendered as bare text in the body colour
+   with no border and no background - indistinguishable from the facts around them, while
+   "Copy" and "Duplicate" two rows above were properly bordered. A control that changes the
+   design should look like a control. */
 .ide-design-swap-chip {
   font-size: var(--rb-text-meta) !important;
   padding: 7px 10px !important;
   min-height: 36px !important;
+  border: 1px solid var(--wb-border) !important;
+  border-radius: var(--wb-radius, 4px) !important;
+  color: var(--wb-text) !important;
+  background: var(--wb-surface) !important;
+}
+.ide-design-swap-chip:hover {
+  border-color: var(--wb-border-strong) !important;
+  background: var(--wb-hover-bg) !important;
 }
 
 /* ── 7. SHARED — Compact status pills across surfaces ── */

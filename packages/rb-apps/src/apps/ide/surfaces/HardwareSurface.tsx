@@ -540,6 +540,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string | null>(() =>
     resolveBoardControlAlias(mappingRows[0]?.pin) ?? null
   );
+  const [electricalDetailOpen, setElectricalDetailOpen] = useState(false);
   const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
   const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
   const [newEntryKind, setNewEntryKind] = useState<HardwareMappingEntryV2['kind']>('scalar');
@@ -3326,7 +3327,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <strong>{unresolvedRequiredCount}</strong>
                   <small>
                     {unresolvedRequiredCount === 0
-                      ? 'all required mappings assigned'
+                      ? 'none outstanding'
                       : unresolvedRequiredCount === 1
                         ? 'mapping needs a resource'
                         : 'mappings need resources'}
@@ -3341,7 +3342,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   {mappingHandoffBlockedByDesign
                     ? 'Mapping complete · Design blocked'
                     : mappingReady
-                      ? 'Ready for export'
+                      ? 'Next'
                       : 'Next action'}
                 </span>
                 <strong>
@@ -3394,9 +3395,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <div><p className="ide-surface-block-label">Signal assignments</p><h3 id="ide-hw-v3-table-title">Project I/O</h3></div>
                 </header>
                 <HardwareBusPlanner rows={mappingRows} declaredBuses={declaredBuses} onSetMappingPin={onSetMappingPin} />
-                {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
-                  <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} />
-                ) : null}
                 {mapModeGroups.length === 0 ? (
                   <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
                     Add inputs and outputs in Design, then return here to assign board resources.
@@ -3498,6 +3496,20 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     </table>
                   </div>
                 )}
+                {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
+                  <details
+                    className="rb-board-electrical"
+                    data-testid="ide-hw-electrical-detail"
+                    open={electricalDetailOpen || conflictingRequiredCount > 0}
+                    onToggle={(event) => setElectricalDetailOpen(event.currentTarget.open)}
+                  >
+                    <summary>
+                      Electrical assignment
+                      <small>package pins and IO standards</small>
+                    </summary>
+                    <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} />
+                  </details>
+                ) : null}
               </section>
 
               <section className="rb-board-stage" data-testid="ide-hw-map-board" data-work-priority="primary">
@@ -3655,7 +3667,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         Basys3 resource
                         <select
                           id="ide-hw-direct-resource-select"
-                          value={selectedBoardResourceAlias ?? ''}
+                          value={selectedBoardResourceAlias ?? selectedMappingRowPin ?? ''}
                           onChange={(event) => setSelectedBoardResourceAlias(event.target.value || null)}
                           data-testid="ide-hw-direct-resource-select"
                         >

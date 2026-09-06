@@ -1071,7 +1071,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         return 'E0 export package ready - mapping review pending';
       }
       if (exportTrustAxes.verificationTrust === 'unverified') {
-        return 'Draft export available - unverified';
+        // The derived-state token beside this headline already says 'unverified', and the
+        // reason line under it says why. Three renderings of one fact was two too many.
+        return 'Draft export available';
       }
       if (exportTrustAxes.verificationTrust === 'draft') {
         return 'Draft export available';
@@ -1469,6 +1471,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           : 'fail';
 
   const downloadDisabled = !downloadReady || isRebuilding;
+  /* One primary action on this surface, and it must be the one the student came for.
+     When the package is built, browser-verified and downloadable, the download is the goal
+     and "Rebuild Current Bundle" is maintenance; until then the readiness path keeps the
+     emphasis. These two are never both loud. */
+  const handoffDownloadIsPrimary =
+    !exportBlocked && !downloadDisabled && handoffTruth.primaryCtaIntent !== 'program-handoff';
   const vivadoEvidenceRows = [
     {
       id: 'e0',
@@ -1763,11 +1771,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               data-testid="ide-export-trust-axes"
               aria-label="Export structure, verification trust, and download action"
             >
-              <span>Derived state</span>
               <strong data-testid="ide-export-derived-state">
                 {formatExportDerivedState(exportTrustAxes.derived)}
               </strong>
-              <dl>
+              <dl className="rb-pkg-axis-breakdown">
                 <div data-testid="ide-export-structural-axis">
                   <dt>Structure</dt>
                   <dd>{exportTrustAxes.structural === 'downloadable' ? 'Downloadable' : 'Blocked'}</dd>
@@ -1782,8 +1789,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <dt>Action</dt>
                   <dd>{exportTrustAxes.action === 'downloaded' ? 'Downloaded' : 'Not downloaded'}</dd>
                 </div>
+                <div>
+                  <dt>Files</dt>
+                  <dd>{viewModel.artifacts.length}</dd>
+                </div>
               </dl>
-              <small>{viewModel.artifacts.length} generated file{viewModel.artifacts.length === 1 ? '' : 's'}</small>
             </div>
             <div className="rb-pkg-primary" data-testid="ide-export-primary-actions">
               <IdeButton
@@ -1828,7 +1838,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </IdeButton>
               ) : (
                 <IdeButton
-                  tone="primary"
+                  tone={handoffDownloadIsPrimary ? 'secondary' : 'primary'}
                   onClick={handlePrimaryHandoff}
                   disabled={primaryHandoffDisabled}
                   testId="ide-export-package-build-v1"
@@ -1880,14 +1890,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </IdeCallout>
           ) : null}
 
-          <section className="rb-pkg-provenance-map" data-testid="ide-export-provenance-section" aria-label="Package provenance">
-            <header className="rb-pkg-section-header">
+          <details className="rb-pkg-provenance-map" data-testid="ide-export-provenance-section" aria-label="Package provenance">
+            <summary className="rb-pkg-section-header rb-pkg-provenance-summary">
               <h3>Provenance</h3>
               <p className="ide-copy ide-copy--flush">
                 What each generated file depends on. Select a file to open it; select an input to open its workspace.
                 {exportHistory.length >= 2 ? ' Files marked changed differ from the previous recorded package.' : ''}
               </p>
-            </header>
+            </summary>
             <ArtifactProvenanceGraph
               artifacts={viewModel.artifacts}
               selectedPath={selectedArtifact?.path ?? null}
@@ -1905,7 +1915,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   : undefined
               }
             />
-          </section>
+          </details>
           {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} onOpenArtifact={setSelectedArtifactPath} /> : null}
 
           <section
@@ -2049,7 +2059,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
               </article>
               <aside className="rb-pkg-handoff" data-testid="ide-export-handoff-inspector" aria-label="Vivado handoff inspector">
-                <header><span>Handoff inspector</span><strong>{formatExportDerivedState(exportTrustAxes.derived)}</strong></header>
+                <header><span>Handoff inspector</span><strong>{topModule}</strong></header>
                 <dl>
                   <div><dt>Evidence tier</dt><dd>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</dd></div>
                   <div><dt>Top module</dt><dd>{topModule}</dd></div>
@@ -2058,17 +2068,21 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <div><dt>Ownership</dt><dd>RedByte generated handoff</dd></div>
                   <div><dt>Problems</dt><dd>{packageProblemCount}</dd></div>
                 </dl>
-                <section>
-                  <span>What to submit</span>
-                  <p>Submit the roles requested by your instructor, commonly <code>top.vhd</code> and <code>top.xdc</code>.</p>
-                </section>
-                <section>
-                  <span>Vivado next</span>
-                  <ol><li>Download and unzip the package.</li><li>Run the included import Tcl or open the generated project.</li><li>Review synthesis and implementation warnings before bitstream generation.</li></ol>
-                </section>
-                <IdeButton tone="secondary" onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
-                  {isRebuilding ? 'Building package…' : 'Download package'}
-                </IdeButton>
+                <div className="rb-pkg-handoff-guidance">
+                  <section>
+                    <h4>What to submit</h4>
+                    <p>Submit the roles requested by your instructor, commonly <code>top.vhd</code> and <code>top.xdc</code>.</p>
+                  </section>
+                  <section>
+                    <h4>Then, in Vivado</h4>
+                    <ol><li>Download and unzip the package.</li><li>Run the included import Tcl or open the generated project.</li><li>Review synthesis and implementation warnings before bitstream generation.</li></ol>
+                  </section>
+                </div>
+                <footer className="rb-pkg-handoff-action">
+                  <IdeButton tone={handoffDownloadIsPrimary ? 'primary' : 'secondary'} onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
+                    {isRebuilding ? 'Building package…' : 'Download package'}
+                  </IdeButton>
+                </footer>
               </aside>
             </div>
             )}
