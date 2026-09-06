@@ -90,7 +90,9 @@
 /* Component library rows (28px): glyph · name · pin signature. */
 .ide-root .rb-lib-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) minmax(0, auto);
+  /* The glyph is a type chip, and NAND3/XNOR are five characters wide: a fixed 34px cut the
+     last letter off the longest of them. */
+  grid-template-columns: minmax(34px, auto) minmax(6.5rem, 1fr) minmax(0, auto);
   /* A row may also carry a capability badge and a palette badge; let them take
      implicit columns on the same line instead of wrapping into the next row. */
   grid-auto-flow: column;
@@ -132,7 +134,37 @@
 .ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rb-text-body); font-weight: 500; }
 .ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-lib-cap,
-.ide-root .rb-lib-badge { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-badge {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--wb-text-3);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  text-overflow: ellipsis;
+}
+/* The library composes against its own width, like the toolbar above the sheet. A capability
+   chip and a limits badge earn their place beside the name and the port signature only while
+   there is room for all of them; when there is not, they are the first to go, and the same words
+   stay reachable - every row's title already names the interface and the capability. */
+.ide-root .rb-lib-list { container-type: inline-size; container-name: design-lib; width: 100%; }
+@container design-lib (max-width: 15rem) {
+  .ide-root .rb-lib-cap,
+  .ide-root .rb-lib-badge { display: none; }
+  /* Even without the chips a narrow pane cannot hold "Register (Bus)" and "4 in -> 2 out" on
+     one line: the name would keep its floor and the signature would be cut to "4 in ->". A part
+     is its name and its interface, so below this width the row gives each of them a line of its
+     own rather than showing half of both. */
+  .ide-root .rb-lib-row {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(34px, auto) minmax(0, 1fr);
+    grid-template-areas: 'glyph name' 'glyph pins';
+    align-content: center;
+    height: 2.5rem;
+    row-gap: 0;
+  }
+  .ide-root .rb-lib-glyph { grid-area: glyph; }
+  .ide-root .rb-lib-name { grid-area: name; }
+  .ide-root .rb-lib-pins { grid-area: pins; }
+}
 
 /* Library tool window: search row, sections with 24px headers, board chips. */
 .ide-root .rb-design-dock-tabs { flex: none; }

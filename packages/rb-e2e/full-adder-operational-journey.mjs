@@ -391,6 +391,14 @@ async function run(width, height) {
 
   // ── H. PACKAGE — trusted build, real download, ZIP inspected ───────────────
   await page.click(tid('mode-button-export'));
+  // Build & Export opens on the handoff dossier - what was made, what proves it, what to do with
+  // it - and the artifact browser is a second document reached from the dossier's own header.
+  // Asserted on the acceptance path because that path arrives here straight after a run, which is
+  // exactly where the document host used to leave the workspace with no document of its own.
+  await page.waitForSelector(tid('ide-package-handoff-document'), { timeout: 8000 });
+  assert(await page.locator(tid('ide-package-handoff-manifest')).count() > 0,
+    'the dossier lists the files the package will contain');
+  await page.click(tid('ide-package-handoff-open-files'));
   await page.waitForSelector(tid('ide-export-package-inspector-v1'), { timeout: 8000 });
   const stateBefore = await page.locator(tid('ide-export-package-inspector-v1')).getAttribute('data-export-package-state');
   assert(stateBefore !== 'blocked', `package must not be blocked with a passing run and complete mapping (got ${stateBefore})`);
@@ -488,6 +496,11 @@ async function run(width, height) {
   assert(/RECORDED/i.test(chipAfterPackage) && /CURRENT/i.test(chipAfterPackage),
     `building and downloading a package must not invalidate simulation evidence (chip reads "${chipAfterPackage}")`);
   await page.click(tid('mode-button-export'));
+  // Returning to a workspace restores the document last read there; the dossier is the default
+  // for a first visit, so accept either and reach the artifacts through the dossier's header.
+  if (await page.locator(tid('ide-package-handoff-open-files')).count()) {
+    await page.click(tid('ide-package-handoff-open-files'));
+  }
   await page.waitForSelector(tid('ide-export-package-inspector-v1'), { timeout: 8000 });
 
   const evidenceBeforeReload = await page.evaluate(() => {

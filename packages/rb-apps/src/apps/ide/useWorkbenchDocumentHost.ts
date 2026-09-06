@@ -90,9 +90,10 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
     [activeKey, open]
   );
 
-  // While a tab activation is being applied through the owners, the
-  // mode-reconciliation effect must not fight it.
-  const applyingRef = useRef<WorkbenchDocument | null>(null);
+  // While a tab activation is being applied through the owners, the mode-reconciliation effect
+  // must not fight it. `from` is the mode the application started in: until the mode actually
+  // moves, the application is still in flight; once it moves anywhere else, the marker is stale.
+  const applyingRef = useRef<{ doc: WorkbenchDocument; from: IdeMode } | null>(null);
 
   const activeConstraintSetId = constraintSets.activeId ?? 'default';
   const defaultScenarioId = activeScenarioId ?? scenarios[0]?.id ?? null;
@@ -156,22 +157,22 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
     (key: string) => {
       const doc = open.find((entry) => documentKey(entry) === key);
       if (!doc) return;
-      applyingRef.current = doc;
+      applyingRef.current = { doc, from: activeMode };
       storeActivate(key);
       applyDocument(doc);
       setCurrentMode(documentMode(doc));
     },
-    [applyDocument, open, setCurrentMode, storeActivate]
+    [activeMode, applyDocument, open, setCurrentMode, storeActivate]
   );
 
   const openDocument = useCallback(
     (doc: WorkbenchDocument) => {
-      applyingRef.current = doc;
+      applyingRef.current = { doc, from: activeMode };
       storeOpen(doc);
       applyDocument(doc);
       setCurrentMode(documentMode(doc));
     },
-    [applyDocument, setCurrentMode, storeOpen]
+    [activeMode, applyDocument, setCurrentMode, storeOpen]
   );
 
   const close = useCallback(
@@ -182,12 +183,12 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
       const next = useWorkbenchDocuments.getState();
       const nextDoc = next.open.find((entry) => documentKey(entry) === next.activeKey);
       if (nextDoc) {
-        applyingRef.current = nextDoc;
+        applyingRef.current = { doc: nextDoc, from: activeMode };
         applyDocument(nextDoc);
         setCurrentMode(documentMode(nextDoc));
       }
     },
-    [activeKey, applyDocument, setCurrentMode, storeClose]
+    [activeKey, activeMode, applyDocument, setCurrentMode, storeClose]
   );
 
   // A new project identity starts with a fresh document set.
@@ -216,8 +217,16 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
   useEffect(() => {
     const applying = applyingRef.current;
     if (applying) {
-      if (documentMode(applying) === activeMode) applyingRef.current = null;
-      return;
+      const target = documentMode(applying.doc);
+      // The application landed: the document's own mode is the one on screen.
+      if (activeMode === target) {
+        applyingRef.current = null;
+        return;
+      }
+      // Still waiting for setCurrentMode to land; reconciling now would fight it.
+      if (activeMode === applying.from) return;
+      // The reader went somewhere else instead. The marker is spent; reconcile this workspace.
+      applyingRef.current = null;
     }
     if (!hasCircuit && activeMode !== 'project') {
       // No project boundary yet — only the overview is an honest document.

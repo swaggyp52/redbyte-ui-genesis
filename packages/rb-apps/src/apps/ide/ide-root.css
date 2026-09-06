@@ -23286,17 +23286,6 @@ button:disabled,
   color: rgba(241, 248, 255, 0.98);
 }
 
-[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-basys3-binding-chain {
-  display: grid;
-  grid-template-columns: minmax(92px, 0.75fr) auto minmax(104px, 0.8fr) auto minmax(88px, 0.7fr) minmax(210px, 1.45fr);
-  align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 6px 12px;
-  border-bottom: 1px solid rgba(140, 168, 196, 0.22);
-  background: linear-gradient(90deg, rgba(8, 23, 36, 0.9), rgba(6, 16, 27, 0.74));
-}
-
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-node {
   min-width: 0;
   display: grid;
@@ -23343,10 +23332,6 @@ button:disabled,
 }
 
 @media (max-width: 1120px) {
-
-  [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-basys3-binding-chain {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 
   [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-arrow {
     display: none;

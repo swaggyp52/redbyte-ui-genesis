@@ -212,7 +212,21 @@ accepted.
   tabstop), "Next unmapped" means the next one after this one rather than the first, and the XDC
   block no longer runs 280px past the viewport inside the identity's scroller. Build & Export
   opened on a file browser with seven top-level regions in a 2241px scroll; it opens on the
-  handoff dossier and one document owns the surface at a time.
+  handoff dossier and one document owns the surface at a time - which reading the surface in the
+  state a student reaches it in showed was only half true: **after any run, Build & Export had no
+  document of its own at all**. The document host marks a navigation as being applied so the
+  mode-reconciliation effect does not fight it, and cleared that marker on one condition only -
+  the applied document's mode matching the mode on screen. A completed run opens the waveform
+  from inside Simulate, so the marker was left set; the next workspace failed the test, returned
+  early *without* reconciling, and never cleared it, so Package created no document and fell back
+  to the artifact browser for the rest of the session. The marker now remembers the mode the
+  navigation started in, which distinguishes an application still in flight from a spent one, and
+  the acceptance journey asserts the dossier at the exact point in the student path where it was
+  failing. Two more measured clippings went with it: fourteen of the twenty-four component-library
+  rows showed **0px of part name** beside a legible "Boundary limited" (grid gives its auto tracks
+  their content before the `1fr` track gets any), and every constraint line in the selected-signal
+  card was cut at the port name - 611px of content in a 339px pane, scrolling sideways, from an
+  OS-era `ide-root.css` rule whose two attribute selectors outranked the P2.5 board owner.
   **Journey inventory recomputed: `packages/rb-e2e` holds 29 `.mjs` files - one harness, one
   evidence-capture tool that asserts nothing, and 27 journeys. All 27 executed against one build;
   all 27 pass.** `pnpm verify:gates` exit 0 at every checkpoint; typecheck 778, unchanged.

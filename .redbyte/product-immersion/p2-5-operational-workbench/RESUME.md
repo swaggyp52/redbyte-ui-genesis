@@ -116,6 +116,34 @@ was the selected one, so it disappeared exactly when a student started working t
 means the next one after this one now, with a Previous beside it and wrapping. The XDC block ran
 **280px past the viewport** sharing one scroller with the signal identity it describes.
 
+### One defect the campaign's own claim was hiding (`fix(workbench)`)
+
+Reading Build & Export in the state a student reaches it in - straight after a run - showed the
+dossier default was landing only when Package happened to be the first workspace visited.
+`useWorkbenchDocumentHost` marks a navigation as being applied so the mode-reconciliation effect
+does not fight it, and cleared the marker on one condition: the applied document's mode matching
+the mode on screen. Opening a document from inside its own workspace - which is what a completed
+run does when it opens the waveform - left the marker set, because the effect only re-runs when
+the mode changes. The next workspace then failed that test, **returned early without reconciling,
+and never cleared the marker**: Build & Export created no document, fell back to the artifact
+browser, and stayed there. Measured before: no `handoff` tab after a run, and leaving and
+returning did not help. The marker now carries the mode the navigation started in.
+`full-adder-operational-journey` asserts the dossier at that exact point and reaches the artifact
+browser through the dossier's own header, as a reader does.
+
+Two clippings found the same way. **Fourteen of the twenty-four component-library rows showed no
+part name** - "Register (Bus)", "State Bank", "DFF", "RS Latch", "Full Adder" each measured 0px of
+name beside a fully legible "Boundary limited", because grid gives its auto tracks their content
+before the `1fr` track gets anything. The name holds a floor now, the capability and limits chips
+stand down when the pane cannot hold them (their words stay in the row's title), below that width
+the name and the port signature take a line each, and the glyph column fits five characters so
+NAND3 is not cut to NAND. Measured after: 24 rows, 0 clipped, 0 overlapping. And **every
+constraint line in the selected-signal card was cut at the port name** - 611px inside a 339px
+pane, scrolling sideways - from an OS-era rule in `ide-root.css` whose two attribute selectors
+outranked the P2.5 board owner and declared six tracks with over 530px of minimums plus a dark
+gradient the light board no longer paints. The rule and its narrow-window variant are retired;
+`board-instrument.css` composes the chain. Measured after: 321px inside 339px, nothing scrolling.
+
 ### Package (`41690d135`)
 
 Build & Export opened on a file browser with every other concept underneath it - **seven
