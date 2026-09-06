@@ -310,7 +310,22 @@
 .ide-root .rb-sim-evidence-strip { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 28px; padding: 0 var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); white-space: nowrap; }
 .ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-sim-lab-grid > .rb-sim-inspector { grid-area: inspector; min-height: 0; }
-.ide-root .rb-sim-lab-grid > .rb-sim-region--waveform { grid-area: evidence; min-height: 0; overflow: auto; border-top: 1px solid var(--wb-border-strong); }
+/* The waveform is the evidence the failure focus points at, and it was being laid out past
+   the pane that holds it: measured in a settled Compare FAIL at 1440x900, the canvas ran
+   359px below the region's bottom edge and showed 125px of the 448px it needs - two of five
+   lanes - while its own scroller reported nothing to scroll. The region was letting the
+   overflow escape upward instead of constraining its child, so the instrument never learned
+   how much room it actually had. The region holds its height; the waveform's own scroller
+   does the scrolling, inside the instrument, where the lane headers stay with the lanes. */
+.ide-root .rb-sim-lab-grid > .rb-sim-region--waveform {
+  grid-area: evidence;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--wb-border-strong);
+}
+.ide-root .rb-sim-lab-grid > .rb-sim-region--waveform > * { min-height: 0; }
 .ide-root .rb-sim-region--stimulus > .ide-case-lab { flex: 1 1 auto; min-height: 0; }
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; }
 .ide-root .rb-sig-header { display: block; height: auto; padding: 0; }

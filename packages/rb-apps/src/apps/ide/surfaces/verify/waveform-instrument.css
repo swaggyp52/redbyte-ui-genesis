@@ -281,3 +281,23 @@
 .ide-root .rb-wave-evidence-state.is-recorded strong { color: var(--wb-ok); }
 .ide-root .rb-wave-evidence-state.is-stale { border-color: var(--wb-warn); }
 .ide-root .rb-wave-evidence-state.is-stale strong { color: var(--wb-warn); }
+
+/* The reference tools are a disclosure now: a 24px strip in place of a 30px row of controls,
+   and the waveform keeps the difference. */
+.ide-root .rb-wave-tools-disclosure { flex: none; border-top: 1px solid var(--wb-border); }
+.ide-root .rb-wave-tools-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 var(--wb-space-3);
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) var(--rb-font-ui);
+  background: var(--wb-surface-2);
+  cursor: pointer;
+  list-style: none;
+}
+.ide-root .rb-wave-tools-summary::-webkit-details-marker { display: none; }
+.ide-root .rb-wave-tools-summary::before { content: '\25B8'; width: 10px; }
+.ide-root .rb-wave-tools-disclosure[open] > .rb-wave-tools { border-top: 0; }
+.ide-root .rb-wave-tools-disclosure[open] > .rb-wave-tools-summary::before { content: '\25BE'; }

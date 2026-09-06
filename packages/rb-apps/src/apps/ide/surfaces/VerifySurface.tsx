@@ -3121,7 +3121,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const handleGoToDesignFromVerify = useCallback(() => {
     syncSelectedSignalForHandoff();
     if (onDebugTickSelected && lastRun) {
-      const tick = selectedTick ?? lastRun.firstFailingTick ?? lastRun.waveform?.[0]?.tick ?? null;
+      // Prefer wherever the reader has deliberately put the cursor - unless that is not a
+      // failing tick and there is a failure to look at, in which case the failure is what
+      // they asked to trace.
+      const restingOnFailure =
+        selectedTick !== null && failingRows.some((row) => row.tick === selectedTick);
+      const tick = restingOnFailure
+        ? selectedTick
+        : (lastRun.firstFailingTick ?? selectedTick ?? lastRun.waveform?.[0]?.tick ?? null);
       if (tick !== null) {
         onDebugTickSelected(
           tick,
@@ -3140,7 +3147,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     }
     onGoToDesign?.();
-  }, [buildDebugSignalsAtTick, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
+  }, [buildDebugSignalsAtTick, failingRows, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
   const handleInspectFailureInDesign = useCallback(
     (target: VerifyFailureTarget | VerifyRow | null) => {
       if (target) {
@@ -7190,34 +7197,75 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </span>
                   ) : null}
                 </div>
-                {/* Fail/meta navigation intentionally owns a separate row. */}
-                <div className="rb-wave-group" data-testid="ide-verify-fail-nav">
+                {/* The failure focus. One row that answers what failed, where, what was
+                    expected, what happened, which of how many this is, how to reach the
+                    others, and how to leave for the circuit that caused it. */}
+                <div className="rb-wave-group rb-fail-focus" data-testid="ide-verify-fail-nav">
                   {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
                     <>
-                      <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
-                        First mismatch
-                      </IdeButton>
+                      <span className="rb-fail-focus-verdict" data-testid="ide-verify-fail-focus-verdict">
+                        Fail
+                      </span>
                       {selectedFailureCase && (
                         <span className="ide-verify-fail-nav-summary" data-testid="ide-verify-fail-nav-summary">
                           <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
+                          {selectedFailureRepairCaseLabel && (
+                            <span className="ide-verify-fail-nav-summary__case" data-testid="ide-verify-fail-focus-case">
+                              {selectedFailureRepairCaseLabel}
+                            </span>
+                          )}
                           <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
                           <span className="ide-verify-fail-nav-summary__values ide-copy">
                             expected <code>{selectedFailureCase.expected}</code> · got <code>{selectedFailureCase.actual}</code>
                           </span>
                         </span>
                       )}
-                      {selectedFailurePositionLabel && (
-                        <span className="ide-verify-fail-nav-position ide-copy">
-                          {selectedFailurePositionLabel}
-                        </span>
-                      )}
+                      <span className="rb-fail-focus-nav">
+                        <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
+                          First
+                        </IdeButton>
+                        <IdeButton
+                          tone="ghost"
+                          onClick={goToPrevFail}
+                          disabled={failTicksSorted.length < 2}
+                          testId="ide-verify-fail-nav-prev"
+                        >
+                          Previous
+                        </IdeButton>
+                        <IdeButton
+                          tone="ghost"
+                          onClick={goToNextFail}
+                          disabled={failTicksSorted.length < 2}
+                          testId="ide-verify-fail-nav-next"
+                        >
+                          Next
+                        </IdeButton>
+                        {selectedFailurePositionLabel && (
+                          <span className="ide-verify-fail-nav-position ide-copy">
+                            {selectedFailurePositionLabel}
+                          </span>
+                        )}
+                      </span>
+                      <IdeButton
+                        tone="secondary"
+                        onClick={handleGoToDesignFromVerify}
+                        testId="ide-verify-fail-focus-trace"
+                      >
+                        Trace in Design
+                      </IdeButton>
                     </>
                   ) : (
                     null
                   )}
                 </div>
               </div>
+              {/* View and measurement controls are reference tools, not evidence. They held a
+                  permanent row directly under the waveform they serve, which in a failure state
+                  was showing 97px of the 448px it needs. They open on request; the evidence
+                  keeps the room. */}
               {allWaveformTicks.length > 0 && (
+                <details className="rb-wave-tools-disclosure" data-testid="ide-verify-waveform-tools">
+                <summary className="rb-wave-tools-summary">View and measure</summary>
                 <div className="rb-wave-tools" data-testid="ide-verify-waveform-tools-panel">
                   <div className="rb-wave-tools-section">
                     <span className="rb-wave-tools-label">View</span>
@@ -7328,6 +7376,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </div>
                   )}
                 </div>
+                </details>
               )}
 
                 <div className="rb-wave-group rb-wave-group--tail" data-testid="ide-verify-waveform-tail">
