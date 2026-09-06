@@ -6,10 +6,10 @@
 // UI: it loads a .vcd through the actual file input, reads the store only for
 // setup/assertions, measures values at a cursor, changes radix, and proves the
 // Analyzer survives a reload. Runs at 1440×900 and 1366×768.
-import { chromium } from 'playwright';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BASE_URL, launchChromium } from './harness.mjs';
 
 const VCD = [
   '$timescale 1ns $end',
@@ -35,7 +35,7 @@ writeFileSync(vcdPath, VCD, 'utf8');
 const badPath = join(dir, 'not-a-waveform.vcd');
 writeFileSync(badPath, 'this file has no $var declarations at all\n', 'utf8');
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 
 async function loadProjectAndGoToSimulate(page) {
@@ -67,7 +67,7 @@ async function run(width, height) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
@@ -77,12 +77,14 @@ async function run(width, height) {
   // ① The Analyzer is mounted in Simulate, empty, with honest provider identity.
   const analyzer = page.getByTestId('ide-vcd-analyzer');
   if (await analyzer.count() === 0) fail('VCD Analyzer not mounted in the Simulate surface');
-  if (await page.getByTestId('ide-vcd-analyzer-empty').count() === 0) fail('Analyzer empty state missing before load');
+  // Native default: collapsed to a compact affordance (not the full/empty Analyzer).
+  if (await page.getByTestId('ide-vcd-analyzer-compact').count() === 0) fail('Analyzer should collapse to a compact affordance before load');
+  if (await page.getByTestId('ide-vcd-analyzer-signals').count() !== 0) fail('Analyzer zones should not render before a VCD is loaded');
   const provider = (await page.getByTestId('ide-vcd-analyzer-provider').textContent())?.trim();
   if (!provider?.includes('Imported VCD')) fail(`provider identity not shown: ${provider}`);
-  const honesty = (await page.getByTestId('ide-vcd-analyzer-honesty').textContent()) ?? '';
-  if (!honesty.includes('executes nothing')) fail(`honesty note missing: ${honesty}`);
-  console.log(`[${width}×${height}] ① Analyzer mounted, empty, provider = ${provider}`);
+  const compactNote = (await page.getByTestId('ide-vcd-analyzer-compact').textContent()) ?? '';
+  if (!compactNote.includes('never executed')) fail(`compact honesty note missing: ${compactNote}`);
+  console.log(`[${width}×${height}] ① Analyzer compact affordance, provider = ${provider}`);
 
   // ② Load a real .vcd through the actual file input (no store injection).
   await page.getByTestId('ide-vcd-analyzer-file-input').setInputFiles(vcdPath);

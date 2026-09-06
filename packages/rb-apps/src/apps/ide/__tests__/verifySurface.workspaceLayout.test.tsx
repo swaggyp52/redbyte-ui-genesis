@@ -63,9 +63,9 @@ describe('VerifySurface workspace layout', () => {
   it('keeps signals integrated with the workbench without a separate rail', () => {
     const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
 
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
@@ -108,7 +108,7 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-verify-workflow-phase', 'post-run');
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-workspace-mode', 'split');
     expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'stable');
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
   });
 });

@@ -94,7 +94,7 @@ describe('ScenarioBuilderPanel authoring workspace', () => {
     const authoringPath = getByTestId('ide-verify-authoring-path');
     expect(authoringPath.dataset.authoringPath).toBe('combinational-case-table');
     expect(authoringPath.textContent).toContain('Combinational case table');
-    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('Each row drives inputs');
+    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('Add optional expected outputs');
     expect(queryByText('How this works')).toBeNull();
     expect(authoringPath.querySelector('details')).toBeNull();
   });
@@ -109,7 +109,7 @@ describe('ScenarioBuilderPanel authoring workspace', () => {
     expect(authoringPath.dataset.authoringPath).toBe('sequential-timeline');
     expect(authoringPath.textContent).toContain('Sequential timeline');
     expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('clock/reset');
-    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('sample points');
+    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('timeline');
   });
 
   it('removes the Advanced tools disclosure from normal Verify', () => {

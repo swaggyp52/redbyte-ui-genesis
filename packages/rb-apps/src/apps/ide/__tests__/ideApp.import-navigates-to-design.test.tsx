@@ -189,7 +189,7 @@ describe('IdeApp: import navigates to Design after success', () => {
 
     // Land on the Import surface (stub).
     await view.findByTestId('ide-import-panel', {}, { timeout: 5000 });
-    expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Import');
+    expect(view.getByTestId('mode-button-import')).toHaveAttribute('data-state', 'current');
 
     // Fire the success callback exactly as the real ImportSurface would.
     fireEvent.click(view.getByTestId('ide-import-test-fire'));
@@ -211,7 +211,7 @@ describe('IdeApp: import navigates to Design after success', () => {
     // should reflect the mode change.
     await waitFor(
       () => {
-        expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+        expect(view.getByTestId('mode-button-design')).toHaveAttribute('aria-selected', 'true');
       },
       { timeout: 10000 }
     );
@@ -255,8 +255,8 @@ describe('IdeApp: import navigates to Design after success', () => {
     failRecoverySnapshotWrites();
 
     const view = renderIdeApp();
-    fireEvent.click(await view.findByTestId('ide-project-change-project'));
-    fireEvent.click(await view.findByTestId('ide-project-path-build-fresh'));
+    fireEvent.click(await view.findByTestId('ide-menu-file'));
+    fireEvent.click(await view.findByTestId('ide-menu-item-project.build-fresh'));
     fireEvent.click(await view.findByTestId('ide-project-build-fresh-confirm'));
 
     await waitFor(() => {

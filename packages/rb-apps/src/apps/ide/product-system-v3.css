@@ -192,34 +192,13 @@
   overflow: hidden;
 }
 
-:root[data-redbyte-mode='ide'] .ide-root > :is(.ide-top-bar, .ide-surface-column, .ide-status-bar) {
-  min-width: 0;
-  max-width: 100%;
-}
-
-:root[data-redbyte-mode='ide'] .ide-root .ide-surface-column {
-  background: var(--rb-bg);
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
-
 :root[data-redbyte-mode='ide'] .ide-root .ide-workbench-shell .ide-workbench-main {
   background: var(--rb-bg);
-}
-
-:root[data-redbyte-mode='ide'] .ide-root .ide-workbench-shell .ide-workbench-workspace {
-  background: var(--rb-canvas);
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-left-rail {
   background: var(--rb-shell);
   border-color: var(--rb-border-subtle);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='design'] .ide-workbench-workspace,
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='hardware'] .ide-workbench-workspace {
-  background: var(--rb-canvas);
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-panel,
@@ -234,64 +213,22 @@
   box-shadow: var(--rb-lab-depth-1);
 }
 
-.ide-root .ide-top-bar,
-.ide-root .ide-stage-nav-frame {
-  background: color-mix(in srgb, var(--rb-shell) 96%, var(--rb-surface-2));
-  border-color: var(--rb-border-subtle);
-}
-
-.ide-root .ide-top-bar {
-  z-index: 50;
-  grid-template-columns: minmax(0, 1fr) auto;
-  overflow: visible;
-}
-
-.ide-root .ide-stage-nav-frame {
-  z-index: 20;
-}
-
-/* The five product stages must read as navigation, not clipped metadata.
-   The integrated shell deliberately uses the wider desktop rail so
-   Board & Constraints remains fully named. */
-.ide-root .ide-stage-nav {
-  width: min(100%, 1200px);
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.ide-root .ide-status-bar {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 14px;
-  padding: 0 12px !important;
-  overflow: hidden;
-  border-color: var(--rb-border-subtle) !important;
-  color: var(--rb-text-secondary);
-  background: var(--rb-shell);
-}
-
-.ide-root .ide-status-bar--quiet {
-  justify-content: flex-start;
-}
-
-.ide-root .ide-status-item,
-.ide-root .ide-status-support {
-  flex: 0 0 auto;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.ide-root .ide-status-build {
-  min-width: 0;
-  margin-left: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .ide-root .ide-workbench-shell {
-  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 216px) !important;
-  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 252px) !important;
+  /* A dock is as wide as the reader asked for, or as wide as its own words need - whichever
+     is greater. The stored preference is in pixels and governs an ordinary desktop, where it
+     always exceeds the floors below. The floors are in the reader's text size, so a dock that
+     would otherwise hold its pixel width while its contents doubled grows with them instead:
+     measured at 200% text before this, the Design library clipped "AND Gate" by 121px and
+     "D, CLK -> Q, Q_inv" by 172px inside a 264px pane, and the Simulate inspector clipped
+     "None at this event" by 90px inside 240px. */
+  /* ...but never so wide that the thing being supported has nowhere left to be. Measured at
+     200% text on a 1366px window before the cap: left 480px + right 512px + rail 112px left the
+     schematic 262px, and the Design toolbar folded into five rows inside it. Support yields
+     before the primary instrument does, so each dock is floored by its own words and capped by
+     the window. At an ordinary desktop size the stored preference is smaller than both and
+     governs alone. */
+  --ide-workbench-left-width: min(max(var(--rb-workbench-pref-left-width, 216px), 15rem), 26vw) !important;
+  --ide-workbench-right-width: min(max(var(--rb-workbench-pref-right-width, 252px), 16rem), 24vw) !important;
   --ide-workbench-console-height: var(--rb-workbench-pref-bottom-height, 220px) !important;
   width: 100%;
   min-width: 0;
@@ -345,7 +282,7 @@
   color: var(--rb-text-secondary);
   background: color-mix(in srgb, var(--rb-surface-1) 94%, transparent);
   box-shadow: 0 3px 12px rgba(35, 48, 61, 0.1);
-  font: 600 12px/1.2 inherit;
+  font: 600 var(--rb-text-meta)/1.2 inherit;
   pointer-events: auto;
 }
 
@@ -433,33 +370,6 @@
   height: 1px;
 }
 
-.ide-root .ide-theme-control {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 6px;
-  padding-left: 10px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: var(--rb-radius-control);
-  color: var(--rb-text-secondary);
-  background: var(--rb-surface-1);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.ide-root .ide-theme-control select {
-  min-height: 34px;
-  padding: 0 28px 0 4px;
-  border: 0;
-  color: var(--rb-text-primary);
-  background: transparent;
-  font: inherit;
-}
-
-.ide-root .ide-theme-control select:focus-visible {
-  outline-offset: -2px;
-}
-
 .ide-root .ide-command-palette-backdrop {
   position: fixed;
   z-index: 1000;
@@ -493,7 +403,7 @@
   gap: 16px;
   padding: 8px 14px;
   color: var(--rb-text-secondary);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-root .ide-command-palette-header label {
@@ -558,7 +468,7 @@
   align-items: center;
   justify-content: center;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
   letter-spacing: 0.02em;
   pointer-events: none;
@@ -608,7 +518,7 @@
 
 .ide-root .ide-command-palette-option-copy small {
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   text-transform: capitalize;
 }
 
@@ -619,7 +529,7 @@
   border-radius: 4px;
   color: var(--rb-text-secondary);
   background: var(--rb-surface-2);
-  font: 600 11px/1.2 inherit;
+  font: 600 var(--rb-text-meta)/1.2 inherit;
 }
 
 .ide-root .ide-command-palette-empty {
@@ -641,8 +551,8 @@
   border-radius: var(--rb-radius-control);
   color: var(--rb-text-primary);
   background: var(--rb-surface-1);
-  font-size: 13px;
-  font-weight: 650;
+  font-size: var(--rb-text-body);
+  font-weight: 600;
   cursor: pointer;
   list-style: none;
 }
@@ -655,73 +565,11 @@
   content: '▾';
   margin-left: 6px;
   color: var(--rb-text-muted);
-  font-size: 10px;
-}
-
-.ide-root .ide-topbar-menu-popover {
-  position: absolute;
-  z-index: 200;
-  top: calc(100% + 7px);
-  right: 0;
-  display: grid;
-  width: min(330px, calc(100vw - 24px));
-  padding: 7px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 9px;
-  background: var(--rb-surface-overlay);
-  box-shadow: var(--rb-shadow-float);
-}
-
-.ide-root .ide-topbar-menu-popover button {
-  display: grid;
-  gap: 2px;
-  min-height: 38px;
-  padding: 8px 9px;
-  border: 0;
-  border-radius: 6px;
-  color: var(--rb-text-primary);
-  background: transparent;
-  text-align: left;
-}
-
-.ide-root .ide-topbar-menu-popover button:hover,
-.ide-root .ide-topbar-menu-popover button:focus-visible,
-.ide-root .ide-topbar-menu-popover button[aria-checked='true'] {
-  background: color-mix(in srgb, var(--rb-action) 10%, var(--rb-surface-1));
-}
-
-.ide-root .ide-topbar-menu-popover button:disabled {
-  color: var(--rb-text-muted);
-  cursor: not-allowed;
-}
-
-.ide-root .ide-topbar-menu-popover small,
-.ide-root .ide-topbar-menu-storage {
-  color: var(--rb-text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.ide-root .ide-topbar-menu-heading,
-.ide-root .ide-topbar-menu-storage {
-  padding: 7px 9px;
-}
-
-.ide-root .ide-topbar-menu-heading {
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.03em;
-}
-
-.ide-root .ide-save-dot--failed {
-  background: var(--rb-state-danger);
+  font-size: var(--rb-text-micro);
 }
 
 @media (max-width: 1500px) {
-  .ide-root .ide-topbar-command kbd,
-  .ide-root .ide-topbar-fact-label,
-  .ide-root .ide-theme-control-label {
+  .ide-root .ide-topbar-command kbd {
     display: none;
   }
 
@@ -752,20 +600,6 @@
   .ide-root .ide-topbar-command::before {
     content: '⌘';
     color: var(--rb-text-primary);
-  }
-}
-
-@media (max-width: 1180px) {
-  .ide-root .ide-theme-control-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  .ide-root .ide-theme-control {
-    padding-left: 4px;
   }
 }
 
@@ -813,7 +647,7 @@
   border-radius: 5px;
   background: transparent;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   font-weight: 720;
   cursor: pointer;
 }
@@ -843,14 +677,14 @@
 .ide-root .ide-design-inline-board h3 {
   margin: 0;
   color: var(--rb-text-primary);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-root .ide-design-project-browser .ide-design-subheader p,
 .ide-root .ide-design-inline-board header p {
   margin: 3px 0 0;
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   line-height: 1.45;
 }
 
@@ -907,7 +741,7 @@
 .ide-root .ide-design-board-binding-list small,
 .ide-root .ide-design-tree em {
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: var(--rb-text-micro);
   font-style: normal;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -920,7 +754,7 @@
 
 .ide-root .ide-design-board-binding-list code {
   color: var(--rb-text-secondary);
-  font-size: 10px;
+  font-size: var(--rb-text-micro);
 }
 
 .ide-root .ide-design-inline-board,
@@ -934,7 +768,7 @@
   display: grid;
   gap: 5px;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   font-weight: 720;
 }
 
@@ -952,46 +786,13 @@
    and resource name without forcing students to decode a clipped option. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-inline-board-field select {
-  font-size: 12px !important;
-  font-weight: 650;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right {
-  scrollbar-color: var(--rb-border-strong) var(--rb-surface-1);
-  scrollbar-gutter: stable;
-  scrollbar-width: auto;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right::-webkit-scrollbar {
-  width: 10px;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right::-webkit-scrollbar-track {
-  background: var(--rb-surface-1);
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-dock-right::-webkit-scrollbar-thumb {
-  border: 2px solid var(--rb-surface-1);
-  border-radius: 999px;
-  background: var(--rb-border-strong);
+  font-size: var(--rb-text-meta) !important;
+  font-weight: 600;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-inline-board {
   padding-bottom: 36px;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-design-inspector-proof-boundary {
-  margin: 0;
-  padding: 10px;
-  border-left: 2px solid #66839a;
-  border-radius: 4px;
-  background: rgba(102, 131, 154, 0.08);
 }
 
 .ide-root .ide-design-inline-board-facts {
@@ -1014,13 +815,13 @@
 
 .ide-root .ide-design-inline-board-facts dt {
   color: var(--rb-text-muted);
-  font-size: 10px;
+  font-size: var(--rb-text-micro);
 }
 
 .ide-root .ide-design-inline-board-facts dd {
   margin: 0;
   color: var(--rb-text-primary);
-  font: 600 10px/1.35 var(--rb-font-mono, monospace);
+  font: 600 var(--rb-text-micro)/1.35 var(--rb-font-mono, monospace);
   overflow-wrap: anywhere;
 }
 
@@ -1038,13 +839,6 @@
   padding: 9px 12px;
 }
 
-.ide-root .ide-design-problem-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 5px;
-}
-
-.ide-root .ide-design-problem-list button,
 .ide-root .ide-design-console-readout,
 .ide-root .ide-design-simulation-readout {
   display: grid;
@@ -1058,17 +852,12 @@
   text-align: left;
 }
 
-.ide-root .ide-design-problem-list button {
-  cursor: pointer;
-}
-
-.ide-root .ide-design-problem-list span,
 .ide-root .ide-design-console-readout span,
 .ide-root .ide-design-console-readout p,
 .ide-root .ide-design-simulation-readout span {
   margin: 0;
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
 }
 
 .ide-root .ide-design-toolbar-customize,
@@ -1083,7 +872,7 @@
   border: 1px solid var(--rb-border-default);
   border-radius: 6px;
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   font-weight: 720;
   cursor: pointer;
   list-style: none;
@@ -1092,71 +881,6 @@
 .ide-root .ide-design-toolbar-customize > summary::-webkit-details-marker,
 .ide-root .ide-design-toolbar-overflow > summary::-webkit-details-marker {
   display: none;
-}
-
-.ide-root .ide-design-toolbar-customize-menu {
-  position: absolute;
-  z-index: 80;
-  top: calc(100% + 5px);
-  right: 0;
-  display: grid;
-  width: 230px;
-  gap: 3px;
-  padding: 8px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 8px;
-  background: var(--rb-surface-overlay);
-  box-shadow: var(--rb-shadow-float);
-}
-
-.ide-root .ide-design-toolbar-customize-menu label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 28px;
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-}
-
-.ide-root .ide-design-toolbar-customize-subheading {
-  margin-top: 5px;
-  padding-top: 7px;
-  border-top: 1px solid var(--rb-border-subtle);
-  color: var(--rb-text-primary);
-  font-size: 11px;
-}
-
-.ide-root .ide-design-toolbar-group-order {
-  display: grid;
-  gap: 4px;
-}
-
-.ide-root .ide-design-toolbar-group-order-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  color: var(--rb-text-secondary);
-  font-size: 11px;
-}
-
-.ide-root .ide-design-toolbar-group-order-actions {
-  display: inline-flex;
-  gap: 3px;
-}
-
-.ide-root .ide-design-toolbar-group-order-actions button {
-  min-height: 25px;
-  padding: 3px 6px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 5px;
-  background: var(--rb-surface-2);
-  color: var(--rb-text-secondary);
-  font: 650 10px/1 inherit;
-}
-
-.ide-root .ide-design-toolbar-group-order-actions button:disabled {
-  opacity: 0.42;
 }
 
 .ide-root .ide-design-toolbar-overflow {
@@ -1183,10 +907,8 @@
    primary circuit canvas begins inside the first workbench viewport. */
 @media (max-width: 1500px) {
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-    .ide-design-toolbar-view-tools,
-  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     [data-testid='ide-design-tool-snap'],
-  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     .ide-design-toolbar-layout {
     display: none !important;
   }
@@ -1211,203 +933,6 @@
 }
 
 /* Product System v3: restrained course-lab identity and Project Center hierarchy. */
-.ide-root .ide-brand-mark {
-  color: var(--rb-brand-red);
-}
-
-.ide-root .ide-brand-wordmark {
-  color: var(--rb-text-primary);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-top-bar,
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-stage-nav-frame {
-  background: var(--rb-shell);
-  box-shadow: 0 1px 0 rgba(75, 65, 54, 0.05);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-identity {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next {
-  border: 1px solid color-mix(in srgb, var(--rb-action) 42%, var(--rb-border-default));
-  border-left: 3px solid var(--rb-action);
-  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface-1));
-  box-shadow: none;
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next-state {
-  color: var(--rb-accent);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next .ide-button {
-  border-color: var(--rb-action);
-  background: var(--rb-action);
-  color: #ffffff;
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-next .ide-button:hover,
-.ide-root .ide-project-v3 .ide-project-v3-next .ide-button:focus-visible {
-  border-color: var(--rb-action-hover);
-  background: var(--rb-action-hover);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-meta {
-  border-color: var(--rb-border-subtle);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-meta > div,
-.ide-root .ide-project-v3 .ide-project-v3-meta > label {
-  border-color: var(--rb-border-subtle);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-workspace {
-  border: 1px solid var(--rb-border-default);
-  background: var(--rb-surface-1);
-  box-shadow: 0 6px 18px rgba(21, 32, 51, 0.05);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-workspace-header {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--rb-border-subtle);
-}
-
-.ide-root .ide-project-v3 .ide-project-evidence-tier {
-  border-color: var(--rb-border-default);
-  background: var(--rb-surface-1);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row {
-  border: 1px solid var(--rb-border-default);
-  border-top-width: 3px;
-  background: var(--rb-surface-1);
-  box-shadow: 0 3px 10px rgba(49, 41, 32, 0.05);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(1) {
-  border-top-color: var(--rb-design);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(2) {
-  border-top-color: var(--rb-verify);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(3) {
-  border-top-color: var(--rb-map-pins);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(4) {
-  border-top-color: var(--rb-export);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(1) .ide-project-v3-stage-name > span {
-  color: var(--rb-design);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(2) .ide-project-v3-stage-name > span {
-  color: var(--rb-verify);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(3) .ide-project-v3-stage-name > span {
-  color: var(--rb-map-pins);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-stage-row:nth-of-type(4) .ide-project-v3-stage-name > span {
-  color: var(--rb-export);
-}
-
-.ide-root .ide-project-v3 .ide-project-v3-recent,
-.ide-root .ide-project-v3 .ide-project-v3-record {
-  border-color: var(--rb-border-default);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-workspace,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-workspace {
-  background: var(--rb-surface-2);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-stage-row,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-stage-row {
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
-}
-
-/* Loaded Project Center uses the same cool-neutral application plane as every
-   other Studio surface. Decorative haze made project data feel detached. */
-:root[data-redbyte-mode='ide'][data-rb-theme='light']
-  .ide-root
-  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
-  .ide-workbench-main {
-  background: var(--rb-app-bg);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light']
-  .ide-root
-  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
-  .ide-workbench-workspace {
-  background: var(--rb-app-bg);
-  box-shadow: none;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-identity {
-  background: transparent;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-next {
-  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface-1));
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark']
-  .ide-root
-  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
-  .ide-workbench-main,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight']
-  .ide-root
-  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
-  .ide-workbench-main {
-  background: var(--rb-app-bg);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark']
-  .ide-root
-  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
-  .ide-workbench-workspace,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight']
-  .ide-root
-  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
-  .ide-workbench-workspace {
-  background: var(--rb-app-bg);
-  box-shadow: none;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-identity,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-identity {
-  border-color: color-mix(in srgb, var(--rb-border-strong) 68%, var(--rb-border-default));
-  background: var(--rb-surface-1);
-  box-shadow: none;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-next,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-next {
-  background: var(--rb-surface-2);
-  box-shadow: none;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-workspace,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-workspace {
-  border-color: color-mix(in srgb, var(--rb-border-strong) 62%, var(--rb-border-default));
-  background: var(--rb-surface-1);
-  box-shadow: none;
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-stage-row,
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-stage-row {
-  border-color: #4a534b;
-  background: #1b1f1c;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
-}
 
 /* Design support panels stay in the application theme. Only the circuit
    canvas is an instrument surface; this prevents a second navy application
@@ -1417,34 +942,12 @@
   color: var(--rb-text-primary);
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(.ide-workbench-main, .ide-workbench-dock, .ide-workbench-console, .ide-design-bottom-workspace) {
-  background: var(--rb-surface);
-  color: var(--rb-text-primary);
-}
-
-/* Dock tabs are workspace navigation, so they remain reachable and readable
-   at the normal 240/300px support-rail widths. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left .ide-design-dock-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  overflow: visible;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-design-dock-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: 100%;
-  overflow: visible;
-}
-
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {
   min-width: 0;
   min-height: 34px;
   padding-inline: 4px;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1477,7 +980,6 @@
   color: #056956;
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-problem-list span,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout span,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout p,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-simulation-readout span {
@@ -1517,33 +1019,6 @@
 
 /* Product System v3: keep legacy dark instrument treatments readable when the
    surrounding workbench uses the light palette. */
-:root[data-redbyte-mode='ide'][data-rb-theme='light']
-  .ide-root
-  [data-ide-mode-marker='verify']
-  :is(.ide-verify-region--header, .ide-verify-signal-shelf, .ide-verify-console-frame) {
-  --rb-text: var(--rb-shell);
-  --rb-text-strong: var(--rb-shell);
-  --rb-text-primary: var(--rb-shell);
-  --rb-text-secondary: color-mix(in srgb, var(--rb-shell) 82%, transparent);
-  --rb-text-muted: color-mix(in srgb, var(--rb-shell) 66%, transparent);
-  --rb-text-1: var(--rb-text-primary);
-  --rb-text-2: var(--rb-text-secondary);
-  --rb-text-3: var(--rb-text-muted);
-  --ide-text-strong: var(--rb-text-primary);
-  --ide-text-primary: var(--rb-text-primary);
-  --ide-text-secondary: var(--rb-text-secondary);
-  --ide-text-muted: var(--rb-text-muted);
-  --ide-text-soft: var(--rb-text-muted);
-  color: var(--rb-text-primary);
-}
-
-:root[data-redbyte-mode='ide'][data-rb-theme='light']
-  .ide-root
-  [data-ide-mode-marker='verify']
-  :is(.ide-verify-region--header, .ide-verify-signal-shelf, .ide-verify-console-frame)
-  .ide-button-secondary {
-  color: var(--rb-action-pressed);
-}
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light']
   .ide-root
@@ -1625,12 +1100,6 @@
   color: var(--rb-text-primary) !important;
 }
 
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__file-list {
-  border-right-color: var(--rb-border-default);
-  background: var(--rb-surface-2);
-  color: var(--rb-text-primary);
-}
-
 .ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview > header {
   border-bottom-color: var(--rb-border-subtle);
   background: var(--rb-surface-1);
@@ -1641,14 +1110,8 @@
   background: var(--ide-surface-code);
 }
 
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview pre,
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__code-line {
+.ide-root [data-ide-mode-marker='export'] .ide-export-v3__preview pre {
   color: var(--rb-text-primary);
-}
-
-.ide-root [data-ide-mode-marker='export'] .ide-export-v3__line-number {
-  border-right-color: var(--rb-border-subtle);
-  color: var(--rb-text-muted);
 }
 
 /* A waveform viewport is intentionally scrollable; make that ownership
@@ -1699,13 +1162,13 @@
 .ide-root .ide-projectx-examples-title {
   margin: 0;
   color: var(--rb-text-primary);
-  font-size: 16px;
+  font-size: var(--rb-text-title);
 }
 
 .ide-root .ide-projectx-examples-sub {
   margin: 2px 0 0;
   color: var(--rb-text-secondary);
-  font-size: 12.5px;
+  font-size: var(--rb-text-dense);
 }
 
 .ide-root .ide-projectx-examples-toggle {
@@ -1790,7 +1253,7 @@
   background: color-mix(in srgb, var(--rb-action) 10%, transparent);
   color: var(--rb-action);
   padding: 2px 8px;
-  font-size: 10.5px;
+  font-size: var(--rb-text-micro);
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -1799,7 +1262,7 @@
 .ide-root .ide-projectx-example-card-open-proof {
   margin: 0;
   color: var(--rb-warning, #b45309);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.4;
 }
 
@@ -1817,10 +1280,10 @@
 
 .ide-root .ide-projectx-learning-path-label {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ide-root .ide-projectx-path-step {
@@ -1832,7 +1295,7 @@
   border-radius: 999px;
   background: var(--rb-surface-1);
   color: var(--rb-text-primary);
-  font-size: 12.5px;
+  font-size: var(--rb-text-dense);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1855,7 +1318,7 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
   color: var(--rb-action);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
 }
 
@@ -1877,14 +1340,14 @@
   border: 1px solid var(--rb-border-default, var(--rb-border));
   border-radius: 999px;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
 }
 
 .ide-root .ide-verify-hidden-lanes button {
   border: 0;
   background: transparent;
   color: var(--rb-accent, var(--rb-action));
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1920,16 +1383,16 @@
 }
 
 .ide-format-migration-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.ide-format-migration-head h2 { margin: 0; font-size: 16px; font-weight: 680; }
-.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: 11px; color: var(--rb-text-muted); }
+.ide-format-migration-head h2 { margin: 0; font-size: var(--rb-text-title); font-weight: 680; }
+.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: var(--rb-text-meta); color: var(--rb-text-muted); }
 
-.ide-format-migration-body { margin: 0; font-size: 13px; line-height: 1.55; color: var(--rb-text-secondary); }
+.ide-format-migration-body { margin: 0; font-size: var(--rb-text-body); line-height: 1.55; color: var(--rb-text-secondary); }
 
-.ide-format-migration-review summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--rb-text-primary); }
+.ide-format-migration-review summary { cursor: pointer; font-size: var(--rb-text-meta); font-weight: 600; color: var(--rb-text-primary); }
 .ide-format-migration-changes {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   color: var(--rb-text-secondary);
   display: flex;
   flex-direction: column;
@@ -1949,7 +1412,7 @@
   border: 1px solid var(--rb-border-strong);
   background: var(--rb-surface-2);
   color: var(--rb-text-primary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 640;
   cursor: pointer;
 }

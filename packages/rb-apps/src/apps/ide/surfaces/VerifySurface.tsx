@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ProblemsPanel } from '../components/ProblemsPanel';
+import {
+  SIMULATE_EVIDENCE_FRACTION_MAX,
+  SIMULATE_EVIDENCE_FRACTION_MIN,
+  DEFAULT_SIMULATE_LAYOUT,
+  workspacePreferencesStore,
+} from '../workspacePreferences';
+import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { TestVector } from '@redbyte/rb-utils';
 import {
   getRuntimeVerifyRunKind,
@@ -6,6 +14,7 @@ import {
   type ProjectIoRow,
   type RunVerificationInput,
   type RuntimeVerifyRun,
+  type VerifyRunLedgerEntry,
 } from '../projectRuntime';
 import { buildVerifyTickSignalIndex, normalizeSignalKey, type VerifyTickSignalIndexEntry } from '../verifyReport';
 import { adaptVerifyPreflightIssue } from '../diagnostics';
@@ -127,6 +136,12 @@ import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping 
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { ManualBench } from './verify/ManualBench';
+import { CaseLab } from './verify/CaseLab';
+import { buildFieldSignalResolver, normalizeSignalId } from '../signalIdentity';
+import { useEngineeringSelection } from '../engineeringSelection';
+import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { RelatedMenu } from '../components/RelatedMenu';
+import type { WorkbenchDocument } from '../workbenchDocuments';
 import { VcdAnalyzerPanel } from '../components/VcdAnalyzerPanel';
 import { SimulationProviderBar } from '../components/SimulationProviderBar';
 import type { ProviderWaveform } from '../simulationProvider';
@@ -146,12 +161,12 @@ import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 import type { IdeChromeContract } from '../chromeContract';
 import { diagnoseVerifyFailure } from '../verifyFailureDiagnosis';
 import { TestbenchDocumentTabs } from './verify/TestbenchDocumentTabs';
-import {
-  ScenarioComposerWorkbench,
-  ScenarioTestbenchPreview,
-} from './verify/ScenarioComposerWorkbench';
+import { TimingLab } from './verify/TimingLab';
+import { ScenarioTestbenchPreview } from './verify/ScenarioTestbenchPreview';
 import { buildSimulationEvidenceSummary } from '../simulationEvidence';
 import './verify/simulation-studio-v3.css';
+import './verify/simulate-instrument.css';
+import './verify/waveform-instrument.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'verify',
@@ -217,6 +232,8 @@ interface VerifyMappedInput {
 }
 
 export interface VerifySurfaceProps {
+  /** Run ledger (newest first) for the Case Lab history line. */
+  readonly runHistory?: readonly VerifyRunLedgerEntry[];
   deterministicHash: string;
   /** Current project display name — fed into the Verify context header. */
   projectName?: string;
@@ -227,6 +244,10 @@ export interface VerifySurfaceProps {
   lastRun?: RuntimeVerifyRun;
   /** A restored browser-session run is replayable history, but requires one direct rerun. */
   forceRunStale?: boolean;
+  /** Why the restored run is stale (run scope read-model); shown with the reload guidance. */
+  /** The workflow authority's verdict for this run. Simulate may add reasons, never remove them. */
+  runIsStale?: boolean;
+  runStaleDetail?: string | null;
   /** Structural Design authority. Checked runs are inconclusive while present. */
   designBlockingIssue?: {
     title: string;
@@ -272,6 +293,10 @@ export interface VerifySurfaceProps {
   scenarios?: VerifyScenario[];
   /** ID of the currently active scenario. */
   activeScenarioId?: string | null;
+  /** The workbench document this surface renders; documents own the instrument (cases/timing vs waveform). */
+  activeDocument?: WorkbenchDocument | null;
+  /** Open another engineering document in the workbench (Waveform after a run, Cases from Waveform). */
+  onOpenDocument?: (doc: WorkbenchDocument) => void;
   /** The resolved active scenario — used for stale detection. */
   activeScenario?: VerifyScenario | null;
   onCreateScenario?: () => void;
@@ -378,6 +403,7 @@ const VERIFY_WAVEFORM_LABEL_ALLOWANCE = 104;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
+  runHistory,
   deterministicHash,
   projectName,
   board,
@@ -385,6 +411,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   vectors,
   lastRun: persistedLastRun,
   forceRunStale = false,
+  runIsStale = false,
+  runStaleDetail = null,
   designBlockingIssue,
   mappingComplete = true,
   hasFloatingOutputWarning = false,
@@ -420,6 +448,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onCustomVectorsChange,
   scenarios,
   activeScenarioId,
+  activeDocument = null,
+  onOpenDocument,
   activeScenario,
   onCreateScenario,
   onDuplicateScenario,
@@ -565,6 +595,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       customVectors.filter((vector) => hasAssertedExpectedEntries(vector.expected ?? {})).length,
     [authoredVectors, customVectors]
   );
+  // Compare can only execute when the student has authored at least one expected
+  // output AND the Design is not structurally blocked. This is the single gate for
+  // the Observe/Compare toggle, the Run action, and the run itself — a blocked
+  // Compare keeps its selected intent and auto-restores when Design is repaired.
+  const compareAvailable = totalExpectedCaseCount > 0 && !gradingBlockedByDesign;
   const totalAssertedCheckCount = useMemo(
     () =>
       [...authoredVectors, ...customVectors].reduce(
@@ -598,6 +633,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
+  const restoredTickRef = useRef<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
   // Which simulation provider is the current run-of-record (Chapter D).
   const [activeSimProvider, setActiveSimProvider] = useState<'browser-logic' | 'imported-vcd'>('browser-logic');
@@ -612,7 +648,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
   const [studioMode, setStudioMode] = useState<
     'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
-  >(() => (lastRun ? 'replay' : 'scenario'));
+  >(() => (activeDocument?.kind === 'waveform' ? 'replay' : 'scenario'));
+  // Documents own the instrument: a Cases/Timing document shows authoring, the
+  // Waveform document shows recorded evidence. Live I/O is a toggle over either.
+  const documentStudioMode: 'scenario' | 'replay' | null =
+    activeDocument?.kind === 'waveform'
+      ? 'replay'
+      : activeDocument?.kind === 'cases' || activeDocument?.kind === 'timing'
+        ? 'scenario'
+        : null;
+  useEffect(() => {
+    if (!documentStudioMode) return;
+    setStudioMode((current) => (current === 'bench' ? current : documentStudioMode));
+  }, [documentStudioMode]);
+  const openWaveformDocument = useCallback(() => {
+    if (onOpenDocument && activeScenarioId) onOpenDocument({ kind: 'waveform', scenarioId: activeScenarioId });
+    else setStudioMode('replay');
+  }, [activeScenarioId, onOpenDocument]);
+  const toggleLiveIo = useCallback(() => {
+    setStudioMode((current) => (current === 'bench' ? (documentStudioMode ?? 'scenario') : 'bench'));
+  }, [documentStudioMode]);
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -622,8 +677,137 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const [verifyTab, setVerifyTab] = useState<VerifyDrawerTab>('why');
   const [layoutMode, setLayoutMode] = useState<VerifyLayoutMode>(() => resolveVerifyLayoutMode());
+
+  // ── Cases + evidence deck composition ─────────────────────────────────────
+  // The split, collapse and maximize state is workspace presentation, owned by
+  // the workspace preferences (persisted with the docks); Simulate only reads
+  // it and asks for changes. A drag previews the fraction locally and commits
+  // once on release, so the store is written per gesture, not per pointer move.
+  const simulateLayout = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  ).simulate;
+  const evidenceCollapsed = simulateLayout.evidenceCollapsed;
+  const deckMaximized = simulateLayout.maximized;
+  const labGridRef = useRef<HTMLDivElement | null>(null);
+  const deckDragRef = useRef<{ pointerId: number; live: number } | null>(null);
+  const [liveEvidenceFraction, setLiveEvidenceFraction] = useState<number | null>(null);
+  const evidenceFraction = liveEvidenceFraction ?? simulateLayout.evidenceFraction;
+  const deckLayoutIsDefault =
+    simulateLayout.evidenceFraction === DEFAULT_SIMULATE_LAYOUT.evidenceFraction &&
+    !evidenceCollapsed &&
+    deckMaximized === null;
+  const clampDeckFraction = useCallback((fraction: number) => {
+    const height = labGridRef.current?.getBoundingClientRect().height ?? 0;
+    let min = SIMULATE_EVIDENCE_FRACTION_MIN;
+    let max = SIMULATE_EVIDENCE_FRACTION_MAX;
+    if (height > 0) {
+      // Neither pane drops below a usable instrument height.
+      min = Math.max(min, SIMULATE_EVIDENCE_MIN_PX / height);
+      max = Math.min(max, 1 - SIMULATE_CASES_MIN_PX / height);
+    }
+    if (min > max) {
+      min = SIMULATE_EVIDENCE_FRACTION_MIN;
+      max = SIMULATE_EVIDENCE_FRACTION_MAX;
+    }
+    return Math.min(max, Math.max(min, fraction));
+  }, []);
+  const commitDeckFraction = useCallback(
+    (fraction: number) => {
+      workspacePreferencesStore.setSimulateLayout({
+        evidenceFraction: clampDeckFraction(fraction),
+        evidenceCollapsed: false,
+        maximized: null,
+      });
+    },
+    [clampDeckFraction]
+  );
+  const resetDeckLayout = useCallback(() => {
+    workspacePreferencesStore.resetSimulateLayout();
+  }, []);
+  const beginDeckResize = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || deckMaximized !== null) return;
+      const grid = labGridRef.current;
+      if (!grid) return;
+      event.preventDefault();
+      const handle = event.currentTarget;
+      try {
+        handle.setPointerCapture(event.pointerId);
+      } catch {
+        /* pointer capture is unavailable in some test environments */
+      }
+      deckDragRef.current = { pointerId: event.pointerId, live: simulateLayout.evidenceFraction };
+      const onMove = (moveEvent: PointerEvent) => {
+        const drag = deckDragRef.current;
+        if (!drag || moveEvent.pointerId !== drag.pointerId) return;
+        const rect = grid.getBoundingClientRect();
+        if (rect.height <= 0) return;
+        drag.live = clampDeckFraction((rect.bottom - moveEvent.clientY) / rect.height);
+        setLiveEvidenceFraction(drag.live);
+      };
+      const finish = () => {
+        const drag = deckDragRef.current;
+        deckDragRef.current = null;
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', finish);
+        handle.removeEventListener('pointercancel', finish);
+        setLiveEvidenceFraction(null);
+        if (drag) commitDeckFraction(drag.live);
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', finish);
+      handle.addEventListener('pointercancel', finish);
+    },
+    [clampDeckFraction, commitDeckFraction, deckMaximized, simulateLayout.evidenceFraction]
+  );
+  const handleDeckKey = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const step = event.shiftKey ? 0.1 : 0.02;
+      const current = simulateLayout.evidenceFraction;
+      let next: number | null = null;
+      if (event.key === 'ArrowUp') next = current + step;
+      else if (event.key === 'ArrowDown') next = current - step;
+      else if (event.key === 'Home') next = SIMULATE_EVIDENCE_FRACTION_MIN;
+      else if (event.key === 'End') next = SIMULATE_EVIDENCE_FRACTION_MAX;
+      else if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        resetDeckLayout();
+        return;
+      }
+      if (next === null) return;
+      event.preventDefault();
+      event.stopPropagation();
+      commitDeckFraction(next);
+    },
+    [commitDeckFraction, resetDeckLayout, simulateLayout.evidenceFraction]
+  );
+  const toggleDeckCollapsed = useCallback(() => {
+    workspacePreferencesStore.setSimulateLayout({ evidenceCollapsed: !evidenceCollapsed, maximized: null });
+  }, [evidenceCollapsed]);
+  const expandDeck = useCallback(() => {
+    workspacePreferencesStore.setSimulateLayout({ evidenceCollapsed: false, maximized: null });
+  }, []);
+  const toggleDeckMaximized = useCallback(
+    (pane: 'cases' | 'waveform') => {
+      workspacePreferencesStore.setSimulateLayout({
+        maximized: deckMaximized === pane ? null : pane,
+        evidenceCollapsed: false,
+      });
+    },
+    [deckMaximized]
+  );
   const [waveformDensity, setWaveformDensity] = useState<'small' | 'normal' | 'large'>('normal');
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
+  const [waveformRadix, setWaveformRadix] = useState<WaveformRadix>('hex');
+  const [expandedBuses, setExpandedBuses] = useState<string[]>([]);
+  const [showExpectedOverlay, setShowExpectedOverlay] = useState(true);
+  const expandedBusSet = useMemo(() => new Set(expandedBuses), [expandedBuses]);
+  const toggleBus = useCallback((bus: string) => {
+    setExpandedBuses((previous) => (previous.includes(bus) ? previous.filter((entry) => entry !== bus) : [...previous, bus]));
+  }, []);
   const [tickWidth, setTickWidth] = useState(DEFAULT_VERIFY_TICK_WIDTH);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
@@ -642,11 +826,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [selectedVectorId, setSelectedVectorId] = useState<string | null>(null);
   const [pinnedSignalOrder, setPinnedSignalOrder] = useState<string[]>([]);
   const [manualLaneOrder, setManualLaneOrder] = useState<string[]>([]);
+  const moveLaneRef = useRef<(signal: string, direction: -1 | 1) => void>(() => undefined);
+  /** Move a lane one step up or down in the display order (persisted with the session). */
+  const moveLane = useCallback((signal: string, direction: -1 | 1) => moveLaneRef.current(signal, direction), []);
   const [hiddenSignals, setHiddenSignals] = useState<string[]>([]);
   const [cursorA, setCursorA] = useState<number | null>(null);
   const [cursorB, setCursorB] = useState<number | null>(null);
   const [previewingVectorId, setPreviewingVectorId] = useState<string | null>(null);
   const [isStepMode, setIsStepMode] = useState(false);
+  // Playback: the browser run completes at once; playing it back tick by tick is
+  // how a student sees the run happen — inputs change, outputs follow, the
+  // cursor moves, and it stops at the first mismatch. Deterministic, stops when
+  // nothing is active, never runs on its own under reduced motion.
+  const [isPlaying, setIsPlaying] = useState(false);
+  // The tick most recently set by playback itself (not by the user). Such a tick is
+  // never published as the workbench selection: a replay must not displace what
+  // the user chose to follow. A manual choice clears it.
+  const autoTickRef = useRef<number | null>(null);
+  const [playSpeed, setPlaySpeed] = useState<0.5 | 1 | 2>(1);
+  const [playLoop, setPlayLoop] = useState(false);
+  const [playStopAtFailure, setPlayStopAtFailure] = useState(true);
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
   const [pendingCaptureScope, setPendingCaptureScope] = useState<(CaptureScope & {
     awaitNextRunKey: string | null;
   }) | null>(null);
@@ -691,7 +894,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       const raw = sessionStorage.getItem(VERIFY_UI_STORAGE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof s.selectedTick === 'number') setSelectedTick(s.selectedTick);
+      if (typeof s.selectedTick === 'number') {
+        restoredTickRef.current = s.selectedTick;
+        setSelectedTick(s.selectedTick);
+      }
       if (s.cursorA === null || typeof s.cursorA === 'number') setCursorA(s.cursorA as number | null);
       if (s.cursorB === null || typeof s.cursorB === 'number') setCursorB(s.cursorB as number | null);
       if (typeof s.drawerOpen === 'boolean') setDrawerOpen(s.drawerOpen);
@@ -704,6 +910,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (typeof s.tickZoom === 'string' && ['all', 'fail', 'window'].includes(s.tickZoom)) {
         setTickZoom(s.tickZoom as 'all' | 'fail' | 'window');
       }
+      if (typeof s.waveformRadix === 'string' && ['bin', 'hex', 'dec'].includes(s.waveformRadix)) {
+        setWaveformRadix(s.waveformRadix as WaveformRadix);
+      }
+      if (Array.isArray(s.expandedBuses)) setExpandedBuses(s.expandedBuses.filter((entry): entry is string => typeof entry === 'string'));
+      if (typeof s.showExpectedOverlay === 'boolean') setShowExpectedOverlay(s.showExpectedOverlay);
     } catch { /* silent — sessionStorage unavailable */ }
   }, []); // mount-only
 
@@ -722,10 +933,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           tickZoom,
           manualLaneOrder,
           hiddenSignals,
+          waveformRadix,
+          expandedBuses,
+          showExpectedOverlay,
         })
       );
     } catch { /* silent — storage quota or unavailable */ }
-  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals]);
+  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals, waveformRadix, expandedBuses, showExpectedOverlay]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -788,13 +1002,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [vectorCollectionSignature]);
 
   useEffect(() => {
-    if (gradingBlockedByDesign) {
-      setNextRunUsesAssertions(false);
-      return;
-    }
+    // Seed the initial run intent only. Do NOT silently switch a student's chosen
+    // Compare intent to Observe when the Design becomes structurally blocked — the
+    // intent stays Compare (shown as blocked) and execution is gated by
+    // compareAvailable, so Compare auto-restores when the Design is repaired.
     if (lastRun || runModeTouchedByStudentRef.current) return;
     setNextRunUsesAssertions(totalExpectedCaseCount > 0);
-  }, [gradingBlockedByDesign, lastRun, totalExpectedCaseCount]);
+  }, [lastRun, totalExpectedCaseCount]);
 
   const canonicalWaveformSignalByRawKey = useMemo(
     () =>
@@ -872,6 +1086,61 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => (waveformTicks.length > 0 ? waveformTicks : timelineTicks),
     [waveformTicks, timelineTicks]
   );
+  // The ticks playback walks: the A/B range when both cursors are set, else every tick.
+  const playbackTicks = useMemo(() => {
+    if (cursorA != null && cursorB != null && cursorA !== cursorB) {
+      const lo = Math.min(cursorA, cursorB);
+      const hi = Math.max(cursorA, cursorB);
+      const inRange = allWaveformTicks.filter((tick) => tick >= lo && tick <= hi);
+      if (inRange.length > 0) return inRange;
+    }
+    return allWaveformTicks;
+  }, [allWaveformTicks, cursorA, cursorB]);
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (playbackTicks.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+    const interval = window.setInterval(() => {
+      setSelectedTick((current) => {
+        const index = current == null ? -1 : playbackTicks.indexOf(current);
+        const next = playbackTicks[index + 1];
+        if (next == null) {
+          if (playLoop) {
+            autoTickRef.current = playbackTicks[0];
+            return playbackTicks[0];
+          }
+          setIsPlaying(false);
+          return current;
+        }
+        if (playStopAtFailure && index >= 0 && lastRun?.report.rows.some((row) => row.tick === next && row.status === 'fail')) {
+          setIsPlaying(false);
+        }
+        autoTickRef.current = next;
+        return next;
+      });
+    }, Math.round(650 / playSpeed));
+    return () => window.clearInterval(interval);
+  }, [isPlaying, lastRun, playLoop, playSpeed, playStopAtFailure, playbackTicks]);
+  const togglePlayback = useCallback(() => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      return;
+    }
+    if (playbackTicks.length === 0) return;
+    // Restart from the first tick when the cursor sits at the end.
+    const index = selectedTick == null ? -1 : playbackTicks.indexOf(selectedTick);
+    if (index < 0 || index >= playbackTicks.length - 1) setSelectedTick(playbackTicks[0]);
+    setIsPlaying(true);
+  }, [isPlaying, playbackTicks, selectedTick]);
+  // Any manual navigation ends playback: the user has taken the cursor.
+  const stopPlayback = useCallback(() => setIsPlaying(false), []);
+  const selectTickManually = useCallback((tick: number) => {
+    setIsPlaying(false);
+    autoTickRef.current = null;
+    setSelectedTick(tick);
+  }, []);
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     const waveformSource = lastRun?.waveform ?? [];
@@ -1139,6 +1408,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return map;
   }, [mappedSignals]);
+  const [signalFilter, setSignalFilter] = useState('');
   const relevantSignalTimeline = useMemo(() => {
     const filtered = signalTimeline.filter((entry) => {
       const normalized = normalizeFieldId(entry.signal);
@@ -1241,6 +1511,103 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return visibleSignalTimeline.filter((entry) => !hiddenSignalSet.has(entry.signal));
   }, [hiddenSignalSet, visibleSignalTimeline]);
   const visibleSignalCount = displaySignalTimeline.length;
+  // Bus lanes: SUM[0]..SUM[3] (or sum_0..sum_3) of one direction fold into SUM[3:0], MSB first,
+  // formatted in the chosen radix. A collapsed bus hides its bits; an expanded bus lists them under it.
+  const waveformLanes = useMemo<WaveformSignalRow[]>(
+    () => composeBusLanes(displaySignalTimeline, mappedSignalDirectionKeys, waveformRadix, expandedBusSet),
+    [displaySignalTimeline, expandedBusSet, mappedSignalDirectionKeys, waveformRadix]
+  );
+  const laneGroupsForViewer = useMemo(() => {
+    const groups = new Map(laneGroupBySignal);
+    for (const lane of waveformLanes) {
+      if (lane.kind === 'bus' && lane.members?.length) {
+        groups.set(lane.signal, laneGroupBySignal.get(lane.members[0]) ?? 'Internal');
+      }
+    }
+    return groups;
+  }, [laneGroupBySignal, waveformLanes]);
+  const signalMetaForViewer = useMemo(() => {
+    const meta = new Map(signalMetaMap);
+    for (const lane of waveformLanes) {
+      if (lane.kind === 'bus' && lane.members?.length) {
+        const member = signalMetaMap.get(lane.members[0]);
+        if (member) meta.set(lane.signal, { direction: member.direction, pin: `${lane.width ?? lane.members.length} bits` });
+      }
+    }
+    return meta;
+  }, [signalMetaMap, waveformLanes]);
+  // Saved expected values per lane and tick, from the run's own report rows (the check authority).
+  const expectedValuesByLane = useMemo(() => {
+    const byLane = new Map<string, Map<number, string>>();
+    if (!lastRun) return byLane;
+    const laneByKey = new Map<string, string>();
+    for (const lane of displaySignalTimeline) laneByKey.set(normalizeFieldId(lane.signal), lane.signal);
+    for (const row of lastRun.report.rows) {
+      const lane =
+        laneByKey.get(normalizeFieldId(row.signal)) ??
+        laneByKey.get(normalizeFieldId(canonicalWaveformSignalByRawKey.get(normalizeFieldId(row.signal)) ?? ''));
+      if (!lane || row.expected === undefined || row.expected === null || row.expected === '') continue;
+      const perTick = byLane.get(lane) ?? new Map<number, string>();
+      perTick.set(row.tick, String(row.expected));
+      byLane.set(lane, perTick);
+    }
+    // Bus lanes: the expected word exists only where every member has a saved check at that tick.
+    for (const lane of waveformLanes) {
+      if (lane.kind !== 'bus' || !lane.members) continue;
+      const perTick = new Map<number, string>();
+      for (const point of lane.values) {
+        const bits = lane.members.map((member) => byLane.get(member)?.get(point.tick));
+        if (bits.some((bit) => bit !== '0' && bit !== '1')) continue;
+        perTick.set(point.tick, formatBusValue(bits.join(''), waveformRadix));
+      }
+      if (perTick.size > 0) byLane.set(lane.signal, perTick);
+    }
+    return byLane;
+  }, [canonicalWaveformSignalByRawKey, displaySignalTimeline, lastRun, waveformLanes, waveformRadix]);
+  moveLaneRef.current = (signal, direction) => {
+    const order = displaySignalTimeline.map((entry) => entry.signal);
+    const index = order.indexOf(signal);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= order.length) return;
+    const next = [...order];
+    next.splice(index, 1);
+    next.splice(target, 0, signal);
+    setManualLaneOrder(next);
+  };
+  const liveReadout = useMemo(() => {
+    if (!lastRun || selectedTick == null) return null;
+    const index = allWaveformTicks.indexOf(selectedTick);
+    const previousTick = index > 0 ? allWaveformTicks[index - 1] : null;
+    const inputsNow = lastRun.report.inputsAtTick?.[selectedTick] ?? {};
+    const inputsBefore = previousTick != null ? lastRun.report.inputsAtTick?.[previousTick] ?? {} : {};
+    const changedInputs = index <= 0 ? [] : Object.keys(inputsNow).filter((key) => String(inputsNow[key]) !== String(inputsBefore[key] ?? ''));
+    const inputLabel = (key: string) => inputFields.find((field) => normalizeFieldId(field.id) === normalizeFieldId(key))?.label ?? key;
+    const outputs = displaySignalTimeline
+      .filter((lane) => mappedSignalDirectionKeys.get(normalizeFieldId(lane.signal)) === 'out')
+      .map((lane) => ({ signal: lane.signal, value: lane.values.find((entry) => entry.tick === selectedTick)?.value ?? '-' }));
+    const failures = lastRun.report.rows.filter((row) => row.tick === selectedTick && row.status === 'fail');
+    return {
+      index,
+      total: allWaveformTicks.length,
+      changedInputs: changedInputs.map((key) => ({ label: inputLabel(key), value: String(inputsNow[key]) })),
+      outputs,
+      failures: failures.map((row) => ({ signal: row.signal, expected: row.expected, actual: row.actual })),
+    };
+  }, [allWaveformTicks, displaySignalTimeline, inputFields, lastRun, mappedSignalDirectionKeys, selectedTick]);
+  // Lanes that change at the selected tick (against the previous tick).
+  const changedSignalsAtTick = useMemo(() => {
+    const set = new Set<string>();
+    if (selectedTick == null) return set;
+    const index = allWaveformTicks.indexOf(selectedTick);
+    if (index <= 0) return set;
+    const previousTick = allWaveformTicks[index - 1];
+    for (const lane of displaySignalTimeline) {
+      const now = lane.values.find((entry) => entry.tick === selectedTick)?.value;
+      const before = lane.values.find((entry) => entry.tick === previousTick)?.value;
+      if (now != null && before != null && now !== before) set.add(lane.signal);
+    }
+    return set;
+  }, [allWaveformTicks, displaySignalTimeline, selectedTick]);
   const boardSignalByLane = useMemo(() => {
     const mapping = new Map<string, ReturnType<typeof resolveBoardSignal>>();
     for (const sig of mappedSignals ?? []) {
@@ -1313,11 +1680,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Used by compare/failure CTAs to route students into the secondary checks path.
   const handleEditExpectedOutputs = useCallback(() => {
     setNextRunUsesAssertions(!gradingBlockedByDesign);
-    const details = scenarioBuilderDetailsRef.current;
-    if (details) {
-      details.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const firstExpectedCell = details.querySelector<HTMLButtonElement>(
-        '[data-testid^="ide-stimulus-expected-"]'
+    // Combinational scenarios edit checks in Case Lab; the sequential composer still owns its table.
+    const host: HTMLElement | null =
+      scenarioBuilderDetailsRef.current ??
+      document.querySelector<HTMLElement>('[data-testid="ide-case-lab"]');
+    if (host) {
+      host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const firstExpectedCell = host.querySelector<HTMLButtonElement>(
+        '[data-testid^="ide-stimulus-expected-"], [data-testid^="ide-case-lab-exp-"]'
       );
       firstExpectedCell?.focus({ preventScroll: true });
       window.requestAnimationFrame(() => {
@@ -1402,11 +1772,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     );
   }, [allWaveformTicks, lastRun?.firstFailingTick]);
 
+  const allWaveformTicksRef = useRef(allWaveformTicks);
+  allWaveformTicksRef.current = allWaveformTicks;
   useEffect(() => {
     if (selectedTickOverride === null) return;
-    if (allWaveformTicks.length > 0 && !allWaveformTicks.includes(selectedTickOverride)) return;
+    const ticks = allWaveformTicksRef.current;
+    if (ticks.length > 0 && !ticks.includes(selectedTickOverride)) return;
     setSelectedTick((previous) => (previous === selectedTickOverride ? previous : selectedTickOverride));
-  }, [allWaveformTicks, selectedTickOverride]);
+    // Applied once per override value; the tick domain is read through the ref so a
+    // rebuilt timeline array (windowing) does not re-apply a tick the user moved off.
+  }, [selectedTickOverride]);
 
   useEffect(() => {
     onSelectedTickChange?.(selectedTick);
@@ -1440,15 +1815,43 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       return;
     }
+    const foreignSelection = useEngineeringSelection.getState();
+    const foreignSignal =
+      foreignSelection.selected?.kind === 'signal' &&
+      foreignSelection.origin !== 'cases' &&
+      foreignSelection.origin !== 'timing' &&
+      foreignSelection.origin !== 'waveform';
+    if (!selectedSignal && foreignSignal) return; // the landing effect owns this case
+    if (selectedSignal) {
+      if (displaySignalTimeline.some((entry) => entry.signal === selectedSignal)) return;
+      // The same signal under another spelling (field id vs. lane label):
+      // converge on the timeline's own name instead of replacing the choice.
+      const selectedKey = normalizeSignalId(selectedSignal);
+      const selectedField = inputFields
+        .concat(outputFields)
+        .find((field) => normalizeSignalId(field.id) === selectedKey || normalizeSignalId(field.label ?? '') === selectedKey);
+      const sameLane = displaySignalTimeline.find((entry) => {
+        const laneKey = normalizeSignalId(entry.signal);
+        if (laneKey === selectedKey) return true;
+        return Boolean(
+          selectedField &&
+            (normalizeSignalId(selectedField.id) === laneKey || normalizeSignalId(selectedField.label ?? '') === laneKey)
+        );
+      });
+      if (sameLane) {
+        handleSignalSelect(sameLane.signal);
+        return;
+      }
+      // Not a lane of this timeline. A selection made elsewhere is the followed
+      // object and stays; only a stale local choice falls back to a default.
+      if (foreignSignal) return;
+    }
     const firstFailSignal = failingRows[0]?.signal;
-    const nextSignal =
-      selectedSignal && displaySignalTimeline.some((entry) => entry.signal === selectedSignal)
-        ? selectedSignal
-        : firstFailSignal ?? displaySignalTimeline[0]?.signal ?? null;
+    const nextSignal = firstFailSignal ?? displaySignalTimeline[0]?.signal ?? null;
     if (nextSignal !== selectedSignal) {
       handleSignalSelect(nextSignal);
     }
-  }, [displaySignalTimeline, failingRows, handleSignalSelect, selectedSignal]);
+  }, [displaySignalTimeline, failingRows, handleSignalSelect, inputFields, outputFields, selectedSignal]);
 
   useEffect(() => {
     if (failingRows.length === 0) {
@@ -1494,11 +1897,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     });
   }, [displaySignalTimeline]);
 
+  const appliedRunKeyRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (lastRun) {
-      setRunState('complete');
-      setStudioMode('replay');
+    if (!lastRun) {
+      // No run yet: remember that, so the first completed run opens the Waveform.
+      if (appliedRunKeyRef.current === undefined) appliedRunKeyRef.current = null;
+      return;
     }
+    setRunState('complete');
+    if (appliedRunKeyRef.current === undefined) {
+      appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
+      return;
+    }
+    if (appliedRunKeyRef.current === (lastRunWorkbenchKey ?? null)) return;
+    appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
+    openWaveformDocument();
+    if (!prefersReducedMotion && allWaveformTicks.length > 1) {
+      // Show the run happen: walk the ticks from the first one; stop at the first mismatch.
+      autoTickRef.current = allWaveformTicks[0];
+      setSelectedTick(allWaveformTicks[0]);
+      setIsPlaying(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRunWorkbenchKey]);
 
   // Auto-shape the lower analysis deck once per run:
@@ -1910,7 +2330,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         };
   }, [activeScenario?.sequentialPolicy, activeScheduleContract?.schedule, clockOverrideMode, clockRunCycles, detectedClockPolicy, totalVectorCount]);
   const persistScenarioSequentialPolicy = useCallback(
-    (overrideMode: VerifyClockOverrideMode, runCycles: number) => {
+    (
+      overrideMode: VerifyClockOverrideMode,
+      runCycles: number,
+      resetBehaviorOverride?: 'auto-sequence' | 'custom'
+    ) => {
       const preserveSavedAuto =
         overrideMode === 'auto' && activeScenario?.sequentialPolicy?.overrideMode === 'auto';
       const sourcePolicy =
@@ -1936,11 +2360,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         overrideMode,
         runCycles: Math.max(1, Math.min(4096, Math.floor(runCycles))),
         activeEdge: 'rising',
+        // Auto clock: the reset is either the policy's sequence (high at t0) or authored
+        // in the Timing lanes ('custom'); the materializer only overwrites the sequence.
         resetBehavior: authoredClock
           ? canonicalResetSignal
             ? 'custom'
             : 'none'
-          : autoPolicy.resetBehavior,
+          : canonicalResetSignal && resetBehaviorOverride
+            ? resetBehaviorOverride
+            : autoPolicy.resetBehavior,
         sourceType: sourcePolicy.sourceType,
         executionModel: authoredClock ? 'manual' : autoPolicy.executionModel,
         signalId: canonicalSignalId,
@@ -1964,6 +2392,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       persistScenarioSequentialPolicy(overrideMode, clockRunCycles);
     },
     [autoClockAvailable, clockRunCycles, persistScenarioSequentialPolicy]
+  );
+  const handleResetBehaviorChange = useCallback(
+    (behavior: 'auto-sequence' | 'custom') => {
+      if (clockOverrideMode !== 'auto') return;
+      persistScenarioSequentialPolicy('auto', clockRunCycles, behavior);
+    },
+    [clockOverrideMode, clockRunCycles, persistScenarioSequentialPolicy]
   );
   const handleClockRunCyclesChange = useCallback(
     (runCycles: number) => {
@@ -2097,6 +2532,57 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => new Set(clockSignalNames.map((signalName) => normalizeFieldId(signalName))),
     [clockSignalNames]
   );
+  // Lanes the auto clock policy generates at run time. The Timing document shows them
+  // as the run will use them and refuses edits, instead of accepting an authored reset
+  // the materializer would silently overwrite.
+  // Policy names may be labels (CLK100MHZ), ids (clk) or node ids; lanes are keyed by field id.
+  const timingGeneratedLanes = useMemo(() => {
+    const clocks = new Set<string>();
+    const resets = new Set<string>();
+    if (clockOverrideMode !== 'auto') return { clocks, resets };
+    const token = (value: string | undefined) => (value ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const resolveLane = (name: string): string | null => {
+      const wanted = token(name);
+      if (!wanted) return null;
+      // The policy names a row by id, label or boundary node id (the materializer's own rule).
+      const signal = (mappedSignals ?? []).find(
+        (candidate) =>
+          token(candidate.id) === wanted || token(candidate.label) === wanted || token(candidate.nodeId) === wanted
+      );
+      if (signal) return signal.id;
+      const field = stimulusPanelInputFields.find(
+        (candidate) => token(candidate.id) === wanted || token(candidate.label) === wanted
+      );
+      return field?.id ?? null;
+    };
+    for (const name of clockSignalNames) {
+      const laneId = resolveLane(name);
+      if (laneId) clocks.add(laneId);
+    }
+    if (effectiveClockPolicy?.resetBehavior === 'auto-sequence' && effectiveClockPolicy.resetSignalName) {
+      const laneId = resolveLane(effectiveClockPolicy.resetSignalName);
+      if (laneId) resets.add(laneId);
+    }
+    return { clocks, resets };
+  }, [clockOverrideMode, clockSignalNames, effectiveClockPolicy?.resetBehavior, effectiveClockPolicy?.resetSignalName, mappedSignals, stimulusPanelInputFields]);
+  const timingGeneratedFieldIds = useMemo(
+    () => new Set<string>([...timingGeneratedLanes.clocks, ...timingGeneratedLanes.resets]),
+    [timingGeneratedLanes]
+  );
+  const timingGeneratedValueAt = useCallback(
+    (fieldId: string, tick: number): 0 | 1 | null => {
+      if (timingGeneratedLanes.clocks.has(fieldId)) return 1;
+      if (timingGeneratedLanes.resets.has(fieldId)) return tick === 0 ? 1 : 0;
+      return null;
+    },
+    [timingGeneratedLanes]
+  );
+  const timingGeneratedNote =
+    timingGeneratedFieldIds.size > 0
+      ? effectiveClockPolicy?.resetBehavior === 'auto-sequence'
+        ? 'Auto board clock: the clock and the reset sequence (reset high at t0) are generated at run time. Choose "Author reset pulses" to author the reset, or Manual pulses to author both.'
+        : 'Auto board clock: the clock is generated at run time; the reset pulses are yours to author in the lanes.'
+      : undefined;
   const clockActivitySummary = useMemo(
     () => buildClockActivitySummary(effectiveNextRunVectors, clockSignalNames),
     [clockSignalNames, effectiveNextRunVectors]
@@ -2627,15 +3113,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     onSignalSelected?.(selectedSignal != null ? normalizeSignalKey(selectedSignal) : null);
   }, [onSignalSelected, selectedSignal]);
   const handleStimulusSelectedTickChange = useCallback((tick: number) => {
-    setSelectedTick(tick);
-  }, []);
+    selectTickManually(tick);
+  }, [selectTickManually]);
 
   // Navigate to Design: inject selected-tick inputs into the runtime sim when available,
   // giving the student immediate propagation context for the observed stimulus.
   const handleGoToDesignFromVerify = useCallback(() => {
     syncSelectedSignalForHandoff();
     if (onDebugTickSelected && lastRun) {
-      const tick = selectedTick ?? lastRun.firstFailingTick ?? lastRun.waveform?.[0]?.tick ?? null;
+      // Prefer wherever the reader has deliberately put the cursor - unless that is not a
+      // failing tick and there is a failure to look at, in which case the failure is what
+      // they asked to trace.
+      const restingOnFailure =
+        selectedTick !== null && failingRows.some((row) => row.tick === selectedTick);
+      const tick = restingOnFailure
+        ? selectedTick
+        : (lastRun.firstFailingTick ?? selectedTick ?? lastRun.waveform?.[0]?.tick ?? null);
       if (tick !== null) {
         onDebugTickSelected(
           tick,
@@ -2654,7 +3147,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     }
     onGoToDesign?.();
-  }, [buildDebugSignalsAtTick, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
+  }, [buildDebugSignalsAtTick, failingRows, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
   const handleInspectFailureInDesign = useCallback(
     (target: VerifyFailureTarget | VerifyRow | null) => {
       if (target) {
@@ -2703,7 +3196,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedFailureRepairCaseLabel =
     selectedFailureExplanationCase?.caseIndex !== undefined &&
     selectedFailureExplanationCase.caseIndex !== null
-      ? `Case ${selectedFailureExplanationCase.caseIndex + 1}`
+      ? `Case ${selectedFailureExplanationCase.caseIndex}`
       : selectedFailureExplanationCase
         ? `Tick ${selectedFailureExplanationCase.tick}`
         : null;
@@ -2727,29 +3220,29 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedCaseTickLabel =
     selectedTick !== null
       ? stepIndex >= 0
-        ? `Case ${stepIndex + 1} \u00b7 t${selectedTick}`
+        ? `Case ${stepIndex} \u00b7 t${selectedTick}`
         : `t${selectedTick}`
       : null;
   const selectedCasePositionLabel =
     selectedTick !== null && stepIndex >= 0
-      ? `Case ${stepIndex + 1} / ${totalSteps} \u00b7 t${selectedTick}`
+      ? `Case ${stepIndex} of ${totalSteps} \u00b7 t${selectedTick}`
       : `${totalSteps} case${totalSteps === 1 ? '' : 's'}`;
   const selectedScopeCaseLabel =
     selectedTick !== null && stepIndex >= 0
-      ? `Case ${stepIndex + 1} / ${totalSteps}`
+      ? `Case ${stepIndex} of ${totalSteps}`
       : `${totalSteps} case${totalSteps === 1 ? '' : 's'}`;
 
   const goToPrevStep = useCallback(() => {
     if (allWaveformTicks.length === 0) return;
     const idx = stepIndex > 0 ? stepIndex - 1 : allWaveformTicks.length - 1;
-    setSelectedTick(allWaveformTicks[idx]);
-  }, [allWaveformTicks, stepIndex]);
+    selectTickManually(allWaveformTicks[idx]);
+  }, [allWaveformTicks, selectTickManually, stepIndex]);
 
   const goToNextStep = useCallback(() => {
     if (allWaveformTicks.length === 0) return;
     const idx = stepIndex < allWaveformTicks.length - 1 ? stepIndex + 1 : 0;
-    setSelectedTick(allWaveformTicks[idx]);
-  }, [allWaveformTicks, stepIndex]);
+    selectTickManually(allWaveformTicks[idx]);
+  }, [allWaveformTicks, selectTickManually, stepIndex]);
 
   const stepSnapshotRows = useMemo((): VerifyTickSignalIndexEntry[] => {
     if (!isStepMode || selectedTick === null) return [];
@@ -3003,6 +3496,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const isStarterScenario =
     scenarioAuthority === 'starter' || (projectKind === 'example' && Boolean(sourceExampleId));
+
+  // A project that came from a starter, whose behaviour was edited, and whose expected
+  // outputs are gone: the runtime cleared them on detach. Naming that is the difference
+  // between an explanation and a dead control.
+  const starterExpectationsWereDiscarded =
+    Boolean(sourceExampleId) && projectKind !== 'example' && scenarioAuthority === 'draft';
   const hasStaleAuthoredReference = isRunStale && totalExpectedCaseCount > 0;
   const currentScenarioContentHash = activeScenario
     ? computeScenarioContentHash(activeScenario)
@@ -3227,7 +3726,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const handleRunWithPreflight = useCallback(
     (useAssertionsForNextRun: boolean = nextRunUsesAssertions) => {
       if (gradingBlockedByDesign && useAssertionsForNextRun) {
-        setNextRunUsesAssertions(false);
+        // Compare is blocked by a structural Design issue. Keep the Compare intent
+        // selected and let the primary status explain the block — never silently
+        // downgrade to an Observe run.
         return;
       }
       if (someVectorsOrphaned && useAssertionsForNextRun) {
@@ -3240,8 +3741,104 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   const runVerification = useCallback(() => {
-    handleRunWithPreflight(totalExpectedCaseCount > 0 && !gradingBlockedByDesign);
-  }, [gradingBlockedByDesign, handleRunWithPreflight, totalExpectedCaseCount]);
+    // Honor the student's selected run intent. Compare executes only when it is
+    // available; when Compare is intended but blocked, handleRunWithPreflight
+    // no-ops (and the Run action is disabled) rather than running a silent Observe.
+    handleRunWithPreflight(nextRunUsesAssertions);
+  }, [handleRunWithPreflight, nextRunUsesAssertions]);
+
+  // Case Lab: toggle one case's expected output cell (unset -> 0 -> 1 -> unset).
+  const handleCaseSetExpected = useCallback(
+    (tick: number, signalId: string, next: 0 | 1 | null) => {
+      if (!onVectorsChange) return;
+      const updated = authoredVectors.map((vector) => {
+        if (vector.tick !== tick) return vector;
+        const expected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+        if (next === null) delete expected[signalId];
+        else expected[signalId] = next;
+        return { ...vector, expected };
+      });
+      onVectorsChange(updated);
+    },
+    [authoredVectors, onVectorsChange]
+  );
+
+  const handleCaseSetExpectedMany = useCallback(
+    (edits: readonly { tick: number; signalId: string; next: 0 | 1 | null }[]) => {
+      if (!onVectorsChange || edits.length === 0) return;
+      const byTick = new Map<number, typeof edits>();
+      for (const edit of edits) byTick.set(edit.tick, [...(byTick.get(edit.tick) ?? []), edit]);
+      const updated = authoredVectors.map((vector) => {
+        const own = byTick.get(vector.tick);
+        if (!own) return vector;
+        const expected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+        for (const edit of own) {
+          if (edit.next === null) delete expected[edit.signalId];
+          else expected[edit.signalId] = edit.next;
+        }
+        return { ...vector, expected };
+      });
+      onVectorsChange(updated);
+    },
+    [authoredVectors, onVectorsChange]
+  );
+
+  // Case Lab owns the primary case operations — add / duplicate / delete — so a
+  // student never has to open the legacy detailed table for essential authoring.
+  // For a combinational truth table one case == one tick, so ticks are kept
+  // contiguous (0..n-1) after every mutation.
+  const caseLabInputFieldIds = useMemo(
+    () => stimulusPanelInputFields.map((field) => field.id),
+    [stimulusPanelInputFields]
+  );
+  const resequenceCaseTicks = useCallback(
+    (vectors: VerifyAuthorVector[]): VerifyAuthorVector[] =>
+      vectors.map((vector, index) => (vector.tick === index ? vector : { ...vector, tick: index })),
+    []
+  );
+  const handleCaseAdd = useCallback(() => {
+    if (!onVectorsChange) return;
+    const blank: VerifyAuthorVector = {
+      id: `case-${authoredVectors.length + 1}-${authoredVectors.length}`,
+      tick: authoredVectors.length,
+      inputs: caseLabInputFieldIds.reduce<Record<string, 0 | 1>>((acc, id) => {
+        acc[id] = 0;
+        return acc;
+      }, {}),
+      expected: {},
+    };
+    onVectorsChange(resequenceCaseTicks([...authoredVectors, blank]));
+    handleStimulusSelectedTickChange(blank.tick);
+  }, [authoredVectors, caseLabInputFieldIds, onVectorsChange, resequenceCaseTicks]);
+  const handleCaseDuplicate = useCallback(
+    (tick: number) => {
+      if (!onVectorsChange) return;
+      const index = authoredVectors.findIndex((vector) => vector.tick === tick);
+      if (index < 0) return;
+      const source = authoredVectors[index];
+      const copy: VerifyAuthorVector = {
+        ...source,
+        id: `case-dup-${source.id}-${authoredVectors.length}`,
+        inputs: { ...source.inputs },
+        expected: { ...(source.expected ?? {}) },
+      };
+      const next = [
+        ...authoredVectors.slice(0, index + 1),
+        copy,
+        ...authoredVectors.slice(index + 1),
+      ];
+      onVectorsChange(resequenceCaseTicks(next));
+      handleStimulusSelectedTickChange(tick + 1);
+    },
+    [authoredVectors, onVectorsChange, resequenceCaseTicks]
+  );
+  const handleCaseDelete = useCallback(
+    (tick: number) => {
+      if (!onVectorsChange) return;
+      onVectorsChange(resequenceCaseTicks(authoredVectors.filter((vector) => vector.tick !== tick)));
+    },
+    [authoredVectors, onVectorsChange, resequenceCaseTicks]
+  );
 
   const handleSetObserveMode = useCallback(() => {
     runModeTouchedByStudentRef.current = true;
@@ -3249,10 +3846,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, []);
 
   const handleSetCompareMode = useCallback(() => {
-    if (gradingBlockedByDesign) return;
+    // Selecting Compare records the student's intent even when the Design is
+    // structurally blocked — the toggle then shows Compare as blocked and the
+    // primary status explains why, rather than the intent silently reverting.
     runModeTouchedByStudentRef.current = true;
     setNextRunUsesAssertions(true);
-  }, [gradingBlockedByDesign]);
+  }, []);
 
   const handleKeepOlderReference = useCallback(() => {
     setNextRunUsesAssertions(true);
@@ -4159,8 +4758,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedCheckVectorId = useMemo(
     () => selectedTick == null
       ? undefined
-      : lastRun?.report.vectors.find((vector) => vector.tick === selectedTick)?.id,
-    [lastRun?.report.vectors, selectedTick]
+      : lastRun?.report?.vectors?.find((vector) => vector.tick === selectedTick)?.id,
+    [lastRun?.report?.vectors, selectedTick]
   );
   const canCreateCheckFromSelection =
     canApplyRunDerivedRepair &&
@@ -4290,7 +4889,43 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       waveformTicks.length,
     ]
   );
-  const runProofIsStale = runEvidenceIsStale;
+  // One authority for "is this evidence current": Project, the status bar and Package read
+  // `deriveVerifyCurrent`; Simulate must not claim CURRENT while they say stale. Simulate may
+  // still add reasons of its own (wrong scenario, stale authored reference), never remove one.
+  const runProofIsStale = runIsStale || runEvidenceIsStale;
+  // The evidence row states what the waveform *is* — separately from the PASS/FAIL
+  // verdict: a run in progress, a replay walking a recorded run, a recorded run
+  // that still describes the current project, or a recorded run whose inputs
+  // changed since (with the changed input named). No timers, no pretence.
+  const evidenceStateWord = useMemo<{
+    kind: 'running' | 'replaying' | 'recorded' | 'stale' | 'none';
+    label: string;
+    detail: string | null;
+  }>(() => {
+    if (runState === 'running') return { kind: 'running', label: 'RUNNING', detail: 'The simulation is executing now.' };
+    if (isPlaying) {
+      return {
+        kind: 'replaying',
+        label: 'REPLAYING',
+        detail: 'Playback is walking the recorded run. The evidence itself is not changing.',
+      };
+    }
+    if (lastRun && runProofIsStale) {
+      return {
+        kind: 'stale',
+        label: 'STALE',
+        detail: runStaleDetail ?? 'The design, stimulus or mapping changed after this run.',
+      };
+    }
+    if (lastRun) {
+      return {
+        kind: 'recorded',
+        label: 'RECORDED · CURRENT',
+        detail: `Recorded ${lastRun.generatedAtIso.replace('T', ' ').slice(0, 19)} UTC; every input it depends on is unchanged.`,
+      };
+    }
+    return { kind: 'none', label: 'NOT RUN', detail: null };
+  }, [isPlaying, lastRun, runProofIsStale, runStaleDetail, runState]);
   const simulationEvidenceSummary = useMemo(
     () => lastRun ? buildSimulationEvidenceSummary(lastRun, runProofIsStale) : null,
     [lastRun, runProofIsStale]
@@ -4328,10 +4963,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : ` ${lastRun.waveform.length} waveform tick${lastRun.waveform.length === 1 ? '' : 's'} recorded.`;
     setRunAnnouncement(`Simulation run ${ordinal}. ${outcome}${detail}`);
   }, [lastRun, totalAssertedCheckCount]);
+  const problemsLedgerCount = useEngineeringProblems(selectProblemCount);
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep the compact signal browser stable beside the primary workspace. */
-      leftDockMode: isNoCircuitTaskFirst ? ('hidden' as const) : ('visible' as const),
+      leftDockMode:
+        isNoCircuitTaskFirst && !(scenarios && scenarios.length > 0) ? ('hidden' as const) : ('visible' as const),
       /** Saved cases and mismatch detail now live in the lower details tray. */
       rightDockMode: ('hidden' as const),
       consoleMode: isNoCircuitTaskFirst
@@ -4340,7 +4977,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           ? ('auto' as const)
           : ('hidden' as const),
     }),
-    [isNoCircuitTaskFirst, sessionSignalsAssertionFailure]
+    [isNoCircuitTaskFirst, scenarios, sessionSignalsAssertionFailure]
   );
 
   useEffect(() => {
@@ -4374,8 +5011,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return {
         tone: 'warn',
         title: 'Browser reloaded — rerun simulation',
-        message:
-          'The previous waveform remains available as stale history. Rerun the saved scenario before trusting it as current evidence.',
+        message: `${runStaleDetail ? `${runStaleDetail} ` : ''}The previous waveform remains available as stale history. Rerun the saved scenario before trusting it as current evidence.`,
         actions: [
           {
             label: 'Rerun simulation',
@@ -4579,6 +5215,191 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return evidence;
   }, [authoredVectors, lastRun, runRows, sessionShowsCompareEvidence, testbenchEvidenceIsStale]);
+  // Field -> canonical run-signal identity, resolved through the run evidence
+  // (normalizationMap / ioRows), not by string containment. See signalIdentity.ts:
+  // the report row "ld0carry" is related to the output field "ld0" because the
+  // evidence states it, and ambiguous fields are surfaced rather than guessed.
+  // The resolver relates each field to a RAW report-row signal (the evidence
+  // normalizationMap speaks in raw keys), so Case Lab reads the raw report rows,
+  // not the alias-canonicalized `runRows`, to keep the two identity spaces aligned.
+  const caseLabReportRows = lastRun?.report.rows ?? [];
+  const caseLabSignalResolver = useMemo(
+    () =>
+      buildFieldSignalResolver({
+        fieldIds: outputFields.map((field) => field.id),
+        evidence: lastRun?.evidence,
+        reportSignals: Array.from(new Set(caseLabReportRows.map((row) => row.signal))),
+      }),
+    [caseLabReportRows, lastRun?.evidence, outputFields]
+  );
+  // The followed signal (selected here or anywhere else) is one Case Lab column;
+  // clicking a column makes that signal the followed one.
+  // Transitions of the followed lane: the ticks at which its value changes.
+  // "‹ Edge" / "Edge ›" step the selected tick between them.
+  const selectedLaneEdges = useMemo(() => {
+    if (!selectedSignal) return [] as number[];
+    const lane = displaySignalTimeline.find((entry) => entry.signal === selectedSignal);
+    if (!lane) return [] as number[];
+    const edges: number[] = [];
+    for (let index = 1; index < lane.values.length; index += 1) {
+      const previous = lane.values[index - 1]?.value ?? '-';
+      const current = lane.values[index]?.value ?? '-';
+      if (current !== previous) edges.push(lane.values[index].tick);
+    }
+    return edges;
+  }, [displaySignalTimeline, selectedSignal]);
+  const previousEdgeTick = useMemo(
+    () => (selectedTick == null ? null : [...selectedLaneEdges].reverse().find((tick) => tick < selectedTick) ?? null),
+    [selectedLaneEdges, selectedTick]
+  );
+  const nextEdgeTick = useMemo(
+    () => (selectedTick == null ? selectedLaneEdges[0] ?? null : selectedLaneEdges.find((tick) => tick > selectedTick) ?? null),
+    [selectedLaneEdges, selectedTick]
+  );
+  const caseLabFocusFieldId = useMemo(() => {
+    if (!selectedSignal) return null;
+    const key = normalizeSignalId(selectedSignal);
+    if (!key) return null;
+    for (const field of outputFields) {
+      if (normalizeSignalId(field.id) === key || normalizeSignalId(field.label ?? '') === key) return field.id;
+      const resolved = caseLabSignalResolver.resolve(field.id);
+      if (resolved.runSignal && normalizeSignalId(resolved.runSignal) === key) return field.id;
+    }
+    return null;
+  }, [caseLabSignalResolver, outputFields, selectedSignal]);
+  const handleCaseLabFocusField = useCallback(
+    (fieldId: string) => {
+      const resolved = caseLabSignalResolver.resolve(fieldId);
+      handleSignalSelect(resolved.runSignal ?? fieldId);
+    },
+    [caseLabSignalResolver, handleSignalSelect]
+  );
+
+  // ── Engineering-object continuity ──────────────────────────────────────
+  // Case selection and signal focus publish to the workbench; selections made
+  // elsewhere (schematic, board) land on the matching case / signal here.
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  const continuityOrigin = studioMode === 'replay' ? 'waveform' : isSequentialRun ? 'timing' : 'cases';
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  // Simulate keys lanes by the normalized label; resolve through the relation the
+  // same way the selection publisher does (run signal, field id, label — exact only).
+  const simRelated = selectedSignal
+    ? relationshipIndex.resolveRunSignal(selectedSignal) ??
+      relationshipIndex.resolveField(selectedSignal) ??
+      relationshipIndex.signals.find(
+        (entry) =>
+          normalizeSignalId(entry.label) === normalizeSignalId(selectedSignal) ||
+          normalizeSignalId(entry.fieldId) === normalizeSignalId(selectedSignal)
+      ) ??
+      null
+    : null;
+  const continuityMountedRef = useRef(false);
+  // The landing below re-runs when the set of lanes changes (a run arrives), not
+  // on every render — otherwise a Design-origin selection would snap the follow
+  // back each time the user moved it here.
+  const timelineLaneKey = useMemo(() => displaySignalTimeline.map((entry) => entry.signal).join('|'), [displaySignalTimeline]);
+  useEffect(() => {
+    if (selectedTick == null || !activeScenarioId) return;
+    // A replaying cursor is not a selection: a tick set by playback (including the
+    // one it stopped on) is never published; the followed object stays what it was.
+    if (isPlaying || autoTickRef.current === selectedTick) return;
+    if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
+    if (restoredTickRef.current === selectedTick && globalSelected?.kind === 'signal' && globalOrigin !== continuityOrigin) return;
+    const next = { kind: 'case-tick' as const, scenarioId: activeScenarioId, tick: selectedTick };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, continuityOrigin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTick, activeScenarioId, isPlaying]);
+  useEffect(() => {
+    if (!selectedSignal) return;
+    if (!continuityMountedRef.current && globalSelected && globalOrigin !== continuityOrigin) return;
+    const laneKey = normalizeSignalId(selectedSignal);
+    const owner = Array.from(caseLabSignalResolver.byField.values()).find(
+      (entry) => entry.runSignal != null && normalizeSignalId(entry.runSignal) === laneKey
+    );
+    const relation =
+      (owner ? relationshipIndex.resolveField(owner.fieldId) : null) ??
+      relationshipIndex.signals.find(
+        (entry) => normalizeSignalId(entry.label) === laneKey || normalizeSignalId(entry.fieldId) === laneKey
+      ) ??
+      null;
+    const fieldId =
+      relation?.fieldId ??
+      owner?.fieldId ??
+      inputFields.concat(outputFields).find((field) => normalizeSignalId(field.id) === laneKey || normalizeSignalId(field.label ?? '') === laneKey)?.id ??
+      null;
+    if (!fieldId) return;
+    const next = {
+      kind: 'signal' as const,
+      fieldId,
+      runSignal: relation?.run?.resolution.runSignal ?? owner?.runSignal ?? null,
+      nodeId: relation?.nodeId ?? owner?.nodeId,
+    };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, continuityOrigin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSignal]);
+  useEffect(() => {
+    continuityMountedRef.current = true;
+    if (!globalSelected || globalOrigin === continuityOrigin) return;
+    if (globalSelected.kind === 'case-tick' && globalSelected.scenarioId === activeScenarioId && globalSelected.tick !== selectedTick) {
+      setSelectedTick(globalSelected.tick);
+    } else if (globalSelected.kind === 'signal') {
+      const resolved = caseLabSignalResolver.resolve(globalSelected.fieldId);
+      const relation = relationshipIndex.resolveField(globalSelected.fieldId);
+      const wanted = resolved.runSignal ?? globalSelected.runSignal ?? globalSelected.fieldId;
+      const candidates = [relation?.label, resolved.runSignal, globalSelected.runSignal, globalSelected.fieldId]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .map((value) => normalizeSignalId(value));
+      const lane =
+        displaySignalTimeline.find((entry) => candidates.includes(normalizeSignalId(entry.signal)))?.signal ??
+        inputFields.concat(outputFields).find((field) => candidates.includes(normalizeSignalId(field.label ?? field.id)))?.id ??
+        wanted;
+      if (normalizeSignalKey(lane) !== normalizeSignalKey(selectedSignal ?? '')) setSelectedSignal(lane);
+    }
+    // Re-applies once the lane set changes (a run arrives), so an incoming signal maps to its real lane.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin, timelineLaneKey]);
+  // Case Lab observed values + per-case verdict, keyed by the resolved identity.
+  const caseLabData = useMemo(() => {
+    const observed: Record<number, Record<string, string>> = {};
+    const verdict: Record<number, StimulusCaseEvidenceState> = {};
+    // Exact (tick, normalized run signal) index — no containment matching.
+    const rowByTickSignal = new Map<string, (typeof caseLabReportRows)[number]>();
+    for (const row of caseLabReportRows) {
+      rowByTickSignal.set(`${row.tick}::${normalizeSignalId(row.signal)}`, row);
+    }
+    const fieldSignalKey = new Map<string, string | null>();
+    for (const field of outputFields) {
+      const resolved = caseLabSignalResolver.resolve(field.id);
+      fieldSignalKey.set(field.id, resolved.runSignal ? normalizeSignalId(resolved.runSignal) : null);
+    }
+    for (const vector of authoredVectors) {
+      const obs: Record<string, string> = {};
+      let anyChecked = false;
+      let anyFail = false;
+      for (const field of outputFields) {
+        const signalKey = fieldSignalKey.get(field.id);
+        const match = signalKey ? rowByTickSignal.get(`${vector.tick}::${signalKey}`) : undefined;
+        if (match?.actual != null && match.actual !== '-') obs[field.id] = match.actual;
+        const authored = (vector.expected ?? {})[field.id];
+        if (match && authored != null) {
+          anyChecked = true;
+          if (match.status === 'fail') anyFail = true;
+        }
+      }
+      observed[vector.tick] = obs;
+      if (!lastRun) verdict[vector.tick] = 'not-run';
+      else if (testbenchEvidenceIsStale) verdict[vector.tick] = 'stale';
+      else if (anyFail) verdict[vector.tick] = 'fail';
+      else if (anyChecked) verdict[vector.tick] = 'pass';
+      else if (Object.keys(obs).length > 0) verdict[vector.tick] = 'observed';
+      else verdict[vector.tick] = 'not-run';
+    }
+    return { observed, verdict };
+  }, [authoredVectors, caseLabReportRows, caseLabSignalResolver, lastRun, outputFields, testbenchEvidenceIsStale]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
@@ -4687,9 +5508,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 Reset: {effectiveClockPolicy.resetBehavior === 'auto-sequence'
                   ? 'reset sequence applied'
                   : effectiveClockPolicy.resetBehavior === 'custom'
-                    ? 'custom reset'
+                    ? 'authored in the Timing lanes'
                     : 'no reset detected'}
               </span>
+              {clockOverrideMode === 'auto' && effectiveClockPolicy.resetSignalName ? (
+                <div className="ide-verify-clock-policy-mode-buttons" role="group" aria-label="Reset with the auto clock" data-testid="ide-verify-reset-mode">
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${effectiveClockPolicy.resetBehavior === 'auto-sequence' ? ' is-active' : ''}`}
+                    aria-pressed={effectiveClockPolicy.resetBehavior === 'auto-sequence'}
+                    onClick={() => handleResetBehaviorChange('auto-sequence')}
+                    data-testid="ide-verify-reset-mode-sequence"
+                    title="The policy asserts the reset at t0 and releases it; the RST lane is generated"
+                  >
+                    Reset at t0
+                  </button>
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${effectiveClockPolicy.resetBehavior === 'custom' ? ' is-active' : ''}`}
+                    aria-pressed={effectiveClockPolicy.resetBehavior === 'custom'}
+                    onClick={() => handleResetBehaviorChange('custom')}
+                    data-testid="ide-verify-reset-mode-authored"
+                    title="Author the reset pulses yourself in the Timing lanes while the clock stays generated"
+                  >
+                    Author reset pulses
+                  </button>
+                </div>
+              ) : null}
               <div className="ide-verify-clock-policy-controls" data-testid="ide-verify-clock-policy-controls">
                 <span className="ide-verify-clock-policy-copy" data-testid="ide-verify-clock-policy-copy">
                   {clockPolicyCopy}
@@ -5113,10 +5958,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       layoutIntent="workbench"
       consoleHasBlocking={sessionSignalsAssertionFailure}
       consoleHasEntries={false}
-      leftDockMode="hidden"
+      leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
       rightDockCanCollapse={false}
-      consoleMode={verifyLayoutPolicy.consoleMode}
+      consoleMode={problemsLedgerCount > 0 ? 'collapsed' : 'hidden'}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
       productSpine={{
@@ -5162,19 +6007,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   : 'No blocking simulation issue selected.',
       }}
       dock={
+        <div className="rb-sim-dock" data-testid="ide-sim-scenario-explorer">
+        {scenarios && scenarios.length > 0 ? (
+          <TestbenchDocumentTabs
+            scenarios={scenarios}
+            activeScenarioId={activeScenarioId ?? null}
+            onSwitch={(id) => onSwitchScenario?.(id)}
+            onCreate={() => onCreateScenario?.()}
+            onDuplicate={() => onDuplicateScenario?.()}
+            onRename={(name) => onRenameScenario?.(name)}
+            onDelete={(id) => onDeleteScenario?.(id)}
+          />
+        ) : (
+          <div className="ide-sim-scenario-empty">
+            <span>Scenarios</span>
+            <strong>No saved scenario yet</strong>
+            <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
+            <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
+              Create scenario
+            </IdeButton>
+          </div>
+        )}
         <section
-          className="ide-verify-left-dock"
+          className="wb-toolwindow rb-sig"
           data-testid="ide-verify-left-dock"
           data-collapsed="false"
         >
           <header
-            className="ide-verify-signal-rail-header"
+            className="wb-toolwindow-header rb-sig-header"
             data-testid="ide-verify-signal-rail-header"
           >
-            <div className="ide-verify-signal-rail-toprow">
-              <div className="ide-verify-signal-rail-title">
+            <div className="rb-sig-toprow">
+              <div className="rb-sig-title">
                 <h3>Signals</h3>
-                <span className="ide-verify-signal-rail-count" data-testid="ide-verify-signal-filter-state">
+                <span className="wb-toolwindow-count rb-sig-count" data-testid="ide-verify-signal-filter-state">
                   {showMismatchOnlySignals
                     ? `${visibleSignalCount} flagged`
                     : showAllSignals
@@ -5182,11 +6048,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       : `${visibleSignalCount} relevant`}
                 </span>
               </div>
-              <div className="ide-verify-signal-rail-actions">
+              <div className="rb-sig-actions">
                 {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
                   <button
                     type="button"
-                    className="ide-verify-signal-rail-action-btn"
+                    className="wb-btn wb-btn--ghost rb-sig-action"
                     onClick={() => {
                       setShowMismatchOnlySignals(false);
                       setShowAllSignals((previous) => !previous);
@@ -5198,7 +6064,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ) : null}
               </div>
             </div>
-            <p className="ide-verify-signal-rail-focus" data-testid="ide-verify-signal-rail-summary">
+            <input
+              className="rb-sig-filter"
+              type="search"
+              value={signalFilter}
+              onChange={(event) => setSignalFilter(event.target.value)}
+              placeholder="Filter signals"
+              aria-label="Filter signals"
+              data-testid="ide-verify-signal-filter"
+            />
+            <p className="rb-sig-focus" data-testid="ide-verify-signal-rail-summary">
               {selectedSignal ? (
                 <>
                   <code>{selectedSignal}</code> active
@@ -5210,40 +6085,54 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </p>
           </header>
-          <div className="ide-signal-list" data-testid="ide-verify-signal-list">
+          <div className="wb-toolwindow-body rb-sig-list" data-testid="ide-verify-signal-list">
             {displaySignalTimeline.length === 0 ? (
               lastRun ? (
                 <p className="ide-copy">No signal data in the last run — check circuit mapping.</p>
               ) : null
             ) : (
               (['Inputs', 'Outputs', 'Internal'] as const).map((group) => (
-                <section key={group} className="ide-verify-signal-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
-                  <header className="ide-design-subheader ide-verify-signal-group-header">
-                    <strong className="ide-verify-signal-group-label">{group}</strong>
+                <section key={group} className="rb-sig-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
+                  <header className="rb-sig-group-header">
+                    <strong className="rb-sig-group-label">{group}</strong>
                     <span className="ide-copy">{groupedVisibleSignals[group].length}</span>
                   </header>
-                  <div className="ide-verify-group-body">
+                  <div className="rb-sig-group-body">
                       {groupedVisibleSignals[group].length === 0 ? (
                         <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
                       ) : (
-                        groupedVisibleSignals[group].map((signalRow) => (
+                        groupedVisibleSignals[group]
+                          .filter((signalRow) => !signalFilter.trim() || signalRow.signal.toLowerCase().includes(signalFilter.trim().toLowerCase()))
+                          .map((signalRow) => (
                           <div
                             key={signalRow.signal}
-                            className="ide-verify-signal-entry"
+                            className="rb-sig-entry"
                             onMouseEnter={() => handleSignalHover(signalRow.signal)}
                             onMouseLeave={() => handleSignalHover(null)}
                           >
                             <button
-                              className={`ide-signal-row ${selectedSignal === signalRow.signal ? 'is-active' : ''}`}
+                              className={`rb-sig-row${selectedSignal === signalRow.signal ? ' is-active' : ''}`}
                               type="button"
+                              aria-pressed={selectedSignal === signalRow.signal}
                               onClick={() => handleSignalSelect(signalRow.signal)}
+                              onKeyDown={(event) => {
+                                if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                                  event.preventDefault();
+                                  moveLane(signalRow.signal, event.key === 'ArrowUp' ? -1 : 1);
+                                }
+                              }}
+                              title="Select this lane · Alt+Up/Down moves it"
                               data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
                             >
                               {signalRow.signal}
                             </button>
+                            <span className="rb-sig-move" role="group" aria-label={`Move ${signalRow.signal}`}>
+                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, -1)} aria-label={`Move ${signalRow.signal} up`} data-testid={`ide-verify-signal-up-${toTestId(signalRow.signal)}`}>▲</button>
+                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, 1)} aria-label={`Move ${signalRow.signal} down`} data-testid={`ide-verify-signal-down-${toTestId(signalRow.signal)}`}>▼</button>
+                            </span>
                             {hasSessionFailureEvidence &&
                             failingRows.some((row) => row.signal === signalRow.signal) ? (
-                              <span className="ide-verify-signal-entry-badge">Mismatch</span>
+                              <span className="rb-sig-badge">Mismatch</span>
                             ) : null}
                           </div>
                         ))
@@ -5254,9 +6143,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             )}
           </div>
         </section>
+        </div>
       }
       inspector={null}
-      console={null}
+      console={<ProblemsPanel origin="bottom-panel" />}
     >
       <div
         className="ide-verify-run-announcer"
@@ -5268,7 +6158,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {runAnnouncement}
       </div>
       <IdePanel
-        className="ide-verify-panel"
+        className="rb-sim-panel"
         testId="ide-verify-panel"
       >
         <VerifyHeaderRegion>
@@ -5314,37 +6204,53 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             }
           />
         ) : null}
-        <div className="ide-surface-command-stack ide-verify-chrome-stack">
+        <div className="rb-sim-command-stack">
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
         <VerifyCommandBar
-          isCompareMode={nextRunIsCompare && !gradingBlockedByDesign}
+          isCompareMode={nextRunUsesAssertions}
           onSetObserve={handleSetObserveMode}
           onSetCompare={handleSetCompareMode}
-          compareAvailable={totalExpectedCaseCount > 0 && !gradingBlockedByDesign}
+          compareAvailable={compareAvailable}
           compareUnavailableReason={
             gradingBlockedByDesign
               ? 'Repair the structural Design issue before running Compare.'
-              : undefined
+              : totalExpectedCaseCount === 0
+                ? starterExpectationsWereDiscarded
+                  ? 'The starter\u2019s expected outputs were cleared when you changed the circuit.'
+                  : 'Author at least one expected output to compare against.'
+                : undefined
           }
           onRun={runVerification}
           runLabel={
-            gradingBlockedByDesign
-              ? 'Run Observe'
+            nextRunUsesAssertions && !compareAvailable
+              ? 'Compare blocked'
               : runProofIsStale
                 ? 'Rerun simulation'
                 : compactCommandRunLabel
           }
-          runDisabled={runState === 'running'}
+          runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
           runPulsing={readyDraftCanRun}
           needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
           onAuthorExpectedOutputs={handleEditExpectedOutputs}
           workspaceMode={studioMode}
-          onWorkspaceModeChange={setStudioMode}
+          liveIoActive={studioMode === 'bench'}
+          onToggleLiveIo={toggleLiveIo}
           configuredCheckCount={totalAssertedCheckCount}
           hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
         />
         )}
+        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && starterExpectationsWereDiscarded ? (
+          <IdeCallout
+            tone="info"
+            title="This project is now yours, and so are its checks"
+            testId="ide-verify-starter-detached-notice"
+          >
+            Changing the circuit detached it from its starter, so the starter&rsquo;s expected
+            outputs no longer describe what it does and were cleared. Fill in the expected cells
+            you want graded, or undo the Design change to get the starter&rsquo;s back.
+          </IdeCallout>
+        ) : null}
         {primaryStatus && !compactPrimaryStatusAction && !(
           forceRunStale || isRunStale || (isTestbenchStale && !hasStaleAuthoredReference)
         ) ? (
@@ -5367,78 +6273,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </div>
         </VerifyHeaderRegion>
 
-        {!isNoCircuitTaskFirst ? (
-          <section
-            className="ide-verify-signal-shelf"
-            data-testid="ide-verify-signal-shelf"
-            aria-label="Circuit signals"
-          >
-            <header>
-              <div>
-                <span>Signals</span>
-                <strong>
-                  {showMismatchOnlySignals
-                    ? `${visibleSignalCount} flagged`
-                    : showAllSignals
-                      ? `${signalTimeline.length} visible`
-                      : `${visibleSignalCount} relevant`}
-                </strong>
-              </div>
-              {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
-                <button
-                  type="button"
-                  aria-pressed={showAllSignals}
-                  onClick={() => {
-                    setShowMismatchOnlySignals(false);
-                    setShowAllSignals((previous) => !previous);
-                  }}
-                  data-testid="ide-verify-show-all-signals-shelf"
-                >
-                  {showAllSignals ? 'Show relevant' : 'Show all'}
-                </button>
-              ) : null}
-            </header>
-            <div className="ide-verify-signal-shelf-groups" data-testid="ide-verify-signal-shelf-list">
-              {(['Inputs', 'Outputs', 'Internal'] as const).map((group) => {
-                const rows = groupedVisibleSignals[group];
-                if (rows.length === 0) return null;
-                return (
-                  <section key={group} className={`ide-verify-signal-shelf-group is-${group.toLowerCase()}`}>
-                    <span>{group}</span>
-                    <div>
-                      {rows.map((signalRow) => {
-                        const signalPresentation = getVerifySignalPresentation(
-                          signalRow.signal,
-                          [...inputFields, ...outputFields]
-                        );
-                        const logicalName = signalPresentation.logicalName;
-                        const physicalName = signalPresentation.physicalName;
-                        const mismatch = hasSessionFailureEvidence &&
-                          failingRows.some((row) => row.signal === signalRow.signal);
-                        return (
-                          <button
-                            key={signalRow.signal}
-                            className={selectedSignal === signalRow.signal ? 'is-active' : ''}
-                            type="button"
-                            aria-pressed={selectedSignal === signalRow.signal}
-                            onClick={() => handleSignalSelect(signalRow.signal)}
-                            onMouseEnter={() => handleSignalHover(signalRow.signal)}
-                            onMouseLeave={() => handleSignalHover(null)}
-                            data-testid={`ide-verify-shelf-signal-${toTestId(signalRow.signal)}`}
-                          >
-                            <strong>{logicalName}</strong>
-                            {physicalName ? <small>{physicalName}</small> : null}
-                            {mismatch ? <em>Mismatch</em> : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
         {guidedLabTask ? (
           <section className="ide-guided-lab-card" data-testid="ide-verify-guided-full-adder-truth-table">
@@ -5492,35 +6326,46 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {drawerOpen && hasSessionFailureEvidence && verifyHint && (
-          <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
-            {verifyHint}
-          </IdeCallout>
-        )}
+        {drawerOpen
+          && hasSessionFailureEvidence
+          && (verifyHint || isStarterScenario || (mappingComplete !== false && onGoToExport)) && (
+          <details className="ide-verify-failure-context" data-testid="ide-verify-failure-context">
+            <summary className="ide-verify-failure-context__summary">
+              More about this failure
+            </summary>
+            <div className="ide-verify-failure-context__body">
+              {verifyHint ? (
+                <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
+                  {verifyHint}
+                </IdeCallout>
+              ) : null}
 
-        {drawerOpen && hasSessionFailureEvidence && isStarterScenario && (
-          <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
-            <span>
-              <strong>Ran with starter vectors.</strong>{' '}
-              {isSequentialRun
-                ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
-                : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
-            </span>
-          </IdeCallout>
-        )}
+              {isStarterScenario ? (
+                <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
+                  <span>
+                    <strong>Ran with starter vectors.</strong>{' '}
+                    {isSequentialRun
+                      ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
+                      : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
+                  </span>
+                </IdeCallout>
+              ) : null}
 
-        {drawerOpen && hasSessionFailureEvidence && mappingComplete !== false && onGoToExport && (
-          <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
-            <span className="ide-verify-export-available-label">
-              Your exported HDL is still available.{' '}
-              {isStarterScenario
-                ? 'Export remains advisory until you author a real comparison scenario.'
-                : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
-            </span>
-            <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
-              Go to Export →
-            </IdeButton>
-          </div>
+              {mappingComplete !== false && onGoToExport ? (
+                <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
+                  <span className="ide-verify-export-available-label">
+                    Your exported HDL is still available.{' '}
+                    {isStarterScenario
+                      ? 'Export remains advisory until you author a real comparison scenario.'
+                      : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
+                  </span>
+                  <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
+                    Go to Export →
+                  </IdeButton>
+                </div>
+              ) : null}
+            </div>
+          </details>
         )}
 
         {sessionSignalsAssertionFailure && oracleApplied && (
@@ -5602,42 +6447,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </section>
         )}
         <div
-          className="ide-verify-lab-frame"
+          className="rb-sim-lab-frame"
           data-testid="ide-verify-lab-frame"
           data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
         >
         <div
-          className="ide-verify-lab-grid"
+          ref={labGridRef}
+          className="rb-sim-lab-grid"
           data-testid="ide-verify-lab-grid"
           data-stimulus-layout="stable"
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
+          data-evidence-collapsed={evidenceCollapsed ? 'true' : undefined}
+          data-evidence-maximized={deckMaximized ?? undefined}
+          data-evidence-fraction={Math.round(evidenceFraction * 100)}
+          style={{ '--rb-sim-evidence-fr': `${(evidenceFraction * 100).toFixed(2)}%` } as React.CSSProperties}
         >
-        <aside className="ide-sim-scenario-explorer" data-testid="ide-sim-scenario-explorer" aria-label="Scenario explorer">
-          {scenarios && scenarios.length > 0 ? (
-            <TestbenchDocumentTabs
-              scenarios={scenarios}
-              activeScenarioId={activeScenarioId ?? null}
-              onSwitch={(id) => onSwitchScenario?.(id)}
-              onCreate={() => onCreateScenario?.()}
-              onDuplicate={() => onDuplicateScenario?.()}
-              onRename={(name) => onRenameScenario?.(name)}
-              onDelete={(id) => onDeleteScenario?.(id)}
-            />
-          ) : (
-            <div className="ide-sim-scenario-empty">
-              <span>Scenarios</span>
-              <strong>No saved scenario yet</strong>
-              <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
-              <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
-                Create scenario
-              </IdeButton>
-            </div>
-          )}
-        </aside>
+        {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
+        {studioMode !== 'replay' ? (
         <VerifyStimulusRegion
-          className="ide-verify-testbench-primary"
+          className="rb-sim-primary"
           data-panel-state="stable"
           data-work-priority="primary"
         >
@@ -5803,7 +6633,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {studioMode === 'bench' ? (
           <ManualBench
             onOpenVirtualBoard={onGoToHardware}
-            onOpenAnalyzer={lastRun ? () => setStudioMode('replay') : undefined}
+            onOpenAnalyzer={lastRun ? openWaveformDocument : undefined}
             onAddToSequence={onAppendScenarioStep}
           />
         ) : studioMode === 'testbench' ? (
@@ -5811,23 +6641,59 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             source={generatedTestbenchSource}
           />
-        ) : (
-          <ScenarioComposerWorkbench
+        ) : isSequentialRun ? (
+          <TimingLab
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             vectors={authoredVectors}
             inputFields={stimulusPanelInputFields}
             outputFields={outputFields}
             selectedTick={selectedTick}
-            lens={studioMode === 'checks' ? 'checks' : 'scenario'}
+            lens="scenario"
             onSelectTick={handleStimulusSelectedTickChange}
             onVectorsChange={onVectorsChange}
             caseEvidenceByTick={testbenchCaseEvidenceByTick}
             observedValuesByTick={testbenchObservedValuesByTick}
+            clockFieldIds={clockSignalNames}
+            runCycles={clockOverrideMode === 'auto' ? clockRunCycles : null}
+            onRunCyclesChange={handleClockRunCyclesChange}
+            generatedFieldIds={timingGeneratedFieldIds}
+            generatedValueAt={timingGeneratedValueAt}
+            generatedNote={timingGeneratedNote}
+          />
+        ) : (
+          <CaseLab
+            runHistory={runHistory}
+            inputFields={stimulusPanelInputFields}
+            outputFields={outputFields}
+            vectors={authoredVectors}
+            observedByTick={caseLabData.observed}
+            caseEvidenceByTick={caseLabData.verdict}
+            selectedTick={selectedTick}
+            onSelectCase={handleStimulusSelectedTickChange}
+            onSetExpected={handleCaseSetExpected}
+            onSetExpectedMany={handleCaseSetExpectedMany}
+            focusFieldId={caseLabFocusFieldId}
+            onFocusField={handleCaseLabFocusField}
+            onGenerateExhaustive={handleAutoGenerateVectors}
+            onAddCase={onVectorsChange ? handleCaseAdd : undefined}
+            onDuplicateCase={onVectorsChange ? handleCaseDuplicate : undefined}
+            onDeleteCase={onVectorsChange ? handleCaseDelete : undefined}
+            onRun={runVerification}
+            runLabel={compactCommandRunLabel}
+            runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
+            vectorsAreAutoGenerated={vectorsAreAutoGenerated}
+            autoVectorNoticeDismissed={autoVectorBannerDismissed}
+            onDismissAutoVectorNotice={handleDismissAutoVectorBanner}
+            isUsingFallbackSignals={
+              !(mappedSignals?.some((s) => s.direction === 'in')) &&
+              !(mappedInputs && mappedInputs.length > 0)
+            }
+            onGoToHardware={onGoToHardware}
           />
         )}
-        {studioMode !== 'bench' ? (
-        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-table-disclosure">
-          <summary>Open detailed event table</summary>
+        {studioMode !== 'bench' && isSequentialRun ? (
+        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-generators-disclosure">
+          <summary>Stimulus generators (sweep, hold, pulse) and the full event editor</summary>
           <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
@@ -5877,13 +6743,85 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           stimulusAssist={stimulusAssist}
           observedValuesByTick={testbenchObservedValuesByTick}
           caseEvidenceByTick={testbenchCaseEvidenceByTick}
-          showExpectedLanes={studioMode === 'checks'}
+          showExpectedLanes={totalAssertedCheckCount > 0}
           />
         </details>
         ) : null}
         </VerifyStimulusRegion>
+        ) : null}
+
+        {studioMode !== 'replay' ? (
+        <div className="rb-sim-deck-split" data-testid="ide-verify-deck-split">
+          <div
+            role="separator"
+            tabIndex={0}
+            className="rb-sim-deck-handle"
+            data-testid="ide-verify-deck-handle"
+            aria-label={`Resize the evidence deck below the ${isSequentialRun ? 'timing' : 'cases'} table`}
+            aria-orientation="horizontal"
+            aria-valuemin={Math.round(SIMULATE_EVIDENCE_FRACTION_MIN * 100)}
+            aria-valuemax={Math.round(SIMULATE_EVIDENCE_FRACTION_MAX * 100)}
+            aria-valuenow={Math.round(evidenceFraction * 100)}
+            aria-valuetext={`Evidence deck ${Math.round(evidenceFraction * 100)}% of the workspace`}
+            aria-disabled={deckMaximized !== null ? 'true' : undefined}
+            title="Drag to resize · Arrow keys ±2% · Shift ±10% · Enter resets"
+            onPointerDown={beginDeckResize}
+            onKeyDown={handleDeckKey}
+            onDoubleClick={resetDeckLayout}
+          />
+          <div className="rb-sim-deck-tools" role="group" aria-label="Evidence deck layout">
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-collapse"
+              aria-pressed={evidenceCollapsed}
+              onClick={toggleDeckCollapsed}
+            >
+              {evidenceCollapsed ? 'Expand evidence' : 'Collapse evidence'}
+            </button>
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-maximize-cases"
+              aria-pressed={deckMaximized === 'cases'}
+              onClick={() => toggleDeckMaximized('cases')}
+            >
+              {deckMaximized === 'cases' ? 'Restore split' : `${isSequentialRun ? 'Timing' : 'Cases'} only`}
+            </button>
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-maximize-waveform"
+              aria-pressed={deckMaximized === 'waveform'}
+              onClick={() => toggleDeckMaximized('waveform')}
+            >
+              {deckMaximized === 'waveform' ? 'Restore split' : 'Evidence only'}
+            </button>
+            <button
+              type="button"
+              className="rb-sim-deck-tool"
+              data-testid="ide-verify-deck-reset"
+              onClick={resetDeckLayout}
+              disabled={deckLayoutIsDefault}
+            >
+              Reset layout
+            </button>
+          </div>
+        </div>
+        ) : null}
 
         <VerifyWaveformRegion>
+          {evidenceCollapsed && studioMode !== 'replay' ? (
+            <div className="rb-sim-evidence-strip" data-testid="ide-verify-evidence-strip">
+              <span>
+                Evidence deck collapsed
+                {lastRun ? ` · ${lastRun.status === 'pass' ? 'PASS' : 'FAIL'} · ${lastRun.scenarioName}` : ' · no run yet'}
+              </span>
+              <button type="button" className="rb-sim-deck-tool" data-testid="ide-verify-evidence-expand" onClick={expandDeck}>
+                Expand
+              </button>
+            </div>
+          ) : null}
           {isDraftSession ? (
             <VerifyWaveformPlaceholder
               inputNames={stimulusPanelInputFields.map((f) => f.label ?? f.id)}
@@ -5926,25 +6864,37 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 />
               ) : null}
               centerPanel={(
-            <div className="ide-verify-console-frame">
-            <div className="ide-verify-instrument-deck">
+            <div className="rb-wave-frame">
+            <div className="rb-wave-deck">
             {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
             {lastRun ? (
               <VerifyResultsSummary
                 kind={
                   runProofIsStale
                     ? 'stale'
-                    : 'observe-done'
+                    : sessionShowsAssertionMatch
+                      ? 'pass'
+                      : sessionSignalsAssertionFailure
+                        ? 'fail'
+                        : 'observe-done'
                 }
                 headline={
                   runProofIsStale
                     ? 'Simulation evidence is stale'
-                    : simulationEvidenceSummary?.simulationLabel ?? 'Simulation complete'
+                    : sessionShowsAssertionMatch
+                      ? lastRun.qualification === 'incomplete-mapping'
+                        ? 'Compare passed — outputs match (some pins unmapped)'
+                        : 'Compare passed — outputs match expectations'
+                      : sessionSignalsAssertionFailure
+                        ? 'Compare failed — outputs differ from expectations'
+                        : simulationEvidenceSummary?.simulationLabel ?? 'Simulation complete'
                 }
                 subline={
                   runProofIsStale
                     ? 'The circuit, scenario, or checks changed. Run the current scenario before using this trace.'
-                    : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
+                    : sessionShowsAssertionMatch || sessionSignalsAssertionFailure
+                      ? `Scenario: ${lastRun.scenarioName}`
+                      : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
                 }
                 guidanceItems={
                   !runProofIsStale && sessionSignalsAssertionFailure
@@ -5956,7 +6906,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   list.push({
                     id: 'cases',
                     label: 'Run cases',
-                    value: String(lastRun.report.vectors.length),
+                    // A run restored from an older saved project may carry a report without
+                    // its vector list. Crashing the whole results header over a missing count
+                    // is worse than showing the count it can prove.
+                    value: String(lastRun.report?.vectors?.length ?? 0),
                     tone: 'neutral',
                   });
                   if (!runProofIsStale && sessionShowsCompareEvidence) {
@@ -5977,19 +6930,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     id: 'ticks',
                     label: 'Run ticks',
                     value: String(runTickCount),
-                    tone: 'neutral',
+                    tone: 'quiet',
                   });
                   list.push({
                     id: 'wave-samples',
                     label: 'Wave samples',
                     value: String(lastRun.waveform.length),
-                    tone: 'neutral',
+                    tone: 'quiet',
                   });
                   if (!runProofIsStale && typeof commandBarCoverageLabel === 'string' && commandBarCoverageLabel.trim().length > 0) {
                     list.push({
                       id: 'coverage',
                       label: 'Coverage',
-                      value: commandBarCoverageLabel.trim(),
+                      value: commandBarCoverageLabel.trim().replace(/\s*coverage$/i, ''),
                       tone: 'neutral',
                     });
                   }
@@ -6006,132 +6959,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 {repairPanel}
               </section>
             ) : null}
-            {lastRun ? (
-              <div
-                className="ide-verify-results-actions"
-                data-testid="ide-vcb-utilities-panel"
-                aria-label="Run inspection and repair actions"
-              >
-                {!sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs) ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={handleGoToDesignFromVerify}
-                    testId="ide-verify-inspect-design"
-                  >
-                    Open in Design
-                  </IdeButton>
-                ) : null}
-                <button
-                  type="button"
-                  className={`ide-vcb-analysis-toggle${drawerOpen ? ' is-open' : ''}`}
-                  onClick={() => setDrawerOpen((previous) => !previous)}
-                  data-testid="ide-verify-drawer-toggle"
-                  aria-expanded={drawerOpen}
-                  aria-pressed={drawerOpen}
-                >
-                  <span className="ide-vcb-analysis-label">
-                    {drawerOpen ? 'Close run inspector' : 'Inspect run'}
-                  </span>
-                  {!drawerOpen && analysisDrawerHint ? (
-                    <span className="ide-vcb-analysis-hint" data-testid="ide-verify-drawer-hint">
-                      {analysisDrawerHint}
-                    </span>
-                  ) : null}
-                </button>
-                {hasSessionFailureEvidence ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={handleEditExpectedOutputs}
-                    testId="ide-verify-run-proof-edit-vectors"
-                  >
-                    Edit expected outputs
-                  </IdeButton>
-                ) : null}
-                {compactPrimaryStatusAction ? (
-                  <IdeButton
-                    tone={compactPrimaryStatusAction.tone === 'primary' ? 'secondary' : compactPrimaryStatusAction.tone}
-                    onClick={compactPrimaryStatusAction.onClick}
-                    testId={compactPrimaryStatusAction.testId}
-                  >
-                    Board & Constraints
-                  </IdeButton>
-                ) : null}
-              </div>
-            ) : null}
-            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
-              {/* ── Oscilloscope instrument header ── */}
-              <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
-                <div className="ide-verify-scope-copy">
-                  <span
-                    className="ide-verify-scope-label"
-                    data-testid="ide-verify-scope-label"
-                    title={
-                      isSequentialRun
-                        ? 'Observed output viewport. One tick is one sampled clock step. Teal traces are steady evidence, red marks failing assertions, and blue marks the selected tick.'
-                        : 'Observed output viewport. One tick is one simulation step. Teal traces are steady evidence, red marks failing assertions, and blue marks the selected tick.'
-                    }
-                  >
-                    Waveform truth
-                  </span>
-                </div>
-                <div className="ide-verify-scope-header-right">
-                  {selectedScopeCaseLabel ? (
-                    <span className="ide-verify-scope-case-chip" data-testid="ide-verify-scope-case">
-                      {selectedScopeCaseLabel}
-                    </span>
-                  ) : null}
-                  {selectedCaseTickLabel ? (
-                    <code className="ide-verify-scope-tick">{selectedCaseTickLabel}</code>
-                  ) : null}
-                  {selectedSignal ? (
-                    <span className="ide-verify-scope-signal-chip" data-testid="ide-verify-scope-signal">
-                      {selectedSignal}
-                    </span>
-                  ) : null}
-                  <button
-                    ref={createCheckTriggerRef}
-                    type="button"
-                    className="ide-verify-create-check-trigger"
-                    disabled={!canCreateCheckFromSelection}
-                    onClick={() => setCreateCheckDialogOpen(true)}
-                    data-testid="ide-verify-create-check-from-value"
-                    title={
-                      canCreateCheckFromSelection
-                        ? 'Create one optional check from the selected output value.'
-                        : 'Select an output lane and an event with an observed 0 or 1.'
-                    }
-                  >
-                    Create check from this value…
-                  </button>
-                  <button
-                    type="button"
-                    className="ide-verify-probe-trigger"
-                    disabled={!selectedSignal || !onToggleProbe}
-                    onClick={() => {
-                      if (!selectedSignal) return;
-                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
-                    }}
-                    data-testid="ide-verify-toggle-selected-probe"
-                    aria-pressed={selectedSignalIsProbed}
-                    title={
-                      selectedSignal
-                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
-                        : 'Select a signal lane to watch it in this scenario.'
-                    }
-                  >
-                    {selectedSignalIsProbed ? 'Unwatch signal' : 'Watch signal'}
-                  </button>
-                  {isSequentialRun && (
-                    <span className="ide-verify-scope-seq-badge" data-testid="ide-verify-seq-badge">
-                      Sequential
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
-                <div className="ide-verify-waveform-primary" data-testid="ide-verify-waveform-primary">
+            <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
+              {/* One command bar: case stepping, tick range, scrubber, failures, zoom, rows, cursors, check/watch. */}
+              <div className="rb-wave-cmd" data-testid="ide-verify-waveform-cmd" role="toolbar" aria-label="Waveform">
+              <div className="rb-wave-bar" data-testid="ide-verify-waveform-bar">
+                <div className="rb-wave-primary" data-testid="ide-verify-waveform-primary">
                 {canStepThroughCases ? (
-                  <div className="ide-verify-step-controls" data-testid="ide-verify-step-controls">
+                  <div className="rb-wave-group" data-testid="ide-verify-step-controls">
                     <IdeButton
                       tone={isStepMode ? 'secondary' : 'ghost'}
                       onClick={() => setIsStepMode((previous) => !previous)}
@@ -6145,11 +6979,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {isStepMode ? 'Step cases on' : 'Step cases'}
                     </IdeButton>
                     {isStepMode ? (
-                      <div className="ide-verify-step-bar" data-testid="ide-verify-step-bar">
+                      <div className="rb-wave-step-bar" data-testid="ide-verify-step-bar">
                         <IdeButton tone="secondary" onClick={goToPrevStep} disabled={totalSteps <= 1} testId="ide-verify-step-prev">
                           ← Prev
                         </IdeButton>
-                        <span className="ide-verify-step-position" data-testid="ide-verify-step-position">
+                        <span className="rb-wave-step-position" data-testid="ide-verify-step-position">
                           {selectedCasePositionLabel}
                         </span>
                         <IdeButton tone="secondary" onClick={goToNextStep} disabled={totalSteps <= 1} testId="ide-verify-step-next">
@@ -6164,15 +6998,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ) : null}
                   </div>
                 ) : null}
-                <div className="ide-verify-waveform-transport" data-testid="ide-verify-waveform-transport">
+                <div className="rb-wave-transport" data-testid="ide-verify-waveform-transport">
                 {/* Center: Zoom + Row density */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-center">
-                  <span className="ide-verify-zoom-label ide-copy">Tick range</span>
+                <div className="rb-wave-group">
                   {(['all', 'fail', 'window'] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"
-                      className={`ide-verify-zoom-btn ${tickZoom === mode ? 'is-active' : ''}`}
+                      className={`rb-wave-zoom${tickZoom === mode ? ' is-active' : ''}`}
                       onClick={() => {
                         setTickZoom(mode);
                         if (mode === 'window') setTickWindowCenter(selectedTick);
@@ -6184,10 +7017,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ))}
                 </div>
 
+                <div className="rb-wave-group" role="group" aria-label="Bus radix" data-testid="ide-verify-radix">
+                  {(['bin', 'hex', 'dec'] as const).map((radix) => (
+                    <button
+                      key={radix}
+                      type="button"
+                      className={`rb-wave-zoom${waveformRadix === radix ? ' is-active' : ''}`}
+                      aria-pressed={waveformRadix === radix}
+                      onClick={() => setWaveformRadix(radix)}
+                      data-testid={`ide-verify-radix-${radix}`}
+                      title={radix === 'bin' ? 'Bus values as bits' : radix === 'hex' ? 'Bus values in hexadecimal' : 'Bus values in decimal'}
+                    >
+                      {radix === 'bin' ? 'Bin' : radix === 'hex' ? 'Hex' : 'Dec'}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`rb-wave-zoom${showExpectedOverlay ? ' is-active' : ''}`}
+                    aria-pressed={showExpectedOverlay}
+                    onClick={() => setShowExpectedOverlay((previous) => !previous)}
+                    data-testid="ide-verify-expected-overlay"
+                    title="Draw the saved expected value over the observed trace where they differ"
+                  >
+                    Expected
+                  </button>
+                </div>
+
                 {/* Right: Tick scrubber + advanced tools */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-right">
+                <div className="rb-wave-group rb-wave-group--right">
                   {allWaveformTicks.length > 0 && selectedTick !== null ? (
-                    <label className="ide-verify-scrubber-field" data-testid="ide-verify-tick-nav">
+                    <label className="rb-wave-scrubber" data-testid="ide-verify-tick-nav">
                       <input
                         type="range"
                         min={0}
@@ -6198,6 +7057,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           const nextIndex = Number(event.target.value);
                           const nextTick = allWaveformTicks[nextIndex];
                           if (typeof nextTick === 'number') {
+                            stopPlayback();
                             setSelectedTick(nextTick);
                           }
                         }}
@@ -6208,53 +7068,210 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </code>
                     </label>
                   ) : null}
+                  {lastRun && allWaveformTicks.length > 1 ? (
+                    <div className="rb-wave-play" data-testid="ide-verify-playback" role="group" aria-label="Playback">
+                      <IdeButton
+                        tone={isPlaying ? 'secondary' : 'ghost'}
+                        onClick={togglePlayback}
+                        testId="ide-verify-play"
+                        title={isPlaying ? 'Stop playback' : 'Play the run tick by tick'}
+                        aria-pressed={isPlaying}
+                      >
+                        {isPlaying ? '■ Stop' : '▶ Play'}
+                      </IdeButton>
+                      <select
+                        className="rb-wave-play__speed"
+                        value={String(playSpeed)}
+                        onChange={(event) => setPlaySpeed(Number(event.target.value) as 0.5 | 1 | 2)}
+                        aria-label="Playback speed"
+                        data-testid="ide-verify-play-speed"
+                      >
+                        <option value="0.5">0.5×</option>
+                        <option value="1">1×</option>
+                        <option value="2">2×</option>
+                      </select>
+                      <button
+                        type="button"
+                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playLoop ? ' is-on' : ''}`}
+                        onClick={() => setPlayLoop((value) => !value)}
+                        aria-pressed={playLoop}
+                        title={cursorA != null && cursorB != null ? 'Loop the A–B range' : 'Loop all ticks'}
+                        data-testid="ide-verify-play-loop"
+                      >
+                        Loop
+                      </button>
+                      <button
+                        type="button"
+                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playStopAtFailure ? ' is-on' : ''}`}
+                        onClick={() => setPlayStopAtFailure((value) => !value)}
+                        aria-pressed={playStopAtFailure}
+                        title="Stop at the first mismatch"
+                        data-testid="ide-verify-play-stop-at-failure"
+                      >
+                        Stop at fail
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
                 </div>
                 </div>
 
-                {/* Fail/meta navigation intentionally owns a separate row. */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
+                {liveReadout ? (
+                  <div
+                    className={`rb-wave-readout${isPlaying ? ' is-playing' : ''}${liveReadout.failures.length > 0 ? ' has-failure' : ''}`}
+                    data-testid="ide-verify-live-readout"
+                    role="status"
+                    aria-live="off"
+                  >
+                    <span
+                      className={`rb-wave-evidence-state is-${evidenceStateWord.kind}`}
+                      data-testid="ide-verify-evidence-state"
+                      data-state={evidenceStateWord.kind}
+                      title={evidenceStateWord.detail ?? undefined}
+                    >
+                      <strong>{evidenceStateWord.label}</strong>
+                      {evidenceStateWord.kind === 'stale' && evidenceStateWord.detail ? (
+                        <small data-testid="ide-verify-evidence-state-reason">{evidenceStateWord.detail}</small>
+                      ) : null}
+                    </span>
+                    <span className="rb-wave-readout__pos">
+                      <code>t{selectedTick}</code>
+                      <span className="rb-wave-readout__progress" aria-label="Progress">
+                        <span style={{ transform: `scaleX(${liveReadout.total > 1 ? liveReadout.index / (liveReadout.total - 1) : 1})` }} />
+                      </span>
+                      <small>{liveReadout.index + 1} / {liveReadout.total}</small>
+                    </span>
+                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-changed">
+                      <small>changed</small>
+                      {liveReadout.changedInputs.length === 0 ? (
+                        <code className="is-muted">{liveReadout.index === 0 ? 'initial' : 'none'}</code>
+                      ) : (
+                        liveReadout.changedInputs.slice(0, 8).map((entry) => (
+                          <code key={entry.label}>{entry.label}={entry.value}</code>
+                        ))
+                      )}
+                      {liveReadout.changedInputs.length > 8 ? <small>+{liveReadout.changedInputs.length - 8}</small> : null}
+                    </span>
+                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-outputs">
+                      <small>observed</small>
+                      {liveReadout.outputs.slice(0, 8).map((entry) => (
+                        <code key={entry.signal} className={entry.signal === selectedSignal ? 'is-followed' : undefined}>
+                          {entry.signal}={entry.value}
+                        </code>
+                      ))}
+                      {liveReadout.outputs.length > 8 ? <small>+{liveReadout.outputs.length - 8}</small> : null}
+                    </span>
+                    {liveReadout.failures.length > 0 ? (
+                      <span className="rb-wave-readout__group rb-wave-readout__fail" data-testid="ide-verify-live-failure">
+                        <small>mismatch</small>
+                        {liveReadout.failures.slice(0, 3).map((entry) => (
+                          <code key={entry.signal}>{entry.signal} expected {entry.expected} got {entry.actual}</code>
+                        ))}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {/* Edge navigation: the followed lane's transitions. */}
+                <div className="rb-wave-group rb-wave-edges" data-testid="ide-verify-edge-nav" aria-label="Transitions of the followed signal">
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => { if (previousEdgeTick != null) selectTickManually(previousEdgeTick); }}
+                    disabled={previousEdgeTick == null}
+                    testId="ide-verify-edge-prev"
+                    title={selectedSignal ? `Previous transition of ${selectedSignal}${previousEdgeTick != null ? ` (t${previousEdgeTick})` : ''}` : 'Select a signal to step its transitions'}
+                  >
+                    ‹ Edge
+                  </IdeButton>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={() => { if (nextEdgeTick != null) selectTickManually(nextEdgeTick); }}
+                    disabled={nextEdgeTick == null}
+                    testId="ide-verify-edge-next"
+                    title={selectedSignal ? `Next transition of ${selectedSignal}${nextEdgeTick != null ? ` (t${nextEdgeTick})` : ''}` : 'Select a signal to step its transitions'}
+                  >
+                    Edge ›
+                  </IdeButton>
+                  {selectedSignal && selectedLaneEdges.length > 0 ? (
+                    <span className="rb-wave-edges__count ide-copy" data-testid="ide-verify-edge-count">
+                      {selectedLaneEdges.length} edge{selectedLaneEdges.length === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </div>
+                {/* The failure focus. One row that answers what failed, where, what was
+                    expected, what happened, which of how many this is, how to reach the
+                    others, and how to leave for the circuit that caused it. */}
+                <div className="rb-wave-group rb-fail-focus" data-testid="ide-verify-fail-nav">
                   {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
                     <>
-                      <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
-                        First mismatch
-                      </IdeButton>
+                      <span className="rb-fail-focus-verdict" data-testid="ide-verify-fail-focus-verdict">
+                        Fail
+                      </span>
                       {selectedFailureCase && (
                         <span className="ide-verify-fail-nav-summary" data-testid="ide-verify-fail-nav-summary">
                           <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
+                          {selectedFailureRepairCaseLabel && (
+                            <span className="ide-verify-fail-nav-summary__case" data-testid="ide-verify-fail-focus-case">
+                              {selectedFailureRepairCaseLabel}
+                            </span>
+                          )}
                           <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
                           <span className="ide-verify-fail-nav-summary__values ide-copy">
                             expected <code>{selectedFailureCase.expected}</code> · got <code>{selectedFailureCase.actual}</code>
                           </span>
                         </span>
                       )}
-                      {selectedFailurePositionLabel && (
-                        <span className="ide-verify-fail-nav-position ide-copy">
-                          {selectedFailurePositionLabel}
-                        </span>
-                      )}
-                      <span
-                        className="ide-verify-fail-nav-waveform-hint ide-copy"
-                        data-testid="ide-verify-fail-nav-waveform-hint"
-                      >
-                        Same names appear as lanes in the chart under this bar.
+                      <span className="rb-fail-focus-nav">
+                        <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
+                          First
+                        </IdeButton>
+                        <IdeButton
+                          tone="ghost"
+                          onClick={goToPrevFail}
+                          disabled={failTicksSorted.length < 2}
+                          testId="ide-verify-fail-nav-prev"
+                        >
+                          Previous
+                        </IdeButton>
+                        <IdeButton
+                          tone="ghost"
+                          onClick={goToNextFail}
+                          disabled={failTicksSorted.length < 2}
+                          testId="ide-verify-fail-nav-next"
+                        >
+                          Next
+                        </IdeButton>
+                        {selectedFailurePositionLabel && (
+                          <span className="ide-verify-fail-nav-position ide-copy">
+                            {selectedFailurePositionLabel}
+                          </span>
+                        )}
                       </span>
+                      <IdeButton
+                        tone="secondary"
+                        onClick={handleGoToDesignFromVerify}
+                        testId="ide-verify-fail-focus-trace"
+                      >
+                        Trace in Design
+                      </IdeButton>
                     </>
                   ) : (
-                    <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
-                      {signalTimeline.length} signals · {allWaveformTicks.length} ticks · {runState.toUpperCase()}
-                      {displaySignalTimeline.length > 4 ? ' · scroll lanes' : ''}
-                    </span>
+                    null
                   )}
                 </div>
               </div>
+              {/* View and measurement controls are reference tools, not evidence. They held a
+                  permanent row directly under the waveform they serve, which in a failure state
+                  was showing 97px of the 448px it needs. They open on request; the evidence
+                  keeps the room. */}
               {allWaveformTicks.length > 0 && (
-                <div className="ide-verify-waveform-tools-panel" data-testid="ide-verify-waveform-tools-panel">
-                  <div className="ide-verify-waveform-tools-section">
-                    <span className="ide-verify-waveform-tools-label ide-copy">View</span>
+                <details className="rb-wave-tools-disclosure" data-testid="ide-verify-waveform-tools">
+                <summary className="rb-wave-tools-summary">View and measure</summary>
+                <div className="rb-wave-tools" data-testid="ide-verify-waveform-tools-panel">
+                  <div className="rb-wave-tools-section">
+                    <span className="rb-wave-tools-label">View</span>
                     <button
                       type="button"
-                      className="ide-verify-zoom-btn"
+                      className="rb-wave-zoom"
                       onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
                       data-testid="ide-verify-zoom-out"
                       title="Zoom out (narrower ticks)"
@@ -6264,7 +7281,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      className="ide-verify-zoom-btn"
+                      className="rb-wave-zoom"
                       onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
                       data-testid="ide-verify-zoom-in"
                       title="Zoom in (wider ticks)"
@@ -6274,19 +7291,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      className="ide-verify-zoom-btn"
+                      className="rb-wave-zoom"
                       onClick={fitWaveformView}
                       data-testid="ide-verify-zoom-fit"
                       title="Fit all ticks in view"
                     >
                       Fit
                     </button>
-                    <span className="ide-verify-waveform-tools-label ide-copy">Rows</span>
+                    <span className="rb-wave-tools-label">Rows</span>
                     {(['small', 'normal', 'large'] as const).map((d) => (
                       <button
                         key={d}
                         type="button"
-                        className={`ide-verify-zoom-btn ${waveformDensity === d ? 'is-active' : ''}`}
+                        className={`rb-wave-zoom ${waveformDensity === d ? 'is-active' : ''}`}
                         onClick={() => setWaveformDensity(d)}
                         data-testid={`ide-verify-density-${d}`}
                         aria-label={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
@@ -6297,9 +7314,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ))}
                   </div>
                   {selectedTick !== null && (
-                    <div className="ide-verify-waveform-tools-section ide-verify-waveform-tools-section--markers">
-                      <span className="ide-verify-waveform-tools-label ide-copy">Markers</span>
-                      <span className="ide-verify-waveform-tools-readouts">
+                    <div className="rb-wave-tools-section">
+                      <span className="rb-wave-tools-label">Markers</span>
+                      <span className="rb-wave-tools-readouts">
                         {cursorA !== null && (
                           <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
                         )}
@@ -6312,54 +7329,110 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           </code>
                         )}
                       </span>
-                      <div className="ide-verify-cursor-controls" data-testid="ide-verify-cursor-controls">
+                      <div className="rb-wave-tools-section" data-testid="ide-verify-cursor-controls">
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => setCursorFromSelected('A')}
                           data-testid="ide-verify-set-cursor-a"
                         >
-                          Set A
+                          A
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => setCursorFromSelected('B')}
                           data-testid="ide-verify-set-cursor-b"
                         >
-                          Set B
+                          B
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => jumpToCursor('A')}
                           disabled={cursorA === null}
                           data-testid="ide-verify-jump-cursor-a"
                         >
-                          Jump A
+                          Go A
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={() => jumpToCursor('B')}
                           disabled={cursorB === null}
                           data-testid="ide-verify-jump-cursor-b"
                         >
-                          Jump B
+                          Go B
                         </button>
                         <button
                           type="button"
-                          className="ide-verify-zoom-btn"
+                          className="rb-wave-zoom"
                           onClick={clearCursors}
                           data-testid="ide-verify-clear-cursors"
                         >
-                          Clear AB
+                          Clear
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
+                </details>
               )}
+
+                <div className="rb-wave-group rb-wave-group--tail" data-testid="ide-verify-waveform-tail">
+                  <button
+                    ref={createCheckTriggerRef}
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    disabled={!canCreateCheckFromSelection}
+                    onClick={() => setCreateCheckDialogOpen(true)}
+                    data-testid="ide-verify-create-check-from-value"
+                    title={
+                      canCreateCheckFromSelection
+                        ? 'Create one optional check from the selected output value.'
+                        : 'Select an output lane and an event with an observed 0 or 1.'
+                    }
+                  >
+                    Check…
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    disabled={!selectedSignal || !onToggleProbe}
+                    onClick={() => {
+                      if (!selectedSignal) return;
+                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
+                    }}
+                    data-testid="ide-verify-toggle-selected-probe"
+                    aria-pressed={selectedSignalIsProbed}
+                    title={
+                      selectedSignal
+                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
+                        : 'Select a signal lane to watch it in this scenario.'
+                    }
+                  >
+                    {selectedSignalIsProbed ? 'Unwatch' : 'Watch'}
+                  </button>
+                  {lastRun ? (
+                    <button
+                      type="button"
+                      className={`wb-btn wb-btn--ghost rb-wave-drawer-toggle${drawerOpen ? ' is-open' : ''}`}
+                      onClick={() => setDrawerOpen((previous) => !previous)}
+                      data-testid="ide-verify-drawer-toggle"
+                      aria-expanded={drawerOpen}
+                      aria-pressed={drawerOpen}
+                      title={analysisDrawerHint ?? undefined}
+                    >
+                      {drawerOpen ? 'Close inspector' : 'Inspect run'}
+                    </button>
+                  ) : null}
+                  {isSequentialRun ? (
+                    <span className="rb-wave-seq-badge" data-testid="ide-verify-seq-badge">
+                      Sequential
+                    </span>
+                  ) : null}
+                </div>
+              </div>
 
               {/* No-trace diagnostic — shown when run produced no waveform data */}
               {verifyPreflightDiagnostics.length > 0 && (
@@ -6419,17 +7492,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
 
               <div
-                className="ide-waveform-outer ide-verify-waveform-frame"
+                className="rb-wave-canvas"
                 data-testid="ide-verify-waveform-preview"
                 data-verify-trace-only={isTraceOnly ? '1' : '0'}
               >
                 <BusWordLanesPanel
                   lanes={busWordLanes}
                   selectedTick={selectedTick}
-                  onSelectTick={setSelectedTick}
+                  onSelectTick={selectTickManually}
                 />
                 <div
-                  className="ide-verify-waveform-scroll"
+                  className="rb-wave-scroll"
                   ref={waveformScrollRef}
                   onWheel={handleWaveformWheel}
                   data-layout-mode={layoutMode}
@@ -6463,22 +7536,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   </div>
                 ) : null}
                 <WaveformViewer
-                  signals={displaySignalTimeline}
+                  signals={waveformLanes}
                   ticks={zoomedTicks}
                   failTicks={sessionShowsCompareEvidence ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
                   failingSignalKeys={sessionShowsCompareEvidence ? failingSignalKeys : new Set<string>()}
                   selectedTick={selectedTick}
                   cursorA={cursorA}
                   cursorB={cursorB}
+                  changedSignals={changedSignalsAtTick}
+                  expectedValues={expectedValuesByLane}
+                  showExpected={showExpectedOverlay}
+                  expandedBuses={expandedBusSet}
+                  onToggleBus={toggleBus}
                   pinnedSignals={pinnedSignals}
-                  onSelectTick={setSelectedTick}
+                  onSelectTick={selectTickManually}
                   onSelectSignal={handleSignalSelect}
                   rowHeight={ROW_H_MAP[waveformDensity]}
                   tickWidth={tickWidth}
-                  signalMeta={signalMetaMap}
+                  signalMeta={signalMetaForViewer}
                   isSequential={isSequentialRun}
                   clockSignals={clockSignals}
-                  signalGroups={laneGroupBySignal}
+                  signalGroups={laneGroupsForViewer}
                   onHoverSignal={handleSignalHover}
                   selectedSignal={selectedSignal}
                   onTogglePinSignal={(signal) =>
@@ -6537,7 +7615,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 {selectedTick !== null && lastRun && !isStepMode && displaySignalTimeline.length > 0 && (
                   <TickReadoutStrip
                     tick={selectedTick}
-                    signals={displaySignalTimeline}
+                    signals={waveformLanes}
                     signalGroups={laneGroupBySignal}
                   />
                 )}
@@ -7055,7 +8133,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     rows={truthRows}
                     isSequential={isSequentialRun}
                     selectedTick={selectedTick}
-                    onSelectTick={setSelectedTick}
+                    onSelectTick={selectTickManually}
                     onModeChange={setTruthTableMode}
                     emptyReason={truthTableEmptyReason}
                     combosRows={comboRows}
@@ -7077,7 +8155,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       rows={truthRows}
                       isSequential={false}
                       selectedTick={selectedTick}
-                      onSelectTick={setSelectedTick}
+                      onSelectTick={selectTickManually}
                       onModeChange={setTruthTableMode}
                       emptyReason={truthTableEmptyReason}
                       combosRows={comboRows}
@@ -7100,7 +8178,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>}
           </div>}
         </VerifyWaveformRegion>
-        <aside className="ide-sim-context-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
+        <aside className="rb-sim-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
           {studioMode === 'testbench' ? (
             <>
               <header><span>Source inspector</span><strong>testbench.vhd</strong></header>
@@ -7120,9 +8198,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </>
           ) : (
             <>
-              <header><span>Inspector</span><strong>{selectedSignal ?? (selectedAuthoredEvent ? `Event ${selectedAuthoredEventIndex + 1}` : 'Select an event')}</strong></header>
+              <header><span>Inspector</span><strong>{selectedSignal ?? (selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : 'Select an event')}</strong></header>
               <dl>
-                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? `Event ${selectedAuthoredEventIndex + 1}` : '—'}</dd></div>
+                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : '—'}</dd></div>
                 <div><dt>Time</dt><dd>{selectedAuthoredEvent ? `t${selectedAuthoredEvent.tick}` : '—'}</dd></div>
                 <div><dt>Input changes</dt><dd>{selectedEventChangedInputs.length > 0 ? selectedEventChangedInputs.map((field) => field.label).join(', ') : 'None at this event'}</dd></div>
                 <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? '—'}</dd></div>
@@ -7130,24 +8208,42 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div><dt>Check state</dt><dd>{failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : lastRun ? 'No failure at this event' : 'Not evaluated'}</dd></div>
                 <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
               </dl>
-              <section>
-                <span>Selection guidance</span>
-                <p>{selectedSignal ? 'Move the cursor to inspect this lane at another event, create a check, or trace its circuit path.' : 'Select a waveform lane and event to inspect its observed value.'}</p>
-              </section>
+              {/* With a lane selected the property grid above already answers what the student
+                  needs: the event, the time, what changed, the value, the checks and whether
+                  it failed. Restating "move the cursor to inspect this lane" underneath it was
+                  instruction where evidence belongs. The prompt survives only for the empty
+                  state, which is the one moment it tells the student something new. */}
+              {selectedSignal ? null : (
+                <section>
+                  <span>Nothing selected</span>
+                  <p>Select a waveform lane and event to inspect its observed value.</p>
+                </section>
+              )}
               <IdeButton
                 tone="secondary"
                 onClick={() => {
                   const disclosure = document.querySelector<HTMLDetailsElement>('[data-testid="ide-scenario-table-disclosure"]');
-                  if (disclosure) disclosure.open = true;
-                  disclosure?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  if (disclosure) {
+                    disclosure.open = true;
+                    disclosure.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    return;
+                  }
+                  const row = document.querySelector<HTMLElement>(
+                    selectedAuthoredEvent ? `[data-testid="ide-case-lab-row-${selectedAuthoredEvent.tick}"]` : '[data-testid="ide-case-lab"]'
+                  );
+                  row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  row?.querySelector<HTMLButtonElement>('[data-testid^="ide-case-lab-exp-"]')?.focus({ preventScroll: true });
                 }}
                 disabled={!selectedAuthoredEvent}
                 testId="ide-sim-inspector-edit-event"
               >
-                Edit in detailed table
+                {isSequentialRun ? 'Edit in detailed table' : 'Edit in cases'}
               </IdeButton>
               <IdeButton tone="secondary" onClick={() => setCreateCheckDialogOpen(true)} disabled={!canCreateCheckFromSelection} testId="ide-sim-inspector-create-check">Create check from this value</IdeButton>
               <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} disabled={!selectedSignal && !selectedFailureCase} testId="ide-sim-inspector-trace-design">Trace in Design</IdeButton>
+              {simRelated ? (
+                <RelatedMenu relation={simRelated} activeScenarioId={activeScenarioId ?? null} hasRun={simRelated.run !== null} origin={continuityOrigin} testId="ide-sim-related" />
+              ) : null}
             </>
           )}
         </aside>
@@ -7164,7 +8260,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onClose={closeCreateCheckDialog}
             body={
               <section className="ide-verify-create-check-dialog">
-                <p className="ide-verify-create-check-event">At Event {selectedAuthoredEventIndex + 1} (t{selectedTick}):</p>
+                <p className="ide-verify-create-check-event">At t{selectedTick}:</p>
                 <div className="ide-verify-create-check-value" data-testid="ide-verify-create-check-preview">
                   <strong>{selectedCheckSignal}</strong>
                   <span>observed</span>
@@ -7204,16 +8300,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 : null
           }
         />
-        {/* ── Imported waveform Analyzer: external VCD evidence, replayed but never
-             executed. Independent of the native verify run and its modes. ── */}
-        <VcdAnalyzerPanel
-          waveform={importedWaveform}
-          config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
-          onImportVcd={onImportVcd ?? (() => {})}
-          onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
-          onClear={onClearImportedWaveform ?? (() => {})}
-          isActiveProvider={activeSimProvider === 'imported-vcd'}
-        />
+        {/* Imported waveform Analyzer: an advanced, external-evidence feature. The panel
+            decides its own weight — with nothing loaded it collapses to a single compact
+            row carrying the "Load .vcd" affordance, and only occupies the workspace once a
+            file is actually imported. It must render either way: this is the one place a
+            .vcd can be brought in, and gating it behind an already-imported waveform made
+            the whole imported-evidence capability unreachable. */}
+        {(
+          <VcdAnalyzerPanel
+            waveform={importedWaveform}
+            config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
+            onImportVcd={onImportVcd ?? (() => {})}
+            onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
+            onClear={onClearImportedWaveform ?? (() => {})}
+            isActiveProvider={activeSimProvider === 'imported-vcd'}
+          />
+        )}
       </IdePanel>
     </IdeSurfaceLayout>
   );
@@ -7286,20 +8388,23 @@ function normalizeVectors(
     .sort((left, right) => left.tick - right.tick);
 }
 
+/**
+ * Field identity: the canonical id is the project io-row id, byte for byte.
+ * Vectors written back to the runtime must carry the row's own key — the
+ * runtime canonicalizes by a punctuation-stripping alias rule, so a rewritten
+ * id (`carry-out` → `carry_out`) is pruned as an unknown output and the
+ * authored expectation is silently lost. Normalized forms are only ever used
+ * for comparison (see `normalizeFieldId`), never as a stored key.
+ */
 function normalizeVerifyFields(
   seed: Array<{ id: string; label?: string; pin?: string }>
 ): VerifyVectorDraftInput[] {
-  const normalized = seed
-    .map((entry) => ({
-      id: normalizeFieldId(entry.id),
-      label: (entry.label ?? entry.id).trim() || entry.id,
-      pin: entry.pin,
-    }))
-    .filter((entry) => entry.id.length > 0);
-
   const deduped = new Map<string, VerifyVectorDraftInput>();
-  for (const entry of normalized) {
-    if (!deduped.has(entry.id)) deduped.set(entry.id, entry);
+  for (const entry of seed) {
+    const id = entry.id.trim();
+    const key = normalizeFieldId(id);
+    if (!key || deduped.has(key)) continue;
+    deduped.set(key, { id, label: (entry.label ?? id).trim() || id, pin: entry.pin });
   }
   return Array.from(deduped.values());
 }
@@ -7309,7 +8414,7 @@ function buildVerifyFieldAliasMap(
   seed: Array<{ id: string; label?: string; pin?: string; nodeId?: string }>
 ): Map<string, string> {
   const ownersByAlias = new Map<string, Set<string>>();
-  const validIds = new Set(fields.map((field) => field.id));
+  const canonicalByKey = new Map(fields.map((field) => [normalizeFieldId(field.id), field.id] as const));
 
   const register = (canonicalId: string, ...candidates: Array<string | undefined>) => {
     for (const candidate of candidates) {
@@ -7326,8 +8431,8 @@ function buildVerifyFieldAliasMap(
   }
 
   for (const entry of seed) {
-    const canonicalId = normalizeFieldId(entry.id);
-    if (!validIds.has(canonicalId)) continue;
+    const canonicalId = canonicalByKey.get(normalizeFieldId(entry.id));
+    if (!canonicalId) continue;
     register(
       canonicalId,
       entry.id,
@@ -8074,6 +9179,81 @@ function formatTickWindowReason(input: {
   }
   return `Showing ${shownTicks.length} ticks for local context.`;
 }
+
+type WaveformRadix = 'bin' | 'hex' | 'dec';
+
+/** Format a binary word (MSB first) in the chosen radix. Non-binary bits yield 'X'. */
+function formatBusValue(bits: string, radix: WaveformRadix): string {
+  if (bits.length === 0) return '-';
+  if (!/^[01]+$/.test(bits)) return bits.split('').every((bit) => bit === '-') ? '-' : 'X';
+  if (radix === 'bin') return bits;
+  const value = Number.parseInt(bits, 2);
+  if (radix === 'dec') return String(value);
+  return value.toString(16).toUpperCase().padStart(Math.ceil(bits.length / 4), '0');
+}
+
+const BUS_MEMBER_PATTERN = /^(.*?)(?:\[(\d+)\]|[_-](\d+))$/;
+
+/**
+ * Fold indexed scalar lanes of one direction (SUM[0]..SUM[3], sum_0..sum_3) into a bus
+ * lane, MSB first. Collapsed buses hide their bits; expanded ones list them underneath.
+ * Lanes that are not part of a bus pass through unchanged, in their original order.
+ */
+function composeBusLanes(
+  lanes: WaveformSignalRow[],
+  directionByKey: Map<string, 'in' | 'out'>,
+  radix: WaveformRadix,
+  expanded: Set<string>
+): WaveformSignalRow[] {
+  const groups = new Map<string, Array<{ lane: WaveformSignalRow; bit: number }>>();
+  for (const lane of lanes) {
+    const match = BUS_MEMBER_PATTERN.exec(lane.signal.trim());
+    if (!match) continue;
+    const bit = Number.parseInt(match[2] ?? match[3] ?? '', 10);
+    if (!Number.isFinite(bit)) continue;
+    const direction = directionByKey.get(normalizeFieldId(lane.signal)) ?? 'internal';
+    const key = `${direction}:${match[1].trim().toLowerCase()}`;
+    const entries = groups.get(key) ?? [];
+    entries.push({ lane, bit });
+    groups.set(key, entries);
+  }
+  const busByMember = new Map<string, { name: string; members: WaveformSignalRow[]; width: number; bits: number[] }>();
+  for (const entries of groups.values()) {
+    if (entries.length < 2) continue;
+    const sorted = [...entries].sort((left, right) => right.bit - left.bit);
+    const base = BUS_MEMBER_PATTERN.exec(sorted[0].lane.signal.trim())?.[1]?.trim() ?? sorted[0].lane.signal;
+    const name = `${base}[${sorted[0].bit}:${sorted[sorted.length - 1].bit}]`;
+    const bus = { name, members: sorted.map((entry) => entry.lane), width: sorted.length, bits: sorted.map((entry) => entry.bit) };
+    for (const entry of sorted) busByMember.set(entry.lane.signal, bus);
+  }
+  const out: WaveformSignalRow[] = [];
+  const emitted = new Set<string>();
+  for (const lane of lanes) {
+    const bus = busByMember.get(lane.signal);
+    if (!bus) {
+      out.push(lane);
+      continue;
+    }
+    if (emitted.has(bus.name)) continue;
+    emitted.add(bus.name);
+    const tickCount = bus.members[0].values.length;
+    const values: Array<{ tick: number; value: string }> = [];
+    for (let index = 0; index < tickCount; index += 1) {
+      const tick = bus.members[0].values[index]?.tick ?? index;
+      const bits = bus.members.map((member) => member.values[index]?.value ?? '-').join('');
+      values.push({ tick, value: formatBusValue(bits, radix) });
+    }
+    out.push({ signal: bus.name, values, kind: 'bus', width: bus.width, members: bus.members.map((member) => member.signal) });
+    if (expanded.has(bus.name)) {
+      for (const member of bus.members) out.push({ ...member, memberOf: bus.name });
+    }
+  }
+  return out;
+}
+
+/** Smallest usable heights for the two panes of the lab grid, in CSS pixels. */
+const SIMULATE_EVIDENCE_MIN_PX = 120;
+const SIMULATE_CASES_MIN_PX = 160;
 
 function resolveVerifyLayoutMode(width?: number, height?: number): VerifyLayoutMode {
   const nextWidth =

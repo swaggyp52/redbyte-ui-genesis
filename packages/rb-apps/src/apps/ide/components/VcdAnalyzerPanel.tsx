@@ -77,6 +77,47 @@ export const VcdAnalyzerPanel: React.FC<VcdAnalyzerPanelProps> = ({
 
   const showError = !!parseError || (!!waveform && waveform.signals.length === 0);
 
+  // Native default: with no imported waveform (and no error), the imported-VCD
+  // apparatus collapses to a single compact affordance so it never dominates a
+  // native project. It expands to the full three-zone Analyzer only once a VCD
+  // is actually loaded.
+  if (!waveform && !showError) {
+    return (
+      <section
+        className="ide-vcd-analyzer ide-vcd-analyzer--compact"
+        data-testid="ide-vcd-analyzer"
+        data-active-provider="false"
+        data-compact="true"
+        aria-label="Imported waveform (external, optional)"
+      >
+        <div className="ide-vcd-analyzer-compact" data-testid="ide-vcd-analyzer-compact">
+          <span className="ide-vcd-analyzer-provider" data-testid="ide-vcd-analyzer-provider">
+            Provider: Imported VCD
+          </span>
+          <span className="ide-vcd-analyzer-compact-note">
+            Optional external waveform evidence — replayed, never executed.
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".vcd,.txt,text/plain"
+            hidden
+            data-testid="ide-vcd-analyzer-file-input"
+            onChange={handleFileSelected}
+          />
+          <button
+            type="button"
+            className="ide-vcd-analyzer-load"
+            data-testid="ide-vcd-analyzer-load"
+            onClick={openFilePicker}
+          >
+            Load .vcd file
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className={`ide-vcd-analyzer${isActiveProvider ? '' : ' is-inactive-provider'}`}
@@ -355,7 +396,26 @@ const AnalyzerBody: React.FC<AnalyzerBodyProps> = ({ waveform, config, sourceNam
                 <td className="ide-vcd-analyzer-measure-value" data-testid={`ide-vcd-analyzer-measure-value-${measurement.key}`}>
                   {measurement.formatted}
                 </td>
-                <td>{measurement.radix}</td>
+                {/* The per-signal radix control used to live only in the SIGNALS list, which is
+                    capped at SIGNAL_RENDER_CAP rows. A student who pinned a bus from a large
+                    dump and then cleared the filter could still see it measured here but could
+                    no longer change how it reads. Measurements is where a pinned signal lives,
+                    so the control belongs here too - same handler, same options. */}
+                <td>
+                  <select
+                    className="ide-vcd-analyzer-radix"
+                    data-testid={`ide-vcd-analyzer-measure-radix-${measurement.key}`}
+                    value={measurement.radix}
+                    onChange={(event) => setRadix(measurement.key, event.target.value as VcdRadix)}
+                    aria-label={`Radix for ${measurement.name}`}
+                  >
+                    {VCD_RADIXES.map((radix) => (
+                      <option key={radix} value={radix}>
+                        {radix}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td>{measurement.changeCount}</td>
               </tr>
             ))}

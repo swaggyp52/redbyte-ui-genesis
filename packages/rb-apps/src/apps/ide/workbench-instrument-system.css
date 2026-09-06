@@ -1,0 +1,1147 @@
+/* RedByte Workbench Instrument System
+   ─────────────────────────────────────────────────────────────────────────────
+   The visual system of the expert engineering workbench. One owner for the
+   application frame (command bar, workspace rail, document host, status bar)
+   and the shared instrument primitives every workspace composes from
+   (toolbar, tool window, tree row, data table, property grid, bottom-panel
+   tabs, empty state). Loaded after unified-workbench-v3.css; consumes the
+   --rb-* palette from product-system-v3.css and declares --wb-* geometry.
+
+   Constitution: substantial, calm, dense-where-useful, desktop. Thin neutral
+   separators. No shadows on ordinary controls (overlays only). Radius 2–5px.
+   One selection accent. No gradients, glows, pills-as-status, eyebrows,
+   cards around scalar facts. No !important.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root[data-redbyte-mode='ide'] {
+  /* ── geometry ──────────────────────────────────────────────────────────────
+     Every one of these is a box built to hold one line of text, so each is
+     expressed in the same units the text is. They were absolute pixels, which is
+     why raising text size collided the application bar and clipped the
+     Observe/Compare control: the type doubled and its containers did not. At the
+     default 16px root every value below is identical to the pixel size it
+     replaces, so the 100% appearance does not move. Spacing and radius stay in
+     pixels on purpose - a wider gap is not what a reader needs at 200%, room for
+     the words is. */
+  --wb-cmdbar-h: 2rem;              /* 32px */
+  --wb-status-h: 1.375rem;          /* 22px */
+  --wb-rail-w: 3.5rem;              /* 56px */
+  --wb-tabstrip-h: 1.875rem;        /* 30px */
+  --wb-toolbar-h: 1.875rem;         /* 30px */
+  --wb-toolwindow-header-h: 1.75rem;/* 28px */
+  --wb-row-h: 1.625rem;             /* 26px */
+  --wb-row-h-dense: 1.5rem;         /* 24px */
+  --wb-control-h: 1.5rem;           /* 24px */
+  --wb-control-h-lg: 1.75rem;       /* 28px */
+  --wb-indent: 0.875rem;            /* 14px */
+  --wb-space-1: 4px;
+  --wb-space-2: 8px;
+  --wb-space-3: 12px;
+  --wb-space-4: 16px;
+  --wb-radius: 3px;
+  --wb-radius-lg: 5px;
+
+  /* type */
+  --wb-font-ui: var(--rb-font-ui);
+  --wb-font-mono: var(--rb-font-mono);
+  /* The workbench scale is the product scale. It used to be a second, slightly different
+     set of numbers, which is how labels ended up at 11px next to labels at 12px doing the
+     same job. Every step now points at redbyte-type.css. */
+  --wb-text-xs: var(--rb-text-meta);
+  --wb-text-sm: var(--rb-text-meta);
+  --wb-text-md: var(--rb-text-dense);
+  --wb-text-lg: var(--rb-text-body);
+  --wb-text-title: var(--rb-text-title);
+
+  /* surfaces + separators (light) */
+  --wb-bg: var(--rb-app-bg);
+  --wb-surface: var(--rb-shell);
+  --wb-surface-2: var(--rb-surface-2);
+  --wb-surface-3: var(--rb-surface-3);
+  --wb-border: var(--rb-border-subtle);
+  --wb-border-strong: var(--rb-border-default);
+  --wb-text: var(--rb-text-primary);
+  --wb-text-2: var(--rb-text-secondary);
+  --wb-text-3: var(--rb-text-muted);
+
+  /* interaction */
+  --wb-accent: var(--rb-action);
+  --wb-accent-text: #ffffff;
+  --wb-accent-bg: color-mix(in srgb, var(--rb-action) 10%, transparent);
+  --wb-accent-bg-strong: color-mix(in srgb, var(--rb-action) 18%, transparent);
+  --wb-hover-bg: color-mix(in srgb, var(--rb-text-primary) 6%, transparent);
+  --wb-active-bg: color-mix(in srgb, var(--rb-text-primary) 10%, transparent);
+  --wb-focus: var(--rb-focus);
+  --wb-brand: var(--rb-brand-red);
+
+  /* semantic state (fg / bg) */
+  --wb-ok: var(--rb-state-success);
+  --wb-ok-bg: var(--rb-state-success-bg);
+  --wb-warn: var(--rb-state-warning);
+  --wb-warn-text: var(--rb-warning-text);
+  --wb-warn-bg: var(--rb-state-warning-bg);
+  --wb-err: var(--rb-state-danger);
+  --wb-err-bg: var(--rb-state-danger-bg);
+  --wb-ext: #6d4fb3;
+  --wb-ext-bg: #f1ecfb;
+
+  /* dark instrument planes (canvas, waveform, code) */
+  --wb-plane: var(--rb-canvas-dark);
+  --wb-plane-2: var(--rb-canvas-dark-panel);
+  --wb-plane-grid: var(--rb-canvas-grid);
+  --wb-plane-text: #d6dde8;
+  --wb-plane-text-2: #8b97a8;
+  --wb-plane-border: rgba(150, 170, 196, 0.22);
+
+  --wb-overlay-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  /* layered frame — RedByte industrial light: graphite frame, cool tool windows,
+     calm document frame, off-white engineering paper */
+  --wb-frame-bg: #262c36;
+  --wb-frame-bg-2: #323a47;
+  --wb-frame-border: #3d4654;
+  --wb-frame-text: #e8ecf2;
+  --wb-frame-text-2: #b3bcc9;
+  --wb-frame-text-3: #808b9a;
+  --wb-rail-bg: #2c333f;
+  --wb-tool-bg: #eef1f5;
+  --wb-tool-header-bg: #e5e9ef;
+  --wb-doc-bg: #e9ecf1;
+  /* Three planes, three values. Paper is the document the student works on, surface is
+     a panel resting on it, surface-2 a nested well inside a panel. They used to be two
+     values for three roles, so nothing receded and nothing came forward. */
+  --wb-paper: #f2f4f7;
+  --wb-surface: #ffffff;
+  --wb-surface-2: #f7f9fb;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'],
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] {
+  --wb-accent-bg: color-mix(in srgb, var(--rb-action) 20%, transparent);
+  --wb-accent-bg-strong: color-mix(in srgb, var(--rb-action) 30%, transparent);
+  --wb-hover-bg: color-mix(in srgb, #ffffff 7%, transparent);
+  --wb-active-bg: color-mix(in srgb, #ffffff 12%, transparent);
+  --wb-ext: #a58cf0;
+  --wb-ext-bg: #2a2440;
+  --wb-overlay-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --wb-frame-bg: #12161c;
+  --wb-frame-bg-2: #1c222b;
+  --wb-frame-border: #2a323d;
+  --wb-frame-text: #e6eaf0;
+  --wb-frame-text-2: #a9b2bf;
+  --wb-frame-text-3: #74808f;
+  --wb-rail-bg: #171c23;
+  --wb-tool-bg: #1a1f27;
+  --wb-tool-header-bg: #1f252e;
+  --wb-doc-bg: #161a20;
+  --wb-paper: #1d222a;
+}
+
+/* ── Application frame ─────────────────────────────────────────────────────── */
+
+.ide-root {
+  grid-template-rows: var(--wb-cmdbar-h) minmax(0, 1fr) var(--wb-status-h);
+  grid-template-columns: minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+  font: var(--wb-text-lg) / 1.4 var(--wb-font-ui);
+  color: var(--wb-text);
+  background: var(--wb-bg);
+}
+
+.ide-root > .wb-cmdbar { grid-row: 1; }
+.ide-root > .wb-body { grid-row: 2; }
+.ide-root > .wb-status { grid-row: 3; }
+
+.ide-root .ide-autosave-banner {
+  position: absolute;
+  z-index: 60;
+  top: calc(var(--wb-cmdbar-h) + var(--wb-space-2));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  padding: 6px 12px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: var(--wb-overlay-shadow);
+  font-size: var(--wb-text-sm);
+  transform: translateX(-50%);
+}
+.ide-root .ide-autosave-banner button {
+  min-height: var(--wb-control-h);
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font-size: var(--wb-text-sm);
+}
+
+/* Command bar ───────────────────────────────────────────────────────────── */
+
+.ide-root .wb-cmdbar {
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  min-width: 0;
+  height: var(--wb-cmdbar-h);
+  padding: 0 var(--wb-space-2);
+  border-bottom: 1px solid var(--wb-frame-border);
+  color: var(--wb-frame-text);
+  background: var(--wb-frame-bg);
+}
+.ide-root .wb-cmdbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 4px 0 2px;
+  color: var(--wb-frame-text);
+  font-size: var(--wb-text-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+/* Measured 0px wide at 200% text: the rule declared a width but no flex, so as a flex item
+   under pressure the mark was squeezed out of the row entirely. In compact chrome the mark is
+   the only identity left, so it is incompressible and sized in the reader's text. */
+.ide-root .wb-cmdbar-brand svg { flex: none; width: 1.125em; height: 1.125em; color: var(--wb-brand); }
+/* Compact chrome: the wordmark and the separators go first, because neither is one of the
+   six things that must survive. The mark stays, and the brand's accessible name is on the
+   container, so nothing is lost to a screen reader. */
+.ide-root .wb-cmdbar.is-compact .wb-cmdbar-wordmark,
+.ide-root .wb-cmdbar.is-compact .wb-cmdbar-sep { display: none; }
+.ide-root .wb-cmdbar.is-compact .wb-cmdbar-brand { padding-right: 0; }
+/* The one menu inherits the popup, and adds a heading per folded menu plus the two facts
+   the bar no longer has room to show. */
+.ide-root .wb-menu--compact { max-height: min(70vh, 32rem); overflow-y: auto; }
+.ide-root .wb-menu-group-heading {
+  padding: 6px 10px 2px;
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) var(--rb-font-ui);
+}
+.ide-root .wb-menu-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 10px 6px;
+  border-bottom: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  font-size: var(--rb-text-meta);
+}
+.ide-root .wb-menu-facts code { font: var(--rb-text-meta) var(--rb-font-mono); }
+.ide-root .wb-cmdbar-sep { width: 1px; height: 16px; margin: 0 4px; background: var(--wb-frame-border); flex: none; }
+.ide-root .wb-cmdbar-project {
+  display: inline-flex;
+  /* The ellipsis is a last resort, not a mid-priority casualty: this used to shrink past its
+     own text while other items in the row kept theirs. The budget is in characters so it
+     grows with the reader's text instead of staying at an absolute 220px. */
+  flex: 0 1 auto;
+  min-width: min-content;
+  max-width: 22ch;
+  height: var(--wb-control-h);
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--wb-radius);
+  color: var(--wb-frame-text);
+  background: transparent;
+  font: 600 var(--wb-text-md) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-cmdbar-project:hover { border-color: var(--wb-frame-border); background: var(--wb-frame-bg-2); }
+.ide-root .wb-cmdbar-project-text { overflow: hidden; text-overflow: ellipsis; }
+.ide-root .wb-cmdbar-project-input {
+  width: 200px;
+  height: var(--wb-control-h);
+  padding: 0 6px;
+  border: 1px solid var(--wb-accent);
+  border-radius: var(--wb-radius);
+  color: var(--wb-frame-text);
+  background: var(--wb-frame-bg-2);
+  font: 600 var(--wb-text-md) / 1 var(--wb-font-ui);
+}
+.ide-root .wb-cmdbar-spacer { flex: 1 1 auto; min-width: var(--wb-space-2); }
+.ide-root .wb-cmdbar-right { display: inline-flex; align-items: center; gap: var(--wb-space-2); flex: none; }
+.ide-root .wb-cmdbar-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--wb-frame-text-2);
+  font-size: var(--wb-text-sm);
+  white-space: nowrap;
+}
+.ide-root .wb-cmdbar-fact code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-frame-text); }
+.ide-root .wb-cmdbar-fact[data-tone='ok'] { color: var(--wb-ok); }
+.ide-root .wb-cmdbar-fact[data-tone='warn'] { color: #f2b544; }
+.ide-root .wb-cmdbar-fact[data-tone='error'] { color: #ff7b7b; }
+.ide-root .wb-cmdbar-center { display: flex; flex: 1 1 auto; justify-content: center; min-width: 0; padding: 0 var(--wb-space-2); }
+.ide-root .wb-cmdbar-object,
+.ide-root .wb-cmdbar-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(560px, 100%);
+  height: var(--wb-control-h);
+  padding: 0 8px;
+  border: 1px solid var(--wb-frame-border);
+  border-radius: var(--wb-radius);
+  color: var(--wb-frame-text-2);
+  background: var(--wb-frame-bg-2);
+  font: var(--wb-text-sm) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-cmdbar-object:hover,
+.ide-root .wb-cmdbar-search:hover { color: var(--wb-frame-text); border-color: var(--wb-frame-text-3); }
+.ide-root .wb-cmdbar-object code { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-frame-text); }
+.ide-root .wb-cmdbar-object-kind { flex: none; color: var(--wb-frame-text-3); font-size: var(--wb-text-xs); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .wb-cmdbar-search kbd,
+.ide-root .wb-cmdbar-right kbd { padding: 1px 4px; border: 1px solid var(--wb-frame-border); border-radius: 2px; color: var(--wb-frame-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .wb-cmdbar-right > .wb-btn { border-color: var(--wb-frame-border); color: var(--wb-frame-text-2); background: transparent; }
+.ide-root .wb-cmdbar-right > .wb-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-cmdbar-right > .wb-btn--primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+/* The dot accompanies the word; it is not a substitute for it, and at 200% text a 7px dot in
+   a 64px bar is not a state anyone can read. Sized in the reader's text like everything else. */
+.ide-root .wb-save-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-text-3); flex: none; }
+.ide-root .wb-save-dot[data-state='saved'] { background: var(--wb-ok); }
+.ide-root .wb-save-dot[data-state='autosaving'],
+.ide-root .wb-save-dot[data-state='saving'] { background: var(--wb-warn); }
+.ide-root .wb-save-dot[data-state='unsaved'],
+.ide-root .wb-save-dot[data-state='save-failed'] { background: var(--wb-err); }
+
+/* Menubar ──────────────────────────────────────────────────────────────── */
+
+.ide-root .wb-menubar { display: inline-flex; align-items: center; gap: 1px; min-width: 0; }
+.ide-root .wb-menubar-item { position: relative; }
+.ide-root .wb-menubar-btn {
+  display: inline-flex;
+  height: var(--wb-control-h);
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--wb-radius);
+  color: var(--wb-frame-text-2);
+  background: transparent;
+  font: 500 var(--wb-text-md) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-menubar-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-menubar-btn[aria-expanded='true'] { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); border-color: var(--wb-frame-border); }
+.ide-root .wb-menu {
+  position: absolute;
+  z-index: 200;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 240px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: var(--wb-overlay-shadow);
+}
+.ide-root .wb-menu-item {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--wb-row-h);
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-md) / 1 var(--wb-font-ui);
+  text-align: left;
+  white-space: nowrap;
+}
+.ide-root .wb-menu-item:hover,
+.ide-root .wb-menu-item:focus-visible,
+.ide-root .wb-menu-item[data-active='true'] { background: var(--wb-accent-bg); outline: none; }
+.ide-root .wb-menu-item[aria-disabled='true'] { color: var(--wb-text-3); }
+.ide-root .wb-menu-item[aria-disabled='true']:hover { background: transparent; }
+.ide-root .wb-menu-item-check { font-size: var(--rb-text-micro); color: var(--wb-accent); text-align: center; }
+.ide-root .wb-menu-item-label { overflow: hidden; text-overflow: ellipsis; }
+.ide-root .wb-menu-item-key { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .wb-menu-sep { height: 1px; margin: 4px 6px; background: var(--wb-border); }
+
+/* Compact control (shared by command bar + toolbars) ───────────────────── */
+
+.ide-root .wb-btn {
+  display: inline-flex;
+  height: var(--wb-control-h);
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ide-root .wb-btn:hover { background: var(--wb-hover-bg); }
+.ide-root .wb-btn:active { background: var(--wb-active-bg); }
+.ide-root .wb-btn:disabled { color: var(--wb-text-3); background: var(--wb-surface-2); cursor: default; }
+.ide-root .wb-btn--primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .wb-btn--primary:hover { background: var(--rb-action-hover); border-color: var(--rb-action-hover); }
+.ide-root .wb-btn--primary:disabled { border-color: transparent; color: var(--wb-text-3); background: var(--wb-surface-3); }
+.ide-root .wb-btn--ghost { border-color: transparent; background: transparent; }
+.ide-root .wb-btn--ghost:hover { background: var(--wb-hover-bg); }
+.ide-root .wb-btn--icon { width: var(--wb-control-h); padding: 0; }
+.ide-root .wb-btn[aria-pressed='true'] { border-color: var(--wb-accent); background: var(--wb-accent-bg); color: var(--wb-text); }
+.ide-root .wb-btn kbd {
+  padding: 1px 4px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: 2px;
+  color: var(--wb-text-3);
+  background: var(--wb-surface-2);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+}
+.ide-root .wb-btn--danger { color: var(--wb-err); }
+.ide-root .wb-btn--danger:hover { background: var(--wb-err-bg); }
+
+/* Body: rail + document column ─────────────────────────────────────────── */
+
+.ide-root .wb-body {
+  display: grid;
+  grid-template-columns: var(--wb-rail-w) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ide-root .wb-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 4px 0;
+  border-right: 1px solid var(--wb-frame-border);
+  background: var(--wb-rail-bg);
+}
+.ide-root .wb-rail-group { display: flex; flex-direction: column; gap: 2px; }
+.ide-root .wb-rail-spacer { flex: 1 1 auto; }
+.ide-root .wb-rail-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 50px;
+  padding: 0;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  color: var(--wb-text-2);
+  background: transparent;
+  font: 500 var(--rb-text-micro) / 1 var(--wb-font-ui);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+.ide-root .wb-rail-btn svg { width: 18px; height: 18px; }
+.ide-root .wb-rail-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-rail-btn[data-state='current'] { color: #ffffff; background: rgba(255, 255, 255, 0.08); border-left-color: var(--wb-accent); }
+.ide-root .wb-rail-btn[data-state='current'] svg { color: var(--wb-accent); }
+.ide-root .wb-rail-btn[data-state='blocked'] .wb-rail-dot {
+  position: absolute;
+  top: 8px;
+  right: 13px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wb-warn);
+}
+.ide-root .wb-rail-btn--utility { height: 44px; color: var(--wb-text-3); }
+.ide-root .wb-rail-rule { height: 1px; margin: 4px 10px; background: var(--wb-border); }
+
+.ide-root .wb-document-column {
+  display: grid;
+  grid-template-rows: var(--wb-tabstrip-h) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--wb-bg);
+}
+.ide-root .wb-document-column > .ide-surface-shell,
+.ide-root .wb-document-column > .ide-workbench-shell,
+.ide-root .wb-document-column > section,
+.ide-root .wb-document-column > div:not(.wb-doctabs) { min-height: 0; }
+
+/* Document tab strip ───────────────────────────────────────────────────── */
+
+.ide-root .wb-doctabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  height: var(--wb-tabstrip-h);
+  padding: 0 var(--wb-space-1) 0 0;
+  border-bottom: 1px solid var(--wb-border-strong);
+  background: var(--wb-doc-bg);
+}
+.ide-root .wb-doctabs-history { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; border-right: 1px solid var(--wb-border); }
+.ide-root .wb-doctabs-history .wb-btn { font-size: var(--rb-text-head); color: var(--wb-text-2); }
+/* These were tinted with a BORDER colour, which put the back/forward chevrons at 1.16:1
+   against the tab strip - the worst contrast in the product, on a control present in every
+   workspace. A disabled control should read as disabled, not as absent, so they use the same
+   disabled text tone as every other button. */
+.ide-root .wb-doctabs-history .wb-btn:disabled { color: var(--wb-text-3); background: transparent; }
+.ide-root .wb-doctabs-list {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.ide-root .wb-doctabs-list::-webkit-scrollbar { display: none; }
+.ide-root .wb-doctab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 240px;
+  padding: 0 4px 0 10px;
+  border-right: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  background: transparent;
+}
+.ide-root .wb-doctab:hover { background: var(--wb-hover-bg); }
+.ide-root .wb-doctab.is-active { color: var(--wb-text); background: var(--wb-bg); }
+.ide-root .wb-doctab.is-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--wb-accent);
+}
+.ide-root .wb-doctab-activate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: 500 var(--wb-text-md) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-doctab-activate span { overflow: hidden; text-overflow: ellipsis; }
+.ide-root .wb-doctab-kind { display: inline-grid; place-items: center; width: 12px; height: 12px; color: var(--wb-text-3); flex: none; }
+.ide-root .wb-doctab-kind svg { width: 12px; height: 12px; }
+.ide-root .wb-doctab.is-active .wb-doctab-kind { color: var(--wb-accent); }
+.ide-root .wb-doctab-mark { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.ide-root .wb-doctab-mark[data-state='dirty'] { background: var(--wb-text-2); }
+.ide-root .wb-doctab-mark[data-state='stale'] { background: var(--wb-warn); }
+.ide-root .wb-doctab-mark[data-state='failing'] { background: var(--wb-err); }
+.ide-root .wb-doctab-close {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-3);
+  background: transparent;
+  font-size: var(--rb-text-body);
+  line-height: 1;
+  opacity: 0;
+}
+.ide-root .wb-doctab:hover .wb-doctab-close,
+.ide-root .wb-doctab.is-active .wb-doctab-close,
+.ide-root .wb-doctab-close:focus-visible { opacity: 1; }
+.ide-root .wb-doctab-close:hover { color: var(--wb-text); background: var(--wb-active-bg); }
+.ide-root .wb-doctabs-trail {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 0 6px 0 10px;
+  border-left: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  font-size: var(--wb-text-sm);
+  white-space: nowrap;
+}
+.ide-root .wb-doctabs-trail button {
+  height: 22px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-accent);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-mono);
+}
+.ide-root .wb-doctabs-trail button:hover { background: var(--wb-hover-bg); text-decoration: underline; }
+.ide-root .wb-doctabs-trail code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .wb-doctabs-trail .wb-sep { color: var(--wb-text-3); }
+
+/* Status bar ───────────────────────────────────────────────────────────── */
+
+.ide-root .wb-status {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-3);
+  min-width: 0;
+  height: var(--wb-status-h);
+  padding: 0 var(--wb-space-2);
+  overflow: hidden;
+  border-top: 1px solid var(--wb-border-strong);
+  color: var(--wb-text-2);
+  background: var(--wb-doc-bg);
+  font-size: var(--wb-text-sm);
+  line-height: 1;
+}
+.ide-root .wb-status-item { display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap; }
+.ide-root .wb-status-item code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .wb-status-item strong { color: var(--wb-text); font-weight: 600; }
+.ide-root .wb-status-spacer { flex: 1 1 auto; min-width: 0; }
+.ide-root .wb-status-btn {
+  display: inline-flex;
+  height: 18px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: transparent;
+  font: var(--wb-text-sm) / 1 var(--wb-font-ui);
+}
+.ide-root .wb-status-btn:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .wb-status-btn[data-tone='error'] { color: var(--wb-err); }
+.ide-root .wb-status-btn[data-tone='warn'] { color: var(--wb-warn-text); }
+.ide-root .wb-status-item[data-tone='ok'] { color: var(--wb-ok); }
+.ide-root .wb-status-item[data-tone='warn'] { color: var(--wb-warn-text); }
+.ide-root .wb-status-item[data-tone='error'] { color: var(--wb-err); }
+.ide-root .wb-status-selection { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Shared instrument primitives ──────────────────────────────────────────── */
+
+/* Compact toolbar: 30px, grouped controls, thin separators. */
+.ide-root .wb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  height: var(--wb-toolbar-h);
+  padding: 0 var(--wb-space-2);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+  font-size: var(--wb-text-sm);
+}
+.ide-root .wb-toolbar-group { display: inline-flex; align-items: center; gap: 2px; }
+.ide-root .wb-toolbar-sep { width: 1px; height: 16px; margin: 0 6px; background: var(--wb-border-strong); flex: none; }
+.ide-root .wb-toolbar-spacer { flex: 1 1 auto; min-width: var(--wb-space-2); }
+.ide-root .wb-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--wb-text);
+  font: 600 var(--wb-text-md) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-toolbar-title code { font: var(--wb-text-md) var(--wb-font-mono); }
+.ide-root .wb-toolbar-meta { color: var(--wb-text-3); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .wb-toolbar .wb-btn { height: var(--wb-control-h); }
+/* A segmented control is one unit: it must not shrink below its own buttons. It used to be
+   an ordinary flex item with `overflow: hidden`, so a crowded bar clipped it in silence -
+   that is how the run intent rendered as "Cor" at 200% text. Something else in the bar
+   yields now, by an explicit rule rather than by accident. */
+.ide-root .wb-segment { flex: none; display: inline-flex; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); overflow: hidden; }
+.ide-root .wb-segment .wb-btn { border: 0; border-radius: 0; }
+.ide-root .wb-segment .wb-btn + .wb-btn { border-left: 1px solid var(--wb-border-strong); }
+.ide-root .wb-segment .wb-btn[aria-pressed='true'] { background: var(--wb-accent-bg-strong); }
+
+/* Tool window: header + scrolling body; one scrollbar owner. */
+.ide-root .wb-toolwindow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--wb-surface);
+}
+.ide-root .wb-toolwindow-header {
+  flex: none;
+  display: flex;
+  height: var(--wb-toolwindow-header-h);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 var(--wb-space-2) 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  color: var(--wb-text);
+  font: 600 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-toolwindow-header .wb-toolbar-spacer { flex: 1; }
+.ide-root .wb-toolwindow-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .wb-toolwindow-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .wb-toolwindow-tabs { display: flex; align-items: stretch; height: var(--wb-toolwindow-header-h); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
+.ide-root .wb-toolwindow-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 0;
+  color: var(--wb-text-2);
+  background: transparent;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-toolwindow-tab:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .wb-toolwindow-tab[aria-selected='true'] { color: var(--wb-text); }
+.ide-root .wb-toolwindow-tab[aria-selected='true']::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--wb-accent); }
+.ide-root .wb-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--wb-control-h);
+  margin: 6px var(--wb-space-2);
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  background: var(--wb-surface);
+}
+.ide-root .wb-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+.ide-root .wb-search input:focus { outline: none; }
+.ide-root .wb-search:focus-within { border-color: var(--wb-accent); }
+
+/* Tree: 26px rows, indent guides, chevron, status marker, mono secondary. */
+.ide-root .wb-tree { margin: 0; padding: 2px 0; list-style: none; }
+.ide-root .wb-tree-group { margin: 0; padding: 0; list-style: none; }
+.ide-root .wb-tree-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--wb-row-h-dense);
+  padding: 0 var(--wb-space-2) 0 var(--wb-space-3);
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ide-root .wb-tree-heading button { display: inline-grid; place-items: center; width: 14px; height: 14px; padding: 0; border: 0; color: var(--wb-text-3); background: transparent; }
+.ide-root .wb-tree-heading .wb-toolwindow-count { margin-left: auto; }
+.ide-root .wb-tree-row {
+  --wb-depth: 0;
+  display: grid;
+  grid-template-columns: 14px 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: var(--wb-row-h);
+  padding: 0 var(--wb-space-2) 0 calc(var(--wb-space-2) + var(--wb-depth) * var(--wb-indent));
+  border: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-md) / 1 var(--wb-font-ui);
+  text-align: left;
+  white-space: nowrap;
+  cursor: default;
+}
+.ide-root .wb-tree-row:hover { background: var(--wb-hover-bg); }
+.ide-root .wb-tree-row[aria-selected='true'],
+.ide-root .wb-tree-row.is-selected { background: var(--wb-accent-bg-strong); }
+.ide-root .wb-tree-row[aria-current='true'] { color: var(--wb-text); font-weight: 600; }
+.ide-root .wb-tree-chevron { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--wb-text-3); font-size: var(--rb-text-micro); }
+.ide-root .wb-tree-icon { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--wb-text-2); }
+.ide-root .wb-tree-icon svg { width: 14px; height: 14px; }
+.ide-root .wb-tree-label { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .wb-tree-label code,
+.ide-root .wb-tree-meta code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .wb-tree-meta { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .wb-tree-row .wb-mark { margin-left: 4px; }
+.ide-root .wb-mark { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.ide-root .wb-mark[data-tone='ok'] { background: var(--wb-ok); }
+.ide-root .wb-mark[data-tone='warn'] { background: var(--wb-warn); }
+.ide-root .wb-mark[data-tone='error'] { background: var(--wb-err); }
+.ide-root .wb-mark[data-tone='ext'] { background: var(--wb-ext); }
+.ide-root .wb-mark[data-tone='muted'] { background: var(--wb-text-3); }
+
+/* Data table: 26px rows, mono cells, sticky header, state rows. */
+.ide-root .wb-table-frame { min-height: 0; overflow: auto; }
+.ide-root .wb-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--wb-text);
+  font: var(--wb-text-md) / 1 var(--wb-font-ui);
+}
+.ide-root .wb-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: var(--wb-row-h-dense);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--wb-border-strong);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
+  letter-spacing: 0.02em;
+  text-align: left;
+  white-space: nowrap;
+}
+.ide-root .wb-table th.is-group { text-align: center; border-bottom-color: var(--wb-border); }
+.ide-root .wb-table td {
+  height: var(--wb-row-h);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--wb-border);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.ide-root .wb-table td.is-num,
+.ide-root .wb-table th.is-num { text-align: right; }
+.ide-root .wb-table td.is-mono,
+.ide-root .wb-table td code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .wb-table td.is-center { text-align: center; }
+.ide-root .wb-table tbody tr:hover td { background: var(--wb-hover-bg); }
+.ide-root .wb-table tbody tr[aria-selected='true'] td,
+.ide-root .wb-table tbody tr.is-selected td { background: var(--wb-accent-bg-strong); }
+.ide-root .wb-table tbody tr.is-fail td.is-result { color: var(--wb-err); font-weight: 600; }
+.ide-root .wb-table tbody tr.is-pass td.is-result { color: var(--wb-ok); }
+.ide-root .wb-table tbody tr.is-stale td.is-result { color: var(--wb-warn-text); }
+.ide-root .wb-table td.is-mismatch { color: var(--wb-err); background: var(--wb-err-bg); font-weight: 600; }
+.ide-root .wb-table-empty { padding: var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .wb-cell-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-mono);
+}
+.ide-root .wb-cell-btn:hover { border-color: var(--wb-border-strong); background: var(--wb-surface); }
+.ide-root .wb-cell-btn.is-unset { color: var(--wb-text-3); }
+
+/* Property grid: label | value rows, group headers, mono values. */
+.ide-root .wb-propgrid { display: grid; grid-template-columns: minmax(84px, 38%) minmax(0, 1fr); align-content: start; font-size: var(--wb-text-md); }
+.ide-root .wb-propgrid-group {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--wb-row-h-dense);
+  padding: 0 var(--wb-space-3);
+  margin-top: 2px;
+  border-top: 1px solid var(--wb-border);
+  border-bottom: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
+  letter-spacing: 0.02em;
+}
+.ide-root .wb-propgrid-group:first-child { margin-top: 0; border-top: 0; }
+.ide-root .wb-propgrid-label,
+.ide-root .wb-propgrid-value {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: var(--wb-row-h-dense);
+  padding: 2px var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .wb-propgrid-label { color: var(--wb-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .wb-propgrid-value { gap: 6px; color: var(--wb-text); overflow: hidden; }
+.ide-root .wb-propgrid-value code,
+.ide-root .wb-propgrid-value.is-mono { font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .wb-propgrid-value button.wb-link,
+.ide-root .wb-link {
+  padding: 0;
+  border: 0;
+  color: var(--wb-accent);
+  background: transparent;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ide-root .wb-link:hover { text-decoration: underline; }
+.ide-root .wb-propgrid-value[data-tone='ok'] { color: var(--wb-ok); }
+.ide-root .wb-propgrid-value[data-tone='warn'] { color: var(--wb-warn-text); }
+.ide-root .wb-propgrid-value[data-tone='error'] { color: var(--wb-err); }
+.ide-root .wb-propgrid-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px var(--wb-space-3); }
+.ide-root .wb-propgrid-empty { grid-column: 1 / -1; padding: var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+
+/* Bottom panel tabs (Problems / Output / Simulation / Console). */
+.ide-root .wb-panel { display: grid; grid-template-rows: var(--wb-toolwindow-header-h) minmax(0, 1fr); min-height: 0; height: 100%; background: var(--wb-surface); }
+.ide-root .wb-panel-tabs { display: flex; align-items: stretch; gap: 0; padding: 0 var(--wb-space-1); border-bottom: 1px solid var(--wb-border); }
+.ide-root .wb-panel-tabs .wb-toolwindow-tab { padding: 0 10px; }
+.ide-root .wb-panel-tabs .wb-toolbar-spacer { flex: 1; }
+.ide-root .wb-panel-body { min-height: 0; overflow: auto; font: var(--wb-text-sm) / 1.45 var(--wb-font-mono); }
+.ide-root .wb-panel-line { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .wb-panel-line[data-tone='error'] { color: var(--wb-err); }
+.ide-root .wb-panel-line[data-tone='warn'] { color: var(--wb-warn-text); }
+.ide-root .wb-panel-line button.wb-link { font: inherit; }
+.ide-root .wb-panel-empty { padding: var(--wb-space-3); color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+
+/* Compact empty state — one line of fact + one command, no card. */
+.ide-root .wb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-4);
+  color: var(--wb-text-2);
+  font-size: var(--wb-text-md);
+}
+.ide-root .wb-empty strong { color: var(--wb-text); font-weight: 600; }
+.ide-root .wb-empty--center { align-items: center; justify-content: center; height: 100%; text-align: center; }
+
+/* Focus: highly visible, consistent, never hidden. */
+.ide-root :is(.wb-btn, .wb-menubar-btn, .wb-menu-item, .wb-rail-btn, .wb-doctab-activate, .wb-doctab-close,
+  .wb-status-btn, .wb-tree-row, .wb-toolwindow-tab, .wb-cell-btn, .wb-cmdbar-project, .wb-link):focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* The project-name budget is expressed in characters on the rule itself, so it no longer
+   needs a pixel-width override here; the state word stays a word at every width, because the
+   compact composition is what decides when the bar is short of room. */
+@media (max-width: 1180px) {
+  .ide-root .wb-cmdbar-project { max-width: 16ch; }
+  .ide-root .wb-btn kbd { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ide-root .wb-doctab-close { transition: none; }
+}
+
+/* Layers ───────────────────────────────────────────────────
+   Tool windows (docks) sit on the cool neutral; documents sit on paper;
+   the document frame owns tabs and contextual toolbars. */
+.ide-root .ide-workbench-main > .ide-workbench-dock, .ide-root .ide-workbench-dock { background: var(--wb-tool-bg); }
+.ide-root .wb-toolwindow { background: var(--wb-tool-bg); }
+.ide-root .wb-toolwindow-header { background: var(--wb-tool-header-bg); }
+.ide-root .ide-workbench-dock .wb-toolbar { background: var(--wb-tool-header-bg); }
+.ide-root .ide-workbench-main > .ide-workbench-workspace, .ide-root .ide-workbench-workspace { background: var(--wb-paper); }
+.ide-root .ide-workbench-workspace > * > .wb-toolbar:first-child,
+.ide-root .ide-workbench-workspace .rb-design-header,
+.ide-root .ide-workbench-workspace .rb-design-toolbar,
+.ide-root .ide-workbench-workspace .rb-sim-toolbar,
+.ide-root .ide-workbench-workspace .rb-board-header,
+.ide-root .ide-workbench-workspace .rb-board-rail,
+.ide-root .ide-workbench-workspace .rb-pkg-toolbar { background: var(--wb-doc-bg); }
+.ide-root .wb-rail-btn { color: var(--wb-frame-text-2); }
+.ide-root .wb-rail-btn--utility { color: var(--wb-frame-text-3); }
+.ide-root .wb-rail-rule { background: var(--wb-frame-border); }
+
+.ide-root .wb-toolbar-fact { display: inline-flex; align-items: baseline; gap: 4px; padding: 0 4px; color: var(--wb-text-3); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .wb-toolbar-fact code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+
+/* Details-hosted menus (Layout, Related…): the summary is a ghost button, the popup a wb-menu. */
+.ide-root .wb-menu-details { position: relative; display: inline-block; }
+.ide-root .wb-menu-details > summary { list-style: none; cursor: default; }
+.ide-root .wb-menu-details > summary::-webkit-details-marker { display: none; }
+.ide-root .wb-menu-details[open] > summary { background: var(--wb-active-bg); }
+.ide-root .wb-menu-details > .wb-menu { position: absolute; z-index: 200; top: calc(100% + 2px); left: 0; min-width: 260px; }
+.ide-root .rb-related-head { display: flex; align-items: baseline; gap: 8px; padding: 4px 10px 6px; border-bottom: 1px solid var(--wb-border); color: var(--wb-text-2); font-size: var(--wb-text-xs); }
+.ide-root .rb-related-head code { font: 600 var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-related-ambiguous { margin-left: auto; color: var(--wb-warn-text); }
+.ide-root .rb-related-detail { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* narrow frame bar. The selected object is the first thing that must survive a shortage, so
+   it is not hidden here any more - by this width the compact composition has already folded
+   the menubar, the wordmark and the two secondary facts, which is where the room comes from. */
+@media (max-width: 899px) {
+  .ide-root .wb-cmdbar-project { max-width: 14ch; }
+  .ide-root .wb-cmdbar-right kbd { display: none; }
+}
+
+/* ── Universal Navigator (Ctrl+K) ────────────────────────────────────────
+   Objects come first when the user typed an identifier; commands follow.
+   Identifiers are monospace; facts are short mono chips; ambiguity is a
+   visible mark, never a guess. */
+.ide-root .ide-navigator-option .ide-command-palette-option-copy strong.is-mono {
+  font: 600 var(--wb-text-md) var(--wb-font-mono);
+  letter-spacing: 0;
+}
+.ide-root .ide-navigator-option .ide-command-palette-option-copy small { text-transform: none; }
+.ide-root .ide-navigator-facts { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 2px; }
+.ide-root .ide-navigator-facts code {
+  color: var(--wb-text-2);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  white-space: nowrap;
+}
+.ide-root .ide-navigator-option.is-ambiguous .ide-command-palette-option-copy strong { color: var(--wb-warn); }
+.ide-root .ide-navigator-ambiguous {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--wb-warn);
+  border-radius: 50%;
+  color: var(--wb-warn);
+  font: 700 var(--wb-text-xs) var(--wb-font-mono);
+  line-height: 16px;
+  text-align: center;
+}
+.ide-root .ide-command-palette .ide-shortcuts-section-label { display: flex; align-items: center; gap: 6px; }
+
+/* ── Problems tool window ────────────────────────────────────────────────
+   One ledger, one presentation. Severity is a letter and a colour, never
+   colour alone. Rows are a grid so message, object and authority align. */
+.ide-root .rb-problems-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ide-root .rb-problems-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: 28px;
+  padding: 2px var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-tool-header-bg);
+}
+.ide-root .rb-problems-severities { display: inline-flex; gap: 2px; }
+.ide-root .rb-problems-sevbtn { gap: 5px; padding: 0 7px; }
+.ide-root .rb-problems-sevbtn.is-active { background: var(--wb-active-bg); color: var(--wb-text); }
+.ide-root .rb-problems-sevbtn[data-severity='error'].is-active { box-shadow: inset 0 -2px 0 var(--wb-err); }
+.ide-root .rb-problems-sevbtn[data-severity='warning'].is-active { box-shadow: inset 0 -2px 0 var(--wb-warn); }
+.ide-root .rb-problems-category select,
+.ide-root .rb-problems-search {
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border);
+  border-radius: 3px;
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+.ide-root .rb-problems-search { flex: 1 1 160px; min-width: 100px; max-width: 320px; margin-left: auto; }
+.ide-root .rb-problems-search:focus-visible,
+.ide-root .rb-problems-category select:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
+.ide-root .rb-problems-empty { margin: 0; padding: var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-problems-panel .rb-problems { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-problems-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 3px var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-tool-bg);
+}
+.ide-root .rb-problems-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-xs) var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-problems-panel .rb-problems-row {
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  min-height: 28px;
+  padding: 3px var(--wb-space-3);
+}
+/* The reference column had no rule of its own, so an `auto` track sized to the longest word
+   and "LD1 (SUM) simulation run" broke across three lines against the panel's right edge.
+   It is one line of references, and it steps out of the way when there is no room. */
+.ide-root .rb-problems-panel .rb-problems-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ide-root .rb-problems-panel .rb-problems-main { display: grid; gap: 1px; min-width: 0; }
+.ide-root .rb-problems-panel .rb-problems-row.is-selected { background: var(--wb-active-bg); }
+.ide-root .rb-problems-panel .rb-problems-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-problems-panel .rb-problems-sev {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  color: var(--wb-on-accent, #fff);
+  background: var(--wb-text-3);
+  font: 700 var(--rb-text-micro)/16px var(--wb-font-mono);
+  text-align: center;
+}
+.ide-root .rb-problems-panel .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }
+.ide-root .rb-problems-panel .rb-problems-row[data-severity='warning'] .rb-problems-sev { background: var(--wb-warn); color: var(--wb-text); }
+.ide-root .rb-problems-main { display: grid; min-width: 0; gap: 1px; }
+.ide-root .rb-problems-panel .rb-problems-title,
+.ide-root .rb-problems-panel .rb-problems-msg { white-space: normal; overflow: visible; }
+.ide-root .rb-problems-panel .rb-problems-msg { font: var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-problems-meta { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; max-width: 42%; }
+.ide-root .rb-problems-stale {
+  padding: 0 5px;
+  border: 1px solid var(--wb-warn);
+  border-radius: 3px;
+  color: var(--wb-text);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+}
+.ide-root .rb-problems-authority { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-problems-row[data-freshness='stale'] .rb-problems-title { color: var(--wb-text-2); }
+.ide-root .wb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .ide-root .rb-problems-meta { display: none; }
+}
+
+/* Document tab context menu: the same menu grammar as the frame menus. */
+.ide-root .wb-doctab-menu { z-index: 60; min-width: 160px; }
+.ide-root .wb-doctab-menu .wb-menu-item[disabled] { color: var(--wb-text-3); cursor: default; }
+
+/* A menu that would leave the viewport hangs from its trigger's right edge instead. */
+.ide-root .wb-menu-details[data-align='end'] > .wb-menu { left: auto; right: 0; }
+.ide-root .rb-related-menu { max-width: min(340px, calc(100vw - 16px)); }
+.ide-root .rb-related-menu .wb-menu-item { white-space: normal; }
+
+/* ── Narrow windows and 200% zoom ─────────────────────────────────────────
+   Below 900px the docks fold above and below the workspace and the bottom
+   tool window sits under it. All three are capped so the document keeps
+   the height: the schematic, grid or board is the reason the window is
+   open; library, inspector and tool window scroll inside their strips. */
+@media (max-width: 899px) {
+  .ide-root .ide-surface-shell.ide-workbench-shell {
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    min-height: 0;
+  }
+  .ide-root .ide-workbench-shell > .ide-workbench-console { min-height: 0 !important; max-height: 30vh !important; overflow: auto; }
+  .ide-root .ide-workbench-shell .ide-workbench-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    min-height: 0 !important;
+  }
+  .ide-root .ide-workbench-shell .ide-workbench-main > .ide-workbench-dock-left { max-height: 22vh !important; min-height: 0 !important; overflow: auto !important; }
+  .ide-root .ide-workbench-shell .ide-workbench-main > .ide-workbench-dock-right { max-height: 24vh !important; min-height: 0 !important; overflow: auto !important; }
+  .ide-root .ide-workbench-shell .ide-workbench-main > .ide-workbench-workspace { min-height: 0 !important; }
+  .ide-root .ide-design-dock-stack { max-height: 26vh !important; }
+}

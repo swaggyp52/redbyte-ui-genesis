@@ -245,7 +245,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-command-strip-secondary-cta')).toBeNull();
   });
 
-  it('keeps starter guidance compact while preserving next action and detail access', () => {
+  it('carries no starter narration on the canvas — the brief is project context', () => {
     const view = renderSurface({
       starterContext: {
         name: '2-Bit Up Counter (Basys3)',
@@ -257,25 +257,15 @@ describe('DesignSurface workstation redesign', () => {
       },
     });
 
-    expect(view.getByTestId('ide-design-starter-banner-title').textContent).toContain(
-      '2-Bit Up Counter'
-    );
-    expect(view.getByTestId('ide-design-starter-banner-next-action').textContent).toContain(
-      'In Verify'
-    );
-    expect(view.queryByTestId('ide-design-starter-go-to-verify')).toBeNull();
-    expect(view.getByTestId('ide-design-starter-disclosure').tagName).toBe('SECTION');
-    expect(view.getByTestId('ide-design-starter-disclosure').querySelector('details')).toBeNull();
+    // The strip, its title, next action and brief disclosure are gone from the canvas;
+    // the Project Overview owns the starter brief (see projectWorkbench.test.tsx).
+    expect(view.queryByTestId('ide-design-starter-disclosure')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-banner')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-banner-title')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-banner-next-action')).toBeNull();
+    expect(view.queryByTestId('ide-design-starter-details')).toBeNull();
     expect(view.queryByTestId('ide-design-command-strip-primary-cta')).toBeNull();
-
-    const details = view.getByTestId('ide-design-starter-details');
-    expect(details.tagName).toBe('DIV');
-    expect(view.getByTestId('ide-design-starter-details-summary').textContent).toContain(
-      'Starter brief'
-    );
-    expect(view.getByTestId('ide-design-starter-details-body').textContent).toContain(
-      'Expected behavior'
-    );
+    expect(view.container.textContent ?? '').not.toContain('In Verify: confirm CLK100MHZ');
   });
 
   it('keeps the library stable and reveals the inspector only after selection', async () => {
@@ -635,7 +625,7 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-design-artifact-selector')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-design-code-context-primary-artifact').textContent).toContain('Viewing top.vhd');
+    expect(view.getByTestId('ide-design-code-context-primary-artifact').textContent).toContain('top.vhd');
 
     const primaryTextarea = view.getByTestId('ide-design-hdl-textarea') as HTMLTextAreaElement;
     expect(primaryTextarea.getAttribute('data-artifact')).toBe('vhdl');
@@ -774,7 +764,8 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-tools-toggle')).toBeNull();
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.queryByTestId('ide-design-zoom-presets')).toBeNull();
-    expect(view.getByTestId('ide-design-split-canvas-indicator').textContent).toContain('Circuit pane');
+    expect(view.getByTestId('ide-design-view-toggle')).toBeTruthy();
+    expect(view.getByTestId('ide-design-view-split').getAttribute('aria-pressed')).toBe('true');
     expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Runtime');
     expect(view.getByTestId('ide-design-split-stat-tick').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-split-stat-mode').textContent).toContain('Paused');

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-05
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -49,6 +49,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 4. Stable right inspector
 - Is selection-driven support in a stable `240-280px` region at desktop widths. At constrained widths selected details move to a stable lower region automatically; the student does not open/close a core rail to recover the canvas.
 - For a selected node, the compact identity and actionable issue guidance come first, primary Actions follow immediately, and teaching/reference/mapping context follows in **Selection details**. Cross-platform font wrapping in secondary context must not push direct edit controls below the `1366x768` classroom first viewport.
+- The inspector is organised as named sections over existing authorities, in this order: Identity (the properties surface: name, kind, rename; there is no standalone Properties section) → Actions → Selection details → **Connectivity** (pin values, input drivers, what the selection drives) → **Evidence** (`ide-design-context-inspector`: live or replayed state, verify focus, probes) → **Mapping** (board resource, package pin, constraint set, the constraint lines the package writes, Open in Board & Constraints) → **Source** (the generated VHDL lines that name the signal, Show HDL beside the schematic; collapsed by default) → **Related** (the documents the signal appears in, as a list). Mapping renders when the selection has a board row or relation, and Related when the signal resolves to a boundary relation; Source renders for any single selected node and says so plainly when the signal is not named in the generated source. Board relations always name the package pin, even when the row stores the board alias.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
 - With no selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It stays secondary to the canvas.
 

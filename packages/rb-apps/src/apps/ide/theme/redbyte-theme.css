@@ -39,8 +39,9 @@
   --rb-state-danger-bg: #392126;
   --rb-state-info-bg: #1a2b3b;
 
-  --rb-font-ui: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --rb-font-mono: 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+  /* Families now come from redbyte-type.css, the single owner. This file used to
+     redefine them with a system stack, which is why IBM Plex never reached the screen. */
+
 
   --rb-type-metadata: 11px;
   --rb-type-label: 12px;
@@ -138,8 +139,8 @@
   --ide-warning: var(--rb-state-warning);
   --ide-danger: var(--rb-state-danger);
   --ide-shadow: var(--rb-elevation-2);
-  --ide-font-ui: var(--rb-font-ui);
-  --ide-font-mono: var(--rb-font-mono);
+
+
   --ide-font-sm: var(--rb-type-label);
   --ide-font-md: var(--rb-type-body);
   --ide-font-lg: var(--rb-type-work-heading);

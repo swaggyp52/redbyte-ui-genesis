@@ -3,7 +3,7 @@
   padding: 32px;
   color: var(--rb-text);
   background: var(--rb-app-bg);
-  font: 14px/1.45 var(--rb-font-sans);
+  font: var(--rb-text-head)/1.45 var(--rb-font-sans);
 }
 
 .ide-control-matrix__header,
@@ -45,10 +45,10 @@
 
 .ide-control-matrix__eyebrow {
   color: var(--rb-brand);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .ide-control-matrix__section {
@@ -65,7 +65,7 @@
 }
 
 .ide-control-matrix__section h2 {
-  font-size: 18px;
+  font-size: var(--rb-text-doc);
 }
 
 .ide-control-matrix__grid,
@@ -79,7 +79,7 @@
   display: grid;
   gap: 8px;
   color: var(--rb-text-secondary);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-control-matrix label > .ide-button,
@@ -117,7 +117,7 @@
   color: var(--rb-text-secondary);
   background: transparent;
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-control-matrix__tabs button[aria-selected='true'] {
@@ -134,7 +134,7 @@
   border-top: 0;
   border-radius: 0 0 10px 10px;
   color: var(--rb-text-muted);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 @media (max-width: 900px) {

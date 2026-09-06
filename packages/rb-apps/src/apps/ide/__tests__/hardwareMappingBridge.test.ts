@@ -182,4 +182,29 @@ describe('hardwareMappingBridge', () => {
       expect(reset.timingRole).toBe('reset');
     }
   });
+  it('infers resource kinds from whole tokens: CARRY is not a seven-segment cathode, Reset (BTNC) is a button', () => {
+    const source: HardwareMappingDocumentV2 = {
+      schemaVersion: '2.0',
+      boardId: 'basys3',
+      entries: [
+        {
+          kind: 'scalar', width: 1, id: 'carry-out', direction: 'out', nodeId: 'carry-out', port: 'in',
+          portName: 'CARRY', label: 'CARRY', pin: 'W18', boardResourceType: 'led',
+        },
+        {
+          kind: 'scalar', width: 1, id: 'reset', direction: 'in', nodeId: 'reset-node', port: 'out',
+          portName: 'RESET', label: 'Reset (BTNC)', pin: '',
+        },
+      ],
+    };
+
+    const cleared = applyScalarResourceMetadata(source, 'carry-out', '');
+    const carry = cleared.entries.find((entry) => entry.id === 'carry-out');
+    expect(carry?.kind).toBe('scalar');
+    if (carry?.kind === 'scalar') expect(carry.boardResourceType).not.toBe('seven_seg');
+
+    const withReset = applyScalarResourceMetadata(source, 'reset', '');
+    const reset = withReset.entries.find((entry) => entry.id === 'reset');
+    if (reset?.kind === 'scalar') expect(reset.boardResourceType).toBe('button');
+  });
 });

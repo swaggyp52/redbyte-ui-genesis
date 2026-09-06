@@ -18,6 +18,18 @@
   filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.72));
 }
 
+.resourceConflict {
+  filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.85));
+}
+
+.board[data-layer-labels='0'] .aliasLabel {
+  display: none;
+}
+
+.resourceMappedUnavailable {
+  opacity: 0.7;
+}
+
 .resourceUnavailable {
   opacity: 0.48;
 }
@@ -36,7 +48,7 @@
 }
 
 .secondaryLabel {
-  font-weight: 650;
+  font-weight: 600;
   stroke-width: 1px;
 }
 

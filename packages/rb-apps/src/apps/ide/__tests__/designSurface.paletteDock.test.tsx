@@ -191,29 +191,17 @@ describe('DesignSurface palette dock redesign', () => {
       palette.querySelectorAll<HTMLElement>('[data-testid^="ide-design-palette-section-"]')
     ).map((element) => element.dataset.testid ?? element.getAttribute('data-testid'));
 
+    // Authoring-first order, each primitive listed once: pins, then gates, then
+    // sequential, then the project's own reusable modules. Board resources are
+    // not components — they live under the Board I/O tab.
     expect(sectionOrder).toEqual([
-      'ide-design-palette-section-common',
-      'ide-design-palette-section-board',
       'ide-design-palette-section-io',
       'ide-design-palette-section-logic',
       'ide-design-palette-section-sequential',
       'ide-design-palette-section-reusable',
     ]);
-    expect(
-      Array.from(
-        view
-          .getByTestId('ide-design-palette-section-common')
-          .querySelectorAll<HTMLElement>('[data-testid^="ide-design-common-"]')
-      ).map((element) => element.dataset.testid)
-    ).toEqual([
-      'ide-design-common-input',
-      'ide-design-common-output',
-      'ide-design-common-xor',
-      'ide-design-common-and',
-      'ide-design-common-or',
-      'ide-design-common-not',
-      'ide-design-common-register1',
-    ]);
+    expect(view.queryByTestId('ide-design-palette-section-common')).toBeNull();
+    expect(within(palette).queryByTestId('ide-design-palette-section-board')).toBeNull();
 
     expect(within(palette).getByTestId('ide-macro-library-panel')).toBeTruthy();
     expect(within(palette).getByTestId('ide-palette-group-custom')).toBeTruthy();
@@ -228,7 +216,9 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-design-palette-dflipflop')).toBeTruthy();
     expect(view.getByTestId('ide-design-palette-input')).toBeTruthy();
 
-    // Board Resources section is open on first load — board parts are the primary destination for FPGA work
+    // Board resources are one tab away and open on arrival — board parts are the
+    // primary destination for FPGA work, but they are not components.
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
@@ -296,20 +286,23 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-macro-library-card-macro-and-gate')).toBeTruthy();
     expect(view.queryByTestId('ide-design-palette-dflipflop')).toBeNull();
 
+    // The query is shared; each tab filters the list it owns.
     fireEvent.change(search, { target: { value: 'led' } });
-    expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
     expect(view.queryByTestId('ide-macro-library-card-macro-and-gate')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
+    expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
   });
 
   it('board resources remain visible when searching board inventory terms and surfaces the matched item', () => {
     const view = renderSurface();
 
-    // Board inventory is a direct library section on load.
+    // Board inventory is a direct section of the Board I/O tab, open on arrival.
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
-    // Searching for board terms keeps the direct section visible and shows the matching item.
-    fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'led' } });
+    // Searching board terms where the list lives keeps the section visible and shows the match.
+    fireEvent.change(view.getByTestId('ide-design-board-search'), { target: { value: 'led' } });
 
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
@@ -319,11 +312,12 @@ describe('DesignSurface palette dock redesign', () => {
   it('finds the Basys3 board clock by package pin and surfaces the CLK100MHZ board resource', () => {
     const view = renderSurface();
 
-    // CLK100MHZ is visible even before searching (board section is open by default)
+    // CLK100MHZ is visible on arriving at Board I/O (board section is open by default)
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
 
     // Searching by package pin W5 also surfaces CLK100MHZ via search
-    fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'w5' } });
+    fireEvent.change(view.getByTestId('ide-design-board-search'), { target: { value: 'w5' } });
 
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
@@ -348,7 +342,8 @@ describe('DesignSurface palette dock redesign', () => {
     }
 
     // CLK100MHZ Board Resource is still surfaceable — that's the canonical clock
-    fireEvent.change(searchInput, { target: { value: 'clock' } });
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
+    fireEvent.change(view.getByTestId('ide-design-board-search'), { target: { value: 'clock' } });
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
   });
 

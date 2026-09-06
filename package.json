@@ -265,7 +265,6 @@
         "ide:gate:persistence-contract": "node ./scripts/gates/ide-persistence-contract.mjs",
         "ide:gate:examples-contract": "node ./scripts/gates/ide-examples-contract.mjs",
         "ide:gate:design-system-contract": "node ./scripts/gates/ide-design-system-contract.mjs",
-        "ide:gate:shell-chrome-contract": "node ./scripts/gates/ide-shell-chrome-contract.mjs",
         "ide:gate:shell-density-contract": "node ./scripts/gates/ide-shell-density-contract.mjs",
         "ide:gate:canvas-legibility-contract": "node ./scripts/gates/ide-canvas-legibility-contract.mjs",
         "ide:gate:console-autocollapse-contract": "node ./scripts/gates/ide-console-autocollapse-contract.mjs",

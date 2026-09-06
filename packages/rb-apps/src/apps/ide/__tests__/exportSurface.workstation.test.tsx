@@ -214,7 +214,7 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     const readiness = getByTestId('ide-export-upstream-readiness');
-    expect(readiness.textContent).toContain('What owns this package state');
+    expect(readiness.textContent).toContain('Upstream readiness');
     expect(getByTestId('ide-export-upstream-design').getAttribute('data-owner')).toBe('Design');
     expect(getByTestId('ide-export-upstream-design').textContent).toContain('Ready');
     expect(getByTestId('ide-export-upstream-verify').getAttribute('data-owner')).toBe('Simulate');
@@ -284,7 +284,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
     expect(inspector.textContent).toContain('Draft export available');
     expect(packageContents.textContent).not.toContain('Draft export available');
-    expect(packageContents.textContent).toContain('Inspect the generated handoff');
+    expect(packageContents.textContent).toContain('Package files');
     expect(verifyReadiness.textContent).toContain('Draft');
     expect(verifyReadiness.textContent).toContain('Run the current scenario');
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');

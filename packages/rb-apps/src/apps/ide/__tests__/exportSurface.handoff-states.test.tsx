@@ -118,12 +118,13 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const hero = getByTestId('ide-export-readiness-hero');
-    expect(hero.textContent).toContain('E0 export package ready');
+    expect(hero.textContent).toContain('Package current');
     const inspector = getByTestId('ide-export-package-inspector-v1');
     expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
     expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-trusted');
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(actions.textContent).toContain('Validate package');
+    expect(actions.textContent).toContain('Download');
     expect(getByTestId('ide-export-package-download-v1').textContent).toBe('Download Package');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
@@ -163,7 +164,7 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(2);
+    expect(actions.textContent).toContain('Open Simulate');
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect((getByTestId('ide-export-draft-download-v1') as HTMLButtonElement).disabled).toBe(false);
@@ -211,7 +212,7 @@ describe('ExportSurface handoff states', () => {
       expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
     }
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(actions.textContent).toContain('Open Board & Constraints');
     expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Board & Constraints');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
@@ -300,8 +301,8 @@ describe('ExportSurface handoff states', () => {
     }
   });
 
-  it('answers what to submit in the package decision while retaining the detailed role guide', () => {
-    const { getByTestId } = render(
+  it('keeps the detailed role guide without a narration card in the package decision', () => {
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="h1"
@@ -309,12 +310,8 @@ describe('ExportSurface handoff states', () => {
       />
     );
 
-    const inspector = getByTestId('ide-export-package-inspector-v1');
-    const answer = within(inspector).getByTestId('ide-export-submission-answer');
-    expect(answer.textContent).toContain('What should I submit?');
-    expect(answer.textContent).toContain('top.vhd');
-    expect(answer.textContent).toContain('top.xdc');
-    expect(answer.textContent).toContain('testbench.vhd');
+    // The decision block states the package's derived state; the role guide answers "what to submit".
+    expect(queryByTestId('ide-export-submission-answer')).toBeNull();
 
     const detailedGuide = getByTestId('ide-export-submission-guidance');
     expect(detailedGuide.textContent).toContain('Choose files by requested role');
@@ -494,7 +491,16 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(queryByTestId('ide-export-technical-dialog')).toBeNull();
-    expect(getByTestId('ide-export-readiness-hero').querySelector('details, summary')).toBeNull();
+    const hero = getByTestId('ide-export-readiness-hero');
+    // This used to assert that the hero contained no <details> at all, which was a proxy
+    // for "nothing technical unfolds in the default flow" — true only because the surface
+    // had no disclosures at the time. Provenance is now a disclosure precisely so that it
+    // stops occupying the top of the surface, so the tag-name proxy would forbid the
+    // improvement it was written to protect. The behaviour itself is asserted directly:
+    // nothing is expanded on arrival, and the technical evidence is not in the flow at all.
+    expect([...hero.querySelectorAll('details')].filter((el) => el.hasAttribute('open'))).toHaveLength(0);
+    expect(within(hero).queryByTestId('ide-export-gate-stack')).toBeNull();
+    expect(within(hero).queryByTestId('ide-export-deterministic-checks')).toBeNull();
     fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
     expect(getByTestId('ide-export-technical-dialog')).toBeTruthy();
   });

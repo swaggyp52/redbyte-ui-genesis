@@ -1,15 +1,25 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+// What this protects: a student can start work in one move, every workspace mounts its own
+// body, and Simulate opens on the testbench - the thing you edit - rather than on a waveform
+// that has nothing in it yet, gaining the waveform only once a run exists.
+//
+// Migrated 2026-09-06. Three things had gone stale against a deliberately replaced interface:
+//   · the landing expected `ide-project-landing-example-*` on a flat page. The Start Center is
+//     a sectioned library that opens on Course labs, and the harness already knows that path
+//     (loadStarterProject), so the gate uses it.
+//   · the dock table named `ide-inspector` and `ide-workbench-dock-toggle-*`, both deleted with
+//     IdeLeftRail.tsx in 24de703b6 (2026-07-25). The right dock is `ide-right-dock` and it is
+//     contextual on selection, which ide:gate:shell-layout-integrity already asserts per mode
+//     (contextualDockViolationCount); this gate no longer keeps a second, staler copy.
+//   · every mode was told whether to mount a console. The bottom panel is opt-in per surface
+//     preference now; ide:gate:console-autocollapse-contract owns that behaviour.
+// What is kept is what still has no other owner: the one-move start, a body per mode, and the
+// testbench-before-waveform invariant on Simulate.
+
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 const MODES = ['project', 'design', 'verify', 'hardware', 'export'];
-const MODE_EXPECTATIONS = {
-  project: { leftDock: 'hidden', rightDock: 'hidden', console: 'hidden' },
-  design: { leftDock: 'visible', rightDock: 'visible', console: 'hidden' },
-  hardware: { leftDock: 'visible', rightDock: 'visible', console: 'hidden' },
-  export: { leftDock: 'hidden', rightDock: 'visible', console: 'visible' },
-  import: { leftDock: 'visible', rightDock: 'hidden', console: 'hidden' },
-};
 
 async function clickIfVisible(locator) {
   const target = locator.first();
@@ -45,13 +55,11 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
     .first()
     .isVisible()
     .catch(() => false);
-  if (landingVisible) {
-    const firstExample = page.locator('[data-testid^="ide-project-landing-example-"]').first();
-    const exampleVisible = await firstExample.isVisible().catch(() => false);
-    assert(exampleVisible, 'project landing must surface at least one starter example');
-    await firstExample.click();
-    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  }
+  assert(landingVisible, 'first use must land on the Start Center');
+  // One move from the landing to real work. The harness owns the current path so that this
+  // gate does not carry its own copy of the Start Center's structure.
+  await loadStarterProject(page);
+  await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
   for (const mode of MODES) {
     await page.locator(`[data-testid="mode-button-${mode}"]`).click();
@@ -59,37 +67,13 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
     await modeRoot.waitFor({ state: 'visible', timeout: 10000 });
 
     if (mode !== 'verify') {
-      const expectation = MODE_EXPECTATIONS[mode];
-      const leftDockVisible = await visible(modeRoot.locator('[data-testid="ide-left-dock"]'));
-      if (expectation.leftDock === 'visible') {
-        assert(leftDockVisible, `mode=${mode} missing left dock`);
-      } else {
-        assert(!leftDockVisible, `mode=${mode} should not show a duplicate left dock`);
-      }
       assert(await visible(modeRoot.locator('[data-testid="ide-mode-body"]')), `mode=${mode} missing workspace`);
-
-      const inspectorVisible = await modeRoot.locator('[data-testid="ide-inspector"]').first().isVisible().catch(() => false);
-      const rightRailVisible = await modeRoot
-        .locator('[data-testid="ide-workbench-dock-toggle-right"]')
-        .first()
-        .isVisible()
-        .catch(() => false);
-      if (expectation.rightDock === 'visible') {
-        assert(inspectorVisible, `mode=${mode} missing right dock`);
-      } else if (expectation.rightDock === 'collapsed') {
-        assert(!inspectorVisible, `mode=${mode} inspector should start collapsed`);
-        assert(rightRailVisible, `mode=${mode} missing collapsed inspector rail`);
-      } else {
-        assert(!inspectorVisible, `mode=${mode} inspector should be hidden by default`);
-        assert(!rightRailVisible, `mode=${mode} should not show an inspector rail`);
-      }
-
-      const consoleCount = await modeRoot.locator('[data-testid="ide-workbench-console"]').count();
-      if (expectation.console === 'hidden') {
-        assert(consoleCount === 0, `mode=${mode} workbench console should be hidden by default`);
-      } else {
-        assert(consoleCount >= 1, `mode=${mode} missing workbench console`);
-      }
+      // Nothing retired may come back. These ids were deleted with the old shell; a gate that
+      // finds one again is looking at a regression, not at a new feature.
+      const retired = await modeRoot
+        .locator('[data-testid="ide-inspector"], [data-testid^="ide-workbench-dock-toggle-"]')
+        .count();
+      assert(retired === 0, `mode=${mode} mounted a retired shell control`);
     }
   }
 
@@ -104,10 +88,11 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
     .first()
     .isVisible()
     .catch(() => false);
+  // The thing you edit before a run is the case grid. `ide-verify-session-hero` and the
+  // scenario-builder class are from the pre-P2.5 composition and no element carries either.
   const preRunTestbenchVisible =
-    await visible(verifyRoot.locator('[data-testid="ide-stimulus-canvas"]')) ||
-    await visible(verifyRoot.locator('.ide-verify-scenario-builder')) ||
-    await visible(verifyRoot.locator('[data-testid="ide-verify-session-hero"]'));
+    await visible(verifyRoot.locator('[data-testid="ide-case-lab"]')) ||
+    await visible(verifyRoot.locator('[data-testid="ide-stimulus-canvas"]'));
   const preRunPrimaryVisible =
     await visible(verifyRoot.locator('[data-testid="ide-vcb-run"]')) ||
     await visible(verifyRoot.locator('[data-testid="ide-verify-generate-basic-vectors-footer"]')) ||

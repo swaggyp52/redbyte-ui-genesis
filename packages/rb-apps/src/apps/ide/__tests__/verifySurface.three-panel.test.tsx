@@ -98,14 +98,14 @@ describe('VerifySurface three-panel workstation', () => {
     expect(view.getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld0');
+    expect(view.getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld0');
 
     fireEvent.keyDown(window, { key: 'J' });
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
 
     fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));
     expect(view.getByTestId('ide-verify-mismatch-row-ld1_5').className).toContain('is-selected');
-    expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld1');
+    expect(view.getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
   });

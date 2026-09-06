@@ -1,0 +1,585 @@
+/* Design instrument chrome — the schematic document header, its toolbar,
+   the compact component library rows, and the starter strip. Composes the
+   shared wb-* primitives; owns only what is specific to Design. No !important. */
+
+/* Header: module trail · wire cue · mode segment. */
+.ide-root .rb-design-header { padding-left: var(--wb-space-3); }
+.ide-root .rb-design-breadcrumb { display: inline-flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
+.ide-root .rb-design-breadcrumb button {
+  height: var(--wb-control-h);
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: transparent;
+  font: 600 var(--wb-text-md) var(--wb-font-mono);
+  cursor: pointer;
+}
+.ide-root .rb-design-breadcrumb button:hover { background: var(--wb-hover-bg); color: var(--wb-text); }
+.ide-root .rb-design-breadcrumb button.is-current { color: var(--wb-text); cursor: default; }
+.ide-root .rb-design-breadcrumb .wb-sep { color: var(--wb-text-3); }
+.ide-root .rb-design-breadcrumb .ide-design-breadcrumb-of { color: var(--wb-text-3); font-weight: 500; }
+.ide-root .rb-design-wirecue { display: inline-flex; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
+.ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--wb-accent); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-design-wirecue-msg code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-design-wirecue-msg.is-error { color: var(--wb-err); }
+.ide-root .rb-design-mode .wb-btn { min-width: 52px; }
+.ide-root .rb-design-mode .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
+.ide-root .rb-design-mode[data-mode='live'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-ok) 16%, transparent); border-color: var(--wb-ok); }
+.ide-root .rb-design-mode[data-mode='replay'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-warn) 18%, transparent); border-color: var(--wb-warn); }
+
+/* Toolbar. */
+.ide-root .rb-design-toolbar { padding-left: var(--wb-space-2); }
+.ide-root .rb-design-toolbar .wb-btn svg { flex: none; }
+.ide-root .rb-design-zoom { min-width: 48px; }
+.ide-root .rb-design-zoom code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-design-menu { position: relative; }
+.ide-root .rb-design-menu > summary { list-style: none; cursor: pointer; }
+.ide-root .rb-design-menu > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-design-menu[open] > summary { background: var(--wb-accent-bg); }
+.ide-root .rb-design-menu-popup { left: 0; top: calc(100% + 4px); min-width: 260px; }
+.ide-root .rb-design-menu-field { cursor: default; }
+.ide-root .rb-design-menu-field select {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+
+/* Starter strip: one line, the brief behind a disclosure. */
+.ide-root .rb-design-starter { flex: none; }
+.ide-root .rb-design-starter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: var(--wb-row-h);
+  padding: 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-2);
+  white-space: nowrap;
+}
+.ide-root .rb-design-starter-title { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-design-starter-tag { padding: 0 5px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text-2); }
+.ide-root .rb-design-starter-brief { position: relative; }
+.ide-root .rb-design-starter-brief > summary { list-style: none; cursor: pointer; font-size: var(--wb-text-sm); }
+.ide-root .rb-design-starter-brief > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-design-starter-brief-body {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(520px, 60vw);
+  padding: 8px 12px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  background: var(--wb-surface);
+  box-shadow: var(--wb-overlay-shadow);
+  white-space: normal;
+  color: var(--wb-text);
+  font-size: var(--wb-text-md);
+  line-height: 1.45;
+}
+.ide-root .rb-design-starter-brief-body p { margin: 0 0 6px; }
+.ide-root .rb-design-starter-next { overflow: hidden; text-overflow: ellipsis; }
+
+/* Component library rows (28px): glyph · name · pin signature. */
+.ide-root .rb-lib-row {
+  display: grid;
+  /* The glyph is a type chip, and NAND3/XNOR are five characters wide: a fixed 34px cut the
+     last letter off the longest of them. */
+  grid-template-columns: minmax(34px, auto) minmax(6.5rem, 1fr) minmax(0, auto);
+  /* A row may also carry a capability badge and a palette badge; let them take
+     implicit columns on the same line instead of wrapping into the next row. */
+  grid-auto-flow: column;
+  /* Shrinkable. `max-content` made every badge column unshrinkable, which set the row's
+     minimum width above the pane's and clipped the name and the port signature away. */
+  grid-auto-columns: minmax(0, max-content);
+  overflow: hidden;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--wb-space-2) 0 6px;
+  border: 0;
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--rb-text-body) / 1 var(--rb-font-ui);
+  text-align: left;
+  white-space: nowrap;
+  cursor: grab;
+}
+.ide-root .rb-lib-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-lib-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-lib-row.is-placement-active { background: var(--wb-accent-bg-strong); }
+.ide-root .rb-lib-glyph {
+  display: inline-grid;
+  place-items: center;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface);
+  font: 600 var(--rb-text-micro) var(--wb-font-mono);
+}
+/* The row is a fixed 28px and declares nowrap, but a later rule set the name back to
+   `normal`, so once the port signature took its column the name wrapped to 35px inside
+   a 28px row and the list rows visibly overlapped each other. */
+.ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rb-text-body); font-weight: 500; }
+.ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-cap,
+.ide-root .rb-lib-badge {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--wb-text-3);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  text-overflow: ellipsis;
+}
+/* The library composes against its own width, like the toolbar above the sheet. A capability
+   chip and a limits badge earn their place beside the name and the port signature only while
+   there is room for all of them; when there is not, they are the first to go, and the same words
+   stay reachable - every row's title already names the interface and the capability. */
+.ide-root .rb-lib-list { container-type: inline-size; container-name: design-lib; width: 100%; }
+@container design-lib (max-width: 15rem) {
+  .ide-root .rb-lib-cap,
+  .ide-root .rb-lib-badge { display: none; }
+  /* Even without the chips a narrow pane cannot hold "Register (Bus)" and "4 in -> 2 out" on
+     one line: the name would keep its floor and the signature would be cut to "4 in ->". A part
+     is its name and its interface, so below this width the row gives each of them a line of its
+     own rather than showing half of both. */
+  .ide-root .rb-lib-row {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(34px, auto) minmax(0, 1fr);
+    grid-template-areas: 'glyph name' 'glyph pins';
+    align-content: center;
+    height: 2.5rem;
+    row-gap: 0;
+  }
+  .ide-root .rb-lib-glyph { grid-area: glyph; }
+  .ide-root .rb-lib-name { grid-area: name; }
+  .ide-root .rb-lib-pins { grid-area: pins; }
+}
+
+/* Library tool window: search row, sections with 24px headers, board chips. */
+.ide-root .rb-design-dock-tabs { flex: none; }
+.ide-root .rb-lib-toolbar { flex: none; display: flex; flex-direction: column; }
+.ide-root .rb-lib-toolbar .wb-search { color: var(--wb-text-3); }
+.ide-root .rb-lib-search-input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; color: var(--wb-text); background: transparent; font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-lib-search-input:focus { outline: none; }
+.ide-root .rb-lib-search-input::-webkit-search-cancel-button { appearance: none; }
+.ide-root .rb-lib-bus { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-lib-results { margin: 0 var(--wb-space-3) 4px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-lib-sections { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-lib-section { display: block; margin: 0; padding: 0; border: 0; }
+.ide-root .rb-lib-section-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 var(--wb-space-2) 0 6px;
+  border-top: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+}
+.ide-root .rb-lib-section:first-child .rb-lib-section-header { border-top: 0; }
+.ide-root .rb-lib-section-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ide-root .rb-lib-section-meta { display: flex; align-items: center; gap: 6px; }
+.ide-root .rb-lib-section-header h4,
+.ide-root .rb-lib-subheader h5 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+.ide-root .rb-lib-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-toggle {
+  order: -1;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-3);
+  background: transparent;
+  font-size: var(--rb-text-micro);
+  cursor: pointer;
+}
+.ide-root .rb-lib-toggle:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .rb-lib-toggle:disabled { opacity: 0.4; cursor: default; }
+.ide-root .rb-lib-section[data-collapsed='true'] .rb-lib-section-header { color: var(--wb-text-3); }
+.ide-root .rb-lib-list { display: block; padding: 2px 0; }
+.ide-root .rb-lib-subsection { display: block; }
+.ide-root .rb-lib-subheader { display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 var(--wb-space-2) 0 12px; }
+.ide-root .rb-lib-board-groups { display: block; }
+.ide-root .rb-lib-board-group { display: block; }
+.ide-root .rb-lib-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px var(--wb-space-2) 6px 12px; }
+.ide-root .rb-lib-chip {
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  cursor: grab;
+}
+.ide-root .rb-lib-chip:hover { border-color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-lib-chip.is-placed { color: var(--wb-text-3); background: var(--wb-surface-2); cursor: default; text-decoration: line-through; }
+.ide-root .rb-lib-chip.is-placement-active { border-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
+.ide-root .rb-lib-row--module { grid-template-columns: 34px minmax(0, 1fr) auto auto; cursor: default; }
+.ide-root .rb-lib-row-actions { display: inline-flex; gap: 2px; }
+.ide-root .rb-lib-row-actions .wb-btn { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 8px; }
+
+/* Inspector grammar: flat sections, 24px key/value rows, compact actions.
+   Narration stays available but reads as secondary text, not cards. */
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-title {
+  margin: 0;
+  padding: 0 var(--wb-space-3);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 24px var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-content { padding: 4px var(--wb-space-3) 8px; }
+.ide-root .rb-insp-sel-inspector,
+.ide-root .rb-insp-props,
+.ide-root .rb-insp-canvas-default,
+.ide-root .rb-insp-board { display: block; padding: 0; }
+.ide-root .rb-insp-identity-card,
+.ide-root .rb-insp-idle-card,
+.ide-root .rb-insp-empty-card,
+.ide-root .rb-insp-section,
+.ide-root .rb-insp-diagnostics,
+.ide-root .rb-insp-io-state,
+.ide-root .rb-insp-section-stack,
+.ide-root .rb-insp-signal-model {
+  display: block;
+  margin: 0;
+  padding: 6px var(--wb-space-3) 8px;
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root .rb-insp-eyebrow,
+.ide-root .rb-insp-idle-eyebrow,
+.ide-root .rb-insp-group-label,
+.ide-root .rb-insp-io-state-kicker {
+  display: block;
+  margin: 4px 0 2px;
+  color: var(--wb-text-3);
+  font: 600 var(--wb-text-xs) / 16px var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-insp-identity-row { display: flex; align-items: flex-start; gap: 8px; }
+.ide-root .rb-insp-title-block { flex: 1; min-width: 0; }
+.ide-root .rb-insp-sel-identity strong,
+.ide-root .rb-insp-idle-card h4,
+.ide-root .rb-insp-io-state-header strong { color: var(--wb-text); font: 600 var(--wb-text-lg) / 18px var(--wb-font-ui); }
+.ide-root .rb-insp-subtitle { margin: 1px 0 0; color: var(--wb-text-3); font: var(--wb-text-sm) / 16px var(--wb-font-ui); }
+.ide-root .rb-insp-subtitle code,
+.ide-root .rb-insp-sel-identity code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-insp-sep { color: var(--wb-text-3); }
+.ide-root .rb-insp-status {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 14px var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .rb-insp-status.is-ok { color: var(--wb-ok); border-color: color-mix(in srgb, var(--wb-ok) 50%, transparent); }
+.ide-root .rb-insp-status.is-warn { color: var(--wb-warn); border-color: color-mix(in srgb, var(--wb-warn) 50%, transparent); }
+.ide-root .rb-insp-status.is-error { color: var(--wb-err); border-color: color-mix(in srgb, var(--wb-err) 50%, transparent); }
+.ide-root .rb-insp-next-step,
+.ide-root .rb-insp-hint,
+.ide-root .rb-insp-meaning,
+.ide-root .rb-insp-what-it-is,
+.ide-root .rb-insp-structure-hint,
+.ide-root .rb-insp-guidance,
+.ide-root .rb-insp-idle-tip,
+.ide-root .rb-insp-proof-boundary,
+.ide-root .rb-insp-sel-issues-hint,
+.ide-root .rb-insp-sel-issues-message,
+.ide-root .rb-insp-io-state-label {
+  margin: 3px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) / 15px var(--wb-font-ui);
+}
+.ide-root .rb-insp-name-control,
+.ide-root .rb-insp-inline-editor { display: block; margin-top: 4px; }
+.ide-root .rb-insp-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
+.ide-root .rb-insp-field > label,
+.ide-root .rb-insp-field > span:first-child { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-insp-field--checkbox { grid-template-columns: auto minmax(0, 1fr); }
+.ide-root .rb-insp-name-control input,
+.ide-root .rb-insp-field input:not([type='checkbox']),
+.ide-root .rb-insp-field select,
+.ide-root .rb-insp-inline-editor input,
+.ide-root .rb-insp-inline-editor select {
+  width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-mono);
+}
+.ide-root .rb-insp-facts { display: block; margin: 2px 0 0; padding: 0; }
+.ide-root .rb-insp-facts > div,
+.ide-root .rb-insp-row,
+.ide-root .rb-insp-idle-stat,
+.ide-root .rb-insp-io-state-list > * {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-insp-facts > div:last-child,
+.ide-root .rb-insp-row:last-child,
+.ide-root .rb-insp-idle-stat:last-child { border-bottom: 0; }
+.ide-root .rb-insp-facts dt,
+.ide-root .rb-insp-row > :first-child,
+.ide-root .rb-insp-idle-stat > :first-child,
+.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-insp-facts dd,
+.ide-root .rb-insp-row > :last-child,
+.ide-root .rb-insp-idle-stat > :last-child,
+.ide-root .rb-insp-io-state-value { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-insp-idle-stats { display: block; }
+.ide-root .rb-insp-action-group { display: block; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
+.ide-root .rb-insp-action-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.ide-root .rb-insp-action-grid .ide-button,
+.ide-root .rb-insp-sel-inspector .ide-button,
+.ide-root .rb-insp-props .ide-button,
+.ide-root .rb-insp-board .ide-button,
+.ide-root .rb-insp-canvas-default .ide-button,
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inline-actions .ide-button {
+  width: auto;
+  min-height: 0;
+  height: var(--wb-control-h);
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-insp-action-grid .ide-button:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-action-grid .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-insp-action-grid .ide-button:disabled { opacity: 0.45; }
+.ide-root .rb-insp-group--danger .ide-button { color: var(--wb-err); }
+.ide-root .rb-insp-sel-pins { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ide-root .rb-insp-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+}
+.ide-root .rb-insp-pin-value { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-insp-sel-issues-list,
+.ide-root .rb-insp-diagnostic-list { margin: 2px 0 0; padding: 0; list-style: none; }
+.ide-root .rb-insp-sel-issues-list li,
+.ide-root .rb-insp-diagnostic-list li { padding: 3px 0; border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); }
+.ide-root .rb-insp-sel-issues-header { display: flex; align-items: center; gap: 6px; }
+.ide-root .rb-insp-sel-issues-pill { padding: 0 5px; border-radius: var(--wb-radius); color: var(--wb-err); background: color-mix(in srgb, var(--wb-err) 12%, transparent); font: 600 var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-insp-subgroup { margin-top: 6px; }
+
+.ide-root .rb-insp-live-summary { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ide-root .rb-design-health { display: inline-flex; align-items: center; gap: 6px; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .rb-design-health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-ok); }
+.ide-root .rb-design-health.is-warn .rb-design-health-dot,
+.ide-root .rb-design-health.is-warning .rb-design-health-dot { background: var(--wb-warn); }
+.ide-root .rb-design-health.is-error .rb-design-health-dot,
+.ide-root .rb-design-health.is-blocking .rb-design-health-dot { background: var(--wb-err); }
+.ide-root .rb-design-health-counts { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Header health chip: always visible; the bottom Problems panel holds the list. */
+.ide-root .rb-design-health { display: inline-flex; align-items: center; gap: 6px; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .rb-design-health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-ok); }
+.ide-root .rb-design-health.has-warnings .rb-design-health-dot { background: var(--wb-warn); }
+.ide-root .rb-design-health.has-errors .rb-design-health-dot { background: var(--wb-err); }
+.ide-root .rb-design-health.has-errors { color: var(--wb-text); }
+.ide-root .rb-design-health-counts { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Bottom panel: Problems as 24px rows; Output / Simulation as compact readouts. */
+.ide-root .ide-design-bottom-workspace { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ide-root .ide-design-bottom-content { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-problems { display: block; padding: 0; }
+.ide-root .rb-problems-row {
+  display: grid;
+  grid-template-columns: 14px minmax(120px, 0.6fr) minmax(0, 1.6fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0 var(--wb-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-problems-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-problems-sev { width: 8px; height: 8px; border-radius: 50%; background: var(--wb-text-3); }
+.ide-root .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }
+.ide-root .rb-problems-row[data-severity='warn'] .rb-problems-sev,
+.ide-root .rb-problems-row[data-severity='warning'] .rb-problems-sev { background: var(--wb-warn); }
+.ide-root .rb-problems-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-problems-msg { color: var(--wb-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-problems-ref { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .ide-design-console-readout,
+.ide-root .ide-design-simulation-readout { display: grid; gap: 4px; padding: 8px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); }
+.ide-root .ide-design-console-readout strong,
+.ide-root .ide-design-simulation-readout strong { color: var(--wb-text); font-weight: 600; }
+.ide-root .ide-design-console-readout p { margin: 0; }
+
+/* Probe readout: light chips, not a dark HUD. */
+.ide-root .ide-design-probe-bar { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; max-width: 60%; padding: 0; border: 0; background: transparent; box-shadow: none; pointer-events: none; }
+.ide-root .ide-design-probe-pill { display: inline-flex; align-items: baseline; gap: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); box-shadow: none; }
+.ide-root .ide-design-probe-pill code { color: var(--wb-text); font: inherit; }
+.ide-root .ide-design-probe-value { color: var(--wb-text); font-weight: 700; }
+.ide-root .rb-design-dock-tabs { overflow-x: auto; scrollbar-width: none; }
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 7px; }
+
+/* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
+/* ── The schematic toolbar keeps one row ────────────────────────────────────
+   Measured at 1366x768 with the inspector open: the bar is 734px and its groups need 805px
+   the moment the Related control appears after a run - so it wrapped, and the View menu
+   dropped to a second row. Wrapping was the fallback; a budget is the fix. The bar composes
+   against its OWN width, so a wide window with a narrow canvas is treated as narrow, and
+   the thresholds are in rem so a larger text size counts as narrowness too.
+
+   What yields, in order: the camera buttons, because both are in the View menu already and
+   both have keyboard shortcuts. Nothing yields that has no other way to reach it. */
+.ide-root .rb-design-toolbar {
+  container-type: inline-size;
+  container-name: design-bar;
+  /* Inline-size containment means the box can no longer take its width from its contents, so
+     it has to be told to fill the row - without this it collapsed to 230px at 200% text. */
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--wb-toolbar-h);
+  row-gap: 2px;
+}
+@container design-bar (max-width: 48rem) {
+  /* Fit selection folds first: it is the rarer of the two and needs a selection anyway. */
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-center-selection-canvas'] { display: none; }
+}
+@container design-bar (max-width: 42rem) {
+  /* Then Fit itself, and the separator that introduced the pair. */
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-fit-circuit-canvas'] { display: none; }
+  .ide-root .rb-design-toolbar > .wb-toolbar-sep:nth-of-type(3) { display: none; }
+}
+.ide-root .rb-design-toolbar .wb-btn, .ide-root .rb-design-toolbar .wb-segment, .ide-root .rb-design-toolbar .rb-design-menu, .ide-root .rb-design-toolbar .rb-design-trace { flex: none; }
+
+/* Inspector named sections: mapping constraint lines, source lines, related documents. */
+.ide-root .rb-insp-xdc { margin: 6px 0 0; padding: 6px 8px; border: 1px solid var(--wb-border); border-radius: 3px; background: var(--wb-surface-2); color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ide-root .rb-insp-note { margin: 6px 0 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-insp-source-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ide-root .rb-insp-source-line { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; align-items: baseline; font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-insp-source-ln { color: var(--wb-text-3); }
+.ide-root .rb-insp-source-line code { color: var(--wb-text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ide-root .rb-insp-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ide-root .rb-insp-link { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; padding: 3px 4px; border: 0; border-radius: 3px; background: transparent; color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-ui); text-align: left; cursor: pointer; }
+.ide-root .rb-insp-link:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-insp-link-label { font-weight: 600; }
+.ide-root .rb-insp-link-detail { color: var(--wb-text-3); white-space: nowrap; }
+/* A fact row that is also a navigation: the driver rows select the driving part. */
+.ide-root .rb-insp-row--link { width: 100%; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ide-root .rb-insp-row--link:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-row--link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+
+/* Measured at 1366x768: the component library rendered a 276px grid column inside a 175px
+   box whose overflow is hidden, so 101px of every row - the port signature, and on badge-
+   carrying rows part of the name - was cut away with no scrollbar to reveal it. The palette
+   declared a grid with no column track, so the implicit auto track took the content's
+   min-content width and the container could not push back. The track follows the pane now. */
+.ide-root .ide-design-palette { grid-template-columns: minmax(0, 1fr); }
+.ide-root .ide-design-palette > * { min-width: 0; }
+
+/* Layers and Layout were two adjacent dropdown buttons in a toolbar that had to wrap to a
+   second row to hold them. They are one View menu now, and each half keeps a label. */
+.ide-root .wb-menu-group-label {
+  margin: 4px 0 2px;
+  padding: 0 8px;
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) / var(--rb-lh-tight) var(--rb-font-ui);
+}
+.ide-root .wb-menu-group-label:first-child { margin-top: 0; }
+
+/* The inspector reads its own subject. Measured with a gate selected: the dock itself was
+   the scroller, 1083px of content in a 779px box, so scrolling to a section carried the
+   tab strip and the identity of the thing being inspected off the top of the screen. The
+   tabs and the identity card are a head that does not move, the sections are a body that
+   does, and exactly one of the three scrolls. */
+.ide-root [data-ide-mode-marker="design"] .ide-workbench-dock-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-root .rb-design-dock-head {
+  flex: none;
+  border-bottom: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface);
+}
+.ide-root .rb-design-dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

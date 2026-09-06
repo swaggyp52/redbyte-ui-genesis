@@ -7,7 +7,7 @@ import { VerifyCommandBar } from '../surfaces/verify/VerifyCommandBar';
 afterEach(cleanup);
 
 describe('Simulation Studio command authority', () => {
-  it('keeps one context-aware run command beside the four work lenses', () => {
+  it('keeps one context-aware run command beside the five work lenses', () => {
     const onRun = vi.fn();
     const view = render(
       <VerifyCommandBar
@@ -26,7 +26,10 @@ describe('Simulation Studio command authority', () => {
     );
 
     const commandBar = view.getByTestId('ide-verify-command-bar');
-    expect(within(commandBar).getAllByRole('tab')).toHaveLength(4);
+    // The workbench's document tabs own Cases / Timing / Waveform; the command
+    // bar carries no second instrument selector, only the run authority.
+    expect(within(commandBar).queryAllByRole('tab')).toHaveLength(0);
+    expect(view.queryByTestId('ide-vcb-run-mode')).toBeNull();
     expect(within(commandBar).getAllByTestId('ide-vcb-run')).toHaveLength(1);
     expect(view.getByTestId('ide-vcb-run').textContent).toBe('Rerun simulation');
 

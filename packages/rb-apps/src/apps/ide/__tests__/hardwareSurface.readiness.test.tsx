@@ -245,7 +245,7 @@ describe('HardwareSurface readiness', () => {
     });
 
     const workspace = getByTestId('ide-hw-board-workspace');
-    expect(workspace.textContent).toContain('Plan Basys3 I/O and constraint intent');
+    expect(workspace.textContent).toContain('Board & Constraints');
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table')).toBeTruthy();
     expect(getByTestId('ide-hw-selected-mapping-editor')).toBeTruthy();
@@ -413,7 +413,14 @@ describe('HardwareSurface readiness', () => {
     });
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
-    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Ready for export');
+    // The behaviour: a manual-event lab with no board oscillator is still handed on to
+    // Build & Export, not held back for a clock. The old assertion read the literal words
+    // 'Ready for export', which were a fourth restatement of MAPPING COMPLETE in the same
+    // ribbon; the region now labels itself 'Next' and names the destination. Assert the
+    // destination and the absence of a clock demand, which is what the test was for.
+    const nextAction = getByTestId('ide-hw-mapping-next-action').textContent ?? '';
+    expect(nextAction).toContain('Build & Export');
+    expect(nextAction).not.toMatch(/oscillator|clock/i);
   });
 
   it('uses semantic Verify roles for non-regex clock signal names', () => {

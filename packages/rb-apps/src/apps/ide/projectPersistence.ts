@@ -1,12 +1,26 @@
 import { decodeRBProject, encodeRBProject, type RBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
 import type { VerifyScenario } from './verifyScenario';
+import type { RuntimeVerifyRun, VerifyRunLedgerEntry } from './projectRuntime';
 
 export const IDE_PROJECT_STORAGE_VERSION = 1 as const;
 export const IDE_PROJECT_INDEX_KEY =
   `rb.ide.projects.v${IDE_PROJECT_STORAGE_VERSION}.index`;
 export const IDE_PROJECT_KEY_PREFIX =
   `rb.ide.project.v${IDE_PROJECT_STORAGE_VERSION}:`;
+
+/**
+ * A project's own run evidence, stored beside it so reopening the project restores what
+ * the student proved rather than an empty Simulate. Workspace-local like `scenarios`: the
+ * portable RBProject in `rbprojJson` is untouched, and an older snapshot without this
+ * field simply restores no evidence, exactly as before.
+ */
+export interface PersistedIdeRunEvidence {
+  /** The full last run - report rows and waveform - which is what makes a trace replayable. */
+  lastRun?: RuntimeVerifyRun;
+  /** The run ledger: summaries, the history behind the trace. */
+  history?: VerifyRunLedgerEntry[];
+}
 
 export interface PersistedIdeProjectSnapshot {
   version: typeof IDE_PROJECT_STORAGE_VERSION;
@@ -18,6 +32,8 @@ export interface PersistedIdeProjectSnapshot {
   /** Local workspace-only testbench documents; RBProject remains portable. */
   scenarios?: VerifyScenario[];
   activeScenarioId?: string;
+  /** Local workspace-only run evidence for this project. */
+  runEvidence?: PersistedIdeRunEvidence;
 }
 
 export interface PersistedIdeProjectIndexEntry {

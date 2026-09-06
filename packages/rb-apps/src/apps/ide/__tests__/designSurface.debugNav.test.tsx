@@ -678,11 +678,11 @@ describe('DesignSurface debug nav — replay authority', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('switch-toggle-sw0_node-container')).toBeTruthy();
+      expect(view.getByTestId('switch-toggle-sw0_node')).toBeTruthy();
     });
 
-    expect(view.getByTestId('switch-toggle-sw0_node-container').textContent).toContain('SW0 OFF');
-    expect(view.getByTestId('switch-toggle-sw0_node-container').textContent).not.toContain('SW0 ON');
+    expect(view.getByTestId('node-INPUT-sw0_node').getAttribute('data-sim-value')).toBe('0');
+    expect(view.getByTestId('node-INPUT-sw0_node').textContent).toContain('SW0');
   });
 
   it('renders the on-canvas clock widget from the selected replay case, not persisted live node state', async () => {
@@ -762,11 +762,11 @@ describe('DesignSurface debug nav — replay authority', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('switch-toggle-clk_node-container')).toBeTruthy();
+      expect(view.container.querySelector('[data-node-id="clk_node"]')).not.toBeNull();
     });
 
-    expect(view.getByTestId('switch-toggle-clk_node-container').textContent).toContain('W5 1');
-    expect(view.getByTestId('switch-toggle-clk_node-container').textContent).not.toContain('W5 0');
+    expect(view.container.querySelector('[data-node-id="clk_node"]')?.getAttribute('data-sim-value')).toBe('1');
+    expect(view.container.querySelector('[data-node-id="clk_node"]')?.textContent).toContain('W5');
   });
 
   it('removes live simulation inspector chrome while replay is active', async () => {

@@ -69,7 +69,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    expect(getByTestId('ide-stimulus-expected-ld0-t0')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-exp-0-ld0')).toBeTruthy();
   });
 
   it('keeps expected unset when Add case is added without editing any checks', () => {
@@ -87,7 +87,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-stimulus-add-tick'));
+    fireEvent.click(getByTestId('ide-case-lab-add'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const newVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
@@ -111,7 +111,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    fireEvent.pointerDown(getByTestId('ide-stimulus-expected-ld0-t0'));
+    fireEvent.click(getByTestId('ide-case-lab-exp-0-ld0'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const firstEdit = onVectorsChange.mock.calls[0]?.[0] as Array<{
@@ -140,7 +140,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
     );
 
     expect(getByTestId('ide-vcb-use-saved-checks')).toHaveAttribute('aria-pressed', 'true');
-    expect(getByTestId('ide-stimulus-expected-ld0-t0').getAttribute('title')).toContain(
+    expect(getByTestId('ide-case-lab-exp-0-ld0').getAttribute('title')).toContain(
       '1'
     );
   });
@@ -159,7 +159,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    expect(queryByTestId('ide-stimulus-expected-ld0-t0')).toBeNull();
+    expect(queryByTestId('ide-case-lab-exp-0-ld0')).toBeNull();
   });
 
   it('does not invent fallback input ports when no authoritative inputs exist', () => {

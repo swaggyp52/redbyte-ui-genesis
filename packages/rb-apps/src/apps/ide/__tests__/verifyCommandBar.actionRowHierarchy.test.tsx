@@ -36,7 +36,7 @@ describe('VerifyCommandBar compact run-loop hierarchy', () => {
 
   it('orders the selector before Run and the explainer after Run', () => {
     const view = render(<VerifyCommandBar {...BASE} />);
-    const mode = view.getByTestId('ide-vcb-run-mode');
+    const mode = view.getByTestId('ide-vcb-run-intent');
     const run = view.getByTestId('ide-vcb-run-authority');
     const explainer = view.getByTestId('ide-vcb-mode-explainer');
 
@@ -48,7 +48,7 @@ describe('VerifyCommandBar compact run-loop hierarchy', () => {
     const view = render(<VerifyCommandBar {...BASE} compareAvailable={false} />);
 
     expect(view.getByTestId('ide-vcb-observe-only').textContent).toBe('Observe');
-    expect(view.getByTestId('ide-vcb-use-saved-checks').textContent).toBe('Compare expected output');
+    expect(view.getByTestId('ide-vcb-use-saved-checks').textContent).toBe('Compare');
     expect((view.getByTestId('ide-vcb-use-saved-checks') as HTMLButtonElement).disabled).toBe(true);
   });
 

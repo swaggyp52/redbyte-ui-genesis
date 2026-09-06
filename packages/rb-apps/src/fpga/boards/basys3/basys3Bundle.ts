@@ -247,12 +247,10 @@ export function exportBasys3Bundle(
     if (!lint.verilogModuleFound) {
       warnings.push('top module not found in generated verilog');
     }
-    if (lint.missingInHdl.length > 0) {
-      warnings.push(`XDC ports missing in HDL: ${lint.missingInHdl.join(', ')}`);
-    }
-    if (lint.missingInXdc.length > 0) {
-      warnings.push(`HDL ports missing in XDC: ${lint.missingInXdc.join(', ')}`);
-    }
+    // The raw-Verilog port cross-check compared node ids (ld0_node_in) against
+    // artifact ports (LD0_CARRY) — two namespaces that never match under the
+    // canonical naming — so it reported two false mismatches on every scalar
+    // starter. Port parity is decided by the VHDL/XDC contract below.
   }
 
   const xdcPinWarnings = topXdc

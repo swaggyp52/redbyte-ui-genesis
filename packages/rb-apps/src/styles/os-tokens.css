@@ -81,16 +81,16 @@
   --rb-danger-border: rgba(248, 113, 113, 0.30);
 
   /* ── Typography (IBM Plex — engineered precision) ── */
-  --rb-font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --rb-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+
   --rb-font-family-body: var(--rb-font-sans);
 
-  --rb-text-xs:   0.6875rem;  /* 11px */
-  --rb-text-sm:   0.75rem;    /* 12px */
-  --rb-text-base: 0.8125rem;  /* 13px */
-  --rb-text-md:   0.875rem;   /* 14px */
-  --rb-text-lg:   1rem;       /* 16px */
-  --rb-text-xl:   1.25rem;    /* 20px */
+  --rb-text-xs:   var(--rb-text-meta);
+  --rb-text-sm:   var(--rb-text-meta);
+  --rb-text-base: var(--rb-text-body);
+  --rb-text-md:   var(--rb-text-head);
+  --rb-text-lg:   var(--rb-text-title);
+  --rb-text-xl:   var(--rb-text-doc);
   --rb-text-2xl:  1.5rem;     /* 24px */
 
   /* Type scale — semantic aliases

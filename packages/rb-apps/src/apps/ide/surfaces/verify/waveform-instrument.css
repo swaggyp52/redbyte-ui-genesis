@@ -1,0 +1,303 @@
+/* Waveform instrument — the evidence deck under the Cases / Timing documents
+   and the Waveform document itself. A light paper instrument like the
+   schematic sheet: lanes, grid, cursors and verdict bands are ink on paper.
+   Owns the deck frame, stage, header, transport and tools; the SVG viewer
+   reads the --rb-wave-* tokens. No !important. */
+
+.ide-root {
+  --rb-wave-bg: #f8fafc;
+  --rb-wave-header-bg: #eef2f7;
+  --rb-wave-gutter-bg: #f3f5f9;
+  --rb-wave-grid: #e3e8ef;
+  --rb-wave-grid-strong: #c9d2dd;
+  --rb-wave-stripe: rgba(28, 39, 57, 0.025);
+  --rb-wave-row-line: #e8edf3;
+  --rb-wave-text: #1c2739;
+  --rb-wave-text-2: #4a5a70;
+  --rb-wave-text-3: #7d8a9c;
+  --rb-wave-in: #2563eb;
+  --rb-wave-in-soft: rgba(37, 99, 235, 0.12);
+  --rb-wave-out: #0f6b5b;
+  --rb-wave-out-soft: rgba(15, 107, 91, 0.12);
+  --rb-wave-internal: #5b6b82;
+  --rb-wave-clock: #8a5a00;
+  --rb-wave-clock-soft: rgba(183, 121, 31, 0.16);
+  --rb-wave-fail: #c0392b;
+  --rb-wave-fail-text: #a12f22;
+  --rb-wave-fail-band: rgba(192, 57, 43, 0.12);
+  --rb-wave-pin: #b7791f;
+  --rb-wave-select: #2563eb;
+  --rb-wave-select-soft: rgba(37, 99, 235, 0.16);
+  --rb-wave-hover: rgba(28, 39, 57, 0.35);
+  --rb-wave-cursor-a: #2563eb;
+  --rb-wave-cursor-b: #7c3aed;
+  --rb-wave-marker-fill: #ffffff;
+}
+:root:not([data-theme='light']) .ide-root {
+  --rb-wave-bg: #0f151e;
+  --rb-wave-header-bg: #161e2a;
+  --rb-wave-gutter-bg: #131a25;
+  --rb-wave-grid: #1f2937;
+  --rb-wave-grid-strong: #33415a;
+  --rb-wave-stripe: rgba(255, 255, 255, 0.02);
+  --rb-wave-row-line: #1c2633;
+  --rb-wave-text: #e6ecf5;
+  --rb-wave-text-2: #b3c0d1;
+  --rb-wave-text-3: #7e8ca0;
+  --rb-wave-in: #7fb2ff;
+  --rb-wave-in-soft: rgba(127, 178, 255, 0.14);
+  --rb-wave-out: #5ec9a6;
+  --rb-wave-out-soft: rgba(94, 201, 166, 0.14);
+  --rb-wave-internal: #93a3ba;
+  --rb-wave-clock: #f0b64a;
+  --rb-wave-clock-soft: rgba(240, 182, 74, 0.16);
+  --rb-wave-fail: #ff7a6b;
+  --rb-wave-fail-text: #ff9a90;
+  --rb-wave-fail-band: rgba(255, 122, 107, 0.16);
+  --rb-wave-pin: #f0b64a;
+  --rb-wave-select: #7fb2ff;
+  --rb-wave-select-soft: rgba(127, 178, 255, 0.18);
+  --rb-wave-hover: rgba(230, 236, 245, 0.35);
+  --rb-wave-cursor-a: #7fb2ff;
+  --rb-wave-cursor-b: #c4a5ff;
+  --rb-wave-marker-fill: #0f151e;
+}
+:root[data-theme='light'] .ide-root { --rb-wave-bg: #f8fafc; }
+
+/* Deck frame: no dark slab, no rounded console. */
+.ide-root .rb-wave-frame,
+.ide-root .rb-wave-deck { display: flex; flex-direction: column; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root .rb-wave-stage { display: flex; flex-direction: column; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+
+/* Header: label · case · tick · signal · watch · sequential badge. */
+.ide-root .rb-wave-header { padding-left: var(--wb-space-3); }
+.ide-root .rb-wave-header-copy { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.ide-root .rb-wave-label { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-wave-header-right { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+.ide-root .rb-wave-chip,
+.ide-root .rb-wave-seq-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface-2); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-wave-chip--signal { color: var(--wb-text); }
+.ide-root .rb-wave-tick { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-wave-header .ide-button,
+.ide-root .rb-wave-header button:not(.wb-btn) {
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Transport bar: step controls · tick range · scrubber. */
+.ide-root .rb-wave-bar { display: flex; flex-direction: column; flex: none; border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
+.ide-root .rb-wave-primary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); }
+.ide-root .rb-wave-transport { display: flex; flex: 1; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ide-root .rb-wave-group { display: inline-flex; align-items: center; gap: 4px; }
+.ide-root .rb-wave-group--right { margin-left: auto; }
+.ide-root .rb-wave-group .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-wave-bar .ide-button,
+.ide-root .rb-wave-bar .rb-wave-zoom {
+  height: var(--wb-control-h);
+  min-height: 0;
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.ide-root .rb-wave-bar .rb-wave-zoom.is-active { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-wave-bar .ide-button:disabled { opacity: 0.45; }
+.ide-root .rb-wave-scrubber { display: inline-flex; align-items: center; gap: 6px; }
+.ide-root .rb-wave-scrubber input[type='range'] { width: 160px; accent-color: var(--wb-accent); }
+.ide-root .rb-wave-scrubber code { color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-wave-step-bar { display: inline-flex; align-items: center; gap: 4px; }
+.ide-root .rb-wave-step-position { color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-mono); }
+
+/* Canvas: the SVG viewer fills the stage; the gutter is paper. */
+.ide-root .rb-wave-canvas { flex: 1 1 auto; min-height: 120px; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--rb-wave-bg); box-shadow: none; overflow: hidden; }
+.ide-root .rb-wave-scroll { height: 100%; overflow: auto; }
+.ide-root .rb-wave-canvas svg { display: block; font-family: var(--wb-font-mono); }
+.ide-root .rb-wave-empty { padding: 12px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+
+/* Tools panel (zoom / density / cursors): one row of compact controls. */
+.ide-root .rb-wave-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px var(--wb-space-3); border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-wave-tools-section { display: inline-flex; align-items: center; gap: 4px; }
+.ide-root .rb-wave-tools-label { margin: 0; color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-wave-tools button { height: 22px; padding: 0 7px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-ui); cursor: pointer; }
+.ide-root .rb-wave-tools button.is-active,
+.ide-root .rb-wave-tools button[aria-pressed='true'] { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-wave-tools-readouts { display: inline-flex; gap: 8px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Results summary: one verdict bar above the lanes, not a hero card. */
+.ide-root .rb-wave-results-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0; padding: 4px var(--wb-space-3); border: 0; border-bottom: 1px solid var(--wb-border); border-radius: 0; background: var(--wb-surface-2); box-shadow: none; color: var(--wb-text); }
+.ide-root .rb-wave-results-summary-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; min-width: 0; }
+.ide-root .rb-wave-results-summary-state { display: inline-flex; align-items: center; gap: 6px; font: 700 var(--wb-text-sm) var(--wb-font-ui); letter-spacing: 0.06em; text-transform: uppercase; }
+.ide-root .rb-wave-results-summary-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--wb-text-3); }
+.ide-root .rb-wave-results-summary.is-pass .rb-wave-results-summary-state { color: var(--wb-ok); }
+.ide-root .rb-wave-results-summary.is-pass .rb-wave-results-summary-dot { background: var(--wb-ok); }
+.ide-root .rb-wave-results-summary.is-fail .rb-wave-results-summary-state { color: var(--wb-err); }
+.ide-root .rb-wave-results-summary.is-fail .rb-wave-results-summary-dot { background: var(--wb-err); }
+.ide-root .rb-wave-results-summary.is-stale .rb-wave-results-summary-state,
+.ide-root .rb-wave-results-summary.is-warn .rb-wave-results-summary-state { color: var(--wb-warn); }
+.ide-root .rb-wave-results-summary.is-stale .rb-wave-results-summary-dot,
+.ide-root .rb-wave-results-summary.is-warn .rb-wave-results-summary-dot { background: var(--wb-warn); }
+.ide-root .rb-wave-results-summary-headline { margin: 0; font: 600 var(--wb-text-md) var(--wb-font-ui); color: var(--wb-text); }
+.ide-root .rb-wave-results-summary-subline { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .rb-wave-results-guidance { display: flex; flex-wrap: wrap; gap: 0 12px; margin: 0; padding: 0 0 0 16px; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .rb-wave-results-summary-metrics { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; padding: 0; list-style: none; }
+.ide-root .rb-wave-results-summary-metric { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-wave-results-summary-metric-label { color: var(--wb-text-3); }
+.ide-root .rb-wave-results-summary-metric-value { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-wave-results-summary-metric.is-pass .rb-wave-results-summary-metric-value { color: var(--wb-ok); }
+.ide-root .rb-wave-results-summary-metric.is-fail .rb-wave-results-summary-metric-value { color: var(--wb-err); }
+.ide-root .rb-wave-results-summary-actions { display: inline-flex; gap: 4px; }
+.ide-root .rb-wave-results-summary-action { height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; }
+.ide-root .rb-wave-results-summary-action.is-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-wave-results-summary-action:disabled { opacity: 0.45; }
+.ide-root .rb-wave-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
+.ide-root .rb-wave-actions .ide-button { height: var(--wb-control-h); min-height: 0; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); box-shadow: none; font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-wave-actions .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+
+/* Bus words: one 26px row per declared bus — id · hex · binary/decimal · per-tick strip. */
+.ide-root .rb-wave-bus-words { display: block; margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--wb-border); border-radius: 0; background: var(--wb-surface); }
+.ide-root .rb-wave-bus-words-header { display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 var(--wb-space-3); background: var(--wb-surface-2); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-wave-bus-words-title { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-wave-bus-words-hint { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-wave-bus-words-list { margin: 0; padding: 0; list-style: none; }
+.ide-root .rb-wave-bus-word-lane { display: grid; grid-template-columns: 128px 72px minmax(120px, 0.6fr) minmax(0, 1fr); align-items: center; gap: 8px; min-height: 26px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-wave-bus-word-lane:last-child { border-bottom: 0; }
+.ide-root .rb-wave-bus-word-id { display: flex; flex-direction: column; min-width: 0; }
+.ide-root .rb-wave-bus-word-id code { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-wave-bus-word-dir { color: var(--wb-text-3); font-size: var(--rb-text-micro); }
+.ide-root .rb-wave-bus-word-lane.is-input .rb-wave-bus-word-id code { color: var(--rb-wave-in); }
+.ide-root .rb-wave-bus-word-lane.is-output .rb-wave-bus-word-id code { color: var(--rb-wave-out); }
+.ide-root .rb-wave-bus-word-value { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ide-root .rb-wave-bus-word-value strong { color: var(--wb-text); font: 700 var(--wb-text-lg) var(--wb-font-mono); }
+.ide-root .rb-wave-bus-word-value[data-known='false'] strong { color: var(--wb-text-3); }
+.ide-root .rb-wave-bus-word-detail { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-wave-bus-word-strip { display: flex; gap: 2px; overflow: hidden; }
+.ide-root .rb-wave-bus-word-cell { min-width: 22px; height: 18px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); cursor: pointer; }
+.ide-root .rb-wave-bus-word-cell.is-selected { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-wave-bus-word-cell.is-unknown { color: var(--wb-warn); }
+.ide-root .rb-wave-tools .rb-wave-zoom { height: 22px; padding: 0 7px; font-size: var(--wb-text-xs); }
+.ide-root .rb-wave-zoom.is-active { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-wave-check-trigger:disabled { opacity: 0.45; }
+
+/* Pre-run placeholder: paper, one status line, empty lanes. */
+.ide-root .ide-vwp,
+.ide-root .ide-vwp-summary,
+.ide-root .ide-vwp-ready-hero,
+.ide-root .ide-vwp-empty-hero { margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); color: var(--wb-text); box-shadow: none; }
+.ide-root .ide-vwp-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: var(--wb-toolbar-h); padding: 4px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .ide-vwp-workspace-label { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .ide-vwp-header-note { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .ide-vwp-header-facts { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 0 0 0 auto; padding: 0; list-style: none; }
+.ide-root .ide-vwp-header-facts > * { display: inline-flex; align-items: baseline; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .ide-vwp-header-facts dt { color: var(--wb-text-3); }
+.ide-root .ide-vwp-header-facts dd { margin: 0; color: var(--wb-text); }
+.ide-root .ide-vwp-ready-hero,
+.ide-root .ide-vwp-empty-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); color: var(--wb-text-2); }
+.ide-root .ide-vwp-ready-hero-title,
+.ide-root .ide-vwp-empty-hero-title { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
+.ide-root .ide-vwp-ready-hero-desc,
+.ide-root .ide-vwp-empty-hero-desc { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-sm); }
+.ide-root .ide-vwp-empty-hero-icon { display: none; }
+.ide-root .ide-vwp-empty-hero-steps { margin: 0; padding-left: 16px; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .ide-vwp-empty-hero-signals { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ide-root .ide-vwp-empty-hero-signals-label { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); text-transform: none; letter-spacing: 0; }
+.ide-root .ide-vwp-empty-signal-list { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ide-root .ide-vwp-empty-signal-list li,
+.ide-root .ide-vwp-empty-signal-list code { padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .ide-vwp-empty-hero-actions,
+.ide-root .ide-vwp-ready-hero-run { display: inline-flex; gap: 4px; margin-left: auto; }
+.ide-root .ide-vwp-empty-hero-actions .ide-button,
+.ide-root .ide-vwp-ready-hero-run .ide-button { height: var(--wb-control-h); min-height: 0; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); box-shadow: none; font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .ide-vwp-empty-hero-actions .ide-button-primary,
+.ide-root .ide-vwp-ready-hero-run .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .ide-vwp-lanes { display: block; margin: 0; padding: 0; background: var(--rb-wave-bg); }
+.ide-root .ide-vwp-lane { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; height: 28px; border-bottom: 1px solid var(--rb-wave-row-line); }
+.ide-root .ide-vwp-lane-label { padding: 0 8px; color: var(--rb-wave-text-2); font: var(--wb-text-xs) var(--wb-font-mono); text-align: right; background: var(--rb-wave-gutter-bg); height: 100%; display: flex; align-items: center; justify-content: flex-end; }
+.ide-root .ide-vwp-lane-trace { position: relative; height: 100%; }
+.ide-root .ide-vwp-lane-bar { position: absolute; left: 0; right: 0; top: 50%; height: 0; border-top: 1px dashed var(--rb-wave-grid-strong); }
+.ide-root .ide-vwp-lane-empty-label { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--rb-wave-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+.ide-root .ide-vwp { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+
+/* ── One command bar. The old header, bar and tools rows flow into a single wrapping row. ── */
+.ide-root .rb-wave-cmd { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; flex: none; min-height: var(--wb-toolbar-h); padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
+.ide-root .rb-wave-cmd .rb-wave-bar { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-primary { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-transport { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-group--right { margin-left: 0; }
+.ide-root .rb-wave-cmd .rb-wave-tools { display: contents; }
+.ide-root .rb-wave-cmd .rb-wave-tools-section { gap: 3px; }
+.ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: auto; }
+.ide-root .rb-wave-cmd .rb-wave-scrubber input[type='range'] { width: 120px; }
+@media (max-width: 1100px) { .ide-root .rb-wave-cmd .rb-wave-scrubber input[type='range'] { width: 80px; } }
+
+@media (max-width: 1400px) {
+  .ide-root .rb-wave-cmd { gap: 2px 6px; }
+  .ide-root .rb-wave-cmd .rb-wave-tools-label { display: none; }
+  .ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: 0; }
+  .ide-root .rb-wave-cmd .rb-wave-group--tail .wb-btn { padding: 0 6px; }
+}
+
+/* Edge navigation: a compact count beside the two step buttons. */
+.ide-root .rb-wave-edges__count { font-size: var(--rb-text-meta); color: var(--wb-text-3); white-space: nowrap; }
+
+/* Playback + live readout: what is happening at the selected tick. The bar
+   fills as the cursor walks the run; a mismatch turns the readout warm. */
+.ide-root .rb-wave-play { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+.ide-root .rb-wave-play__speed { height: 24px; font: var(--wb-text-xs) var(--wb-font-mono); padding: 0 4px; border: 1px solid var(--wb-border); border-radius: 4px; background: var(--wb-surface); color: var(--wb-text-2); }
+.ide-root .rb-wave-play__toggle.is-on { color: var(--wb-text-1, var(--wb-text-2)); box-shadow: inset 0 -2px 0 var(--wb-focus); }
+.ide-root .rb-wave-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 10px; border-bottom: 1px solid var(--wb-border); font: var(--wb-text-xs) var(--wb-font-ui); color: var(--wb-text-2); min-height: 26px; }
+.ide-root .rb-wave-readout code { font: var(--wb-text-xs) var(--wb-font-mono); padding: 1px 5px; border-radius: 3px; background: var(--wb-surface-2, var(--wb-surface)); color: var(--wb-text-2); }
+.ide-root .rb-wave-readout code.is-muted { opacity: 0.6; }
+.ide-root .rb-wave-readout code.is-followed { box-shadow: inset 0 -2px 0 var(--wb-focus); }
+.ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--rb-text-micro); color: var(--wb-text-3); }
+.ide-root .rb-wave-readout__pos { display: inline-flex; align-items: center; gap: 6px; }
+.ide-root .rb-wave-readout__progress { display: inline-block; width: 72px; height: 4px; border-radius: 2px; background: var(--wb-border); overflow: hidden; }
+.ide-root .rb-wave-readout__progress > span { display: block; width: 100%; height: 100%; background: var(--wb-focus); transform-origin: left center; transition: transform 120ms linear; }
+.ide-root .rb-wave-readout__group { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ide-root .rb-wave-readout.has-failure .rb-wave-readout__fail code { background: color-mix(in srgb, var(--wb-danger, #b91c1c) 12%, transparent); color: var(--wb-danger, #b91c1c); }
+.ide-root .rb-wave-readout.is-playing .rb-wave-readout__pos code { box-shadow: inset 0 -2px 0 var(--wb-focus); }
+@media (prefers-reduced-motion: reduce) { .ide-root .rb-wave-readout__progress > span { transition: none; } }
+/* Evidence row: what the waveform is (running / replaying / recorded current / stale + reason), apart from the verdict. */
+.ide-root .rb-wave-evidence-state { display: inline-flex; align-items: center; gap: 6px; max-width: 320px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-wave-evidence-state strong { font-weight: 600; letter-spacing: 0.04em; color: var(--wb-text); }
+.ide-root .rb-wave-evidence-state small { overflow: hidden; text-overflow: ellipsis; font-size: inherit; color: var(--wb-text-2); }
+.ide-root .rb-wave-evidence-state.is-running strong { color: var(--wb-accent); }
+.ide-root .rb-wave-evidence-state.is-replaying strong { color: var(--wb-accent); }
+.ide-root .rb-wave-evidence-state.is-recorded strong { color: var(--wb-ok); }
+.ide-root .rb-wave-evidence-state.is-stale { border-color: var(--wb-warn); }
+.ide-root .rb-wave-evidence-state.is-stale strong { color: var(--wb-warn); }
+
+/* The reference tools are a disclosure now: a 24px strip in place of a 30px row of controls,
+   and the waveform keeps the difference. */
+.ide-root .rb-wave-tools-disclosure { flex: none; border-top: 1px solid var(--wb-border); }
+.ide-root .rb-wave-tools-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 var(--wb-space-3);
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) var(--rb-font-ui);
+  background: var(--wb-surface-2);
+  cursor: pointer;
+  list-style: none;
+}
+.ide-root .rb-wave-tools-summary::-webkit-details-marker { display: none; }
+.ide-root .rb-wave-tools-summary::before { content: '\25B8'; width: 10px; }
+.ide-root .rb-wave-tools-disclosure[open] > .rb-wave-tools { border-top: 0; }
+.ide-root .rb-wave-tools-disclosure[open] > .rb-wave-tools-summary::before { content: '\25BE'; }

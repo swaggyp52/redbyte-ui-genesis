@@ -65,8 +65,33 @@ describe('RC D2 basys3 bundle gate', () => {
     expect(run1.topXdc).toContain('PACKAGE_PIN V16');
     expect(run1.topXdc).toContain('PACKAGE_PIN U16');
     expect(run1.topXdc).not.toContain('PACKAGE_PIN W16');
-    expect(run1.readme).toContain('| g1_in1 | SW0 | V17 | input |');
-    expect(run1.readme).toContain('| g1_out | LD0 | U16 | output |');
+    // The README pin map exists so a student who opens the ZIP can check every binding
+    // without opening Vivado. `2a0b66982` deliberately rebuilt that table on the mapping
+    // projection and widened it from `| Signal | Alias | Package Pin | Direction |` to
+    // `| Logical signal | Artifact port | Board resource | Package Pin | Direction |`, so
+    // the old whole-row assertion stopped matching. The behaviour it protected is asserted
+    // here through the new owner - and for every mapped signal, not just two of them.
+    expect(run1.readme).toContain(
+      '| Logical signal | Artifact port | Board resource | Package Pin | Direction |'
+    );
+    const readmeRow = (port: string) =>
+      run1.readme
+        .split(/\r?\n/)
+        .find((line) => line.includes(`| ${port} |`)) ?? '';
+    const bindings = [
+      { port: 'g1_in1', resource: 'SW0', pin: 'V17', direction: 'input' },
+      { port: 'g1_in2', resource: 'SW1', pin: 'V16', direction: 'input' },
+      { port: 'g1_out', resource: 'LD0', pin: 'U16', direction: 'output' },
+    ];
+    for (const binding of bindings) {
+      const row = readmeRow(binding.port);
+      expect(row, `${binding.port} must appear in the README pin map`).not.toBe('');
+      expect(row).toContain(binding.resource);
+      expect(row).toContain(binding.pin);
+      expect(row).toContain(binding.direction);
+      // The pin the README shows must be the pin the constraints actually set.
+      expect(run1.topXdc).toContain(`PACKAGE_PIN ${binding.pin}`);
+    }
     expect(run1.readme).toContain('`top.vhd`');
 
     expect(run2.topVhd).toBe(run1.topVhd);

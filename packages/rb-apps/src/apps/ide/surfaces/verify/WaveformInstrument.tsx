@@ -5,6 +5,12 @@ import React, { useEffect, useRef, useState } from 'react';
 export interface WaveformSignalRow {
   signal: string;
   values: Array<{ tick: number; value: string }>;
+  /** A bus lane composed from indexed scalar lanes (SUM[3:0]); values are already formatted in the chosen radix. */
+  kind?: 'bus';
+  width?: number;
+  members?: string[];
+  /** Set on member lanes shown under an expanded bus. */
+  memberOf?: string;
 }
 
 export type SignalLaneGroup = 'Inputs' | 'Outputs' | 'Internal';
@@ -34,6 +40,14 @@ export interface WaveformViewerProps {
   onTogglePinSignal?: (signal: string) => void;
   /** Hides a lane; the surface offers the restore affordance. */
   onHideSignal?: (signal: string) => void;
+  /** Lanes whose value changes at the selected tick — marked while the run plays. */
+  changedSignals?: Set<string>;
+  /** Saved expected values per lane and tick; drawn over the observed trace where they differ. */
+  expectedValues?: Map<string, Map<number, string>>;
+  showExpected?: boolean;
+  /** Bus lanes currently showing their member bits. */
+  expandedBuses?: Set<string>;
+  onToggleBus?: (bus: string) => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -73,8 +87,15 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   ghostSignals,
   onTogglePinSignal,
   onHideSignal,
+  changedSignals,
+  expectedValues,
+  showExpected = true,
+  expandedBuses,
+  onToggleBus,
 }) => {
-  const LABEL_W = 128;
+  // Name column plus a value slot: the value at the selected tick sits beside every name.
+  const LABEL_W = 156;
+  const VALUE_W = 22;
   const ROW_H = rowHeight;
   const ROW_HI = Math.round(ROW_H * 0.22);
   const ROW_LO = Math.round(ROW_H * 0.78);
@@ -194,20 +215,20 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
             height={gy}
             style={{ display: 'block', fontFamily: 'IBM Plex Mono, monospace', overflow: 'visible', minWidth: '100%' }}
           >
-            <rect x={0} y={0} width={GHOST_LABEL_W + GHOST_TRACK_W} height={gy} fill="#020b18" />
-            <line x1={0} y1={GHOST_HEADER_H - 1} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={GHOST_HEADER_H - 1} stroke="rgba(56,189,248,0.14)" strokeWidth={1} />
+            <rect x={0} y={0} width={GHOST_LABEL_W + GHOST_TRACK_W} height={gy} fill="var(--rb-wave-bg)" />
+            <line x1={0} y1={GHOST_HEADER_H - 1} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={GHOST_HEADER_H - 1} stroke="var(--rb-wave-grid)" strokeWidth={1} />
 
             {ghostRows.map((row, i) => {
               if (row.kind === 'group-header') {
                 const isObserved = row.label === 'Observed';
                 return (
                   <g key={`gh-${i}`} data-testid={`ide-verify-waveform-ghost-group-${row.label.toLowerCase()}`}>
-                    <rect x={0} y={row.y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={20} fill="rgba(6,16,30,0.82)" />
+                    <rect x={0} y={row.y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={20} fill="var(--rb-wave-header-bg)" />
                     <line x1={0} y1={row.y} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={row.y}
-                      stroke={isObserved ? 'rgba(46,196,182,0.15)' : 'rgba(56,189,248,0.10)'}
+                      stroke={isObserved ? 'var(--rb-wave-out-soft)' : 'var(--rb-wave-in-soft)'}
                       strokeWidth={1} />
                     <text x={10} y={row.y + 13}
-                      fill={isObserved ? 'rgba(46,196,182,0.55)' : 'rgba(56,189,248,0.40)'}
+                      fill={isObserved ? 'var(--rb-wave-out)' : 'var(--rb-wave-in)'}
                       fontSize={9} fontWeight={700} letterSpacing={2}>
                       {row.label.toUpperCase()}
                     </text>
@@ -222,25 +243,25 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 <g key={`gl-${i}`}>
                   {/* Lane stripe */}
                   <rect x={0} y={y} width={GHOST_LABEL_W + GHOST_TRACK_W} height={GHOST_ROW_H}
-                    fill={s % 2 === 0 ? 'rgba(6,16,28,0.7)' : 'rgba(5,13,24,0.55)'} />
+                    fill={s % 2 === 0 ? 'var(--rb-wave-stripe)' : 'var(--rb-wave-bg)'} />
                   {/* Label */}
-                  <text x={12} y={midY + 4} fill="rgba(160,195,230,0.65)" fontSize={11} fontWeight={500}>
+                  <text x={12} y={midY + 4} fill="var(--rb-wave-text-2)" fontSize={11} fontWeight={500}>
                     {label.length > 14 ? label.slice(0, 13) + '…' : label}
                   </text>
                   {/* Direction dot */}
                   <circle cx={GHOST_LABEL_W - 12} cy={midY} r={3.5}
-                    fill={isInput ? 'rgba(56,189,248,0.45)' : 'rgba(34,211,238,0.4)'}
-                    stroke={isInput ? 'rgba(56,189,248,0.2)' : 'rgba(34,211,238,0.18)'}
+                    fill={isInput ? 'var(--rb-wave-in)' : 'var(--rb-wave-out)'}
+                    stroke={isInput ? 'var(--rb-wave-grid)' : 'var(--rb-wave-out-soft)'}
                     strokeWidth={1} />
                   {/* Divider */}
-                  <line x1={GHOST_LABEL_W} y1={y} x2={GHOST_LABEL_W} y2={y + GHOST_ROW_H} stroke="rgba(40,70,100,0.35)" strokeWidth={1} />
+                  <line x1={GHOST_LABEL_W} y1={y} x2={GHOST_LABEL_W} y2={y + GHOST_ROW_H} stroke="var(--rb-wave-grid-strong)" strokeWidth={1} />
                   {/* Single quiet baseline to show where trace data will appear */}
                   <line x1={GHOST_LABEL_W + 8} y1={midY} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={midY}
-                    stroke={isInput ? 'rgba(56,189,248,0.28)' : 'rgba(34,211,238,0.22)'}
+                    stroke={isInput ? 'var(--rb-wave-in)' : 'var(--rb-wave-out)'}
                     strokeWidth={1}
                     strokeDasharray="6 8" />
                   {/* Row bottom border */}
-                  <line x1={0} y1={y + GHOST_ROW_H} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={y + GHOST_ROW_H} stroke="rgba(30,55,80,0.28)" strokeWidth={1} />
+                  <line x1={0} y1={y + GHOST_ROW_H} x2={GHOST_LABEL_W + GHOST_TRACK_W} y2={y + GHOST_ROW_H} stroke="var(--rb-wave-row-line)" strokeWidth={1} />
                 </g>
               );
             })}
@@ -276,22 +297,22 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         </filter>
       </defs>
       {/* Dark PCB-style background */}
-      <rect width={width} height={height} fill="#020b18" />
+      <rect width={width} height={height} fill="var(--rb-wave-bg)" />
       {/* Header strip — distinct background */}
-      <rect width={width} height={HEADER_H} fill="rgba(3,8,18,0.98)" />
+      <rect width={width} height={HEADER_H} fill="var(--rb-wave-header-bg)" />
       {/* Label column background */}
-      <rect x={0} y={HEADER_H} width={LABEL_W} height={height - HEADER_H} fill="rgba(4,10,22,0.9)" />
+      <rect x={0} y={HEADER_H} width={LABEL_W} height={height - HEADER_H} fill="var(--rb-wave-gutter-bg)" />
 
       {/* Minor + major vertical grid lines (steel-blue, not teal) */}
       {ticks.map((tick, i) => (
         <line key={`grid-${tick}`}
           x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
-          stroke="rgba(56,189,248,0.18)" strokeWidth="1" />
+          stroke="var(--rb-wave-grid)" strokeWidth="1" />
       ))}
-      {ticks.map((tick, i) => i % 5 === 0 ? (
+      {ticks.map((tick, i) => (ticks.length <= 32 || i % 5 === 0) ? (
         <line key={`grid-major-${tick}`}
           x1={LABEL_W + i * TICK_W} y1={HEADER_H} x2={LABEL_W + i * TICK_W} y2={height}
-          stroke="rgba(90,180,255,0.4)" strokeWidth="1.2" />
+          stroke="var(--rb-wave-grid-strong)" strokeWidth="1.2" />
       ) : null)}
 
       {/* Fail markers in header rail */}
@@ -302,7 +323,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           y1={2}
           x2={LABEL_W + i * TICK_W + TICK_W / 2}
           y2={HEADER_H}
-          stroke="rgba(255,98,98,0.92)"
+          stroke="var(--rb-wave-fail)"
           strokeWidth="2"
         />
       ) : null)}
@@ -315,7 +336,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           y={HEADER_H}
           width={TICK_W}
           height={height - HEADER_H}
-          fill="rgba(255,55,55,0.22)"
+          fill="var(--rb-wave-fail-band)"
         />
       ) : null)}
 
@@ -327,7 +348,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           y={HEADER_H - 4}
           textAnchor="middle"
           fontSize={7}
-          fill="rgba(46,196,182,0.5)"
+          fill="var(--rb-wave-text-3)"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           ↑
@@ -342,7 +363,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           y={15}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="rgba(56,189,248,0.5)"
+          fill="var(--rb-wave-text-2)"
           fontSize={11}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
@@ -354,7 +375,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           cx={LABEL_W + i * TICK_W + TICK_W / 2}
           cy={15}
           r={1.5}
-          fill="rgba(56,189,248,0.2)"
+          fill="var(--rb-wave-grid)"
         />
       ))}
 
@@ -365,9 +386,9 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           return (
             <g key={`group-header-${group}`} data-testid={`ide-verify-waveform-group-${group.toLowerCase()}`}>
               <rect x={0} y={y} width={width} height={GROUP_HEADER_H}
-                fill={group === 'Outputs' ? 'rgba(46,196,182,0.07)' : 'rgba(56,189,248,0.04)'} />
+                fill={group === 'Outputs' ? 'var(--rb-wave-out-soft)' : 'var(--rb-wave-in-soft)'} />
               <line x1={0} y1={y} x2={width} y2={y}
-                stroke={group === 'Outputs' ? 'rgba(46,196,182,0.28)' : 'rgba(56,189,248,0.15)'} strokeWidth="1" />
+                stroke={group === 'Outputs' ? 'var(--rb-wave-out)' : 'var(--rb-wave-grid-strong)'} strokeWidth="1" />
               <text
                 x={LABEL_W - 8}
                 y={y + GROUP_HEADER_H / 2}
@@ -375,13 +396,13 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 dominantBaseline="middle"
                 fontSize="9"
                 fontWeight="700"
-                fill={group === 'Outputs' ? 'rgba(46,196,182,0.75)' : 'rgba(56,189,248,0.45)'}
+                fill={group === 'Outputs' ? 'var(--rb-wave-out)' : 'var(--rb-wave-in)'}
                 style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
               >
                 {GROUP_LABELS[group]}
               </text>
               <line x1={LABEL_W} y1={y} x2={LABEL_W} y2={y + GROUP_HEADER_H}
-                stroke={group === 'Outputs' ? 'rgba(46,196,182,0.55)' : 'rgba(30,80,140,0.7)'} strokeWidth={group === 'Outputs' ? '2' : '1.5'} />
+                stroke={group === 'Outputs' ? 'var(--rb-wave-out)' : 'var(--rb-wave-grid-strong)'} strokeWidth={group === 'Outputs' ? '2' : '1.5'} />
             </g>
           );
         }
@@ -393,13 +414,18 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         const isClockSignal = clockSignals?.has(normalizedKey) ?? false;
         const signalDirection = signalGroups?.get(signalRow.signal)?.toLowerCase() ?? 'unknown';
         const isInputSignal = signalDirection === 'inputs';
-
+        const isBus = signalRow.kind === 'bus';
+        const slotW = isBus ? 34 : VALUE_W;
+        const expectedForLane = showExpected ? expectedValues?.get(signalRow.signal) : undefined;
+        const laneColor = isClockSignal ? 'var(--rb-wave-clock)' : isInputSignal ? 'var(--rb-wave-in)' : 'var(--rb-wave-out)';
         return (
           <g
             key={signalRow.signal}
             data-testid={`ide-verify-waveform-row-${toTestId(signalRow.signal)}`}
+            data-kind={isBus ? 'bus' : signalRow.memberOf ? 'bit' : 'scalar'}
             data-selected={selectedSignal === signalRow.signal ? 'true' : 'false'}
             data-direction={signalDirection}
+            data-changing={changedSignals?.has(signalRow.signal) ? 'true' : 'false'}
           >
             {/* Alternating row background */}
             <rect
@@ -407,16 +433,17 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               y={y}
               width={width}
               height={ROW_H}
-              fill={stripeIndex % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'}
+              fill={stripeIndex % 2 === 0 ? 'var(--rb-wave-stripe)' : 'transparent'}
             />
             {/* Row separator */}
             <line x1={0} y1={y + ROW_H - 1} x2={width} y2={y + ROW_H - 1}
-              stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+              stroke="var(--rb-wave-row-line)" strokeWidth="1" />
 
           {/* Signal label column */}
             <g
               style={{ cursor: 'pointer' }}
-              onClick={() => onSelectSignal(signalRow.signal)}
+              onClick={() => (isBus && onToggleBus ? onToggleBus(signalRow.signal) : onSelectSignal(signalRow.signal))}
+              data-testid={isBus ? `ide-verify-bus-toggle-${toTestId(signalRow.signal)}` : undefined}
               onMouseEnter={() => onHoverSignal?.(signalRow.signal)}
               onMouseLeave={() => onHoverSignal?.(null)}
             >
@@ -426,7 +453,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   x={4}
                   y={y + Math.round(ROW_H / 2) + 4}
                   fontSize="11"
-                  fill={isPinned ? '#fbbf24' : 'rgba(150,170,190,0.5)'}
+                  fill={isPinned ? 'var(--rb-wave-pin)' : 'var(--rb-wave-text-3)'}
                   data-testid={`ide-verify-lane-pin-${toTestId(signalRow.signal)}`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -442,7 +469,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   x={17}
                   y={y + Math.round(ROW_H / 2) + 4}
                   fontSize="11"
-                  fill="rgba(150,170,190,0.5)"
+                  fill="var(--rb-wave-text-3)"
                   data-testid={`ide-verify-lane-hide-${toTestId(signalRow.signal)}`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -455,16 +482,57 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
               ) : null}
               {/* Name */}
               <text
-                x={LABEL_W - 8}
+                x={LABEL_W - slotW - 12}
                 y={y + (signalMeta?.has(signalRow.signal) ? Math.round(ROW_H * 0.38) : Math.round(ROW_H / 2) + 4)}
                 textAnchor="end"
                 fontSize="11"
-                fill={isFailing ? '#ff9090' : isClockSignal ? 'rgba(251,191,36,0.9)' : 'rgba(180,200,220,0.85)'}
+                fontWeight={changedSignals?.has(signalRow.signal) ? 700 : undefined}
+                fill={isFailing ? 'var(--rb-wave-fail-text)' : isClockSignal ? 'var(--rb-wave-clock)' : 'var(--rb-wave-text)'}
               >
-                {`${isPinned && !onTogglePinSignal ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
+                {`${isBus ? (expandedBuses?.has(signalRow.signal) ? '▾ ' : '▸ ') : signalRow.memberOf ? '· ' : ''}${isPinned && !onTogglePinSignal ? '★ ' : ''}${isClockSignal ? '⏱ ' : ''}${
                   signalRow.signal.length > 14 ? `${signalRow.signal.slice(0, 13)}…` : signalRow.signal
                 }`}
               </text>
+              {selectedTick != null ? (() => {
+                const raw = signalRow.values.find((point) => point.tick === selectedTick)?.value ?? '-';
+                const shown = raw.length > (isBus ? 4 : 2) ? `${raw.slice(0, isBus ? 3 : 2)}${isBus ? '…' : ''}` : raw;
+                const cy = y + Math.round(ROW_H / 2);
+                return (
+                  <g data-testid={`ide-verify-lane-value-${toTestId(signalRow.signal)}`} data-value={raw}>
+                    <rect
+                      x={LABEL_W - slotW - 6}
+                      y={cy - 7}
+                      width={slotW}
+                      height={14}
+                      rx={3}
+                      fill={selectedSignal === signalRow.signal ? 'var(--rb-wave-select-soft)' : 'transparent'}
+                      stroke="var(--rb-wave-row-line)"
+                    />
+                    <text
+                      x={LABEL_W - slotW / 2 - 6}
+                      y={cy + 4}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fontFamily="var(--wb-font-mono)"
+                      fill={isBus ? (raw === '-' || raw === 'X' ? 'var(--rb-wave-fail-text)' : 'var(--rb-wave-text)') : raw === '1' ? 'var(--rb-wave-text)' : raw === '0' ? 'var(--rb-wave-text-3)' : 'var(--rb-wave-fail-text)'}
+                    >
+                      <title>{`${signalRow.signal} = ${raw} at t${selectedTick}`}</title>
+                      {shown}
+                    </text>
+                  </g>
+                );
+              })() : null}
+              {changedSignals?.has(signalRow.signal) ? (
+                <circle
+                  cx={LABEL_W - slotW - 3}
+                  cy={y + Math.round(ROW_H / 2)}
+                  r={2.5}
+                  fill="var(--rb-wave-text)"
+                  data-testid={`ide-verify-lane-changing-${toTestId(signalRow.signal)}`}
+                >
+                  <title>{`${signalRow.signal} changes at this tick`}</title>
+                </circle>
+              ) : null}
               {/* Direction + pin sub-line */}
               {(() => {
                 const meta = signalMeta?.get(signalRow.signal);
@@ -473,11 +541,11 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 const pinLabel = meta.pin ? ` · ${meta.pin}` : '';
                 return (
                   <text
-                    x={LABEL_W - 8}
+                    x={LABEL_W - slotW - 12}
                     y={y + Math.round(ROW_H * 0.7)}
                     textAnchor="end"
                     fontSize="9"
-                    fill={isFailing ? 'rgba(255,130,130,0.65)' : isInputSignal ? 'rgba(56,189,248,0.45)' : 'rgba(46,196,182,0.45)'}
+                    fill={isFailing ? 'var(--rb-wave-fail-text)' : isInputSignal ? 'var(--rb-wave-in)' : 'var(--rb-wave-out)'}
                   >
                     {`${dirLabel}${pinLabel}`}
                   </text>
@@ -487,6 +555,75 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
             {/* Signal trace */}
             {signalRow.values.map((point, i) => {
+              if (isBus) {
+                const tickX = LABEL_W + i * TICK_W;
+                const isFail = failTicks.has(point.tick);
+                const isSelected = point.tick === selectedTick;
+                const prevValue = i > 0 ? signalRow.values[i - 1]?.value : null;
+                const changed = i > 0 && prevValue !== point.value;
+                const unknown = point.value === 'X' || point.value === '-';
+                const expected = expectedForLane?.get(point.tick);
+                const mismatch = expected !== undefined && expected !== point.value;
+                return (
+                  <g key={`${signalRow.signal}-${point.tick}`} data-testid={`ide-verify-bus-point-${toTestId(signalRow.signal)}-${point.tick}`} data-value={point.value}>
+                    {isFail && <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="var(--rb-wave-fail-band)" />}
+                    {isSelected && stripeIndex === 0 && (
+                      <rect x={tickX} y={HEADER_H} width={TICK_W} height={height - HEADER_H} fill="var(--rb-wave-select-soft)" />
+                    )}
+                    <rect
+                      x={tickX + (changed ? 3 : 1)}
+                      y={y + ROW_HI}
+                      width={Math.max(TICK_W - (changed ? 4 : 2), 2)}
+                      height={ROW_LO - ROW_HI}
+                      rx={2}
+                      fill={unknown ? 'transparent' : isInputSignal ? 'var(--rb-wave-in-soft)' : 'var(--rb-wave-out-soft)'}
+                      stroke={mismatch ? 'var(--rb-wave-fail)' : laneColor}
+                      strokeWidth={mismatch ? 2 : 1.25}
+                      strokeDasharray={unknown ? '4 3' : undefined}
+                    />
+                    {changed && (
+                      <line x1={tickX} y1={y + ROW_HI} x2={tickX} y2={y + ROW_LO} stroke={laneColor} strokeWidth="2.5" strokeLinecap="round" />
+                    )}
+                    <text
+                      x={tickX + TICK_W / 2}
+                      y={y + Math.round(ROW_H / 2) + (mismatch ? 1 : 4)}
+                      textAnchor="middle"
+                      fontSize={mismatch ? 10 : 11}
+                      fontFamily="var(--wb-font-mono)"
+                      fontWeight="700"
+                      fill={mismatch ? 'var(--rb-wave-fail-text)' : 'var(--rb-wave-text)'}
+                      style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
+                    >
+                      {point.value.length > 6 ? `${point.value.slice(0, 5)}…` : point.value}
+                    </text>
+                    {mismatch ? (
+                      <text
+                        x={tickX + TICK_W / 2}
+                        y={y + ROW_LO + 9}
+                        textAnchor="middle"
+                        fontSize="8"
+                        fontFamily="var(--wb-font-mono)"
+                        fill="var(--rb-wave-fail-text)"
+                        data-testid={`ide-verify-expected-${toTestId(signalRow.signal)}-${point.tick}`}
+                        style={{ pointerEvents: 'none', userSelect: 'none' } as React.CSSProperties}
+                      >
+                        {`exp ${expected}`}
+                      </text>
+                    ) : null}
+                    <rect
+                      x={tickX}
+                      y={y}
+                      width={TICK_W}
+                      height={ROW_H}
+                      fill="transparent"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => onSelectTick(point.tick)}
+                      data-testid="ide-verify-waveform-point"
+                      data-value={String(point.value)}
+                    />
+                  </g>
+                );
+              }
               const isHigh = point.value === '1';
               const isUnknown = point.value === 'X' || point.value === 'Z';
               const tickX = LABEL_W + i * TICK_W;
@@ -502,17 +639,17 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                 <g key={`${signalRow.signal}-${point.tick}`}>
                   {/* Fail segment highlight */}
                   {isFail && (
-                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="rgba(255,80,80,0.34)" />
+                    <rect x={tickX} y={y} width={TICK_W} height={ROW_H} fill="var(--rb-wave-fail-band)" />
                   )}
 
-                  {/* Selected tick column highlight */}
-                  {isSelected && (
+                  {/* Selected tick column highlight — drawn once, on the first lane, for the whole column */}
+                  {isSelected && stripeIndex === 0 && (
                     <rect
                       x={tickX}
                       y={HEADER_H}
                       width={TICK_W}
                       height={height - HEADER_H}
-                      fill="rgba(56,189,248,0.18)"
+                      fill="var(--rb-wave-select-soft)"
                     />
                   )}
 
@@ -523,12 +660,12 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                       x2={tickX + TICK_W - 2} y2={isHigh ? y + ROW_HI : y + ROW_LO}
                       stroke={
                         isFail
-                          ? (isHigh ? '#ff6b6b' : 'rgba(255,107,107,0.7)')
+                          ? (isHigh ? 'var(--rb-wave-fail)' : 'var(--rb-wave-fail)')
                           : isClockSignal
-                            ? (isHigh ? '#fbbf24' : 'rgba(251,191,36,0.72)')
+                            ? (isHigh ? 'var(--rb-wave-clock)' : 'var(--rb-wave-clock)')
                             : isInputSignal
-                              ? (isHigh ? 'rgba(56,189,248,0.85)' : 'rgba(56,189,248,0.55)')
-                              : (isHigh ? '#2ec4b6' : 'rgba(46,196,182,0.85)')
+                              ? (isHigh ? 'var(--rb-wave-in)' : 'var(--rb-wave-in)')
+                              : (isHigh ? 'var(--rb-wave-out)' : 'var(--rb-wave-out)')
                       }
                       strokeWidth="5.5" strokeLinecap="round"
                     />
@@ -542,7 +679,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                         y1={y + ROW_H / 2}
                         x2={tickX + TICK_W - 2}
                         y2={y + ROW_H / 2}
-                        stroke="#fbbf24"
+                        stroke="var(--rb-wave-clock)"
                         strokeWidth="4"
                         strokeLinecap="round"
                         strokeDasharray="5 4"
@@ -551,7 +688,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                         x={tickX + TICK_W / 2}
                         y={y + ROW_H / 2 + 4}
                         textAnchor="middle"
-                        fill="#fff7d6"
+                        fill="var(--rb-wave-marker-fill)"
                         fontSize="11"
                         fontWeight="800"
                         aria-hidden="true"
@@ -565,11 +702,32 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   {hasBinaryTransition && (
                     <line
                       x1={tickX} y1={y + ROW_HI} x2={tickX} y2={y + ROW_LO}
-                      stroke={isFail ? '#ff6b6b' : isClockSignal ? 'rgba(251,191,36,0.82)' : isInputSignal ? 'rgba(56,189,248,0.7)' : 'rgba(46,196,182,0.75)'}
+                      stroke={isFail ? 'var(--rb-wave-fail)' : isClockSignal ? 'var(--rb-wave-clock)' : isInputSignal ? 'var(--rb-wave-in)' : 'var(--rb-wave-out)'}
                       strokeWidth="2.5" strokeLinecap="round"
                     />
                   )}
 
+                  {/* Expected overlay: the saved level, dashed, only where it differs from what was observed */}
+                  {(() => {
+                    const expected = expectedForLane?.get(point.tick);
+                    if (expected === undefined || expected === point.value || (expected !== '0' && expected !== '1')) return null;
+                    const ey = expected === '1' ? y + ROW_HI : y + ROW_LO;
+                    return (
+                      <line
+                        x1={tickX + 2}
+                        y1={ey}
+                        x2={tickX + TICK_W - 2}
+                        y2={ey}
+                        stroke="var(--rb-wave-fail)"
+                        strokeWidth="2"
+                        strokeDasharray="4 3"
+                        strokeLinecap="round"
+                        data-testid={`ide-verify-expected-${toTestId(signalRow.signal)}-${point.tick}`}
+                      >
+                        <title>{`Expected ${expected}, observed ${point.value}`}</title>
+                      </line>
+                    );
+                  })()}
                   {/* Transparent click target */}
                   <rect
                     x={tickX}
@@ -596,8 +754,8 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
 
       {/* A/B cursors */}
       {([
-        { id: 'A', tick: cursorA, stroke: 'rgba(251,191,36,0.95)', fill: 'rgba(251,191,36,0.16)' },
-        { id: 'B', tick: cursorB, stroke: 'rgba(248,113,113,0.92)', fill: 'rgba(248,113,113,0.14)' },
+        { id: 'A', tick: cursorA, stroke: 'var(--rb-wave-cursor-a)', fill: 'var(--rb-wave-select-soft)' },
+        { id: 'B', tick: cursorB, stroke: 'var(--rb-wave-cursor-b)', fill: 'var(--rb-wave-select-soft)' },
       ] as const).map((cursor) => {
         if (cursor.tick === null) return null;
         const i = ticks.indexOf(cursor.tick);
@@ -640,17 +798,17 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
             <line
               x1={cx} y1={HEADER_H}
               x2={cx} y2={height}
-              stroke="rgba(56,189,248,0.9)"
+              stroke="var(--rb-wave-hover)"
               strokeWidth="1.5"
               filter="url(#wfCursorGlow)"
             />
             {/* Tick badge pinned to top of cursor */}
-            <rect x={cx - 14} y={1} width={28} height={14} rx={3} fill="rgba(56,189,248,0.18)" />
+            <rect x={cx - 14} y={1} width={28} height={14} rx={3} fill="var(--rb-wave-select-soft)" />
             <text
               x={cx} y={9}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill="rgba(56,189,248,0.9)"
+              fill="var(--rb-wave-hover)"
               fontSize={9}
               fontWeight="700"
               style={{ userSelect: 'none' }}
@@ -671,7 +829,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
             y={HEADER_H}
             width={TICK_W}
             height={height - HEADER_H}
-            fill="rgba(56,189,248,0.06)"
+            fill="var(--rb-wave-select-soft)"
             style={{ pointerEvents: 'none' }}
           />
         );
@@ -684,7 +842,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
           y1={HEADER_H}
           x2={hoverTickX}
           y2={height}
-          stroke="rgba(148,210,255,0.3)"
+          stroke="var(--rb-wave-grid-strong)"
           strokeWidth="1"
           strokeDasharray="2 2"
           style={{ pointerEvents: 'none' }}
@@ -697,7 +855,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
         y1={0}
         x2={LABEL_W}
         y2={height}
-        stroke="rgba(30,80,140,0.7)"
+        stroke="var(--rb-wave-grid-strong)"
         strokeWidth="1.5"
       />
     </svg>

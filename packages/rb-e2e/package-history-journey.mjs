@@ -5,8 +5,8 @@
 // and confirm the ExportHistoryPanel shows both packages, their provenance, and
 // which artifacts changed. Store is read only to assert the ledger; downloads
 // are real download-button clicks.
-import { chromium } from 'playwright';
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const page = await ctx.newPage();
 const errors = [];
@@ -25,7 +25,7 @@ async function download() {
   return false;
 }
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => {
@@ -36,6 +36,10 @@ await page.evaluate(() => {
 await page.waitForTimeout(400);
 
 await page.getByTestId('mode-button-export').click(); await page.waitForTimeout(1500);
+// Build & Export opens on the handoff dossier; package history and provenance belong to the
+// artifact document, which a reader reaches from the dossier's own header.
+const openFiles = page.getByTestId('ide-package-handoff-open-files');
+if (await openFiles.count()) { await openFiles.click(); await page.waitForTimeout(600); }
 
 // First package.
 if (!(await download())) fail('no download button available for the first package');

@@ -328,7 +328,7 @@ describe('mergePersistedRuntimeState', () => {
       ...vector,
       expected: {
         ...(vector.expected ?? {}),
-        ld0_node: index === 0 || index === 3 ? 1 : 0,
+        ld0: index === 0 || index === 3 ? 1 : 0,
       },
     }));
     runtime.setVectors(authoredVectors);

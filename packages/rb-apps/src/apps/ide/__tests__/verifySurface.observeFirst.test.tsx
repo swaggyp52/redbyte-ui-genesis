@@ -200,7 +200,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-inspect-design')).toBeTruthy();
+    expect(getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
   });
 
   it('hides Open in Design button when no lastRun (draft state)', () => {
@@ -212,7 +212,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(queryByTestId('ide-verify-inspect-design')).toBeNull();
+    expect(queryByTestId('ide-verify-open-circuit-replay')).toBeNull();
   });
 
   it('hides Open in Design button when neither onGoToDesign nor onGoToDesignWithInputs provided', () => {
@@ -223,7 +223,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(queryByTestId('ide-verify-inspect-design')).toBeNull();
+    expect(queryByTestId('ide-verify-open-circuit-replay')).toBeNull();
   });
 
   it('shows Open in Design button when onGoToDesignWithInputs provided even without onGoToDesign', () => {
@@ -236,7 +236,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-inspect-design')).toBeTruthy();
+    expect(getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
   });
 
   it('calls onGoToDesign when Open in Design clicked', () => {
@@ -249,7 +249,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
     expect(onGoToDesign).toHaveBeenCalledOnce();
   });
 
@@ -283,7 +283,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
 
     expect(onDebugTickSelected).toHaveBeenCalledOnce();
     expect(onDebugTickSelected).toHaveBeenCalledWith(
@@ -311,7 +311,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
 
@@ -339,7 +339,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-scope-signal').textContent?.toLowerCase()).toContain('ld0');
+    expect(getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld0');
 
     await waitFor(() => {
       expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
@@ -361,11 +361,11 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    fireEvent.click(getByTestId('ide-case-lab-row-1'));
+    expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
 
     expect(onDebugTickSelected).toHaveBeenCalledOnce();
     expect(onDebugTickSelected).toHaveBeenCalledWith(
@@ -444,7 +444,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
     expect(onGoToDesign).toHaveBeenCalledOnce();
   });
 });

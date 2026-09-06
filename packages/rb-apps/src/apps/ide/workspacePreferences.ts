@@ -8,7 +8,7 @@ import {
  * UI-only workbench preferences. Project, simulation, mapping, and package
  * authority must never be added to this envelope.
  */
-export const WORKSPACE_PREFERENCES_STORAGE_KEY = 'rb.ide.workspace.preferences.v1';
+export const WORKSPACE_PREFERENCES_STORAGE_KEY = 'rb.ide.workspace.preferences.v2';
 export const WORKSPACE_PREFERENCES_VERSION = 1 as const;
 
 export const WORKSPACE_SURFACE_IDS = [
@@ -28,6 +28,97 @@ export const WORKSPACE_PRESET_IDS = ['authoring', 'simulation', 'board', 'code']
 export type WorkspacePresetId = (typeof WORKSPACE_PRESET_IDS)[number];
 
 export type DesignWorkspaceView = 'canvas' | 'code' | 'split';
+export type DesignLayerId = 'netLabels' | 'values' | 'boardBindings' | 'diagnostics' | 'hierarchy' | 'buses' | 'minimap';
+export type DesignLayers = Readonly<Record<DesignLayerId, boolean>>;
+export const DESIGN_LAYER_IDS: readonly DesignLayerId[] = ['netLabels', 'values', 'boardBindings', 'diagnostics', 'hierarchy', 'buses', 'minimap'];
+export const DEFAULT_DESIGN_LAYERS: DesignLayers = Object.freeze({
+  netLabels: true,
+  values: true,
+  boardBindings: true,
+  diagnostics: true,
+  hierarchy: true,
+  buses: true,
+  // Off by default. Every other layer draws on the sheet; this one sits on top of it and takes
+  // the pointer, so a part in the bottom-right corner could not be wired while it was there.
+  // A reader who wants an overview turns it on and knows why the corner behaves differently.
+  minimap: false,
+});
+function normalizeDesignLayers(raw: unknown): DesignLayers {
+  const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const next: Record<DesignLayerId, boolean> = { ...DEFAULT_DESIGN_LAYERS };
+  for (const id of DESIGN_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
+  return Object.freeze(next);
+}
+export type BoardLayerId = 'labels' | 'mapped' | 'compatible' | 'conflicts' | 'values';
+export type BoardLayers = Readonly<Record<BoardLayerId, boolean>>;
+export const BOARD_LAYER_IDS: readonly BoardLayerId[] = ['labels', 'mapped', 'compatible', 'conflicts', 'values'];
+export const DEFAULT_BOARD_LAYERS: BoardLayers = Object.freeze({ labels: true, mapped: true, compatible: true, conflicts: true, values: true });
+function normalizeBoardLayers(raw: unknown): BoardLayers {
+  const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const next: Record<BoardLayerId, boolean> = { ...DEFAULT_BOARD_LAYERS };
+  for (const id of BOARD_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
+  return Object.freeze(next);
+}
+/** Cases/Timing + evidence deck composition in Simulate (persisted with the workspace). */
+export type SimulateDeckMaximized = 'cases' | 'waveform' | null;
+export interface SimulateWorkspacePreferences {
+  /** Share of the lab grid height given to the evidence deck (waveform / verdict). */
+  readonly evidenceFraction: number;
+  /** The deck is folded to a one-line strip; the cases take the height. */
+  readonly evidenceCollapsed: boolean;
+  /** One pane takes the whole grid; null = split. */
+  readonly maximized: SimulateDeckMaximized;
+}
+export const SIMULATE_EVIDENCE_FRACTION_MIN = 0.15;
+export const SIMULATE_EVIDENCE_FRACTION_MAX = 0.85;
+export const DEFAULT_SIMULATE_EVIDENCE_FRACTION = 0.36;
+export const DEFAULT_SIMULATE_LAYOUT: SimulateWorkspacePreferences = Object.freeze({
+  evidenceFraction: DEFAULT_SIMULATE_EVIDENCE_FRACTION,
+  evidenceCollapsed: false,
+  maximized: null,
+});
+export function clampSimulateEvidenceFraction(value: unknown): number {
+  const fraction = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_SIMULATE_EVIDENCE_FRACTION;
+  const clamped = Math.min(SIMULATE_EVIDENCE_FRACTION_MAX, Math.max(SIMULATE_EVIDENCE_FRACTION_MIN, fraction));
+  return Math.round(clamped * 1000) / 1000;
+}
+export function normalizeSimulateLayout(raw: unknown): SimulateWorkspacePreferences {
+  const record = isRecord(raw) ? raw : {};
+  const maximized = record.maximized === 'cases' || record.maximized === 'waveform' ? record.maximized : null;
+  return Object.freeze({
+    evidenceFraction: clampSimulateEvidenceFraction(record.evidenceFraction),
+    evidenceCollapsed: record.evidenceCollapsed === true,
+    maximized,
+  });
+}
+export interface SimulateLayoutUpdate {
+  readonly evidenceFraction?: number;
+  readonly evidenceCollapsed?: boolean;
+  readonly maximized?: SimulateDeckMaximized;
+}
+
+/** Board document camera: zoom factor over the native board frame and a pan in board units. */
+export interface BoardCameraPreferences {
+  readonly zoom: number;
+  readonly x: number;
+  readonly y: number;
+}
+export const BOARD_CAMERA_ZOOM_MIN = 0.5;
+export const BOARD_CAMERA_ZOOM_MAX = 4;
+export const DEFAULT_BOARD_CAMERA: BoardCameraPreferences = Object.freeze({ zoom: 1, x: 0, y: 0 });
+export function normalizeBoardCamera(raw: unknown): BoardCameraPreferences {
+  const record = isRecord(raw) ? raw : {};
+  const zoomRaw = typeof record.zoom === 'number' && Number.isFinite(record.zoom) ? record.zoom : DEFAULT_BOARD_CAMERA.zoom;
+  const zoom = Math.round(Math.min(BOARD_CAMERA_ZOOM_MAX, Math.max(BOARD_CAMERA_ZOOM_MIN, zoomRaw)) * 1000) / 1000;
+  const clampPan = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.round(Math.min(2000, Math.max(-2000, value)) * 10) / 10 : 0;
+  return Object.freeze({ zoom, x: clampPan(record.x), y: clampPan(record.y) });
+}
+export interface BoardWorkspacePreferences {
+  /** Board twin presentation layers (persisted with the workspace). */
+  readonly layers: BoardLayers;
+  readonly camera: BoardCameraPreferences;
+}
 export type DesignCanvasAppearance = 'dark' | 'light' | 'system';
 export type DesignCanvasDensity = 'comfortable' | 'compact';
 
@@ -44,6 +135,8 @@ export interface DesignWorkspacePreferences {
   readonly view: DesignWorkspaceView;
   readonly toolbarCommandIds: readonly IdeCommandId[];
   readonly canvasAppearance: DesignCanvasAppearance;
+  /** Schematic presentation layers (persisted with the workspace). */
+  readonly layers: DesignLayers;
   readonly canvasDensity: DesignCanvasDensity;
 }
 
@@ -53,6 +146,8 @@ export interface WorkspacePreferencesV1 {
   readonly activePresetId: WorkspacePresetId | null;
   readonly surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>;
   readonly design: DesignWorkspacePreferences;
+  readonly board: BoardWorkspacePreferences;
+  readonly simulate: SimulateWorkspacePreferences;
 }
 
 export interface WorkspacePresetDefinition {
@@ -80,14 +175,20 @@ export const WORKSPACE_DOCK_SIZE_LIMITS: Readonly<
 });
 
 const AUTHORING_SURFACES = createSurfacePreferences({
-  project: { right: { visible: true, sizePx: 320 } },
+  project: {
+    left: { visible: true, sizePx: 248 },
+    right: { visible: true, sizePx: 288 },
+  },
   design: {
-    left: { visible: true, sizePx: 220 },
+    // 220px gave the component library 177px of usable width once dock chrome was taken out,
+    // and one library row needs a 34px kind badge, a part name and a port signature such as
+    // "a, b to out". The rail was rendering a 276px row into a 175px box with hidden overflow.
+    left: { visible: true, sizePx: 264 },
     right: { visible: true, sizePx: 280 },
   },
   verify: {
     left: { visible: true, sizePx: 240 },
-    bottom: { visible: true, sizePx: 280 },
+    bottom: { visible: false, sizePx: 260 },
   },
   hardware: { right: { visible: true, sizePx: 300 } },
   export: { left: { visible: true, sizePx: 240 } },
@@ -164,7 +265,10 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
     // inside the light Studio shell rather than a separate dark application.
     canvasAppearance: 'light',
     canvasDensity: 'compact',
+    layers: DEFAULT_DESIGN_LAYERS,
   },
+  board: { layers: DEFAULT_BOARD_LAYERS, camera: DEFAULT_BOARD_CAMERA },
+  simulate: DEFAULT_SIMULATE_LAYOUT,
 });
 
 export function parseWorkspacePreferences(raw: string | null | undefined): WorkspacePreferencesV1 {
@@ -190,6 +294,8 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
   }
 
   const rawDesign = isRecord(value.design) ? value.design : {};
+  const rawBoard = isRecord(value.board) ? value.board : {};
+  const rawSimulate = isRecord(value.simulate) ? value.simulate : {};
   const activePresetId = isWorkspacePresetId(value.activePresetId)
     ? value.activePresetId
     : value.activePresetId === null
@@ -209,7 +315,10 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
       canvasDensity: isDesignCanvasDensity(rawDesign.canvasDensity)
         ? rawDesign.canvasDensity
         : defaults.design.canvasDensity,
+      layers: normalizeDesignLayers(rawDesign.layers),
     },
+    board: { layers: normalizeBoardLayers(rawBoard.layers), camera: normalizeBoardCamera(rawBoard.camera) },
+    simulate: normalizeSimulateLayout(rawSimulate),
   });
 }
 
@@ -297,6 +406,50 @@ export class WorkspacePreferencesStore {
     });
   }
 
+  setSimulateLayout(update: SimulateLayoutUpdate): WorkspacePreferencesV1 {
+    const current = this.#preferences.simulate;
+    return this.#replace({
+      ...this.#preferences,
+      simulate: normalizeSimulateLayout({
+        evidenceFraction: update.evidenceFraction ?? current.evidenceFraction,
+        evidenceCollapsed: update.evidenceCollapsed ?? current.evidenceCollapsed,
+        maximized: update.maximized === undefined ? current.maximized : update.maximized,
+      }),
+    });
+  }
+
+  resetSimulateLayout(): WorkspacePreferencesV1 {
+    return this.#replace({ ...this.#preferences, simulate: DEFAULT_SIMULATE_LAYOUT });
+  }
+
+  setBoardLayer(id: BoardLayerId, on: boolean): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      board: { ...this.#preferences.board, layers: Object.freeze({ ...this.#preferences.board.layers, [id]: on }) },
+    });
+  }
+
+  setBoardCamera(camera: Partial<BoardCameraPreferences>): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      board: {
+        ...this.#preferences.board,
+        camera: normalizeBoardCamera({ ...this.#preferences.board.camera, ...camera }),
+      },
+    });
+  }
+
+  resetBoardCamera(): WorkspacePreferencesV1 {
+    return this.setBoardCamera(DEFAULT_BOARD_CAMERA);
+  }
+
+  setDesignLayer(id: DesignLayerId, on: boolean): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, layers: Object.freeze({ ...this.#preferences.design.layers, [id]: on }) },
+    });
+  }
+
   setDesignView(view: DesignWorkspaceView): WorkspacePreferencesV1 {
     return this.#replace({
       ...this.#preferences,
@@ -363,7 +516,10 @@ export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
       toolbarCommandIds: [...DEFAULT_WORKSPACE_PREFERENCES.design.toolbarCommandIds],
       canvasAppearance: DEFAULT_WORKSPACE_PREFERENCES.design.canvasAppearance,
       canvasDensity: DEFAULT_WORKSPACE_PREFERENCES.design.canvasDensity,
+      layers: DEFAULT_WORKSPACE_PREFERENCES.design.layers,
     },
+    board: { layers: DEFAULT_WORKSPACE_PREFERENCES.board.layers, camera: DEFAULT_WORKSPACE_PREFERENCES.board.camera },
+    simulate: DEFAULT_WORKSPACE_PREFERENCES.simulate,
   });
 }
 
