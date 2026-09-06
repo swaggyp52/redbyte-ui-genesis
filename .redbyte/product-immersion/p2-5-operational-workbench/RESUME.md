@@ -4,6 +4,127 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-06 — P2.5I product-gate closure: every journey green, four data-loss defects closed (Opus 5, desktop session)
+
+**Label:** REDBYTE REMOTE REVIEW CANDIDATE / FEATURE BRANCH PUSHED / PREVIEW SHA VERIFIED /
+PR #85 DRAFT / NO MERGE / NO PRODUCTION.
+HEAD `HEAD_SHA` on `claude/redbyte-operational-workbench-convergence-w9k2r4`, pushed.
+Format version 1. Both classroom golden Basys3 export gates byte-identical. No merge, no
+retarget, no `main`/product push, no production deploy.
+
+### The build gate is closed
+
+`pnpm verify:gates` passes end to end (exit 0, 23 gate suites), including `pnpm -r build`, both
+classroom goldens, and the Lab 4 no-solution gate.
+
+The one failure it had was `rc:d2:basys3-bundle-gate`, and it reproduced identically at the
+session-start checkpoint `42d63a094`, so it predated this work. That is not a disposition, so it
+was classified properly: **class B, an obsolete assertion against a deliberately replaced
+interface.** `2a0b66982` ("make Export a trusted Vivado handoff") rebuilt the handoff pin map on
+the mapping projection and widened it from `| Signal | Alias | Package Pin | Direction |` to
+`| Logical signal | Artifact port | Board resource | Package Pin | Direction |`; the gate still
+asserted the old whole-row string. The behaviour it protected — a student can check every
+binding from the README without opening Vivado — is now asserted through the new owner, for
+every mapped signal rather than two of them, and cross-checked against the constraints file.
+
+### Product defects closed this session
+
+1. **The schematic ran under the Problems console.** A viewport-relative `min-height` demanded
+   558px inside a 485px pane, so the canvas was laid out 73px past its container; that band sat
+   under the console, which swallowed clicks on any symbol placed low on the sheet. Measured
+   before: canvas 157-715 against a console starting at 658. The floor is capped by the space
+   available now. Nothing is clipped to achieve it.
+2. **Placement assumed every symbol was a 48px gate.** A module instance is drawn roughly twice
+   that in both axes, so four of them stacked until some had no clickable body. Placement
+   measures both the symbol being placed and the ones already there, through the geometry the
+   canvas draws with; `blockBodySize` is the single owner of that size.
+3. **The Design inspector could not be scrolled to.** 1134px of sections in an 816px dock with
+   `overflow: hidden` and no scroller anywhere inside it: 318px unreachable at 1440x900, 450px
+   at 1366x768. Source, Evidence, Mapping and Related simply could not be seen. The dock scrolls.
+4. **Autosave erased stored run evidence.** The repository writes the record whole and the
+   debounced autosave omitted `runEvidence`, so editing one case ~700ms after a run threw the
+   run away on disk. Introduced by the evidence work in `8e553b801`.
+5. **Explicit Save re-persisted a stale run.** `handleSaveProject` read the run in its body but
+   not in its dependency array; three runs and three saves stored the first run three times.
+   Save As and Duplicate had the same omission. All four now read the refs the close-save uses.
+6. **A run made just before switching projects never reached disk.** Autosave only fired on a
+   content-hash change, and finishing a run does not change project content. A new run is
+   unsaved work in its own right now.
+7. **The status bar and Simulate disagreed about a reopened project.** `loadFromProject`
+   restored the run but not `projectHealthCore.lastVerify`, so the footer said "Not simulated"
+   while Simulate said RECORDED. Rebuilt from the same run.
+8. **Accessibility:** `IdeButton` dropped every `aria-*` a caller passed, so the replay toggle's
+   `aria-pressed` never reached the DOM; the command palette and the menubar dropped focus to
+   `<body>` on close/activation; `prefers-reduced-motion` did not reach primary/secondary
+   buttons, the replay transport among them; and a signal pinned past the render cap could no
+   longer be re-radixed.
+
+### Journey inventory (recomputed from repository truth)
+
+`packages/rb-e2e` holds **27 `.mjs` files: one shared harness and 26 journeys.**
+**All 26 executed against one build. 26 pass. Nothing excluded, nothing partial.**
+
+| Class | Count | Files |
+|---|---|---|
+| Student acceptance (complete student workflow) | 6 | full-adder-operational, nested-adder, project-persistence, complex-import, migration, project-landing-proof |
+| Seeded integration (loads a starter through its shipped path, then drives real UI) | 15 | bench-board-sync, compare-verdict, constraint-sets, crossprobe, engineering-location, nested-create-module, package-history, parity, pin-planner, runs-document, semantic-zoom, signature, sim-provider, source-files, vcd-analyzer |
+| Diagnostic probe (measures a property, not a student workflow) | 5 | a11y-scale, active-top-authority-probe, shell-status-authority, visual-hardening-probe, layout-scale-probe |
+| Historical | 0 | — |
+
+Independently of that: **10 journeys write nothing to the store at all** (a11y-scale,
+compare-verdict, complex-import, full-adder-operational, migration, nested-adder,
+package-history, project-landing-proof, project-persistence, signature); the other 16 seed a
+starter through its shipped load path and then drive the real UI.
+
+Denominator history, so the change is not silent: the earlier "8 of 22" counted a subset against
+a stale build. The reconciliation in `652041be9` was 24 files / 23 pass / 1 partial. Since then
+`project-persistence-journey` (new), `harness.mjs` (a library, not a journey) and
+`layout-scale-probe` (new) were added, and `nested-adder` went from partial to green.
+
+### What the blank-project journey now proves
+
+Blank project from cleared storage; ten symbols placed from the real palette; twelve wires drawn
+through real pin targets; five boundary signals renamed; five gates selected and turned into a
+reusable `FullAdder` module with ports A/B/CIN/SUM/COUT; the top cleared with the definition
+surviving; three 4-bit buses, four instances and a ground; seventeen ripple-carry wires with none
+missing and none extra; deterministic simulation of the UI-authored design (0xA + 0xD = 0x17);
+survival across reload; and generated hierarchical VHDL whose top instantiates all four stages
+and binds `work.FullAdder`. Zero page errors, asserted. It used to print these and exit 0.
+
+### Validation at this head
+
+- **Journeys:** 26/26 against one build, dev server, pinned Node 20.19.0, Windows.
+- **Gates:** `pnpm verify:gates` exit 0 — 23 suites, both goldens byte-identical, Lab 4
+  no-solution gate, `pnpm -r build`.
+- **Unified build:** `pnpm build` succeeded and stamped the pushed SHA into `dist/build.json`.
+- **Built-bundle smoke:** the Full Adder acceptance journey passes against the BUILT bundle
+  served locally at `/os/`, and again against the deployed Cloudflare branch preview, at both
+  viewports, using `RB_BASE_URL` — which also exercises the harness portability work.
+- **Focused suites:** board interaction, placement, reopen-evidence, projectRuntime persistence,
+  repository, runScope, canonicalLoad, authoredCanonicalLoad — 97 tests green.
+- **Typecheck:** 778 errors under TypeScript 5.9.3, identical with and without this session's
+  changes. Encoding check and the Zustand selector lint both clean.
+- **Not run:** the full aggregate vitest suite. No Vivado, bitstream, board, or classroom
+  certification claim.
+
+### Known limitations recorded rather than hidden
+
+- The imported VCD Analyzer offers no bus expand/collapse; the native waveform does.
+- The Case Lab's followed-signal column header is a click-only `<th>`; the signal-rail lane
+  buttons give the same capability from the keyboard.
+- The library rail collapses component names to zero width at the default dock size; placement
+  still works, and the blank-project journey places ten symbols through it.
+- Informational Problems still open the bottom console at full height in Design. It no longer
+  overlaps the canvas, so it is a space question rather than a lost-clicks one.
+- `designSurface.placementMode.test.tsx` has one pre-existing red, outside the gate lane: a
+  runtime-backed palette placement double-counts in jsdom. Classified harness-only — in a real
+  browser ten palette clicks produce exactly ten nodes with sequential ids, proven every run by
+  the blank-project journey.
+
+### Exact next action
+
+Connor reviews the branch preview. Nothing else is blocked.
+
 ## 2026-09-05 — P2.5H product completion: board gesture, bus placement, journey reconciliation, harness portability (Opus 5, desktop session)
 
 **Label:** INTERIM REDBYTE WORKFLOW COMPLETION / REMAINING BLOCKERS NAMED / SOURCE PRESERVED.

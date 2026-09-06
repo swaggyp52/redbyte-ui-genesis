@@ -218,6 +218,39 @@ accepted.
   §7 persistence beyond reload (Recent / Open Existing / Save As / Duplicate / imported open, project A/B
   isolation), §9 keyboard operation and waveform scale beyond the 200-row cap, and the module-instance spawn
   clearance. Continuation: `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5I product-gate closure (2026-09-06, pushed):** the local product gate is now closed.
+  `pnpm verify:gates` passes end to end (exit 0, 23 suites, both classroom goldens byte-identical,
+  the Lab 4 no-solution gate, and `pnpm -r build`). Its one failure, `rc:d2:basys3-bundle-gate`,
+  reproduced identically at the session-start checkpoint and was classified rather than labelled:
+  an obsolete assertion against the handoff pin map that `2a0b66982` deliberately rebuilt on the
+  mapping projection. The behaviour it protected is asserted through the new owner, for every
+  mapped signal and cross-checked against the constraints file.
+  **Journey inventory recomputed from repository truth: `packages/rb-e2e` holds 27 `.mjs` files —
+  one shared harness and 26 journeys. All 26 executed against one build; all 26 pass.** Nothing
+  excluded, nothing partial. 6 are student acceptance, 15 seeded integration, 5 diagnostic probes,
+  0 historical; separately, 10 write nothing to the store at all. The blank-project authoring
+  journey went from partial to green and now asserts what it used to print: 12 wires, a reusable
+  `FullAdder` module, 17 ripple-carry wires, deterministic simulation of the UI-authored design
+  (0xA + 0xD = 0x17), survival across reload, and generated hierarchical VHDL binding
+  `work.FullAdder`.
+  **Defects closed:** the schematic was laid out 73px past its pane and the Problems console
+  swallowed clicks on symbols placed low on the sheet; placement cleared a 48px gate footprint for
+  symbols twice that size, so module instances stacked until some had no clickable body; the
+  Design inspector hid 318-450px of its own sections with no scroller anywhere inside it; autosave
+  erased stored run evidence about 700ms after any edit; explicit Save re-persisted a stale run
+  through a dependency-array omission; a run made just before switching projects never reached
+  disk; the status bar said "Not simulated" for a reopened project whose Simulate said RECORDED;
+  and on the accessibility side `IdeButton` dropped every `aria-*` (so the replay toggle published
+  no `aria-pressed`), the command palette and menubar dropped focus to `<body>`, reduced motion did
+  not reach the primary/secondary buttons including the replay transport, and a signal pinned past
+  the render cap could no longer be re-radixed.
+  **Built-bundle proof:** `pnpm build` stamps the pushed SHA, and the Full Adder acceptance journey
+  passes against the built bundle served locally and again against the deployed Cloudflare branch
+  preview, at both viewports, driven through `RB_BASE_URL`.
+  Typecheck unchanged at 778. Label **REDBYTE REMOTE REVIEW CANDIDATE / FEATURE BRANCH PUSHED /
+  PREVIEW SHA VERIFIED / PR #85 DRAFT / NO MERGE / NO PRODUCTION**. Known limitations are recorded
+  in the continuation record rather than hidden. Continuation:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **Exact proof boundary (Browser-E0, honest):** the **UI-only Journey A core** is
   proven (`full-adder-operational-journey.mjs`, both viewports, zero store actions):
   first use → Start a Lab → Lab 3 Full Adder → Design → Compare PASS → inspector
