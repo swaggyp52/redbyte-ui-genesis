@@ -1036,6 +1036,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             // A project opened with no evidence has nothing proving it. One opened with its
             // own restored run is judged by that run's hashes, the same authority a reload
             // uses, rather than being declared stale on arrival.
+            //
+            // `lastVerify` has to be rebuilt from the same run, or the two authorities
+            // disagree: Simulate reads the restored run and says RECORDED, while the status
+            // bar reads `lastVerify` and says "Not simulated" about the same project.
+            lastVerify: restoredRunEvidence.run
+              ? {
+                  status: restoredRunEvidence.run.status,
+                  hash: restoredRunEvidence.run.deterministicHash,
+                  runKind: restoredRunEvidence.run.runKind,
+                  qualification: restoredRunEvidence.run.qualification,
+                  reportHash: restoredRunEvidence.run.reportHash,
+                  report: restoredRunEvidence.run.report,
+                  failingTick: restoredRunEvidence.run.firstFailingTick,
+                  ranAtIso: restoredRunEvidence.run.generatedAtIso,
+                }
+              : undefined,
             dirtySinceVerify: !restoredRunEvidence.run,
             dirtySinceExport: true,
           },

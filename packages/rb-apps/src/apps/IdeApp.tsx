@@ -1552,7 +1552,7 @@ export const IdeApp: React.FC = () => {
       // Store the evidence with the project. Without it, reopening the project restores the
       // design and the checks but not the run that proved them, so the student is told to
       // re-run work they already did.
-      runEvidence: { lastRun: verifyLastRun, history: verifyRunHistory },
+      runEvidence: { lastRun: verifyLastRunRef.current, history: verifyRunHistoryRef.current },
     });
     if (!result.ok) {
       setLastSavedAt(`Save failed: ${result.error.message}`);
@@ -1596,7 +1596,7 @@ export const IdeApp: React.FC = () => {
         project: renamedProject,
         scenarios,
         activeScenarioId,
-        runEvidence: { lastRun: verifyLastRun, history: verifyRunHistory },
+        runEvidence: { lastRun: verifyLastRunRef.current, history: verifyRunHistoryRef.current },
       });
 
       if (saved.ok) {
@@ -1665,8 +1665,10 @@ export const IdeApp: React.FC = () => {
       scenarios,
       activeScenarioId,
       runEvidence: {
-        lastRun: verifyLastRun ? { ...verifyLastRun, projectId: nextProjectId } : undefined,
-        history: verifyRunHistory.map((entry) => ({ ...entry, projectId: nextProjectId })),
+        lastRun: verifyLastRunRef.current
+          ? { ...verifyLastRunRef.current, projectId: nextProjectId }
+          : undefined,
+        history: verifyRunHistoryRef.current.map((entry) => ({ ...entry, projectId: nextProjectId })),
       },
     });
     if (!saved.ok) {
@@ -1712,8 +1714,10 @@ export const IdeApp: React.FC = () => {
       scenarios,
       activeScenarioId,
       runEvidence: {
-        lastRun: verifyLastRun ? { ...verifyLastRun, projectId: duplicateId } : undefined,
-        history: verifyRunHistory.map((entry) => ({ ...entry, projectId: duplicateId })),
+        lastRun: verifyLastRunRef.current
+          ? { ...verifyLastRunRef.current, projectId: duplicateId }
+          : undefined,
+        history: verifyRunHistoryRef.current.map((entry) => ({ ...entry, projectId: duplicateId })),
       },
     });
     if (!result.ok) {
@@ -2069,12 +2073,26 @@ export const IdeApp: React.FC = () => {
     refreshSavedProjects();
     const opened = projectRepository.open(projectId);
     setSavedProjectHash(opened.ok ? opened.value.snapshot.projectHash : null);
+    const storedRun = opened.ok ? opened.value.snapshot.runEvidence : undefined;
+    setSavedRunSignature(
+      storedRun?.lastRun
+        ? `${storedRun.lastRun.deterministicHash}:${(storedRun.history ?? []).length}`
+        : null
+    );
   }, [projectId, refreshSavedProjects]);
+
+  // What the stored record last held, so a new run counts as unsaved work even though the
+  // project's content hash has not moved. Without this a run made just before switching
+  // projects never reached disk, and reopening showed the previous run.
+  const [savedRunSignature, setSavedRunSignature] = useState<string | null>(null);
+  const currentRunSignature = verifyLastRun
+    ? `${verifyLastRun.deterministicHash}:${verifyRunHistory.length}`
+    : null;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!projectId.trim()) return;
-    if (projectHash === savedProjectHash) return;
+    if (projectHash === savedProjectHash && currentRunSignature === savedRunSignature) return;
 
     setIsAutosaving(true);
     const timer = window.setTimeout(() => {
@@ -2085,10 +2103,18 @@ export const IdeApp: React.FC = () => {
         project: exportProject,
         scenarios,
         activeScenarioId,
+        // The repository writes the record whole. An autosave that omits the evidence does not
+        // leave it alone - it erases what Save, Save As, Duplicate or the close-save wrote, so
+        // editing one case about 700ms after a run silently threw the run away.
+        runEvidence: {
+          lastRun: verifyLastRunRef.current,
+          history: verifyRunHistoryRef.current,
+        },
       });
       if (saved.ok) {
         const snapshot = saved.value.snapshot;
         setSavedProjectHash(snapshot.projectHash);
+        setSavedRunSignature(currentRunSignature);
         refreshSavedProjects();
         setLastSavedAt(`Autosaved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
       } else {
@@ -2109,6 +2135,8 @@ export const IdeApp: React.FC = () => {
     scenarios,
     activeScenarioId,
     savedProjectHash,
+    currentRunSignature,
+    savedRunSignature,
     refreshSavedProjects,
     setLastSavedAt,
   ]);
