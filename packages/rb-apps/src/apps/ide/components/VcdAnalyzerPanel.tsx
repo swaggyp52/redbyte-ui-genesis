@@ -396,7 +396,26 @@ const AnalyzerBody: React.FC<AnalyzerBodyProps> = ({ waveform, config, sourceNam
                 <td className="ide-vcd-analyzer-measure-value" data-testid={`ide-vcd-analyzer-measure-value-${measurement.key}`}>
                   {measurement.formatted}
                 </td>
-                <td>{measurement.radix}</td>
+                {/* The per-signal radix control used to live only in the SIGNALS list, which is
+                    capped at SIGNAL_RENDER_CAP rows. A student who pinned a bus from a large
+                    dump and then cleared the filter could still see it measured here but could
+                    no longer change how it reads. Measurements is where a pinned signal lives,
+                    so the control belongs here too - same handler, same options. */}
+                <td>
+                  <select
+                    className="ide-vcd-analyzer-radix"
+                    data-testid={`ide-vcd-analyzer-measure-radix-${measurement.key}`}
+                    value={measurement.radix}
+                    onChange={(event) => setRadix(measurement.key, event.target.value as VcdRadix)}
+                    aria-label={`Radix for ${measurement.name}`}
+                  >
+                    {VCD_RADIXES.map((radix) => (
+                      <option key={radix} value={radix}>
+                        {radix}
+                      </option>
+                    ))}
+                  </select>
+                </td>
                 <td>{measurement.changeCount}</td>
               </tr>
             ))}

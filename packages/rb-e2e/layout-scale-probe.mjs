@@ -41,6 +41,15 @@ async function check(label, width, height, zoomMode) {
     for (const [mode, focal] of [['design', 'circuit-canvas'], ['hardware', 'basys3-board-workbench']]) {
       await page.click(tid(`mode-button-${mode}`));
       await page.waitForTimeout(1200);
+      if (mode === 'design') {
+        // The inspector only fills to its real height with something selected, which is the
+        // state a student is in whenever they are actually working.
+        const node = page.locator('[data-node-id]').first();
+        if (await node.count()) {
+          await node.click({ force: true });
+          await page.waitForTimeout(700);
+        }
+      }
       const m = await page.evaluate((focalKey) => {
         const doc = document.documentElement;
         const focalEl = document.querySelector(`[data-hierarchy-focal="${focalKey}"]`);
@@ -77,6 +86,37 @@ async function check(label, width, height, zoomMode) {
         throw new Error(`${label} ${mode}: focal instrument runs ${overlapsConsole}px under the console`);
       }
       if (!m.railAllVisible) throw new Error(`${label} ${mode}: a workspace rail button is not visible`);
+
+      // Clipped-and-scrollable is fine. Clipped-and-unscrollable is content the student
+      // cannot reach: the Design inspector once held 1134px of sections in an 816px dock
+      // with overflow hidden and no scroller anywhere inside it, so Source, Evidence,
+      // Mapping and Related simply could not be seen.
+      const unreachable = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll('[data-testid$="-dock"], [data-testid^="ide-right-dock"], [data-testid^="ide-left-dock"]')) {
+          if (!(el instanceof HTMLElement)) continue;
+          const cs = getComputedStyle(el);
+          const hidesY = cs.overflowY === 'hidden' || cs.overflow === 'hidden';
+          const hiddenPx = el.scrollHeight - el.clientHeight;
+          if (!hidesY || hiddenPx <= 8) continue;
+          let scrollable = false;
+          for (const d of el.querySelectorAll('*')) {
+            const dcs = getComputedStyle(d);
+            if ((dcs.overflowY === 'auto' || dcs.overflowY === 'scroll') && d.scrollHeight - d.clientHeight > 8) {
+              scrollable = true;
+              break;
+            }
+          }
+          if (!scrollable) out.push({ id: el.getAttribute('data-testid'), hiddenPx, boxPx: el.clientHeight });
+        }
+        return out;
+      });
+      if (unreachable.length > 0) {
+        const detail = unreachable
+          .map((u) => `${u.id} hides ${u.hiddenPx}px of content in a ${u.boxPx}px box with no scroller`)
+          .join('; ');
+        throw new Error(`${label} ${mode}: unreachable dock content — ${detail}`);
+      }
     }
     if (errors.length) throw new Error(`${label}: page errors ${errors.join(' | ')}`);
   } finally {

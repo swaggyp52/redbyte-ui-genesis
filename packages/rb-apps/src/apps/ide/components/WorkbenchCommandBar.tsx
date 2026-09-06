@@ -201,8 +201,20 @@ export function WorkbenchCommandBar<TContext>({
     resolvedMenus.find((menu) => menu.id === menuId)?.sections.flat() ?? [];
 
   const runCommand = (id: IdeCommandId) => {
+    // Escape from a menu already returns focus to the menu button. Activating an item did not,
+    // so a keyboard user who ran a command from the menubar landed on <body> and restarted the
+    // tab order from the top of the page. Same pattern, both exits.
+    const menuButton = openMenuId
+      ? barRef.current?.querySelector<HTMLButtonElement>(`[data-menu-id="${openMenuId}"]`) ?? null
+      : null;
     setOpenMenuId(null);
     void registry.execute(id, context);
+    // After the menu unmounts, and only if the command did not deliberately move focus itself.
+    window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body && menuButton?.isConnected) {
+        menuButton.focus();
+      }
+    });
   };
 
   const openMenu = (menuId: string) => {

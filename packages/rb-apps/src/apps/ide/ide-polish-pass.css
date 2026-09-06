@@ -1149,6 +1149,21 @@
     animation-delay: 0s !important;
     transition-duration: 0.001s !important;
   }
+
+  /* The action-hierarchy rules set their transitions with !important on a two-class selector,
+     which outranks the universal reset above, so the primary and secondary buttons kept a
+     120-150ms transform and easing under a reduced-motion preference - including the replay
+     transport, Run and Play. Measured: ide-vcb-run 0.15s, ide-verify-play 0.12s. These match
+     that specificity so the preference actually wins, and the hover lift is stilled with it. */
+  .ide-root .ide-button.ide-button-primary,
+  .ide-root .ide-button.ide-button-secondary,
+  .ide-root .ide-button.ide-button-primary:hover,
+  .ide-root .ide-button.ide-button-secondary:hover,
+  .ide-root .ide-button.ide-button-primary:active,
+  .ide-root .ide-button.ide-button-secondary:active {
+    transition-duration: 0.001s !important;
+    transform: none !important;
+  }
 }
 @media (prefers-contrast: more) {
   :root[data-redbyte-mode='ide'] {
@@ -4242,4 +4257,14 @@
 .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft .ide-export-file-browser-v1__file {
   padding: 6px 8px;
   border-color: rgba(83, 112, 145, 0.24);
+}
+
+/* The Design inspector is taller than the dock that holds it: measured 1134px of sections in
+   an 816px dock at 1440x900, and in a 684px dock at 1366x768. The dock clipped the remainder
+   with overflow hidden and there was no scroller anywhere inside it, so the lower sections -
+   Source, Evidence, Mapping, Related - could not be reached at all. The dock scrolls now.
+   This reveals content rather than hiding it; the canvases are untouched. */
+.ide-root .ide-workbench-dock.ide-workbench-dock-right {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }

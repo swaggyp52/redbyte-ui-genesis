@@ -137,8 +137,24 @@ export function IdeCommandPalette<TContext>({
     );
   }, []);
 
+  // Where focus was before the palette took it. A keyboard user who opens the palette, changes
+  // their mind and presses Escape used to land on <body> and restart the tab order from the top
+  // of the page. The menubar already restores focus on Escape; the palette does now too.
+  const focusBeforeOpenRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      const previous = focusBeforeOpenRef.current;
+      focusBeforeOpenRef.current = null;
+      if (previous && previous.isConnected && typeof previous.focus === 'function') {
+        // After the palette unmounts, so it cannot steal focus back.
+        window.requestAnimationFrame(() => previous.focus());
+      }
+      return;
+    }
+    const active = document.activeElement;
+    focusBeforeOpenRef.current =
+      active instanceof HTMLElement && active !== document.body ? active : null;
     setQuery('');
     setActiveIndex(0);
     setExecutionMessage('');
