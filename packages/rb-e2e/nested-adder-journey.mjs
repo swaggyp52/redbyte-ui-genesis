@@ -460,5 +460,28 @@ const topHasInstances = ['u_fa0', 'u_fa1', 'u_fa2', 'u_fa3'].filter((n) => topVh
 console.log('STAGE F top instances found:', topHasInstances, '| full_adder.vhd present:', faVhd.length > 0);
 console.log('STAGE F top has entity work.FullAdder:', topVhd.includes('work.FullAdder'));
 await page.screenshot({ path: `${OUT}/94-export-vhdl.png` });
-console.log('ERRORS', JSON.stringify([...new Set(errors)].slice(0, 8)));
+
+// Stage F used to print these and exit 0 whatever they said. The generated hierarchy is the
+// point of the whole journey: if the top does not instantiate the module the student built,
+// the design was not really hierarchical.
+if (topHasInstances !== 4) {
+  throw new Error(`generated top instantiates ${topHasInstances} of 4 adder stages`);
+}
+if (faVhd.length === 0) {
+  throw new Error('the FullAdder module has no generated VHDL of its own');
+}
+if (!topVhd.includes('work.FullAdder')) {
+  throw new Error('generated top does not bind work.FullAdder');
+}
+
+const uniqueErrors = [...new Set(errors)];
+console.log('ERRORS', JSON.stringify(uniqueErrors.slice(0, 8)));
+if (uniqueErrors.length > 0) {
+  throw new Error(`page errors during the journey: ${uniqueErrors.slice(0, 3).join(' | ')}`);
+}
 await browser.close();
+console.log(
+  '\nPASS — blank project authored through the UI: 10 symbols, 12 wires, a reusable FullAdder ' +
+  'module, a 4-bit ripple-carry top with 17 wires, deterministic simulation (0xA + 0xD = 0x17), ' +
+  'survival across reload, and generated hierarchical VHDL binding work.FullAdder.'
+);

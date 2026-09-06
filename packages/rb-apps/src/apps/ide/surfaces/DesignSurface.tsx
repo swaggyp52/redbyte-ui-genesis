@@ -17,7 +17,9 @@ import {
   LogicCanvas,
   describePortRefForStudents,
   describeWireRejectionForStudents,
+  blockBodySize,
   findSmartSpawnPosition,
+  measureNodeSize,
   useLogicViewStore,
   wireRejectionMessage,
   type ChipMetadata,
@@ -2146,17 +2148,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),
     [boardIoRowByAlias]
   );
+  // Placement clears the symbol it is about to draw, so every spawn says what it is placing.
+  // An I/O boundary is wider and shorter than a gate; a module block is larger than both.
+  const nodeTypeSpawnFootprint = useCallback((nodeType: string | undefined) => {
+    if (!nodeType) return undefined;
+    const size = measureNodeSize({
+      id: '__spawn-probe__',
+      type: nodeType,
+      position: { x: 0, y: 0 },
+      config: {},
+      state: {},
+    } as Node);
+    return { width: size.width, height: size.height };
+  }, []);
+
   const resolveCanvasPlacementPosition = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, nodeType?: string) => {
       if (!canvasHostRef.current) return null;
       const rect = canvasHostRef.current.getBoundingClientRect();
       const worldPoint = {
         x: (clientX - rect.left - camera.x) / camera.zoom,
         y: (clientY - rect.top - camera.y) / camera.zoom,
       };
-      return findSmartSpawnPosition(editorCircuit.nodes as Node[], worldPoint);
+      return findSmartSpawnPosition(
+        editorCircuit.nodes as Node[],
+        worldPoint,
+        undefined,
+        nodeTypeSpawnFootprint(nodeType)
+      );
     },
-    [camera.x, camera.y, camera.zoom, editorCircuit.nodes]
+    [camera.x, camera.y, camera.zoom, editorCircuit.nodes, nodeTypeSpawnFootprint]
   );
 
   const spawnAtCanvasCenter = useCallback(
@@ -2165,7 +2186,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, nodeTypeSpawnFootprint(nodeType));
       const position = {
         x: basePosition.x + extraOffset.x,
         y: basePosition.y + extraOffset.y,
@@ -2252,6 +2273,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     ]
   );
 
+  // A module instance is drawn as a block with one pin row per port and a header, so it is
+  // roughly twice a gate in both axes. Placement has to be told that, or clicking Place four
+  // times stacks the instances until some have no exposed body left to click.
+  const moduleSpawnFootprint = useCallback(
+    (definition: { displayName?: string; name: string; ports: readonly { name: string; direction: string }[] }) => {
+      const size = blockBodySize({
+        kind: 'module',
+        instanceName: definition.displayName ?? definition.name,
+        typeLabel: definition.name,
+        inputPortNames: definition.ports.filter((port) => port.direction === 'input').map((port) => port.name),
+        outputPortNames: definition.ports.filter((port) => port.direction === 'output').map((port) => port.name),
+      });
+      return { width: size.width, height: size.height };
+    },
+    []
+  );
+
   // Bus authoring dialog: create a first-class vector boundary (A[3:0]) as
   // one durable action. Members land on the canvas and gain IO rows for Board.
   const [busDialog, setBusDialog] = useState<{
@@ -2301,7 +2339,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, nodeTypeSpawnFootprint('INPUT'));
       onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
       onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
     } else {
@@ -2309,7 +2347,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
     }
     setActionToast('Added starter IO pins.');
-  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, nodeTypeSpawnFootprint, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
     if (onRuntimeAddIo && onRuntimeAddNode && onRuntimeConnect) {
@@ -2317,7 +2355,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, nodeTypeSpawnFootprint('INPUT'));
       const [inputAId, inputBId, andId, outputId] = predictNextNodeIds(editorCircuit, 4);
 
       onRuntimeAddIo('input', { x: basePosition.x - 170, y: basePosition.y - 72 });
@@ -2393,7 +2431,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const commitPendingPlacement = useCallback(
     (clientX: number, clientY: number, options?: { keepPlacing?: boolean }) => {
       if (!pendingPlacement) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
+      const position = resolveCanvasPlacementPosition(clientX, clientY, pendingPlacement.nodeType);
       if (!position) return;
       const keepPlacing = options?.keepPlacing === true;
 
@@ -2458,7 +2496,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const updatePlacementGhost = useCallback(
     (clientX: number, clientY: number) => {
       if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
+      const position = resolveCanvasPlacementPosition(clientX, clientY, pendingPlacement.nodeType);
       if (!position) return;
       setPlacementGhost({
         screenX: position.x * camera.zoom + camera.x,
@@ -7023,7 +7061,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
                                   <button type="button" className="wb-btn wb-btn--ghost" data-testid={`ide-design-palette-place-${definition.id}`} title="Place an instance on the schematic" onClick={() => {
                                     const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
-                                    onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
+                                    onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, moduleSpawnFootprint(definition)));
                                   }}>Place</button>
                                 ) : null}
                                 {definition && onOpenModule ? <button type="button" className="wb-btn wb-btn--ghost" title="Open the module definition" onClick={() => onOpenModule(definition.id)}>Open</button> : null}
@@ -7100,7 +7138,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                   x: (canvasSize.width / 2 - camera.x) / camera.zoom,
                                   y: (canvasSize.height / 2 - camera.y) / camera.zoom,
                                 };
-                                onPlaceModuleInstance(module.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
+                                onPlaceModuleInstance(module.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, moduleSpawnFootprint(module)));
                               }}
                             >Use</button>
                           ) : null}

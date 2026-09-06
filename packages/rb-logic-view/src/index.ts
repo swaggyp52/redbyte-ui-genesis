@@ -28,7 +28,7 @@ export type { ToolbarProps } from './components/Toolbar';
 // Tools
 export { renderGrid } from './tools/grid';
 export type { GridConfig } from './tools/grid';
-export { findSmartSpawnPosition } from './tools/placement';
+export { findSmartSpawnPosition, measureNodeSize, type SpawnFootprint } from './tools/placement';
 export {
   describePortRefForStudents,
   describeWireRejectionForStudents,
@@ -41,6 +41,7 @@ export {
 export {
   GRID as SCHEMATIC_GRID,
   PIN_PITCH as SCHEMATIC_PIN_PITCH,
+  blockBodySize,
   buildGeometryIndex,
   findPin,
   pinWorldPoint,

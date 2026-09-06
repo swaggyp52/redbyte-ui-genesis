@@ -4,7 +4,9 @@ import {
   GRID_SIZE,
   NODE_SIZE,
   findSmartSpawnPosition,
+  measureNodeSize,
 } from './placement';
+import { blockBodySize } from '../symbols/portGeometry';
 
 const nodeAt = (id: string, x: number, y: number, type = 'XOR'): Node => ({
   id,
@@ -75,6 +77,50 @@ describe('findSmartSpawnPosition', () => {
         `slot ${slot} at ${occupied.x},${occupied.y} must not land on an existing symbol`
       ).toBe(true);
     }
+  });
+
+  // Placement used to assume every symbol was a 48px gate. A module instance is drawn as a
+  // block with a header and one row per port, so four of them placed in a row overlapped
+  // until some had no exposed body left to click - and an unclickable symbol cannot be
+  // selected, moved, or wired.
+  it('clears symbols by their real drawn size, not a fixed gate size', () => {
+    // The size the canvas actually draws a five-port FullAdder instance at, from the same
+    // authority the schematic uses. This is what Design passes when it places an instance.
+    const placed = blockBodySize({
+      kind: 'module',
+      instanceName: 'u_fa1',
+      typeLabel: 'FullAdder',
+      inputPortNames: ['A', 'B', 'CIN'],
+      outputPortNames: ['SUM', 'COUT'],
+    });
+
+    // The defect in numbers: a module block needs more clearance than the fixed gate rule
+    // gave it, so placement reported "free" while the symbols overlapped on screen.
+    const gateRuleSeparation = NODE_SIZE + GRID_SIZE;
+    expect(
+      placed.height,
+      'a five-port module block must be taller than a gate, or this test proves nothing'
+    ).toBeGreaterThan(NODE_SIZE);
+    expect(
+      placed.height,
+      'and taller than the whole clearance the gate rule allowed between two centres'
+    ).toBeGreaterThan(gateRuleSeparation);
+
+    const existing = [nodeAt('u_fa0', 0, 0, 'XOR')];
+    const candidate = findSmartSpawnPosition(existing, { x: 0, y: 0 }, undefined, {
+      width: placed.width,
+      height: placed.height,
+    });
+
+    const existingSize = measureNodeSize(existing[0]);
+    const needX = (placed.width + existingSize.width) / 2;
+    const needY = (placed.height + existingSize.height) / 2;
+    const dx = Math.abs(candidate.x);
+    const dy = Math.abs(candidate.y);
+    expect(
+      dx >= needX || dy >= needY,
+      `the placed block must clear the existing symbol: centres ${dx},${dy} apart, need ${needX} or ${needY}`
+    ).toBe(true);
   });
 
   it('ignores a footprint that describes a single slot', () => {

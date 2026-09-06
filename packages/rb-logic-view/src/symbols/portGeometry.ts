@@ -214,6 +214,35 @@ function collapseVectorPins(ports: { id: string; name: string }[]): { id: string
  * Resolve the symbol geometry of a node. Deterministic for a given
  * (type, metadata, config, label).
  */
+/**
+ * The body size of a rectangular block symbol - a module instance, a register, a generic
+ * block. One owner, because placement needs the same number the canvas draws with: a module
+ * with five ports is roughly twice a gate in both axes, and assuming gate size is what let
+ * placed instances land on top of one another.
+ */
+export function blockBodySize(input: {
+  kind?: SymbolKind;
+  instanceName: string;
+  typeLabel: string;
+  inputPortNames: readonly string[];
+  outputPortNames: readonly string[];
+}): { width: number; height: number; headerH: number } {
+  const rows = Math.max(1, input.inputPortNames.length, input.outputPortNames.length);
+  const longestPortName = Math.max(
+    input.inputPortNames.reduce((a, name) => Math.max(a, name.length), 0),
+    input.outputPortNames.reduce((a, name) => Math.max(a, name.length), 0)
+  );
+  const width =
+    GRID *
+    Math.max(
+      input.kind === 'register' ? 5 : 6,
+      Math.ceil((longestPortName * 2 * 6.5 + 40) / GRID),
+      Math.ceil((Math.max(input.instanceName.length, input.typeLabel.length) * 6.5 + 16) / GRID)
+    );
+  const headerH = input.kind === 'module' || input.instanceName ? PIN_PITCH : GRID;
+  return { width, height: headerH + rows * PIN_PITCH, headerH };
+}
+
 export function resolvePortGeometry(node: Node, metadata?: ChipMetadata): SymbolGeometry {
   const kind = symbolKindForNode(node, metadata);
   const inputs = collapseVectorPins(inputsOf(node, metadata));
@@ -303,20 +332,13 @@ export function resolvePortGeometry(node: Node, metadata?: ChipMetadata): Symbol
     case 'block':
     default: {
       // Rectangular block with named pins inside; header row for the identity.
-      const leftRows = inputs.length;
-      const rightRows = outputs.length;
-      const rows = Math.max(1, leftRows, rightRows);
-      const longest = Math.max(
-        instanceName.length,
-        typeLabel.length,
-        ...inputs.map((p) => p.name.length),
-        ...outputs.map((p) => p.name.length)
-      );
-      const textW = Math.max(inputs.map((p) => p.name.length).reduce((a, b) => Math.max(a, b), 0), outputs.map((p) => p.name.length).reduce((a, b) => Math.max(a, b), 0));
-      const bodyW = GRID * Math.max(kind === 'register' ? 5 : 6, Math.ceil((textW * 2 * 6.5 + 40) / GRID), Math.ceil((Math.max(instanceName.length, typeLabel.length) * 6.5 + 16) / GRID));
-      void longest;
-      const headerH = kind === 'module' || instanceName ? PIN_PITCH : GRID;
-      const bodyH = headerH + rows * PIN_PITCH;
+      const { width: bodyW, height: bodyH, headerH } = blockBodySize({
+        kind,
+        instanceName,
+        typeLabel,
+        inputPortNames: inputs.map((port) => port.name),
+        outputPortNames: outputs.map((port) => port.name),
+      });
       const minX = -bodyW / 2;
       const maxX = bodyW / 2;
       const minY = -bodyH / 2;

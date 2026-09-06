@@ -38,10 +38,18 @@ function savedProject(projectId: string): RBProject {
   } as RBProject;
 }
 
+// Run identity lives on the ledger entry; the run itself is identified by its deterministic
+// hash and the scenario it graded.
+const RUN_ID = 'run-2026-01-01T00:00:00.000Z-abcdef01';
+const RUN_HASH = 'deadbeefcafe0001';
+
 const storedRun = (owner: string): RuntimeVerifyRun =>
   ({
-    runId: 'run-2026-01-01T00:00:00.000Z-abcdef01',
     projectId: owner,
+    scenarioId: 'default',
+    scenarioName: 'Default',
+    status: 'pass',
+    deterministicHash: RUN_HASH,
     ranAtIso: '2026-01-01T00:00:00.000Z',
     report: {
       rows: [{ tick: 0, signal: 'Y', expected: '1', actual: '1', status: 'pass' }],
@@ -56,7 +64,7 @@ const storedRun = (owner: string): RuntimeVerifyRun =>
 
 const storedLedger = (owner: string): VerifyRunLedgerEntry[] => [
   {
-    runId: 'run-2026-01-01T00:00:00.000Z-abcdef01',
+    runId: RUN_ID,
     projectId: owner,
     status: 'pass',
   } as unknown as VerifyRunLedgerEntry,
@@ -71,16 +79,12 @@ describe('projectRuntime — reopening a project restores its own evidence', () 
     });
 
     const state = useProjectRuntime.getState();
-    expect(state.verifyLastRun?.runId, 'the run itself must come back').toBe(
-      'run-2026-01-01T00:00:00.000Z-abcdef01'
-    );
+    expect(state.verifyLastRun?.deterministicHash, 'the run itself must come back').toBe(RUN_HASH);
     expect(
       state.verifyLastRun?.report?.rows?.length,
       'the per-vector rows are what make it replayable; a summary row is not a trace'
     ).toBe(1);
-    expect(state.verifyRunHistory.map((entry) => entry.runId)).toEqual([
-      'run-2026-01-01T00:00:00.000Z-abcdef01',
-    ]);
+    expect(state.verifyRunHistory.map((entry) => entry.runId)).toEqual([RUN_ID]);
     expect(
       state.verifyLastRun?.projectId,
       'restored evidence is owned by the identity that was opened'

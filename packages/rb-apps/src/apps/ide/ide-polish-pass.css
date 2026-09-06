@@ -2383,13 +2383,21 @@
 
 }
 
+/* The focal instrument gets a generous floor so it never collapses to a sliver, but the
+   floor is capped by the space the workbench actually gave it. A bare viewport-relative
+   minimum does not know about the ribbon, the status bar or the Problems console, so at
+   1440x900 it forced the schematic 73px past its pane: the overflow landed under the
+   console, which then swallowed clicks on any symbol placed low on the sheet. Capping at
+   100% keeps the floor and clips nothing - the canvas is a pan/zoom viewport, so filling
+   its pane loses no work. */
 .ide-root [data-ide-mode-marker='design'] [data-hierarchy-focal='circuit-canvas'] {
-  min-height: clamp(420px, 62vh, 780px);
+  min-height: min(clamp(420px, 62vh, 780px), 100%);
   border-color: rgba(125, 211, 252, 0.25);
 }
 
+/* Same guard as the schematic: a floor, capped by the space actually available. */
 .ide-root [data-ide-mode-marker='hardware'] [data-hierarchy-focal='basys3-board-workbench'] {
-  min-height: clamp(420px, 60vh, 760px);
+  min-height: min(clamp(420px, 60vh, 760px), 100%);
 }
 
 .ide-root [data-ide-mode-marker='hardware'] .ide-hardware-command-strip {
