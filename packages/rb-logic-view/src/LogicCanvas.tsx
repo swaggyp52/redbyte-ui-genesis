@@ -33,6 +33,9 @@ import { SchematicBusBrackets, type SchematicBusGroup } from './components/Schem
 import { SchematicWireView } from './components/SchematicWireView';
 
 export interface LogicCanvasProps {
+  /** Draw the overview map in the corner of the sheet. Off by default: it is the one
+   *  presentation layer that sits on top of the drawing and takes the pointer. */
+  showMinimap?: boolean;
   engine: TickEngine;
   circuit?: Circuit; // Optional: if provided, use this instead of polling engine
   width?: number;
@@ -189,6 +192,7 @@ function toWireId(connection: Connection): string {
 }
 
 export const LogicCanvas: React.FC<LogicCanvasProps> = ({
+  showMinimap = false,
   engine,
   circuit: externalCircuit,
   width = 800,
@@ -2508,8 +2512,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             })}
         </g>
       </svg>
-      {circuit && circuit.nodes.length > 0 && (
+      {showMinimap && circuit && circuit.nodes.length > 0 && (
         <Minimap
+          // In the Wire tool every click is aimed at a pin, so the overlay must never take
+          // one - not only once a wire is already in progress. Measured before: a pin in the
+          // bottom-right corner of the sheet could not be wired at all.
+          inert={toolMode === 'wire' || Boolean(editingState.wireStartPort)}
           nodes={circuit.nodes}
           camera={camera}
           canvasWidth={width}

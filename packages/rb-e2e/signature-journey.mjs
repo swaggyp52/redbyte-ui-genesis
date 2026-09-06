@@ -87,6 +87,13 @@ if (board.led0 !== 'url(#ledLensOn)' || board.led1 !== 'url(#ledLensOff)')
   fail(`simulated board did not mirror the bench (expected LD0 on, LD1 off): ${JSON.stringify(board)}`);
 // Back to the mapping workspace, where the electrical Pin Planner lives.
 await page.getByTestId('ide-hw-mode-btn-map').click(); await page.waitForTimeout(500);
+// The assignment table leads on Board now and the electrical view is a disclosure beneath
+// it, closed until asked for - so this opens it the way a student would.
+const electrical = page.getByTestId('ide-hw-electrical-detail');
+if (await electrical.count()) {
+  if (!(await electrical.evaluate((el) => el.open))) await electrical.locator('summary').click();
+  await page.waitForTimeout(300);
+}
 if (await page.getByTestId('ide-pin-planner').count() === 0) fail('Pin Planner missing');
 const ids = await store(() => {
   const doc = window.__RB_PROJECT_RUNTIME__.getState().hardwareMappingV2;

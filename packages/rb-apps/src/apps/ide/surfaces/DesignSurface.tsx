@@ -7855,6 +7855,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           ['hierarchy', 'Hierarchy boundaries'],
                           ['buses', 'Bus brackets'],
                           ['diagnostics', 'Diagnostics'],
+                          ['minimap', 'Overview map'],
                         ] as const
                       ).map(([id, label]) => (
                         <button
@@ -8600,6 +8601,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     )}
                     <LogicCanvas
+                      showMinimap={designLayers.minimap}
                       engine={tickEngine}
                       circuit={editorCircuit}
                       width={canvasSize.width}

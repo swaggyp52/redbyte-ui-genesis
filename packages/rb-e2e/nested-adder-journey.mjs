@@ -442,6 +442,10 @@ console.log('STAGE E after reload:', JSON.stringify(afterReload));
 await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().autoSuggestMapping());
 await page.waitForTimeout(600);
 await page.getByTestId('mode-button-export').click(); await page.waitForTimeout(1800);
+// Build & Export opens on the handoff dossier; the generated files are the artifact
+// document, reached from the dossier's own header the way a reader reaches it.
+const openFilesF = page.getByTestId('ide-package-handoff-open-files');
+if (await openFilesF.count()) { await openFilesF.click(); await page.waitForTimeout(800); }
 // Click through the generated files, capturing any that carry VHDL content.
 const files = await page.evaluate(() => {
   const btns = [...document.querySelectorAll('[data-testid^="ide-export-file-"] .rb-pkg-file-name')].map((e) => e.textContent.trim());

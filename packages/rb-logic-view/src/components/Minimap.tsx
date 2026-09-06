@@ -16,6 +16,8 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export interface MinimapProps {
+  /** True while the reader is drawing a wire: the overlay must not take their clicks. */
+  inert?: boolean;
   nodes: Node[];
   camera: Camera;
   canvasWidth: number;
@@ -24,6 +26,7 @@ export interface MinimapProps {
 }
 
 export const Minimap: React.FC<MinimapProps> = ({
+  inert = false,
   nodes,
   camera,
   canvasWidth,
@@ -69,6 +72,8 @@ export const Minimap: React.FC<MinimapProps> = ({
     <div
       className="rb-minimap"
       data-testid="ide-design-minimap"
+      data-inert={inert ? 'true' : undefined}
+      style={inert ? { pointerEvents: 'none', opacity: 0.35 } : undefined}
       onClick={handleClick}
     >
       <svg width={MINIMAP_W} height={MINIMAP_H} style={{ display: 'block' }}>

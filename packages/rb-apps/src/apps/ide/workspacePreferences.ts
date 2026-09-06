@@ -28,9 +28,9 @@ export const WORKSPACE_PRESET_IDS = ['authoring', 'simulation', 'board', 'code']
 export type WorkspacePresetId = (typeof WORKSPACE_PRESET_IDS)[number];
 
 export type DesignWorkspaceView = 'canvas' | 'code' | 'split';
-export type DesignLayerId = 'netLabels' | 'values' | 'boardBindings' | 'diagnostics' | 'hierarchy' | 'buses';
+export type DesignLayerId = 'netLabels' | 'values' | 'boardBindings' | 'diagnostics' | 'hierarchy' | 'buses' | 'minimap';
 export type DesignLayers = Readonly<Record<DesignLayerId, boolean>>;
-export const DESIGN_LAYER_IDS: readonly DesignLayerId[] = ['netLabels', 'values', 'boardBindings', 'diagnostics', 'hierarchy', 'buses'];
+export const DESIGN_LAYER_IDS: readonly DesignLayerId[] = ['netLabels', 'values', 'boardBindings', 'diagnostics', 'hierarchy', 'buses', 'minimap'];
 export const DEFAULT_DESIGN_LAYERS: DesignLayers = Object.freeze({
   netLabels: true,
   values: true,
@@ -38,6 +38,10 @@ export const DEFAULT_DESIGN_LAYERS: DesignLayers = Object.freeze({
   diagnostics: true,
   hierarchy: true,
   buses: true,
+  // Off by default. Every other layer draws on the sheet; this one sits on top of it and takes
+  // the pointer, so a part in the bottom-right corner could not be wired while it was there.
+  // A reader who wants an overview turns it on and knows why the corner behaves differently.
+  minimap: false,
 });
 function normalizeDesignLayers(raw: unknown): DesignLayers {
   const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
