@@ -269,7 +269,7 @@
   color: var(--rb-text-secondary);
   background: color-mix(in srgb, var(--rb-surface-1) 94%, transparent);
   box-shadow: 0 3px 12px rgba(35, 48, 61, 0.1);
-  font: 600 12px/1.2 inherit;
+  font: 600 var(--rb-text-meta)/1.2 inherit;
   pointer-events: auto;
 }
 
@@ -390,7 +390,7 @@
   gap: 16px;
   padding: 8px 14px;
   color: var(--rb-text-secondary);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-root .ide-command-palette-header label {
@@ -455,7 +455,7 @@
   align-items: center;
   justify-content: center;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
   letter-spacing: 0.02em;
   pointer-events: none;
@@ -505,7 +505,7 @@
 
 .ide-root .ide-command-palette-option-copy small {
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   text-transform: capitalize;
 }
 
@@ -516,7 +516,7 @@
   border-radius: 4px;
   color: var(--rb-text-secondary);
   background: var(--rb-surface-2);
-  font: 600 12px/1.2 inherit;
+  font: 600 var(--rb-text-meta)/1.2 inherit;
 }
 
 .ide-root .ide-command-palette-empty {
@@ -538,7 +538,7 @@
   border-radius: var(--rb-radius-control);
   color: var(--rb-text-primary);
   background: var(--rb-surface-1);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   font-weight: 600;
   cursor: pointer;
   list-style: none;
@@ -552,7 +552,7 @@
   content: '▾';
   margin-left: 6px;
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
 }
 
 @media (max-width: 1500px) {
@@ -634,7 +634,7 @@
   border-radius: 5px;
   background: transparent;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 720;
   cursor: pointer;
 }
@@ -664,14 +664,14 @@
 .ide-root .ide-design-inline-board h3 {
   margin: 0;
   color: var(--rb-text-primary);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-root .ide-design-project-browser .ide-design-subheader p,
 .ide-root .ide-design-inline-board header p {
   margin: 3px 0 0;
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.45;
 }
 
@@ -728,7 +728,7 @@
 .ide-root .ide-design-board-binding-list small,
 .ide-root .ide-design-tree em {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
   font-style: normal;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -741,7 +741,7 @@
 
 .ide-root .ide-design-board-binding-list code {
   color: var(--rb-text-secondary);
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
 }
 
 .ide-root .ide-design-inline-board,
@@ -755,7 +755,7 @@
   display: grid;
   gap: 5px;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 720;
 }
 
@@ -773,7 +773,7 @@
    and resource name without forcing students to decode a clipped option. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-inline-board-field select {
-  font-size: 12px !important;
+  font-size: var(--rb-text-meta) !important;
   font-weight: 600;
 }
 
@@ -802,13 +802,13 @@
 
 .ide-root .ide-design-inline-board-facts dt {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
 }
 
 .ide-root .ide-design-inline-board-facts dd {
   margin: 0;
   color: var(--rb-text-primary);
-  font: 600 11px/1.35 var(--rb-font-mono, monospace);
+  font: 600 var(--rb-text-micro)/1.35 var(--rb-font-mono, monospace);
   overflow-wrap: anywhere;
 }
 
@@ -844,7 +844,7 @@
 .ide-root .ide-design-simulation-readout span {
   margin: 0;
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
 }
 
 .ide-root .ide-design-toolbar-customize,
@@ -859,7 +859,7 @@
   border: 1px solid var(--rb-border-default);
   border-radius: 6px;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 720;
   cursor: pointer;
   list-style: none;
@@ -934,7 +934,7 @@
   min-height: 34px;
   padding-inline: 4px;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1149,13 +1149,13 @@
 .ide-root .ide-projectx-examples-title {
   margin: 0;
   color: var(--rb-text-primary);
-  font-size: 16px;
+  font-size: var(--rb-text-title);
 }
 
 .ide-root .ide-projectx-examples-sub {
   margin: 2px 0 0;
   color: var(--rb-text-secondary);
-  font-size: 12.5px;
+  font-size: var(--rb-text-dense);
 }
 
 .ide-root .ide-projectx-examples-toggle {
@@ -1240,7 +1240,7 @@
   background: color-mix(in srgb, var(--rb-action) 10%, transparent);
   color: var(--rb-action);
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -1249,7 +1249,7 @@
 .ide-root .ide-projectx-example-card-open-proof {
   margin: 0;
   color: var(--rb-warning, #b45309);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.4;
 }
 
@@ -1267,7 +1267,7 @@
 
 .ide-root .ide-projectx-learning-path-label {
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -1282,7 +1282,7 @@
   border-radius: 999px;
   background: var(--rb-surface-1);
   color: var(--rb-text-primary);
-  font-size: 12.5px;
+  font-size: var(--rb-text-dense);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1305,7 +1305,7 @@
   border-radius: 50%;
   background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
   color: var(--rb-action);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
 }
 
@@ -1327,14 +1327,14 @@
   border: 1px solid var(--rb-border-default, var(--rb-border));
   border-radius: 999px;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
 }
 
 .ide-root .ide-verify-hidden-lanes button {
   border: 0;
   background: transparent;
   color: var(--rb-accent, var(--rb-action));
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1370,16 +1370,16 @@
 }
 
 .ide-format-migration-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.ide-format-migration-head h2 { margin: 0; font-size: 16px; font-weight: 680; }
-.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: 12px; color: var(--rb-text-muted); }
+.ide-format-migration-head h2 { margin: 0; font-size: var(--rb-text-title); font-weight: 680; }
+.ide-format-migration-file { font-family: var(--rb-font-mono); font-size: var(--rb-text-meta); color: var(--rb-text-muted); }
 
-.ide-format-migration-body { margin: 0; font-size: 13px; line-height: 1.55; color: var(--rb-text-secondary); }
+.ide-format-migration-body { margin: 0; font-size: var(--rb-text-body); line-height: 1.55; color: var(--rb-text-secondary); }
 
-.ide-format-migration-review summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--rb-text-primary); }
+.ide-format-migration-review summary { cursor: pointer; font-size: var(--rb-text-meta); font-weight: 600; color: var(--rb-text-primary); }
 .ide-format-migration-changes {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   color: var(--rb-text-secondary);
   display: flex;
   flex-direction: column;
@@ -1399,7 +1399,7 @@
   border: 1px solid var(--rb-border-strong);
   background: var(--rb-surface-2);
   color: var(--rb-text-primary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 640;
   cursor: pointer;
 }

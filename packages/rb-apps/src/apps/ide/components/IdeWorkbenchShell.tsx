@@ -102,12 +102,16 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible;
   const showRightDock =
     rightDockAllowed && surfacePreferences.docks.right.visible;
+  // A blocking diagnostic earns the full panel. Anything advisory earns a strip the student
+  // can open. `expanded` mode is an explicit request from the surface and is honoured.
+  const [consoleExpanded, setConsoleExpanded] = React.useState(false);
   const showConsole =
     Boolean(console) &&
     (consoleHasBlocking ||
       consoleMode === 'expanded' ||
       ((consoleMode === 'auto' || consoleMode === 'collapsed') &&
         surfacePreferences.docks.bottom.visible));
+  const consoleIsExpanded = consoleMode === 'expanded' || consoleExpanded;
   const shellStyle = {
     '--rb-workbench-pref-left-width': `${surfacePreferences.docks.left.sizePx}px`,
     '--rb-workbench-pref-right-width': `${surfacePreferences.docks.right.sizePx}px`,
@@ -284,21 +288,39 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
       {showConsole ? (
         <section
-          className={`ide-workbench-console ${consoleHasBlocking ? 'is-blocking' : 'is-expanded'}`}
+          className={`ide-workbench-console ${
+            consoleHasBlocking ? 'is-blocking' : consoleIsExpanded ? 'is-expanded' : 'is-collapsed'
+          }`}
           data-testid="ide-workbench-console"
-          data-console-state={consoleHasBlocking ? 'blocking' : 'expanded'}
+          data-console-state={
+            consoleHasBlocking ? 'blocking' : consoleIsExpanded ? 'expanded' : 'collapsed'
+          }
           aria-label={consoleHasBlocking ? 'Blocking diagnostics' : 'Compiler output'}
         >
           {!consoleHasBlocking ? (
-            <button
-              type="button"
-              className="ide-workbench-dock-collapse ide-workbench-dock-collapse--bottom"
-              onClick={() => setDockVisible('bottom', false)}
-              aria-label="Hide bottom panel"
-              data-testid="ide-hide-bottom-dock"
-            >
-              &#x2304;
-            </button>
+            <div className="ide-workbench-console-bar">
+              <button
+                type="button"
+                className="ide-workbench-console-toggle"
+                onClick={() => setConsoleExpanded((open) => !open)}
+                aria-expanded={consoleIsExpanded}
+                data-testid="ide-console-toggle"
+              >
+                <span className="ide-workbench-console-toggle-caret" aria-hidden="true">
+                  {consoleIsExpanded ? '\u25BE' : '\u25B8'}
+                </span>
+                <span>Problems and output</span>
+              </button>
+              <button
+                type="button"
+                className="ide-workbench-dock-collapse ide-workbench-dock-collapse--bottom"
+                onClick={() => setDockVisible('bottom', false)}
+                aria-label="Hide bottom panel"
+                data-testid="ide-hide-bottom-dock"
+              >
+                &#x2304;
+              </button>
+            </div>
           ) : null}
           <div
             className="ide-workbench-resize-handle ide-workbench-resize-handle--bottom"
@@ -313,7 +335,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             onKeyDown={(event) => handleResizeKey('bottom', event)}
             data-testid="ide-resize-bottom-dock"
           />
-          {console}
+          <div className="ide-workbench-console-content">{console}</div>
         </section>
       ) : null}
     </section>

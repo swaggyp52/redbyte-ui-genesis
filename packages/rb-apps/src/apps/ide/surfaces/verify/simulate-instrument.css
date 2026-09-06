@@ -71,7 +71,7 @@
 .ide-root .rb-scn-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .rb-scn-preview { grid-area: preview; display: grid; gap: 1px; justify-self: end; }
 .ide-root .rb-scn-preview-row { display: flex; align-items: center; gap: 4px; }
-.ide-root .rb-scn-preview-label { width: 26px; overflow: hidden; text-overflow: ellipsis; text-align: right; color: var(--wb-text-3); font: 11px var(--wb-font-mono); }
+.ide-root .rb-scn-preview-label { width: 26px; overflow: hidden; text-overflow: ellipsis; text-align: right; color: var(--wb-text-3); font: var(--rb-text-micro) var(--wb-font-mono); }
 .ide-root .rb-scn-preview-bits { display: inline-flex; gap: 1px; }
 .ide-root .rb-scn-preview-bits > span { width: 4px; height: 8px; background: var(--wb-border-strong); }
 .ide-root .rb-scn-preview-bits > span.is-high { background: var(--wb-accent); }
@@ -186,7 +186,7 @@
 .ide-root .ide-case-lab-row:hover .ide-case-lab-row-actions,
 .ide-root .ide-case-lab-row.is-selected .ide-case-lab-row-actions,
 .ide-root .ide-case-lab-row-actions:focus-within { opacity: 1; }
-.ide-root .ide-case-lab-rowbtn { width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font-size: 12px; line-height: 1; cursor: pointer; }
+.ide-root .ide-case-lab-rowbtn { width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font-size: var(--rb-text-meta); line-height: 1; cursor: pointer; }
 .ide-root .ide-case-lab-rowbtn:hover { border-color: var(--wb-accent); color: var(--wb-accent); }
 .ide-root .ide-case-lab-rowbtn--danger:hover { border-color: var(--wb-err); color: var(--wb-err); }
 .ide-root .ide-case-lab-empty { padding: 12px; color: var(--wb-text-3); font-size: var(--wb-text-sm); text-align: left; }
@@ -362,7 +362,7 @@
 .ide-root .rb-timing-toggles { display: flex; flex-wrap: wrap; gap: 4px; }
 .ide-root .rb-timing-toggle { display: inline-flex; align-items: baseline; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-mono); cursor: pointer; }
 .ide-root .rb-timing-toggle strong { color: var(--wb-text); font-weight: 700; }
-.ide-root .rb-timing-toggle small { color: var(--wb-text-3); font-size: 11px; }
+.ide-root .rb-timing-toggle small { color: var(--wb-text-3); font-size: var(--rb-text-micro); }
 .ide-root .rb-timing-toggle.is-high { border-color: var(--rb-wave-in); color: var(--rb-wave-in); }
 .ide-root .rb-timing-toggle.is-high strong { color: var(--rb-wave-in); }
 .ide-root .rb-timing-toggle.is-clock.is-high { border-color: var(--rb-wave-clock); color: var(--rb-wave-clock); }
@@ -401,7 +401,7 @@
 .ide-root .rb-tl-scroll { overflow: auto; max-height: 100%; }
 .ide-root .rb-tl-svg { display: block; font-family: var(--wb-font-mono); }
 .ide-root .rb-tl-selected { fill: var(--wb-accent-bg); }
-.ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-3); font: 600 11px var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-tl-tick-label { fill: var(--wb-text-3); font: 10px var(--wb-font-mono); }
 .ide-root .rb-tl-tick.is-event .rb-tl-tick-label { fill: var(--wb-text); font-weight: 700; }
 .ide-root .rb-tl-tick-hit { fill: transparent; cursor: pointer; }
@@ -412,7 +412,7 @@
 .ide-root .rb-tl-fail { fill: var(--wb-err); }
 .ide-root .rb-tl-group-rule, .ide-root .rb-tl-lane-rule { stroke: var(--wb-border); stroke-width: 1; }
 .ide-root .rb-tl-label { fill: var(--wb-text); font: 11.5px var(--wb-font-mono); }
-.ide-root .rb-tl-tag { fill: var(--wb-text-3); font: 600 11px var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-tl-tag { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
 .ide-root .rb-tl-trace { fill: none; stroke: var(--wb-accent); stroke-width: 1.75; stroke-linejoin: miter; }
 .ide-root .rb-tl-lane.is-clock .rb-tl-trace { stroke: var(--wb-text-2); }
 .ide-root .rb-tl-lane.is-reset .rb-tl-trace { stroke: var(--wb-warn); }
@@ -423,7 +423,7 @@
 .ide-root .rb-tl-expected line { stroke: var(--wb-text-2); stroke-width: 2; stroke-dasharray: 3 2; }
 .ide-root .rb-tl-expected.is-pass line { stroke: var(--wb-ok); }
 .ide-root .rb-tl-expected.is-fail line { stroke: var(--wb-err); }
-.ide-root .rb-tl-expected-label { fill: var(--wb-text-2); font: 11px var(--wb-font-mono); }
+.ide-root .rb-tl-expected-label { fill: var(--wb-text-2); font: var(--rb-text-micro) var(--wb-font-mono); }
 .ide-root .rb-timing-table-details { border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details > summary { padding: 4px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); cursor: default; }
 
@@ -469,7 +469,7 @@
 .ide-root .rb-sig-entry { position: relative; }
 .ide-root .rb-sig-move { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0; opacity: 0; }
 .ide-root .rb-sig-entry:hover .rb-sig-move, .ide-root .rb-sig-entry:focus-within .rb-sig-move { opacity: 1; }
-.ide-root .rb-sig-move .wb-btn { padding: 0 4px; min-width: 0; height: 18px; font-size: 11px; line-height: 18px; }
+.ide-root .rb-sig-move .wb-btn { padding: 0 4px; min-width: 0; height: 18px; font-size: var(--rb-text-micro); line-height: 18px; }
 
 /* Evidence deck collapsed: a one-line strip keeps the verdict and an Expand control; cases take the height.
    Every deck variant excludes replay: there the grid is the evidence document plus the inspector, with no

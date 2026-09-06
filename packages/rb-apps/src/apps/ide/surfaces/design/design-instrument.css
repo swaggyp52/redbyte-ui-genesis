@@ -94,7 +94,9 @@
   /* A row may also carry a capability badge and a palette badge; let them take
      implicit columns on the same line instead of wrapping into the next row. */
   grid-auto-flow: column;
-  grid-auto-columns: max-content;
+  /* Shrinkable. `max-content` made every badge column unshrinkable, which set the row's
+     minimum width above the pane's and clipped the name and the port signature away. */
+  grid-auto-columns: minmax(0, max-content);
   overflow: hidden;
   align-items: center;
   gap: 8px;
@@ -122,7 +124,7 @@
   border-radius: var(--wb-radius);
   color: var(--wb-text-2);
   background: var(--wb-surface);
-  font: 600 11px var(--wb-font-mono);
+  font: 600 var(--rb-text-micro) var(--wb-font-mono);
 }
 .ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
@@ -179,7 +181,7 @@
   border-radius: var(--wb-radius);
   color: var(--wb-text-3);
   background: transparent;
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
   cursor: pointer;
 }
 .ide-root .rb-lib-toggle:hover { color: var(--wb-text); background: var(--wb-hover-bg); }

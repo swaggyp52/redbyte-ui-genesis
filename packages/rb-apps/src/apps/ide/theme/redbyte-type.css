@@ -32,14 +32,19 @@
   /* ── The scale ──────────────────────────────────────────────────────────────
      Six steps. Nothing essential renders below 12px at 100% zoom; `micro` is for
      ornament only (a separator glyph, a shortcut hint) and never for an
-     engineering value, a command label, or a state word. */
-  --rb-text-micro: 11px;   /* ornament only */
-  --rb-text-meta: 12px;    /* status, metadata, secondary labels */
-  --rb-text-dense: 12.5px; /* dense table and grid values */
-  --rb-text-body: 13px;    /* ordinary UI text and controls */
-  --rb-text-head: 14px;    /* pane and document headings */
-  --rb-text-title: 16px;   /* the selected object, inspector titles */
-  --rb-text-doc: 19px;     /* document titles */
+     engineering value, a command label, or a state word.
+     The steps are rem, not px, so a student who raises text size in the browser or the OS
+     actually gets larger text. With absolute pixels the whole product was immovable: at
+     200% the page rendered byte-identically, which fails WCAG 1.4.4 outright. At the
+     default 16px root every value below is identical to the pixel size it replaces, so
+     the 100% appearance does not move. */
+  --rb-text-micro: 0.6875rem;  /* 11px - ornament only */
+  --rb-text-meta: 0.75rem;     /* 12px - status, metadata, secondary labels */
+  --rb-text-dense: 0.78125rem; /* 12.5px - dense table and grid values */
+  --rb-text-body: 0.8125rem;   /* 13px - ordinary UI text and controls */
+  --rb-text-head: 0.875rem;    /* 14px - pane and document headings */
+  --rb-text-title: 1rem;       /* 16px - the selected object, inspector titles */
+  --rb-text-doc: 1.1875rem;    /* 19px - document titles */
 
   /* ── Weights ────────────────────────────────────────────────────────────────
      400 / 500 / 600 for ordinary interface. 700 is reserved for product and
@@ -156,4 +161,16 @@
   line-height: var(--rb-lh-tight);
   letter-spacing: 0;
   margin: 0;
+}
+
+/* `small` was never given a rule, so it kept the browser default of 0.8em. That is where
+   the 9.6px and 10.4px text on Board and Package came from - below the floor this file
+   declares - and, with no spacing of its own, it ran straight into the value before it:
+   "Unassigned0all required mappings assigned", "Inputs3 signals". */
+.ide-root small {
+  font-size: var(--rb-text-meta);
+  line-height: var(--rb-lh-tight);
+}
+.ide-root small:not(:first-child) {
+  margin-left: 6px;
 }

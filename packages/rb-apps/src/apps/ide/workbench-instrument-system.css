@@ -98,9 +98,12 @@
   --wb-tool-bg: #eef1f5;
   --wb-tool-header-bg: #e5e9ef;
   --wb-doc-bg: #e9ecf1;
-  --wb-paper: #fbfbfa;
-  --wb-surface: #fbfbfa;
-  --wb-surface-2: #f4f6f8;
+  /* Three planes, three values. Paper is the document the student works on, surface is
+     a panel resting on it, surface-2 a nested well inside a panel. They used to be two
+     values for three roles, so nothing receded and nothing came forward. */
+  --wb-paper: #f2f4f7;
+  --wb-surface: #ffffff;
+  --wb-surface-2: #f7f9fb;
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='dark'],
@@ -323,7 +326,7 @@
 .ide-root .wb-menu-item[data-active='true'] { background: var(--wb-accent-bg); outline: none; }
 .ide-root .wb-menu-item[aria-disabled='true'] { color: var(--wb-text-3); }
 .ide-root .wb-menu-item[aria-disabled='true']:hover { background: transparent; }
-.ide-root .wb-menu-item-check { font-size: 11px; color: var(--wb-accent); text-align: center; }
+.ide-root .wb-menu-item-check { font-size: var(--rb-text-micro); color: var(--wb-accent); text-align: center; }
 .ide-root .wb-menu-item-label { overflow: hidden; text-overflow: ellipsis; }
 .ide-root .wb-menu-item-key { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .wb-menu-sep { height: 1px; margin: 4px 6px; background: var(--wb-border); }
@@ -401,7 +404,7 @@
   border-right: 2px solid transparent;
   color: var(--wb-text-2);
   background: transparent;
-  font: 500 11px / 1 var(--wb-font-ui);
+  font: 500 var(--rb-text-micro) / 1 var(--wb-font-ui);
   letter-spacing: 0.01em;
   cursor: pointer;
 }
@@ -447,7 +450,7 @@
   background: var(--wb-doc-bg);
 }
 .ide-root .wb-doctabs-history { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; border-right: 1px solid var(--wb-border); }
-.ide-root .wb-doctabs-history .wb-btn { font-size: 14px; color: var(--wb-text-2); }
+.ide-root .wb-doctabs-history .wb-btn { font-size: var(--rb-text-head); color: var(--wb-text-2); }
 .ide-root .wb-doctabs-history .wb-btn:disabled { color: var(--wb-border-strong); background: transparent; }
 .ide-root .wb-doctabs-list {
   display: flex;
@@ -511,7 +514,7 @@
   border-radius: var(--wb-radius);
   color: var(--wb-text-3);
   background: transparent;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1;
   opacity: 0;
 }
@@ -719,7 +722,7 @@
 .ide-root .wb-tree-row[aria-selected='true'],
 .ide-root .wb-tree-row.is-selected { background: var(--wb-accent-bg-strong); }
 .ide-root .wb-tree-row[aria-current='true'] { color: var(--wb-text); font-weight: 600; }
-.ide-root .wb-tree-chevron { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--wb-text-3); font-size: 11px; }
+.ide-root .wb-tree-chevron { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--wb-text-3); font-size: var(--rb-text-micro); }
 .ide-root .wb-tree-icon { display: inline-grid; place-items: center; width: 16px; height: 16px; color: var(--wb-text-2); }
 .ide-root .wb-tree-icon svg { width: 14px; height: 14px; }
 .ide-root .wb-tree-label { display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1024,7 +1027,7 @@
   border-radius: 3px;
   color: var(--wb-on-accent, #fff);
   background: var(--wb-text-3);
-  font: 700 11px/16px var(--wb-font-mono);
+  font: 700 var(--rb-text-micro)/16px var(--wb-font-mono);
   text-align: center;
 }
 .ide-root .rb-problems-panel .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }

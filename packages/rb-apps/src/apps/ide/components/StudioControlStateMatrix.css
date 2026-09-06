@@ -3,7 +3,7 @@
   padding: 32px;
   color: var(--rb-text);
   background: var(--rb-app-bg);
-  font: 14px/1.45 var(--rb-font-sans);
+  font: var(--rb-text-head)/1.45 var(--rb-font-sans);
 }
 
 .ide-control-matrix__header,
@@ -45,7 +45,7 @@
 
 .ide-control-matrix__eyebrow {
   color: var(--rb-brand);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -65,7 +65,7 @@
 }
 
 .ide-control-matrix__section h2 {
-  font-size: 18px;
+  font-size: var(--rb-text-doc);
 }
 
 .ide-control-matrix__grid,
@@ -134,7 +134,7 @@
   border-top: 0;
   border-radius: 0 0 10px 10px;
   color: var(--rb-text-muted);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 @media (max-width: 900px) {

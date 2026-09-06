@@ -77,7 +77,7 @@
   border: 1px solid var(--rb-ui-lab-border);
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -91,7 +91,7 @@
   padding: 6px 10px;
   background: var(--rb-ui-lab-bg-elevated);
   color: var(--rb-ui-lab-text);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;

@@ -178,7 +178,7 @@
 .ide-root .rb-wave-bus-word-lane:last-child { border-bottom: 0; }
 .ide-root .rb-wave-bus-word-id { display: flex; flex-direction: column; min-width: 0; }
 .ide-root .rb-wave-bus-word-id code { color: var(--wb-text); font: 600 var(--wb-text-sm) var(--wb-font-mono); }
-.ide-root .rb-wave-bus-word-dir { color: var(--wb-text-3); font-size: 11px; }
+.ide-root .rb-wave-bus-word-dir { color: var(--wb-text-3); font-size: var(--rb-text-micro); }
 .ide-root .rb-wave-bus-word-lane.is-input .rb-wave-bus-word-id code { color: var(--rb-wave-in); }
 .ide-root .rb-wave-bus-word-lane.is-output .rb-wave-bus-word-id code { color: var(--rb-wave-out); }
 .ide-root .rb-wave-bus-word-value { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -253,7 +253,7 @@
 }
 
 /* Edge navigation: a compact count beside the two step buttons. */
-.ide-root .rb-wave-edges__count { font-size: 12px; color: var(--wb-text-3); white-space: nowrap; }
+.ide-root .rb-wave-edges__count { font-size: var(--rb-text-meta); color: var(--wb-text-3); white-space: nowrap; }
 
 /* Playback + live readout: what is happening at the selected tick. The bar
    fills as the cursor walks the run; a mismatch turns the readout warm. */
@@ -264,7 +264,7 @@
 .ide-root .rb-wave-readout code { font: var(--wb-text-xs) var(--wb-font-mono); padding: 1px 5px; border-radius: 3px; background: var(--wb-surface-2, var(--wb-surface)); color: var(--wb-text-2); }
 .ide-root .rb-wave-readout code.is-muted { opacity: 0.6; }
 .ide-root .rb-wave-readout code.is-followed { box-shadow: inset 0 -2px 0 var(--wb-focus); }
-.ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; color: var(--wb-text-3); }
+.ide-root .rb-wave-readout small { text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--rb-text-micro); color: var(--wb-text-3); }
 .ide-root .rb-wave-readout__pos { display: inline-flex; align-items: center; gap: 6px; }
 .ide-root .rb-wave-readout__progress { display: inline-block; width: 72px; height: 4px; border-radius: 2px; background: var(--wb-border); overflow: hidden; }
 .ide-root .rb-wave-readout__progress > span { display: block; width: 100%; height: 100%; background: var(--wb-focus); transform-origin: left center; transition: transform 120ms linear; }

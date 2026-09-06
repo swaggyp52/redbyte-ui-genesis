@@ -92,7 +92,7 @@
 .ide-root .rb-board-consequence { margin: 0 var(--wb-space-3); color: var(--wb-text-2); font-size: var(--wb-text-sm); }
 .ide-root .rb-board-editor-actions { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 var(--wb-space-3); }
 .ide-root .ide-hardware-basys3-binding-chain { display: grid; grid-template-columns: auto auto auto auto auto; align-items: center; gap: 4px 6px; margin: 0 var(--wb-space-3); font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
-.ide-root .ide-hardware-basys3-binding-chain small { display: block; color: var(--wb-text-3); font: 600 11px var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .ide-hardware-basys3-binding-chain small { display: block; color: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0.04em; text-transform: uppercase; }
 .ide-root .ide-hardware-basys3-binding-chain pre { grid-column: 1 / -1; margin: 4px 0 0; padding: 6px 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface-2); color: var(--wb-text); font: var(--wb-text-xs) / 16px var(--wb-font-mono); white-space: pre-wrap; }
 
 /* Lab strip and after-mapping toolbar. */
@@ -187,7 +187,7 @@
 /* Guided mapping: the recommendation reads as one line with one action. */
 .ide-root .rb-board-recommend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 0; border-top: 1px solid var(--wb-border); }
 .ide-root .rb-board-recommend code { font: var(--wb-text-sm) var(--wb-font-mono); }
-.ide-root .rb-board-recommend .ide-copy { color: var(--wb-text-3); font-size: 12px; }
+.ide-root .rb-board-recommend .ide-copy { color: var(--wb-text-3); font-size: var(--rb-text-meta); }
 /* Constraints tool: every signal's exact XDC lines, selection-synced; no permanent footer. */
 .ide-root .rb-board-xdc-lines { list-style: none; margin: 0 var(--wb-space-3); padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .ide-root .rb-board-xdc-line { margin: 0; }
@@ -201,3 +201,23 @@
 .ide-root .rb-board-xdc-line code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .rb-board-xdc-line code.is-pending { color: var(--wb-text-3); }
 .ide-root .rb-board-xdc .ide-constraint-sets { margin: 4px var(--wb-space-3) 0; }
+
+/* `.rb-board-editor-head` was used in the markup and defined nowhere, so the label and the
+   value it introduces were painted as a single run of text: "ConstraintsLive mapping". */
+.ide-root .rb-board-editor-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: var(--wb-toolwindow-header-h, 30px);
+  padding: 0 var(--wb-space-3);
+}
+
+/* Every constraint line was cut off at the port name - the only token that says which
+   signal the line belongs to - inside a pane that was showing ten of them. A constraint
+   is worth two rows of a narrow pane; half a constraint is worth nothing. */
+.ide-root .rb-board-xdc-lines code,
+.ide-root .rb-board-xdc-line code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}

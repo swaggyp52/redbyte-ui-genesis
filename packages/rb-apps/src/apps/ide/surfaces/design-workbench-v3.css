@@ -4,7 +4,7 @@
    own size contract in product-system-v3.css so four labels fit a 180px rail. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   :is(button, input, select, textarea, label):not(.ide-design-dock-tabs button) {
-  font-size: 14px !important;
+  font-size: var(--rb-text-head) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
@@ -72,14 +72,14 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-subsection-header p,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-summary,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-copy {
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1.4;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-count,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-subsection-count,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-badge {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 /* Interface line on library cards: compact engineering facts, not prose. */
@@ -87,7 +87,7 @@
   overflow: hidden;
   color: var(--rb-text-secondary);
   font-family: var(--rb-font-mono, ui-monospace, 'Cascadia Mono', 'JetBrains Mono', monospace);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   letter-spacing: 0.01em;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -101,7 +101,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--rb-warning, #b45309) 12%, transparent);
   color: var(--rb-warning, #b45309);
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
   font-weight: 640;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -194,7 +194,7 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > span,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > code {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
@@ -203,7 +203,7 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-live-summary
   .ide-kv-row > code {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card,
@@ -223,7 +223,7 @@
   border-radius: 7px;
   background: rgba(24, 40, 59, 0.92);
   color: #f8fbff;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -236,7 +236,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-title {
   color: #f8fbff;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -251,7 +251,7 @@
   border-radius: var(--ide-radius-s);
   background: var(--ide-surface-2);
   color: var(--ide-text-strong);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1.3;
   cursor: pointer;
   transition: background 100ms, border-color 100ms;
@@ -292,7 +292,7 @@
   border-radius: 6px;
   background: rgba(14, 116, 144, 0.2);
   color: #bae6fd;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -302,7 +302,7 @@
   min-width: 0;
   overflow: hidden;
   color: #e0f2fe;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -321,7 +321,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-shortcut {
   color: rgba(186, 230, 253, 0.72);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   white-space: nowrap;
 }
 
@@ -423,7 +423,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-truth {
   color: #8ca1b6;
-  font-size: 12px !important;
+  font-size: var(--rb-text-meta) !important;
   line-height: 1.2;
   text-align: center;
 }
@@ -458,11 +458,11 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-segment,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-view-btn {
   min-height: 36px;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] [data-testid='ide-design-logical-io-explainer'] {
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty {
@@ -515,7 +515,7 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-logical-io-note,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-steps li {
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-context-disclosure {
@@ -560,11 +560,11 @@
    are normal student-facing labels, not diagnostic microcopy. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-text strong,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-probe-pill {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-text strong {
-  font-size: 14px !important;
+  font-size: var(--rb-text-head) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-inspector-name-control {
@@ -658,13 +658,13 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header span,
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__hint {
   color: #94a3b8;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header strong {
   overflow: hidden;
   color: #f8fafc;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -676,7 +676,7 @@
   border-radius: 7px;
   background: rgba(15, 29, 44, 0.96);
   color: #e2e8f0;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   font-weight: 700;
 }
 
@@ -708,7 +708,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice code {
   color: #7dd3fc;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__close:hover,
@@ -822,7 +822,7 @@
   }
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
-    font-size: 16px;
+    font-size: var(--rb-text-title);
   }
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-steps {
@@ -1012,13 +1012,13 @@
 
 .ide-root .ide-design-replay-transport-heading strong {
   color: var(--rb-text);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-root .ide-design-replay-transport-heading span,
 .ide-root .ide-design-replay-speed {
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
 }
 
 .ide-root .ide-design-replay-state-context {
@@ -1035,7 +1035,7 @@
   background: var(--rb-surface-2);
   color: var(--rb-text-muted);
   font-family: var(--rb-font-mono);
-  font-size: 11px;
+  font-size: var(--rb-text-micro);
   white-space: nowrap;
 }
 
@@ -1282,9 +1282,9 @@
   border-radius: 6px;
   color: var(--rb-text-secondary);
   background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface));
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
-.ide-design-wire-inline strong { color: var(--rb-action); font-size: 13px; }
+.ide-design-wire-inline strong { color: var(--rb-action); font-size: var(--rb-text-body); }
 .ide-design-wire-inline span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-design-wire-inline button {
   min-height: 28px;
@@ -1332,7 +1332,7 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-overflow > summary {
   min-height: 34px;
   padding: 5px 8px;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-icon {
@@ -1340,7 +1340,7 @@
   min-width: 20px !important;
   height: 20px;
   border: 0;
-  font-size: 14px !important;
+  font-size: var(--rb-text-head) !important;
 }
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
@@ -1373,9 +1373,9 @@
 .ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg { background: #f8fafc !important; }
 .ide-design-workspace[data-canvas-appearance='system'] .rb-logic-canvas-svg { background: var(--rb-canvas) !important; }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: 13px; font-weight: 600; }
-.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-port-label { font-size: 12px; }
-.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-sub-label { font-size: 12px; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: var(--rb-text-body); font-weight: 600; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-port-label { font-size: var(--rb-text-meta); }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-sub-label { font-size: var(--rb-text-meta); }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body { stroke: #f59e0b; stroke-width: 2.5px; filter: none; }
 .ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg :is(.logic-node-body, [data-node-selected='1'] .logic-node-body) {
   filter: none !important;
@@ -1426,7 +1426,7 @@
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-copy {
   margin: 2px 0 4px;
   color: var(--rb-text-muted);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
 }
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-list {
   display: grid;
@@ -1455,11 +1455,11 @@
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-title,
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-title-row strong {
   color: var(--rb-text-primary);
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-subtitle {
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.3;
 }
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-badge {
@@ -1467,13 +1467,13 @@
   border-radius: 4px;
   color: var(--rb-text-secondary);
   background: var(--rb-surface-3);
-  font-size: 12px !important;
+  font-size: var(--rb-text-meta) !important;
 }
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
   :is(.ide-design-palette-header h3, .ide-palette-section h4) {
   color: var(--rb-text-secondary) !important;
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -1499,7 +1499,7 @@
 .ide-workbench-shell[data-ide-mode-marker='design']
   :is(.ide-design-inspector-subtitle, .ide-design-inspector-next-step, .ide-kv-row, .ide-design-logical-io-note) {
   color: var(--rb-text-secondary);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1.45;
 }
 
@@ -1520,7 +1520,7 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader p {
   margin: 0;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.4;
 }
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser {
@@ -1549,11 +1549,11 @@
   min-width: 0;
   gap: 2px;
 }
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser strong { font-size: 14px; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser strong { font-size: var(--rb-text-head); }
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser small {
   display: block;
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.35;
 }
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-actions {
@@ -1570,7 +1570,7 @@
   border-radius: 6px;
   background: var(--rb-surface);
   color: var(--rb-text-secondary);
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
 }
 
 @media (max-width: 1366px) {

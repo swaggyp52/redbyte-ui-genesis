@@ -114,7 +114,7 @@
 .ide-root .rb-arch-block:hover rect, .ide-root .rb-arch-block:hover path { stroke: var(--wb-accent); }
 .ide-root .rb-arch-block:focus-visible { outline: none; }
 .ide-root .rb-arch-block:focus-visible rect, .ide-root .rb-arch-block:focus-visible path { stroke: var(--wb-focus); stroke-width: 2.2; }
-.ide-root .rb-arch-label { fill: var(--wb-text); font: 600 12px var(--wb-font-mono); }
+.ide-root .rb-arch-label { fill: var(--wb-text); font: 600 var(--rb-text-meta) var(--wb-font-mono); }
 .ide-root .rb-arch-sublabel { fill: var(--wb-text-3); font: 10px var(--wb-font-mono); }
 
 /* ── Source file document ─────────────────────────────────────────────────── */
@@ -286,7 +286,7 @@
 .ide-root .rb-start-preview { min-width: 0; min-height: 0; overflow: auto; }
 .ide-root .rb-start-preview-body { display: flex; flex-direction: column; gap: var(--wb-space-4); max-width: 880px; padding: var(--wb-space-4) var(--wb-space-5); }
 .ide-root .rb-start-preview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--wb-space-4); }
-.ide-root .rb-start-preview-title { margin: 0; font: 600 18px / 1.2 var(--wb-font-ui); color: var(--wb-text); }
+.ide-root .rb-start-preview-title { margin: 0; font: 600 var(--rb-text-doc) / 1.2 var(--wb-font-ui); color: var(--wb-text); }
 .ide-root .rb-start-preview-sub { margin: 4px 0 0; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
 .ide-root .rb-start-primary { flex: none; min-width: 140px; }
 .ide-root .rb-start-figure {

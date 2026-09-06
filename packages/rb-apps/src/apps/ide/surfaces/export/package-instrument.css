@@ -79,7 +79,7 @@
 }
 .ide-root .rb-pkg-file-group button:hover { background: var(--wb-hover-bg); }
 .ide-root .rb-pkg-file-group button.is-selected { border-left-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
-.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 11px var(--wb-font-mono); }
+.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--wb-font-mono); }
 .ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-availability.is-ready { color: var(--wb-ok); }
@@ -264,8 +264,8 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-pkg-provenance-edge.is-emphasised { stroke: var(--wb-focus); stroke-width: 2; }
 .ide-root .rb-pkg-provenance-edge.is-dim { opacity: 0.25; }
 .ide-root .rb-pkg-provenance-node rect { fill: var(--wb-surface); stroke: var(--wb-border-strong); stroke-width: 1; }
-.ide-root .rb-pkg-provenance-node text { fill: var(--wb-text); font: 11px var(--wb-font-mono); }
-.ide-root .rb-pkg-provenance-node.is-input text { font: 600 12px var(--wb-font-ui); }
+.ide-root .rb-pkg-provenance-node text { fill: var(--wb-text); font: var(--rb-text-micro) var(--wb-font-mono); }
+.ide-root .rb-pkg-provenance-node.is-input text { font: 600 var(--rb-text-meta) var(--wb-font-ui); }
 .ide-root .rb-pkg-provenance-node.is-input rect { fill: var(--wb-surface-2); }
 .ide-root .rb-pkg-provenance-node.is-selected rect { stroke: var(--wb-focus); stroke-width: 2; fill: var(--wb-active-bg); }
 .ide-root .rb-pkg-provenance-node.is-emphasised rect { stroke: var(--wb-focus); }
