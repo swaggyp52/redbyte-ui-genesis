@@ -4,6 +4,158 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-06 - P2.5K instrument composition, interaction choreography, high-zoom frame (Opus 5, desktop session)
+
+**Label: REDBYTE INSTRUMENT-FINISH CANDIDATE / VISUAL SYSTEM LOCKED / FUNCTIONAL FOUNDATION
+PRESERVED / FEATURE BRANCH PUSHED / PREVIEW SHA VERIFIED / PR #85 DRAFT / NO MERGE / NO
+PRODUCTION.**
+
+Connor's verdict opening this session: ~75-80% overall, the typography and surface foundation
+from P2.5J **accepted and not to be rebuilt**. The remaining work was named as composition and
+choreography: what a surface says, in what order, and whether it survives a reader who needs
+larger text. Branch point and safety tag: `safety/redbyte-before-instrument-composition-d64c2e1d7`.
+
+### The frame was in pixels while the text was in rem (`e4e9e2dd0`)
+
+At 200% text this was not a cosmetic complaint. Measured before: the Help menu's border box
+overlapped the command-palette entry by **60.6px**, `elementFromPoint` inside the palette's own
+box returned the Help button, and a real click there opened Help. Cause: command bar 32px,
+status bar 22px, activity rail 56px, tab strip / toolbars 30px, rows 26/24px, controls 24/28px,
+indent 14px - every frame value absolute while the type inside doubled. All eleven are `rem`
+now, each identical to the pixel it replaces at a 16px root, so a 100% desktop does not move.
+
+The bar composes against the window measured in the reader's own text size
+(`window.innerWidth / rootFontSize`), because `rem` inside `@media` resolves against the
+browser's *initial* font size and can therefore never see an enlarged root - `matchMedia
+('(max-width: 64rem)')` was measured `false` at root 32px on a 1366px window. Below 64 text
+widths the five menus fold into one that keeps every command (with arrow keys, roving focus and
+the same flat item list), the wordmark folds to the mark, and the run fact moves into that menu
+because the status bar already carries it. The target fact stays in the bar.
+
+Three pixel guesses went with it: `max-width: 1400px` hid the save-state word, so on every
+1366-wide machine priority 3 was a 7px dot at any text size; `max-width: 899px` hid the whole
+centre region, which is priority 1; and the brand mark declared a width with no `flex`, so it
+computed to **0px** at 200%. The run intent was clipped in silence - a segmented control with
+`overflow: hidden` and an ordinary flex-shrink, which is how "Compare" rendered as "Cor"; a
+segmented control is one unit and does not shrink below its buttons.
+
+New probe `packages/rb-e2e/chrome-priority-probe.mjs` asserts the whole priority order at
+1440x900, 1366x768, 1024x720 and at root 32px on both large viewports: no sibling overlap, no
+control whose own box belongs to something else, all six priorities present, anything clipped
+carrying a title or label, no horizontal document overflow, and the primary Run sharing a row
+with the intent it belongs to. Measured after: **0 overlaps, 0 clipped children, 0 stolen
+clicks.**
+
+### Five outside gates classified, two harness defects found (`ce80fd1c9`)
+
+Every `ide:gate:*` failure outside `verify:gates` that this campaign touched was reproduced,
+traced to the commit that made it impossible, and dispositioned - never left as "baseline red".
+All five shell gates were **Category B, obsolete assertions**: each dies on its first assertion,
+and each names a control deleted with `IdeLeftRail.tsx` in `24de703b6` (2026-07-25) or a pixel
+constant the shell stopped producing. None was a product defect.
+`ide:gate:shell-chrome-contract` is deleted and its two unique facts moved into
+`ide-shell-layout-integrity` - which asserted the exact inverse, so the two could never both be
+green - expressed against the frame tokens rather than numbers copied into a gate years ago.
+
+Two defects surfaced while classifying. (1) `scripts/gates/_gateHarness.mjs` accepted any HTTP
+status below 500, so an empty `apps/playground/dist` served a 404 that counted as ready and
+every product selector then looked missing - in any of the ~190 gates routed through it; it now
+asserts the build exists and requires `response.ok`. (2) The shell published
+`data-console-state="expanded"` whenever the console existed, ignoring whether it was expanded,
+while the panel below published the truth.
+
+Still red at the committed baseline on their own assertions, and **not** classified this session:
+`ide:gate:export-e2e-contract`, `ide:gate:action-first-entry-surfaces`,
+`ide:gate:export-artifact-direct-preview`. They need the same treatment.
+
+### Design (`e0c63722e`, `950441cc1`)
+
+- The inspector dock was itself the scroller with **304px of overflow**, so reading a section
+  carried the tab strip and the selected part's identity off the top - you could not see what
+  you were reading about. It is a fixed head over one scrolling body now.
+- The toolbar wrapped to two rows at 1366x768 as soon as a student had run something (the
+  Related control needs 71px; the bar had 17px of slack). It budgets its width with a container
+  query and folds the camera pair into the View menu, where both already live.
+- At 200% the two support docks took **992px of a 1366px window**, leaving the schematic 262px.
+  Dock widths are floored by their own words and capped by the window (`26vw` / `24vw`) in
+  `product-system-v3.css`, which is the real `!important` owner.
+- **Product defect:** the overview map is an overlay on the drawing and took every click inside
+  its 150x110 box, so a part in the bottom-right corner of the sheet could not be wired at all -
+  the blank-project authoring journey failed on exactly that, with Playwright naming the
+  minimap's SVG as the intercepting element. It is a presentation layer now, listed in View,
+  **off by default**, and inert while a wire is being drawn. `rb-logic-view` is consumed as a
+  built package, so source edits there need
+  `corepack pnpm --filter @redbyte/rb-logic-view build`.
+
+### Simulate (`8ce18cf74`)
+
+The waveform - the evidence a failure points at - was laid out **359px below the pane that holds
+it, showing 125px of the 448px it needs**, with its own scroller reporting nothing to scroll.
+The waveform region constrains the instrument now (`grid-area: evidence`, `min-height: 0`,
+`overflow: hidden`) and the instrument scrolls itself, where the lane labels stay with the lanes.
+
+The failure focus held six of the ten facts a reader needs: it offered "First mismatch" and then
+printed "Fail 1 / 2" with no control to reach fail 2, while the verdict, the case number and the
+way out to Design were elsewhere or absent. One row (`ide-verify-fail-nav`) answers all ten.
+And `Trace in Design` resolved its tick as "wherever the replay is resting", so it could hand
+Design a passing case while the surface said FAIL; it now prefers the resting tick only when the
+reader is actually resting on a failing row.
+
+Not reproduced: the reviewer's report that the inspector describes t2 while the failure is at t3
+- measured "Case 3 - t3 - Failing at this event" in the settled state. The tick-resolution
+hardening was kept regardless.
+
+### Board (`46c4aa307`)
+
+Nothing on the board could be reached without a mouse: the SVG contained **zero focusable
+elements and zero ARIA roles**, and Tab skipped all sixty-odd resources. It is a listbox with a
+roving tabstop now - measured **74 options, 74 focusable and labelled, 1 tabstop**; arrows walk
+them (with `preventDefault`/`stopPropagation` so the camera does not also pan), Enter or Space
+assigns. "Next unmapped" resolved to *the first* unmapped signal and hid itself whenever that
+was the selected one, so it disappeared exactly when a student started working the queue; it
+means the next one after this one now, with a Previous beside it and wrapping. The XDC block ran
+**280px past the viewport** sharing one scroller with the signal identity it describes.
+
+### Package (`41690d135`)
+
+Build & Export opened on a file browser with every other concept underneath it - **seven
+top-level regions in a 2241px scroll inside an 816px pane** - and opening the handoff dossier
+mounted it *inside* that stack rather than replacing it. It opens on the dossier now, one
+document owns the surface at a time, and the primary action follows the active document. Every
+row of the artifact manifest opened the same file; each opens its own.
+
+### Validation at `950441cc1`
+
+- `pnpm verify:gates` **exit 0** at every checkpoint (28 chained gates; no `ide:gate:*` entries
+  are inside it - those are ~190 separate scripts through `_gateHarness.mjs`).
+- Typecheck **778 errors, unchanged** after every wave.
+- Journey inventory recomputed from repository truth: `packages/rb-e2e` holds **29 `.mjs` files
+  - one shared harness, one evidence-capture tool that asserts nothing, and 27 journeys. All 27
+  executed against one build; all 27 pass.** Nothing excluded, nothing partial.
+- Two journeys were updated because the route a reader takes moved, not because an assertion was
+  inconvenient: `signature-journey` opens the electrical disclosure on Board, and
+  `nested-adder-journey` Stage F opens the artifact document from the dossier's own header.
+- `packages/rb-e2e/_tmp-shots.mjs` renamed to `visual-evidence-capture.mjs` and documented as a
+  tool that asserts nothing, parameterised by `RB_SHOT_LABEL` / `RB_ROOT_PX` / `RB_MODES` /
+  `RB_SIZES`.
+- `a11y-scale-journey` failed once at 1366 in the menubar theme-restore step and passed on
+  re-run - recorded as nondeterminism to watch, not a regression.
+
+### Not delivered this session, stated plainly
+
+- **The Board Guided/Expert split (directive SS8).** It is a feature, not a finish, and it is the
+  largest single item left in this campaign.
+- The Project/Start final consistency pass (directive SS10) beyond what P2.5J already landed.
+- The three export `ide:gate:*` gates named above.
+- At 200% text the Design toolbar is three rows. The frame no longer collides and nothing is
+  clipped, but the workbench is cramped at that setting and is described that way.
+
+### Boundary honoured
+
+No merge, no retarget, no `main`, no `product/redbyte-workbench-v3`, no production Cloudflare
+deploy, no public release, format version stays **1**, no golden regeneration. PR #85 remains
+**draft** with base `claude/redbyte-product-core-convergence-n3pi6t`.
+
 ## 2026-09-06 — P2.5J visual craft, spatial coherence, instrument finish (Opus 5, desktop session)
 
 **Label: REDBYTE VISUAL CRAFT CANDIDATE / FUNCTIONAL FOUNDATION PRESERVED / FEATURE BRANCH
@@ -1340,17 +1492,19 @@ combinational once Case Lab reaches authoring parity.
   shell status authority → `49abc102f` Slice 2 Project landing → `02dc9e147`
   labday harness/stale-testid repair → `1c5c4745e` Slice 3 Compare verdict →
   the first documentation-refresh commit (docs only).
-- **CURRENT PHASE:** first checkpoint delivered — Slices 0–3 + labday baseline-red
-  repair (13→4). The real UI-driven Journey A, Board (Slice 4), and Export are the
-  next work.
-- **CURRENT ACCEPTANCE PROOF (honest, narrow):** `compare-verdict-journey.mjs`
-  proves ONLY the Compare verdict transition — a run presents PASS, a deliberately
-  changed design presents FAIL, and undo + rerun returns to PASS — at 1440×900 and
-  1366×768, 0px overflow. It does NOT prove failure diagnosis, mismatch rows,
-  source/Design tracing, scenario preservation, mapping, trusted export, download,
-  or reload. It also currently drives the runtime store directly (`loadExample`,
-  `autoSuggestMapping`, store gate-lookup, force-click), which the P2.5 acceptance
-  contract forbids. Replacing it with a genuine student-driven journey is required.
+- **CURRENT PHASE:** P2.5K instrument finish - see the newest dated entry at the
+  top of this file. The frame is built in the reader's text size, the five obsolete
+  shell gates are classified and closed, and Design / Simulate / Board / Package
+  each landed a composition pass. Open: the Board Guided/Expert split, the
+  Project/Start consistency pass, and three export `ide:gate:*` gates.
+- **CURRENT ACCEPTANCE PROOF:** `full-adder-operational-journey.mjs` drives the
+  whole student path through the real interface at 1440x900 and 1366x768 - first
+  use, Start a Lab, Design, Compare PASS, a broken gate, Compare FAIL with a
+  concrete mismatch, Trace, repair, an authored expectation, Board mapping, a real
+  browser download read back against the mapping, and reload. It also passes
+  against the built bundle and against the deployed Cloudflare branch preview
+  through `RB_BASE_URL`. The earlier narrow `compare-verdict-journey` note is
+  superseded. No Vivado, bitstream, board, or classroom-certification claim.
 - **BLOCKERS:** none on the branch itself. Format v2 stays gated behind
   `FORMAT_V2_SIGNOFF.md`; format version 1; both classroom goldens byte-identical
   (last verified 2/2 green under the pinned runtime). PR #84 not merged; do not

@@ -169,6 +169,60 @@ accepted.
   AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED**. The §16 local product gate
   is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5K instrument composition and high-zoom frame (2026-09-06, pushed):** the visual
+  foundation from P2.5J is locked and unchanged; this pass is composition and interaction.
+  **The frame is built in the reader's text size.** At 200% text the Help menu overlapped the
+  command-palette entry by 60.6px and a click inside the palette's own box opened Help
+  (`elementFromPoint` confirmed the theft): eleven frame values - command bar, status bar,
+  activity rail, tab strip, toolbars, rows, controls, indent - were absolute px around text in
+  rem. All eleven are rem now, identical to the pixel they replace at a 16px root. The bar
+  composes against the window measured in the reader's own text size, because `rem` inside
+  `@media` resolves against the browser's *initial* font size and can never see an enlarged root
+  (measured: `matchMedia('(max-width: 64rem)')` false at root 32px on a 1366px window). Below 64
+  text widths the five menus fold into one that keeps every command, arrow keys and roving focus.
+  Three pixel guesses went with it: a `max-width: 1400px` rule reduced the save-state word to a
+  7px dot on every 1366-wide machine, a `max-width: 899px` rule hid the whole centre region, and
+  the brand mark computed to 0px at 200%. The run intent was clipped in silence - "Compare"
+  rendered as "Cor" - because a segmented control was allowed to shrink below its buttons.
+  A new probe (`packages/rb-e2e/chrome-priority-probe.mjs`) asserts the six-item priority order
+  at 1440x900, 1366x768, 1024x720 and at root 32px: **0 overlaps, 0 clipped children, 0 stolen
+  clicks.**
+  **Five outside shell gates classified rather than labelled** - all Category B obsolete
+  assertions, each dying on its first assertion, each naming a control deleted with
+  `IdeLeftRail.tsx` in `24de703b6` or a pixel constant the shell stopped producing; none a
+  product defect. `ide:gate:shell-chrome-contract` is deleted and its two unique facts moved
+  into `ide-shell-layout-integrity`, which asserted the exact inverse. Two harness defects fell
+  out: the gate harness accepted any status below 500, so an empty `apps/playground/dist` served
+  a 404 that counted as ready and every selector then looked missing in any of the ~190 gates
+  routed through it; and the shell published `data-console-state="expanded"` whenever the console
+  existed. Still red at baseline on their own assertions and **not** yet classified:
+  `ide:gate:export-e2e-contract`, `ide:gate:action-first-entry-surfaces`,
+  `ide:gate:export-artifact-direct-preview`.
+  **Surfaces:** the Design inspector scrolled its own subject off the top (304px of overflow in a
+  dock that was itself the scroller) and now has a fixed head over one scrolling body; the
+  toolbar stopped wrapping after any run; the two support docks took 992px of a 1366px window at
+  200%, leaving the schematic 262px, and are now floored by their words and capped by the window.
+  The **overview map took every click inside its own box, so a part in the bottom-right corner of
+  the sheet could not be wired at all** - it is a presentation layer now, listed in View, off by
+  default, inert while a wire is drawn. Simulate's waveform was laid out 359px below its pane
+  showing 125px of 448px; the failure focus held six of the ten facts a reader needs and offered
+  no way to reach fail 2; `Trace in Design` could hand Design a passing case while the surface
+  said FAIL. The board had **zero focusable elements and zero ARIA roles** - Tab skipped all
+  sixty-odd resources; it is a listbox with a roving tabstop (74 options, 74 labelled, 1
+  tabstop), "Next unmapped" means the next one after this one rather than the first, and the XDC
+  block no longer runs 280px past the viewport inside the identity's scroller. Build & Export
+  opened on a file browser with seven top-level regions in a 2241px scroll; it opens on the
+  handoff dossier and one document owns the surface at a time.
+  **Journey inventory recomputed: `packages/rb-e2e` holds 29 `.mjs` files - one harness, one
+  evidence-capture tool that asserts nothing, and 27 journeys. All 27 executed against one build;
+  all 27 pass.** `pnpm verify:gates` exit 0 at every checkpoint; typecheck 778, unchanged.
+  Label **REDBYTE INSTRUMENT-FINISH CANDIDATE / VISUAL SYSTEM LOCKED / FUNCTIONAL FOUNDATION
+  PRESERVED / FEATURE BRANCH PUSHED / PREVIEW SHA VERIFIED / PR #85 DRAFT / NO MERGE / NO
+  PRODUCTION**. Not delivered and stated plainly: the Board Guided/Expert split (a feature, and
+  the largest single item left), the Project/Start consistency pass, the three export gates
+  above, and the Design toolbar at 200% text, which is three rows - the frame no longer collides
+  and nothing is clipped, but the workbench is cramped at that setting. Continuation:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **P2.5J visual craft, spatial coherence and instrument finish (2026-09-06, desktop session,
   pushed):** a visual-system pass against Connor's ~70% verdict, on the same branch, five
   commits (`d6c67b386` → `d46d2350e`). The audit found three surface roles sharing two
