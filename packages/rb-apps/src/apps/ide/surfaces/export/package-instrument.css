@@ -330,3 +330,15 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
   background: var(--wb-surface);
 }
 .ide-root .rb-pkg-handoff-action .ide-button { width: 100%; }
+
+/* ── One document at a time ─────────────────────────────────────────────────
+   Measured on arrival at 1440x900: seven top-level regions in a 2241px scroll inside an
+   816px pane - the artifact browser, the provenance disclosure, upstream readiness, the
+   Vivado submission guide, the E0 boundary line and the technical-evidence entry - and
+   opening the handoff dossier added it INSIDE that stack rather than replacing it, taking
+   the page to 2609px. Present mode already encodes the right rule for the dossier; it is
+   the ordinary composition now, not a print-time special case. The decision strip stays,
+   because it is the surface chrome rather than one of the documents. */
+.ide-root .rb-pkg-hero[data-document='handoff'] > :not(.rb-pkg-files):not(.rb-pkg-decision) {
+  display: none;
+}

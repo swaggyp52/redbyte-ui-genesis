@@ -33,6 +33,8 @@ export interface HandoffOverviewDocumentProps {
   /** The merged, visible diagnostics (package validation + evidence). */
   readonly diagnostics?: readonly ExportDiagnosticView[];
   readonly onOpenFiles?: () => void;
+  /** Select one generated file before the artifact document opens, so a row opens its own. */
+  readonly onSelectArtifact?: (path: string) => void;
   readonly onOpenDocument?: (doc: WorkbenchDocument) => void;
   readonly onSelect?: (ref: EngineeringObjectRef) => void;
   readonly onOpenProblems?: () => void;
@@ -72,6 +74,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
   downloadEvidence,
   diagnostics,
   onOpenFiles,
+  onSelectArtifact,
   onOpenDocument,
   onSelect,
   onOpenProblems,
@@ -169,7 +172,8 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
     onOpenDocument?.(waveformDocument);
     onSelect?.({ kind: 'case-tick', scenarioId, tick });
   };
-  const openArtifacts = () => {
+  const openArtifacts = (path?: string) => {
+    if (path) onSelectArtifact?.(path);
     onOpenFiles?.();
     onOpenDocument?.({ kind: 'package-artifact' });
   };
@@ -412,7 +416,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
                     key={artifact.path}
                     className={linkable ? 'is-link' : undefined}
                     data-testid={`ide-package-handoff-artifact-${artifact.path.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`}
-                    {...linkRowProps(openArtifacts)}
+                    {...linkRowProps(() => openArtifacts(artifact.path))}
                   >
                     <td className="is-mono">{artifact.path}</td>
                     <td className="is-mono">{artifact.kind}</td>

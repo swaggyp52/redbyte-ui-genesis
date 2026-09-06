@@ -1475,7 +1475,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
      When the package is built, browser-verified and downloadable, the download is the goal
      and "Rebuild Current Bundle" is maintenance; until then the readiness path keeps the
      emphasis. These two are never both loud. */
+  // The download in the artifact inspector can only be the surface's primary action while that
+  // document is the one on screen. With the dossier open it is not rendered at all, so the
+  // decision strip keeps the primary - one primary, wherever the reader actually is.
   const handoffDownloadIsPrimary =
+    activeDocument?.kind !== 'handoff' &&
     !exportBlocked && !downloadDisabled && handoffTruth.primaryCtaIntent !== 'program-handoff';
   const vivadoEvidenceRows = [
     {
@@ -1743,6 +1747,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ref={surfaceRef}
           className="rb-pkg rb-pkg-hero"
           data-testid="ide-export-readiness-hero"
+          data-document={activeDocument?.kind === 'handoff' ? 'handoff' : 'artifacts'}
           aria-label="Build and export package decision and files"
         >
           <section
@@ -1947,6 +1952,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 downloadEvidence={currentDownloadEvidence ?? null}
                 diagnostics={visibleDiagnosticsList}
                 onOpenFiles={onOpenDocument ? () => onOpenDocument({ kind: 'package-artifact' }) : undefined}
+                onSelectArtifact={setSelectedArtifactPath}
                 onOpenDocument={onOpenDocument}
                 onSelect={(ref) => publishSelection(ref, 'handoff')}
                 onOpenProblems={() => workspacePreferencesStore.setDock('export', 'bottom', { visible: true })}

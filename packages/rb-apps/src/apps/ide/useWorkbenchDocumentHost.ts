@@ -111,7 +111,10 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
         case 'hardware':
           return { kind: 'board-io', constraintSetId: activeConstraintSetId };
         case 'export':
-          return { kind: 'package-artifact' };
+          // The handoff dossier is what Build & Export is for: what was made, what proves it,
+          // and what to do with it. The artifact browser is how you inspect one file of it,
+          // which is a second question and now a second document.
+          return { kind: 'handoff' };
         case 'import':
           return null;
       }
