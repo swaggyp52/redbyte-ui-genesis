@@ -155,7 +155,7 @@
 .ide-root .rb-pkg-dialog > header { display: flex; align-items: center; gap: 8px; padding: 6px var(--wb-space-3); border-bottom: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
 .ide-root .rb-pkg-dialog h2 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
 .ide-root .rb-pkg-dialog > section { padding: 6px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
-.ide-root .rb-pkg-dialog h3 { margin: 0 0 4px; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
+.ide-root .rb-pkg-dialog h3 { margin: 0 0 4px; color: var(--wb-text-2); font: var(--rb-weight-strong) var(--rb-text-meta) var(--rb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-dialog p,
 .ide-root .rb-pkg-dialog li { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 16px var(--wb-font-ui); }
 .ide-root .rb-pkg-gate-list article,
@@ -208,7 +208,7 @@
 .ide-root .rb-handoff-state.is-stale { color: var(--wb-warn-text); border-color: var(--wb-warn); }
 .ide-root .rb-handoff-state.is-blocked { color: var(--wb-err); border-color: var(--wb-err); }
 .ide-root .rb-handoff-boundary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 0; padding: 8px var(--wb-space-3) 12px; }
-.ide-root .rb-handoff-boundary-grid dt { font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; color: var(--wb-text-3); }
+.ide-root .rb-handoff-boundary-grid dt { font: var(--rb-weight-strong) var(--rb-text-meta) var(--rb-font-ui); letter-spacing: 0; text-transform: none; color: var(--wb-text-3); }
 .ide-root .rb-handoff-boundary-grid dd { margin: 4px 0 0; font-size: var(--wb-text-sm); color: var(--wb-text-2); line-height: 1.45; }
 .ide-root .rb-handoff .wb-table td[data-tone='ok'] { color: var(--wb-ok); }
 .ide-root .rb-handoff .wb-table td[data-tone='error'] { color: var(--wb-err); }

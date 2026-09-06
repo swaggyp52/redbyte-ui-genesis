@@ -252,10 +252,18 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           {runLabel}
         </IdeButton>
       </div>
-      <span className="wb-toolbar-meta rb-sim-explainer" data-testid="ide-vcb-mode-explainer">
-        {isCompareMode
-          ? 'Check filled expected outputs against this run.'
-          : 'Record observed outputs without grading expected values.'}
+      {/* A disabled control whose only explanation is a `title` explains nothing: the tooltip
+          is hidden until hover and browsers do not reliably show one on a disabled button.
+          When Compare is blocked, the reason takes the explainer slot. */}
+      <span
+        className={`wb-toolbar-meta rb-sim-explainer${!compareAvailable && compareUnavailableReason ? ' is-blocked-reason' : ''}`}
+        data-testid="ide-vcb-mode-explainer"
+      >
+        {!compareAvailable && compareUnavailableReason
+          ? compareUnavailableReason
+          : isCompareMode
+            ? 'Check filled expected outputs against this run.'
+            : 'Record observed outputs without grading expected values.'}
       </span>
     </div>
   );

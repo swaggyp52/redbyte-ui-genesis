@@ -3489,6 +3489,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const isStarterScenario =
     scenarioAuthority === 'starter' || (projectKind === 'example' && Boolean(sourceExampleId));
+
+  // A project that came from a starter, whose behaviour was edited, and whose expected
+  // outputs are gone: the runtime cleared them on detach. Naming that is the difference
+  // between an explanation and a dead control.
+  const starterExpectationsWereDiscarded =
+    Boolean(sourceExampleId) && projectKind !== 'example' && scenarioAuthority === 'draft';
   const hasStaleAuthoredReference = isRunStale && totalExpectedCaseCount > 0;
   const currentScenarioContentHash = activeScenario
     ? computeScenarioContentHash(activeScenario)
@@ -6203,7 +6209,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             gradingBlockedByDesign
               ? 'Repair the structural Design issue before running Compare.'
               : totalExpectedCaseCount === 0
-                ? 'Author at least one expected output to compare against.'
+                ? starterExpectationsWereDiscarded
+                  ? 'The starter\u2019s expected outputs were cleared when you changed the circuit.'
+                  : 'Author at least one expected output to compare against.'
                 : undefined
           }
           onRun={runVerification}
@@ -6225,6 +6233,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
         />
         )}
+        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && starterExpectationsWereDiscarded ? (
+          <IdeCallout
+            tone="info"
+            title="This project is now yours, and so are its checks"
+            testId="ide-verify-starter-detached-notice"
+          >
+            Changing the circuit detached it from its starter, so the starter&rsquo;s expected
+            outputs no longer describe what it does and were cleared. Fill in the expected cells
+            you want graded, or undo the Design change to get the starter&rsquo;s back.
+          </IdeCallout>
+        ) : null}
         {primaryStatus && !compactPrimaryStatusAction && !(
           forceRunStale || isRunStale || (isTestbenchStale && !hasStaleAuthoredReference)
         ) ? (

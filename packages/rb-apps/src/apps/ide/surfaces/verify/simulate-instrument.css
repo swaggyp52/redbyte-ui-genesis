@@ -600,3 +600,27 @@
   border-color: var(--wb-border-strong);
   background: var(--wb-hover-bg);
 }
+
+/* A blocked control states its reason in the explainer slot; the reason is the important
+   thing on the bar at that moment, so it is not the same grey as an ordinary hint. */
+.ide-root .rb-sim-explainer.is-blocked-reason { color: var(--wb-warn-text, var(--wb-text)); }
+
+.ide-root .rb-sim-explainer {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `.ide-callout-info .ide-callout-body` is pinned to rgba(220, 234, 252, .92) in the legacy
+   sheet - a near-white written for the dark shell. On the light workbench it lands about
+   1.1:1 against the callout’s own pale blue, so the body of every info callout was there
+   and unreadable. The title was not affected, which is why the problem looked like a
+   callout with no body. Both halves are text now.
+   Scoped to this owner rather than edited in the legacy sheet, which the census retired. */
+.ide-root .ide-callout-info .ide-callout-body,
+.ide-root .ide-callout-info .ide-callout-body p,
+.ide-root .ide-callout-info .ide-callout-body li {
+  color: var(--wb-text-2, var(--wb-text));
+}
