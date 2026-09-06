@@ -4745,8 +4745,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedCheckVectorId = useMemo(
     () => selectedTick == null
       ? undefined
-      : lastRun?.report.vectors.find((vector) => vector.tick === selectedTick)?.id,
-    [lastRun?.report.vectors, selectedTick]
+      : lastRun?.report?.vectors?.find((vector) => vector.tick === selectedTick)?.id,
+    [lastRun?.report?.vectors, selectedTick]
   );
   const canCreateCheckFromSelection =
     canApplyRunDerivedRepair &&
@@ -6300,35 +6300,46 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {drawerOpen && hasSessionFailureEvidence && verifyHint && (
-          <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
-            {verifyHint}
-          </IdeCallout>
-        )}
+        {drawerOpen
+          && hasSessionFailureEvidence
+          && (verifyHint || isStarterScenario || (mappingComplete !== false && onGoToExport)) && (
+          <details className="ide-verify-failure-context" data-testid="ide-verify-failure-context">
+            <summary className="ide-verify-failure-context__summary">
+              More about this failure
+            </summary>
+            <div className="ide-verify-failure-context__body">
+              {verifyHint ? (
+                <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
+                  {verifyHint}
+                </IdeCallout>
+              ) : null}
 
-        {drawerOpen && hasSessionFailureEvidence && isStarterScenario && (
-          <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
-            <span>
-              <strong>Ran with starter vectors.</strong>{' '}
-              {isSequentialRun
-                ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
-                : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
-            </span>
-          </IdeCallout>
-        )}
+              {isStarterScenario ? (
+                <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
+                  <span>
+                    <strong>Ran with starter vectors.</strong>{' '}
+                    {isSequentialRun
+                      ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
+                      : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
+                  </span>
+                </IdeCallout>
+              ) : null}
 
-        {drawerOpen && hasSessionFailureEvidence && mappingComplete !== false && onGoToExport && (
-          <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
-            <span className="ide-verify-export-available-label">
-              Your exported HDL is still available.{' '}
-              {isStarterScenario
-                ? 'Export remains advisory until you author a real comparison scenario.'
-                : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
-            </span>
-            <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
-              Go to Export →
-            </IdeButton>
-          </div>
+              {mappingComplete !== false && onGoToExport ? (
+                <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
+                  <span className="ide-verify-export-available-label">
+                    Your exported HDL is still available.{' '}
+                    {isStarterScenario
+                      ? 'Export remains advisory until you author a real comparison scenario.'
+                      : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
+                  </span>
+                  <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
+                    Go to Export →
+                  </IdeButton>
+                </div>
+              ) : null}
+            </div>
+          </details>
         )}
 
         {sessionSignalsAssertionFailure && oracleApplied && (
@@ -6867,7 +6878,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   list.push({
                     id: 'cases',
                     label: 'Run cases',
-                    value: String(lastRun.report.vectors.length),
+                    // A run restored from an older saved project may carry a report without
+                    // its vector list. Crashing the whole results header over a missing count
+                    // is worse than showing the count it can prove.
+                    value: String(lastRun.report?.vectors?.length ?? 0),
                     tone: 'neutral',
                   });
                   if (!runProofIsStale && sessionShowsCompareEvidence) {
@@ -8124,10 +8138,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div><dt>Check state</dt><dd>{failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : lastRun ? 'No failure at this event' : 'Not evaluated'}</dd></div>
                 <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
               </dl>
-              <section>
-                <span>Selection guidance</span>
-                <p>{selectedSignal ? 'Move the cursor to inspect this lane at another event, create a check, or trace its circuit path.' : 'Select a waveform lane and event to inspect its observed value.'}</p>
-              </section>
+              {/* With a lane selected the property grid above already answers what the student
+                  needs: the event, the time, what changed, the value, the checks and whether
+                  it failed. Restating "move the cursor to inspect this lane" underneath it was
+                  instruction where evidence belongs. The prompt survives only for the empty
+                  state, which is the one moment it tells the student something new. */}
+              {selectedSignal ? null : (
+                <section>
+                  <span>Nothing selected</span>
+                  <p>Select a waveform lane and event to inspect its observed value.</p>
+                </section>
+              )}
               <IdeButton
                 tone="secondary"
                 onClick={() => {

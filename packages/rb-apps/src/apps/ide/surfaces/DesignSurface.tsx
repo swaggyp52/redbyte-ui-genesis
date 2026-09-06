@@ -1865,16 +1865,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    for (const node of nodesToFit) {
-      const px = node.position?.x ?? 0;
-      const py = node.position?.y ?? 0;
-      minX = Math.min(minX, px);
-      maxX = Math.max(maxX, px);
-      minY = Math.min(minY, py);
-      maxY = Math.max(maxY, py);
+    // Measure the symbols as the canvas draws them - body, pins, stubs and labels - not
+    // the node anchors. Anchors put the outermost symbol half off the sheet after a fit.
+    const fitBounds = unionBounds(buildGeometryIndex(nodesToFit as Node[]).values());
+    if (!fitBounds) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
     }
+    const { minX, maxX, minY, maxY } = fitBounds;
     const spanX = Math.max(96, maxX - minX);
     const spanY = Math.max(96, maxY - minY);
     const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
@@ -5157,7 +5155,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       >
         <span className="rb-lib-glyph" aria-hidden="true">{item.glyph}</span>
         <span className="rb-lib-name ide-design-component-tile-title">{item.title}</span>
-        <code className="rb-lib-pins">{item.portSummary ?? item.subtitle}</code>
+        <code className="rb-lib-pins">{item.portSummary}</code>
         {item.capabilityBadge ? (
           <span className="rb-lib-cap" title={item.capabilityTitle ?? undefined}>{item.capabilityBadge}</span>
         ) : null}

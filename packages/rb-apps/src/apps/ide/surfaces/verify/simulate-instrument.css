@@ -501,3 +501,96 @@
    !important there is gone. (The supporting strip's closed-state cap was dropped with it: the strip is only
    ever rendered open, so `:not(.is-open)` could never match.) */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { max-height: min(34vh, 320px); }
+
+/* One failure, one focus. The investigation hint, the starter-vector note and the export
+   note are true but secondary; at full width, stacked, they buried the case table under a
+   wall of advice for a single failed case. They live behind one disclosure now, closed by
+   default, and the primary failure panel keeps the student's attention. */
+.ide-root .ide-verify-failure-context {
+  margin: var(--wb-space-2) 0 0;
+  border: 1px solid var(--wb-border);
+  border-radius: var(--wb-radius);
+  background: var(--wb-surface);
+}
+.ide-root .ide-verify-failure-context__summary {
+  padding: 6px var(--wb-space-3);
+  color: var(--wb-text-2);
+  font-size: var(--rb-text-meta);
+  font-weight: var(--rb-weight-medium);
+  cursor: pointer;
+  list-style: none;
+}
+.ide-root .ide-verify-failure-context__summary::-webkit-details-marker { display: none; }
+.ide-root .ide-verify-failure-context__summary::before {
+  content: '\25B8';
+  display: inline-block;
+  width: 12px;
+  color: var(--wb-text-3);
+}
+.ide-root .ide-verify-failure-context[open] > .ide-verify-failure-context__summary::before {
+  content: '\25BE';
+}
+.ide-root .ide-verify-failure-context__summary:hover { color: var(--wb-text); }
+.ide-root .ide-verify-failure-context__summary:focus-visible {
+  outline: 2px solid var(--wb-focus);
+  outline-offset: -2px;
+}
+.ide-root .ide-verify-failure-context__body {
+  display: grid;
+  gap: var(--wb-space-2);
+  padding: 0 var(--wb-space-3) var(--wb-space-3);
+}
+
+/* The imported-VCD entry point was a full-width bordered strip under the waveform,
+   announcing "Provider: Imported VCD" with a prominent outlined button, permanently, on a
+   project that has imported nothing. It read as an active provider when none was active.
+
+   The capability stays exactly as reachable - the file input, the button and the
+   "replayed, never executed" boundary sentence are all still there and still asserted by
+   verifySurface.importedEvidence - but in its empty state it is now one quiet line at the
+   end of the instrument rather than a panel competing with the evidence above it. Once a
+   waveform IS imported the panel drops `--compact` and takes its full treatment. */
+.ide-root .ide-vcd-analyzer--compact {
+  margin-top: var(--wb-space-2);
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root .ide-vcd-analyzer--compact .ide-vcd-analyzer-compact {
+  gap: var(--wb-space-2);
+  padding: 5px var(--wb-space-3);
+  flex-wrap: nowrap;
+}
+.ide-root .ide-vcd-analyzer--compact .ide-vcd-analyzer-provider {
+  color: var(--wb-text-3);
+  font-size: var(--rb-text-meta);
+  font-weight: var(--rb-weight-normal);
+  text-transform: none;
+  letter-spacing: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.ide-root .ide-vcd-analyzer--compact .ide-vcd-analyzer-compact-note {
+  overflow: hidden;
+  color: var(--wb-text-3);
+  font-size: var(--rb-text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-root .ide-vcd-analyzer--compact .ide-vcd-analyzer-load {
+  padding: 2px 8px;
+  border: 1px solid var(--wb-border);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: transparent;
+  font-size: var(--rb-text-meta);
+}
+.ide-root .ide-vcd-analyzer--compact .ide-vcd-analyzer-load:hover {
+  color: var(--wb-text);
+  border-color: var(--wb-border-strong);
+  background: var(--wb-hover-bg);
+}
