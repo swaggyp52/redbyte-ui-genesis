@@ -1020,9 +1020,21 @@
 }
 .ide-root .rb-problems-panel .rb-problems-row {
   grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
   min-height: 28px;
   padding: 3px var(--wb-space-3);
 }
+/* The reference column had no rule of its own, so an `auto` track sized to the longest word
+   and "LD1 (SUM) simulation run" broke across three lines against the panel's right edge.
+   It is one line of references, and it steps out of the way when there is no room. */
+.ide-root .rb-problems-panel .rb-problems-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ide-root .rb-problems-panel .rb-problems-main { display: grid; gap: 1px; min-width: 0; }
 .ide-root .rb-problems-panel .rb-problems-row.is-selected { background: var(--wb-active-bg); }
 .ide-root .rb-problems-panel .rb-problems-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
 .ide-root .rb-problems-panel .rb-problems-sev {

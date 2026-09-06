@@ -1832,7 +1832,13 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
-    expect(getByTestId('ide-verify-results-summary').textContent).toContain('Checks passing');
+    // The summary used to say the outcome three times on one line - a state chip, a
+    // headline sentence, and a subline opening with 'Checks passing'. The subline now
+    // carries what the headline cannot (which scenario ran), so the outcome is asserted
+    // where it is actually stated.
+    const summaryText = getByTestId('ide-verify-results-summary').textContent ?? '';
+    expect(summaryText).toContain('Compare passed');
+    expect(getByTestId('ide-verify-results-summary-state').textContent).toBe('Pass');
     expect(getByTestId('ide-verify-results-summary-metric-cases').textContent).toContain('Run cases2');
     expect(getByTestId('ide-verify-results-summary-metric-passed').textContent).toContain('Checks passed2');
     expect(getByTestId('ide-verify-results-summary-metric-failed').textContent).toContain('Checks failed0');

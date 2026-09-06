@@ -6885,7 +6885,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 subline={
                   runProofIsStale
                     ? 'The circuit, scenario, or checks changed. Run the current scenario before using this trace.'
-                    : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
+                    : sessionShowsAssertionMatch || sessionSignalsAssertionFailure
+                      ? `Scenario: ${lastRun.scenarioName}`
+                      : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
                 }
                 guidanceItems={
                   !runProofIsStale && sessionSignalsAssertionFailure
@@ -6921,13 +6923,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     id: 'ticks',
                     label: 'Run ticks',
                     value: String(runTickCount),
-                    tone: 'neutral',
+                    tone: 'quiet',
                   });
                   list.push({
                     id: 'wave-samples',
                     label: 'Wave samples',
                     value: String(lastRun.waveform.length),
-                    tone: 'neutral',
+                    tone: 'quiet',
                   });
                   if (!runProofIsStale && typeof commandBarCoverageLabel === 'string' && commandBarCoverageLabel.trim().length > 0) {
                     list.push({

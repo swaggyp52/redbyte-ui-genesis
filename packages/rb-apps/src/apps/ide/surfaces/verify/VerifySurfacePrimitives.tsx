@@ -100,7 +100,7 @@ export interface VerifyResultsMetric {
   readonly id: string;
   readonly label: string;
   readonly value: string;
-  readonly tone?: 'neutral' | 'ok' | 'attention' | 'blocked';
+  readonly tone?: 'neutral' | 'ok' | 'attention' | 'blocked' | 'quiet';
 }
 
 export interface VerifyResultsSummaryProps {

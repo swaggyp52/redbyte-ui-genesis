@@ -624,3 +624,16 @@
 .ide-root .ide-callout-info .ide-callout-body li {
   color: var(--wb-text-2, var(--wb-text));
 }
+
+/* Run shape (ticks, samples) is real but secondary: it is not what a student reads when a
+   check fails, and at equal weight it made a row of six chips out of two numbers that
+   matter and four that do not. */
+.ide-root .rb-wave-results-summary-metric.is-quiet {
+  border-color: transparent;
+  background: none;
+}
+.ide-root .rb-wave-results-summary-metric.is-quiet .rb-wave-results-summary-metric-label,
+.ide-root .rb-wave-results-summary-metric.is-quiet .rb-wave-results-summary-metric-value {
+  color: var(--wb-text-3);
+  font-weight: var(--rb-weight-normal);
+}
