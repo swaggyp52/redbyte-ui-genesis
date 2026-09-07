@@ -77,7 +77,9 @@ function run(scope, tsc) {
     total: diagnostics.length,
     fingerprint,
     byCode: Object.fromEntries(Object.entries(byCode).sort((a, b) => b[1] - a[1])),
-    byFile: Object.fromEntries(Object.entries(byFile).sort((a, b) => b[1] - a[1]).slice(0, 25)),
+    // Every file, not a top-N slice: a truncated list cannot attribute a regression to the file
+    // that caused it, which is the only question this record exists to answer.
+    byFile: Object.fromEntries(Object.entries(byFile).sort((a, b) => b[1] - a[1])),
   };
 }
 

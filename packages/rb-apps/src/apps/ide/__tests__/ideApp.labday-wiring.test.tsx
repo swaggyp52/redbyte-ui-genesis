@@ -345,7 +345,10 @@ describe('IdeApp lab-day wiring', () => {
 
     await view.findByTestId('ide-export-panel', {}, { timeout: 15000 });
 
-    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
+    // Build & Export opens on the handoff dossier. The generated files are a second document,
+    // opened from the dossier's own header - the same route the acceptance journey takes.
+    fireEvent.click(await view.findByTestId('ide-package-handoff-open-files', {}, { timeout: 15000 }));
+    fireEvent.click(await view.findByTestId('ide-export-file-top-vhd', {}, { timeout: 15000 }));
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity lab_day_top is');
     fireEvent.click(view.getByTestId('ide-export-file-vivado-import-tcl'));
     // Every generated artifact derives the target from the board authority.
