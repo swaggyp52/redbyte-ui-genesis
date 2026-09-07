@@ -95,6 +95,19 @@ await place('SUM', 'ide-design-palette-output', 'OUTPUT', 690, 70, fa);
 await place('COUT', 'ide-design-palette-output', 'OUTPUT', 690, 430, fa);
 console.log('STAGE A placed:', JSON.stringify(fa));
 
+// Frame the whole circuit before wiring. The authored layout runs to world y=430 plus symbol
+// height and the Design canvas is 732px tall on this machine, so the last pins sat below the
+// sheet and the unforced click landed on the bottom panel painted behind them. This is the
+// toolbar's own Fit - `fitToCircuit`, the whole circuit - not the Shift+F further down, which
+// fits the SELECTION and therefore depends on what the last placement left selected. The pins
+// are still clicked unforced: a pin a student could not reach must still fail loudly.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(120);
+const fitWholeCircuit = page.getByTestId('ide-design-fit-circuit-canvas');
+if ((await fitWholeCircuit.count()) > 0 && (await fitWholeCircuit.first().isVisible())) {
+  await fitWholeCircuit.first().click();
+  await page.waitForTimeout(500);
+}
 await page.getByTestId('ide-design-tool-wire').click(); await page.waitForTimeout(150);
 await wire(fa, 'A', 'out', 'x1', 'a');
 await wire(fa, 'B', 'out', 'x1', 'b');
