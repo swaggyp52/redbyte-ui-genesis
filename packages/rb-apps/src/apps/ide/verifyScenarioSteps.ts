@@ -127,6 +127,22 @@ export function deriveScenarioStepsFromVectors(vectors: TestVector[]): VerifySce
   return steps;
 }
 
+/**
+ * Drop the steps that described expected values which no longer exist, and keep everything the
+ * student wrote. Used when a starter's inherited expected outputs are discarded: a derived assert
+ * asserted one of those values and is now meaningless, while stimulus steps and explicitly
+ * authored checks are untouched by the discard and must survive it.
+ */
+export function dropDerivedAssertions(steps: ReadonlyArray<VerifyScenarioStep>): VerifyScenarioStep[] {
+  return steps
+    .filter((step) => {
+      const isDerived = step.origin === 'derived';
+      const isAssertion = step.kind === 'assert_scalar' || step.kind === 'assert_bus';
+      return !(isDerived && isAssertion);
+    })
+    .map((step, index) => ({ ...step, order: index }));
+}
+
 export function materializeVectorsFromScenarioSteps(
   steps: VerifyScenarioStep[] | undefined,
   fallbackVectors: TestVector[]

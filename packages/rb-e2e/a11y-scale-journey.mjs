@@ -727,9 +727,21 @@ async function run(width, height) {
   const restoreItems = await page.evaluate(() =>
     Array.from(document.querySelectorAll('[data-testid="ide-menu-view-popup"] [role="menuitemcheckbox"]'))
       .map((el) => el.getAttribute('data-testid')));
-  const restoreIndex = restoreItems.indexOf(`ide-menu-item-theme.${themeBefore}`);
-  if (restoreIndex < 0) fail(`the View menu cannot restore theme "${themeBefore}"`);
-  for (let step = 0; step < restoreIndex; step += 1) await page.keyboard.press('ArrowDown');
+  const restoreTarget = `ide-menu-item-theme.${themeBefore}`;
+  if (restoreItems.indexOf(restoreTarget) < 0) fail(`the View menu cannot restore theme "${themeBefore}"`);
+  // Drive to the wanted item rather than assuming the menu opens with its first item focused:
+  // counting presses against an assumed starting index is what made this step fail intermittently
+  // with an unexplained timeout on the theme attribute, because a miscount activated a different
+  // theme. The sibling switch step above already asserts what it landed on before pressing Enter.
+  let restorePresses = 0;
+  while (restorePresses <= restoreItems.length && (await focusedTestId(page)) !== restoreTarget) {
+    await page.keyboard.press('ArrowDown');
+    restorePresses += 1;
+  }
+  const restoreLanded = await focusedTestId(page);
+  if (restoreLanded !== restoreTarget) {
+    fail(`the View menu never reached ${restoreTarget} in ${restorePresses} ArrowDown presses; focus is on ${restoreLanded}`);
+  }
   await page.keyboard.press('Enter');
   await page.waitForFunction(
     (want) => document.documentElement.getAttribute('data-rb-theme-setting') === want,

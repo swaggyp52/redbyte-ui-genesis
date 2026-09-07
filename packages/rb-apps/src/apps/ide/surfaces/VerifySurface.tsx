@@ -6247,8 +6247,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             testId="ide-verify-starter-detached-notice"
           >
             Changing the circuit detached it from its starter, so the starter&rsquo;s expected
-            outputs no longer describe what it does and were cleared. Fill in the expected cells
-            you want graded, or undo the Design change to get the starter&rsquo;s back.
+            outputs no longer describe what it does and were cleared. Anything you had authored
+            yourself is still here. Fill in the expected cells you want graded, or run Observe and
+            author them from what the circuit actually does.
           </IdeCallout>
         ) : null}
         {primaryStatus && !compactPrimaryStatusAction && !(

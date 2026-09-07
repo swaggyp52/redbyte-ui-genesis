@@ -123,6 +123,7 @@ import {
 import {
   createScenarioStep,
   deriveScenarioStepsFromVectors,
+  dropDerivedAssertions,
   normalizeScenarioSteps,
   type ScenarioStepDraft,
   type VerifyScenarioStep,
@@ -954,7 +955,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             ...scenario,
             vectors: strippedVectors,
-            steps: scenario.steps ? deriveScenarioStepsFromVectors(strippedVectors) : undefined,
+            steps: scenario.steps ? dropDerivedAssertions(scenario.steps) : undefined,
             sequentialPolicy: reconcileScenarioSequentialPolicyForLiveIo(
               scenario.sequentialPolicy,
               legacyProjectIoRows,
@@ -3029,7 +3030,7 @@ export function mergePersistedRuntimeState(
         return {
           ...scenario,
           vectors,
-          steps: scenario.steps ? deriveScenarioStepsFromVectors(vectors) : undefined,
+          steps: scenario.steps ? dropDerivedAssertions(scenario.steps) : undefined,
         };
       })
     : scenarios;
@@ -3469,19 +3470,33 @@ function resolveActiveScenarioVectors(
 function commitScenarioSelection(
   state: Pick<
     ProjectRuntimeState,
-    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim'
+    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim' | 'scenarioAuthority'
   >,
   scenarios: VerifyScenario[],
   activeScenarioId: string
-): Pick<ProjectRuntimeState, 'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim'> {
+): Pick<
+  ProjectRuntimeState,
+  'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim' | 'scenarioAuthority'
+> {
   const resolvedActiveScenario =
     getActiveScenario(scenarios, activeScenarioId) ??
     (scenarios.length > 0 ? scenarios[0] : createDefaultScenario(state.projectVectors));
   const compatibilityVectors = materializeScenarioVectors(resolvedActiveScenario);
+  // A scenario the student has made their own stops being inherited starter evidence, exactly as
+  // editing an expected cell already does. An empty new scenario carries nothing yet, so it does
+  // not claim authorship of the starter's values - only one that holds checks or an explicitly
+  // authored step does.
+  const carriesAuthoredMaterial =
+    compatibilityVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0) ||
+    (resolvedActiveScenario.steps ?? []).some((step) => step.origin !== 'derived');
   return {
     projectVectors: cloneVectors(compatibilityVectors),
     scenarios,
     activeScenarioId: resolvedActiveScenario.id,
+    scenarioAuthority:
+      state.scenarioAuthority === 'starter' && carriesAuthoredMaterial
+        ? 'authored'
+        : state.scenarioAuthority,
     sim: {
       ...state.sim,
       probes: normalizeScenarioProbes(resolvedActiveScenario.probes).map((entry) => ({
@@ -4524,7 +4539,11 @@ function reconcileTestbenchAfterDesignChange(input: {
         return {
           ...scenario,
           vectors,
-          steps: scenario.steps ? deriveScenarioStepsFromVectors(vectors) : undefined,
+          // Only the derived assertions described the discarded values. Regenerating the whole
+          // list also destroyed every explicitly authored check, with its label, notes, duration
+          // and pulse behaviour - material the student wrote, discarded because the starter's
+          // reference values were being discarded beside it.
+          steps: scenario.steps ? dropDerivedAssertions(scenario.steps) : undefined,
         };
       })
     : nextScenarios;
