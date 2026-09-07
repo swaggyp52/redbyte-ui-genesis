@@ -527,7 +527,7 @@ async function run(width, height) {
   }
   console.log(`${at} ⑧a palette: Ctrl+K → "board" → ${targetIndex}×ArrowDown → Enter opened Board & Constraints (verify → hardware)`);
   await openSimulate(page);
-  await page.waitForSelector(tid('ide-doc-tab-cases:default'), { timeout: 15000 });
+  await page.waitForSelector(tid('ide-scenario-create-btn'), { timeout: 15000 });
 
   // ⑧b Escape closes the palette and loses no work.
   const workBefore = await workSnapshot(page);
@@ -561,14 +561,25 @@ async function run(width, height) {
   console.log(`${at} ⑧b Escape: the palette closed and the project, imported evidence and analyzer view are byte-identical`);
 
   // ⑧c Document tabs from the keyboard: the ACTIVE DOCUMENT changes, not just the focus.
-  await page.click(tid('ide-doc-tab-cases:default'));
-  await page.waitForSelector(tid('ide-case-lab'), { timeout: 10000 });
+  // One object is not a choice, so a second scenario is authored here through the interface to
+  // make one - which is also the only way Simulate ever has two documents.
+  await page.click(tid('ide-scenario-create-btn'));
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="tab"][data-doc-key]').length >= 2,
+    undefined,
+    { timeout: 10000 }
+  );
   const tabKeys = await page.evaluate(() =>
     Array.from(document.querySelectorAll('[role="tab"][data-doc-key]')).map((el) => el.getAttribute('data-doc-key')));
   const activeDoc = () => page.evaluate(() =>
     document.querySelector('[role="tab"][data-doc-key][aria-selected="true"]')?.getAttribute('data-doc-key') ?? null);
+  const activeDocLabel = () => page.evaluate(() =>
+    document.querySelector('[data-testid="ide-doc-tabstrip"]')?.getAttribute('data-active-doc-label') ?? null);
   const docBefore = await activeDoc();
-  if (docBefore !== 'cases:default') fail(`record ⑧c expects the Cases document active, the strip says ${docBefore}`);
+  const labelBefore = await activeDocLabel();
+  if (!docBefore || !docBefore.startsWith('scenario:')) {
+    fail(`record ⑧c expects a scenario document active, the strip says ${docBefore}`);
+  }
   const expectedNeighbour = tabKeys[(tabKeys.indexOf(docBefore) + 1) % tabKeys.length];
   const tabWalk = await tabUntil(page, 'ide-topbar-project-rename', (id) => id === `ide-doc-tab-${docBefore}`, 30);
   if (!tabWalk.reached) {
@@ -584,14 +595,19 @@ async function run(width, height) {
   if (docAfterRight !== expectedNeighbour) {
     fail(`ArrowRight should activate ${expectedNeighbour}, the strip activated ${docAfterRight}`);
   }
-  if (await page.locator(tid('ide-case-lab')).count() !== 0) {
-    fail(`the tab strip says ${docAfterRight} is active but the Case Lab is still rendered — the tab moved, the document did not`);
+  const labelAfterRight = await activeDocLabel();
+  if (!labelAfterRight || labelAfterRight === labelBefore) {
+    fail(`the tab strip says ${docAfterRight} is active but the workspace still names "${labelBefore}" — the tab moved, the document did not`);
   }
   await page.keyboard.press('ArrowLeft');
-  await page.waitForSelector(tid('ide-case-lab'), { timeout: 10000 });
+  await page.waitForFunction(
+    (previous) => document.querySelector('[data-testid="ide-doc-tabstrip"]')?.getAttribute('data-active-doc-label') === previous,
+    labelBefore,
+    { timeout: 10000 }
+  );
   const docBack = await activeDoc();
   if (docBack !== docBefore) fail(`ArrowLeft should return to ${docBefore}, the strip shows ${docBack}`);
-  console.log(`${at} ⑧c document tabs: Tab reached ${docBefore} in ${tabWalk.hops} hops; ArrowRight activated ${docAfterRight} (Case Lab gone) and ArrowLeft brought it back`);
+  console.log(`${at} ⑧c document tabs: Tab reached ${docBefore} in ${tabWalk.hops} hops; ArrowRight activated ${docAfterRight} ("${labelAfterRight}") and ArrowLeft brought "${labelBefore}" back`);
 
   // ⑧d Case Lab: follow a signal by key, move in the grid by key, edit an expectation by
   // key — and read the CANONICAL DOCUMENT afterwards, not the cell that was typed into.
@@ -763,6 +779,17 @@ async function run(width, height) {
     runsBefore,
     { timeout: 30000 }
   );
+  const waveformView = page.locator(tid('ide-verify-view-waveform'));
+  if ((await waveformView.count()) > 0 && (await waveformView.first().isEnabled())) {
+    await waveformView.first().click();
+    await page.waitForTimeout(600);
+  }
+  const playbackDisclosure = page.locator(tid('ide-verify-playback-disclosure'));
+  await playbackDisclosure.waitFor({ timeout: 15000 });
+  if (!(await playbackDisclosure.evaluate((el) => el.open))) {
+    await playbackDisclosure.locator('summary').first().click();
+    await page.waitForTimeout(300);
+  }
   await page.waitForSelector(tid('ide-verify-playback'), { timeout: 15000 });
   if (!(await page.evaluate(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches))) {
     fail('the context was created with reducedMotion: reduce but the page does not report the preference');

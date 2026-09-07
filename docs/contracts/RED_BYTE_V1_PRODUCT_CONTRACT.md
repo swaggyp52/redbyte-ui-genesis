@@ -524,6 +524,43 @@ exactly one owner. `buildWaveformSignalAliasOwners` returns the owners;
 | Resolving `q0` to the boundary because an io row claims it | It is equally claimed by the register. Picking one is a guess, and a guess about signal identity is how evidence stops being evidence. |
 | Renaming the lab's io rows so the ids stop colliding | It fixes one fixture and leaves the product wrong for the next circuit whose register shares a pin's id. |
 
+### 2026-09-07 - A control is where a reader can reach it, and a number is the number
+
+**Decided.** Four rules, each one written after a measurement contradicted it.
+
+**A pane that shrinks re-fits what it draws.** Mounting a dock takes width from the sheet without
+moving the camera. Design's contextual inspector took 280px and left the two-bit counter's output
+pins 96px past the schematic frame and 80px under the dock: six of nine sampled points inside the
+LD0 symbol hit it before, none after, and a click aimed at LD1 pressed the inspector's Delete node
+button. The camera belongs to the reader, so this is not a re-fit on every resize - only when the
+pane has shrunk AND that shrink has put the circuit outside the sheet.
+
+**Every column an instrument draws can hold its cursor, and its decoration does not take the
+click.** The timing ruler drew eleven columns for an eight-cycle run and four of them left the
+cursor on t0 while the readout, the header chip and the observed values reported t7..t10. The tick
+number, the grid line and the edge marker are drawn after the hit rect and sat on top of it, so
+clicking the number - the most obvious way to select a tick - did nothing at all.
+
+**An alternate editor does not destroy the editor it is an alternative to.** "Generators and full
+event editor" took the 662px its content wanted, squeezed the timeline from 476px to 1px, and
+painted over the composer bar: every control along the top answered `elementFromPoint` with the
+disclosure's own summary. An alternate editor takes a bounded, scrolling share; the instrument
+keeps a floor.
+
+**Two numbers on the same screen are the same number, or they are two different things and say
+so.** The package dossier read "4 warnings" 262px from a status bar reading "3 problems". The
+extra one is an evidence advisory built in Export and never entered into the shared ledger. It is
+said as an advisory now; the Warnings count is the ledger's count.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Clipping the schematic to its frame instead of re-fitting | It stops the click landing on Delete node and leaves the pin unreachable. The pin is the thing the reader wants. |
+| Re-fitting whenever the pane resizes | A reader who has zoomed in has content outside the pane on purpose. The trigger is the pane shrinking AND the content leaving, not the pane changing. |
+| Letting the ruler grow spare columns around the cursor | It re-fitted the tick width on every move and slid every column out from under the pointer that had just clicked one. The axis is the experiment's. |
+| Printing "4 warnings (3 in Problems)" | Two numbers with a parenthesis is still two numbers. One of them was not a ledger problem. |
+
 ## Attribution
 
 Connor Angiel

@@ -230,9 +230,59 @@ accepted.
   on `ide-package-handoff-document`); `project-experience`, `compare-verdict`, `package-history`,
   `runs-document` and `shell-status-authority` pass. Not run this session: `pnpm verify:gates`, the
   full journey sweep, and both golden gates (untouched locally; CI at this head is green).
-  **Not delivered and stated plainly:** the Design inspector rebuild (`Logical directionOutput` /
-  `LabelLD0` collisions), the Board mapping composition beyond the one clipping, and the 35
-  obsolete Export assertions, which remain named debt.
+  **P2.5N phase two - a measured audit of the running workbench, and the first full journey
+  sweep of this branch.** Twelve agents measured five workspaces and two scale regimes in the
+  live app and a second agent tried to refute each finding: **20 confirmed, 5 refuted.** In
+  parallel the 27 journeys were run against one server for the first time this branch:
+  **six were red, and four of them were one defect that was mine.**
+  **The `.vcd` import route had disappeared.** The first slice gated `VcdAnalyzerPanel` on already
+  having an imported waveform - right about the panel, wrong about the route, because the panel
+  compacts itself into one row that offers Load. This is the same regression the away-mode session
+  closed. Restored; vcd-analyzer, sim-provider, parity and complex-import pass again. **Three tests
+  that were red in the baseline are green as a result - and worth saying plainly: the baseline is
+  this branch's own `4fcbeee12`, so the first slice's regressions were inside it, and every
+  "identical failure identities" comparison in this session was measured against a baseline that
+  already carried this defect. The journey sweep is what found it.**
+  **Six blocking defects, each measured, each closed, each with an assertion that is red without
+  the fix** (verified by disabling each fix and re-running):
+  (1) selecting any symbol in Design mounted a 280px dock and threw the output pins 96px past the
+  schematic frame and 80px under it - 6 of 9 sampled points inside LD0 hit it before, **0 after**,
+  with clicks aimed at LD1 landing on **Delete node**; the sheet re-fits when a shrink puts the
+  circuit outside it (now 8/9, 0px past);
+  (2) four of the timing ruler's eleven columns could not hold the cursor - t7..t10 left the blue
+  column on t0 while the readout and the header chip said t7..t10;
+  (3) clicking the tick **number** did nothing, because the number is drawn over the hit rect;
+  (4) "Generators and full event editor" squeezed the timeline from **476px to 1px** and painted
+  over the composer bar, so every control there answered `elementFromPoint` with the disclosure's
+  own summary (now 153px, all controls answer for themselves);
+  (5) the case table's failure navigation painted **0px** at 1024x720 and at 200% text;
+  (6) the trace canvas was **35px** at 200% text and **0px** at 720x450 with its run line drawn
+  below a clip with no scrollable ancestor - unreachable, not merely off-screen (now 160px, with
+  floors and a scrolling column).
+  Also closed: the Design inspector's `LabelLD0` / `Logical directionOutput` collision (a block
+  matching a row rule and outranking its own `display: block`); the collapsed bottom panel drawing
+  **9px past its own clip** on every workspace at every viewport, from an OS-era
+  `min-height: 36px !important` whose comment names the world it was written for; the board's only
+  instruction truncated **38% at 1440x900 and 10% at 1280x650** - the larger window showing less;
+  "Open Problems" in the dossier being a **no-op** (`{ visible: true }` on a panel already visible
+  as its collapsed strip); and the dossier counting **4 warnings** 262px from a status bar counting
+  **3 problems**.
+  Two new probes carry it: `packages/rb-e2e/simulate-instrument-probe.mjs` (the ruler, the
+  alternate editor, the failure navigation and the trace floor at 1440x900, 1024x720, 720x450 and
+  root 32px) and `packages/rb-e2e/design-inspector-probe.mjs` (term/value columns, and the pins
+  surviving the dock).
+  **Not delivered and stated plainly:** `nested-adder-journey` remains red - the authored layout
+  runs to world y=430 plus symbol height against a 732px Design canvas, so the last pins are off
+  the pane and the unforced click lands on the bottom panel; calling the journey's own `fitAll()`
+  first moves the failure rather than closing it. `a11y-scale-journey` is red at this head and not
+  yet classified. Eleven lower-severity audit findings remain open and named (Project Overview
+  411px blank at 1440x900, Project explorer row metadata clipped with a 0px top-module marker,
+  five stacked Package header rows stating readiness four times, the dossier never scrolling
+  itself, the run line exceeding its cap at 200% text). The 35 obsolete Export assertions remain
+  named debt.
+
+  **Not delivered and stated plainly:** the Board mapping composition beyond the two clippings
+  closed here, and the 35 obsolete Export assertions, which remain named debt.
 
 - **P2.5L refine in place: data safety, Observe-first, and an honest validation baseline
   (2026-09-06, pushed):** nine commits on the same branch, `50223c14e` -> `632089057`. No new

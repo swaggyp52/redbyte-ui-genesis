@@ -57,6 +57,31 @@ canvas fills 527px of its 717px region.
 the size of a truth table, which is the specification of a combinational circuit, and says nothing
 about a design whose output depends on the state it is in.
 
+**Direct editing and the cursor.** Every column the ruler draws holds the cursor, including the
+spare columns past the last authored event - the readout, the header chip and the drawn cursor
+always name the same tick. Clicking the tick number selects that tick: the number, the grid line
+and the edge marker are decoration and do not take the click. The event editor edits the event at
+the cursor and says so when there is none ("No event at t7. Click a stimulus cell in that column
+to drive an input there, or use + Add event"), rather than silently editing the first event in the
+scenario. The ruler's spare columns follow the experiment, not the cursor, so selecting one column
+does not re-fit the tick width and move the rest.
+
+**The alternate editors are bounded.** "Event table", "Edit event at tN" and "Generators and full
+event editor" are disclosures the reader opens. An open one takes a bounded, scrolling share
+(55% of the region) and the instrument keeps a 132px floor: opening the generators takes the
+lanes from 432px to 153px, not to 1px, and every control in the composer bar above still answers
+at its own coordinates.
+
+**At hostile scales the instrument is floored and the workspace scrolls.** At 1024x720, at 200%
+text and at 720x450 (a 1440x900 machine at 200% browser zoom) the trace canvas keeps a 160px
+floor, the case table's failure navigation is painted rather than clipped, and the stacked
+template gives the primary instrument 180-220px before the contextual inspector gets anything.
+Where the floors add up to more than the window, `.rb-sim-lab-frame` scrolls.
+
+**Imported evidence.** `VcdAnalyzerPanel` is always mounted and compacts itself: with nothing
+imported it is one row naming the provider and offering Load, and it is the only `.vcd` route on
+the surface. `SimulationProviderBar` appears once there is a second source to choose between.
+
 **Signal identity.** The rail groups a lane as Inputs / Outputs / Internal by name. A normalised
 name claimed by more than one thing in the circuit resolves to nothing and cannot credit a lane to
 the boundary; only a lane carrying the boundary's own display name may do that. The two-bit
