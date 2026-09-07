@@ -433,7 +433,10 @@
 /* Timing Lab: events in time — a dense table plus an editor strip for the selected event. */
 .ide-root .rb-timing { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; outline: none; background: var(--wb-surface); }
 .ide-root .rb-timing:focus-visible { box-shadow: inset 0 0 0 2px var(--wb-focus); }
-.ide-root .rb-timing-bar { display: flex; align-items: center; gap: 6px; flex: none; height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+/* The bar wraps rather than shrinking one of its facts into a single letter: at 628px the
+   generated-clock chip was ellipsised to "c...", which says nothing at all. */
+.ide-root .rb-timing-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; flex: none; min-height: var(--wb-toolbar-h); padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-timing-generated { flex: 0 1 auto; min-width: 6rem; }
 .ide-root .rb-timing-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
 /* "7 events · 14 checks" is one fact, so it stays on one line; it was wrapping into two rows
    inside a 30px bar at 1280px, which read as a stray word under the label. */
