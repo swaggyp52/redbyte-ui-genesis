@@ -38,7 +38,7 @@ async function check(label, width, height, zoomMode) {
       await page.waitForTimeout(500);
     }
 
-    for (const [mode, focal] of [['design', 'circuit-canvas'], ['hardware', 'basys3-board-workbench']]) {
+    for (const [mode, focal] of [['design', 'circuit-canvas'], ['hardware', 'board-workbench']]) {
       await page.click(tid(`mode-button-${mode}`));
       await page.waitForTimeout(1200);
       if (mode === 'design') {
@@ -60,6 +60,24 @@ async function check(label, width, height, zoomMode) {
           return { y: Math.round(b.y), h: Math.round(b.height), bottom: Math.round(b.bottom) };
         };
         const consoleEl = document.querySelector('[data-testid="ide-workbench-console"]');
+        // What a reader can see, not what the box says. Below 900px the docks fold into strips
+        // inside one scrolling region, so a canvas taller than that region is clipped by it and
+        // reached by scrolling - its raw bottom is meaningless. Intersecting with every clipping
+        // ancestor is the difference between "drawn over the panel" and "scrolled past the fold".
+        const visibleRect = (el) => {
+          if (!el) return null;
+          let box = el.getBoundingClientRect();
+          let top = box.top;
+          let bottom = box.bottom;
+          for (let node = el.parentElement; node; node = node.parentElement) {
+            const overflow = getComputedStyle(node).overflow;
+            if (overflow === 'visible') continue;
+            const clip = node.getBoundingClientRect();
+            top = Math.max(top, clip.top);
+            bottom = Math.min(bottom, clip.bottom);
+          }
+          return { y: Math.round(top), bottom: Math.round(Math.max(top, bottom)) };
+        };
         const railButtons = [...document.querySelectorAll('[data-testid^="mode-button-"]')].map((el) => {
           const b = el.getBoundingClientRect();
           return { id: el.getAttribute('data-testid'), visible: b.width > 0 && b.height > 0, y: Math.round(b.y) };
@@ -67,19 +85,33 @@ async function check(label, width, height, zoomMode) {
         return {
           docOverflowX: doc.scrollWidth - doc.clientWidth,
           focal: rect(focalEl),
+          focalVisible: visibleRect(focalEl),
+          parentScrolls: parent
+            ? ['auto', 'scroll', 'overlay'].includes(getComputedStyle(parent).overflowY)
+            : false,
           parent: rect(parent),
           console: rect(consoleEl),
           railAllVisible: railButtons.every((b) => b.visible),
           railCount: railButtons.length,
         };
       }, focal);
-      const overflowsParent = m.focal && m.parent ? m.focal.bottom - m.parent.bottom : 0;
-      const overlapsConsole = m.focal && m.console ? m.focal.bottom - m.console.y : null;
+      // Past a pane the reader can scroll is reachable; past a pane that clips and does not
+      // scroll is content nobody can get to. Only the second is a defect, and the error message
+      // has always described the second.
+      const overflowsParent = m.focal && m.parent && !m.parentScrolls ? m.focal.bottom - m.parent.bottom : 0;
+      const scrolledPast = m.focal && m.parent && m.parentScrolls ? m.focal.bottom - m.parent.bottom : 0;
+      const overlapsConsole = m.focalVisible && m.console ? m.focalVisible.bottom - m.console.y : null;
       console.log(
         `${label} ${mode}: docOverflowX=${m.docOverflowX} focalPastPane=${overflowsParent}px ` +
+        `${scrolledPast > 1 ? `scrollablePast=${scrolledPast}px ` : ''}` +
         `focalVsConsole=${overlapsConsole === null ? 'no console' : overlapsConsole + 'px'} ` +
         `rail=${m.railCount} allVisible=${m.railAllVisible}`
       );
+      // A marker that no element carries makes every check below it vacuous: `focal` is null,
+      // the overflow arithmetic is 0 and the console comparison is skipped, so the probe reports a
+      // pass over an absence. The hardware half measured nothing for as long as its marker was
+      // stale, which is how a renamed element quietly retires an assertion.
+      if (!m.focal) throw new Error(`${label} ${mode}: no element carries data-hierarchy-focal="${focal}", so this workspace went unmeasured`);
       if (m.docOverflowX > 1) throw new Error(`${label} ${mode}: document overflows horizontally by ${m.docOverflowX}px`);
       if (overflowsParent > 1) throw new Error(`${label} ${mode}: focal instrument laid out ${overflowsParent}px past its pane`);
       if (overlapsConsole !== null && overlapsConsole > 1) {

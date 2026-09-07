@@ -178,7 +178,22 @@
   .ide-root .rb-board-grid { grid-template-columns: minmax(260px, 300px) minmax(240px, 1fr) minmax(240px, 280px); }
 }
 @media (max-width: 899px) {
-  .ide-root .rb-board-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 24%) minmax(0, 1fr) minmax(0, 26%); }
+  /* Stacked, and scrolling. The stage keeps a 160px floor so the board stays a board, which at a
+     450px-tall window is more than the `1fr` row can give it - and with `overflow: visible` the
+     stage was laid out 42px past the grid and clipped by the workspace, so the bottom of the board
+     could not be reached at all. The column scrolls now; the floor stays. */
+  .ide-root .rb-board-grid {
+    grid-template-columns: minmax(0, 1fr);
+    /* Floors, not just caps. `minmax(0, 24%)` let the two stacked strips collapse to nothing
+       as soon as the stage's 160px floor took the whole column: measured at 720x450, the rows
+       resolved to `0px 160px 0px` and the signal assignments - the work object of this
+       workspace - were 1px tall and unreachable. Each strip keeps enough to be read, and the
+       column scrolls when the window cannot hold all three. */
+    grid-template-rows: minmax(112px, 24%) minmax(160px, 1fr) minmax(120px, 26%);
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
   .ide-root .rb-board-assignments { border-right: 0; border-bottom: 1px solid var(--wb-border-strong); }
   .ide-root .rb-board-side { border-left: 0; border-top: 1px solid var(--wb-border-strong); }
   .ide-root .rb-board-stage { min-height: 160px; }

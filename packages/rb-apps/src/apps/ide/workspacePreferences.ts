@@ -191,7 +191,7 @@ const AUTHORING_SURFACES = createSurfacePreferences({
   },
   verify: {
     left: { visible: true, sizePx: 240, expanded: false },
-    bottom: { visible: false, sizePx: 260, expanded: false },
+    bottom: { visible: true, sizePx: 260, expanded: false },
   },
   hardware: { right: { visible: true, sizePx: 300, expanded: false } },
   export: { left: { visible: true, sizePx: 240, expanded: false } },
@@ -581,7 +581,9 @@ function createSurfacePreferences(
       docks: {
         left: surfaceOverrides.left ?? { visible: false, sizePx: 220, expanded: false },
         right: surfaceOverrides.right ?? { visible: false, sizePx: 280, expanded: false },
-        bottom: surfaceOverrides.bottom ?? { visible: false, sizePx: 220, expanded: false },
+        // Present and collapsed: 28px that names itself, with the count in the status bar to
+        // open it. Hiding it is the reader's choice, and a layout reset undoes that choice.
+        bottom: surfaceOverrides.bottom ?? { visible: true, sizePx: 220, expanded: false },
       },
     };
   }

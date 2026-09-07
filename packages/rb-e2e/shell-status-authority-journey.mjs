@@ -205,7 +205,7 @@ async function run(width, height) {
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(1000);
 
-  // ⑨ The splitter is operable from the keyboard, and a layout reset recovers the panel.
+  // ⑨ The splitter is operable from the keyboard.
   await page.getByTestId('mode-button-project').click();
   await page.waitForTimeout(600);
   const panelHeight = () => page.evaluate(() => {
@@ -232,6 +232,31 @@ async function run(width, height) {
   if (!emptyEntry.reachable) fail('a project with no problems has no way to the panel');
   console.log(`[${width}×${height}] ⑨ splitter by keyboard ${beforeResize}px -> ${afterResize}px; ` +
     `panel reachable with the ledger ${emptyEntry.problemsRendered ? 'rendered' : 'empty'}`);
+
+  // ⑨b A layout reset is the way back from any arrangement, including a hidden panel. Hide it,
+  // then reset, and the panel must be there again at the size the workspace ships with.
+  const hideControl = page.locator('.ide-workbench-console-bar .ide-workbench-dock-collapse').first();
+  if ((await hideControl.count()) === 0) fail('there is no control to put the panel away');
+  await hideControl.click();
+  await page.waitForTimeout(500);
+  const hiddenState = await panelState();
+  if (hiddenState !== 'absent') fail(`hiding the panel left it ${hiddenState}`);
+  await page.keyboard.press('Control+k');
+  await page.waitForSelector('[data-testid="ide-command-palette"]', { state: 'visible', timeout: 8000 });
+  await page.getByTestId('ide-command-palette-query').fill('reset');
+  await page.waitForSelector('[data-testid="ide-command-workspace.layout.reset"]', { state: 'visible', timeout: 8000 });
+  await page.getByTestId('ide-command-workspace.layout.reset').click();
+  await page.waitForTimeout(900);
+  const recovered = await panelState();
+  const recoveredHeight = await panelHeight();
+  if (recovered === 'absent') {
+    fail('a layout reset did not bring the bottom panel back');
+  }
+  if (recoveredHeight === afterResize) {
+    fail(`a layout reset kept the resized height (${recoveredHeight}px), so it reset nothing`);
+  }
+  console.log(`[${width}×${height}] ⑨b hide -> layout reset -> panel ${recovered} at ${recoveredHeight}px ` +
+    `(was ${afterResize}px before the reset)`);
   await page.screenshot({ path: `${OUT}/slice1-shell-${width}x${height}.png` });
   if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
   await context.close();

@@ -2968,7 +2968,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         layoutIntent="workbench"
         leftDockMode="hidden"
         rightDockMode="hidden"
-        consoleMode="hidden"
+        // A board with nothing to map is exactly when a reader wants to know what the workbench
+        // is reporting. Leaving the panel out here took the strip away with it and left the
+        // status bar's problems count doing nothing on this workspace.
+        consoleMode="collapsed"
+        console={<ProblemsPanel origin="bottom-panel" />}
         inspector={null}
       >
         <div
@@ -3526,7 +3530,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 ) : null}
               </section>
 
-              <section className="rb-board-stage" data-testid="ide-hw-map-board" data-work-priority="primary">
+              <section
+                className="rb-board-stage"
+                data-testid="ide-hw-map-board"
+                data-work-priority="primary"
+                // The marker the scale probe measures this surface by. It named
+                // `basys3-board-workbench`, which no element has carried since the board was
+                // rebuilt, so the probe found nothing and passed both of its checks on nothing.
+                data-hierarchy-focal="board-workbench"
+              >
                 <header className="rb-board-section-header">
                   <details className="wb-menu-details rb-board-layers" data-testid="ide-board-layers">
                     <summary className="wb-btn wb-btn--ghost" title="Board layers (persisted with the workspace)">Layers ▾</summary>
