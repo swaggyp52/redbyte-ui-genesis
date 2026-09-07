@@ -64,10 +64,12 @@ describe('workspace preferences', () => {
     expect(parsed.surfaces.design.docks.left).toEqual({
       visible: false,
       sizePx: WORKSPACE_DOCK_SIZE_LIMITS.left.max,
+      expanded: false,
     });
     expect(parsed.surfaces.design.docks.bottom).toEqual({
       visible: true,
       sizePx: WORKSPACE_DOCK_SIZE_LIMITS.bottom.min,
+      expanded: false,
     });
     expect(parsed.surfaces.design.docks.right).toEqual(
       DEFAULT_WORKSPACE_PREFERENCES.surfaces.design.docks.right
@@ -108,6 +110,7 @@ describe('workspace preferences', () => {
     expect(store.getSnapshot().surfaces.design.docks.right).toEqual({
       visible: false,
       sizePx: 333,
+      expanded: false,
     });
     expect(store.getSnapshot().design.canvasAppearance).toBe('light');
     expect(store.getSnapshot().design.canvasDensity).toBe('compact');

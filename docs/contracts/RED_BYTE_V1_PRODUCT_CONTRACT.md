@@ -100,27 +100,71 @@ Must:
 - Preserve E0 versus E1/E2/E3 language.
 - Avoid implying hardware readiness from browser state.
 
+Must:
+
+- Keep one bottom panel that exists on every workspace. Whether there is anything to report is the
+  panel's answer to give, not a reason for it to disappear; an empty ledger says so.
+- Let the problems count open the panel, and let the panel be put away and got back.
+- Keep dock preferences per surface. Opening Problems on Project is not a statement about Design;
+  what must hold is that each workspace restores what it was left in, and that a changing problem
+  count never silently overrides a reader's choice.
+- Report the state of the reader's work honestly. With nothing open there is no work to save, and
+  the frame says so rather than reporting unsaved changes to a placeholder.
+- Survive a shortage of room in both of its forms: a large text setting inside a fixed viewport,
+  and browser zoom, which shrinks the CSS viewport under the whole frame. They fail at different
+  settings and both are measured.
+
 Must not:
 
 - Repeat contradictory state across ribbon, rail, panels, and CTAs.
 - Let debug/build chrome dominate the student path.
 - Use "ready" without naming the proof tier.
+- Let any control draw outside its own box, take a click meant for its neighbour, or shrink one of
+  the six frame priorities to make room for something that is not one of them.
 
 ### Project Command Center
 
 Project is the command center, not a starter gallery.
 
+**Project answers a different question depending on whether work is open (2026-09-07).** These are
+two experiences on one route, and which one appears is a fact about the project's lifecycle, not
+about its contents:
+
+| | Start | Overview |
+|---|---|---|
+| The question | What am I going to work on? | What is this project, where did I leave it, what needs attention? |
+| Shown when | nothing is open | a project is open |
+| Strongest element | the reader's own saved work | the circuit |
+| Ways on | blank · course lab · starter · saved · import · recover | one continuation, plus the circuit and each state line |
+
 Must:
 
-- Show blank start, certified starter, saved project, import/recovery, and future instructor lab entry as peer paths with clear priority.
-- Keep no-circuit state neutral.
-- Show recommended next action without requiring scroll at common laptop sizes.
+- Decide between the two states from the lifecycle owner - whether a project is open - and never
+  from whether the circuit has components, whether there are problems, or what the project is
+  named. The launcher placeholder nobody chose is not open work; a blank project a person
+  deliberately created is.
+- Show blank start, certified starter, saved project, import/recovery, and future instructor lab
+  entry as peer paths with clear priority. When the reader has saved work, that is the primary path.
+- Let a reader read a lab, a starter or a saved project without applying it. Browsing is reading.
+- Give the active Overview one dominant object (the circuit), one continuation that follows where
+  the reader last worked, and its state beside it - simulation, mapping, package - each linking to
+  the workspace that owns it. Everything else is one closed disclosure away and nothing is deleted.
+- Keep the reader's own identity editable where it is shown, not behind a disclosure.
+- Keep no-circuit state neutral, and say plainly that the sheet is empty rather than implying a
+  circuit that does not exist.
+- Show the recommended next action without requiring scroll at common laptop sizes.
+- Preserve work across close and resume: closing saves and returns to Start, and resuming from
+  Start reopens that project - not a fresh copy of the lab it came from.
 - Avoid hardcoding ECE141 as the product identity.
 
 Must not:
 
 - Treat starter loading as the only serious path.
 - Report mapping failures before a circuit exists.
+- Invent a recent project the reader never created, including on reload.
+- Hide a saved project because of what it is called.
+- Nominate itself as the continuation, or impose a Design -> Simulate -> Board -> Package march.
+- Calculate readiness a second time. The status lines read the facts the project already derives.
 
 ### Design Workbench
 
@@ -244,6 +288,26 @@ A V1 product slice is done only when:
 - Current-truth docs and cockpit docs are updated.
 - The slice is committed and pushed when requested.
 - GitHub required checks are inspected from live GitHub evidence.
+
+## Decision Record
+
+### 2026-09-07 - Project as two experiences
+
+**Decided.** Project shows Start when nothing is open and the project's own Overview when something
+is. The choice is made by the lifecycle owner. The Overview is composed - identity, circuit, state,
+attention, then disclosures - rather than tabulated.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| One screen deciding by whether the circuit has components | Neither question. It sent a blank project a person deliberately made back to the catalogue, and it would have shown a specification sheet to somebody who had not chosen anything yet. |
+| A specification-sheet Project (the 12-cell fact grid across the top) | It answers "what are this project's attributes", which is not what a reader arrives asking. Measured at 1280x650 it put 776px of content in a 566px pane; the circuit was third in reading order and there was no way to continue. The facts are all still there, one disclosure away. |
+| The gallery as the home of an active project | Browsing is what you do before you have chosen. Once work is open, a catalogue is an interruption. |
+| Metadata-first hierarchy on the Overview | The project's own drawing is the thing a reader recognises. Metadata is what you consult, not what you land on. |
+| A hidden bottom panel that appears when there are problems | Whether there is anything to report is the panel's answer to give. A count in the status bar that opens nothing is worse than a panel that says "no problems". |
+| A second readiness calculation for the Overview's status lines | Two authorities disagree eventually. The lines read the facts the project already derives, in a different register. |
+| Making dock preferences global so all surfaces share one panel state | Rejected for this slice by explicit direction: opening Problems on Project does not need to open it on Design. Per surface, restored on return. |
 
 ## Attribution
 

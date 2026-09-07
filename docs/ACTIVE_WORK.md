@@ -288,6 +288,47 @@ accepted.
   above, and the Design toolbar at 200% text, which is three rows - the frame no longer collides
   and nothing is clipped, but the workbench is cramped at that setting. Continuation:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5M Project as two experiences, and the shortage the probes were not in (2026-09-07,
+  desktop session):** Project answers a different question depending on whether work is open.
+  **Which state to show is a fact about the project's lifecycle, not about its contents:**
+  `projectIsOpen` is the judgement the autosave guard already makes, so a blank project a person
+  deliberately created is open work and gets its Overview instead of being sent back to the
+  catalogue for having no parts, and Close lands on genuinely nothing open rather than the Overview
+  of an empty project. Start opens on the reader's own work; a reload no longer adds an "Untitled
+  Project" to Recent. The Overview is composed rather than tabulated - identity and one continuation
+  that follows where the reader last worked, the circuit at full width, three state lines linking to
+  the workspaces that own them, the one problem worth attention, then four closed disclosures with
+  nothing deleted and no second readiness calculation.
+  **The bottom panel exists on every workspace**, opens from the problems count, can be put away and
+  got back, and keeps its preference per surface (opening Problems on Project is not a statement
+  about Design; each workspace restores what it was left in).
+  **The offscreen clipping the report described is reproduced and closed.** It lives at a 720x450 CSS
+  viewport - a 1440x900 machine at 200% browser zoom, which shrinks the viewport under the whole
+  frame rather than growing the type inside it, and which the existing scale coverage names as not
+  proven. On all five workspaces the panel reported itself `expanded` and drew **17px**, with its
+  problems list laid out 111px below the bottom of the window. Two causes: a `max-width: 899px` rule
+  forcing `auto minmax(0, 1fr) auto !important` - a template for an older shell whose console was row
+  3, while this one is `grid-row: 2`, so the panel got the `1fr` that was left, which was 0 - and a
+  fixed-height section with `overflow: hidden` and three block children, where a short track pushed
+  the list out instead of shortening it. At 200% the panel is **153px** and every check holds.
+  **Comparable before/after captures** of the same lab at 1440x900, 1280x650 and 200% zoom, against
+  the pushed state and this tree, read personally, found four more: a circuit drawn **130x50px** in a
+  780px region when the pane was short; a stage that shrank to 33px around 165px of content and
+  painted **twelve pairs of overlapping text boxes** over its own disclosures; stacking keyed to the
+  window while the document still had 980px; and a frame reporting "Unsaved" in warning colour about
+  a screen with no project open, which now says "No project" with a Save that explains why it is
+  disabled.
+  **Two frame states `chrome-priority-probe` was never in:** it loads a project through the store,
+  which leaves an object selected, so the command search was never measured - and at 720x450 it drew
+  260px of `nowrap` content into 188px, putting its "Ctrl K" chip 53px inside the board identity.
+  The same pass found the menubar squeezed to 63px around an 81px button at 1366px and a 32px root,
+  the overhang taking the click meant for the search. The probe gained a nothing-selected pass, a
+  720x450 case, and leaf-level overlap comparison; it is red without the fixes and green with them.
+  Typecheck 778, shape identical. Label **REDBYTE PROJECT TWO-STATE CANDIDATE / BOTTOM PANEL CLOSED
+  AT BROWSER ZOOM / PR #85 DRAFT / NO MERGE / NO PRODUCTION**. Not delivered and stated plainly: the
+  Board Guided/Expert split, the continuous Simulate workbench, and the open entries in
+  `docs/validation/test-debt.md`. Continuation:
+  `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **P2.5J visual craft, spatial coherence and instrument finish (2026-09-06, desktop session,
   pushed):** a visual-system pass against Connor's ~70% verdict, on the same branch, five
   commits (`d6c67b386` → `d46d2350e`). The audit found three surface roles sharing two
