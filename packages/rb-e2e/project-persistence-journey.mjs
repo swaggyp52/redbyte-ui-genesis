@@ -785,6 +785,49 @@ try {
   console.log(`I import: backup of ${originalId} (${backupNodes} symbols) imported as ` +
     `${imported.projectId}; the original kept ${storedOriginalAfterEdit} symbols through both writes, ` +
     `and the copy owns its own evidence (${JSON.stringify(importedEvidence.ledgerProjects)})`);
+  // ── J. Close, and pick it up again ───────────────────────────────────────────────────
+  // The product had no close at all: no command, no menu entry, and a repository interface of
+  // list/open/save/autosave/checkpoint/recover. The de-facto close was Build Fresh, which takes
+  // a recovery snapshot and lands on an empty canvas - right for starting something else, wrong
+  // for being done for now. Close saves and lands where the project can be picked up again.
+  const beforeClose2 = await state();
+  const closedId = beforeClose2.projectId;
+  const closedName = beforeClose2.projectName;
+  const closedNodes = beforeClose2.nodes;
+  assert(closedNodes > 0, 'section J needs a project with work in it');
+
+  await runCommand('project.close');
+  await page.waitForFunction(
+    () => (window.__RB_PROJECT_RUNTIME__.getState().circuit?.nodes ?? []).length === 0,
+    undefined,
+    { timeout: 15000 }
+  );
+  await page.waitForTimeout(900);
+
+  // The closed project is stored with the work it had.
+  const storedClosed = await storedSnapshotNodes(closedId);
+  assert(storedClosed === closedNodes,
+    `closing stored ${storedClosed} symbols for ${closedId}, it had ${closedNodes} - close must save`);
+
+  // ...and the workspace shows the place a project is picked up from, not an empty canvas.
+  await page.waitForSelector(tid('ide-project-landing'), { timeout: 15000 });
+  const listedAfterClose = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-testid^="ide-project-start-open-"], [data-testid^="ide-project-recent-"]'))
+      .map((el) => el.getAttribute('data-testid')));
+  console.log(`J close: ${closedName} (${closedId}) stored with ${storedClosed} symbols; ` +
+    `the Start Center is showing with ${listedAfterClose.length} openable entr(ies)`);
+
+  // Resume it and find the work where it was left.
+  await openSavedProject(closedId);
+  const resumed = await state();
+  assert(resumed.projectId === closedId,
+    `resuming opened ${resumed.projectId}, expected ${closedId}`);
+  assert(resumed.nodes === closedNodes,
+    `resuming restored ${resumed.nodes} symbols, expected ${closedNodes}`);
+  assert(resumed.expectations === beforeClose2.expectations,
+    `resuming restored ${resumed.expectations} authored expectations, expected ${beforeClose2.expectations}`);
+  console.log(`J resume: ${resumed.projectId} back with ${resumed.nodes} symbols, ` +
+    `${resumed.expectations} authored expectations and run ${resumed.lastRunId ?? 'none'}`);
   await page.screenshot({ path: `${OUT}/persistence-final.png` });
   assert(pageErrors.length === 0, `page errors: ${pageErrors.join(' | ')}`);
   console.log('\nPASS — reload, Save As, Duplicate, reopen from Recent, A/B isolation,' +

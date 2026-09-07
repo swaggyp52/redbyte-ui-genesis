@@ -23,6 +23,7 @@ export const IDE_COMMAND_IDS = {
   duplicateProject: 'project.duplicate',
   openProject: 'project.open',
   buildFreshProject: 'project.build-fresh',
+  closeProject: 'project.close',
   restoreRecoverySnapshot: 'project.recovery.restore',
   undoDesignEdit: 'edit.undo',
   redoDesignEdit: 'edit.redo',
