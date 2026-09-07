@@ -342,3 +342,19 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-pkg-hero[data-document='handoff'] > :not(.rb-pkg-files):not(.rb-pkg-decision) {
   display: none;
 }
+
+/* One statement of the package's condition per view. On screen the surface ribbon owns it: it
+   is there whichever document is open, it carries the primary action and the trust axes, and
+   the dossier header sat 90px below repeating the same sentence, with the reason repeated a
+   third time in the fact table. Presentation mode and printing both remove the ribbon, and
+   then the document has to carry it - so this is a question about the medium, not about React
+   state: the elements always exist and only their visibility moves. Print matters here
+   because the Print button never enters presentation mode. */
+.ide-root .rb-handoff:not(.is-presenting) .rb-handoff-state,
+.ide-root .rb-handoff:not(.is-presenting) .rb-fact[data-fact='state'] { display: none; }
+@media print {
+  /* Matching the screen rule selector for selector: `:not()` carries its argument's weight, so
+     a shorter selector here would lose to it and print nothing. */
+  .ide-root .rb-handoff:not(.is-presenting) .rb-handoff-state { display: inline-flex; }
+  .ide-root .rb-handoff:not(.is-presenting) .rb-fact[data-fact='state'] { display: block; }
+}

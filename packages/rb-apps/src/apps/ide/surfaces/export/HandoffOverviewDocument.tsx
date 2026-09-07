@@ -23,6 +23,8 @@ export interface HandoffOverviewDocumentProps {
   readonly packageHash: string;
   readonly stateTitle: string;
   readonly stateReason: string;
+  /** The short derived-state token the surface ribbon shows, e.g. "Draft available". */
+  readonly stateToken: string;
   /** Simulation evidence is stale: the design, stimulus or mapping changed after the last run. */
   readonly isStale: boolean;
   readonly activeConstraintSetName: string | null;
@@ -68,6 +70,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
   packageHash,
   stateTitle,
   stateReason,
+  stateToken,
   isStale,
   activeConstraintSetName,
   boardConstraintSetId,
@@ -195,7 +198,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
         <code className="rb-doc-header-code">{projectName}</code>
         <span className="wb-toolbar-meta">{boardLabel} · {fpgaPart} · top {topName}</span>
         <span className="wb-toolbar-spacer" />
-        <span className={`rb-handoff-state${isStale ? ' is-stale' : viewModel.status === 'ok' ? ' is-ok' : ' is-blocked'}`} data-testid="ide-package-handoff-state">
+        <span
+          className={`rb-handoff-state${isStale ? ' is-stale' : viewModel.status === 'ok' ? ' is-ok' : ' is-blocked'}`}
+          data-testid="ide-package-handoff-state"
+        >
           {stateTitle}
         </span>
         {onOpenFiles ? (
@@ -229,7 +235,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
             {packageShaText}
           </dd>
         </div>
-        <div className="rb-fact" data-tone={isStale ? 'warn' : undefined}><dt>State</dt><dd>{stateReason}</dd></div>
+        <div className="rb-fact" data-fact="state" data-tone={isStale ? 'warn' : undefined}>
+          <dt>State</dt>
+          <dd data-testid="ide-package-handoff-state-token">{stateToken}</dd>
+        </div>
         <div className="rb-fact"><dt>Files</dt><dd className="is-mono">{viewModel.artifacts.length} · {artifactBytes.toLocaleString()} bytes</dd></div>
         <div className="rb-fact" data-tone={required > mapped ? 'warn' : 'ok'}>
           <dt>Mapping</dt>

@@ -1946,6 +1946,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 packageHash={determinismHash}
                 stateTitle={surfaceStatusTitle}
                 stateReason={trustReason}
+                stateToken={formatExportDerivedState(exportTrustAxes.derived)}
                 isStale={dirtySinceVerify}
                 activeConstraintSetName={activeConstraintSetName}
                 boardConstraintSetId={activeConstraintSetId}
