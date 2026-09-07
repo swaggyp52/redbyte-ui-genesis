@@ -7896,6 +7896,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <button type="button" className="wb-menu-item" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-menu-fit-selection">
                         <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Fit selection</span><span className="wb-menu-item-key">S</span>
                       </button>
+                      <button type="button" className="wb-menu-item" onClick={zoomIn} data-testid="ide-design-menu-zoom-in">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Zoom in</span><span className="wb-menu-item-key" />
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={zoomOut} data-testid="ide-design-menu-zoom-out">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Zoom out</span><span className="wb-menu-item-key" />
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={zoomTo100} data-testid="ide-design-menu-zoom-actual">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Actual size</span><span className="wb-menu-item-key">{`${Math.round(camera.zoom * 100)}%`}</span>
+                      </button>
                       <button type="button" className="wb-menu-item" onClick={resetView} data-testid="ide-design-zoom-reset">
                         <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Reset view</span><span className="wb-menu-item-key" />
                       </button>

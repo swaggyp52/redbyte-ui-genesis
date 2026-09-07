@@ -518,6 +518,16 @@
   /* Fit selection folds first: it is the rarer of the two and needs a selection anyway. */
   .ide-root .rb-design-toolbar > [data-testid='ide-design-center-selection-canvas'] { display: none; }
 }
+/* At an enlarged text size on a 1366px window the schematic column measured 539px and the bar
+   wrapped to three rows, leaving the canvas 317px of height. The zoom stepper is a secondary view
+   command - the View menu now carries Zoom in, Zoom out and Actual size, with the percentage
+   beside the last - so below the width that can hold it, the stepper folds there. The active
+   tool, the edit history and the representation switch stay on the bar. */
+@container design-bar (max-width: 34rem) {
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-zoom-out'],
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-zoom-readout'],
+  .ide-root .rb-design-toolbar > [data-testid='ide-design-zoom-in'] { display: none; }
+}
 @container design-bar (max-width: 42rem) {
   /* Then Fit itself, and the separator that introduced the pair. */
   .ide-root .rb-design-toolbar > [data-testid='ide-design-fit-circuit-canvas'] { display: none; }

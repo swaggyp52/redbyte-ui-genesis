@@ -235,6 +235,16 @@
   max-width: 100%;
 }
 
+/* When the window is narrow measured in the reader's own text size - the same threshold the
+   application bar composes against - the caps tighten again. Measured at 200% text on a 1366px
+   window: 26vw/24vw left the schematic column 539px and its toolbar three rows; 21vw/19vw
+   leaves it 685px. The docks are still floored by their own words, so nothing inside them
+   clips; they simply stop taking room from the drawing before the drawing has any. */
+:root[data-rb-chrome='compact'] .ide-root .ide-workbench-shell {
+  --ide-workbench-left-width: min(max(var(--rb-workbench-pref-left-width, 216px), 15rem), 21vw) !important;
+  --ide-workbench-right-width: min(max(var(--rb-workbench-pref-right-width, 252px), 16rem), 19vw) !important;
+}
+
 /* The persisted bottom-dock height owns the complete grid track. Legacy chrome
    capped the console itself at 180px, which left an inert blank strip for every
    larger preset or keyboard resize. */
