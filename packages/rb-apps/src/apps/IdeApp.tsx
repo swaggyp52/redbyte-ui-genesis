@@ -1755,7 +1755,10 @@ export const IdeApp: React.FC = () => {
 
   // Read-only preview of a saved project for the Start Center. The repository
   // read parses the stored snapshot without loading it into the runtime.
-  const recentProjectsForStart = useMemo(() => savedProjects.slice(0, 6), [savedProjects]);
+  const recentProjectsForStart = useMemo(
+    () => savedProjects.filter((entry) => !entry.projectId.startsWith('backup-')).slice(0, 6),
+    [savedProjects]
+  );
   const peekCacheRef = useRef(new Map<string, ReturnType<typeof buildPeek>>());
   const peekRecentProject = useCallback((projectId: string) => {
     const entry = savedProjects.find((saved) => saved.projectId === projectId);
@@ -1889,8 +1892,21 @@ export const IdeApp: React.FC = () => {
           return;
         }
         const parsed = decodeRBProject(raw);
-        void handleSafeLoadIntoIde(parsed, {
-          sourceLabel: `file ${file.name}`,
+        // A project file carries the id it was exported with, and the runtime adopts it. If a
+        // different project is already saved under that id, autosave then writes the imported
+        // contents over it - so exporting a backup and importing it months later replaced the
+        // newer work in place, silently. An imported file becomes its own project instead.
+        const incomingProjectId = (parsed.meta?.projectId ?? '').trim();
+        const collidesWithSaved =
+          incomingProjectId.length > 0 &&
+          savedProjects.some((entry) => entry.projectId === incomingProjectId);
+        const projectToLoad = collidesWithSaved
+          ? { ...parsed, meta: { ...(parsed.meta ?? {}), projectId: '' } }
+          : parsed;
+        void handleSafeLoadIntoIde(projectToLoad, {
+          sourceLabel: collidesWithSaved
+            ? `file ${file.name} as a new project (a different project is already saved under its id)`
+            : `file ${file.name}`,
           savedProjectHash: null,
           closeLoadModal: true,
           nextMode: 'project',
@@ -1901,7 +1917,7 @@ export const IdeApp: React.FC = () => {
         setLastSavedAt(`Load failed for ${file.name}: ${reason}`);
       }
     },
-    [handleSafeLoadIntoIde, setLastSavedAt]
+    [handleSafeLoadIntoIde, savedProjects, setLastSavedAt]
   );
 
   // Migration dialog actions (Chapter G).
@@ -2100,6 +2116,9 @@ export const IdeApp: React.FC = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!projectId.trim()) return;
+    // An empty home workspace is not work, and autosaving it put a project in the student's Recent
+    // list that they never created - one on first boot and one per "Blank project" press.
+    if (isPristineProjectHome) return;
     if (projectHash === savedProjectHash && currentRunSignature === savedRunSignature) return;
 
     setIsAutosaving(true);
@@ -2137,6 +2156,7 @@ export const IdeApp: React.FC = () => {
     };
   }, [
     exportProject,
+    isPristineProjectHome,
     projectHash,
     projectId,
     projectName,

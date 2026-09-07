@@ -9,6 +9,7 @@
 //
 // No store injection. Every action is a real click or key press. Reads go through the
 // runtime only to inspect what the UI just did.
+import fs from 'node:fs';
 import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
 
 const OUT = evidenceDir('persistence');
@@ -181,6 +182,17 @@ const waitForSaveQuiet = (projectId, quietMs = 1500) => page.waitForFunction(
  * while an autosave is still pending is overwritten a moment later. `saved` is the word
  * the product shows a student before they close a tab, so the journey waits for it too.
  */
+/** The symbol count a saved record holds on disk, independent of what the workspace shows. */
+const storedSnapshotNodes = (projectId) => page.evaluate((id) => {
+  const raw = localStorage.getItem(`rb.ide.project.v1:${id}`);
+  if (!raw) return -1;
+  const snapshot = JSON.parse(raw);
+  // The record stores the portable project as a JSON string, not a nested object.
+  if (typeof snapshot.rbprojJson !== 'string') return -1;
+  const project = JSON.parse(snapshot.rbprojJson);
+  return (project.circuit?.nodes ?? []).length;
+}, projectId);
+
 const waitForWorkspaceSaved = async (projectId) => {
   await page.waitForSelector('[data-testid="ide-save-state"][data-state="saved"]', { timeout: 20000 });
   await waitForSaveQuiet(projectId);
@@ -679,6 +691,100 @@ try {
   console.log(`H4 status bar and Simulate agree on the reopened project: status "${agreement.statusRun}"` +
     (agreement.evidence ? `, evidence "${agreement.evidence}"` : ''));
 
+  // ── I. An old backup, imported, must not overwrite the newer saved project ────────────
+  // A project file carries the id it was exported with, and the runtime adopts it. Autosave
+  // then writes the imported contents under that id - so exporting a backup and importing it
+  // after more work replaced the newer project in place, with no warning and no way back.
+  // The acceptance condition is that BOTH survive: the original keeps the newer work, the
+  // imported copy keeps the older snapshot, and writing to either leaves the other alone.
+  const originalBefore = await state();
+  const originalId = originalBefore.projectId;
+  await waitForWorkspaceSaved(originalId);
+
+  // Export the backup a student would keep.
+  const [backupDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }),
+    runCommand('project.export-backup'),
+  ]);
+  const backupPath = `${OUT}/imported-backup.rbproj.json`;
+  await backupDownload.saveAs(backupPath);
+  const backupText = fs.readFileSync(backupPath, 'utf8');
+  const backupProjectId = (JSON.parse(backupText).meta ?? {}).projectId ?? null;
+  assert(backupProjectId === originalId,
+    `the exported backup carries project id ${backupProjectId}, expected the project's own ${originalId}` +
+    ' - without that collision this section proves nothing');
+  const backupNodes = originalBefore.nodes;
+
+  // Newer work on the original, saved.
+  await page.click(tid('mode-button-design'));
+  await page.waitForTimeout(700);
+  await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().addDesignNode('NOT', { x: 620, y: 260 }));
+  await page.waitForFunction(
+    (previous) => (window.__RB_PROJECT_RUNTIME__.getState().circuit?.nodes ?? []).length > previous,
+    backupNodes,
+    { timeout: 10000 }
+  );
+  await runCommand('project.save');
+  await waitForWorkspaceSaved(originalId);
+  const originalAfter = await state();
+  assert(originalAfter.nodes === backupNodes + 1,
+    `the newer work should add one symbol: ${backupNodes} -> ${originalAfter.nodes}`);
+  const storedNewer = await storedSnapshotNodes(originalId);
+  assert(storedNewer === originalAfter.nodes,
+    `the saved record holds ${storedNewer} symbols, the workspace has ${originalAfter.nodes}`);
+
+  // Import the old backup.
+  await page.click(tid('mode-button-project'));
+  await page.waitForTimeout(600);
+  await page.setInputFiles(tid('ide-project-file-input'), backupPath);
+  // Wait for the import to land by its CONTENT, not by its identity: if the identity is the
+  // thing that is wrong, waiting on it only produces a timeout that names nothing.
+  await page.waitForFunction(
+    (want) => (window.__RB_PROJECT_RUNTIME__.getState().circuit?.nodes ?? []).length === want,
+    backupNodes,
+    { timeout: 20000 }
+  );
+  await page.waitForTimeout(500);
+  const imported = await state();
+  assert(imported.projectId !== originalId,
+    `the imported backup took over the original's identity ${originalId}, so the next autosave ` +
+    `writes this older snapshot over the newer saved project - both projects cannot survive`);
+  assert(imported.nodes === backupNodes,
+    `the imported copy should hold the older snapshot of ${backupNodes} symbols, it holds ${imported.nodes}`);
+
+  // The original's saved record still holds the newer work.
+  const storedOriginalAfterImport = await storedSnapshotNodes(originalId);
+  assert(storedOriginalAfterImport === originalAfter.nodes,
+    `importing the old backup rewrote the original: its record now holds ` +
+    `${storedOriginalAfterImport} symbols, it had ${originalAfter.nodes}`);
+
+  // Writing to the imported copy must leave the original alone.
+  await page.click(tid('mode-button-design'));
+  await page.waitForTimeout(700);
+  await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().addDesignNode('NOT', { x: 680, y: 320 }));
+  await page.waitForFunction(
+    (previous) => (window.__RB_PROJECT_RUNTIME__.getState().circuit?.nodes ?? []).length > previous,
+    imported.nodes,
+    { timeout: 10000 }
+  );
+  await waitForWorkspaceSaved(imported.projectId);
+  const storedOriginalAfterEdit = await storedSnapshotNodes(originalId);
+  assert(storedOriginalAfterEdit === originalAfter.nodes,
+    `editing the imported copy changed the original's record to ${storedOriginalAfterEdit} symbols, ` +
+    `it should still hold ${originalAfter.nodes}`);
+  const storedImported = await storedSnapshotNodes(imported.projectId);
+  assert(storedImported === imported.nodes + 1,
+    `the imported copy's own record holds ${storedImported} symbols, expected ${imported.nodes + 1}`);
+
+  // Evidence provenance: the imported copy must not claim the original's runs as its own.
+  const importedEvidence = await state();
+  const borrowed = importedEvidence.ledgerProjects.filter((owner) => owner === originalId);
+  assert(borrowed.length === 0,
+    `the imported copy carries run evidence still owned by ${originalId}: ` +
+    `${JSON.stringify(importedEvidence.ledgerProjects)}`);
+  console.log(`I import: backup of ${originalId} (${backupNodes} symbols) imported as ` +
+    `${imported.projectId}; the original kept ${storedOriginalAfterEdit} symbols through both writes, ` +
+    `and the copy owns its own evidence (${JSON.stringify(importedEvidence.ledgerProjects)})`);
   await page.screenshot({ path: `${OUT}/persistence-final.png` });
   assert(pageErrors.length === 0, `page errors: ${pageErrors.join(' | ')}`);
   console.log('\nPASS — reload, Save As, Duplicate, reopen from Recent, A/B isolation,' +
