@@ -60,8 +60,57 @@ for (const viewport of VIEWPORTS) {
 
   await page.click(tid('mode-button-design'));
   await page.waitForTimeout(1500);
+
+  // The sheet survives the dock mounting.
+  //
+  // Selecting any symbol mounts the 280px contextual inspector. Measured at 1280x650 before the
+  // fix: the schematic frame went 928px -> 648px, the drawing re-centred but was not re-fitted,
+  // and node-OUTPUT-q0_out ended up 96px past the frame's right edge and 80px under the dock -
+  // 6 of 9 sampled points inside it hit it before, 0 after, and a click aimed at the LD1 output
+  // pin landed on the inspector's Delete node button.
+  const PINS = ['node-OUTPUT-q0_out', 'node-OUTPUT-q1_out', 'node-INPUT-clk_node'];
+  const sampleHits = () =>
+    page.evaluate((ids) => {
+      const frame = document.querySelector('.rb-sch-frame');
+      const out = {};
+      for (const id of ids) {
+        const n = document.querySelector(`[data-testid="${id}"]`);
+        if (!n) { out[id] = null; continue; }
+        const r = n.getBoundingClientRect();
+        let hits = 0;
+        for (const fx of [0.25, 0.5, 0.75]) {
+          for (const fy of [0.25, 0.5, 0.75]) {
+            const el = document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy);
+            if (el && (el === n || n.contains(el) || el.closest(`[data-testid="${id}"]`))) hits += 1;
+          }
+        }
+        const fr = frame?.getBoundingClientRect();
+        out[id] = {
+          hits,
+          pastFrame: fr ? Math.round(Math.max(0, r.right - fr.right, fr.left - r.left)) : 0,
+        };
+      }
+      return out;
+    }, PINS);
+
+  const idleHits = await sampleHits();
   await page.locator('[data-testid^="node-OUTPUT-"]').first().click({ force: true });
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1200);
+  const selectedHits = await sampleHits();
+  for (const id of PINS) {
+    const before = idleHits[id];
+    const after = selectedHits[id];
+    if (!before || !after) continue;
+    assert(
+      after.pastFrame === 0,
+      `[${label}] ${id} stays inside the schematic frame once the inspector mounts (${after.pastFrame}px past)`
+    );
+    assert(
+      after.hits > 0,
+      `[${label}] ${id} is still clickable once the inspector mounts (${before.hits}/9 hits before, ${after.hits}/9 after)`
+    );
+  }
+  await page.waitForTimeout(400);
 
   const report = await page.evaluate(() => {
     // The signal model and the fact rows live in the selection-details section, not in the

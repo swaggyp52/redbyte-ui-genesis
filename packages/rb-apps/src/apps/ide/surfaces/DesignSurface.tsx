@@ -2960,6 +2960,42 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   }, [editorCircuit.nodes.length]);
 
+  /**
+   * A dock mounting takes the sheet's width without moving the camera.
+   *
+   * Selecting any symbol mounts the 280px contextual inspector. Measured on the two-bit counter
+   * at 1280x650: the schematic frame goes from 928px to 648px, the drawing re-centres but is not
+   * re-fitted, and `node-OUTPUT-q0_out` ends up 96px past the frame's right edge and 80px under
+   * the dock - 6 of 9 sampled points inside it hit it before, 0 after, with clicks aimed at the
+   * LD1 output pin landing on the inspector's own Delete node button. Selecting an output is how
+   * a student reaches its board mapping, so the Design -> Board loop was broken from the Design
+   * side, and at 1280x650 the Fit control is `display: none` while the dock is open.
+   *
+   * The camera belongs to the reader, so this does not re-fit on every resize - a reader who has
+   * zoomed in has content outside the pane on purpose. It re-fits only when the pane has SHRUNK
+   * and that shrink has put the circuit outside the sheet.
+   */
+  const previousCanvasSizeRef = useRef(canvasSize);
+  useEffect(() => {
+    const previous = previousCanvasSizeRef.current;
+    previousCanvasSizeRef.current = canvasSize;
+    if (editorCircuit.nodes.length === 0) return;
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) return;
+    const shrank = canvasSize.width < previous.width - 1 || canvasSize.height < previous.height - 1;
+    if (!shrank) return;
+    const bounds = unionBounds(buildGeometryIndex(editorCircuit.nodes as Node[]).values());
+    if (!bounds) return;
+    const left = bounds.minX * camera.zoom + camera.x;
+    const right = bounds.maxX * camera.zoom + camera.x;
+    const top = bounds.minY * camera.zoom + camera.y;
+    const bottom = bounds.maxY * camera.zoom + camera.y;
+    const outside = right > canvasSize.width || left < 0 || bottom > canvasSize.height || top < 0;
+    if (!outside) return;
+    fitToCircuitRef.current();
+    // The camera is read to decide, not to trigger: panning must not re-fit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasSize.width, canvasSize.height]);
+
   useEffect(() => {
     if (!viewportSeed) return;
     if (lastViewportSeedRef.current === viewportSeed) return;
