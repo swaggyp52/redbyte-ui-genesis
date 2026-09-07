@@ -57,6 +57,15 @@ canvas fills 527px of its 717px region.
 the size of a truth table, which is the specification of a combinational circuit, and says nothing
 about a design whose output depends on the state it is in.
 
+**Signal identity.** The rail groups a lane as Inputs / Outputs / Internal by name. A normalised
+name claimed by more than one thing in the circuit resolves to nothing and cannot credit a lane to
+the boundary; only a lane carrying the boundary's own display name may do that. The two-bit
+counter is the case: its io row for the board pin is `{ id: 'q0', label: 'LD0' }` and the D
+flip-flop driving it is labelled `Q0`, so the register used to be counted as a board output
+("Outputs 4 / Internal 0" for a circuit with two pins and two registers). Owners come from
+`buildWaveformSignalAliasOwners`; `buildCanonicalWaveformSignalAliases` is the subset that resolves
+and `buildAmbiguousWaveformSignalKeys` the subset that does not.
+
 ## Simulation & Replay Studio v1 current contract (2026-07-26)
 
 This section supersedes older Observe/Compare chrome descriptions below where wording conflicts. The current student loop is:

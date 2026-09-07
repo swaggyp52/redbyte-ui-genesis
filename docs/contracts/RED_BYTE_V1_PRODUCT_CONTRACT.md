@@ -495,13 +495,34 @@ only on the inputs applied at that tick, and two of the "inputs" the count inclu
 and the reset - a schedule, not a stimulus space. On the two-bit counter it read "3 of 8" against a
 denominator that does not describe the experiment.
 
-**Recorded, not repaired:** the signal rail counts four outputs on the two-bit counter (LD0, LD1,
-Q0, Q1) where the timeline draws two. The two the timeline draws are correct: the lab's io-row ids
-are `q0`/`q1` labelled LD0/LD1, and those ARE the board outputs. The run's waveform emits four keys
-for the same two signals, the alias authority (`buildCanonicalWaveformSignalAliases`) does not
-collapse `Q0` onto `LD0`, and the io-row id `q0` normalises onto the internal register key `Q0`,
-which is what makes the rail credit an internal node to the boundary set. Drawing the two "missing"
-lanes produced two empty duplicates and was reverted. The alias authority is the defect.
+### 2026-09-07 - A name that means two things names neither
+
+**Decided.** Where a normalised signal name is claimed by more than one thing in the circuit, it
+resolves to nothing, and it cannot credit a lane to the boundary. Only a lane carrying the
+boundary's own display name may do that; everything else is internal.
+
+The two-bit counter is the case that named it. Its io row for the board pin is
+`{ id: 'q0', label: 'LD0' }`, and the D flip-flop driving that pin is an instance the student sees
+labelled `Q0`. Normalised, the io row's id and the register's label are the same string. The
+direction map is keyed by both a row's id and its label - correct until an id collides with
+something else - so the register answered to a boundary key. The rail read
+**"Outputs 4 (LD0 LD1 Q0 Q1) / Internal 0 - No internal lanes"** while the timeline, which draws
+the boundary from the io rows, drew two output lanes: two representations of one experiment
+disagreeing about how many outputs the circuit has. It now reads
+**Inputs 3 / Outputs 2 (LD0 LD1) / Internal 2 (Q0 Q1)**, which is the circuit.
+
+The alias authority already computed the ambiguity and threw it away, resolving only names with
+exactly one owner. `buildWaveformSignalAliasOwners` returns the owners;
+`buildCanonicalWaveformSignalAliases` is the subset that resolves;
+`buildAmbiguousWaveformSignalKeys` is the subset that does not.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Drawing the two "missing" lanes on the timeline | They are not missing. The extra waveform keys are the registers, not aliases of the pins - drawing them as boundary outputs produced two empty duplicates of LD0 and LD1 and was reverted. |
+| Resolving `q0` to the boundary because an io row claims it | It is equally claimed by the register. Picking one is a guess, and a guess about signal identity is how evidence stops being evidence. |
+| Renaming the lab's io rows so the ids stop colliding | It fixes one fixture and leaves the product wrong for the next circuit whose register shares a pin's id. |
 
 ## Attribution
 

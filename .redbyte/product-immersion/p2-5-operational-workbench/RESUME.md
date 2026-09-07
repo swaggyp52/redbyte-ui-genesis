@@ -54,14 +54,27 @@ Neither was caught by a test. Both were caught by opening a capture and reading 
    LD1**, because the extra waveform keys are aliases of the same two signals. Reverted, and the
    real finding recorded (below).
 
-### The LD0 / Q0 investigation, answered
+### The LD0 / Q0 investigation, answered - and then repaired
 
-The signal rail counts four outputs on the two-bit counter; the timeline draws two. **The timeline
-is right.** The lab's io-row ids are `q0`/`q1` labelled LD0/LD1 - those ARE the board outputs. The
-run's waveform emits four keys (LD0, LD1, Q0, Q1) for the same two signals;
-`buildCanonicalWaveformSignalAliases` does not collapse `Q0` onto `LD0`, and the io-row id `q0`
-normalises onto the internal register key `Q0`, which is what makes the rail credit an internal
-node to the boundary set. **The alias authority is the defect.** Not repaired this session.
+The signal rail counted four outputs on the two-bit counter; the timeline drew two. **The timeline
+was right.** The lab's io row for the board pin is `{ id: 'q0', label: 'LD0' }` and the D flip-flop
+driving it is an instance labelled `Q0`, so the io row's id and the register's label normalise to
+the same string. `mappedSignalDirectionKeys` is keyed by both a row's id and its label, so the
+register answered to a boundary key and was credited to the boundary set. The extra waveform keys
+are the registers, not aliases of the pins - which is why drawing the two "missing" lanes on the
+timeline produced two empty duplicates of LD0 and LD1 and was reverted.
+
+The alias authority already computed the ambiguity (`q0` has two owners, so it resolves to
+nothing) and threw it away. It keeps it now: `buildWaveformSignalAliasOwners` returns the owners,
+`buildCanonicalWaveformSignalAliases` is the subset that resolves,
+`buildAmbiguousWaveformSignalKeys` the subset that does not, and where a name is ambiguous only the
+boundary's own display name may credit a lane to the boundary.
+
+    before   Inputs 3 · Outputs 4 (LD0 LD1 Q0 Q1) · Internal 0 "No internal lanes."
+    after    Inputs 3 · Outputs 2 (LD0 LD1)       · Internal 2 (Q0 Q1)
+
+`verifySurface.signalIdentity` asserts both halves and is red without the fix, verified by
+disabling the branch and re-running. Commit `c35667966`.
 
 ### Failure comparison, by identity
 
@@ -80,10 +93,10 @@ and 1366x768 (it had been red on `ide-package-handoff-document` since the landin
 ### Exact continuation
 
 **Not started:** the Design inspector rebuild (`Logical directionOutput` / `LabelLD0` collisions),
-the Board mapping composition beyond the one clipping closed here, the alias-authority repair, and
-the 35 obsolete Export assertions (`ide-export-trust-banner`, `ide-export-checks-dock`,
-`ide-export-summary-card`, `ide-export-gate-clock`, `ide-export-map-row-*` and friends), which name
-owners retired before this session.
+the Board mapping composition beyond the one clipping closed here, and the 35 obsolete Export
+assertions (`ide-export-trust-banner`, `ide-export-checks-dock`, `ide-export-summary-card`,
+`ide-export-gate-clock`, `ide-export-map-row-*` and friends), which name owners retired before this
+session.
 
 **Not run this session:** `pnpm verify:gates` and the full journey sweep locally. Both golden
 Basys3 gates are untouched and CI at `bf0ead058` is green.

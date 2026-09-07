@@ -208,8 +208,12 @@ accepted.
   ids are `q0`/`q1` labelled LD0/LD1 and those ARE the board outputs, while the run's waveform emits
   four keys for the same two signals; `buildCanonicalWaveformSignalAliases` does not collapse `Q0`
   onto `LD0`, and the io-row id `q0` normalises onto the internal register key `Q0`. Adding the two
-  "missing" lanes produced two empty duplicates and was reverted. **The alias authority is the
-  defect and it is recorded, not papered over.**
+  "missing" lanes produced two empty duplicates and was reverted. **The alias authority was the
+  defect, and it is now repaired:** `buildWaveformSignalAliasOwners` keeps the ambiguity it
+  computes, and where a name is claimed by more than one thing only the boundary's own display
+  name may credit a lane to the boundary. The rail reads **Inputs 3 / Outputs 2 (LD0 LD1) /
+  Internal 2 (Q0 Q1)** now, which is the circuit, and it agrees with the timeline's two output
+  lanes. `verifySurface.signalIdentity` is red without the fix.
   **Two regressions this session caused and caught by opening captures rather than by assertions:**
   the document tab strip returning `null` when empty moved every surface into the column's first
   grid row and rendered Design into 30px (the schematic measured 1088x0); and drawing the alias
@@ -227,8 +231,8 @@ accepted.
   `runs-document` and `shell-status-authority` pass. Not run this session: `pnpm verify:gates`, the
   full journey sweep, and both golden gates (untouched locally; CI at this head is green).
   **Not delivered and stated plainly:** the Design inspector rebuild (`Logical directionOutput` /
-  `LabelLD0` collisions), the Board mapping composition beyond the one clipping, the alias-authority
-  repair above, and the 35 obsolete Export assertions, which remain named debt.
+  `LabelLD0` collisions), the Board mapping composition beyond the one clipping, and the 35
+  obsolete Export assertions, which remain named debt.
 
 - **P2.5L refine in place: data safety, Observe-first, and an honest validation baseline
   (2026-09-06, pushed):** nine commits on the same branch, `50223c14e` -> `632089057`. No new
