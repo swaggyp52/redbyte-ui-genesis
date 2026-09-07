@@ -53,10 +53,13 @@ await page.getByTestId('mode-button-design').click(); await page.waitForTimeout(
 // half_adder top level deliberately is not.)
 if (await page.getByTestId('mode-button-design').getAttribute('data-state') !== 'current')
   fail('workspace rail should mark Design as the current workspace');
-const designTab = page.locator('.wb-doctabs-list [data-doc-key][aria-selected="true"]').first();
-if (await designTab.count() === 0) fail('Design has no active document');
-const designDocKey = await designTab.getAttribute('data-doc-key');
-const designDoc = ((await designTab.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+// A lone document draws no tab - one object is not a choice - so the object this workspace is
+// standing on is read from the strip that always renders, not from a tab that deliberately does
+// not. What is asserted is unchanged: Design stands on the half_adder schematic document.
+const designStrip = page.locator('[data-testid="ide-doc-tabstrip"][data-active-doc-key]').first();
+if (await designStrip.count() === 0) fail('Design has no active document');
+const designDocKey = await designStrip.getAttribute('data-active-doc-key');
+const designDoc = ((await designStrip.getAttribute('data-active-doc-label')) ?? '').replace(/\s+/g, ' ').trim();
 if (designDocKey !== 'schematic:top' || !designDoc.includes('half_adder'))
   fail(`Design should stand on the half_adder schematic document: "${designDocKey}" / "${designDoc}"`);
 console.log(`② Design: engineering location is the schematic document "${designDoc}"`);

@@ -13928,10 +13928,14 @@ details[open].ide-export-evidence-details > summary::before {
   overflow: hidden;
 }
 
-/* A7: Console toggle handle — always reachable even when console height = 0 */
+/* A7: Console toggle handle — a comfortable target in the expanded panel. The collapsed strip
+   is 28px and owns its own height; the toggle stays reachable because the strip is its resting
+   state, not because this floor outranks it. */
+.ide-workbench-console:not(.is-collapsed) .ide-workbench-console-toggle {
+  min-height: 36px;
+}
 .ide-workbench-console-toggle {
-  flex-shrink: 0 !important;
-  min-height: 36px !important;
+  flex-shrink: 0;
   z-index: 10;
 }
 

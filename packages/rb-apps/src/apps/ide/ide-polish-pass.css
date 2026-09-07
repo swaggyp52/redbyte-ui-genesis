@@ -4287,6 +4287,28 @@
 .ide-root .ide-workbench-console.is-collapsed .ide-workbench-resize-handle--bottom {
   display: none;
 }
+/* The strip is capped at 28px but its bar was 36px, so 9px of it - and 2px of the hide
+   button, including its bottom border - was drawn past the clip on every workspace at every
+   viewport. A control painted outside the box that clips it is a control a pointer can find
+   where a reader cannot see it. The bar is the strip's height. */
+.ide-root .ide-workbench-console.is-collapsed .ide-workbench-console-bar {
+  height: 100%;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.ide-root .ide-workbench-console.is-collapsed .ide-workbench-console-toggle,
+.ide-root .ide-workbench-console.is-collapsed [data-testid='ide-console-toggle'] {
+  min-height: 22px;
+  height: 22px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.ide-root .ide-workbench-console.is-collapsed .ide-workbench-console-bar .ide-workbench-dock-collapse--bottom {
+  height: 20px;
+  min-height: 20px;
+}
 .ide-root .ide-workbench-console-bar {
   display: flex;
   align-items: center;

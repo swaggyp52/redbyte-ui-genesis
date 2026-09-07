@@ -6928,21 +6928,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         ? 'Replayed from an imported external trace. RedByte did not execute it.'
                         : 'Executed by the browser logic engine in this session.'}
                     </p>
-                    {onImportVcd && !importedWaveform ? (
-                      <label className="rb-wave-results-vcd" data-testid="ide-verify-load-external-trace">
-                        <span>Load an external trace (.vcd)</span>
-                        <input
-                          type="file"
-                          accept=".vcd"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = '';
-                            if (!file) return;
-                            void file.text().then((text) => onImportVcd(file.name, text));
-                          }}
-                        />
-                      </label>
-                    ) : null}
                   </div>
                 )}
               />
@@ -8314,22 +8299,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             }
           />
         ) : null}
-        {/* Imported evidence is replayed, never executed here, and it is a secondary path. The
-            panel used to render under every run as a permanent "Provider: Imported VCD" footer
-            even when nothing had been imported — a claim about provenance made by the layout
-            rather than by the run. It renders when there IS an imported trace; the way to bring
-            one in lives in Run details, so the capability stays reachable without competing with
-            every internal result. */}
-        {importedWaveform ? (
-          <VcdAnalyzerPanel
+        {/* Imported evidence is replayed, never executed here, and it is a secondary path - but
+            the way IN to it is not optional. The panel is self-compacting: with no imported
+            trace it is one row that names the provider and offers Load, and it grows into its
+            zones only once a trace exists. Gating the whole panel on already having a waveform
+            left no .vcd route on the surface at all. */}
+        <VcdAnalyzerPanel
             waveform={importedWaveform}
             config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
             onImportVcd={onImportVcd ?? (() => {})}
             onConfigChange={onVcdAnalyzerConfigChange ?? (() => {})}
             onClear={onClearImportedWaveform ?? (() => {})}
             isActiveProvider={activeSimProvider === 'imported-vcd'}
-          />
-        ) : null}
+        />
       </IdePanel>
     </IdeSurfaceLayout>
   );

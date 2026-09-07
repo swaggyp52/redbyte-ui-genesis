@@ -123,12 +123,20 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
   // The strip is a grid item in the document column's fixed first row: removing the element
   // moves the surface into that row. It stays, and collapses.
   const stripIsEmpty = !showHistory && !showTabs && !showTrail;
+  const activeDocument = open.find((doc) => documentKey(doc) === activeKey) ?? null;
+  const activeLabel = activeDocument
+    ? labelFor?.(activeDocument) ?? fallbackDocumentLabel(activeDocument)
+    : null;
 
   return (
     <div
       className="wb-doctabs"
       data-testid="ide-doc-tabstrip"
       data-empty={stripIsEmpty ? 'true' : undefined}
+      // The engineering object this workspace is standing on, named whether or not there is a
+      // second one to choose between.
+      data-active-doc-key={activeDocument ? activeKey : undefined}
+      data-active-doc-label={activeLabel ?? undefined}
     >
       {showHistory && history ? (
         <div className="wb-doctabs-history" role="group" aria-label="History">
