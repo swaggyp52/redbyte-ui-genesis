@@ -922,9 +922,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setNextRunUsesAssertions(totalExpectedCaseCount > 0);
   }, [lastRun, totalExpectedCaseCount]);
 
-  const canonicalWaveformSignalByRawKey = useMemo(
+  const waveformSignalAliasOwners = useMemo(
     () =>
-      buildCanonicalWaveformSignalAliases({
+      buildWaveformSignalAliasOwners({
         lastRun,
         inputFields,
         outputFields,
@@ -932,6 +932,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         circuitNodes: circuitGraph?.nodes,
       }),
     [circuitGraph?.nodes, inputFields, lastRun, mappedSignals, outputFields]
+  );
+  const canonicalWaveformSignalByRawKey = useMemo(() => {
+    const aliases = new Map<string, string>();
+    for (const [alias, owners] of waveformSignalAliasOwners) {
+      if (owners.size === 1) aliases.set(alias, Array.from(owners)[0]);
+    }
+    return aliases;
+  }, [waveformSignalAliasOwners]);
+  /** Names that mean more than one thing in this circuit. See the builder's own comment. */
+  const ambiguousWaveformSignalKeys = useMemo(
+    () => buildAmbiguousWaveformSignalKeys(waveformSignalAliasOwners),
+    [waveformSignalAliasOwners]
   );
   const runRows = useMemo(
     () =>
@@ -1388,16 +1400,48 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     visibleSignalTimelineBase,
   ]);
   const hiddenSignalSet = useMemo(() => new Set(hiddenSignals), [hiddenSignals]);
+  /**
+   * The display name each boundary field is actually known by - the same choice the alias
+   * authority makes. Only a lane carrying this name may claim the boundary through a name that
+   * more than one thing answers to.
+   */
+  const boundaryDirectionByCanonicalName = useMemo(() => {
+    const byName = new Map<string, 'in' | 'out'>();
+    for (const field of inputFields) {
+      const normalized = normalizeFieldId(field.label?.trim() || field.id);
+      if (normalized) byName.set(normalized, 'in');
+    }
+    for (const field of outputFields) {
+      const normalized = normalizeFieldId(field.label?.trim() || field.id);
+      if (normalized) byName.set(normalized, 'out');
+    }
+    return byName;
+  }, [inputFields, outputFields]);
   const laneGroupBySignal = useMemo(() => {
     const groups = new Map<string, SignalLaneGroup>();
     for (const entry of visibleSignalTimeline) {
-      const direction = mappedSignalDirectionKeys.get(normalizeFieldId(entry.signal));
+      const key = normalizeFieldId(entry.signal);
+      // `mappedSignalDirectionKeys` is keyed by both the io row's id and its label, which is
+      // right until an id collides with something else in the circuit. On the two-bit counter
+      // the io row `{ id: 'q0', label: 'LD0' }` and the flip-flop instance labelled `Q0`
+      // normalise to the same key, so the register was credited to the boundary and the rail
+      // read "Outputs 4 / Internal 0" for a circuit with two board outputs and two registers.
+      // Where the alias authority found a name ambiguous, only the boundary's own display name
+      // may claim it; everything else is what it is - internal.
+      const direction = ambiguousWaveformSignalKeys.has(key)
+        ? boundaryDirectionByCanonicalName.get(key)
+        : mappedSignalDirectionKeys.get(key);
       if (direction === 'in') groups.set(entry.signal, 'Inputs');
       else if (direction === 'out') groups.set(entry.signal, 'Outputs');
       else groups.set(entry.signal, 'Internal');
     }
     return groups;
-  }, [mappedSignalDirectionKeys, visibleSignalTimeline]);
+  }, [
+    ambiguousWaveformSignalKeys,
+    boundaryDirectionByCanonicalName,
+    mappedSignalDirectionKeys,
+    visibleSignalTimeline,
+  ]);
   const groupedVisibleSignals = useMemo<Record<SignalLaneGroup, WaveformSignalRow[]>>(() => {
     const grouped: Record<SignalLaneGroup, WaveformSignalRow[]> = {
       Inputs: [],
@@ -8509,7 +8553,17 @@ function expectedRecordToDraftState(
   }, {});
 }
 
-export function buildCanonicalWaveformSignalAliases(input: {
+/**
+ * Every normalised name this circuit uses, and everything that answers to it.
+ *
+ * A name with one owner is an alias and can be resolved. A name with two owners is a collision:
+ * on the two-bit counter the io row for the board pin is `{ id: 'q0', label: 'LD0' }` while the
+ * flip-flop instance driving it is labelled `Q0`, so the normalised key `q0` is claimed by both
+ * the boundary output LD0 and the internal register Q0. Resolving it either way would be a
+ * guess, so it is not resolved - and the fact that it could not be is worth keeping, because a
+ * consumer that classifies signals by this key needs to know not to trust it.
+ */
+export function buildWaveformSignalAliasOwners(input: {
   lastRun?: RuntimeVerifyRun;
   inputFields: VerifyVectorDraftInput[];
   outputFields: VerifyVectorDraftInput[];
@@ -8517,7 +8571,7 @@ export function buildCanonicalWaveformSignalAliases(input: {
   circuitNodes?: VerifySurfaceProps['circuitGraph'] extends { readonly nodes: infer Nodes }
     ? Nodes
     : ReadonlyArray<{ readonly id: string; readonly type: string; readonly label?: string }>;
-}): Map<string, string> {
+}): Map<string, Set<string>> {
   const ownersByAlias = new Map<string, Set<string>>();
   const registerAliases = (
     canonical: string | null | undefined,
@@ -8631,11 +8685,29 @@ export function buildCanonicalWaveformSignalAliases(input: {
     registerAliases(canonical, entry.rawKey, entry.normalizedKey, entry.matchedSignal);
   }
 
+  return ownersByAlias;
+}
+
+/** The subset that resolves: one name, one owner. */
+export function buildCanonicalWaveformSignalAliases(
+  input: Parameters<typeof buildWaveformSignalAliasOwners>[0]
+): Map<string, string> {
   const aliases = new Map<string, string>();
-  for (const [alias, owners] of ownersByAlias) {
+  for (const [alias, owners] of buildWaveformSignalAliasOwners(input)) {
     if (owners.size === 1) aliases.set(alias, Array.from(owners)[0]);
   }
   return aliases;
+}
+
+/** The subset that does not: one name, more than one thing it could mean. */
+export function buildAmbiguousWaveformSignalKeys(
+  owners: Map<string, Set<string>>
+): Set<string> {
+  const ambiguous = new Set<string>();
+  for (const [alias, claimants] of owners) {
+    if (claimants.size > 1) ambiguous.add(alias);
+  }
+  return ambiguous;
 }
 
 function isAssertedExpectedValue(value: unknown): boolean {

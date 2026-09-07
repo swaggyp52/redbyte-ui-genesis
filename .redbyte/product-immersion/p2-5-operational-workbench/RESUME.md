@@ -7,8 +7,8 @@
 ## 2026-09-07 - P2.5N One experiment, one primary working area (Opus 5, desktop session)
 
 **Label: REDBYTE INTENTIONAL WORKBENCH CANDIDATE / SIMULATE RECOMPOSED / DESIGN'S FALSE TESTBENCH
-REMOVED / PACKAGE LANDS ON ITS DOSSIER / NOT PUSHED AT TIME OF WRITING / PR #85 DRAFT / NO MERGE /
-NO PRODUCTION.**
+REMOVED / PACKAGE LANDS ON ITS DOSSIER / FEATURE BRANCH PUSHED / CI GREEN / PREVIEW SHA VERIFIED /
+PR #85 DRAFT / NO MERGE / NO PRODUCTION.**
 
 Continues P2.5M on the same branch. The assignment named the problem exactly: the first slice
 reclaimed space above the experiment, and the next step had to change the experiment itself.
@@ -19,8 +19,8 @@ reclaimed space above the experiment, and the next step had to change the experi
 |---|---|
 | Branch | `claude/redbyte-operational-workbench-convergence-w9k2r4` |
 | Session start HEAD | `4fcbeee12` (the first slice: a tab is an object, a scenario is one experiment) |
-| Commits this session | `13e5d22a5` Simulate composition · `f155fcbbe` Design's clock + the tab-strip regression · `b7c92f9b6` two clippings · `819c11d94` Package landing |
-| Remote exposes | `f35c44254` - the branch is ahead of origin and NOT pushed at time of writing |
+| Commits this session | `13e5d22a5` Simulate composition · `f155fcbbe` Design's clock + the tab-strip regression · `b7c92f9b6` two clippings · `819c11d94` Package landing · `bf0ead058` docs |
+| Remote exposes | `bf0ead058` - pushed; both CI workflows SUCCESS at that head; `/os/version.json` reports the same SHA and `/os/` serves 200 |
 | Baseline for every comparison | detached worktree `.redbyte/worktrees/base-f35c` moved to `4fcbeee12`, node_modules junctioned - not the mixed-revision debt register |
 | Typecheck | 778, +0, shape identical, at every commit |
 | Format version | 1, untouched. Goldens untouched. |
@@ -85,11 +85,13 @@ the 35 obsolete Export assertions (`ide-export-trust-banner`, `ide-export-checks
 `ide-export-summary-card`, `ide-export-gate-clock`, `ide-export-map-row-*` and friends), which name
 owners retired before this session.
 
-**Not run this session:** `pnpm verify:gates`, the full journey sweep, both golden Basys3 gates
-(untouched), CI, and the push.
+**Not run this session:** `pnpm verify:gates` and the full journey sweep locally. Both golden
+Basys3 gates are untouched and CI at `bf0ead058` is green.
 
-**Next action:** push the branch, verify the preview SHA, and update the PR #85 body to the state
-above. Then the Design inspector, then Board.
+**Done at closeout:** branch pushed, CI green, preview SHA verified, PR #85 body updated to this
+head.
+
+**Next action:** the Design inspector, then Board.
 
 **Must not be reset:** the branch is ahead of `origin` by this session's four commits plus the
 first slice. Do not reset to `f35c44254`.

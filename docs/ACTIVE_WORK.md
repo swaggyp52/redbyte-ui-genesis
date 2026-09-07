@@ -170,9 +170,14 @@ accepted.
   is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 - **P2.5N the intentional workbench: one experiment, one primary working area (2026-09-07,
-  desktop session, NOT pushed at time of writing):** five commits on the same branch,
-  `f35c44254` -> `4fcbeee12` -> `13e5d22a5` -> `f155fcbbe` -> `b7c92f9b6` -> `819c11d94`. No new
-  branch, no retarget, format version 1 untouched.
+  desktop session, pushed):** six commits on the same branch, `f35c44254` -> `4fcbeee12` ->
+  `13e5d22a5` -> `f155fcbbe` -> `b7c92f9b6` -> `819c11d94` -> `bf0ead058` (docs). No new branch,
+  no retarget, format version 1 untouched. **Pushed to
+  `claude/redbyte-operational-workbench-convergence-w9k2r4`; both CI workflows completed SUCCESS at
+  `bf0ead058` (PR Fast Checks, Deploy to Cloudflare Pages); branch preview
+  `https://claude-redbyte-operational-w.redbyte-ui-genesis.pages.dev/os/version.json` reports
+  `bf0ead058e0b02620f357860b877791091f6e35c` and `/os/` serves 200 - preview SHA verified.** PR #85
+  body updated to this head. No merge, no retarget, no production deploy.
   **Simulate was two instruments in one workspace.** The lab grid allocated a cases region, an
   inspector, a resizable splitter and a separate evidence deck; the timeline and the waveform each
   computed their own geometry, and the waveform's command bar was on screen whether or not a
@@ -220,7 +225,7 @@ accepted.
   `full-adder-operational-journey` passes end to end at both viewports again (it had been failing
   on `ide-package-handoff-document`); `project-experience`, `compare-verdict`, `package-history`,
   `runs-document` and `shell-status-authority` pass. Not run this session: `pnpm verify:gates`, the
-  full journey sweep, both golden gates (untouched), CI.
+  full journey sweep, and both golden gates (untouched locally; CI at this head is green).
   **Not delivered and stated plainly:** the Design inspector rebuild (`Logical directionOutput` /
   `LabelLD0` collisions), the Board mapping composition beyond the one clipping, the alias-authority
   repair above, and the 35 obsolete Export assertions, which remain named debt.
