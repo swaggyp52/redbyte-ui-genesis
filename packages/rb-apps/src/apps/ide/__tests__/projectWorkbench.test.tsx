@@ -149,7 +149,9 @@ describe('Project workbench — loaded project', () => {
     expect(view.getByTestId('ide-project-inspector').textContent).toContain('Default');
     expect(view.getByTestId('ide-project-inspector').textContent).toContain('combinational');
     fireEvent.doubleClick(row);
-    expect(onOpenDocument).toHaveBeenCalledWith({ kind: 'cases', scenarioId: 'scn-1' });
+    // A scenario is one experiment, not a Cases document beside a Timing one and a Waveform
+    // one: opening it opens the experiment, and how it is drawn is a choice inside it.
+    expect(onOpenDocument).toHaveBeenCalledWith({ kind: 'scenario', scenarioId: 'scn-1' });
   });
 
   it('routes a problem to its owning workspace from the overview', () => {

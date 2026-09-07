@@ -285,42 +285,38 @@
 .ide-root .rb-sim-inspector > .ide-button:last-child { margin-bottom: 8px; }
 .ide-root .rb-sim-inspector > .ide-button:disabled { opacity: 0.45; }
 
-/* Cases document: cases beside the inspector; a splitter row; the evidence deck below.
-   The deck's share is a workspace preference (--rb-sim-evidence-fr, set inline by Simulate). */
+/* One experiment, one primary working area.
+   `primary` is whichever representation the reader chose - the timeline, the case table, or
+   the recorded trace - beside the inspector. `runline` under it states what the last run did.
+   It is a sentence, not a second instrument, so it takes the height of its own content and is
+   capped so it can never take the working area's room. The resizable Cases/Evidence deck this
+   replaces is gone: two instruments competing for one workspace was the thing being fixed. */
 .ide-root .rb-sim-lab-grid {
-  --rb-sim-evidence-fr: 36%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 296px;
-  grid-template-rows: minmax(0, 1fr) auto minmax(0, var(--rb-sim-evidence-fr));
-  grid-template-areas: 'cases inspector' 'split split' 'evidence evidence';
+  grid-template-rows: minmax(0, 1fr) fit-content(34%);
+  grid-template-areas: 'cases inspector' 'evidence evidence';
   gap: 0;
 }
-/* Until the reader moves the splitter, the stimulus takes the height its content needs and
-   the timeline takes the rest. The fixed `1fr / 36%` split gave four test cases the top 55%
-   of the workspace - a quarter of a 900px window of empty table - and left the recorded
-   result a strip at the bottom. The timeline is the work; the cases are the authoring above
-   it. A dragged splitter still wins: that is the reader's own arrangement, and it is what
-   `data-deck-layout='authored'` means. */
-.ide-root .rb-sim-lab-grid[data-deck-layout='auto'] {
-  grid-template-rows: minmax(0, auto) auto minmax(0, 1fr);
+
+/* The representation switch: the head of the primary region, naming what is drawn in it. */
+.ide-root .rb-sim-representation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-height: 26px;
+  padding: 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
 }
-.ide-root .rb-sim-lab-grid[data-deck-layout='auto'] > .rb-sim-region--stimulus {
-  /* A long scenario still yields: past this the case table scrolls inside itself. */
-  max-height: 40vh;
-}
-.ide-root .rb-sim-lab-grid > .rb-sim-deck-split { grid-area: split; display: flex; align-items: center; height: 22px; min-height: 22px; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
-.ide-root .rb-sim-deck-handle { flex: 1 1 auto; align-self: stretch; position: relative; cursor: row-resize; touch-action: none; }
-.ide-root .rb-sim-deck-handle::before { content: ''; position: absolute; left: 50%; top: 50%; width: 36px; height: 3px; margin: -1px 0 0 -18px; border-radius: 2px; background: var(--wb-border-strong); }
-.ide-root .rb-sim-deck-handle:hover::before, .ide-root .rb-sim-deck-handle:focus-visible::before { background: var(--wb-focus); }
-.ide-root .rb-sim-deck-handle:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
-.ide-root .rb-sim-deck-handle[aria-disabled='true'] { cursor: default; }
-.ide-root .rb-sim-deck-tools { display: flex; align-items: center; gap: 4px; flex: none; padding: 0 var(--wb-space-2); }
-.ide-root .rb-sim-deck-tool { height: 18px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; cursor: default; }
-.ide-root .rb-sim-deck-tool:hover { color: var(--wb-text); border-color: var(--wb-border-strong); }
-.ide-root .rb-sim-deck-tool:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
-.ide-root .rb-sim-deck-tool[aria-pressed='true'] { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-active-bg); }
-.ide-root .rb-sim-deck-tool:disabled { opacity: 0.45; }
-.ide-root .rb-sim-evidence-strip { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 28px; padding: 0 var(--wb-space-3); color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); white-space: nowrap; }
+.ide-root .rb-sim-representation__label { margin-right: 2px; color: var(--wb-text-3); font: 500 var(--wb-text-xs) var(--wb-font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.ide-root .rb-sim-representation__choice { height: 19px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--wb-radius); background: transparent; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); white-space: nowrap; cursor: pointer; }
+.ide-root .rb-sim-representation__choice:hover:not(:disabled) { color: var(--wb-text); border-color: var(--wb-border); }
+.ide-root .rb-sim-representation__choice:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-sim-representation__choice.is-active { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-surface); font-weight: 500; }
+.ide-root .rb-sim-representation__choice:disabled { opacity: 0.45; cursor: default; }
+.ide-root .rb-sim-representation__note { margin-left: 2px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
 .ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-sim-lab-grid > .rb-sim-inspector { grid-area: inspector; min-height: 0; }
 /* The waveform is the evidence the failure focus points at, and it was being laid out past
@@ -330,6 +326,8 @@
    overflow escape upward instead of constraining its child, so the instrument never learned
    how much room it actually had. The region holds its height; the waveform's own scroller
    does the scrolling, inside the instrument, where the lane headers stay with the lanes. */
+/* In the scenario representation this region carries only the run line, so it takes the height
+   of that line. In the waveform representation it IS the instrument and takes the workspace. */
 .ide-root .rb-sim-lab-grid > .rb-sim-region--waveform {
   grid-area: evidence;
   display: flex;
@@ -340,7 +338,17 @@
 }
 .ide-root .rb-sim-lab-grid > .rb-sim-region--waveform > * { min-height: 0; }
 .ide-root .rb-sim-region--stimulus > .ide-case-lab { flex: 1 1 auto; min-height: 0; }
-.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; }
+/* The generators are one deliberate line, not a bordered panel occupying 50px of the timeline's
+   room while closed. An OS-era rule gave it a card's border, radius, margin and padding; a
+   closed disclosure that has nothing to show should look like the other closed disclosures. */
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; margin: 0; border: 0; border-top: 1px solid var(--wb-border); border-radius: 0; background: transparent; }
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 var(--wb-space-3); border: 0; color: var(--wb-text-2); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
+/* `display: flex` on a summary removes the browser's own marker, so this one had no
+   affordance at all and read as a stray sentence under the instrument. */
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary::before { content: '\25B8'; color: var(--wb-text-3); }
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure[open] > summary::before { content: '\25BE'; }
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary:hover { color: var(--wb-text); }
 .ide-root .rb-sig-header { display: block; height: auto; padding: 0; }
 .ide-root .rb-sig-toprow { height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); }
 .ide-root .ide-case-lab-note { display: flex; align-items: center; gap: 8px; flex: none; min-height: 24px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); color: var(--wb-text-2); font-size: var(--wb-text-sm); }
@@ -348,15 +356,58 @@
 .ide-root .ide-case-lab-note-dismiss { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font-size: var(--wb-text-xs); cursor: pointer; }
 /* Waveform tab: the evidence deck becomes the document; cases shrink to a strip. */
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr); grid-template-areas: 'evidence inspector'; }
+/* The primary instrument fills its row; the run line below it is as tall as its own content.
+   `min-height: 0` plus `overflow: hidden` - correct when this region was a resizable deck -
+   collapsed it to 1px once the row became `auto`, and the result sentence was drawn outside a
+   region with no height. The 34% cap is the promise the deck could not make: however much the
+   run line has to say, the instrument above it keeps two thirds of the workspace. The cap is
+   fit-content(34%) on the TRACK, not max-height:34% on the region: a percentage max-height on a
+   grid item resolves against the grid area that item is sizing, so it measured 34% of itself -
+   a 91px run line drawn inside a 31px box. */
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) > .rb-sim-region--waveform {
+  flex: none;
+  min-height: auto;
+  overflow: auto;
+}
+/* In the scenario representation this region carries one line, so every wrapper inside it sizes
+   to content. These are all `flex: 1 1 0` / `min-height: 0` / `overflow: hidden` - correct while
+   the region was a deck with a height of its own, and the reason the run line was drawn outside a
+   1px box once the region became as tall as its content. */
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) > .rb-sim-region--waveform .ide-verify-workbench,
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) > .rb-sim-region--waveform .ide-verify-three-panel-center,
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) > .rb-sim-region--waveform .rb-wave-frame,
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) > .rb-sim-region--waveform .rb-wave-deck {
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+}
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] > .rb-sim-region--waveform { border-top: 0; }
-.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] > .rb-sim-deck-split { display: none; }
+/* In the trace representation the waveform IS the primary working area, so it reads in the
+   same order as the other two: the switch that names it, its own tools, the instrument, then
+   the run line. The verdict summary follows the instrument rather than pushing it down - it
+   was taking 260px of a 467px region above the canvas, which is the composition this pass
+   exists to remove. Ordering, not a second DOM. */
+/* The frame and the deck were `flex: 0 1 auto`, correct while they held a stack of panels
+   and wrong once the instrument inside them is the workspace: 87px of a 717px region was
+   left below the verdict, and the trace stopped short of the box that draws it. */
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-frame,
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-deck { flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-deck > .rb-wave-stage { order: -1; flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-canvas { display: flex; flex-direction: column; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-canvas > .rb-wave-scroll { flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-canvas { order: 2; flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-runline { order: 3; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-tools-disclosure { order: 3; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-deck > .ide-verify-pass-summary-anchor { flex: none; border-top: 1px solid var(--wb-border-strong); }
 
 /* Timing Lab: events in time — a dense table plus an editor strip for the selected event. */
 .ide-root .rb-timing { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; outline: none; background: var(--wb-surface); }
 .ide-root .rb-timing:focus-visible { box-shadow: inset 0 0 0 2px var(--wb-focus); }
 .ide-root .rb-timing-bar { display: flex; align-items: center; gap: 6px; flex: none; height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-timing-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
-.ide-root .rb-timing-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+/* "7 events · 14 checks" is one fact, so it stays on one line; it was wrapping into two rows
+   inside a 30px bar at 1280px, which read as a stray word under the label. */
+.ide-root .rb-timing-count { flex: none; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
 .ide-root .rb-timing-spacer { flex: 1 1 auto; }
 .ide-root .rb-timing-danger { color: var(--wb-err); }
 .ide-root .rb-timing-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
@@ -430,8 +481,10 @@
 }
 
 /* Timing lanes — the sequential authoring instrument (ruler · clock/reset/input lanes · expected over observed). */
-.ide-root .rb-tl { flex: 1 1 auto; min-height: 0; background: var(--rb-wave-bg, var(--wb-paper)); border-bottom: 1px solid var(--wb-border); }
-.ide-root .rb-tl-scroll { overflow: auto; max-height: 100%; }
+/* The lanes are the working area: they take the region and scroll inside it, so the
+   instrument can measure what it actually has and draw to fit. */
+.ide-root .rb-tl { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--rb-wave-bg, var(--wb-paper)); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-tl-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .ide-root .rb-tl-svg { display: block; font-family: var(--wb-font-mono); }
 .ide-root .rb-tl-selected { fill: var(--wb-accent-bg); }
 .ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
@@ -457,6 +510,17 @@
 .ide-root .rb-tl-expected.is-pass line { stroke: var(--wb-ok); }
 .ide-root .rb-tl-expected.is-fail line { stroke: var(--wb-err); }
 .ide-root .rb-tl-expected-label { fill: var(--wb-text-2); font: var(--rb-text-micro) var(--wb-font-mono); }
+/* Event details are about the selected event. They used to reserve ~103px under the lanes
+   whether or not they had anything to say, which is the space the timeline needed. The strip
+   is as tall as its content and never grows into the instrument's room. */
+.ide-root .rb-timing-editor-details { flex: none; max-height: 45%; overflow: auto; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-timing-editor-details > summary { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 var(--wb-space-3); color: var(--wb-text-2); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
+.ide-root .rb-timing-editor-details > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-timing-editor-details > summary::before { content: '\25B8'; color: var(--wb-text-3); }
+.ide-root .rb-timing-editor-details[open] > summary::before { content: '\25BE'; }
+.ide-root .rb-timing-editor-details > summary:hover { color: var(--wb-text); }
+.ide-root .rb-timing-editor-hint { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-timing-editor-details > .rb-timing-editor { border-top: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details { border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details > summary { padding: 4px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); cursor: default; }
 
@@ -477,11 +541,11 @@
 .ide-root .ide-case-lab-history .is-better { color: var(--wb-ok); }
 .ide-root .ide-case-lab-history .is-worse { color: var(--wb-err); }
 
-/* Under 900px (200% zoom on a laptop display) the grid stacks in one column: the document keeps the
-   height, the splitter and evidence deck follow it, and the inspector becomes a bottom strip. This is the
-   single owner of the stacked template; the collapsed / maximized variants below restate only the rows. */
+/* Under 900px (200% zoom on a laptop display) the grid stacks in one column: the primary
+   instrument keeps the height, the run line follows it, and the inspector becomes a bottom
+   strip. This is the single owner of the stacked template. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) auto minmax(0, var(--rb-sim-evidence-fr)) minmax(0, 32%); grid-template-areas: 'cases' 'split' 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) fit-content(30%) minmax(0, 32%); grid-template-areas: 'cases' 'evidence' 'inspector'; }
   .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr) minmax(0, 140px); grid-template-areas: 'evidence' 'inspector'; }
   .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
 }
@@ -507,25 +571,18 @@
 /* Evidence deck collapsed: a one-line strip keeps the verdict and an Expand control; cases take the height.
    Every deck variant excludes replay: there the grid is the evidence document plus the inspector, with no
    cases row and no splitter, so a persisted "waveform only" or "cases only" state would zero the document. */
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] { grid-template-rows: minmax(0, 1fr) auto 28px; }
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] > .rb-sim-region--waveform { overflow: hidden; }
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] > .rb-sim-region--waveform > :not(.rb-sim-evidence-strip) { display: none; }
+/* The collapsed / maximized deck variants are gone with the deck. */
 /* One pane maximized: the other pane keeps its state but takes no height. */
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0; }
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='cases'] > .rb-sim-region--waveform { overflow: hidden; border-top: 0; }
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr); }
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='waveform'] > .rb-sim-region--stimulus { overflow: hidden; }
+
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-collapsed='true'] { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }
-  .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='cases'] { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }
-  .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-maximized='waveform'] { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }
+
 }
 /* Timing bar: the auto clock's run length is a direct control, not a buried panel. */
 .ide-root .rb-timing-run-length { display: inline-flex; align-items: center; gap: 4px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; }
 .ide-root .rb-timing-run-length input { width: 52px; height: 20px; padding: 0 4px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-timing-run-length input:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
 /* Generated lanes: what the run will use, drawn as such, not editable here. */
-.ide-root .rb-timing-generated { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px dashed var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-timing-generated { display: inline-block; flex: 0 1 auto; height: 18px; padding: 0 6px; border: 1px dashed var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); line-height: 16px; white-space: nowrap; min-width: 0; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
 .ide-root .rb-tl-cell.is-generated { cursor: default; }
 

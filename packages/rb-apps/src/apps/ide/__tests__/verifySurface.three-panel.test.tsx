@@ -70,6 +70,18 @@ afterEach(() => {
   cleanup();
 });
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The waveform is one representation of one experiment, chosen with the VIEW switch, rather
+ * than a second region drawn under the timeline. A test about the trace canvas, its lanes or
+ * its own tools asks for that representation first; what each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 describe('VerifySurface three-panel workstation', () => {
   it('uses the lower analysis drawer for failure review and keeps waveform selection in sync with mismatch rows', () => {
     const run = makeFailRun();
@@ -156,6 +168,8 @@ describe('VerifySurface three-panel workstation', () => {
         onFixPath={vi.fn()}
       />
     );
+
+    showWaveformRepresentation(view);
 
     const waveformViewports = view.getAllByTestId('ide-verify-waveform-scroll');
     waveformViewports.forEach((viewport) => {

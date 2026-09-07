@@ -86,9 +86,12 @@ describe('Verify frontend — single canonical Run button (B-13 Phase 2)', () =>
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     // Duplicate first-run panel run button must be absent
     expect(queryByTestId('ide-vfr-run')).toBeNull();
-    // Waveform placeholder must not introduce a second run CTA.
+    // The pre-run empty state must not introduce a second run CTA: it names the state and
+    // points at the one Run there is, and carries no button of its own.
     expect(queryByTestId('ide-vwp-run')).toBeNull();
-    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('populate waveform');
+    const emptyRunLine = getByTestId('ide-verify-run-line-empty');
+    expect(emptyRunLine.textContent).toContain('run this scenario to record its trace');
+    expect(emptyRunLine.querySelector('button')).toBeNull();
   });
 
   it('hides ide-verify-workbench-run after a pass run — Run stays in header', () => {

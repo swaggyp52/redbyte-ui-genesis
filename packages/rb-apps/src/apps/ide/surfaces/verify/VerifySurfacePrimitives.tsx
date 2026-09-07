@@ -143,7 +143,9 @@ const RESULT_KIND_TONE: Record<VerifyResultsKind, VerifyStateTone> = {
   error: 'attention',
 };
 
-export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps & { readonly details?: React.ReactNode }> = ({
+export const VerifyResultsSummary: React.FC<
+  VerifyResultsSummaryProps & { readonly details?: React.ReactNode }
+> = ({
   kind,
   headline,
   subline,

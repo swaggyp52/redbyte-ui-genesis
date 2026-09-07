@@ -186,6 +186,18 @@ function getWaveformOrder(container: HTMLElement): string[] {
   );
 }
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * Lane ordering is a property of the trace instrument, and the trace is one representation of
+ * one experiment now, chosen with the VIEW switch, rather than a second region under the
+ * timeline. These tests ask for it before reading its lanes; what they protect is unchanged.
+ */
+function showWaveformRepresentation(container: HTMLElement): void {
+  const toggle = container.querySelector('[data-testid="ide-verify-view-waveform"]');
+  if (toggle) fireEvent.click(toggle);
+}
+
 describe('VerifySurface waveform lane priority', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
@@ -213,6 +225,7 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
+    showWaveformRepresentation(container);
     const lanes = getWaveformOrder(container);
     expect(lanes).toContain('sw0');
     expect(lanes).toContain('sw1');
@@ -240,6 +253,7 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
+    showWaveformRepresentation(container);
     const lanes = getWaveformOrder(container);
     expect(lanes).toContain('carry');
     expect(lanes).toContain('sum');
@@ -271,6 +285,7 @@ describe('VerifySurface waveform lane priority', () => {
 
     const { container, queryByTestId, rerender } = render(<VerifySurface {...props} />);
 
+    showWaveformRepresentation(container);
     // PASS run auto-expands mapped inputs once.
     expect(getWaveformOrder(container)).toContain('sw0');
     expect(getWaveformOrder(container)).toContain('sw1');

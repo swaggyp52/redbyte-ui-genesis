@@ -60,8 +60,20 @@ function makeRun(): RuntimeVerifyRun {
   };
 }
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The waveform is one representation of one experiment, chosen with the VIEW switch, rather
+ * than a second region drawn under the timeline. A test about the trace canvas, its lanes or
+ * its own tools asks for that representation first; what each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 function renderSurface() {
-  return render(
+  const view = render(
     <VerifySurface
       hasVectors
       vectors={VECTORS}
@@ -74,6 +86,8 @@ function renderSurface() {
       lastRun={makeRun()}
     />
   );
+  showWaveformRepresentation(view);
+  return view;
 }
 
 describe('Simulate waveform depth — buses, radix, expected overlay', () => {

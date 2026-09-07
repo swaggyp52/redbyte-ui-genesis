@@ -1,11 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ProblemsPanel } from '../components/ProblemsPanel';
-import {
-  SIMULATE_EVIDENCE_FRACTION_MAX,
-  SIMULATE_EVIDENCE_FRACTION_MIN,
-  DEFAULT_SIMULATE_LAYOUT,
-  workspacePreferencesStore,
-} from '../workspacePreferences';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { TestVector } from '@redbyte/rb-utils';
 import {
@@ -667,8 +661,31 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       scenarioViewRef.current.set(activeScenarioId, studioMode);
     }
   }, [activeScenarioId, studioMode]);
+  /**
+   * Which representation of this experiment fills the primary working area.
+   *
+   * `null` means "whatever this circuit calls for" — a clocked design is read on a time
+   * axis, a combinational one in a table. A reader who says otherwise says it for this
+   * scenario, and it is remembered for as long as the scenario is open. The recorded
+   * trace is the third representation and is the same `replay` view the rest of this
+   * surface already names, so there is exactly one place that decides.
+   */
+  const [authoredRepresentation, setAuthoredRepresentation] = useState<'timeline' | 'table' | null>(null);
+  const representationRef = useRef<Map<string, 'timeline' | 'table' | null>>(new Map());
+  useEffect(() => {
+    if (!activeScenarioId) return;
+    setAuthoredRepresentation(representationRef.current.get(activeScenarioId) ?? null);
+  }, [activeScenarioId]);
+  useEffect(() => {
+    if (!activeScenarioId) return;
+    representationRef.current.set(activeScenarioId, authoredRepresentation);
+  }, [activeScenarioId, authoredRepresentation]);
   const showRecordedView = useCallback(() => {
     setStudioMode('replay');
+  }, []);
+  const showAuthoredRepresentation = useCallback((next: 'timeline' | 'table') => {
+    setAuthoredRepresentation(next);
+    setStudioMode((current) => (current === 'scenario' ? current : 'scenario'));
   }, []);
   const toggleLiveIo = useCallback(() => {
     setStudioMode((current) => (current === 'bench' ? 'scenario' : 'bench'));
@@ -683,127 +700,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [verifyTab, setVerifyTab] = useState<VerifyDrawerTab>('why');
   const [layoutMode, setLayoutMode] = useState<VerifyLayoutMode>(() => resolveVerifyLayoutMode());
 
-  // ── Cases + evidence deck composition ─────────────────────────────────────
-  // The split, collapse and maximize state is workspace presentation, owned by
-  // the workspace preferences (persisted with the docks); Simulate only reads
-  // it and asks for changes. A drag previews the fraction locally and commits
-  // once on release, so the store is written per gesture, not per pointer move.
-  const simulateLayout = useSyncExternalStore(
-    workspacePreferencesStore.subscribe,
-    workspacePreferencesStore.getSnapshot,
-    workspacePreferencesStore.getSnapshot
-  ).simulate;
-  const evidenceCollapsed = simulateLayout.evidenceCollapsed;
-  const deckMaximized = simulateLayout.maximized;
   const labGridRef = useRef<HTMLDivElement | null>(null);
-  const deckDragRef = useRef<{ pointerId: number; live: number } | null>(null);
-  const [liveEvidenceFraction, setLiveEvidenceFraction] = useState<number | null>(null);
-  const evidenceFraction = liveEvidenceFraction ?? simulateLayout.evidenceFraction;
-  const deckLayoutIsDefault =
-    simulateLayout.evidenceFraction === DEFAULT_SIMULATE_LAYOUT.evidenceFraction &&
-    !evidenceCollapsed &&
-    deckMaximized === null;
-  const clampDeckFraction = useCallback((fraction: number) => {
-    const height = labGridRef.current?.getBoundingClientRect().height ?? 0;
-    let min = SIMULATE_EVIDENCE_FRACTION_MIN;
-    let max = SIMULATE_EVIDENCE_FRACTION_MAX;
-    if (height > 0) {
-      // Neither pane drops below a usable instrument height.
-      min = Math.max(min, SIMULATE_EVIDENCE_MIN_PX / height);
-      max = Math.min(max, 1 - SIMULATE_CASES_MIN_PX / height);
-    }
-    if (min > max) {
-      min = SIMULATE_EVIDENCE_FRACTION_MIN;
-      max = SIMULATE_EVIDENCE_FRACTION_MAX;
-    }
-    return Math.min(max, Math.max(min, fraction));
-  }, []);
-  const commitDeckFraction = useCallback(
-    (fraction: number) => {
-      workspacePreferencesStore.setSimulateLayout({
-        evidenceFraction: clampDeckFraction(fraction),
-        evidenceCollapsed: false,
-        maximized: null,
-      });
-    },
-    [clampDeckFraction]
-  );
-  const resetDeckLayout = useCallback(() => {
-    workspacePreferencesStore.resetSimulateLayout();
-  }, []);
-  const beginDeckResize = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || deckMaximized !== null) return;
-      const grid = labGridRef.current;
-      if (!grid) return;
-      event.preventDefault();
-      const handle = event.currentTarget;
-      try {
-        handle.setPointerCapture(event.pointerId);
-      } catch {
-        /* pointer capture is unavailable in some test environments */
-      }
-      deckDragRef.current = { pointerId: event.pointerId, live: simulateLayout.evidenceFraction };
-      const onMove = (moveEvent: PointerEvent) => {
-        const drag = deckDragRef.current;
-        if (!drag || moveEvent.pointerId !== drag.pointerId) return;
-        const rect = grid.getBoundingClientRect();
-        if (rect.height <= 0) return;
-        drag.live = clampDeckFraction((rect.bottom - moveEvent.clientY) / rect.height);
-        setLiveEvidenceFraction(drag.live);
-      };
-      const finish = () => {
-        const drag = deckDragRef.current;
-        deckDragRef.current = null;
-        handle.removeEventListener('pointermove', onMove);
-        handle.removeEventListener('pointerup', finish);
-        handle.removeEventListener('pointercancel', finish);
-        setLiveEvidenceFraction(null);
-        if (drag) commitDeckFraction(drag.live);
-      };
-      handle.addEventListener('pointermove', onMove);
-      handle.addEventListener('pointerup', finish);
-      handle.addEventListener('pointercancel', finish);
-    },
-    [clampDeckFraction, commitDeckFraction, deckMaximized, simulateLayout.evidenceFraction]
-  );
-  const handleDeckKey = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      const step = event.shiftKey ? 0.1 : 0.02;
-      const current = simulateLayout.evidenceFraction;
-      let next: number | null = null;
-      if (event.key === 'ArrowUp') next = current + step;
-      else if (event.key === 'ArrowDown') next = current - step;
-      else if (event.key === 'Home') next = SIMULATE_EVIDENCE_FRACTION_MIN;
-      else if (event.key === 'End') next = SIMULATE_EVIDENCE_FRACTION_MAX;
-      else if (event.key === 'Enter') {
-        event.preventDefault();
-        event.stopPropagation();
-        resetDeckLayout();
-        return;
-      }
-      if (next === null) return;
-      event.preventDefault();
-      event.stopPropagation();
-      commitDeckFraction(next);
-    },
-    [commitDeckFraction, resetDeckLayout, simulateLayout.evidenceFraction]
-  );
-  const toggleDeckCollapsed = useCallback(() => {
-    workspacePreferencesStore.setSimulateLayout({ evidenceCollapsed: !evidenceCollapsed, maximized: null });
-  }, [evidenceCollapsed]);
-  const expandDeck = useCallback(() => {
-    workspacePreferencesStore.setSimulateLayout({ evidenceCollapsed: false, maximized: null });
-  }, []);
-  const toggleDeckMaximized = useCallback(
-    (pane: 'cases' | 'waveform') => {
-      workspacePreferencesStore.setSimulateLayout({
-        maximized: deckMaximized === pane ? null : pane,
-        evidenceCollapsed: false,
-      });
-    },
-    [deckMaximized]
-  );
   const [waveformDensity, setWaveformDensity] = useState<'small' | 'normal' | 'large'>('normal');
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
   const [waveformRadix, setWaveformRadix] = useState<WaveformRadix>('hex');
@@ -1329,16 +1226,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   // Coverage: unique input combinations tested vs. total possible (2^N), capped at 6 inputs
-  const inputCoverage = useMemo(() => {
-    const n = inputFields.length;
-    if (n === 0 || n > 6 || authoredVectors.length === 0) return null;
-    const seen = new Set(
-      authoredVectors.map((v) => inputFields.map((f) => (v.inputs[f.id] ?? 0)).join(''))
-    );
-    const total = 1 << n;
-    return { seen: seen.size, total, pct: Math.round((100 * seen.size) / total) };
-  }, [authoredVectors, inputFields]);
-
   const mappedSignalKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const signal of mappedSignals ?? []) {
@@ -2496,6 +2383,90 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       verifyMode === 'sequential' ||
       lastRun?.meta?.circuitKind === 'sequential' ||
       lastRun?.schedule === 'clocked_macro'
+  );
+  /**
+   * How much of this circuit's input space the authored cases cover.
+   *
+   * Enumerating input combinations means something for a combinational circuit: the truth
+   * table IS the specification and 2^n is its size, so "6 of 8" is a fact a reader can act on.
+   * It means nothing for a clocked one. A counter's output depends on the state it is in, not
+   * only on the inputs applied at that tick, so covering every input combination proves
+   * nothing about its behaviour - and two of the "inputs" it would count are the clock and the
+   * reset, which are a schedule, not a stimulus space. Applied to the two-bit counter it read
+   * "3 of 8" against a denominator that does not describe the experiment. The metric is not
+   * offered where it would not be true; the run line still states the events, the ticks and
+   * the checks, which are facts about the run either way.
+   */
+  const inputCoverage = useMemo(() => {
+    if (isSequentialRun) return null;
+    const n = inputFields.length;
+    if (n === 0 || n > 6 || authoredVectors.length === 0) return null;
+    const seen = new Set(
+      authoredVectors.map((v) => inputFields.map((f) => (v.inputs[f.id] ?? 0)).join(''))
+    );
+    const total = 1 << n;
+    return { seen: seen.size, total, pct: Math.round((100 * seen.size) / total) };
+  }, [authoredVectors, inputFields, isSequentialRun]);
+
+  /** The one answer to "what is drawn in the primary area right now". */
+  const representation: 'timeline' | 'table' | 'waveform' =
+    studioMode === 'replay'
+      ? 'waveform'
+      : (authoredRepresentation ?? (isSequentialRun ? 'timeline' : 'table'));
+  /**
+   * The representation switch. It is rendered inside whichever region is currently the
+   * primary one, never twice, because there is only ever one primary region: the stimulus
+   * region draws Timeline or Table, the trace region draws Waveform.
+   */
+  const representationSwitch = (
+    <div
+      className="rb-sim-representation"
+      role="group"
+      aria-label="How this experiment is drawn"
+      data-testid="ide-verify-representation"
+    >
+      <span className="rb-sim-representation__label">View</span>
+      <button
+        type="button"
+        className={`rb-sim-representation__choice${representation === 'timeline' ? ' is-active' : ''}`}
+        aria-pressed={representation === 'timeline'}
+        onClick={() => showAuthoredRepresentation('timeline')}
+        data-testid="ide-verify-view-timeline"
+        title="Read this experiment on a time axis: one lane per signal, events where you place them."
+      >
+        Timeline
+      </button>
+      <button
+        type="button"
+        className={`rb-sim-representation__choice${representation === 'table' ? ' is-active' : ''}`}
+        aria-pressed={representation === 'table'}
+        onClick={() => showAuthoredRepresentation('table')}
+        data-testid="ide-verify-view-table"
+        title="Read this experiment as a case table: one row per case, inputs beside expected and observed."
+      >
+        Table
+      </button>
+      <button
+        type="button"
+        className={`rb-sim-representation__choice${representation === 'waveform' ? ' is-active' : ''}`}
+        aria-pressed={representation === 'waveform'}
+        onClick={showRecordedView}
+        disabled={!lastRun}
+        data-testid="ide-verify-view-waveform"
+        title={
+          lastRun
+            ? 'Read the recorded trace: the run exactly as it happened, with cursors and measurement.'
+            : 'No run has been recorded yet. Run this scenario to read its trace.'
+        }
+      >
+        Waveform
+      </button>
+      {!lastRun ? (
+        <span className="rb-sim-representation__note" data-testid="ide-verify-representation-note">
+          no recorded run yet
+        </span>
+      ) : null}
+    </div>
   );
   const signalRoleLookup = useMemo(
     () =>
@@ -6478,11 +6449,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
-          data-evidence-collapsed={evidenceCollapsed ? 'true' : undefined}
-          data-evidence-maximized={deckMaximized ?? undefined}
-          data-evidence-fraction={Math.round(evidenceFraction * 100)}
-          data-deck-layout={deckLayoutIsDefault ? 'auto' : 'authored'}
-          style={{ '--rb-sim-evidence-fr': `${(evidenceFraction * 100).toFixed(2)}%` } as React.CSSProperties}
+          data-representation={representation}
         >
         {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
         {studioMode !== 'replay' ? (
@@ -6650,6 +6617,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
+        {studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
         {studioMode === 'bench' ? (
           <ManualBench
             onOpenVirtualBoard={onGoToHardware}
@@ -6661,7 +6629,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             source={generatedTestbenchSource}
           />
-        ) : isSequentialRun ? (
+        ) : representation === 'timeline' ? (
           <TimingLab
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             vectors={authoredVectors}
@@ -6711,9 +6679,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onGoToHardware={onGoToHardware}
           />
         )}
-        {studioMode !== 'bench' && isSequentialRun ? (
+        {studioMode !== 'bench' && representation === 'timeline' ? (
         <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-generators-disclosure">
-          <summary>Stimulus generators (sweep, hold, pulse) and the full event editor</summary>
+          <summary title="Sweep, hold and pulse generators, and the full event editor">Generators and full event editor</summary>
           <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
@@ -6770,79 +6738,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </VerifyStimulusRegion>
         ) : null}
 
-        {studioMode !== 'replay' ? (
-        <div className="rb-sim-deck-split" data-testid="ide-verify-deck-split">
-          <div
-            role="separator"
-            tabIndex={0}
-            className="rb-sim-deck-handle"
-            data-testid="ide-verify-deck-handle"
-            aria-label={`Resize the evidence deck below the ${isSequentialRun ? 'timing' : 'cases'} table`}
-            aria-orientation="horizontal"
-            aria-valuemin={Math.round(SIMULATE_EVIDENCE_FRACTION_MIN * 100)}
-            aria-valuemax={Math.round(SIMULATE_EVIDENCE_FRACTION_MAX * 100)}
-            aria-valuenow={Math.round(evidenceFraction * 100)}
-            aria-valuetext={`Evidence deck ${Math.round(evidenceFraction * 100)}% of the workspace`}
-            aria-disabled={deckMaximized !== null ? 'true' : undefined}
-            title="Drag to resize · Arrow keys ±2% · Shift ±10% · Enter resets"
-            onPointerDown={beginDeckResize}
-            onKeyDown={handleDeckKey}
-            onDoubleClick={resetDeckLayout}
-          />
-          <div className="rb-sim-deck-tools" role="group" aria-label="Evidence deck layout">
-            <button
-              type="button"
-              className="rb-sim-deck-tool"
-              data-testid="ide-verify-deck-collapse"
-              aria-pressed={evidenceCollapsed}
-              onClick={toggleDeckCollapsed}
-            >
-              {evidenceCollapsed ? 'Expand evidence' : 'Collapse evidence'}
-            </button>
-            <button
-              type="button"
-              className="rb-sim-deck-tool"
-              data-testid="ide-verify-deck-maximize-cases"
-              aria-pressed={deckMaximized === 'cases'}
-              onClick={() => toggleDeckMaximized('cases')}
-            >
-              {deckMaximized === 'cases' ? 'Restore split' : `${isSequentialRun ? 'Timing' : 'Cases'} only`}
-            </button>
-            <button
-              type="button"
-              className="rb-sim-deck-tool"
-              data-testid="ide-verify-deck-maximize-waveform"
-              aria-pressed={deckMaximized === 'waveform'}
-              onClick={() => toggleDeckMaximized('waveform')}
-            >
-              {deckMaximized === 'waveform' ? 'Restore split' : 'Evidence only'}
-            </button>
-            <button
-              type="button"
-              className="rb-sim-deck-tool"
-              data-testid="ide-verify-deck-reset"
-              onClick={resetDeckLayout}
-              disabled={deckLayoutIsDefault}
-            >
-              Reset layout
-            </button>
-          </div>
-        </div>
-        ) : null}
+        {/* The splitter, the collapse and the two maximize buttons went out with the deck they
+            divided. A workspace with one primary working area has nothing to split: the
+            representation switch chooses what fills it, and the run line under it is as tall as
+            the sentence it has to say. */}
 
         <VerifyWaveformRegion>
-          {evidenceCollapsed && studioMode !== 'replay' ? (
-            <div className="rb-sim-evidence-strip" data-testid="ide-verify-evidence-strip">
-              <span>
-                Evidence deck collapsed
-                {lastRun ? ` · ${lastRun.status === 'pass' ? 'PASS' : 'FAIL'} · ${lastRun.scenarioName}` : ' · no run yet'}
-              </span>
-              <button type="button" className="rb-sim-deck-tool" data-testid="ide-verify-evidence-expand" onClick={expandDeck}>
-                Expand
-              </button>
-            </div>
-          ) : null}
-          {isDraftSession ? (
+          {isDraftSession && studioMode === 'replay' ? (
             <VerifyWaveformPlaceholder
               inputNames={stimulusPanelInputFields.map((f) => f.label ?? f.id)}
               outputNames={outputFields.map((f) => f.label ?? f.id)}
@@ -7008,8 +6910,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </section>
             ) : null}
             <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
-              {/* One command bar: case stepping, tick range, scrubber, failures, zoom, rows, cursors, check/watch. */}
-              <div className="rb-wave-cmd" data-testid="ide-verify-waveform-cmd" role="toolbar" aria-label="Waveform">
+              {studioMode === 'replay' ? representationSwitch : null}
+              {/* The trace toolbar: case stepping, tick range, radix, the expected overlay, the
+                  scrubber and playback. Every one of them describes a drawn trace, so they belong
+                  to the representation that draws one. */}
+              {studioMode === 'replay' ? (
+              <div className="rb-wave-cmd" data-testid="ide-verify-waveform-cmd" role="toolbar" aria-label="Waveform trace tools">
               <div className="rb-wave-bar" data-testid="ide-verify-waveform-bar">
                 <div className="rb-wave-primary" data-testid="ide-verify-waveform-primary">
                 {canStepThroughCases ? (
@@ -7169,7 +7075,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
                 </div>
                 </div>
-
+              </div>
+              </div>
+              ) : null}
+              {/* The run line: what the last run did, where the cursor is, what failed, and the
+                  actions that follow from it. It is the same line in every representation. */}
+              <div className="rb-wave-runline" data-testid="ide-verify-run-line" role="group" aria-label="Last run">
+              <div className="rb-wave-bar">
+                {!lastRun ? (
+                  <span className="rb-wave-runline-empty" data-testid="ide-verify-run-line-empty">
+                    <strong>No run recorded yet</strong>
+                    <span>
+                      {totalVectorCount > 0
+                        ? `${totalVectorCount} authored ${totalVectorCount === 1 ? 'case' : 'cases'} — run this scenario to record its trace.`
+                        : 'Author stimulus above, then run this scenario to record its trace.'}
+                    </span>
+                  </span>
+                ) : null}
                 {liveReadout ? (
                   <div
                     className={`rb-wave-readout${isPlaying ? ' is-playing' : ''}${liveReadout.failures.length > 0 ? ' has-failure' : ''}`}
@@ -7317,7 +7239,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   permanent row directly under the waveform they serve, which in a failure state
                   was showing 97px of the 448px it needs. They open on request; the evidence
                   keeps the room. */}
-              {allWaveformTicks.length > 0 && (
+              {studioMode === 'replay' && allWaveformTicks.length > 0 && (
                 <details className="rb-wave-tools-disclosure" data-testid="ide-verify-waveform-tools">
                 <summary className="rb-wave-tools-summary">View and measure</summary>
                 <div className="rb-wave-tools" data-testid="ide-verify-waveform-tools-panel">
@@ -7545,6 +7467,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </IdeCallout>
               )}
 
+              {studioMode === 'replay' ? (
               <div
                 className="rb-wave-canvas"
                 data-testid="ide-verify-waveform-preview"
@@ -7674,6 +7597,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   />
                 )}
               </div>
+              ) : null}
             </section>
 
             </div>{/* /ide-verify-instrument-deck */}
@@ -9298,8 +9222,6 @@ function composeBusLanes(
 }
 
 /** Smallest usable heights for the two panes of the lab grid, in CSS pixels. */
-const SIMULATE_EVIDENCE_MIN_PX = 120;
-const SIMULATE_CASES_MIN_PX = 160;
 
 function resolveVerifyLayoutMode(width?: number, height?: number): VerifyLayoutMode {
   const nextWidth =

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../ScenarioBuilderPanel';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
 
@@ -30,10 +30,37 @@ export interface TimingLanesProps {
 }
 
 const LABEL_W = 132;
-const TICK_W = 30;
-const LANE_H = 26;
+/**
+ * The instrument sizes itself to the room it is given.
+ *
+ * These were fixed at 30px per tick and 26px per lane, so a fourteen-tick scenario drew 552px of
+ * a 1000px pane and five signals occupied 130px of a 460px region: a small diagram stranded in an
+ * empty box, which no container change can fix from the outside. The tick width now fits the
+ * scenario to the available width when it can, and falls back to a legible minimum with
+ * horizontal scrolling when the scenario is long. Lane height follows the room the same way,
+ * within bounds that keep a trace readable and stop five lanes stretching down a tall display.
+ */
+/** Longest label the 132px name column can hold beside a tag before the two overlap. */
+const LABEL_CHARS_WITH_TAG = 9;
+const LABEL_CHARS = 15;
+function fitLabel(text: string, hasTag: boolean): string {
+  const limit = hasTag ? LABEL_CHARS_WITH_TAG : LABEL_CHARS;
+  return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`;
+}
+
+const TICK_W_MIN = 22;
+const TICK_W_MAX = 64;
+const TICK_W_FALLBACK = 30;
+const LANE_H_MIN = 26;
+/* 52 left 160px of a 478px region empty with five signals on a 900px display: the instrument
+   was capped below the room it had. A trace lane taller than this stops reading as a trace. */
+const LANE_H_MAX = 80;
+const LANE_H_FALLBACK = 34;
 const RULER_H = 22;
 const GROUP_H = 18;
+
+const NAMES_ITSELF_CLOCK = /^(clk|clock)\b|\bclk\b/i;
+const NAMES_ITSELF_RESET = /^(rst|reset|nrst|clr|clear)$/i;
 
 function isResetField(field: VerifyVectorDraftInput): boolean {
   return /^(rst|reset|nrst|clr|clear)$/i.test(field.id) || /\b(reset|rst)\b/i.test(field.label);
@@ -56,6 +83,26 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   onCycleExpected,
   spareTicks = 4,
 }) => {
+  // The available box, observed rather than assumed. Until it is known the instrument draws at
+  // its fallback size, which is what the previous fixed geometry produced.
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [box, setBox] = useState<{ width: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const element = boxRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect) return;
+      setBox((current) =>
+        current && Math.abs(current.width - rect.width) < 1 && Math.abs(current.height - rect.height) < 1
+          ? current
+          : { width: rect.width, height: rect.height }
+      );
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   const ordered = useMemo(() => [...vectors].sort((a, b) => a.tick - b.tick), [vectors]);
   const lastTick = ordered.length ? ordered[ordered.length - 1].tick : 0;
   const observedTicks = Object.keys(observedValuesByTick ?? {}).map(Number);
@@ -117,8 +164,30 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   }, [lanes, ordered, maxTick, clockFieldIds, generatedClocks.length]);
   const sortedEdges = useMemo(() => Array.from(risingEdges).sort((left, right) => left - right), [risingEdges]);
 
-  const width = LABEL_W + ticks.length * TICK_W;
   const stimulusLaneCount = generatedClocks.length + lanes.length;
+  const laneCount = stimulusLaneCount + outputFields.length;
+
+  // Fit the scenario across the pane when it fits at a legible tick; otherwise draw at the
+  // minimum and let the time axis scroll. Never wider than TICK_W_MAX: a three-tick scenario
+  // stretched across an ultrawide display is not more readable, only larger.
+  const TICK_W = useMemo(() => {
+    if (!box || box.width <= 0 || ticks.length === 0) return TICK_W_FALLBACK;
+    const perTick = (box.width - LABEL_W) / ticks.length;
+    if (!Number.isFinite(perTick) || perTick <= 0) return TICK_W_FALLBACK;
+    return Math.round(Math.min(TICK_W_MAX, Math.max(TICK_W_MIN, perTick)));
+  }, [box, ticks.length]);
+
+  // Lane height follows the height actually available, so five boundary signals are comfortable
+  // on a short laptop instead of 26px each in a half-empty region.
+  const LANE_H = useMemo(() => {
+    if (!box || box.height <= 0 || laneCount === 0) return LANE_H_FALLBACK;
+    const chrome = RULER_H + GROUP_H * 2 + 4;
+    const perLane = (box.height - chrome) / laneCount;
+    if (!Number.isFinite(perLane) || perLane <= 0) return LANE_H_FALLBACK;
+    return Math.round(Math.min(LANE_H_MAX, Math.max(LANE_H_MIN, perLane)));
+  }, [box, laneCount]);
+
+  const width = LABEL_W + ticks.length * TICK_W;
   const height = RULER_H + GROUP_H + stimulusLaneCount * LANE_H + GROUP_H + outputFields.length * LANE_H + 4;
   const inputsTop = RULER_H + GROUP_H;
   const outputsTop = inputsTop + stimulusLaneCount * LANE_H + GROUP_H;
@@ -177,7 +246,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
         }
       }}
     >
-      <div className="rb-tl-scroll">
+      <div className="rb-tl-scroll" ref={boxRef}>
         <svg className="rb-tl-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="presentation">
           {/* selected tick column */}
           {selectedTick != null && selectedTick <= maxTick ? (
@@ -224,8 +293,9 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
             return (
               <g key={clockId} className="rb-tl-lane rb-tl-lane--input is-clock is-generated" data-testid={`ide-timing-lane-${clockId}`}>
                 <line className="rb-tl-lane-rule" x1={0} x2={width} y1={top + LANE_H} y2={top + LANE_H} />
-                <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>{clockId.toUpperCase()}</text>
-                <text className="rb-tl-tag" x={LABEL_W - 8} y={top + LANE_H / 2 + 4} textAnchor="end">clk · 1 edge/tick</text>
+                <title>{`${clockId.toUpperCase()} — generated by the clock policy: one active edge per tick`}</title>
+                <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>{fitLabel(clockId.toUpperCase(), true)}</text>
+                <text className="rb-tl-tag" x={LABEL_W - 8} y={top + LANE_H / 2 + 4} textAnchor="end">1 edge/tick</text>
                 <path className="rb-tl-trace" d={d} />
               </g>
             );
@@ -246,11 +316,22 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
               >
                 {isGenerated && generatedNote ? <title>{generatedNote}</title> : null}
                 <line className="rb-tl-lane-rule" x1={0} x2={width} y1={top + LANE_H} y2={top + LANE_H} />
+                <title>{field.label}</title>
                 <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>
-                  {field.label}
+                  {fitLabel(
+                    field.label,
+                    (isClock && !NAMES_ITSELF_CLOCK.test(field.label)) ||
+                      (isReset && !NAMES_ITSELF_RESET.test(field.label))
+                  )}
                 </text>
-                {isClock ? <text className="rb-tl-tag" x={LABEL_W - 8} y={top + LANE_H / 2 + 4} textAnchor="end">clk</text> : null}
-                {isReset ? <text className="rb-tl-tag" x={LABEL_W - 8} y={top + LANE_H / 2 + 4} textAnchor="end">rst</text> : null}
+                {/* The tag says what the lane is when its name does not already say it. A lane
+                    called RST tagged "rst" is the same word twice in 132px. */}
+                {isClock && !NAMES_ITSELF_CLOCK.test(field.label) ? (
+                  <text className="rb-tl-tag" x={LABEL_W - 8} y={top + LANE_H / 2 + 4} textAnchor="end">clk</text>
+                ) : null}
+                {isReset && !NAMES_ITSELF_RESET.test(field.label) ? (
+                  <text className="rb-tl-tag" x={LABEL_W - 8} y={top + LANE_H / 2 + 4} textAnchor="end">rst</text>
+                ) : null}
                 <path className="rb-tl-trace" d={tracePath((tick) => laneValueAt(tick), top)} />
                 {ticks.map((tick) => {
                   const value = laneValueAt(tick);
@@ -287,8 +368,9 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
             return (
               <g key={field.id} className="rb-tl-lane rb-tl-lane--output" data-testid={`ide-timing-lane-${field.id}`}>
                 <line className="rb-tl-lane-rule" x1={0} x2={width} y1={top + LANE_H} y2={top + LANE_H} />
+                <title>{field.label}</title>
                 <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>
-                  {field.label}
+                  {fitLabel(field.label, false)}
                 </text>
                 <path className="rb-tl-trace rb-tl-trace--observed" d={observedTrace} />
                 {ticks.map((tick) => {

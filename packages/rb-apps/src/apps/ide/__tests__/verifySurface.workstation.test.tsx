@@ -340,6 +340,24 @@ function openRunInspector(view: { getByTestId: (id: string) => HTMLElement }): v
   if (toggle.getAttribute('aria-expanded') === 'true') return;
   fireEvent.click(toggle);
 }
+/**
+ * Show the recorded run as a waveform.
+ *
+ * The trace instrument is one representation of the open scenario, not a second region under
+ * the timeline, and the tools that describe a drawn trace - case stepping, the tick range, the
+ * radix, the expected overlay, the scrubber and playback - belong to it. A test about the
+ * scrubber, the trace toolbar or the waveform's lanes therefore asks for that representation
+ * first. What each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+/** Read the same experiment as a case table. */
+function showTableRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-table');
+  if (toggle) fireEvent.click(toggle);
+}
 describe('VerifySurface workstation controls', () => {
   // Simulate persists the reader's view state - drawer, cursor, zoom, density - in
   // sessionStorage, and a run no longer normalises any of it (a run records evidence; it does
@@ -951,7 +969,7 @@ describe('VerifySurface workstation controls', () => {
 
   it('uses waveform ticks as the active readout authority when compare rows are empty', () => {
     const waveformOnlyRun = makeWaveformOnlyRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -966,6 +984,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-run-state').textContent).toContain('2 signals · 3 ticks · COMPLETE');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
     fireEvent.click(getByTestId('ide-verify-signal-sw0'));
@@ -994,7 +1013,7 @@ describe('VerifySurface workstation controls', () => {
 
   it('treats the Stimulus case selector as the same selected tick used by Verify readouts', () => {
     const waveformOnlyRun = makeWaveformOnlyRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1010,31 +1029,39 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
+    // One experiment, one cursor. The case table and the recorded trace are two ways of
+    // reading it, so selecting a case in one is the selected tick in the other - which is
+    // asserted here by crossing between them rather than by having both on screen at once.
     expect(getByTestId('ide-case-lab-row-0').getAttribute('aria-selected')).toBe('true');
+    showWaveformRepresentation({ queryByTestId });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
+    showTableRepresentation({ queryByTestId });
 
     fireEvent.click(getByTestId('ide-case-lab-row-2'));
 
     expect(getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
     fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
     fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
+    showWaveformRepresentation({ queryByTestId });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+    showTableRepresentation({ queryByTestId });
 
     fireEvent.click(getByTestId('ide-case-lab-row-1'));
 
     expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
     fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
     fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
+    showWaveformRepresentation({ queryByTestId });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
   });
 
   it('reflects waveform scrubber selection back into the Stimulus case selector', () => {
     const waveformOnlyRun = makeWaveformOnlyRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1050,16 +1077,19 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    expect(getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
+    // Scrubbing the trace moved the experiment's cursor, not the trace's own: the case table
+    // opens on the case that tick belongs to.
+    showTableRepresentation({ queryByTestId });
     expect(getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
   });
 
   it('uses case-index scrubber positions while keeping sparse sequential tick labels explicit', () => {
     const sparseSequentialRun = makeSparseSequentialRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="seq123"
         hasVectors={true}
@@ -1079,6 +1109,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
     const scrubber = getByTestId('ide-verify-tick-scrubber') as HTMLInputElement;
     expect(scrubber.min).toBe('0');
     expect(scrubber.max).toBe('2');
@@ -1869,7 +1900,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('groups step and transport controls in one primary row while keeping fail/meta navigation separate', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1887,11 +1918,15 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
+
     const waveformBar = getByTestId('ide-verify-waveform-bar');
     const primaryRow = getByTestId('ide-verify-waveform-primary');
     const stepControls = getByTestId('ide-verify-step-controls');
     const transport = getByTestId('ide-verify-waveform-transport');
     const failNav = getByTestId('ide-verify-fail-nav');
+    const runLine = getByTestId('ide-verify-run-line');
+    const traceTools = getByTestId('ide-verify-waveform-cmd');
 
     expect(primaryRow.parentElement).toBe(waveformBar);
     expect(stepControls.parentElement).toBe(primaryRow);
@@ -1899,7 +1934,12 @@ describe('VerifySurface workstation controls', () => {
     expect(stepControls.contains(getByTestId('ide-verify-step-mode-toggle'))).toBe(true);
     expect(transport.contains(getByTestId('ide-verify-zoom-all'))).toBe(true);
     expect(transport.contains(getByTestId('ide-verify-tick-scrubber'))).toBe(true);
-    expect(failNav.parentElement).toBe(waveformBar);
+    // Fail navigation is not a trace tool: it is what the run did, so it lives in the run
+    // line, which every representation renders, and not in the trace toolbar, which only the
+    // trace representation renders.
+    expect(traceTools.contains(primaryRow)).toBe(true);
+    expect(traceTools.contains(failNav)).toBe(false);
+    expect(runLine.contains(failNav)).toBe(true);
     expect(primaryRow.contains(failNav)).toBe(false);
   });
 
@@ -2409,6 +2449,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByText } = view;
 
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    showWaveformRepresentation(view);
     expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-sw0')).toBeTruthy();
     expect(view.container.querySelectorAll('[data-testid="ide-verify-waveform-row-ld0"]')).toHaveLength(1);
@@ -2464,6 +2505,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByText } = view;
 
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    showWaveformRepresentation(view);
     expect(getByTestId('ide-verify-waveform-row-ld0_node_in')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });

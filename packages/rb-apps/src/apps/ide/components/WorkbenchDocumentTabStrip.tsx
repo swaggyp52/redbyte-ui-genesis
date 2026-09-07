@@ -117,10 +117,14 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
   const showTrail = Boolean(trail && trail.length > 1);
   // One object is not a choice. Two are.
   const showTabs = open.length > 1;
+  // Back and forward describe places this session has been. Before it has been anywhere they
+  // are two disabled arrows on an otherwise empty strip, which is chrome describing itself.
+  const showHistory = Boolean(history && (history.canBack || history.canForward));
+  if (!showHistory && !showTabs && !showTrail && !menu) return null;
 
   return (
     <div className="wb-doctabs" data-testid="ide-doc-tabstrip">
-      {history ? (
+      {showHistory && history ? (
         <div className="wb-doctabs-history" role="group" aria-label="History">
           <button
             type="button"

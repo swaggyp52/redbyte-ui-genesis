@@ -93,7 +93,11 @@ describe('TimingLab', () => {
         generatedNote="Auto board clock: the reset sequence is generated at run time."
       />
     );
-    expect(view.getByTestId('ide-timing-generated').textContent).toContain('generated at run time');
+    // The bar states the fact in the room it has; the sentence is the tooltip. The note used to
+    // be written into a fixed-width strip and was cut mid-word at 1440px.
+    const generatedNote = view.getByTestId('ide-timing-generated');
+    expect(generatedNote.textContent).toContain('clock + reset generated');
+    expect(generatedNote.getAttribute('title')).toContain('generated at run time');
     const lane = view.getByTestId('ide-timing-lane-rst');
     expect(lane.getAttribute('data-generated')).toBe('true');
     const cell = view.getByTestId('ide-timing-cell-rst-1');

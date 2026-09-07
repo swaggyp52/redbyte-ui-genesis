@@ -86,8 +86,9 @@ describe('VerifySurface workspace layout', () => {
     expect(labGrid).toHaveAttribute('data-workspace-mode', 'stimulus-focus');
     expect(labGrid.contains(getByTestId('ide-verify-region-stimulus'))).toBe(true);
     expect(labGrid.contains(getByTestId('ide-verify-region-waveform'))).toBe(true);
-    expect(getByTestId('ide-verify-waveform-placeholder')).toBeTruthy();
-    expect(getByTestId('ide-verify-waveform-placeholder-ready')).toBeTruthy();
+    // Before a run the second region is the run line, and it says so rather than standing in
+    // for a trace instrument that is not the primary working area here.
+    expect(getByTestId('ide-verify-run-line-empty').textContent).toContain('No run recorded yet');
   });
 
   it('keeps the header and result regions outside the workspace container', () => {

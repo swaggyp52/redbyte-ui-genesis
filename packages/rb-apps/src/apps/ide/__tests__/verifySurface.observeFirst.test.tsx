@@ -12,6 +12,18 @@ if (!HTMLElement.prototype.scrollIntoView) {
   });
 }
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The scrubber and the tick readout are tools of the trace representation: they describe a
+ * drawn waveform, so they are drawn with it. The cursor they move is the experiment's, which
+ * is what these tests are about, so they ask for that representation before touching them.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 function makeTraceRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'trace-scenario',
@@ -300,7 +312,7 @@ describe('VerifySurface observe-first model', () => {
     const onGoToDesignWithInputs = vi.fn();
     const onDebugTickSelected = vi.fn();
     const onSignalSelected = vi.fn();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...BASE_PROPS}
         lastRun={makeWaveformOnlyRun()}
@@ -312,6 +324,7 @@ describe('VerifySurface observe-first model', () => {
     );
 
     fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    showWaveformRepresentation({ queryByTestId });
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
 
@@ -357,7 +370,7 @@ describe('VerifySurface observe-first model', () => {
     const onGoToDesign = vi.fn();
     const onGoToDesignWithInputs = vi.fn();
     const onDebugTickSelected = vi.fn();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...BASE_PROPS}
         lastRun={makeWaveformOnlyRun()}
@@ -370,6 +383,8 @@ describe('VerifySurface observe-first model', () => {
 
     fireEvent.click(getByTestId('ide-case-lab-row-1'));
     expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
+    // Selecting a case moved the experiment's cursor, so the trace opens on the same tick.
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
 
     fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
@@ -393,6 +408,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
+    showWaveformRepresentation(view);
     await waitFor(() => {
       expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
     });
