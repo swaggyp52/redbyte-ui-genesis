@@ -1969,7 +1969,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 onSelectArtifact={setSelectedArtifactPath}
                 onOpenDocument={onOpenDocument}
                 onSelect={(ref) => publishSelection(ref, 'handoff')}
-                onOpenProblems={() => workspacePreferencesStore.setDock('export', 'bottom', { visible: true })}
+                // `{ visible: true }` alone is a no-op - the panel is already visible as its
+                // 28px collapsed strip - so the button did nothing. Opening it means expanding it.
+                onOpenProblems={() =>
+                  workspacePreferencesStore.setDock('export', 'bottom', { visible: true, expanded: true })
+                }
               />
             ) : (
             <div className="rb-pkg-file-workspace" data-testid="ide-export-package-files">

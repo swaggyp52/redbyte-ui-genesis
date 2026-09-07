@@ -124,7 +124,15 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
     }
     return map;
   }, [viewModel.pinTable]);
-  const visibleDiagnostics = diagnostics ?? [...viewModel.errors, ...viewModel.warnings];
+  const allDiagnostics = diagnostics ?? [...viewModel.errors, ...viewModel.warnings];
+  /**
+   * Evidence advisories (RBEV…) are statements about what has and has not been run. They are
+   * built here and never entered into the shared Problems ledger, so counting them made this
+   * header read "0 errors · 4 warnings" while the status bar 262px away read "3 problems", both
+   * on screen at once. The count is the ledger's count; the advisory is said as an advisory.
+   */
+  const evidenceNotes = allDiagnostics.filter((entry) => (entry.code ?? '').startsWith('RBEV'));
+  const visibleDiagnostics = allDiagnostics.filter((entry) => !(entry.code ?? '').startsWith('RBEV'));
   const errorCount = visibleDiagnostics.filter((entry) => entry.severity === 'error').length;
   const warningCount = visibleDiagnostics.length - errorCount;
   // Constraint facts come from the generated artifact itself, never from arithmetic.
@@ -442,6 +450,20 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
             </p>
           </div>
         </section>
+
+        {evidenceNotes.length > 0 ? (
+          <section className="rb-doc-section" aria-label="Evidence" data-testid="ide-package-handoff-evidence-notes">
+            <header className="rb-doc-section-header"><span>Evidence</span></header>
+            <ul className="rb-problem-list">
+              {evidenceNotes.map((entry, index) => (
+                <li key={`${entry.code ?? 'evidence'}-${index}`} className="wb-panel-line" data-tone="note">
+                  <span aria-hidden="true">·</span>
+                  <span>{entry.title ?? entry.message}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {visibleDiagnostics.length > 0 ? (
           <section className="rb-doc-section" aria-label="Warnings" data-testid="ide-package-handoff-warnings">

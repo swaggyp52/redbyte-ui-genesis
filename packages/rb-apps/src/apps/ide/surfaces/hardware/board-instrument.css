@@ -49,7 +49,7 @@
    345px it needs. It was not truncated, it was gone. The row wraps rather than crushing the
    only sentence on the surface that says what to do. */
 .ide-root .rb-board-section-header { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
-.ide-root .rb-board-section-header > div { display: flex; align-items: baseline; gap: 8px; flex: 1 1 240px; min-width: 0; }
+.ide-root .rb-board-section-header > div { display: flex; align-items: baseline; gap: 8px; flex: 1 1 345px; min-width: 0; }
 .ide-root .rb-board-section-header > .rb-board-camera-bar { flex: none; margin-left: auto; }
 .ide-root .rb-board-section-header .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
