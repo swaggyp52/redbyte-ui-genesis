@@ -260,6 +260,59 @@ async function run(width, height) {
     `gets its own Overview rather than the catalogue, ` +
     `says the sheet is empty, and the ${stillSaved.length} saved record(s) survive`);
 
+  // ── ⑩ Evidence goes stale, and the Overview says so in words ────────────────────────────
+  // One authority, projected. Simulate, the status bar and this line all read the same run scope,
+  // so the check is that the Overview reports what happened - not that something turned orange.
+  if (width === 1440) {
+    // Put the blank project away and pick the saved one back up.
+    await runCommand('project.close');
+    await page.waitForSelector(tid('ide-project-landing'), { timeout: 10000 });
+    await page.getByTestId('ide-project-start-section-recent').click();
+    await page.waitForSelector(tid('ide-project-recent-panel'), { timeout: 10000 });
+    await page.getByTestId(`ide-project-recent-${saved.projectId}`).click();
+    await page.waitForTimeout(400);
+    await page.getByTestId(`ide-project-recent-open-${saved.projectId}`).click();
+    await page.waitForTimeout(2400);
+
+    await page.getByTestId('mode-button-verify').click();
+    await page.waitForTimeout(1200);
+    await page.getByTestId('ide-vcb-run').click();
+    await page.waitForTimeout(2600);
+
+    const simulationFact = () => page.evaluate(() => {
+      const row = document.querySelector('[data-testid="ide-project-fact-simulation"]');
+      if (!row) return { value: '<missing>', tone: null };
+      return { value: row.querySelector('dd')?.textContent.trim() ?? '', tone: row.getAttribute('data-tone') };
+    });
+    await page.getByTestId('mode-button-project').click();
+    await page.waitForSelector(tid('ide-project-overview-document'), { timeout: 8000 });
+    const afterRun = await simulationFact();
+    assert(!/not run/i.test(afterRun.value),
+      `after a run the Overview still says "${afterRun.value}"`);
+    assert(!/stale/i.test(afterRun.value),
+      `a run made moments ago is not stale, but the Overview says "${afterRun.value}"`);
+
+    // Now change the design under it.
+    await page.getByTestId('mode-button-design').click();
+    await page.waitForTimeout(1100);
+    await page.locator('[data-node-id]').first().click({ force: true });
+    await page.waitForTimeout(400);
+    await page.keyboard.press('Delete');
+    await page.waitForTimeout(1400);
+    await page.getByTestId('mode-button-project').click();
+    await page.waitForSelector(tid('ide-project-overview-document'), { timeout: 8000 });
+    const afterEdit = await simulationFact();
+    assert(/stale/i.test(afterEdit.value),
+      `the design changed under a recorded run and the Overview says "${afterEdit.value}" ` +
+      `(tone ${afterEdit.tone}) - the word is what a reader can act on, not the colour`);
+    const statusRun = await page.evaluate(() =>
+      document.querySelector('[data-testid="ide-status-run"]')?.textContent.trim() ?? '');
+    assert(/stale/i.test(statusRun),
+      `the status bar and the Overview disagree about the evidence: "${statusRun}" vs "${afterEdit.value}"`);
+    console.log(`${at} ⑩ evidence: "${afterRun.value}" -> edit -> "${afterEdit.value}" (tone ${afterEdit.tone}), ` +
+      `and the status bar agrees ("${statusRun}")`);
+  }
+
   await page.screenshot({ path: `${OUT}/overview-blank-${width}x${height}.png` });
   assert(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
