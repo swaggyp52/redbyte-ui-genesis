@@ -68,6 +68,12 @@ export interface ProjectSurfaceProps {
   determinismHash: string;
   topModuleName: string;
   lastSavedAt: string;
+  /** False only for the untouched launcher placeholder. A deliberate blank project is open. */
+  projectIsOpen?: boolean;
+  /** The workspace this project was last worked in, so Overview can offer it back. */
+  lastWorkspace?: IdeMode | null;
+  /** Opens the shared Problems ledger in the bottom panel. */
+  onOpenProblems?: () => void;
   readiness: {
     hasCircuit: boolean;
     hasIoMapping: boolean;
@@ -158,6 +164,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   determinismHash,
   topModuleName,
   lastSavedAt,
+  projectIsOpen,
+  lastWorkspace = null,
+  onOpenProblems,
   readiness,
   health,
   workflowAuthority,
@@ -356,12 +365,39 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [activeExample, activeScenarioId, boardLabel, circuit, determinismHash, fpgaPart, health, hierarchy, importFidelity, mappedRequiredRows.length, outline, packageState, problems.length, projectKind, projectName, readiness.hasCircuit, requiredRows.length, savedLabel, scenarios, simulation, sortedMappingRows, sourceModel]
   );
 
+  // Opening Overview must not make Overview the place to return to, so `lastWorkspace` only ever
+  // carries a working surface. With nothing recorded yet, Design is where a circuit is made.
+  const continuation = useMemo(() => {
+    if (!readiness.hasCircuit) {
+      return {
+        label: 'Start building in Design',
+        hint: 'This project has no circuit yet.',
+        onActivate: () => navigateMode('design'),
+      };
+    }
+    switch (lastWorkspace) {
+      case 'verify':
+        return { label: 'Resume simulation', hint: 'Where you were last working.', onActivate: () => navigateMode('verify') };
+      case 'hardware':
+        return { label: 'Continue in Board & Constraints', hint: 'Where you were last working.', onActivate: () => navigateMode('hardware') };
+      case 'export':
+        return { label: 'Continue in Build & Export', hint: 'Where you were last working.', onActivate: () => navigateMode('export') };
+      default:
+        return {
+          label: 'Continue in Design',
+          hint: lastWorkspace === 'design' ? 'Where you were last working.' : undefined,
+          onActivate: () => navigateMode('design'),
+        };
+    }
+  }, [lastWorkspace, navigateMode, readiness.hasCircuit]);
+
   const handleStartBlankProject = useCallback(() => {
     (onStartBlankProject ?? (() => navigateMode('design')))();
   }, [navigateMode, onStartBlankProject]);
 
   // ── Start center (no project open) ────────────────────────────────────────
-  if (!readiness.hasCircuit) {
+  const showStart = projectIsOpen === undefined ? !readiness.hasCircuit : !projectIsOpen;
+  if (showStart) {
     return (
       <IdeSurfaceLayout
         mode="project"
@@ -483,6 +519,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             onSelect={(ref) => select(ref, 'project-overview')}
             onOpenDocument={openDocument}
             onNavigateMode={navigateMode}
+            continuation={continuation}
+            onOpenProblems={onOpenProblems}
+            sourceSummary={{
+              fileCount: sourceModel?.files?.length ?? 0,
+              moduleCount: hierarchy?.modules?.length ?? 0,
+            }}
           />
         );
     }
@@ -520,7 +562,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       layoutIntent="workbench"
       leftDockMode="visible"
       rightDockMode={inspectorHasContent ? 'visible' : 'hidden'}
-      consoleMode={problems.length > 0 ? 'collapsed' : 'hidden'}
+      // Always present, never conditional: a panel that exists only while a project happens to
+      // have problems takes its own strip away with it, and leaves the status bar's problems count
+      // as a button that does nothing. An empty panel says there is nothing, which is an answer.
+      consoleMode="collapsed"
       console={<ProblemsPanel origin="bottom-panel" />}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"

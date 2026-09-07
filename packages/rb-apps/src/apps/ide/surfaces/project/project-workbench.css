@@ -82,6 +82,146 @@
 .ide-root .rb-fact dd .wb-link { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
 .ide-root .rb-fact dd .wb-link:hover { text-decoration-color: currentColor; }
 
+/* ── Overview: one object, one action, and the state that would change a plan ─────────
+   The reading order is recognise -> resume -> understand -> inspect. That is a composition
+   decision, not a styling one: the circuit gets the room, one primary action sits with the
+   project's name, three status lines sit beside the drawing, and everything the project knows
+   about itself is a disclosure below. Twelve equal facts in a strip over two equal panes read
+   as a specification sheet - correct in every particular, no help in deciding what to do. */
+.ide-root .rb-project-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  flex: none;
+}
+.ide-root .rb-project-saved {
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .rb-project-saved[data-tone='warn'] { color: var(--wb-warn-text, var(--wb-text-2)); }
+.ide-root .rb-project-continue { flex: none; }
+
+.ide-root .rb-project-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 30%);
+  align-items: stretch;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.ide-root .rb-project-canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--wb-border);
+}
+/* The drawing takes the room it is given rather than the room its viewBox wants. */
+/* The drawing takes the room it is given rather than the room its viewBox wants: the figure
+   grows, but the svg inside it was sized by its own aspect ratio and sat against the top edge,
+   which is how a 200px-tall circuit ended up in the corner of a 610px pane. Filling the box
+   lets `xMidYMid meet` do what it is for and centre the circuit in the space it has. */
+.ide-root .rb-project-canvas .rb-arch {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  margin: 0;
+  padding: var(--wb-space-3);
+  overflow: auto;
+}
+/* Full width, natural height: this counter's drawing is about 5.7:1, so a pane that claimed
+   every remaining pixel put a 160px circuit in the middle of 610px of nothing. The region is
+   as tall as its drawing needs, capped so a deep hierarchy scrolls instead of pushing the
+   project's state off the screen. */
+.ide-root .rb-project-canvas .rb-arch svg { width: 100%; height: auto; max-height: 52vh; }
+.ide-root .rb-project-canvas-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--wb-space-2);
+  min-height: 8rem;
+  padding: var(--wb-space-4);
+  color: var(--wb-text-2);
+}
+.ide-root .rb-project-canvas-empty p { margin: 0; font: var(--wb-text-md) / 1.45 var(--wb-font-ui); }
+.ide-root .rb-project-canvas-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  flex: none;
+  min-height: var(--wb-toolbar-h);
+  padding: 0 var(--wb-space-3);
+  border-top: 1px solid var(--wb-border);
+}
+
+.ide-root .rb-project-context {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ide-root .rb-project-status { display: block; margin: 0; padding: 0; flex: none; }
+.ide-root .rb-project-status-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-project-status-row dt {
+  flex: none;
+  min-width: 5.5rem;
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+.ide-root .rb-project-status-row dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--wb-text);
+  font: var(--wb-text-md) / 1.35 var(--wb-font-ui);
+}
+.ide-root .rb-project-status-row[data-tone='ok'] dd { color: var(--wb-ok-text, var(--wb-text)); }
+.ide-root .rb-project-status-row[data-tone='warn'] dd { color: var(--wb-warn-text, var(--wb-text)); }
+.ide-root .rb-project-status-row[data-tone='error'] dd { color: var(--wb-error-text, var(--wb-text)); }
+.ide-root .rb-project-attention {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-3);
+}
+.ide-root .rb-project-attention-lead {
+  margin: 0;
+  color: var(--wb-text-2);
+  font: var(--wb-text-md) / 1.45 var(--wb-font-ui);
+}
+.ide-root .rb-project-attention-lead[data-tone='error'] { color: var(--wb-error-text, var(--wb-text)); }
+.ide-root .rb-project-attention-lead[data-tone='warn'] { color: var(--wb-warn-text, var(--wb-text)); }
+.ide-root .rb-project-attention-actions { display: flex; align-items: center; gap: var(--wb-space-2); }
+
+/* The disclosures below the stage: named, closed, and not competing with the work. */
+.ide-root .rb-project-overview > details.rb-doc-section { flex: none; }
+.ide-root .rb-project-overview > details.rb-doc-section > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: var(--wb-toolbar-h);
+  padding: 0 var(--wb-space-3);
+  border-top: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-sm) var(--wb-font-ui);
+  cursor: pointer;
+}
+.ide-root .rb-project-overview > details.rb-doc-section > summary:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-project-overview > details[open] > summary { border-bottom: 1px solid var(--wb-border); }
+
+/* A short window keeps the reading order by stacking, never by shrinking the drawing away. */
+@media (max-height: 700px) {
+  .ide-root .rb-project-canvas-empty { min-height: 6rem; }
+}
+
 /* ── Overview body: architecture dominant, I/O table beside it ────────────── */
 
 /* Measured at 1366x768: the architecture figure's box was 668x411 for a drawing whose
@@ -159,11 +299,17 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-workspace { background: var(--wb-bg); }
 .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-dock { display: block; padding: 0; background: var(--wb-surface); box-shadow: none; }
-.ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-dock-collapse { display: none; }
+/* Project presents its side docks without their floating collapse corners. That is about the
+   left and right docks; the bottom panel's own hide control lives in the console bar and is
+   the only way to put the panel away from the pointer, so it must not be caught here. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-dock-collapse:not(.ide-workbench-dock-collapse--bottom) { display: none; }
 .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 248px), 360px); --ide-workbench-right-width: clamp(240px, var(--rb-workbench-pref-right-width, 288px), 400px); }
 
 @media (max-width: 1280px) {
   .ide-root .rb-project-overview-body { grid-template-columns: minmax(0, 1fr); }
+  /* Narrow: the state moves under the drawing rather than squeezing both into columns. */
+  .ide-root .rb-project-stage { grid-template-columns: minmax(0, 1fr); }
+  .ide-root .rb-project-canvas { border-right: 0; border-bottom: 1px solid var(--wb-border); }
   .ide-root .rb-project-overview-arch { border-right: 0; border-bottom: 1px solid var(--wb-border); }
   .ide-root .rb-source-doc-body { grid-template-columns: minmax(0, 1fr); }
   .ide-root .rb-source-doc-links { border-left: 0; border-top: 1px solid var(--wb-border); max-height: 220px; }

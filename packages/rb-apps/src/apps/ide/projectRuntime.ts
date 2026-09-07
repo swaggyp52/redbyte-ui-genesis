@@ -553,6 +553,8 @@ export interface ProjectRuntimeState {
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
   replaceWithBlankProject: () => void;
+  /** Close: back to the launcher placeholder, which is not the same as a blank project. */
+  closeToProjectHome: () => void;
   setLastSavedAt: (label: string) => void;
   resetToActiveExample: () => void;
   clearUnsavedState: (label?: string) => void;
@@ -2361,6 +2363,21 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             projectKind: 'blank',
             projectName: 'Untitled Project',
             lastSavedAt: 'Started fresh blank project',
+          })
+        );
+      },
+      /**
+       * Return the workspace to the launcher placeholder: nothing is open. This is what closing a
+       * project leaves behind, and it is deliberately NOT a blank project - a blank project is
+       * something a person made and is still theirs, while this is the state before anyone has
+       * chosen what to work on. Start reads the difference; so does the autosave guard.
+       */
+      closeToProjectHome: () => {
+        set(() =>
+          createEmptyProjectState({
+            projectKind: 'home',
+            projectName: 'Untitled Project',
+            lastSavedAt: 'No project open',
           })
         );
       },

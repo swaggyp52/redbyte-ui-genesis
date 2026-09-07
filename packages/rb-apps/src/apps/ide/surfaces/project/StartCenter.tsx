@@ -140,6 +140,11 @@ export const StartCenter: React.FC<StartCenterProps> = ({
   fpgaPart = 'xc7a35tcpg236-1',
 }) => {
   const [section, setSection] = useState<StartSection>(recentProjects.length > 0 ? 'recent' : 'labs');
+  const readerChoseSection = useRef(false);
+  useEffect(() => {
+    if (readerChoseSection.current) return;
+    setSection(recentProjects.length > 0 ? 'recent' : 'labs');
+  }, [recentProjects.length]);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -233,8 +238,9 @@ export const StartCenter: React.FC<StartCenterProps> = ({
               type="button"
               className={`rb-start-nav-item${section === key ? ' is-active' : ''}`}
               aria-current={section === key ? 'true' : undefined}
-              data-product-priority={key === 'labs' ? 'primary' : undefined}
+              data-product-priority={key === (recentProjects.length > 0 ? 'recent' : 'labs') ? 'primary' : undefined}
               onClick={() => {
+                readerChoseSection.current = true;
                 setSection(key);
                 setQuery('');
               }}
@@ -548,8 +554,6 @@ const Preview: React.FC<{
       {item.kind === 'lab' ? (
         <div className="rb-start-brief">
           <div><h3>Build</h3><p>{item.lab.build}</p></div>
-          <div><h3>Submit</h3><p>{item.lab.submit}</p></div>
-          <div><h3>Proof scope</h3><p>{formatGannonPilotProofScope(item.lab.proofScope)}</p></div>
           {item.example ? <div><h3>Provided</h3><p>{item.example.summary}</p></div> : null}
           {item.example?.goals?.length ? (
             <div>
@@ -557,7 +561,12 @@ const Preview: React.FC<{
               <ol>{item.example.goals.map((goal) => <li key={goal}>{goal}</li>)}</ol>
             </div>
           ) : null}
-          {item.example ? <div><h3>Expected behavior</h3><p>{item.example.expectedBehavior}</p></div> : null}
+          <details className="rb-start-brief-more" data-testid="ide-project-start-lab-brief">
+            <summary>Full lab brief</summary>
+            <div><h3>Submit</h3><p>{item.lab.submit}</p></div>
+            <div><h3>Proof scope</h3><p>{formatGannonPilotProofScope(item.lab.proofScope)}</p></div>
+            {item.example ? <div><h3>Expected behavior</h3><p>{item.example.expectedBehavior}</p></div> : null}
+          </details>
         </div>
       ) : item.kind === 'guided' ? (
         <div className="rb-start-brief">
@@ -575,8 +584,11 @@ const Preview: React.FC<{
               <ol>{item.example.goals.map((goal) => <li key={goal}>{goal}</li>)}</ol>
             </div>
           ) : null}
-          <div><h3>Expected behavior</h3><p>{item.example.expectedBehavior}</p></div>
-          {item.example.learningPath?.openProof ? <div><h3>Open proof</h3><p>{item.example.learningPath.openProof}</p></div> : null}
+          <details className="rb-start-brief-more" data-testid="ide-project-start-lab-brief">
+            <summary>Full brief</summary>
+            <div><h3>Expected behavior</h3><p>{item.example.expectedBehavior}</p></div>
+            {item.example.learningPath?.openProof ? <div><h3>Open proof</h3><p>{item.example.learningPath.openProof}</p></div> : null}
+          </details>
         </div>
       ) : null}
 

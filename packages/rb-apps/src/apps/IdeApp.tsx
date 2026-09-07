@@ -522,6 +522,7 @@ export const IdeApp: React.FC = () => {
   const setActiveLabTaskId = useProjectRuntime((state) => state.setActiveLabTaskId);
   const startBlankProject = useProjectRuntime((state) => state.startBlankProject);
   const replaceWithBlankProject = useProjectRuntime((state) => state.replaceWithBlankProject);
+  const closeToProjectHome = useProjectRuntime((state) => state.closeToProjectHome);
   const setLastSavedAt = useProjectRuntime((state) => state.setLastSavedAt);
   const resetToActiveExample = useProjectRuntime((state) => state.resetToActiveExample);
   const customComponents = useProjectRuntime((state) => state.customComponents);
@@ -1515,6 +1516,12 @@ export const IdeApp: React.FC = () => {
     if (repositoryState.saveState === 'saving') return 'saving';
     return projectHash === savedProjectHash ? 'saved' : 'unsaved';
   }, [isAutosaving, projectHash, repositoryState.saveState, savedProjectHash]);
+  const [lastWorkspace, setLastWorkspace] = useState<IdeMode | null>(null);
+  useEffect(() => {
+    if (activeMode === 'project' || activeMode === 'import') return;
+    setLastWorkspace(activeMode);
+  }, [activeMode]);
+
   const isPristineProjectHome = useMemo(
     () =>
       projectKind === 'home' &&
@@ -1533,6 +1540,10 @@ export const IdeApp: React.FC = () => {
     ]
   );
   const hasUnsavedWork = !isPristineProjectHome && projectHash !== savedProjectHash;
+  const isPristineProjectHomeRef = useRef(isPristineProjectHome);
+  useEffect(() => {
+    isPristineProjectHomeRef.current = isPristineProjectHome;
+  }, [isPristineProjectHome]);
 
   const handleOpenExample = useCallback(
     (exampleId: string) => {
@@ -2508,7 +2519,7 @@ export const IdeApp: React.FC = () => {
     const closedName = projectName;
     // Never blank work that is not stored. A failed save has already said why.
     if (!isPristineProjectHome && !handleSaveProject()) return;
-    replaceWithBlankProject();
+    closeToProjectHome();
     setProjectHdlSources([]);
     if (projectKind === 'import') {
       clearImportRecoveryUrlState();
@@ -2523,11 +2534,11 @@ export const IdeApp: React.FC = () => {
         : `Closed "${closedName}". It is in Recent, with its work.`
     );
   }, [
+    closeToProjectHome,
     handleSaveProject,
     isPristineProjectHome,
     projectKind,
     projectName,
-    replaceWithBlankProject,
     setCurrentMode,
     setLastSavedAt,
   ]);
@@ -3126,7 +3137,9 @@ export const IdeApp: React.FC = () => {
   // Force-save on tab/window close
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (projectIdRef.current && exportProjectRef.current) {
+      // Closing the tab saves the work. An untouched launcher placeholder is not work: without
+      // this, every reload of an empty RedByte wrote another 'Untitled Project' into Recent.
+      if (projectIdRef.current && exportProjectRef.current && !isPristineProjectHomeRef.current) {
         projectRepository.save({
           projectId: projectIdRef.current,
           projectName: projectNameRef.current,
@@ -3242,6 +3255,11 @@ export const IdeApp: React.FC = () => {
         {activeMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project workspace encountered an error">
             <ProjectSurface
+              projectIsOpen={!isPristineProjectHome}
+              lastWorkspace={lastWorkspace}
+              onOpenProblems={() =>
+                workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true, expanded: true })
+              }
               projectName={projectName}
               description={projectDescription}
               determinismHash={determinismHash}
@@ -3599,7 +3617,9 @@ export const IdeApp: React.FC = () => {
       <WorkbenchStatusBar
         problemsCount={problemCounts.error + problemCounts.warning}
         noteCount={problemCounts.info}
-        onShowProblems={() => workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true })}
+        onShowProblems={() =>
+          workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true, expanded: true })
+        }
         runState={statusRunState}
       />
 
