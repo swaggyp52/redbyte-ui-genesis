@@ -92,11 +92,17 @@
 .ide-root .rb-pkg-preview { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-pkg-preview > header,
 .ide-root .rb-pkg-preview > div > header { display: flex; align-items: center; gap: 8px; flex: none; min-height: var(--wb-toolbar-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
-.ide-root .rb-pkg-preview header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+/* The file name and its note give way; the two actions do not. Without this the header shrank
+   the buttons instead of the text and "Download file" was cut off at 1280px - an inline-flex
+   group clips, it does not ellipsise, so there was nothing to say it had been cut. */
+.ide-root .rb-pkg-preview header > div { display: flex; align-items: baseline; gap: 8px; flex: 1 1 auto; min-width: 0; }
 .ide-root .rb-pkg-preview header > div > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-preview header strong { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); }
 .ide-root .rb-pkg-preview header p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ide-root .rb-pkg-preview-actions { display: inline-flex; gap: 4px; margin-left: auto; }
+.ide-root .rb-pkg-preview-actions,
+/* Same element, higher specificity than the `header > div` rule above it: without this the
+   actions were flex: 1 1 auto and shrank instead of the file name. */
+.ide-root .rb-pkg-preview header > div.rb-pkg-preview-actions { display: inline-flex; gap: 4px; flex: none; margin-left: auto; }
 .ide-root .rb-pkg-preview pre { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px 0; overflow: auto; background: var(--wb-code-bg, #0f151e); color: var(--wb-code-text, #e6ecf5); font: var(--wb-text-sm) / 18px var(--wb-font-mono); }
 .ide-root .rb-pkg-code-line { display: grid; grid-template-columns: 48px minmax(0, 1fr); }
 .ide-root .rb-pkg-line-number { padding-right: 12px; color: var(--wb-code-gutter, #6b7a90); text-align: right; user-select: none; }

@@ -43,8 +43,14 @@
 .ide-root .rb-board-assignments { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--wb-border-strong); }
 .ide-root .rb-board-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-board-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; border-left: 1px solid var(--wb-border-strong); }
-.ide-root .rb-board-section-header { display: flex; align-items: baseline; gap: 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
-.ide-root .rb-board-section-header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+/* Measured at 1280x650: the board column is 384px, the header held a Layers menu, the board
+   name with its instruction, and a five-button camera bar, and the instruction - "Select a
+   logical signal, then choose its physical board resource here" - was allocated 0px of the
+   345px it needs. It was not truncated, it was gone. The row wraps rather than crushing the
+   only sentence on the surface that says what to do. */
+.ide-root .rb-board-section-header { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-board-section-header > div { display: flex; align-items: baseline; gap: 8px; flex: 1 1 240px; min-width: 0; }
+.ide-root .rb-board-section-header > .rb-board-camera-bar { flex: none; margin-left: auto; }
 .ide-root .rb-board-section-header .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-board-section-header .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

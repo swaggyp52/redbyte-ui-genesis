@@ -3569,7 +3569,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </details>
                   <div>
                     <p className="ide-surface-block-label">Basys3</p>
-                    <p className="ide-copy ide-copy--flush" data-testid="ide-hw-board-task-copy">
+                    <p
+                      className="ide-copy ide-copy--flush"
+                      data-testid="ide-hw-board-task-copy"
+                      title={selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
+                    >
                     {selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
                     </p>
                   </div>
