@@ -152,6 +152,59 @@ async function run(width, height) {
   }
   console.log(`[${width}×${height}] ⑧ per-surface panel preference: Project expanded, Design ${designState}, both restored on return`);
 
+  // And a change in what there is to report does not decide the panel for the reader. The count is
+  // the panel's content, not its state: four problems or none, the panel is the one the reader left
+  // it in. (Blocking diagnostics still force it into view - a different thing, and one that does not
+  // write the preference.) The step fails if the count does not actually move, because an invariant
+  // asserted over an unchanged value is not an assertion.
+  const storedBottom = () => page.evaluate(() => {
+    try {
+      const raw = localStorage.getItem('rb.ide.workspace.preferences.v2');
+      if (!raw) return 'absent';
+      const dock = JSON.parse(raw)?.surfaces?.project?.docks?.bottom;
+      return dock
+        ? `${dock.visible ? 'visible' : 'hidden'}/${dock.expanded ? 'expanded' : 'collapsed'}`
+        : 'unset';
+    } catch { return '<unreadable>'; }
+  });
+  const problemCount = () => page.evaluate(() => {
+    const el = document.querySelector('[data-testid="ide-status-problems"]');
+    const digits = el ? (el.textContent.match(/\d+/) ?? [])[0] : null;
+    return digits ? Number(digits) : 0;
+  });
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(600);
+  const beforeCount = await problemCount();
+  const beforePref = await storedBottom();
+
+  // Give the ledger something to report: remove a symbol and leave its wires dangling.
+  await page.getByTestId('mode-button-design').click();
+  await page.waitForTimeout(1000);
+  await page.locator('[data-node-id]').first().click({ force: true });
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(1200);
+
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(900);
+  const afterCount = await problemCount();
+  const afterPref = await storedBottom();
+  if (afterCount === beforeCount) {
+    fail(`the ledger did not move (${beforeCount}), so this step proved nothing about the panel`);
+  }
+  if (afterPref !== beforePref) {
+    fail(`the problem count decided the panel for the reader: ${beforePref} -> ${afterPref} ` +
+      `while the count went ${beforeCount} -> ${afterCount}`);
+  }
+  console.log(`[${width}×${height}] ⑧b the ledger went ${beforeCount} -> ${afterCount} problems and the stored ` +
+    `panel preference stayed ${afterPref}`);
+
+  // Put the design back so the rest of the journey reads the project it was given.
+  await page.getByTestId('mode-button-design').click();
+  await page.waitForTimeout(700);
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(1000);
+
   // ⑨ The splitter is operable from the keyboard, and a layout reset recovers the panel.
   await page.getByTestId('mode-button-project').click();
   await page.waitForTimeout(600);
