@@ -3,6 +3,7 @@ import {
   documentKey,
   documentMode,
   fallbackDocumentLabel,
+  isWorkspaceRoot,
   type WorkbenchDocument,
 } from '../workbenchDocuments';
 
@@ -46,19 +47,25 @@ const KIND_ICON: Record<WorkbenchDocument['kind'], React.ReactNode> = {
   'source-file': <svg viewBox="0 0 12 12" {...stroke}><path d="M3 1.5h4l2.5 2.5v6.5h-6.5z" /><path d="M7 1.5V4h2.5" /></svg>,
   'compile-order': <svg viewBox="0 0 12 12" {...stroke}><path d="M3 2.5h7M3 6h7M3 9.5h7" /><path d="M1.5 2.5h.01M1.5 6h.01M1.5 9.5h.01" strokeWidth="2" /></svg>,
   schematic: <svg viewBox="0 0 12 12" {...stroke}><path d="M3.5 2.5h2.5a3.5 3.5 0 0 1 0 7H3.5z" /><path d="M1 4.5h2.5M1 7.5h2.5M9.5 6H11" /></svg>,
-  cases: <svg viewBox="0 0 12 12" {...stroke}><rect x="1.5" y="2" width="9" height="8" rx="0.5" /><path d="M1.5 5h9M1.5 7.5h9M5 2v8" /></svg>,
-  timing: <svg viewBox="0 0 12 12" {...stroke}><path d="M1 9h2V3h2v6h2V3h2v6h2" /></svg>,
-  waveform: <svg viewBox="0 0 12 12" {...stroke}><path d="M1 8h1.5V4h2v4h2V4h2v4H11" /><path d="M1 2.5h10" strokeDasharray="1 1.5" /></svg>,
+  scenario: <svg viewBox="0 0 12 12" {...stroke}><path d="M1 9h2V3h2v6h2V3h2v6h2" /></svg>,
   'board-io': <svg viewBox="0 0 12 12" {...stroke}><rect x="3.5" y="3.5" width="5" height="5" rx="0.5" /><path d="M5 3.5V1.5M7 3.5V1.5M5 10.5V8.5M7 10.5V8.5M3.5 5H1.5M3.5 7H1.5M10.5 5H8.5M10.5 7H8.5" /></svg>,
   handoff: <svg viewBox="0 0 12 12" {...stroke}><path d="M2 1.5h5.5l2.5 2.5v6.5h-8z" /><path d="M7.5 1.5V4H10M4 6.5h4M4 8.5h4" /></svg>,
-  'package-artifact': <svg viewBox="0 0 12 12" {...stroke}><path d="M1.5 4.5h9v5.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5z" /><path d="M1.5 4.5l1-2h7l1 2M5 7h2" /></svg>,
+  package: <svg viewBox="0 0 12 12" {...stroke}><path d="M1.5 4.5h9v5.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5z" /><path d="M1.5 4.5l1-2h7l1 2M5 7h2" /></svg>,
+  'package-artifact': <svg viewBox="0 0 12 12" {...stroke}><path d="M3 1.5h4l2.5 2.5v6.5h-6.5z" /><path d="M7 1.5V4h2.5" /></svg>,
 };
 
 /**
- * The workbench's single document tab row. Tabs are typed references into
- * canonical authorities — activating one activates its workspace. Compact:
- * kind tag + label + state mark + close. Back / Forward live at the left edge
- * because they navigate the same engineering locations the tabs represent.
+ * The current workspace's object row.
+ *
+ * A tab is another object inside this workspace — a second module in Design,
+ * another scenario in Simulate, a file or the report in Package. It is not a
+ * record of everywhere you have been: the strip used to be global, so visiting
+ * the five workspaces left six tabs and one experiment occupied two of them.
+ *
+ * With nothing open beyond the workspace's own root there is nothing to switch
+ * between, so no tabs are drawn. Back / Forward and the module trail stay:
+ * they navigate engineering locations, which is a different question from
+ * which objects are open here.
  */
 export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps> = ({
   open,
@@ -108,6 +115,8 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
   };
 
   const showTrail = Boolean(trail && trail.length > 1);
+  // One object is not a choice. Two are.
+  const showTabs = open.length > 1;
 
   return (
     <div className="wb-doctabs" data-testid="ide-doc-tabstrip">
@@ -137,13 +146,16 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
           </button>
         </div>
       ) : null}
+      {showTabs ? (
       <div ref={listRef} className="wb-doctabs-list" role="tablist" aria-label="Open documents">
         {open.map((doc, index) => {
           const key = documentKey(doc);
           const isActive = key === activeKey;
           const label = labelFor?.(doc) ?? fallbackDocumentLabel(doc);
           const mark = markFor?.(doc) ?? null;
-          const closable = doc.kind !== 'project-overview';
+          // A workspace's root view is the workspace. Closing it would mean closing the
+          // workspace, which the rail owns.
+          const closable = !isWorkspaceRoot(doc);
           return (
             <span
               key={key}
@@ -193,6 +205,7 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
           );
         })}
       </div>
+      ) : null}
       {menu ? (
         <div
           className="wb-menu wb-doctab-menu"
@@ -202,7 +215,7 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
           onMouseDown={(event) => event.stopPropagation()}
           data-testid="ide-doc-tab-menu"
         >
-          {open.some((doc) => documentKey(doc) === menu.key && doc.kind !== 'project-overview') ? (
+          {open.some((doc) => documentKey(doc) === menu.key && !isWorkspaceRoot(doc)) ? (
             <button type="button" role="menuitem" className="wb-menu-item" onClick={() => { onClose(menu.key); setMenu(null); }} data-testid="ide-doc-menu-close">
               Close
             </button>

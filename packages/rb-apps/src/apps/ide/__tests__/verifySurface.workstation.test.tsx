@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface, updateExpectedCellInVectorSets } from '../surfaces/VerifySurface';
@@ -334,7 +334,20 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
   };
 }
 
+/** Open the run inspector whatever it was left in; these tests care about its contents. */
+function openRunInspector(view: { getByTestId: (id: string) => HTMLElement }): void {
+  const toggle = view.getByTestId('ide-verify-drawer-toggle');
+  if (toggle.getAttribute('aria-expanded') === 'true') return;
+  fireEvent.click(toggle);
+}
 describe('VerifySurface workstation controls', () => {
+  // Simulate persists the reader's view state - drawer, cursor, zoom, density - in
+  // sessionStorage, and a run no longer normalises any of it (a run records evidence; it does
+  // not rearrange the workspace). Without clearing it, one case's open inspector is the next
+  // case's starting state and a 'click the toggle' step closes the drawer instead of opening it.
+  beforeEach(() => {
+    try { window.sessionStorage.clear(); } catch { /* jsdom without storage */ }
+  });
   afterEach(() => { cleanup(); });
 
   it('surfaces a direct repair path when Compare fails on a saved expected value', () => {
@@ -859,7 +872,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-workbench-toggle')).toBeNull();
     expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
     expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
@@ -1386,7 +1399,7 @@ describe('VerifySurface workstation controls', () => {
     expect(view.queryByTestId('ide-verify-repair-use-observed-all')).toBeNull();
     expect(view.queryByTestId('ide-vcb-save-expected')).toBeNull();
 
-    fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector(view);
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(view.queryByTestId('ide-verify-right-accept-observed')).toBeNull();
     expect(view.queryByTestId('ide-verify-right-capture-row')).toBeNull();
@@ -1609,7 +1622,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
     expect(getByTestId('ide-case-lab-bar')).toBeTruthy();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
 
     fireEvent.click(getByTestId('ide-verify-right-accept-observed'));
@@ -1844,7 +1857,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-results-summary-metric-failed').textContent).toContain('Checks failed0');
     expect(getByTestId('ide-verify-results-summary-metric-ticks').textContent).toContain('Run ticks2');
     expect(getByTestId('ide-verify-results-summary-metric-wave-samples').textContent).toContain('Wave samples2');
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
     expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
@@ -1932,7 +1945,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-tick-explainer')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
@@ -2519,7 +2532,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRACE TABLE (TICK LOG)');
     expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();

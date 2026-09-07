@@ -289,6 +289,89 @@ A V1 product slice is done only when:
 - The slice is committed and pushed when requested.
 - GitHub required checks are inspected from live GitHub evidence.
 
+## Approved target: the intentional workbench (2026-09-07)
+
+> **This section is the approved target, not a description of what has shipped.** Where it
+> disagrees with current code, tests, screenshots or DOM structure, this section wins and those
+> are the things that change. Code and focused tests remain the authority on what the product
+> *currently does*; they are not a veto on what it *should* do.
+
+### The navigation model
+
+RedByte is **one project** seen through five task workspaces: Project, Design, Simulate, Board,
+Package. They are not wizard steps and they do not each get a copy of the project.
+
+- **The left rail owns workspace navigation.** Visiting a workspace must not add a tab anywhere.
+- **A tab is another object inside the workspace that owns it** — a second module or source in
+  Design, another scenario in Simulate, a file preview or the report in Package. Project and Board
+  have no root tab. A workspace's own default view is the workspace, not a closable tab.
+- **A scenario is one workbench.** `Default — Cases`, `Default — Timing` and `Default — Waveform`
+  were three documents for one experiment; they become one **scenario document** whose table /
+  timing / waveform presentation is view state belonging to that scenario.
+- **Opening a tab focuses an existing object.** Creating or duplicating a scenario, module or
+  project is an explicit operation. **Closing a view never deletes** the scenario, source, run or
+  project behind it.
+- Persisted navigation carries descriptors and view preferences only. Existing `cases`, `timing`
+  and `waveform` descriptors migrate to their scenario's workbench rather than disappearing.
+
+### Run, playback, and what a result means
+
+- **A scenario is authored stimulus. A run is an immutable recording of executing it.** A run is
+  bound to its scenario, its design/source revision and its engine; it is never rewritten.
+- **Run and Play are different operations.** Run executes; Play walks recorded data. Playback
+  speed changes presentation speed — never a clock frequency and never simulated circuit time.
+- **A run must never start, navigate, or open anything on its own.** Finishing a run does not
+  create a document, does not expand a panel, and does not begin playback.
+- **Observation is a complete task.** One primary Run works on a scenario with no expected
+  outputs. Result language names what happened: "Run complete — no checks configured",
+  "14 checks passed", "1 check failed", "Results are from an earlier version". A failed assertion
+  and a failed execution are different conditions and are named differently.
+- **A percentage without a defined denominator is not a result.** Coverage belongs in run details
+  when its measure is defined, never in the headline.
+- **Editing preserves history.** Changing stimulus or design leaves the previous run intact and
+  marks the comparison stale. Editing an expected value never rewrites an observed one.
+- **Unrecorded is not zero.** Missing sample, unknown, unsupported and logic zero are four
+  different drawings.
+
+### What each workspace opens on
+
+| Workspace | Opens on | Tabs |
+|---|---|---|
+| Project | Start when nothing is open, the project's Overview when something is | none by default; project-browser documents when opened |
+| Design | the active module's schematic | other modules and sources |
+| Simulate | the active scenario's workbench | other scenarios |
+| Board | one mapping surface with contextual detail | none |
+| Package | **the operational package landing** — identity, one primary action, plain state, the file list, the next external step | file previews and the report |
+
+### Superseded defaults
+
+These are replaced at their owners, not restyled:
+
+1. Separate Timing and Waveform documents as the ordinary author/run workflow.
+2. Any automatic navigation, panel expansion or playback on run completion.
+3. Report-first Package navigation (`handoff` as the export default).
+4. Generic run / tick / speed controls in the Design toolbar whose data source is not stated.
+5. The global tab strip that accumulates one tab per workspace visited.
+6. A mandatory Board Guided/Expert fork. Board is one surface with progressive detail.
+
+### Composition rules that apply to every workspace
+
+- The work object — the circuit, the timeline, the board — gets the room. Controls do not consume
+  the first several lanes of the thing they control.
+- Whitespace is allowed; stranded content is not. Density is allowed; unprioritized density is not.
+- Every region states who sizes it and who scrolls it. `overflow: hidden` is not an overflow fix,
+  and the application never scrolls sideways to reach an ordinary control.
+- One primary action per surface, made primary by the restraint around it.
+- Contextual detail appears when it becomes useful, and is not permanently resident.
+
+### What this does not change
+
+Project identity, saved work, import isolation, scenario ownership, immutable run evidence,
+explicit staleness, the supported-construct boundary, honest mapping and export states, and the
+distinction between browser evidence and physical hardware proof all stand exactly as they are.
+
+---
+
 ## Decision Record
 
 ### 2026-09-07 - Project as two experiences

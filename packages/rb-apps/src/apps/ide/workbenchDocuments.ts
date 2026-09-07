@@ -10,9 +10,18 @@ import type { IdeMode } from './workflowStages';
  * document displays is read live from its authority, so a tab can never drift
  * from project truth.
  *
- * The union grows one workspace at a time as each surface migrates onto the
- * host. Only kinds a surface can honestly render belong here — a tab must
- * never open a view that does not exist yet.
+ * **A tab is another object inside the workspace that owns it.** Visiting a
+ * workspace is not opening a document — the left rail owns workspace
+ * navigation, and each workspace's own root view is the workspace itself. What
+ * earns a tab is a second module or source in Design, another scenario in
+ * Simulate, a file preview or the report in Package. Project and Board have no
+ * root tab, and neither does the workspace you are already in.
+ *
+ * **A scenario is one workbench.** `cases`, `timing` and `waveform` used to be
+ * three documents describing one experiment through three rendering
+ * techniques, which is how "Default — Timing" and "Default — Waveform" came to
+ * sit side by side in the tab row as though they were separate work. They are
+ * one `scenario` document whose presentation is view state.
  */
 export type WorkbenchDocument =
   | { readonly kind: 'project-overview' }
@@ -24,18 +33,28 @@ export type WorkbenchDocument =
   | { readonly kind: 'source-file'; readonly fileId: string }
   | { readonly kind: 'compile-order' }
   | { readonly kind: 'schematic'; readonly moduleId: string }
-  /** Combinational scenario as a truth-table instrument (Case Lab). */
-  | { readonly kind: 'cases'; readonly scenarioId: string }
-  /** Sequential scenario as a clock/edge instrument (Timing Lab). */
-  | { readonly kind: 'timing'; readonly scenarioId: string }
-  /** Recorded run evidence for a scenario (Waveform). */
-  | { readonly kind: 'waveform'; readonly scenarioId: string }
+  /**
+   * One experiment: its authored stimulus, its optional checks, its selected
+   * run, and the presentation the reader last chose for it. Table, timing and
+   * waveform are representations of this one document, not documents.
+   */
+  | { readonly kind: 'scenario'; readonly scenarioId: string }
   | { readonly kind: 'board-io'; readonly constraintSetId: string }
+  /** The operational package landing: what you can obtain and what is left to do. */
+  | { readonly kind: 'package' }
+  /** One generated file, opened deliberately for inspection. */
   | { readonly kind: 'package-artifact' }
-  /** The engineering handoff overview derived from canonical evidence (in-app only). */
+  /** The engineering handoff report, opened deliberately (in-app only). */
   | { readonly kind: 'handoff' };
 
 export type WorkbenchDocumentKind = WorkbenchDocument['kind'];
+
+/**
+ * How a scenario workbench is currently drawn. This is view state, not
+ * identity: switching representation does not change which experiment is open,
+ * and it never opens a second tab.
+ */
+export type ScenarioView = 'table' | 'timing' | 'waveform';
 
 /** Stable identity for open-list membership, activation, and test ids. */
 export function documentKey(doc: WorkbenchDocument): string {
@@ -45,6 +64,7 @@ export function documentKey(doc: WorkbenchDocument): string {
     case 'runs':
     case 'sources':
     case 'compile-order':
+    case 'package':
     case 'package-artifact':
     case 'handoff':
       return doc.kind;
@@ -52,12 +72,8 @@ export function documentKey(doc: WorkbenchDocument): string {
       return `source-file:${doc.fileId}`;
     case 'schematic':
       return `schematic:${doc.moduleId}`;
-    case 'cases':
-      return `cases:${doc.scenarioId}`;
-    case 'timing':
-      return `timing:${doc.scenarioId}`;
-    case 'waveform':
-      return `waveform:${doc.scenarioId}`;
+    case 'scenario':
+      return `scenario:${doc.scenarioId}`;
     case 'board-io':
       return `board-io:${doc.constraintSetId}`;
   }
@@ -80,15 +96,30 @@ export function documentMode(doc: WorkbenchDocument): IdeMode {
       return 'project';
     case 'schematic':
       return 'design';
-    case 'cases':
-    case 'timing':
-    case 'waveform':
+    case 'scenario':
       return 'verify';
     case 'board-io':
       return 'hardware';
+    case 'package':
     case 'package-artifact':
     case 'handoff':
       return 'export';
+  }
+}
+
+/**
+ * The document a workspace shows when you simply arrive there. A root is not a
+ * tab: it is the workspace. Only documents beyond the root earn a tab, which is
+ * what stops the strip from growing one entry per workspace visited.
+ */
+export function isWorkspaceRoot(doc: WorkbenchDocument): boolean {
+  switch (doc.kind) {
+    case 'project-overview':
+    case 'board-io':
+    case 'package':
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -113,18 +144,16 @@ export function fallbackDocumentLabel(doc: WorkbenchDocument): string {
       return 'Compile Order';
     case 'schematic':
       return doc.moduleId === 'top' ? 'Schematic' : `${doc.moduleId} — Schematic`;
-    case 'cases':
-      return 'Cases';
-    case 'timing':
-      return 'Timing';
-    case 'waveform':
-      return 'Waveform';
+    case 'scenario':
+      return 'Scenario';
     case 'board-io':
       return 'I/O Planning';
-    case 'package-artifact':
+    case 'package':
       return 'Package';
+    case 'package-artifact':
+      return 'File';
     case 'handoff':
-      return 'Handoff';
+      return 'Report';
   }
 }
 
@@ -152,6 +181,7 @@ export function pruneDocuments(
       case 'runs':
       case 'sources':
       case 'compile-order':
+      case 'package':
       case 'package-artifact':
       case 'handoff':
         return true;
@@ -159,9 +189,7 @@ export function pruneDocuments(
         return snapshot.fileIds.has(doc.fileId);
       case 'schematic':
         return doc.moduleId === 'top' || snapshot.moduleIds.has(doc.moduleId);
-      case 'cases':
-      case 'timing':
-      case 'waveform':
+      case 'scenario':
         return snapshot.scenarioIds.has(doc.scenarioId);
       case 'board-io':
         return doc.constraintSetId === 'default' || snapshot.constraintSetIds.has(doc.constraintSetId);
@@ -169,7 +197,15 @@ export function pruneDocuments(
   });
 }
 
-/** Parse one persisted descriptor; null for anything unknown or malformed. */
+/**
+ * Parse one persisted descriptor; null for anything unknown or malformed.
+ *
+ * `cases`, `timing` and `waveform` were three descriptors for one experiment.
+ * A stored session carrying any of them resolves into that scenario's
+ * workbench rather than losing the reference — the reader had a scenario open,
+ * and they still do. The store dedupes by key, so a session with all three
+ * collapses to one tab.
+ */
 export function parseWorkbenchDocument(value: unknown): WorkbenchDocument | null {
   if (typeof value !== 'object' || value === null) return null;
   const raw = value as Record<string, unknown>;
@@ -181,6 +217,7 @@ export function parseWorkbenchDocument(value: unknown): WorkbenchDocument | null
     case 'runs':
     case 'sources':
     case 'compile-order':
+    case 'package':
     case 'package-artifact':
     case 'handoff':
       return { kind: raw.kind };
@@ -192,11 +229,12 @@ export function parseWorkbenchDocument(value: unknown): WorkbenchDocument | null
       const moduleId = str('moduleId');
       return moduleId ? { kind: 'schematic', moduleId } : null;
     }
+    case 'scenario':
     case 'cases':
     case 'timing':
     case 'waveform': {
       const scenarioId = str('scenarioId');
-      return scenarioId ? { kind: raw.kind, scenarioId } : null;
+      return scenarioId ? { kind: 'scenario', scenarioId } : null;
     }
     case 'board-io': {
       const constraintSetId = str('constraintSetId');
@@ -205,4 +243,12 @@ export function parseWorkbenchDocument(value: unknown): WorkbenchDocument | null
     default:
       return null;
   }
+}
+
+/** The representation a stored `cases`/`timing`/`waveform` descriptor implied. */
+export function migratedScenarioView(kind: unknown): ScenarioView | null {
+  if (kind === 'cases') return 'table';
+  if (kind === 'timing') return 'timing';
+  if (kind === 'waveform') return 'waveform';
+  return null;
 }

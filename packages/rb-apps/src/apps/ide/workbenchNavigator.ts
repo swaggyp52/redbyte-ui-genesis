@@ -143,7 +143,7 @@ function signalFacts(relation: EngineeringSignalRelation): string[] {
 export function buildNavigatorIndex(input: NavigatorIndexInput): NavigatorEntry[] {
   const entries: NavigatorEntry[] = [];
   const topScenario = input.scenarios[0] ?? null;
-  const evidenceKind = (sequential: boolean): 'cases' | 'timing' => (sequential ? 'timing' : 'cases');
+  // One scenario, one document. How it is drawn is chosen inside Simulate.
 
   // ── Signals and buses ────────────────────────────────────────────────
   const buses = new Map<string, EngineeringSignalRelation[]>();
@@ -239,7 +239,7 @@ export function buildNavigatorIndex(input: NavigatorIndexInput): NavigatorEntry[
 
   // ── Cases / timing documents and failures ────────────────────────────
   for (const scenario of input.scenarios) {
-    const kind = evidenceKind(scenario.sequential);
+
     entries.push({
       id: `scenario:${scenario.id}`,
       kind: 'case',
@@ -247,7 +247,7 @@ export function buildNavigatorIndex(input: NavigatorIndexInput): NavigatorEntry[
       subtitle: `${scenario.sequential ? 'Timing document' : 'Case document'} · ${scenario.checkCount} check${scenario.checkCount === 1 ? '' : 's'}`,
       facts: input.lastRun?.scenarioId === scenario.id ? [input.runIsStale ? 'Last run stale' : `Last run ${input.lastRun.status.toUpperCase()}`] : [],
       keywords: [scenario.name, scenario.sequential ? 'timing' : 'cases', 'scenario'],
-      document: { kind, scenarioId: scenario.id },
+      document: { kind: 'scenario', scenarioId: scenario.id },
       selection: { kind: 'scenario', scenarioId: scenario.id },
       mono: false,
     });
@@ -259,7 +259,7 @@ export function buildNavigatorIndex(input: NavigatorIndexInput): NavigatorEntry[
         subtitle: `Waveform document · ${input.runIsStale ? 'stale' : 'current'} run`,
         facts: [],
         keywords: [scenario.name, 'waveform', 'wave'],
-        document: { kind: 'waveform', scenarioId: scenario.id },
+        document: { kind: 'scenario', scenarioId: scenario.id },
         selection: null,
         mono: false,
       });
@@ -284,7 +284,7 @@ export function buildNavigatorIndex(input: NavigatorIndexInput): NavigatorEntry[
         subtitle: `${run.scenarioName} · expected ${row.expected} · observed ${row.actual}${input.runIsStale ? ' · stale' : ''}`,
         facts: relation?.board ? [`Board ${relation.board.resource?.label ?? relation.board.artifactPort} · ${relation.board.pin}`] : [],
         keywords: [row.signal, relation?.label ?? '', 'fail', 'failure', where],
-        document: { kind: evidenceKind(sequential), scenarioId: run.scenarioId },
+        document: { kind: 'scenario', scenarioId: run.scenarioId },
         selection: { kind: 'case-tick', scenarioId: run.scenarioId, tick: row.tick },
         mono: true,
       });
@@ -297,7 +297,7 @@ export function buildNavigatorIndex(input: NavigatorIndexInput): NavigatorEntry[
         subtitle: `Waveform document · failing run${input.runIsStale ? ' · stale' : ''}`,
         facts: [],
         keywords: [run.scenarioName, 'waveform', 'wave'],
-        document: { kind: 'waveform', scenarioId: run.scenarioId },
+        document: { kind: 'scenario', scenarioId: run.scenarioId },
         selection: run.firstFailingTick !== undefined ? { kind: 'case-tick', scenarioId: run.scenarioId, tick: run.firstFailingTick } : null,
         mono: false,
       });

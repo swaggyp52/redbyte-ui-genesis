@@ -295,6 +295,19 @@
   grid-template-areas: 'cases inspector' 'split split' 'evidence evidence';
   gap: 0;
 }
+/* Until the reader moves the splitter, the stimulus takes the height its content needs and
+   the timeline takes the rest. The fixed `1fr / 36%` split gave four test cases the top 55%
+   of the workspace - a quarter of a 900px window of empty table - and left the recorded
+   result a strip at the bottom. The timeline is the work; the cases are the authoring above
+   it. A dragged splitter still wins: that is the reader's own arrangement, and it is what
+   `data-deck-layout='authored'` means. */
+.ide-root .rb-sim-lab-grid[data-deck-layout='auto'] {
+  grid-template-rows: minmax(0, auto) auto minmax(0, 1fr);
+}
+.ide-root .rb-sim-lab-grid[data-deck-layout='auto'] > .rb-sim-region--stimulus {
+  /* A long scenario still yields: past this the case table scrolls inside itself. */
+  max-height: 40vh;
+}
 .ide-root .rb-sim-lab-grid > .rb-sim-deck-split { grid-area: split; display: flex; align-items: center; height: 22px; min-height: 22px; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
 .ide-root .rb-sim-deck-handle { flex: 1 1 auto; align-self: stretch; position: relative; cursor: row-resize; touch-action: none; }
 .ide-root .rb-sim-deck-handle::before { content: ''; position: absolute; left: 50%; top: 50%; width: 36px; height: 3px; margin: -1px 0 0 -18px; border-radius: 2px; background: var(--wb-border-strong); }

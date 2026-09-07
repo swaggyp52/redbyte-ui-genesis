@@ -171,7 +171,7 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
         fixMode === 'hardware'
           ? boardDocument
           : fixMode === 'verify' && input.lastRun
-            ? { kind: 'cases', scenarioId: input.lastRun.scenarioId }
+            ? { kind: 'scenario', scenarioId: input.lastRun.scenarioId }
             : { kind: 'schematic', moduleId: 'top' },
       freshness: 'current',
       authority: 'project health',
@@ -371,8 +371,8 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
   const run = input.lastRun;
   if (run) {
     const evidenceDocument: WorkbenchDocument = input.isSequential
-      ? { kind: 'timing', scenarioId: run.scenarioId }
-      : { kind: 'cases', scenarioId: run.scenarioId };
+      ? { kind: 'scenario', scenarioId: run.scenarioId }
+      : { kind: 'scenario', scenarioId: run.scenarioId };
     const freshness = input.runIsStale ? 'stale' : 'current';
     if (run.simulationStatus === 'blocked') {
       push({

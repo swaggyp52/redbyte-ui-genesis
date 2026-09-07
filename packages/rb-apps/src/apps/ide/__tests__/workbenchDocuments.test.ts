@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   documentKey,
+  isWorkspaceRoot,
   documentMode,
   fallbackDocumentLabel,
   parseWorkbenchDocument,
@@ -19,7 +20,7 @@ const ALL_KINDS: WorkbenchDocument[] = [
   { kind: 'source-file', fileId: 'top.vhd' },
   { kind: 'compile-order' },
   { kind: 'schematic', moduleId: 'half_adder' },
-  { kind: 'cases', scenarioId: 'scn-1' },
+  { kind: 'scenario', scenarioId: 'scn-1' },
   { kind: 'board-io', constraintSetId: 'xdc-main' },
   { kind: 'package-artifact' },
 ];
@@ -38,7 +39,7 @@ describe('workbenchDocuments (pure model)', () => {
 
   it('maps parameterized documents to their workspace', () => {
     expect(documentMode({ kind: 'schematic', moduleId: 'm1' })).toBe('design');
-    expect(documentMode({ kind: 'cases', scenarioId: 's1' })).toBe('verify');
+    expect(documentMode({ kind: 'scenario', scenarioId: 's1' })).toBe('verify');
     expect(documentMode({ kind: 'board-io', constraintSetId: 'c1' })).toBe('hardware');
     expect(documentMode({ kind: 'sources' })).toBe('project');
   });
@@ -55,7 +56,7 @@ describe('workbenchDocuments (pure model)', () => {
     expect(keys).toContain('sources');
     expect(keys).toContain('compile-order');
     expect(keys).toContain('package-artifact');
-    expect(keys).toContain('cases:scn-1');
+    expect(keys).toContain('scenario:scn-1');
     expect(keys).not.toContain('schematic:half_adder');
     expect(keys).not.toContain('source-file:top.vhd');
     expect(keys).not.toContain('board-io:xdc-main');
@@ -75,10 +76,35 @@ describe('workbenchDocuments (pure model)', () => {
     expect(parseWorkbenchDocument({ kind: 'schematic' })).toBeNull();
     expect(parseWorkbenchDocument({ kind: 'unknown-kind' })).toBeNull();
     expect(parseWorkbenchDocument('schematic:top')).toBeNull();
-    expect(parseWorkbenchDocument({ kind: 'cases', scenarioId: 's1' })).toEqual({
-      kind: 'cases',
+    expect(parseWorkbenchDocument({ kind: 'scenario', scenarioId: 's1' })).toEqual({
+      kind: 'scenario',
       scenarioId: 's1',
     });
+  });
+
+  // A reader whose stored session had `Default — Timing` and `Default — Waveform` open had one
+  // experiment open, and they still do. The descriptors resolve into that scenario's workbench
+  // rather than being discarded as unknown kinds, and three of them are one tab.
+  it('resolves retired cases/timing/waveform descriptors into their scenario workbench', () => {
+    for (const kind of ['cases', 'timing', 'waveform'] as const) {
+      expect(parseWorkbenchDocument({ kind, scenarioId: 's1' })).toEqual({
+        kind: 'scenario',
+        scenarioId: 's1',
+      });
+    }
+    const keys = (['cases', 'timing', 'waveform'] as const).map((kind) =>
+      documentKey(parseWorkbenchDocument({ kind, scenarioId: 's1' })!)
+    );
+    expect(new Set(keys).size).toBe(1);
+  });
+
+  // The rail owns workspace navigation, so a workspace's own root view is never a tab.
+  it('names the workspace roots that are the workspace rather than a tab in it', () => {
+    expect(isWorkspaceRoot({ kind: 'project-overview' })).toBe(true);
+    expect(isWorkspaceRoot({ kind: 'board-io', constraintSetId: 'default' })).toBe(true);
+    expect(isWorkspaceRoot({ kind: 'package' })).toBe(true);
+    expect(isWorkspaceRoot({ kind: 'scenario', scenarioId: 's1' })).toBe(false);
+    expect(isWorkspaceRoot({ kind: 'handoff' })).toBe(false);
   });
 });
 
@@ -128,9 +154,9 @@ describe('workbenchDocumentStore', () => {
     // Mode with no open document: the default opens.
     const created = useWorkbenchDocuments
       .getState()
-      .activateForMode('verify', () => ({ kind: 'cases', scenarioId: 's1' }));
-    expect(created && documentKey(created)).toBe('cases:s1');
-    expect(useWorkbenchDocuments.getState().activeKey).toBe('cases:s1');
+      .activateForMode('verify', () => ({ kind: 'scenario', scenarioId: 's1' }));
+    expect(created && documentKey(created)).toBe('scenario:s1');
+    expect(useWorkbenchDocuments.getState().activeKey).toBe('scenario:s1');
     // A mode that hosts no documents yields null and changes nothing.
     const none = useWorkbenchDocuments.getState().activateForMode('import', () => null);
     expect(none).toBeNull();
@@ -138,7 +164,7 @@ describe('workbenchDocumentStore', () => {
 
   it('syncToProject drops tabs whose objects are gone and repairs the active key', () => {
     const store = useWorkbenchDocuments.getState();
-    store.openDocument({ kind: 'cases', scenarioId: 'stale' });
+    store.openDocument({ kind: 'scenario', scenarioId: 'stale' });
     useWorkbenchDocuments.getState().syncToProject({
       moduleIds: new Set<string>(),
       scenarioIds: new Set<string>(),

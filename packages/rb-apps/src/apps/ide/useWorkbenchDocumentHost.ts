@@ -38,7 +38,8 @@ export interface WorkbenchDocumentHostInput {
   readonly scenarios: readonly VerifyScenario[];
   readonly activeScenarioId: string | null;
   readonly switchScenario: (scenarioId: string) => void;
-  readonly isSequential: boolean;
+  /** Retained for callers; the host no longer chooses a representation. */
+  readonly isSequential?: boolean;
   readonly constraintSets: ConstraintSetsDocument;
   readonly setActiveConstraintSet: (id: string) => void;
   readonly sourceModel: ProjectSourceModel;
@@ -69,7 +70,7 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
     scenarios,
     activeScenarioId,
     switchScenario,
-    isSequential,
+
     constraintSets,
     setActiveConstraintSet,
     sourceModel,
@@ -106,21 +107,22 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
         case 'design':
           return { kind: 'schematic', moduleId: activeModuleId || TOP_MODULE_ID };
         case 'verify':
-          return defaultScenarioId
-            ? { kind: isSequential ? 'timing' : 'cases', scenarioId: defaultScenarioId }
-            : null;
+          // One scenario, one workbench. How it is drawn — table, timing, waveform — is a
+          // representation of this document, not a second document.
+          return defaultScenarioId ? { kind: 'scenario', scenarioId: defaultScenarioId } : null;
         case 'hardware':
           return { kind: 'board-io', constraintSetId: activeConstraintSetId };
         case 'export':
-          // The handoff dossier is what Build & Export is for: what was made, what proves it,
-          // and what to do with it. The artifact browser is how you inspect one file of it,
-          // which is a second question and now a second document.
-          return { kind: 'handoff' };
+          // The first question in Package is what you can obtain and what is left to do. The
+          // report answers a different, later question and is opened deliberately; it used to be
+          // the landing, which is why arriving at Package showed a full-page figure instead of
+          // the package.
+          return { kind: 'package' };
         case 'import':
           return null;
       }
     },
-    [activeConstraintSetId, activeModuleId, defaultScenarioId, isSequential]
+    [activeConstraintSetId, activeModuleId, defaultScenarioId]
   );
 
   /** Push a document's parameter into its canonical owner. */
@@ -130,9 +132,7 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
         case 'schematic':
           if (doc.moduleId !== activeModuleId) setActiveModule(doc.moduleId);
           break;
-        case 'cases':
-        case 'timing':
-        case 'waveform':
+        case 'scenario':
           if (doc.scenarioId !== activeScenarioId && scenarios.some((s) => s.id === doc.scenarioId)) {
             switchScenario(doc.scenarioId);
           }
@@ -248,20 +248,9 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
     if (activeMode !== 'verify' || !activeScenarioId) return;
     const current = useWorkbenchDocuments.getState();
     const active = current.open.find((entry) => documentKey(entry) === current.activeKey);
-    if (
-      active &&
-      (active.kind === 'cases' || active.kind === 'timing' || active.kind === 'waveform') &&
-      active.scenarioId === activeScenarioId
-    ) {
-      return;
-    }
-    const preferredKind = active && (active.kind === 'waveform' || active.kind === 'timing' || active.kind === 'cases')
-      ? active.kind
-      : isSequential
-        ? 'timing'
-        : 'cases';
-    storeOpen({ kind: preferredKind, scenarioId: activeScenarioId });
-  }, [activeMode, activeScenarioId, isSequential, storeOpen]);
+    if (active && active.kind === 'scenario' && active.scenarioId === activeScenarioId) return;
+    storeOpen({ kind: 'scenario', scenarioId: activeScenarioId });
+  }, [activeMode, activeScenarioId, storeOpen]);
 
   const labelFor = useCallback(
     (doc: WorkbenchDocument): string | null => {
@@ -285,23 +274,22 @@ export function useWorkbenchDocumentHost(input: WorkbenchDocumentHostInput): Wor
           const module = modules.find((entry) => entry.id === doc.moduleId);
           return module ? module.displayName || module.name : null;
         }
-        case 'cases':
-        case 'timing':
-        case 'waveform': {
+        case 'scenario': {
+          // The scenario's own name. A tab names the experiment, not the way it is drawn.
           const scenario = scenarios.find((entry) => entry.id === doc.scenarioId);
-          if (!scenario) return null;
-          const suffix = doc.kind === 'cases' ? 'Cases' : doc.kind === 'timing' ? 'Timing' : 'Waveform';
-          return `${scenario.name} — ${suffix}`;
+          return scenario ? scenario.name : null;
         }
         case 'board-io': {
           const set = constraintSets.sets.find((entry) => entry.id === doc.constraintSetId);
           const boardName = boardLabel.charAt(0).toUpperCase() + boardLabel.slice(1);
           return set ? `${set.name} — ${boardName} I/O` : `${boardName} I/O`;
         }
-        case 'package-artifact':
+        case 'package':
           return 'Package';
+        case 'package-artifact':
+          return 'Files';
         case 'handoff':
-          return 'Handoff';
+          return 'Report';
       }
     },
     [boardLabel, constraintSets.sets, modules, scenarios, sourceModel.files, topEntityName]

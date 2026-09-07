@@ -365,8 +365,8 @@ export function relatedDocumentsForSignal(
     relation.scenarios.find((entry) => entry.scenarioId === options.activeScenarioId) ?? relation.scenarios[0] ?? null;
   if (scenario) {
     links.push({
-      label: scenario.document === 'timing' ? 'Open timing' : 'Open cases',
-      document: { kind: scenario.document, scenarioId: scenario.scenarioId },
+      label: 'Open scenario',
+      document: { kind: 'scenario', scenarioId: scenario.scenarioId },
       detail:
         scenario.checkTicks.length > 0
           ? `${scenario.checkTicks.length} check(s) on ${relation.label} in ${scenario.scenarioName}`
@@ -375,7 +375,7 @@ export function relatedDocumentsForSignal(
     if (options.hasRun) {
       links.push({
         label: 'Open waveform',
-        document: { kind: 'waveform', scenarioId: scenario.scenarioId },
+        document: { kind: 'scenario', scenarioId: scenario.scenarioId },
         detail: relation.run?.resolution.runSignal
           ? `Lane ${relation.run.resolution.runSignal}${relation.run.failingTicks.length ? ` · fails at t${relation.run.failingTicks[0]}` : ''}`
           : 'No resolved lane for this signal',

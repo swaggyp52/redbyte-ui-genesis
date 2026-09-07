@@ -274,8 +274,7 @@ function resolveSections(selected: EngineeringObjectRef, props: ProjectInspector
           },
         ],
         commands: [
-          { id: 'open-cases', label: scenario.sequential ? 'Open Timing' : 'Open Cases', open: { kind: scenario.sequential ? 'timing' : 'cases', scenarioId: scenario.id } },
-          { id: 'open-wave', label: 'Open Waveform', open: { kind: 'waveform', scenarioId: scenario.id } },
+          { id: 'open-scenario', label: 'Open in Simulate', open: { kind: 'scenario', scenarioId: scenario.id } },
         ],
       };
     }

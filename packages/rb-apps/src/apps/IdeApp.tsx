@@ -2759,6 +2759,16 @@ export const IdeApp: React.FC = () => {
     sourceModel,
     boardLabel: fpgaConfig.board,
   });
+  /**
+   * The objects open in THIS workspace. The document store keeps one list for the whole
+   * session, which is the right storage and was the wrong presentation: rendered whole, it
+   * turned five workspace visits into six tabs. The rail owns which workspace you are in;
+   * the strip owns which object inside it.
+   */
+  const workspaceDocuments = useMemo(
+    () => documentHost.open.filter((doc) => workbenchDocumentMode(doc) === activeMode),
+    [activeMode, documentHost.open]
+  );
   // Surfaces open related documents through the navigation seam; the host owner registers once.
   const registerDocumentOpener = useWorkbenchNavigation((state) => state.register);
   useEffect(() => {
@@ -3240,7 +3250,7 @@ export const IdeApp: React.FC = () => {
         />
         <div className="wb-document-column ide-surface-column" data-testid="ide-document-column">
         <WorkbenchDocumentTabStrip
-          open={documentHost.open}
+          open={workspaceDocuments}
           activeKey={documentHost.activeKey}
           labelFor={documentHost.labelFor}
           onActivate={documentHost.activate}

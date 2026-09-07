@@ -46,7 +46,7 @@ describe('WorkbenchDocumentTabStrip', () => {
   const open: WorkbenchDocument[] = [
     { kind: 'project-overview' },
     { kind: 'schematic', moduleId: 'half_adder' },
-    { kind: 'cases', scenarioId: 'scn-1' },
+    { kind: 'scenario', scenarioId: 'scn-1' },
   ];
 
   it('renders typed tabs with live labels, activates, closes, and keeps the overview pinned', () => {
@@ -56,21 +56,21 @@ describe('WorkbenchDocumentTabStrip', () => {
       <WorkbenchDocumentTabStrip
         open={open}
         activeKey="schematic:half_adder"
-        labelFor={(doc) => (doc.kind === 'schematic' ? 'Half Adder' : doc.kind === 'cases' ? 'Default — Cases' : null)}
+        labelFor={(doc) => (doc.kind === 'schematic' ? 'Half Adder' : doc.kind === 'scenario' ? 'Default' : null)}
         onActivate={onActivate}
         onClose={onClose}
       />
     );
     expect(view.getByTestId('ide-doc-tab-schematic:half_adder')).toHaveAttribute('aria-selected', 'true');
     expect(view.getByTestId('ide-doc-tab-schematic:half_adder').textContent).toContain('Half Adder');
-    expect(view.getByTestId('ide-doc-tab-cases:scn-1').textContent).toContain('Default — Cases');
+    expect(view.getByTestId('ide-doc-tab-scenario:scn-1').textContent).toContain('Default');
     expect(view.getByTestId('ide-doc-tab-project-overview').textContent).toContain('Overview');
     expect(view.queryByTestId('ide-doc-close-project-overview')).toBeNull();
 
-    fireEvent.click(view.getByTestId('ide-doc-tab-cases:scn-1'));
-    expect(onActivate).toHaveBeenCalledWith('cases:scn-1');
-    fireEvent.click(view.getByTestId('ide-doc-close-cases:scn-1'));
-    expect(onClose).toHaveBeenCalledWith('cases:scn-1');
+    fireEvent.click(view.getByTestId('ide-doc-tab-scenario:scn-1'));
+    expect(onActivate).toHaveBeenCalledWith('scenario:scn-1');
+    fireEvent.click(view.getByTestId('ide-doc-close-scenario:scn-1'));
+    expect(onClose).toHaveBeenCalledWith('scenario:scn-1');
   });
 
   it('hosts Back / Forward history and a module trail only when a parent exists', () => {

@@ -161,6 +161,25 @@
 .ide-root .rb-wave-results-summary-metric.is-pass .rb-wave-results-summary-metric-value { color: var(--wb-ok); }
 .ide-root .rb-wave-results-summary-metric.is-fail .rb-wave-results-summary-metric-value { color: var(--wb-err); }
 .ide-root .rb-wave-results-summary-actions { display: inline-flex; gap: 4px; }
+/* Run details: the counts behind the sentence. Closed by default, because the sentence is
+   the result and the counts are how it was arrived at. */
+.ide-root .rb-wave-results-details { margin-left: auto; }
+.ide-root .rb-wave-results-details > summary { display: inline-flex; align-items: center; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
+.ide-root .rb-wave-results-details > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-wave-results-details > summary:hover { color: var(--wb-text); border-color: var(--wb-text-3); }
+.ide-root .rb-wave-results-details[open] > summary { color: var(--wb-text); }
+.ide-root .rb-wave-results-details .rb-wave-results-summary-metrics { margin: 6px 0 0; }
+.ide-root .rb-wave-results-provenance { margin-top: 6px; color: var(--wb-text-2); font-size: var(--wb-text-sm); }
+.ide-root .rb-wave-results-provenance p { margin: 0 0 4px; }
+.ide-root .rb-wave-results-vcd { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ide-root .rb-wave-results-vcd span { color: var(--wb-text-3); }
+
+/* Playback is a secondary way of reading a recording, so it opens when it is wanted. */
+.ide-root .rb-wave-play-disclosure > summary { display: inline-flex; align-items: center; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; white-space: nowrap; }
+.ide-root .rb-wave-play-disclosure > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-wave-play-disclosure > summary:hover { color: var(--wb-text); border-color: var(--wb-text-3); }
+.ide-root .rb-wave-play-disclosure[open] > summary { color: var(--wb-text); border-color: var(--wb-accent); }
+.ide-root .rb-wave-play-disclosure .rb-wave-play { margin-top: 4px; }
 .ide-root .rb-wave-results-summary-action { height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; }
 .ide-root .rb-wave-results-summary-action.is-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
 .ide-root .rb-wave-results-summary-action:disabled { opacity: 0.45; }
@@ -241,7 +260,10 @@
 .ide-root .rb-wave-cmd .rb-wave-group--right { margin-left: 0; }
 .ide-root .rb-wave-cmd .rb-wave-tools { display: contents; }
 .ide-root .rb-wave-cmd .rb-wave-tools-section { gap: 3px; }
-.ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: auto; }
+/* The trailing tools used to be pushed to the far right, which guaranteed them a line of
+   their own whenever the bar was anything less than enormous: three secondary actions,
+   28px, above the data. They flow with the rest of the bar. */
+.ide-root .rb-wave-cmd .rb-wave-group--tail { margin-left: 0; }
 .ide-root .rb-wave-cmd .rb-wave-scrubber input[type='range'] { width: 120px; }
 @media (max-width: 1100px) { .ide-root .rb-wave-cmd .rb-wave-scrubber input[type='range'] { width: 80px; } }
 

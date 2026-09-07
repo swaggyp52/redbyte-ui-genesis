@@ -37,7 +37,7 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
   const ordered = [...runs].reverse();
   const evidenceDocumentFor = (run: VerifyRunLedgerEntry): WorkbenchDocument | null => {
     const scenarioId = run.scenarioId ?? waveformScenarioId;
-    return scenarioId ? { kind: 'waveform', scenarioId } : null;
+    return scenarioId ? { kind: 'scenario', scenarioId } : null;
   };
   const waveformScenarioId = activeScenarioId ?? scenarios[0]?.id ?? null;
 

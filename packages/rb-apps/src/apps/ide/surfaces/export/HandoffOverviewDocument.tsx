@@ -109,8 +109,8 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
   const runIsCompare = lastRun ? lastRun.runKind !== 'trace' && lastRun.assertionStatus !== 'not-configured' : false;
   const scenarioId = lastRun?.scenarioId ?? null;
   const isSequentialRun = lastRun?.schedule === 'clocked_macro';
-  const evidenceDocument: WorkbenchDocument | null = scenarioId ? { kind: isSequentialRun ? 'timing' : 'cases', scenarioId } : null;
-  const waveformDocument: WorkbenchDocument | null = scenarioId ? { kind: 'waveform', scenarioId } : null;
+  const evidenceDocument: WorkbenchDocument | null = scenarioId ? { kind: 'scenario', scenarioId } : null;
+  const waveformDocument: WorkbenchDocument | null = scenarioId ? { kind: 'scenario', scenarioId } : null;
   const boardDocument: WorkbenchDocument = { kind: 'board-io', constraintSetId: boardConstraintSetId ?? 'default' };
   const mappedAliases = useMemo(
     () => new Set(viewModel.pinTable.map((row) => (row.packagePin ?? row.pin) ? getBasys3BoardResource(row.packagePin ?? row.pin ?? '')?.alias : null).filter((alias): alias is string => Boolean(alias))),

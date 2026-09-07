@@ -251,7 +251,7 @@ export function deriveProjectExplorer(input: ProjectExplorerInput): readonly Pro
     meta: `${scenario.vectorCount} ${scenario.sequential ? 'events' : 'cases'} · ${scenario.checkCount} checks`,
     depth: 0,
     select: { kind: 'scenario', scenarioId: scenario.id },
-    open: { kind: scenario.sequential ? 'timing' : 'cases', scenarioId: scenario.id },
+    open: { kind: 'scenario', scenarioId: scenario.id },
     current: scenario.id === input.activeScenarioId,
   }));
   if (input.sourceModel && !isEmptyProjectSourceModel(input.sourceModel)) {
@@ -510,7 +510,7 @@ export function deriveOverviewFacts(input: {
         ? `${input.simulationLabel} · ${activeScenario.name} (${activeScenario.vectorCount} ${activeScenario.sequential ? 'events' : 'cases'})`
         : input.simulationLabel,
       tone: input.simulationTone,
-      open: activeScenario ? { kind: activeScenario.sequential ? 'timing' : 'cases', scenarioId: activeScenario.id } : undefined,
+      open: activeScenario ? { kind: 'scenario', scenarioId: activeScenario.id } : undefined,
     },
     {
       id: 'mapping',

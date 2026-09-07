@@ -143,12 +143,13 @@ const RESULT_KIND_TONE: Record<VerifyResultsKind, VerifyStateTone> = {
   error: 'attention',
 };
 
-export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
+export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps & { readonly details?: React.ReactNode }> = ({
   kind,
   headline,
   subline,
   guidanceItems,
   metrics,
+  details,
   primaryActionLabel,
   onPrimaryAction,
   primaryActionTestId,
@@ -191,23 +192,31 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
           </ol>
         ) : null}
       </div>
+      {/* Six chips of counts used to sit beside the result sentence, competing with it for the
+          reader's first glance and pushing the timeline further down the page. What happened is
+          the headline; how many cases, ticks and samples produced it is a detail, and details
+          open when they are wanted. */}
       {metrics && metrics.length > 0 ? (
-        <ul
-          className="rb-wave-results-summary-metrics"
-          data-testid="ide-verify-results-summary-metrics"
-          aria-label="Run metrics"
-        >
-          {metrics.map((metric) => (
-            <li
-              key={metric.id}
-              className={`rb-wave-results-summary-metric is-${metric.tone ?? 'neutral'}`}
-              data-testid={`ide-verify-results-summary-metric-${metric.id}`}
-            >
-              <span className="rb-wave-results-summary-metric-label">{metric.label}</span>
-              <span className="rb-wave-results-summary-metric-value">{metric.value}</span>
-            </li>
-          ))}
-        </ul>
+        <details className="rb-wave-results-details" data-testid="ide-verify-run-details">
+          <summary data-testid="ide-verify-run-details-summary">Run details</summary>
+          <ul
+            className="rb-wave-results-summary-metrics"
+            data-testid="ide-verify-results-summary-metrics"
+            aria-label="Run metrics"
+          >
+            {metrics.map((metric) => (
+              <li
+                key={metric.id}
+                className={`rb-wave-results-summary-metric is-${metric.tone ?? 'neutral'}`}
+                data-testid={`ide-verify-results-summary-metric-${metric.id}`}
+              >
+                <span className="rb-wave-results-summary-metric-label">{metric.label}</span>
+                <span className="rb-wave-results-summary-metric-value">{metric.value}</span>
+              </li>
+            ))}
+          </ul>
+          {details ?? null}
+        </details>
       ) : null}
       {(primaryActionLabel && onPrimaryAction) || (secondaryActionLabel && onSecondaryAction) ? (
         <div className="rb-wave-results-summary-actions">

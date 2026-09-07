@@ -646,28 +646,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [onSignalSelected]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
+  /**
+   * How this scenario is being looked at. It is a preference of the open scenario, not a
+   * document: choosing the recorded view is not opening a second experiment, which is what
+   * `Default — Timing` beside `Default — Waveform` used to claim. Kept per scenario so moving
+   * between experiments returns each to the way its reader left it.
+   */
   const [studioMode, setStudioMode] = useState<
     'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
-  >(() => (activeDocument?.kind === 'waveform' ? 'replay' : 'scenario'));
-  // Documents own the instrument: a Cases/Timing document shows authoring, the
-  // Waveform document shows recorded evidence. Live I/O is a toggle over either.
-  const documentStudioMode: 'scenario' | 'replay' | null =
-    activeDocument?.kind === 'waveform'
-      ? 'replay'
-      : activeDocument?.kind === 'cases' || activeDocument?.kind === 'timing'
-        ? 'scenario'
-        : null;
+  >('scenario');
+  const scenarioViewRef = useRef<Map<string, 'scenario' | 'bench' | 'replay'>>(new Map());
   useEffect(() => {
-    if (!documentStudioMode) return;
-    setStudioMode((current) => (current === 'bench' ? current : documentStudioMode));
-  }, [documentStudioMode]);
-  const openWaveformDocument = useCallback(() => {
-    if (onOpenDocument && activeScenarioId) onOpenDocument({ kind: 'waveform', scenarioId: activeScenarioId });
-    else setStudioMode('replay');
-  }, [activeScenarioId, onOpenDocument]);
+    if (!activeScenarioId) return;
+    const remembered = scenarioViewRef.current.get(activeScenarioId);
+    setStudioMode(remembered ?? 'scenario');
+  }, [activeScenarioId]);
+  useEffect(() => {
+    if (!activeScenarioId) return;
+    if (studioMode === 'scenario' || studioMode === 'bench' || studioMode === 'replay') {
+      scenarioViewRef.current.set(activeScenarioId, studioMode);
+    }
+  }, [activeScenarioId, studioMode]);
+  const showRecordedView = useCallback(() => {
+    setStudioMode('replay');
+  }, []);
   const toggleLiveIo = useCallback(() => {
-    setStudioMode((current) => (current === 'bench' ? (documentStudioMode ?? 'scenario') : 'bench'));
-  }, [documentStudioMode]);
+    setStudioMode((current) => (current === 'bench' ? 'scenario' : 'bench'));
+  }, []);
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -809,6 +814,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setExpandedBuses((previous) => (previous.includes(bus) ? previous.filter((entry) => entry !== bus) : [...previous, bus]));
   }, []);
   const [tickWidth, setTickWidth] = useState(DEFAULT_VERIFY_TICK_WIDTH);
+  /**
+   * True once the reader has chosen a time scale or row density themselves. After that, a run
+   * fits nothing: the axis they set is the axis they get back. Set by the zoom controls, the
+   * wheel gesture, the explicit Fit action and a restored session — not by arriving at data.
+   */
+  const hasAuthoredWaveformView = useRef(false);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -901,11 +912,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (s.cursorA === null || typeof s.cursorA === 'number') setCursorA(s.cursorA as number | null);
       if (s.cursorB === null || typeof s.cursorB === 'number') setCursorB(s.cursorB as number | null);
       if (typeof s.drawerOpen === 'boolean') setDrawerOpen(s.drawerOpen);
-      if (typeof s.tickWidth === 'number') setTickWidth(clampTickWidth(s.tickWidth));
+      if (typeof s.tickWidth === 'number') {
+        setTickWidth(clampTickWidth(s.tickWidth));
+        hasAuthoredWaveformView.current = true;
+      }
       if (Array.isArray(s.manualLaneOrder)) setManualLaneOrder(s.manualLaneOrder.filter((entry): entry is string => typeof entry === 'string'));
       if (Array.isArray(s.hiddenSignals)) setHiddenSignals(s.hiddenSignals.filter((entry): entry is string => typeof entry === 'string'));
       if (typeof s.waveformDensity === 'string' && ['small', 'normal', 'large'].includes(s.waveformDensity)) {
         setWaveformDensity(s.waveformDensity as 'small' | 'normal' | 'large');
+        hasAuthoredWaveformView.current = true;
       }
       if (typeof s.tickZoom === 'string' && ['all', 'fail', 'window'].includes(s.tickZoom)) {
         setTickZoom(s.tickZoom as 'all' | 'fail' | 'window');
@@ -1897,27 +1912,34 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     });
   }, [displaySignalTimeline]);
 
+  // A run records evidence. It does not navigate, and it does not start playing.
+  //
+  // This effect used to do both: it opened a second "<scenario> — Waveform" document, which is
+  // how one experiment came to occupy two tabs, and it set `isPlaying` so the workbench started
+  // animating at the reader who had just pressed Run. Both are gone at their owner. What survives
+  // is the part a reader wants: the result appears in the workbench they are already looking at,
+  // and on the FIRST run of a session the cursor lands somewhere predictable instead of nowhere.
   const appliedRunKeyRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (!lastRun) {
-      // No run yet: remember that, so the first completed run opens the Waveform.
       if (appliedRunKeyRef.current === undefined) appliedRunKeyRef.current = null;
       return;
     }
     setRunState('complete');
-    if (appliedRunKeyRef.current === undefined) {
-      appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
-      return;
-    }
     if (appliedRunKeyRef.current === (lastRunWorkbenchKey ?? null)) return;
     appliedRunKeyRef.current = lastRunWorkbenchKey ?? null;
-    openWaveformDocument();
-    if (!prefersReducedMotion && allWaveformTicks.length > 1) {
-      // Show the run happen: walk the ticks from the first one; stop at the first mismatch.
-      autoTickRef.current = allWaveformTicks[0];
-      setSelectedTick(allWaveformTicks[0]);
-      setIsPlaying(true);
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastRunWorkbenchKey]);
+
+  // The cursor survives a rerun when it still names a recorded sample, and moves only when the
+  // run it pointed into no longer has that sample. Keyed on the run, not on the tick list: a
+  // selection made in the case table is a cursor the reader set, and a guard that fires whenever
+  // the list identity changes would take it back off them.
+  useEffect(() => {
+    if (allWaveformTicks.length === 0) return;
+    setSelectedTick((current) =>
+      current != null && allWaveformTicks.includes(current) ? current : allWaveformTicks[0]
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastRunWorkbenchKey]);
 
@@ -1932,27 +1954,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (autoHandledRunRef.current === key) return;
     autoHandledRunRef.current = key;
 
-    // Adaptive tick width: fit all ticks into the visible container
-    const container = waveformScrollRef.current;
-    const tickCount = lastRun.waveform?.length ?? 0;
-    if (container && tickCount > 0) {
-      setTickWidth(fitWaveformTickWidth(container.clientWidth, tickCount));
+    // Fit the time axis to the run ONCE — when the workbench has no chosen zoom yet. A rerun of a
+    // scenario the reader has already zoomed into must not throw away that choice: the previous
+    // behaviour re-fitted the axis, re-chose the row density and closed the drawer after every
+    // single run, so investigating a repair meant re-establishing your view each time.
+    if (!hasAuthoredWaveformView.current) {
+      const container = waveformScrollRef.current;
+      const tickCount = lastRun.waveform?.length ?? 0;
+      if (container && tickCount > 0) {
+        setTickWidth(fitWaveformTickWidth(container.clientWidth, tickCount));
+      }
+      const sigCount = Object.keys(lastRun.report?.signalRoles ?? {}).length;
+      setWaveformDensity(sigCount > 12 ? 'small' : sigCount <= 6 ? 'large' : 'normal');
     }
-
-    // Auto-density from signal count: compress rows when many signals
-    const sigCount = Object.keys(lastRun.report?.signalRoles ?? {}).length;
-    if (sigCount > 12) {
-      setWaveformDensity('small');
-    } else if (sigCount <= 6) {
-      setWaveformDensity('large');
-    } else {
-      setWaveformDensity('normal');
-    }
-
-    if (lastRun.status === 'fail' && getRuntimeVerifyRunKind(lastRun) === 'verify') {
-      setVerifyTab('mismatches');
-    }
-    setDrawerOpen(false);
   }, [lastRun, lastRunWorkbenchKey, lastRun?.status]);
 
   const resultRows = useMemo(
@@ -3329,6 +3343,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (!container) return;
     if (event.shiftKey) {
       event.preventDefault();
+      hasAuthoredWaveformView.current = true;
       setTickWidth((previous) => clampTickWidth(previous + (event.deltaY > 0 ? -4 : 4)));
       return;
     }
@@ -6466,6 +6481,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-evidence-collapsed={evidenceCollapsed ? 'true' : undefined}
           data-evidence-maximized={deckMaximized ?? undefined}
           data-evidence-fraction={Math.round(evidenceFraction * 100)}
+          data-deck-layout={deckLayoutIsDefault ? 'auto' : 'authored'}
           style={{ '--rb-sim-evidence-fr': `${(evidenceFraction * 100).toFixed(2)}%` } as React.CSSProperties}
         >
         {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
@@ -6637,7 +6653,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {studioMode === 'bench' ? (
           <ManualBench
             onOpenVirtualBoard={onGoToHardware}
-            onOpenAnalyzer={lastRun ? openWaveformDocument : undefined}
+            onOpenAnalyzer={lastRun ? showRecordedView : undefined}
             onAddToSequence={onAppendScenarioStep}
           />
         ) : studioMode === 'testbench' ? (
@@ -6942,19 +6958,47 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     value: String(lastRun.waveform.length),
                     tone: 'quiet',
                   });
-                  if (!runProofIsStale && typeof commandBarCoverageLabel === 'string' && commandBarCoverageLabel.trim().length > 0) {
+                  // "Coverage 100%" said nothing a reader could check. The measure is authored
+                  // input combinations against the 2^N possible for this circuit's inputs, so it
+                  // says that instead — and only where the denominator exists (it is capped at
+                  // six inputs). It is a detail about the scenario, never the headline.
+                  if (!runProofIsStale && inputCoverage) {
                     list.push({
                       id: 'coverage',
-                      label: 'Coverage',
-                      value: commandBarCoverageLabel.trim().replace(/\s*coverage$/i, ''),
+                      label: 'Input combinations',
+                      value: `${inputCoverage.seen} of ${inputCoverage.total}`,
                       tone: 'neutral',
                     });
                   }
                   return list;
                 })()}
-                primaryActionLabel={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? 'Open circuit replay' : undefined}
+                primaryActionLabel={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? 'Inspect with circuit' : undefined}
                 onPrimaryAction={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? handleGoToDesignFromVerify : undefined}
                 primaryActionTestId="ide-verify-open-circuit-replay"
+                details={(
+                  <div className="rb-wave-results-provenance" data-testid="ide-verify-run-provenance">
+                    <p>
+                      {activeSimProvider === 'imported-vcd' && importedWaveform
+                        ? 'Replayed from an imported external trace. RedByte did not execute it.'
+                        : 'Executed by the browser logic engine in this session.'}
+                    </p>
+                    {onImportVcd && !importedWaveform ? (
+                      <label className="rb-wave-results-vcd" data-testid="ide-verify-load-external-trace">
+                        <span>Load an external trace (.vcd)</span>
+                        <input
+                          type="file"
+                          accept=".vcd"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            if (!file) return;
+                            void file.text().then((text) => onImportVcd(file.name, text));
+                          }}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                )}
               />
             ) : null}
             {structuralRecoveryPanel || repairPanel ? (
@@ -7072,7 +7116,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </code>
                     </label>
                   ) : null}
+                  {/* Playback walks a recording. It is not Run, it does not execute anything, and
+                      it does not change a clock frequency — so it does not sit in the bar looking
+                      like the primary operation. Four controls came out of the reader's way here. */}
                   {lastRun && allWaveformTicks.length > 1 ? (
+                    <details className="rb-wave-play-disclosure" data-testid="ide-verify-playback-disclosure">
+                    <summary title="Step through the recorded samples. Presentation only — nothing is executed.">Playback</summary>
                     <div className="rb-wave-play" data-testid="ide-verify-playback" role="group" aria-label="Playback">
                       <IdeButton
                         tone={isPlaying ? 'secondary' : 'ghost'}
@@ -7115,6 +7164,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         Stop at fail
                       </button>
                     </div>
+                    </details>
                   ) : null}
                 </div>
                 </div>
@@ -7276,7 +7326,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <button
                       type="button"
                       className="rb-wave-zoom"
-                      onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
+                      onClick={() => { hasAuthoredWaveformView.current = true; setTickWidth((prev) => clampTickWidth(prev - 8)); }}
                       data-testid="ide-verify-zoom-out"
                       title="Zoom out (narrower ticks)"
                       aria-label="Zoom out waveform"
@@ -7286,7 +7336,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     <button
                       type="button"
                       className="rb-wave-zoom"
-                      onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
+                      onClick={() => { hasAuthoredWaveformView.current = true; setTickWidth((prev) => clampTickWidth(prev + 8)); }}
                       data-testid="ide-verify-zoom-in"
                       title="Zoom in (wider ticks)"
                       aria-label="Zoom in waveform"
@@ -7308,7 +7358,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         key={d}
                         type="button"
                         className={`rb-wave-zoom ${waveformDensity === d ? 'is-active' : ''}`}
-                        onClick={() => setWaveformDensity(d)}
+                        onClick={() => { hasAuthoredWaveformView.current = true; setWaveformDensity(d); }}
                         data-testid={`ide-verify-density-${d}`}
                         aria-label={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
                         title={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
@@ -8207,9 +8257,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <div><dt>Event</dt><dd>{selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : '—'}</dd></div>
                 <div><dt>Time</dt><dd>{selectedAuthoredEvent ? `t${selectedAuthoredEvent.tick}` : '—'}</dd></div>
                 <div><dt>Input changes</dt><dd>{selectedEventChangedInputs.length > 0 ? selectedEventChangedInputs.map((field) => field.label).join(', ') : 'None at this event'}</dd></div>
-                <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? '—'}</dd></div>
+                <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? 'Not recorded'}</dd></div>
                 <div><dt>Saved checks</dt><dd>{selectedEventCheckCount > 0 ? selectedEventCheckCount : 'None'}</dd></div>
-                <div><dt>Check state</dt><dd>{failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : lastRun ? 'No failure at this event' : 'Not evaluated'}</dd></div>
+                {/* With no checks on this event there is no check state to report, and reporting
+                    "No failure" about an event nothing was asserted on reads as a pass. */}
+                {selectedEventCheckCount > 0 ? (
+                  <div><dt>Check state</dt><dd>{failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : lastRun ? 'Passing at this event' : 'Not evaluated'}</dd></div>
+                ) : null}
                 <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
               </dl>
               {/* With a lane selected the property grid above already answers what the student
@@ -8223,28 +8277,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <p>Select a waveform lane and event to inspect its observed value.</p>
                 </section>
               )}
-              <IdeButton
-                tone="secondary"
-                onClick={() => {
-                  const disclosure = document.querySelector<HTMLDetailsElement>('[data-testid="ide-scenario-table-disclosure"]');
-                  if (disclosure) {
-                    disclosure.open = true;
-                    disclosure.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    return;
-                  }
-                  const row = document.querySelector<HTMLElement>(
-                    selectedAuthoredEvent ? `[data-testid="ide-case-lab-row-${selectedAuthoredEvent.tick}"]` : '[data-testid="ide-case-lab"]'
-                  );
-                  row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                  row?.querySelector<HTMLButtonElement>('[data-testid^="ide-case-lab-exp-"]')?.focus({ preventScroll: true });
-                }}
-                disabled={!selectedAuthoredEvent}
-                testId="ide-sim-inspector-edit-event"
-              >
-                {isSequentialRun ? 'Edit in detailed table' : 'Edit in cases'}
-              </IdeButton>
+              {/* Two of the three buttons here were duplicates. "Edit in cases" scrolled the table
+                  that is already on screen above this panel, by querySelector into another
+                  component's test id; "Trace in Design" is the same operation as "Inspect with
+                  circuit" in the result line, which is the one place the circuit is entered from.
+                  What is left is the action only this panel can offer: turning the value under the
+                  cursor into an expectation. */}
               <IdeButton tone="secondary" onClick={() => setCreateCheckDialogOpen(true)} disabled={!canCreateCheckFromSelection} testId="ide-sim-inspector-create-check">Create check from this value</IdeButton>
-              <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} disabled={!selectedSignal && !selectedFailureCase} testId="ide-sim-inspector-trace-design">Trace in Design</IdeButton>
               {simRelated ? (
                 <RelatedMenu relation={simRelated} activeScenarioId={activeScenarioId ?? null} hasRun={simRelated.run !== null} origin={continuityOrigin} testId="ide-sim-related" />
               ) : null}
@@ -8290,27 +8329,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             }
           />
         ) : null}
-        {/* ── Simulation provider selection + run provenance (Chapter D) ── */}
-        <SimulationProviderBar
-          hasImportedWaveform={!!importedWaveform}
-          importedProvider={importedWaveform?.provider}
-          activeProvider={activeSimProvider}
-          onSelectProvider={setActiveSimProvider}
-          nativeRunLabel={
-            simulationEvidenceSummary
-              ? simulationEvidenceSummary.simulationLabel
-              : lastRun
-                ? 'Browser-logic run recorded'
-                : null
-          }
-        />
-        {/* Imported waveform Analyzer: an advanced, external-evidence feature. The panel
-            decides its own weight — with nothing loaded it collapses to a single compact
-            row carrying the "Load .vcd" affordance, and only occupies the workspace once a
-            file is actually imported. It must render either way: this is the one place a
-            .vcd can be brought in, and gating it behind an already-imported waveform made
-            the whole imported-evidence capability unreachable. */}
-        {(
+        {/* Provider selection is about external evidence. It belongs with the imported trace it
+            selects, not permanently under every internally executed run. */}
+        {importedWaveform ? (
+          <SimulationProviderBar
+            hasImportedWaveform
+            importedProvider={importedWaveform?.provider}
+            activeProvider={activeSimProvider}
+            onSelectProvider={setActiveSimProvider}
+            nativeRunLabel={
+              simulationEvidenceSummary
+                ? simulationEvidenceSummary.simulationLabel
+                : lastRun
+                  ? 'Browser-logic run recorded'
+                  : null
+            }
+          />
+        ) : null}
+        {/* Imported evidence is replayed, never executed here, and it is a secondary path. The
+            panel used to render under every run as a permanent "Provider: Imported VCD" footer
+            even when nothing had been imported — a claim about provenance made by the layout
+            rather than by the run. It renders when there IS an imported trace; the way to bring
+            one in lives in Run details, so the capability stays reachable without competing with
+            every internal result. */}
+        {importedWaveform ? (
           <VcdAnalyzerPanel
             waveform={importedWaveform}
             config={vcdAnalyzerConfig ?? DEFAULT_VCD_ANALYZER_CONFIG}
@@ -8319,7 +8361,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onClear={onClearImportedWaveform ?? (() => {})}
             isActiveProvider={activeSimProvider === 'imported-vcd'}
           />
-        )}
+        ) : null}
       </IdePanel>
     </IdeSurfaceLayout>
   );

@@ -218,7 +218,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const openDocument = useCallback(
     (doc: WorkbenchDocument) => {
       if (onOpenDocument) onOpenDocument(doc);
-      else navigateMode(doc.kind === 'schematic' ? 'design' : doc.kind === 'board-io' ? 'hardware' : doc.kind === 'package-artifact' ? 'export' : doc.kind === 'cases' || doc.kind === 'timing' || doc.kind === 'waveform' ? 'verify' : 'project');
+      else navigateMode(doc.kind === 'schematic' ? 'design' : doc.kind === 'board-io' ? 'hardware' : doc.kind === 'package-artifact' ? 'export' : doc.kind === 'scenario' ? 'verify' : 'project');
     },
     [navigateMode, onOpenDocument]
   );

@@ -411,12 +411,8 @@ function describeDocument(entry: NavigatorEntry): string {
   switch (doc.kind) {
     case 'schematic':
       return doc.moduleId === 'top' ? 'the schematic' : `the ${doc.moduleId} schematic`;
-    case 'cases':
-      return 'Cases';
-    case 'timing':
-      return 'Timing';
-    case 'waveform':
-      return 'Waveform';
+    case 'scenario':
+      return 'the scenario';
     case 'board-io':
       return 'Board mapping';
     case 'package-artifact':
