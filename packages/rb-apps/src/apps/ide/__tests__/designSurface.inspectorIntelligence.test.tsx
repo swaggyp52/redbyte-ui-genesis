@@ -155,11 +155,8 @@ function renderSurface(
     <DesignSurface
       runtimeSim={options.sim ?? makePassiveSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onRuntimeSimSetInput={options.onRuntimeSimSetInput}
       onGoToProject={vi.fn()}

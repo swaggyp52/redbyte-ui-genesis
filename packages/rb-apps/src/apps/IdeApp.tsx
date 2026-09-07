@@ -3355,11 +3355,8 @@ export const IdeApp: React.FC = () => {
               onDiagnosticAction={handleDiagnosticAction}
               diagnosticRouteRequest={diagnosticRouteRequest}
               runtimeSim={runtimeSim}
-              onRuntimeSimRun={runRuntimeSim}
-              onRuntimeSimPause={pauseRuntimeSim}
               onRuntimeSimStep={stepRuntimeSim}
               onRuntimeSimReset={resetRuntimeSim}
-              onRuntimeSimSetSpeed={setRuntimeSimSpeed}
               onRuntimeSimSetInput={setRuntimeSimInput}
               onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
               onRuntimeSimToggleProbe={toggleRuntimeSimProbe}

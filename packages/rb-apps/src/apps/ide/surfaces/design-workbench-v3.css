@@ -1588,3 +1588,7 @@
   }
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout .ide-button { padding-inline: 6px; }
 }
+
+/* The exploration note is the shortest true thing the row can say, and it gives way before
+   the circuit's own name does. */
+.ide-root .rb-design-live-note { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

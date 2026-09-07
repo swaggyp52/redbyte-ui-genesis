@@ -137,11 +137,8 @@ function renderSurface(
         { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
         { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -738,11 +735,8 @@ describe('DesignSurface debug nav — replay authority', () => {
           { id: 'clk', nodeId: 'clk_node', label: 'CLK', pin: 'W5', port: 'out', direction: 'in' },
           { id: 'q', nodeId: 'q_out', label: 'Q', pin: 'U16', port: 'in', direction: 'out' },
         ]}
-        onRuntimeSimRun={vi.fn()}
-        onRuntimeSimPause={vi.fn()}
         onRuntimeSimStep={vi.fn()}
         onRuntimeSimReset={vi.fn()}
-        onRuntimeSimSetSpeed={vi.fn()}
         onRuntimeSimToggleProbe={vi.fn()}
         onGoToProject={vi.fn()}
         onGoToVerify={vi.fn()}
@@ -780,11 +774,8 @@ describe('DesignSurface debug nav — replay authority', () => {
           { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
           { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
         ]}
-        onRuntimeSimRun={onRun}
-        onRuntimeSimPause={vi.fn()}
         onRuntimeSimStep={onStep}
         onRuntimeSimReset={onReset}
-        onRuntimeSimSetSpeed={vi.fn()}
         onRuntimeSimToggleProbe={vi.fn()}
         onGoToProject={vi.fn()}
         onGoToVerify={vi.fn()}

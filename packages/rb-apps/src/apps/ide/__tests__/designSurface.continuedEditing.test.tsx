@@ -128,11 +128,8 @@ function renderSurface(
           direction: 'out',
         },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -236,9 +233,21 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
     expect(view.queryByTestId('ide-design-sim-story-strip')).toBeNull();
   });
 
-  it('shows the simulation strip when the simulation is running', () => {
+  it('shows the simulation strip once exploration has produced runtime state', () => {
+    // "The simulation is running" is no longer one of the ways there is something to say:
+    // Design has no clock of its own to run. What the strip reports is runtime state the
+    // reader produced by exploring - driving an input, applying a clock edge - and that is
+    // what this asserts. The dock expectations either side of it are unchanged.
     const view = renderSurface({
-      runtimeSim: { ...makePassiveSim(), running: true },
+      runtimeSim: {
+        ...makePassiveSim(),
+        tick: 2,
+        signals: { 'ld0_node.in': 1 },
+        trace: [
+          { tick: 0, signals: { 'ld0_node.in': 0 } },
+          { tick: 1, signals: { 'ld0_node.in': 1 } },
+        ] as RuntimeSimState['trace'],
+      },
     });
 
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();

@@ -114,11 +114,8 @@ function renderSurface(overrides: Partial<React.ComponentProps<typeof DesignSurf
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onRuntimeSimSetSelectedSignal={onRuntimeSimSetSelectedSignal}
       onGoToProject={vi.fn()}

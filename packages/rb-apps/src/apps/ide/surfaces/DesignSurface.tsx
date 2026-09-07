@@ -255,11 +255,12 @@ export interface DesignSurfaceProps {
   designFocusRequest?: DesignFocusRequest | null;
   onClearDesignFocus?: () => void;
   runtimeSim: RuntimeSimState;
-  onRuntimeSimRun?: () => void;
-  onRuntimeSimPause?: () => void;
+  /**
+   * Apply one clock edge while exploring. There is no Run: a free-running clock in Design is a
+   * simulation session that records nothing, and Simulate is where a run happens.
+   */
   onRuntimeSimStep?: () => void;
   onRuntimeSimReset?: () => void;
-  onRuntimeSimSetSpeed?: (hz: number) => void;
   onRuntimeSimSetInput?: (nodeId: string, value: 0 | 1) => void;
   onRuntimeSimSetSelectedSignal?: (signalKey: string | null) => void;
   onRuntimeSimToggleProbe?: (probe: RuntimeSignalProbe) => void;
@@ -892,11 +893,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   designFocusRequest,
   onClearDesignFocus,
   runtimeSim,
-  onRuntimeSimRun,
-  onRuntimeSimPause,
   onRuntimeSimStep,
   onRuntimeSimReset,
-  onRuntimeSimSetSpeed,
   onRuntimeSimSetInput,
   onRuntimeSimSetSelectedSignal,
   onRuntimeSimToggleProbe,
@@ -1298,7 +1296,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1);
   const [designLearningMode, setDesignLearningMode] = useState<'edit' | 'live'>('edit');
   const runtimeSimTick = runtimeSim.tick;
-  const simSpeed = runtimeSim.speedHz;
   const runtimeLiveSignals = useMemo(() => {
     const entries = Object.entries(runtimeSim.signals)
       .map(([key, value]) => [key, value] as const)
@@ -1392,7 +1389,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return mergedSignals;
   }, [liveSignals, runtimeSim.signals]);
   const simTick = isReplayMode ? effectiveExternalDebugTick : runtimeSimTick;
-  const simRunning = !isReplayMode && runtimeSim.running;
+  const simRunning = false;
+  /** Applying a clock edge means something only where there is state for it to move. */
+  const circuitHasState = useMemo(
+    () =>
+      editorCircuit.nodes.some(
+        (node) => node.type === 'DFlipFlop' || node.type === 'TFlipFlop' || node.type === 'JKFlipFlop'
+      ),
+    [editorCircuit.nodes]
+  );
   const simModeLabel = isReplayMode ? 'Replay' : simRunning ? 'Running' : 'Paused';
   const ioRowByNodeId = useMemo(() => {
     const index = new Map<string, (typeof ioRows)[number]>();
@@ -1634,17 +1639,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     observer.observe(paneRowRef.current);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (!simRunning || !onRuntimeSimStep) return;
-    const intervalMs = Math.max(24, Math.round(1000 / Math.max(1, simSpeed)));
-    const timer = window.setInterval(() => {
-      onRuntimeSimStep();
-    }, intervalMs);
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [onRuntimeSimStep, simRunning, simSpeed]);
 
   const deleteSelection = useCallback(() => {
     const selectedNodeIds = Array.from(selection.nodes);
@@ -3000,14 +2994,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [onRuntimeSimSetInput, queueDesignDebugToggleSample]
   );
 
-  const startSimulation = useCallback(() => {
-    onRuntimeSimRun?.();
-  }, [onRuntimeSimRun]);
-
-  const pauseSimulation = useCallback(() => {
-    onRuntimeSimPause?.();
-  }, [onRuntimeSimPause]);
-
   const stepSimulation = useCallback(() => {
     onRuntimeSimStep?.();
   }, [onRuntimeSimStep]);
@@ -3828,7 +3814,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     !!activeDebugContext ||
     !!activeVerifySignal ||
     canRenderReplayScrubber ||
-    simRunning ||
     runtimeSim.trace.length > 0;
   const handleReplayScrubberChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -6791,18 +6776,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </div>
         ) : (
           <div className="ide-design-simulation-readout">
-            <strong>{isReplayMode ? 'Verify replay' : runtimeSim.running ? 'Exploratory simulation running' : 'Exploratory simulation paused'}</strong>
-            <span>Tick {runtimeSim.tick} · {runtimeSim.probes.length} pinned signals · {(isReplayMode ? displayTrace : runtimeSim.trace).length} trace samples</span>
+            <strong>{isReplayMode ? 'Recorded run from Simulate' : 'Exploring this circuit'}</strong>
+            <span>
+              {isReplayMode
+                ? `${displayTrace.length} recorded samples · ${runtimeSim.probes.length} pinned signals`
+                : `${runtimeSim.probes.length} pinned signals${circuitHasState ? ` · ${runtimeSim.tick} clock edge${runtimeSim.tick === 1 ? '' : 's'} applied` : ''}`}
+            </span>
+            <p className="ide-copy">
+              {isReplayMode
+                ? 'This is the run Simulate recorded. It is read-only evidence.'
+                : 'Values here settle as you drive inputs. Nothing is recorded and nothing is checked — run a scenario in Simulate for evidence.'}
+            </p>
             <div className="ide-inline-actions">
               {isReplayMode ? (
                 <IdeButton tone="secondary" onClick={onGoToVerify}>Open Simulate waveform</IdeButton>
               ) : (
                 <>
-              <IdeButton tone="secondary" onClick={runtimeSim.running ? pauseSimulation : startSimulation}>
-                {runtimeSim.running ? 'Pause' : 'Run'}
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={stepSimulation}>Step</IdeButton>
-              <IdeButton tone="ghost" onClick={resetSimulation}>Reset</IdeButton>
+                  {circuitHasState ? (
+                    <IdeButton tone="secondary" onClick={stepSimulation}>Clock edge</IdeButton>
+                  ) : null}
+                  <IdeButton tone="ghost" onClick={resetSimulation}>Reset values</IdeButton>
+                  <IdeButton tone="ghost" onClick={onGoToVerify}>Run a scenario in Simulate</IdeButton>
                 </>
               )}
             </div>
@@ -7680,13 +7674,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : null}
               {effectiveLearningMode === 'live' ? (
-                <div className="wb-toolbar-group" data-testid="ide-design-live-transport" aria-label="Exploratory simulation controls">
-                  <button type="button" className="wb-btn" onClick={simRunning ? pauseSimulation : startSimulation} data-testid="ide-design-live-run">
-                    {simRunning ? 'Pause' : 'Run'}
+                <div className="wb-toolbar-group" data-testid="ide-design-live-transport" aria-label="Exploration controls">
+                  <span
+                    className="wb-toolbar-meta rb-design-live-note"
+                    data-testid="ide-design-live-note"
+                    title="Click an input to drive it and watch the values settle. Nothing here is recorded and nothing is checked — run a scenario in Simulate for evidence."
+                  >
+                    Exploring · not recorded
+                  </span>
+                  {circuitHasState ? (
+                    <>
+                      <button
+                        type="button"
+                        className="wb-btn wb-btn--ghost"
+                        onClick={stepSimulation}
+                        data-testid="ide-design-live-step"
+                        title="Apply one clock edge to the registers in this circuit"
+                      >
+                        Clock edge
+                      </button>
+                      <span className="wb-toolbar-meta" data-testid="ide-design-live-tick">
+                        <code>{runtimeSim.tick} applied</code>
+                      </span>
+                    </>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    onClick={resetSimulation}
+                    data-testid="ide-design-live-reset"
+                    title="Return the inputs and any register state to their starting values"
+                  >
+                    Reset values
                   </button>
-                  <button type="button" className="wb-btn wb-btn--ghost" onClick={stepSimulation} data-testid="ide-design-live-step">Step</button>
-                  <button type="button" className="wb-btn wb-btn--ghost" onClick={resetSimulation} data-testid="ide-design-live-reset">Reset</button>
-                  <span className="wb-toolbar-meta" data-testid="ide-design-live-tick"><code>tick {runtimeSim.tick}</code></span>
                   <span className="wb-toolbar-sep" />
                 </div>
               ) : null}
@@ -8633,7 +8653,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       probedPorts={new Set(runtimeSim.probes.map((probe) => probe.key))}
                       showHints={false}
                       isRunning={simRunning}
-                      tickRate={simSpeed}
+                      tickRate={0}
                       tickCount={simTick}
                       debugSignals={effectiveExternalDebugSignals ?? liveSignals}
                       debugTick={effectiveExternalDebugTick ?? simTick}

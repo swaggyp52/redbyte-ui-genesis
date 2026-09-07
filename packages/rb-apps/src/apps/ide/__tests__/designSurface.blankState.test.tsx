@@ -99,11 +99,8 @@ function renderSurface() {
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -170,11 +167,8 @@ describe('DesignSurface blank-state guidance', () => {
       <DesignSurface
         runtimeSim={makeRuntimeSim()}
         ioRows={[]}
-        onRuntimeSimRun={vi.fn()}
-        onRuntimeSimPause={vi.fn()}
         onRuntimeSimStep={vi.fn()}
         onRuntimeSimReset={vi.fn()}
-        onRuntimeSimSetSpeed={vi.fn()}
         onRuntimeSimToggleProbe={vi.fn()}
         onGoToProject={vi.fn()}
         onGoToVerify={vi.fn()}
@@ -259,11 +253,8 @@ describe('DesignSurface signal focus ownership', () => {
               { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
               { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
             ]}
-            onRuntimeSimRun={vi.fn()}
-            onRuntimeSimPause={vi.fn()}
             onRuntimeSimStep={vi.fn()}
             onRuntimeSimReset={vi.fn()}
-            onRuntimeSimSetSpeed={vi.fn()}
             onRuntimeSimToggleProbe={vi.fn()}
             onRuntimeSimSetSelectedSignal={handleSelectedSignal}
             onGoToProject={vi.fn()}

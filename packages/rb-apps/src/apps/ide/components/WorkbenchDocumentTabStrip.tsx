@@ -120,10 +120,16 @@ export const WorkbenchDocumentTabStrip: React.FC<WorkbenchDocumentTabStripProps>
   // Back and forward describe places this session has been. Before it has been anywhere they
   // are two disabled arrows on an otherwise empty strip, which is chrome describing itself.
   const showHistory = Boolean(history && (history.canBack || history.canForward));
-  if (!showHistory && !showTabs && !showTrail && !menu) return null;
+  // The strip is a grid item in the document column's fixed first row: removing the element
+  // moves the surface into that row. It stays, and collapses.
+  const stripIsEmpty = !showHistory && !showTabs && !showTrail;
 
   return (
-    <div className="wb-doctabs" data-testid="ide-doc-tabstrip">
+    <div
+      className="wb-doctabs"
+      data-testid="ide-doc-tabstrip"
+      data-empty={stripIsEmpty ? 'true' : undefined}
+    >
       {showHistory && history ? (
         <div className="wb-doctabs-history" role="group" aria-label="History">
           <button
