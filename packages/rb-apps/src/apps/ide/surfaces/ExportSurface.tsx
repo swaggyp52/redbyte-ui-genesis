@@ -1478,8 +1478,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   // The download in the artifact inspector can only be the surface's primary action while that
   // document is the one on screen. With the dossier open it is not rendered at all, so the
   // decision strip keeps the primary - one primary, wherever the reader actually is.
+  /**
+   * The dossier is Package's landing (`package`, the workspace root) and is also openable as a
+   * report of its own (`handoff`). Both draw the same document; the artifact browser is what
+   * `package-artifact` draws.
+   */
+  const showsHandoffDossier = activeDocument?.kind === 'handoff' || activeDocument?.kind === 'package';
   const handoffDownloadIsPrimary =
-    activeDocument?.kind !== 'handoff' &&
+    !showsHandoffDossier &&
     !exportBlocked && !downloadDisabled && handoffTruth.primaryCtaIntent !== 'program-handoff';
   const vivadoEvidenceRows = [
     {
@@ -1750,7 +1756,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ref={surfaceRef}
           className="rb-pkg rb-pkg-hero"
           data-testid="ide-export-readiness-hero"
-          data-document={activeDocument?.kind === 'handoff' ? 'handoff' : 'artifacts'}
+          data-document={showsHandoffDossier ? 'handoff' : 'artifacts'}
           aria-label="Build and export package decision and files"
         >
           <section
@@ -1822,8 +1828,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 Validate package
               </IdeButton>
               {onOpenDocument ? (
-                <IdeButton tone="ghost" onClick={() => onOpenDocument({ kind: 'handoff' })} testId="ide-export-open-handoff">
-                  Handoff overview
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => onOpenDocument(showsHandoffDossier ? { kind: 'package-artifact' } : { kind: 'handoff' })}
+                  testId="ide-export-open-handoff"
+                >
+                  {showsHandoffDossier ? 'Package files' : 'Handoff overview'}
                 </IdeButton>
               ) : null}
               {exportBlocked ? (
@@ -1937,7 +1947,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
               <p>{readyArtifactCount} ready · {viewModel.artifacts.length} total</p>
             </header>
-            {activeDocument?.kind === 'handoff' ? (
+            {showsHandoffDossier ? (
               <HandoffOverviewDocument
                 project={project}
                 projectName={(project.name ?? 'Project').trim()}

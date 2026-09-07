@@ -300,9 +300,12 @@ async function run(width, height) {
   const failNav = await text(page, 'ide-verify-fail-nav-summary');
   assert(/LD1|SUM/i.test(failNav) && /expected/i.test(failNav) && /got/i.test(failNav),
     `first mismatch names signal + expected + observed (got "${failNav}")`);
-  assert(await page.locator(tid('ide-sim-inspector-trace-design')).count() > 0, 'Trace-in-Design action present on FAIL');
+  // The failure focus owns "Trace in Design": it sits beside the mismatch it traces, in the run
+  // line, which every representation of the experiment renders. `ide-sim-inspector-trace-design`
+  // named an owner the surface stopped rendering; the capability did not move, its id did.
+  assert(await page.locator(tid('ide-verify-fail-focus-trace')).count() > 0, 'Trace-in-Design action present on FAIL');
   console.log(`[${label}] E. Simulate — Compare FAIL with concrete mismatch: "${failNav.trim()}"`);
-  await page.click(tid('ide-sim-inspector-trace-design'));
+  await page.click(tid('ide-verify-fail-focus-trace'));
   await page.waitForFunction(
     () => /mode=design/.test(location.href) || document.querySelector('[data-testid="node-OR-xor2_node"]'),
     undefined,
