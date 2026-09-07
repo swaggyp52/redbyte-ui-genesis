@@ -98,8 +98,24 @@ assertions (`ide-export-trust-banner`, `ide-export-checks-dock`, `ide-export-sum
 `ide-export-gate-clock`, `ide-export-map-row-*` and friends), which name owners retired before this
 session.
 
-**Not run this session:** `pnpm verify:gates` and the full journey sweep locally. Both golden
-Basys3 gates are untouched and CI at `bf0ead058` is green.
+**Journeys: 31 of 31 pass against one server at this head.** The first full sweep of this branch
+found six red; four were one defect this branch introduced (the `.vcd` route), one was a stale
+document-kind expectation and one was a journey wiring at whatever camera placement left. All six
+closed.
+
+**Phase two, from a measured audit of the running app** (twelve agents, five workspaces, two scale
+regimes; every finding re-measured by a second agent trying to refute it - 20 confirmed, 5
+refuted): six blocking defects closed, each with an assertion verified red without its fix - the
+Design output pins thrown 96px past the frame and 80px under the dock (clicks landing on Delete
+node), four of eleven ruler columns unable to hold the cursor, the tick number inert, the
+generators disclosure squeezing the timeline to 1px and stealing every composer click, the case
+table's failure navigation painting 0px at 1024x720 and 200% text, and the trace canvas at 35px
+(200% text) and 0px (720x450, unreachable). Four more closed with them: the inspector's
+`LabelLD0` collision, the collapsed panel's 9px overhang, the board instruction truncated worse at
+the larger window, and the dossier counting 4 warnings beside a status bar counting 3.
+
+**Not run this session:** `pnpm verify:gates` locally. Both golden Basys3 gates are untouched and
+CI is green at every pushed head.
 
 **Done at closeout:** branch pushed, CI green, preview SHA verified, PR #85 body updated to this
 head.

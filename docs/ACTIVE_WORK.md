@@ -271,15 +271,25 @@ accepted.
   alternate editor, the failure navigation and the trace floor at 1440x900, 1024x720, 720x450 and
   root 32px) and `packages/rb-e2e/design-inspector-probe.mjs` (term/value columns, and the pins
   surviving the dock).
-  **Not delivered and stated plainly:** `nested-adder-journey` remains red - the authored layout
-  runs to world y=430 plus symbol height against a 732px Design canvas, so the last pins are off
-  the pane and the unforced click lands on the bottom panel; calling the journey's own `fitAll()`
-  first moves the failure rather than closing it. `a11y-scale-journey` is red at this head and not
-  yet classified. Eleven lower-severity audit findings remain open and named (Project Overview
-  411px blank at 1440x900, Project explorer row metadata clipped with a 0px top-module marker,
-  five stacked Package header rows stating readiness four times, the dossier never scrolling
-  itself, the run line exceeding its cap at 200% text). The 35 obsolete Export assertions remain
-  named debt.
+  **Both remaining journey failures were closed, and neither was a lost capability.**
+  `a11y-scale-journey` waited for `ide-doc-tab-cases:default` - a document kind that no longer
+  exists, on a tab the workbench deliberately does not draw for a single object. It authors a
+  second scenario through the interface so there IS a choice, and proves the DOCUMENT moved (not
+  just the tab) through the strip's live display name, because two scenarios both render the case
+  lab and its presence no longer distinguishes them; its playback step asks for the Waveform
+  representation and opens the Playback disclosure, then asserts reduced motion, the readable
+  position and the toggle state exactly as before. `nested-adder-journey` wired Stage A at whatever
+  camera the placement left, against a 732px canvas and a layout running to world y=430 plus symbol
+  height, so the last pins were off the pane and the unforced click landed on the bottom panel
+  behind them - the journey working as designed. It presses the toolbar's Fit first, as a student
+  would; the Shift+F helper further down fits the SELECTION and moved the failure to the first pin
+  instead of closing it.
+  **All 31 journeys in `packages/rb-e2e` pass against one server at this head** (29 in the sweep,
+  plus these two re-run after their fixes landed).
+  **Not delivered and stated plainly:** eleven lower-severity audit findings remain open and named
+  (Project Overview 411px blank at 1440x900, Project explorer row metadata clipped with a 0px
+  top-module marker, five stacked Package header rows stating readiness four times, the run line
+  exceeding its cap at 200% text). The 35 obsolete Export assertions remain named debt.
 
   **Not delivered and stated plainly:** the Board mapping composition beyond the two clippings
   closed here, and the 35 obsolete Export assertions, which remain named debt.
