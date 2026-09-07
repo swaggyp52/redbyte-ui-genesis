@@ -376,6 +376,44 @@
 .ide-root .rb-insp-facts > div:last-child,
 .ide-root .rb-insp-row:last-child,
 .ide-root .rb-insp-idle-stat:last-child { border-bottom: 0; }
+/* The signal model is a BLOCK of rows inside the facts list, not a row itself. It declares
+   `display: block` two hundred lines above, but `.rb-insp-facts > div` matches it too and
+   outranks that on its element selector, so its four rows became grid ITEMS in a 96px / 1fr
+   pair - and each row, no longer a grid of its own, printed its term hard against its value
+   with no separator at all:
+       LabelLD0        Logical directionOutput signal - A value your circuit drives.
+       Board resourceLD1   Package pinE19
+   The block is a block again, and its rows are the grid. The value may wrap, because one of
+   them is a sentence about what the signal is for. */
+.ide-root .rb-insp-facts > .rb-insp-signal-model { display: block; }
+.ide-root .rb-insp-signal-model > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
+  min-height: 24px;
+  margin: 0;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-insp-signal-model > div:last-child { border-bottom: 0; }
+.ide-root .rb-insp-signal-model > div > span {
+  margin: 0;
+  min-width: 0;
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-root .rb-insp-signal-model > div > strong {
+  margin: 0;
+  min-width: 0;
+  color: var(--wb-text);
+  font: var(--wb-text-sm) var(--wb-font-mono);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
 .ide-root .rb-insp-facts dt,
 .ide-root .rb-insp-row > :first-child,
 .ide-root .rb-insp-idle-stat > :first-child,
