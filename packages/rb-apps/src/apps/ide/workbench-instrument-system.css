@@ -1130,11 +1130,31 @@
    the height: the schematic, grid or board is the reason the window is
    open; library, inspector and tool window scroll inside their strips. */
 @media (max-width: 899px) {
-  .ide-root .ide-surface-shell.ide-workbench-shell {
-    grid-template-rows: auto minmax(0, 1fr) auto !important;
+  /* The shell is two rows - the workspace over the bottom panel - and the panel is `grid-row: 2`.
+     A three-row `auto minmax(0, 1fr) auto` template, written for an older shell whose console
+     was the third row, gave row 1 the workspace's whole content height and handed the panel
+     the `1fr` that was left over. On a 720x450 CSS viewport - a 1440x900 machine at 200%
+     browser zoom - that was 0px: the panel reported itself expanded, drew a 17px sliver, and
+     laid its own problems list out 111px below the bottom of the window. The rows below say
+     what the shell is, and the panel's cap lives on the track so the panel fills what it is
+     given instead of being capped inside a taller one. */
+  .ide-root .ide-surface-shell.ide-workbench-shell:has(> .ide-workbench-console) {
+    grid-template-rows:
+      minmax(0, 1fr)
+      minmax(
+        var(--ide-console-collapsed-h, 40px),
+        min(var(--rb-workbench-pref-bottom-height, 220px), 34vh)
+      );
     min-height: 0;
   }
-  .ide-root .ide-workbench-shell > .ide-workbench-console { min-height: 0 !important; max-height: 30vh !important; overflow: auto; }
+  .ide-root .ide-surface-shell.ide-workbench-shell:has(> .ide-workbench-console.is-collapsed) {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .ide-root .ide-surface-shell.ide-workbench-shell:not(:has(> .ide-workbench-console)) {
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .ide-root .ide-workbench-shell > .ide-workbench-console { min-height: 0; max-height: none; }
   .ide-root .ide-workbench-shell .ide-workbench-main {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: auto minmax(0, 1fr) auto !important;

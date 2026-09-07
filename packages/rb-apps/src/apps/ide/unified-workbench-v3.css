@@ -52,7 +52,14 @@
 .ide-root .ide-workbench-main.hide-left-dock .ide-workbench-dock-right { grid-column: 2; }
 .ide-root .ide-workbench-workspace { min-width: 0; min-height: 0; overflow: hidden; }
 .ide-root .ide-workbench-dock-right { border-left: 1px solid var(--rb-border-subtle); }
-.ide-root .ide-workbench-console { position: relative; grid-row: 2; min-height: 0; overflow: hidden; border-top: 1px solid var(--rb-border-subtle); background: var(--rb-surface-raised); }
+/* The panel is a column: its bar keeps its height and its content takes the rest and scrolls.
+   Without this the bar, the resize handle and the problems list were three block children of a
+   fixed-height section with `overflow: hidden`, so a short track did not shorten the list - it
+   pushed the list out of the section and clipped it, which is how an "expanded" panel came to
+   show 17px of nothing. */
+.ide-root .ide-workbench-console { position: relative; grid-row: 2; display: flex; flex-direction: column; min-height: 0; overflow: hidden; border-top: 1px solid var(--rb-border-subtle); background: var(--rb-surface-raised); }
+.ide-root .ide-workbench-console > .ide-workbench-console-bar { flex: none; }
+.ide-root .ide-workbench-console > .ide-workbench-console-content { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .ide-root .ide-workbench-dock-collapse { position: absolute; z-index: 15; top: 7px; display: grid; width: 28px; min-height: 28px; place-items: center; padding: 0; border: 1px solid var(--rb-border-default); border-radius: 6px; color: var(--rb-text-secondary); background: var(--rb-surface-raised); }
 .ide-root .ide-workbench-dock-collapse--left { right: 7px; }
 .ide-root .ide-workbench-dock-collapse--right { left: 7px; }
