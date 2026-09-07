@@ -5961,7 +5961,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
       rightDockCanCollapse={false}
-      consoleMode={problemsLedgerCount > 0 ? 'collapsed' : 'hidden'}
+      // Always present, never conditional: a panel that exists only while a project happens to
+      // have problems takes its own strip away with it, and leaves the status bar's problems count
+      // as a button that does nothing. An empty panel says there is nothing, which is an answer.
+      consoleMode="collapsed"
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
       productSpine={{

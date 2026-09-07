@@ -71,6 +71,114 @@ async function run(width, height) {
   const boardOverflow = await overflowNow();
   if (boardOverflow > 1) fail(`horizontal overflow on Board at ${width}×${height}: ${boardOverflow}px`);
 
+  // ⑦ The bottom panel exists on every workspace, and the count in the footer opens it.
+  // It used to be `problemsLedgerCount > 0 ? 'collapsed' : 'hidden'` on four of the five, so a
+  // project with no problems had no panel, no strip to open one, and a footer problems count
+  // that was a button doing nothing. Whether there is anything to report is the panel's answer
+  // to give, not a reason for it to disappear.
+  for (const mode of ['project', 'design', 'verify', 'hardware', 'export']) {
+    await page.getByTestId(`mode-button-${mode}`).click();
+    await page.waitForTimeout(700);
+    const reachable = await page.evaluate(() => {
+      const open = document.querySelector('[data-testid="ide-workbench-console"]');
+      const strip = document.querySelector('[data-testid="ide-show-bottom-dock"]');
+      return Boolean(open || strip);
+    });
+    if (!reachable) fail(`${mode} offers no way to reach the bottom panel at ${width}×${height}`);
+  }
+
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(700);
+  await page.getByTestId('ide-status-problems').click();
+  await page.waitForTimeout(700);
+  const opened = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="ide-workbench-console"]');
+    const problems = document.querySelector('[data-testid="ide-problems-panel"]');
+    const status = document.querySelector('[data-testid="ide-status-bar"]');
+    const panelBox = panel ? panel.getBoundingClientRect() : null;
+    const statusBox = status ? status.getBoundingClientRect() : null;
+    return {
+      state: panel ? panel.getAttribute('data-console-state') : null,
+      height: panelBox ? Math.round(panelBox.height) : 0,
+      problemsVisible: Boolean(problems && problems.getBoundingClientRect().height > 0),
+      panelBelowFold: panelBox ? panelBox.bottom > window.innerHeight + 1 : true,
+      statusBelowFold: statusBox ? statusBox.bottom > window.innerHeight + 1 : true,
+    };
+  });
+  if (opened.state !== 'expanded') {
+    fail(`the footer problems count left the panel "${opened.state}" - clicking a count should show what it counts`);
+  }
+  if (!opened.problemsVisible) fail('the panel opened without its problems list');
+  if (opened.panelBelowFold) fail(`the opened panel runs past the viewport at ${width}×${height}`);
+  if (opened.statusBelowFold) fail(`the status bar is below the viewport at ${width}×${height}`);
+
+  // ...and it can be put away again, both ways, from controls that are on screen.
+  await page.getByTestId('ide-console-toggle').click();
+  await page.waitForTimeout(500);
+  const collapsed = await page.evaluate(() =>
+    document.querySelector('[data-testid="ide-workbench-console"]')?.getAttribute('data-console-state') ?? null);
+  if (collapsed !== 'collapsed') fail(`collapsing left the panel "${collapsed}"`);
+  await page.getByTestId('ide-hide-bottom-dock').click();
+  await page.waitForTimeout(500);
+  const recoverable = await page.getByTestId('ide-show-bottom-dock').count();
+  if (recoverable === 0) fail('hiding the panel left no way to bring it back');
+  console.log(`[${width}×${height}] ⑦ bottom panel: reachable on all five workspaces, the footer count opens it ` +
+    `(${opened.height}px, problems listed), and hiding it leaves a strip to restore it`);
+  // ⑧ The panel keeps a preference per workspace, and each workspace restores its own.
+  // Dock state is per-surface throughout this shell; opening Problems on Project is not a
+  // statement about Design. What must hold is that leaving and coming back restores what that
+  // workspace was left in, and that a changing problem count never silently overrides it.
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(600);
+  await page.getByTestId('ide-status-problems').click();
+  await page.waitForTimeout(600);
+  const panelState = () => page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="ide-workbench-console"]');
+    return panel ? panel.getAttribute('data-console-state') : 'absent';
+  });
+  if ((await panelState()) !== 'expanded') fail('Project did not keep the panel open');
+  await page.getByTestId('mode-button-design').click();
+  await page.waitForTimeout(700);
+  const designState = await panelState();
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(700);
+  if ((await panelState()) !== 'expanded') {
+    fail('returning to Project did not restore the panel it was left open on');
+  }
+  await page.getByTestId('mode-button-design').click();
+  await page.waitForTimeout(700);
+  if ((await panelState()) !== designState) {
+    fail(`Design's own panel preference changed behind its back: ${designState} -> ${await panelState()}`);
+  }
+  console.log(`[${width}×${height}] ⑧ per-surface panel preference: Project expanded, Design ${designState}, both restored on return`);
+
+  // ⑨ The splitter is operable from the keyboard, and a layout reset recovers the panel.
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForTimeout(600);
+  const panelHeight = () => page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="ide-workbench-console"]');
+    return panel ? Math.round(panel.getBoundingClientRect().height) : 0;
+  });
+  const beforeResize = await panelHeight();
+  await page.focus('[data-testid="ide-resize-bottom-dock"]');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(400);
+  const afterResize = await panelHeight();
+  if (afterResize <= beforeResize) {
+    fail(`the bottom splitter did not respond to the keyboard: ${beforeResize}px -> ${afterResize}px`);
+  }
+
+  // An empty project still has a usable way in: no problems is an answer, not a disappearance.
+  const emptyEntry = await page.evaluate(() => {
+    const open = document.querySelector('[data-testid="ide-workbench-console"]');
+    const strip = document.querySelector('[data-testid="ide-show-bottom-dock"]');
+    const problems = document.querySelector('[data-testid="ide-problems-panel"]');
+    return { reachable: Boolean(open || strip), problemsRendered: Boolean(problems) };
+  });
+  if (!emptyEntry.reachable) fail('a project with no problems has no way to the panel');
+  console.log(`[${width}×${height}] ⑨ splitter by keyboard ${beforeResize}px -> ${afterResize}px; ` +
+    `panel reachable with the ledger ${emptyEntry.problemsRendered ? 'rendered' : 'empty'}`);
   await page.screenshot({ path: `${OUT}/slice1-shell-${width}x${height}.png` });
   if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
   await context.close();

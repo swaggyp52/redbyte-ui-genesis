@@ -104,7 +104,14 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     rightDockAllowed && surfacePreferences.docks.right.visible;
   // A blocking diagnostic earns the full panel. Anything advisory earns a strip the student
   // can open. `expanded` mode is an explicit request from the surface and is honoured.
-  const [consoleExpanded, setConsoleExpanded] = React.useState(false);
+  const consoleExpanded = surfacePreferences.docks.bottom.expanded;
+  const setConsoleExpanded = React.useCallback(
+    (next: boolean | ((open: boolean) => boolean)) => {
+      const value = typeof next === 'function' ? next(surfacePreferences.docks.bottom.expanded) : next;
+      workspacePreferencesStore.setDock(mode, 'bottom', { expanded: value, visible: true });
+    },
+    [mode, surfacePreferences.docks.bottom.expanded]
+  );
   const showConsole =
     Boolean(console) &&
     (consoleHasBlocking ||

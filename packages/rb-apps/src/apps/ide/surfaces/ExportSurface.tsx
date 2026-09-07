@@ -1727,7 +1727,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       consoleHasEntries={diagnosticsList.length > 0}
       leftDockMode="hidden"
       rightDockMode="hidden"
-      consoleMode={problemsLedgerCount > 0 ? 'collapsed' : 'hidden'}
+      // Always present, never conditional: a panel that exists only while a project happens to
+      // have problems takes its own strip away with it, and leaves the status bar's problems count
+      // as a button that does nothing. An empty panel says there is nothing, which is an answer.
+      consoleMode="collapsed"
       console={<ProblemsPanel origin="bottom-panel" />}
       productSpine={{
         currentStage: 'Build & Export',

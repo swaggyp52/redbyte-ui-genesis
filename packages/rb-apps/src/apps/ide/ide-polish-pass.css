@@ -4293,6 +4293,24 @@
   justify-content: space-between;
   gap: var(--ide-space-1);
 }
+
+/* The left and right docks put their collapse control in an absolutely-positioned corner of
+   `.ide-workbench-dock`, which is the element with `position: relative`. The bottom panel is
+   not one of those docks - it is a section with a flex bar - so the same rule resolved against
+   a different containing block and measured 0px high: the button to put the panel away was in
+   the document, took no space, and could not be clicked by a pointer or reached by a person.
+   Here it is an ordinary item at the end of the bar it belongs to. */
+.ide-root .ide-workbench-console-bar .ide-workbench-dock-collapse--bottom {
+  position: static;
+  inset: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  min-height: 22px;
+  height: 22px;
+}
 .ide-root .ide-workbench-console-toggle {
   display: inline-flex;
   align-items: center;

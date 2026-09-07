@@ -125,6 +125,8 @@ export type DesignCanvasDensity = 'comfortable' | 'compact';
 export interface WorkspaceDockPreferences {
   readonly visible: boolean;
   readonly sizePx: number;
+  /** Bottom dock only: whether the panel is open rather than showing its strip. */
+  readonly expanded: boolean;
 }
 
 export interface WorkspaceSurfacePreferences {
@@ -161,6 +163,7 @@ export interface WorkspacePresetDefinition {
 export interface WorkspaceDockUpdate {
   readonly visible?: boolean;
   readonly sizePx?: number;
+  readonly expanded?: boolean;
 }
 
 export type WorkspacePreferencesStorage = Pick<Storage, 'getItem' | 'setItem'>;
@@ -176,23 +179,23 @@ export const WORKSPACE_DOCK_SIZE_LIMITS: Readonly<
 
 const AUTHORING_SURFACES = createSurfacePreferences({
   project: {
-    left: { visible: true, sizePx: 248 },
-    right: { visible: true, sizePx: 288 },
+    left: { visible: true, sizePx: 248, expanded: false },
+    right: { visible: true, sizePx: 288, expanded: false },
   },
   design: {
     // 220px gave the component library 177px of usable width once dock chrome was taken out,
     // and one library row needs a 34px kind badge, a part name and a port signature such as
     // "a, b to out". The rail was rendering a 276px row into a 175px box with hidden overflow.
-    left: { visible: true, sizePx: 264 },
-    right: { visible: true, sizePx: 280 },
+    left: { visible: true, sizePx: 264, expanded: false },
+    right: { visible: true, sizePx: 280, expanded: false },
   },
   verify: {
-    left: { visible: true, sizePx: 240 },
-    bottom: { visible: false, sizePx: 260 },
+    left: { visible: true, sizePx: 240, expanded: false },
+    bottom: { visible: false, sizePx: 260, expanded: false },
   },
-  hardware: { right: { visible: true, sizePx: 300 } },
-  export: { left: { visible: true, sizePx: 240 } },
-  import: { right: { visible: true, sizePx: 300 } },
+  hardware: { right: { visible: true, sizePx: 300, expanded: false } },
+  export: { left: { visible: true, sizePx: 240, expanded: false } },
+  import: { right: { visible: true, sizePx: 300, expanded: false } },
 });
 
 export const WORKSPACE_PRESETS: Readonly<Record<WorkspacePresetId, WorkspacePresetDefinition>> =
@@ -210,14 +213,14 @@ export const WORKSPACE_PRESETS: Readonly<Record<WorkspacePresetId, WorkspacePres
       surfaces: createSurfacePreferences({
         ...toOverrides(AUTHORING_SURFACES),
         design: {
-          left: { visible: false, sizePx: 220 },
-          right: { visible: true, sizePx: 280 },
-          bottom: { visible: true, sizePx: 300 },
+          left: { visible: false, sizePx: 220, expanded: false },
+          right: { visible: true, sizePx: 280, expanded: false },
+          bottom: { visible: true, sizePx: 300, expanded: false },
         },
         verify: {
-          left: { visible: true, sizePx: 240 },
-          right: { visible: false, sizePx: 300 },
-          bottom: { visible: true, sizePx: 340 },
+          left: { visible: true, sizePx: 240, expanded: false },
+          right: { visible: false, sizePx: 300, expanded: false },
+          bottom: { visible: true, sizePx: 340, expanded: false },
         },
       }),
     },
@@ -228,14 +231,14 @@ export const WORKSPACE_PRESETS: Readonly<Record<WorkspacePresetId, WorkspacePres
       surfaces: createSurfacePreferences({
         ...toOverrides(AUTHORING_SURFACES),
         design: {
-          left: { visible: true, sizePx: 240 },
-          right: { visible: true, sizePx: 320 },
-          bottom: { visible: false, sizePx: 220 },
+          left: { visible: true, sizePx: 240, expanded: false },
+          right: { visible: true, sizePx: 320, expanded: false },
+          bottom: { visible: false, sizePx: 220, expanded: false },
         },
         hardware: {
-          left: { visible: true, sizePx: 280 },
-          right: { visible: true, sizePx: 340 },
-          bottom: { visible: false, sizePx: 220 },
+          left: { visible: true, sizePx: 280, expanded: false },
+          right: { visible: true, sizePx: 340, expanded: false },
+          bottom: { visible: false, sizePx: 220, expanded: false },
         },
       }),
     },
@@ -246,9 +249,9 @@ export const WORKSPACE_PRESETS: Readonly<Record<WorkspacePresetId, WorkspacePres
       surfaces: createSurfacePreferences({
         ...toOverrides(AUTHORING_SURFACES),
         design: {
-          left: { visible: false, sizePx: 220 },
-          right: { visible: false, sizePx: 280 },
-          bottom: { visible: true, sizePx: 220 },
+          left: { visible: false, sizePx: 220, expanded: false },
+          right: { visible: false, sizePx: 280, expanded: false },
+          bottom: { visible: true, sizePx: 220, expanded: false },
         },
       }),
     },
@@ -386,6 +389,7 @@ export class WorkspacePreferencesStore {
       {
         visible: update.visible ?? currentDock.visible,
         sizePx: update.sizePx ?? currentDock.sizePx,
+        expanded: update.expanded ?? currentDock.expanded,
       },
       dockId,
       currentDock
@@ -545,7 +549,8 @@ function normalizeDockPreferences(
   const sizePx = typeof record.sizePx === 'number' && Number.isFinite(record.sizePx)
     ? clampDockSize(dockId, record.sizePx)
     : fallback.sizePx;
-  return Object.freeze({ visible, sizePx });
+  const expanded = typeof record.expanded === 'boolean' ? record.expanded : fallback.expanded;
+  return Object.freeze({ visible, sizePx, expanded });
 }
 
 function normalizeToolbarCommandIds(value: unknown): readonly IdeCommandId[] {
@@ -574,9 +579,9 @@ function createSurfacePreferences(
     const surfaceOverrides = overrides[surfaceId] ?? {};
     surfaces[surfaceId] = {
       docks: {
-        left: surfaceOverrides.left ?? { visible: false, sizePx: 220 },
-        right: surfaceOverrides.right ?? { visible: false, sizePx: 280 },
-        bottom: surfaceOverrides.bottom ?? { visible: false, sizePx: 220 },
+        left: surfaceOverrides.left ?? { visible: false, sizePx: 220, expanded: false },
+        right: surfaceOverrides.right ?? { visible: false, sizePx: 280, expanded: false },
+        bottom: surfaceOverrides.bottom ?? { visible: false, sizePx: 220, expanded: false },
       },
     };
   }
