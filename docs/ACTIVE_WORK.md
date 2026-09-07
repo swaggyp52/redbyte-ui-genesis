@@ -324,6 +324,24 @@ accepted.
   The same pass found the menubar squeezed to 63px around an 81px button at 1366px and a 32px root,
   the overhang taking the click meant for the search. The probe gained a nothing-selected pass, a
   720x450 case, and leaf-level overlap comparison; it is red without the fixes and green with them.
+  **The panel's resting state, and a probe that had been measuring nothing.** Writing the assertion
+  the panel commit's comment promised - "a layout reset recovers it" - showed it does not: a reset
+  restores the default, and the default said `visible: false`, so a fresh profile got a generic
+  "Show bottom panel" bar rather than the 28px collapsed strip four surfaces ask for. The preference
+  agrees with them now, and the empty Board - which had `consoleMode="hidden"` - has its panel.
+  `layout-scale-probe` looks for `data-hierarchy-focal="basys3-board-workbench"`, which **no element
+  has carried since the board was rebuilt**, so its hardware half had been reporting a pass for a
+  workspace it never measured; the marker is restored and a missing focal element now fails. With
+  Board measured at 720x450 its stacked rows were **`41px / 85.5px / 44.5px`** with the stage drawn
+  74.5px past its own row and the side pane showing **43 of 666px**, none of it scrolling - floors
+  and a scrolling column make it `112px 160px 120px`. Two of that probe's own comparisons were
+  unsound in opposite directions and now intersect with every clipping ancestor first.
+  **Two assertions that were not assertions** were repaired: the panel-preference step printed
+  "0 -> 0 problems" and passed (it now moves the ledger and fails if it does not), and the Overview's
+  stale-evidence claim is asserted on the sentence - "current · pass" -> "stale" - with the status
+  bar read in the same breath, not on a tone class. One red was introduced and closed in the same
+  session: `workspacePreferences.test.ts` pins the complete shape of a dock preference and
+  `expanded` had not been stated there.
   Typecheck 778, shape identical. Label **REDBYTE PROJECT TWO-STATE CANDIDATE / BOTTOM PANEL CLOSED
   AT BROWSER ZOOM / PR #85 DRAFT / NO MERGE / NO PRODUCTION**. Not delivered and stated plainly: the
   Board Guided/Expert split, the continuous Simulate workbench, and the open entries in

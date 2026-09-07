@@ -86,6 +86,54 @@ worktree sharing this clone's `node_modules`, and this tree).
   warning colour on a screen with no project open. There is a state for that now: `no-project`,
   "No project", a neutral dot, and a Save that says why it is disabled.
 
+### The panel's resting state, and a probe that had been measuring nothing
+
+Writing the assertion the bottom-panel commit's comment promised - "a layout reset recovers it" -
+showed it does not. A reset restores the default, and the default said `visible: false`, so a fresh
+profile got the generic "Show bottom panel" bar on every workspace rather than the 28px collapsed
+strip the surfaces ask for (`consoleMode="collapsed"` on four of them, and the strip was built for
+exactly this). The preference agrees with them now: present, collapsed, hidden only by the reader's
+own choice, which the reset undoes. Measured: hide -> reset -> collapsed at 28px. The empty Board -
+`hasNoBoundaryRows` - was the fifth workspace and had `consoleMode="hidden"`, so the panel was
+missing exactly where a reader most wants to know what the workbench is reporting.
+
+**`layout-scale-probe` had been passing its hardware half on an absence.** It looks for
+`data-hierarchy-focal="basys3-board-workbench"`; no element has carried that marker since the board
+was rebuilt. With no focal element the overflow arithmetic is 0 and the console comparison is
+skipped, so it reported a pass for a workspace it never measured. The marker is back on the board
+stage, and a missing focal element is a failure now.
+
+With Board measured for the first time, at a 720x450 CSS viewport:
+
+- Rows resolved to **`41px / 85.5px / 44.5px`** while the stage kept its 160px floor, so the stage
+  was drawn **74.5px past its own row** and over the side pane. The assignments strip showed 40 of
+  its 57px and the side pane **43 of 666px**, and the grid's `overflow: visible` meant none of it
+  scrolled. Floors (112px / 120px) plus a scrolling column: **`112px 160px 120px`**, 392px in 155px.
+- Two of the probe's own comparisons were unsound in opposite directions. `focalPastPane` compared
+  raw rectangles, so content inside a *scrolling* pane read as unreachable; `focalVsConsole` did the
+  same in reverse - below 900px the docks fold into one scrolling region, so a canvas clipped by it
+  and reached by scrolling looked like a canvas drawn over the panel. Both intersect with every
+  clipping ancestor now, and "past a pane" means past one that clips without scrolling.
+
+### Two more assertions that were not assertions
+
+- **The problem count is the panel's content, not its state.** "Returning to a surface restores that
+  surface's preference" was proven; "a changing count must not silently override it" was not. The
+  step now removes a symbol in Design to move the ledger 0 -> 2 and re-reads the stored Project
+  preference. It fails if the count does not move, because the first version printed "0 -> 0" and
+  passed.
+- **The Overview says the evidence went stale, in words.** Run the lab's checks, change the design
+  under the recorded run, read the Simulation line: "current · pass · Default (4 cases)" -> "stale ·
+  Default (4 cases)". The assertion is on the sentence; the tone is printed for the record, not
+  asserted on. The status bar is read in the same breath, so a disagreement between the two fails
+  rather than each being separately green.
+
+### One red I introduced, found and closed
+
+`workspacePreferences.test.ts` asserts the complete shape of a dock preference - which is what makes
+it worth keeping - and `expanded`, added in the bottom-panel commit, was not stated there. Two
+assertions were failing on my own change, not on inherited debt.
+
 ### Two frame states one probe was never in
 
 `chrome-priority-probe` loads a project through the store, which leaves an engineering object

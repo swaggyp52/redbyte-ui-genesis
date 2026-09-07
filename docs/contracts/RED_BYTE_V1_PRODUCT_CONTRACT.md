@@ -309,6 +309,39 @@ attention, then disclosures - rather than tabulated.
 | A second readiness calculation for the Overview's status lines | Two authorities disagree eventually. The lines read the facts the project already derives, in a different register. |
 | Making dock preferences global so all surfaces share one panel state | Rejected for this slice by explicit direction: opening Problems on Project does not need to open it on Design. Per surface, restored on return. |
 
+### 2026-09-07 - The shared bottom panel
+
+**Decided.** One panel, on every workspace including an empty Board. Its resting state is present
+and collapsed - a 28px strip that names itself and carries the control that puts it away. The status
+bar's problems count opens it expanded. Hiding it is the reader's choice; a layout reset undoes that
+choice. Preferences are per surface. The problem count is the panel's content, never its state.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| A panel that appears when there are problems | It takes its own strip with it, and leaves a status-bar count that is a button doing nothing. An empty ledger saying "no problems" is an answer. |
+| A default of hidden-with-a-restore-bar | It contradicted the four surfaces that ask for `collapsed`, and it made "a layout reset recovers the panel" false - a reset restores the default, and the default was the generic bar. |
+| Global dock preferences shared by all surfaces | Rejected by explicit direction for this slice: opening Problems on Project is not a statement about Design. |
+| Forcing the panel open when the count changes | The count is content. Blocking diagnostics still force it into view, which is a different thing and does not write the preference. |
+
+### 2026-09-07 - Shortage of room is measured in both forms
+
+**Decided.** Text zoom and browser zoom are separate failures and both are asserted: a large root
+font inside a fixed viewport, and a CSS viewport shrunk under the whole frame. A control must own
+its own box, never take a click meant for its neighbour, and never shrink one of the six frame
+priorities to make room for something that is not one of them. Where a region cannot hold its
+content, it scrolls; a floor that cannot be met is a scroll, not an overflow, and never a strip
+collapsed to nothing.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Treating the existing 200%-text coverage as covering zoom | Its own header says otherwise. The panel failed at 200% browser zoom while every text-zoom case passed. |
+| Capping a panel on the element inside a taller track | It leaves an inert strip of reserved space. The cap belongs to the track. |
+| Percentage caps with no floors on stacked strips | At a short window the floored neighbour takes everything and the capped strips resolve to zero. Measured on Board: `41px / 85.5px / 44.5px` with 623px of the side pane unreachable, and `0px 160px 0px` once the column scrolled without floors. |
+
 ## Attribution
 
 Connor Angiel
