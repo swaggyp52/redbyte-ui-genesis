@@ -4,6 +4,106 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-07 - P2.5M Project as two experiences, and the shortage the probes were not in (Opus 5, desktop session)
+
+**Label: REDBYTE PROJECT TWO-STATE CANDIDATE / BOTTOM PANEL CLOSED AT BROWSER ZOOM / FRAME
+SHORTAGE MEASURED IN BOTH FORMS / PR #85 DRAFT / NO MERGE / NO PRODUCTION.**
+
+Continues P2.5L on the same branch. The assignment: keep the bottom-panel fixes, keep dock
+preferences per surface for this slice, decide Start vs Overview at the lifecycle owner rather than
+by inference, make close and resume preserve work and context, and prove it through real journeys
+with comparable before/after captures read personally.
+
+### Project is two experiences on one route
+
+`projectIsOpen` is the judgement the autosave guard already makes: the launcher placeholder nobody
+chose is not somebody's work, everything else is. Start when nothing is open, the project's own
+Overview when something is - never from whether the circuit has parts, whether there are problems,
+or what the project is called. A blank project a person deliberately made is open work and gets its
+Overview; it used to be sent back to the catalogue for having no parts yet. `closeToProjectHome`
+exists because blanking to `projectKind: 'blank'` produces a project, so Close used to land on the
+Overview of an empty one.
+
+`project-experience-journey.mjs` drives all of it through the interface at 1440x900 and 1280x650 -
+every step a click or a keystroke, the store read only for assertions:
+
+1. a first visit opens Start with **0** invented recents and offers blank / import / open saved / labs;
+2. selecting a lab reads a 735-character brief and changes nothing in the workspace;
+3. opening one lands on that project and Project shows its Overview;
+4. the Overview is a 795x314 circuit, **one** continuation, three state lines, three closed
+   disclosures, a reachable Top editor and 0px of sideways scroll;
+5. the circuit opens in Design in one action and the continuation goes where the reader last worked;
+6. Problems opens expanded from Project;
+7. close returns to Start with the project saved and **no placeholder beside it**;
+8. resume from Start restores the same project id and the same parts - not a fresh copy of the lab;
+9. "start blank" opens on the sheet, gets its own Overview, says the sheet is empty, and the saved
+   record survives.
+
+### The bottom panel at real browser zoom - and the clipping the report described
+
+The panel pass said plainly that no offscreen clipping was reproduced in the states it measured
+(1440x900, 1366x768, 1280x650) and that this was not a claim the screenshot was wrong about a state
+it had not measured. **That state is a 720x450 CSS viewport - a 1440x900 machine at 200% browser
+zoom - and the screenshot was right.**
+
+Browser zoom is not text zoom: text zoom grows type inside a fixed viewport, browser zoom shrinks
+the viewport under everything at once. The existing scale coverage names the gap in its own header
+("NOT proven here: real browser zoom").
+
+Measured before, on all five workspaces: pressing the problems count produced a panel reporting
+itself `expanded` and drawing **17px**, with its 36px bar and 114px problems list laid out from
+y=447 to y=561 in a 450px window - 111px below the bottom edge - and a hide control whose own centre
+belonged to something else.
+
+- **Cause 1, the shell's rows.** `@media (max-width: 899px)` forced
+  `grid-template-rows: auto minmax(0, 1fr) auto !important`, a template for an older shell whose
+  console was row 3. The console is `grid-row: 2`, so row 1's `auto` took the workspace's whole
+  content height and the panel got the `1fr` left over, which was 0.
+- **Cause 2, the panel's insides.** A fixed-height section with `overflow: hidden` and three block
+  children: a short track did not shorten the list, it pushed the list out of the section.
+
+The rows now describe this shell, the cap is on the track (`min(preference, 34vh)`), and the panel
+is a column - bar fixed, content scrolling. At 200% the panel is **153px** and every check holds.
+`bottom-panel-zoom-probe.mjs` measures all five workspaces at 100/125/150/200%.
+
+### What the before/after captures showed that the assertions had not
+
+Same lab, same three viewports, one script, two servers (the pushed state at `d68866611` in a
+worktree sharing this clone's `node_modules`, and this tree).
+
+- **A drawing has a size below which it stops being a drawing.** At 1280x650 with the panel open the
+  figure was given 90px and `preserveAspectRatio` drew the circuit **130x50px** in a 780px region.
+  Floor: `min(12rem, 30vh)`, and the document scrolls past it.
+- **A section of a scrolling document must not shrink.** At 720x450 the stage shrank to 33px around
+  165px of content and painted the circuit and the state rows over the disclosure summaries -
+  **twelve pairs of overlapping text boxes**, "SW0" across "Project details". `flex: none` and
+  `overflow: hidden`; measured again, zero. (A closed `<details>` keeps layout state in Chrome, so
+  its contents still report boxes - the detector now asks `checkVisibility`.)
+- **Stacking belongs to the document, not the window.** The state column moved under the drawing at
+  a 1280px window while the document still had 980px. The Overview is a container query now.
+- **The frame said "Unsaved" about nothing.** Guarding autosave against the placeholder stopped the
+  phantom in Recent, but the frame kept reading the same comparison and reported unsaved work in
+  warning colour on a screen with no project open. There is a state for that now: `no-project`,
+  "No project", a neutral dot, and a Save that says why it is disabled.
+
+### Two frame states one probe was never in
+
+`chrome-priority-probe` loads a project through the store, which leaves an engineering object
+selected, so the bar's centre was always the object chip and **the command search was never
+measured**. Opened the way a reader opens a lab, nothing is selected: at 720x450 the search was
+given 188px, drew 260px of `nowrap` content, and put its "Ctrl K" chip **53px inside** "Basys3 ·
+xc7a35tcpg236-1". Its prompt is an element now so it can be shortened; the `aria-label` carries what
+the ellipsis takes.
+
+The same pass found the menubar giving up width it does not have to give: at 1366px with a 32px root
+it was squeezed to 63px around an 81px button, and the 18px sticking out took the click meant for
+the search (`elementFromPoint` at the search's own left edge returned the menu). Command access is
+one of the six; it does not shrink, the centre yields.
+
+The probe gained a second pass with nothing selected, a 720x450 case, and leaf-level text-overlap
+comparison - regions can keep their boxes apart while their contents do not. **Verified red without
+the fixes (2 failures) and green with them.**
+
 ## 2026-09-06 - P2.5L refine in place: data safety, Observe-first, honest validation (Opus 5, desktop session)
 
 **Label: REDBYTE REFINE-IN-PLACE / DATA-SAFETY DEFECTS CLOSED / VALIDATION BASELINE HONEST /
