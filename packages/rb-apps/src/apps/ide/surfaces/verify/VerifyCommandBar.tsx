@@ -185,6 +185,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     onRun();
   };
 
+  const showCompareRequirement =
+    !compareAvailable && Boolean(compareUnavailableReason) && !(needsExpectedOutputs && onAuthorExpectedOutputs);
+  const compareRequirementId = 'ide-vcb-compare-requirement-text';
   const explainerText =
     isCompareMode && !compareAvailable && compareUnavailableReason
       ? compareUnavailableReason
@@ -220,6 +223,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           onClick={onSetCompare}
           data-testid="ide-vcb-use-saved-checks"
           data-blocked={!compareAvailable ? 'true' : undefined}
+          aria-describedby={showCompareRequirement ? compareRequirementId : undefined}
           title={
             !compareAvailable
               ? compareUnavailableReason ?? 'Author at least one expected output to compare against.'
@@ -229,6 +233,15 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           Compare
         </button>
       </div>
+      {showCompareRequirement ? (
+        <span
+          className="wb-toolbar-meta rb-sim-explainer is-blocked-reason"
+          id={compareRequirementId}
+          data-testid="ide-vcb-compare-requirement"
+        >
+          {compareUnavailableReason}
+        </span>
+      ) : null}
       <span className="wb-toolbar-sep" />
       {onToggleLiveIo ? (
         <button

@@ -130,4 +130,42 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
     expect(view.queryByTestId('ide-vcb-author-expected')).toBeNull();
   });
+
+  it('states what comparison needs when nothing else on the bar says it', () => {
+    // A disabled button will not take focus for its own tooltip, and browsers often decline to
+    // render one at all, so a reason living only in `title` is not stated. When the offer to add
+    // expected outputs is present it already names what comparison needs, by being the thing that
+    // supplies it; with no offer, the requirement is stated instead. Never both, never neither.
+    const reason = 'The design cannot be graded until its outputs are driven.';
+    const withoutOffer = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+      />
+    );
+    const requirement = withoutOffer.getByTestId('ide-vcb-compare-requirement');
+    expect(requirement.textContent).toBe(reason);
+    expect(withoutOffer.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-describedby')).toBe(
+      requirement.getAttribute('id')
+    );
+    expect(withoutOffer.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
+      'Record observed outputs without grading expected values.'
+    );
+    cleanup();
+
+    const withOffer = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+        needsExpectedOutputs
+        onAuthorExpectedOutputs={vi.fn()}
+      />
+    );
+    expect(withOffer.getByTestId('ide-vcb-author-expected')).toBeTruthy();
+    expect(withOffer.queryByTestId('ide-vcb-compare-requirement')).toBeNull();
+  });
 });
