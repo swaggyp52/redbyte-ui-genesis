@@ -89,8 +89,13 @@ export const TimingLab: React.FC<TimingLabProps> = ({
     return [...inputFields].sort((a, b) => Number(clocks.has(b.id)) - Number(clocks.has(a.id)));
   }, [inputFields, clockFieldIds]);
   const clockSet = useMemo(() => new Set(clockFieldIds ?? []), [clockFieldIds]);
+  /**
+   * The event AT the cursor, or none. There is no fallback: a cursor on a tick with no event is
+   * a cursor on a tick with no event, and saying otherwise put the highlight on one tick while
+   * the rest of the surface reported another.
+   */
   const selectedVector =
-    orderedVectors.find((vector) => vector.tick === selectedTick) ?? orderedVectors[0] ?? null;
+    orderedVectors.find((vector) => vector.tick === selectedTick) ?? null;
   const [timeError, setTimeError] = useState<string | null>(null);
   const editable = Boolean(onVectorsChange);
 
@@ -281,7 +286,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
         inputFields={orderedInputs}
         outputFields={outputFields}
         clockFieldIds={clockSet}
-        selectedTick={selectedVector?.tick ?? selectedTick}
+        selectedTick={selectedTick}
         editable={editable}
         observedValuesByTick={observedValuesByTick}
         caseEvidenceByTick={caseEvidenceByTick}
@@ -377,6 +382,12 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       </div>
       </details>
 
+      {!selectedVector && selectedTick != null ? (
+        <p className="rb-timing-editor-empty" data-testid="ide-scenario-event-editor-empty">
+          No event at t{selectedTick}. Click a stimulus cell in that column to drive an input
+          there, or use <strong>+ Add event</strong>.
+        </p>
+      ) : null}
       {selectedVector ? (
         <details className="rb-timing-editor-details" data-testid="ide-scenario-event-editor-details">
           <summary title="Exact time and value for the selected event">

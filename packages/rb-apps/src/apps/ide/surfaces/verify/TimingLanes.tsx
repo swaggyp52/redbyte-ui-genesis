@@ -106,7 +106,10 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   const ordered = useMemo(() => [...vectors].sort((a, b) => a.tick - b.tick), [vectors]);
   const lastTick = ordered.length ? ordered[ordered.length - 1].tick : 0;
   const observedTicks = Object.keys(observedValuesByTick ?? {}).map(Number);
-  const maxTick = Math.max(lastTick, ...observedTicks, selectedTick ?? 0) + spareTicks;
+  // The axis is the experiment's, not the cursor's. Including the cursor here grew the
+  // ruler by four spare columns every time a reader moved right, which re-fitted TICK_W
+  // and slid every column out from under the pointer that had just clicked one.
+  const maxTick = Math.max(lastTick, ...observedTicks) + spareTicks;
   const ticks = useMemo(() => Array.from({ length: maxTick + 1 }, (_, index) => index), [maxTick]);
   const eventTicks = useMemo(() => new Set(ordered.map((vector) => vector.tick)), [ordered]);
 

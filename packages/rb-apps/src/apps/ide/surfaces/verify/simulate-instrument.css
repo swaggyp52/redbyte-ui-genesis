@@ -111,17 +111,21 @@
 .ide-root .ide-case-lab { display: flex; flex-direction: column; min-height: 0; border: 0; border-radius: 0; background: var(--wb-surface); overflow: hidden; }
 .ide-root .ide-case-lab-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 2px 6px;
   flex: none;
-  height: var(--wb-toolbar-h);
-  padding: 0 var(--wb-space-3);
+  min-height: var(--wb-toolbar-h);
+  padding: 2px var(--wb-space-3);
   border-bottom: 1px solid var(--wb-border);
   background: var(--wb-surface);
 }
+/* The spacer only pushes the tail to the right while everything fits on one line. Once the bar
+   wraps it would otherwise put a whole empty row between the title and the actions. */
+.ide-root .ide-case-lab-spacer { flex: 1 1 0; min-width: 0; }
 .ide-root .ide-case-lab-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
 .ide-root .ide-case-lab-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
-.ide-root .ide-case-lab-spacer { flex: 1 1 auto; }
+
 .ide-root .ide-case-lab-bar .ide-button,
 .ide-root .ide-case-lab-filter {
   height: var(--wb-control-h);
@@ -302,16 +306,21 @@
 /* The representation switch: the head of the primary region, naming what is drawn in it. */
 .ide-root .rb-sim-representation {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 2px 4px;
   flex: none;
-  min-height: 26px;
-  padding: 0 var(--wb-space-3);
+  min-height: 1.625rem;
+  padding: 2px var(--wb-space-3);
   border-bottom: 1px solid var(--wb-border);
   background: var(--wb-surface-2);
 }
 .ide-root .rb-sim-representation__label { margin-right: 2px; color: var(--wb-text-3); font: 500 var(--wb-text-xs) var(--wb-font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
-.ide-root .rb-sim-representation__choice { height: 19px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--wb-radius); background: transparent; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); white-space: nowrap; cursor: pointer; }
+/* The button is as tall as the word inside it. `height: 19px` is a pixel guess around text in
+   rem: at a 32px root the words were drawn 19px below their own buttons, so the lower half of
+   each one belonged to the toolbar underneath and a click on "Waveform" pressed what was behind
+   it. */
+.ide-root .rb-sim-representation__choice { min-height: 1.1875rem; padding: 1px 8px; border: 1px solid transparent; border-radius: var(--wb-radius); background: transparent; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); line-height: 1.2; white-space: nowrap; cursor: pointer; }
 .ide-root .rb-sim-representation__choice:hover:not(:disabled) { color: var(--wb-text); border-color: var(--wb-border); }
 .ide-root .rb-sim-representation__choice:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
 .ide-root .rb-sim-representation__choice.is-active { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-surface); font-weight: 500; }
@@ -341,7 +350,21 @@
 /* The generators are one deliberate line, not a bordered panel occupying 50px of the timeline's
    room while closed. An OS-era rule gave it a card's border, radius, margin and padding; a
    closed disclosure that has nothing to show should look like the other closed disclosures. */
+/* Closed it is one line. Open it is an alternate editor, and an alternate editor must not
+   destroy the instrument it is an alternative to: with `flex: none` it asked for the 662px its
+   content wanted, the timeline was squeezed from 476px to 1px, and its own content - now taller
+   than the 1px box holding it - painted over the composer bar above, so elementFromPoint at
+   every one of Add event / Duplicate / Delete / run length returned this summary and pressing
+   Add event closed the panel instead of adding an event. It takes a bounded share and scrolls;
+   the instrument keeps a floor it cannot be pushed below. */
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; margin: 0; border: 0; border-top: 1px solid var(--wb-border); border-radius: 0; background: transparent; }
+.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure[open] {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 55%;
+  overflow: auto;
+}
+.ide-root .rb-sim-region--stimulus > .rb-timing { min-height: 132px; }
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 var(--wb-space-3); border: 0; color: var(--wb-text-2); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
 /* `display: flex` on a summary removes the browser's own marker, so this one had no
    affordance at all and read as a stray sentence under the instrument. */
@@ -393,9 +416,16 @@
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-frame,
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-deck { flex: 1 1 auto; min-height: 0; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-deck > .rb-wave-stage { order: -1; flex: 1 1 auto; min-height: 0; }
-.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-canvas { display: flex; flex-direction: column; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-canvas { display: flex; flex-direction: column; min-height: 160px; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-canvas > .rb-wave-scroll { flex: 1 1 auto; min-height: 0; }
-.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-canvas { order: 2; flex: 1 1 auto; min-height: 0; }
+/* The run line says the same thing here as everywhere else, and takes no more room for saying
+   it. Without the cap it was 226px at 200% text against a 35px trace. */
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-runline {
+  max-height: 30%;
+  overflow: auto;
+}
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage { overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-canvas { order: 2; flex: 1 1 auto; min-height: 160px; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-runline { order: 3; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-stage > .rb-wave-tools-disclosure { order: 3; }
 .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] .rb-wave-deck > .ide-verify-pass-summary-anchor { flex: none; border-top: 1px solid var(--wb-border-strong); }
@@ -488,6 +518,13 @@
 .ide-root .rb-tl-svg { display: block; font-family: var(--wb-font-mono); }
 .ide-root .rb-tl-selected { fill: var(--wb-accent-bg); }
 .ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+/* The column's hit target is the rect; the number, the grid line and the edge marker are drawn
+   after it, so they sat on top of it and swallowed the click. Clicking the tick NUMBER - the
+   most obvious place to click a tick - did nothing at all. They are decoration; the rect owns
+   the column. */
+.ide-root .rb-tl-tick-label,
+.ide-root .rb-tl-grid,
+.ide-root .rb-tl-edge { pointer-events: none; }
 .ide-root .rb-tl-tick-label { fill: var(--wb-text-3); font: 10px var(--wb-font-mono); }
 .ide-root .rb-tl-tick.is-event .rb-tl-tick-label { fill: var(--wb-text); font-weight: 700; }
 .ide-root .rb-tl-tick-hit { fill: transparent; cursor: pointer; }
@@ -520,6 +557,8 @@
 .ide-root .rb-timing-editor-details[open] > summary::before { content: '\25BE'; }
 .ide-root .rb-timing-editor-details > summary:hover { color: var(--wb-text); }
 .ide-root .rb-timing-editor-hint { color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-timing-editor-empty { flex: none; margin: 0; padding: 4px var(--wb-space-3); border-top: 1px solid var(--wb-border); color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-timing-editor-empty > strong { color: var(--wb-text-2); font-weight: 500; }
 .ide-root .rb-timing-editor-details > .rb-timing-editor { border-top: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details { border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-timing-table-details > summary { padding: 4px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); cursor: default; }
@@ -545,8 +584,12 @@
    instrument keeps the height, the run line follows it, and the inspector becomes a bottom
    strip. This is the single owner of the stacked template. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(160px, 1fr) fit-content(30%) minmax(0, 32%); grid-template-areas: 'cases' 'evidence' 'inspector'; }
-  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr) minmax(0, 140px); grid-template-areas: 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) fit-content(30%) minmax(96px, 24%); grid-template-areas: 'cases' 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(220px, 1fr) minmax(96px, 24%); grid-template-areas: 'evidence' 'inspector'; }
+  /* Floors mean the rows can add up to more than the window. The workspace scrolls rather than
+     resolving one of them to nothing. */
+  .ide-root .rb-sim-lab-frame { overflow-y: auto; }
+  .ide-root .rb-sim-lab-grid { min-height: min-content; }
   .ide-root .rb-sim-lab-grid > .rb-sim-inspector { border-left: 0; border-top: 1px solid var(--wb-border-strong); min-height: 0; overflow: auto; }
 }
 /* Result cell: verdict and row actions share one line; actions float over the cell, never wrap it. */
