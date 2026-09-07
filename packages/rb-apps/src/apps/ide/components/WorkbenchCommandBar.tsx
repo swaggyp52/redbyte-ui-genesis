@@ -6,7 +6,14 @@ import {
   type IdeCommandRegistry,
 } from '../ideCommandRegistry';
 
-export type WorkbenchSaveState = 'saved' | 'unsaved' | 'autosaving' | 'saving' | 'save-failed';
+export type WorkbenchSaveState =
+  | 'saved'
+  | 'unsaved'
+  | 'autosaving'
+  | 'saving'
+  | 'save-failed'
+  /** Nothing is open. There is no work to save, and calling that "Unsaved" is not true. */
+  | 'no-project';
 
 export interface WorkbenchMenuSpec {
   readonly id: string;
@@ -103,6 +110,7 @@ const SAVE_LABEL: Record<WorkbenchSaveState, string> = {
   autosaving: 'Autosaving…',
   saving: 'Saving…',
   'save-failed': 'Save failed',
+  'no-project': 'No project',
 };
 
 /**
@@ -557,7 +565,11 @@ export function WorkbenchCommandBar<TContext>({
             data-testid="ide-topbar-command-palette"
             aria-label="Open command palette"
           >
-            Search commands, signals, files… <kbd>Ctrl K</kbd>
+            {/* The prompt is an element so it can be shortened. As a bare text node beside a
+                `white-space: nowrap` chip it could not be, so a squeezed control kept drawing its
+                full width and painted "Ctrl K" across the board identity beside it. */}
+            <span className="wb-cmdbar-search-label">Search commands, signals, files…</span>
+            <kbd>Ctrl K</kbd>
           </button>
         ) : null}
       </div>
@@ -595,7 +607,17 @@ export function WorkbenchCommandBar<TContext>({
           </button>
         ) : null}
         {onSave ? (
-          <button type="button" className="wb-btn wb-btn--primary" onClick={onSave} data-testid="ide-topbar-save-btn">
+          // The primary operation stays in the bar with nothing open - it is one of the six the
+          // frame must keep - but it says so rather than writing the launcher placeholder into
+          // somebody's Recent list.
+          <button
+            type="button"
+            className="wb-btn wb-btn--primary"
+            onClick={onSave}
+            disabled={saveState === 'no-project'}
+            title={saveState === 'no-project' ? 'Open or start a project to save one.' : undefined}
+            data-testid="ide-topbar-save-btn"
+          >
             Save
           </button>
         ) : null}

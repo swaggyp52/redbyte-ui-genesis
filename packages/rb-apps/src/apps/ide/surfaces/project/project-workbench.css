@@ -102,11 +102,16 @@
 .ide-root .rb-project-saved[data-tone='warn'] { color: var(--wb-warn-text, var(--wb-text-2)); }
 .ide-root .rb-project-continue { flex: none; }
 
+.ide-root .rb-project-overview {
+  /* The composition below asks about this element's width, not the window's. */
+  container-type: inline-size;
+  container-name: rb-project-doc;
+}
 .ide-root .rb-project-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 30%);
   align-items: stretch;
-  flex: 0 1 auto;
+  flex: none;
   min-height: 0;
 }
 .ide-root .rb-project-canvas {
@@ -114,6 +119,7 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   border-right: 1px solid var(--wb-border);
 }
 /* The drawing takes the room it is given rather than the room its viewBox wants. */
@@ -134,6 +140,7 @@
    as tall as its drawing needs, capped so a deep hierarchy scrolls instead of pushing the
    project's state off the screen. */
 .ide-root .rb-project-canvas .rb-arch svg { width: 100%; height: auto; max-height: 52vh; }
+.ide-root .rb-project-canvas .rb-arch { min-height: min(12rem, 30vh); }
 .ide-root .rb-project-canvas-empty {
   display: flex;
   flex: 1 1 auto;
@@ -306,13 +313,18 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 248px), 360px); --ide-workbench-right-width: clamp(240px, var(--rb-workbench-pref-right-width, 288px), 400px); }
 
 @media (max-width: 1280px) {
+  .ide-root .rb-source-doc-body { grid-template-columns: minmax(0, 1fr); }
+  .ide-root .rb-source-doc-links { border-left: 0; border-top: 1px solid var(--wb-border); max-height: 220px; }
+}
+
+/* Narrow document: the state moves under the drawing rather than squeezing both into columns.
+   760px is where the 30% state column stops being able to hold "5/5 required signals mapped"
+   beside a legible circuit. */
+@container rb-project-doc (max-width: 760px) {
   .ide-root .rb-project-overview-body { grid-template-columns: minmax(0, 1fr); }
-  /* Narrow: the state moves under the drawing rather than squeezing both into columns. */
   .ide-root .rb-project-stage { grid-template-columns: minmax(0, 1fr); }
   .ide-root .rb-project-canvas { border-right: 0; border-bottom: 1px solid var(--wb-border); }
   .ide-root .rb-project-overview-arch { border-right: 0; border-bottom: 1px solid var(--wb-border); }
-  .ide-root .rb-source-doc-body { grid-template-columns: minmax(0, 1fr); }
-  .ide-root .rb-source-doc-links { border-left: 0; border-top: 1px solid var(--wb-border); max-height: 220px; }
 }
 
 /* Architecture document: module tree · block view · interface. */

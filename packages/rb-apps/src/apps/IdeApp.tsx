@@ -36,7 +36,7 @@ import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
 import { getIdeModeLabel, type IdeMode } from './ide/workflowStages';
 import { buildTopEntityName, normalizeTopEntityName } from './ide/topEntity';
-import { WorkbenchCommandBar } from './ide/components/WorkbenchCommandBar';
+import { WorkbenchCommandBar, type WorkbenchSaveState } from './ide/components/WorkbenchCommandBar';
 import { WorkspaceRail } from './ide/components/WorkspaceRail';
 import { WorkbenchStatusBar } from './ide/components/WorkbenchStatusBar';
 import { WorkbenchDocumentTabStrip } from './ide/components/WorkbenchDocumentTabStrip';
@@ -1540,6 +1540,10 @@ export const IdeApp: React.FC = () => {
     ]
   );
   const hasUnsavedWork = !isPristineProjectHome && projectHash !== savedProjectHash;
+  /* The frame reports the state of the reader's work. With nothing open there is no work, and
+     "Unsaved" in warning colour about a launcher placeholder is a false alarm - the same fact the
+     autosave guard uses, in the frame. */
+  const frameSaveState: WorkbenchSaveState = isPristineProjectHome ? 'no-project' : saveState;
   const isPristineProjectHomeRef = useRef(isPristineProjectHome);
   useEffect(() => {
     isPristineProjectHomeRef.current = isPristineProjectHome;
@@ -3197,7 +3201,7 @@ export const IdeApp: React.FC = () => {
       )}
       <WorkbenchCommandBar
         projectName={projectName}
-        saveState={saveState}
+        saveState={frameSaveState}
         lastSavedAt={repositoryState.lastSavedAtIso ? formatSavedAtLabel(repositoryState.lastSavedAtIso) : null}
         storageLabel={repositoryState.storageLocation.label}
         buildIdentity={buildIdentity}

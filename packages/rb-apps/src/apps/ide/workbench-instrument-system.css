@@ -297,6 +297,13 @@
 }
 .ide-root .wb-cmdbar-object:hover,
 .ide-root .wb-cmdbar-search:hover { color: var(--wb-frame-text); border-color: var(--wb-frame-text-3); }
+/* A control owns its own box. Measured at a 720x450 CSS viewport - a 1440x900 machine at 200%
+   browser zoom - the search was given 188px, drew 260px of nowrap content, and its shortcut chip
+   landed 53px inside "Basys3 · xc7a35tcpg236-1". It shortens its prompt now and keeps its chip;
+   the button's aria-label carries what the ellipsis takes. */
+.ide-root .wb-cmdbar-search { overflow: hidden; }
+.ide-root .wb-cmdbar-search-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .wb-cmdbar-search kbd { flex: none; }
 .ide-root .wb-cmdbar-object code { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-frame-text); }
 .ide-root .wb-cmdbar-object-kind { flex: none; color: var(--wb-frame-text-3); font-size: var(--wb-text-xs); letter-spacing: 0.04em; text-transform: uppercase; }
 .ide-root .wb-cmdbar-search kbd,
@@ -315,7 +322,12 @@
 
 /* Menubar ──────────────────────────────────────────────────────────────── */
 
-.ide-root .wb-menubar { display: inline-flex; align-items: center; gap: 1px; min-width: 0; }
+/* Command access is one of the six the frame must keep, so the menubar does not give up width
+   to its neighbours. With `flex-shrink` at its default it did: at 1366px and a 32px root it was
+   squeezed to 63px around an 81px button, and the 18px that stuck out took the click meant for
+   the command search beside it. The centre region is the one that yields, and its own control
+   shortens its prompt when it does. */
+.ide-root .wb-menubar { display: inline-flex; align-items: center; gap: 1px; flex: none; min-width: 0; }
 .ide-root .wb-menubar-item { position: relative; }
 .ide-root .wb-menubar-btn {
   display: inline-flex;
@@ -976,7 +988,8 @@
    the menubar, the wordmark and the two secondary facts, which is where the room comes from. */
 @media (max-width: 899px) {
   .ide-root .wb-cmdbar-project { max-width: 14ch; }
-  .ide-root .wb-cmdbar-right kbd { display: none; }
+  .ide-root .wb-cmdbar-right kbd,
+  .ide-root .wb-cmdbar-search kbd { display: none; }
 }
 
 /* ── Universal Navigator (Ctrl+K) ────────────────────────────────────────

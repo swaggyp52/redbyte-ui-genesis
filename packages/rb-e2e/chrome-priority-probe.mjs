@@ -23,14 +23,22 @@ const note = (message) => failures.push(message);
 
 const browser = await launchChromium();
 
-async function open(context, root) {
+async function open(context, root, viaStart = false) {
   const page = await context.newPage();
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(900);
-  await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('full-adder'));
-  await page.waitForTimeout(700);
+  if (viaStart) {
+    // The way a reader opens a lab, which leaves nothing selected.
+    await page.getByTestId('ide-project-start-a-lab-primary').click();
+    await page.waitForTimeout(500);
+    await page.locator('[data-testid^="ide-project-gannon-lab-start-"]').first().click();
+    await page.waitForTimeout(2200);
+  } else {
+    await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().loadExample('full-adder'));
+    await page.waitForTimeout(700);
+  }
   if (root !== 16) await page.addStyleTag({ content: `html { font-size: ${root}px !important; }` });
   await page.waitForTimeout(600);
   return page;
@@ -55,6 +63,35 @@ async function checkFrame(page, at) {
     return hits;
   });
   if (collisions.length) note(`${at} application bar collides: ${collisions.join('; ')}`);
+
+  // Regions can keep their boxes apart while their contents do not. A `white-space: nowrap`
+  // control that is given less room than it wants draws past its own border, so the collision
+  // that a reader sees is between two pieces of text, not between two regions - measured at
+  // 720x450, the palette's "Ctrl K" chip sat 53px inside "Basys3 · xc7a35tcpg236-1" while every
+  // region boundary was still clean.
+  const painted = await page.evaluate(() => {
+    const bar = document.querySelector('[data-testid="ide-top-bar"]');
+    const shown = (n) => (typeof n.checkVisibility === 'function'
+      ? n.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true, contentVisibilityAuto: true })
+      : true);
+    const leaves = [...bar.querySelectorAll('*')]
+      .filter((n) => n.childElementCount === 0 && n.textContent.trim() && shown(n))
+      .map((n) => ({ n, r: n.getBoundingClientRect() }))
+      .filter((e) => e.r.width > 4 && e.r.height > 4);
+    const name = (n) => n.getAttribute('data-testid') || n.textContent.trim().slice(0, 26);
+    const hits = [];
+    for (let i = 0; i < leaves.length; i += 1) {
+      for (let j = i + 1; j < leaves.length; j += 1) {
+        const a = leaves[i].r; const b = leaves[j].r;
+        if (leaves[i].n.contains(leaves[j].n) || leaves[j].n.contains(leaves[i].n)) continue;
+        const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (ox > 2 && oy > 2) hits.push(`"${name(leaves[i].n)}" over "${name(leaves[j].n)}" by ${Math.round(ox)}px`);
+      }
+    }
+    return hits;
+  });
+  if (painted.length) note(`${at} text painted over text in the bar: ${painted.join('; ')}`);
 
   // A collision that steals clicks is worse than one that only looks wrong, so the top-left
   // corner of every bar control must belong to that control.
@@ -131,7 +168,7 @@ async function checkFrame(page, at) {
   if (overflow.doc > 0 || overflow.body > 0) {
     note(`${at} the document scrolls sideways: ${JSON.stringify(overflow)}`);
   }
-  return { collisions: collisions.length, six, overflow };
+  return { collisions: collisions.length + painted.length, six, overflow };
 }
 
 async function checkTransport(page, at) {
@@ -162,7 +199,10 @@ async function checkTransport(page, at) {
   return facts;
 }
 
-for (const [root, w, h] of [[16, 1440, 900], [16, 1366, 768], [32, 1440, 900], [32, 1366, 768], [16, 1024, 720]]) {
+// 720x450 is a 1440x900 machine at 200% browser zoom, which shrinks the CSS viewport under the
+// whole frame rather than growing the type inside it - a different failure from root 32px, and
+// the one an ordinary laptop with an accessibility zoom setting actually produces.
+for (const [root, w, h] of [[16, 1440, 900], [16, 1366, 768], [32, 1440, 900], [32, 1366, 768], [16, 1024, 720], [16, 720, 450]]) {
   const at = `[${w}x${h} root ${root}px]`;
   const context = await browser.newContext({ viewport: { width: w, height: h } });
   const page = await open(context, root);
@@ -175,6 +215,25 @@ for (const [root, w, h] of [[16, 1440, 900], [16, 1366, 768], [32, 1440, 900], [
   );
   await context.close();
 }
+
+// The same frame with nothing selected: the centre carries the command search instead of the
+// object chip. Frame only - the run transport belongs to Simulate and is measured above.
+for (const [root, w, h] of [[16, 1440, 900], [16, 1366, 768], [32, 1366, 768], [16, 720, 450]]) {
+  const at = `[${w}x${h} root ${root}px, nothing selected]`;
+  const context = await browser.newContext({ viewport: { width: w, height: h } });
+  const page = await open(context, root, true);
+  const searchVisible = await page.evaluate(() => {
+    const el = document.querySelector('.wb-cmdbar-search');
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 4 && r.height > 4;
+  });
+  if (!searchVisible) note(`${at} the command search is not in the bar, so this composition went unmeasured`);
+  const frame = await checkFrame(page, at);
+  console.log(`${at} bar collisions ${frame.collisions}, six ${Object.values(frame.six).filter(Boolean).length}/8, overflow ${frame.overflow.doc}`);
+  await context.close();
+}
+
 await browser.close();
 
 if (failures.length) {
