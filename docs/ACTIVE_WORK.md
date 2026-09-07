@@ -169,6 +169,57 @@ accepted.
   AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED**. The §16 local product gate
   is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5L refine in place: data safety, Observe-first, and an honest validation baseline
+  (2026-09-06, pushed):** nine commits on the same branch, `50223c14e` -> `632089057`. No new
+  branch, no retarget, no architecture change.
+  **The typecheck claim was weaker than every prior report said.** `packages/rb-apps` defines no
+  `typecheck` script and declares no TypeScript; the root script is `pnpm -r --if-present run
+  typecheck`, which resolves to four small packages, and `pr-fast-checks.yml:48` runs exactly that.
+  The CI job named "Typecheck, contracts, unified build" has therefore been green without ever
+  type-checking the workbench. Three compilers are installed through other packages and the count
+  depends which one runs - **5.3.3 reports 762 where 5.9.3 reports 778**. `scripts/rb-typecheck-baseline.mjs`
+  pins compiler 5.9.3, project `packages/rb-apps/tsconfig.json`, exit code 2, **778** diagnostics
+  and a file+code fingerprint in `docs/validation/typecheck-baseline.json`; it fails on an increase,
+  refuses to compare across a compiler change, and is the first step of `verify:gates`. It caught
+  two diagnostics this session introduced in its own new test.
+  **Importing an old backup silently overwrote newer saved work.** A project file carries the id it
+  was exported with, `loadFromProject` adopts it, and autosave then writes the imported contents
+  under that id. An imported file whose id already belongs to a saved project becomes its own
+  project now. Proven end to end in `project-persistence-journey` section I, with the acceptance
+  condition being that BOTH survive: backup of a 10-symbol project imported under a new id while
+  the original's stored record held 11 symbols through the import AND through an edit-plus-autosave
+  of the copy, and the copy's ledger carries no run owned by the original.
+  **Recent listed projects the student never made** - the pristine home workspace satisfied the
+  autosave guard, so first boot and every "Blank project" press wrote an "Untitled Project" record.
+  Only untouched launcher state is excluded; a project a student named "Untitled Project" and
+  worked in is listed like any other. Recovery checkpoints are filtered out of Recent and remain
+  listed in the Start Center's own Recover section.
+  **Observe-first was being contradicted by its own command bar.** `VerifyCommandBar` declared
+  `needsExpectedOutputs` and `onAuthorExpectedOutputs`, `VerifySurface` passed both, and the bar
+  rendered neither, while `simulation-studio-v3.css:414` still sized the missing control - so a
+  project with cases and no expected values was told to fill them in with nothing that would. The
+  control is back as **"Add expected outputs"**, a secondary offer. With it went the direction this
+  product rejected: the prop comment calling authoring "the primary task", a mode explainer that
+  showed why Compare was blocked even while Observe was selected and running, a **NEEDS CHECKS**
+  badge in a warning tone for a draft that runs and records evidence, and a Run pulse keyed to
+  having expected values. Comparison still says what it needs - beside Compare, and only when the
+  offer is not already saying it, with `aria-describedby` so it reaches a reader who cannot see the
+  layout.
+  **A starter detach stopped destroying what the student wrote** (see the P2.5K entry's follow-on):
+  scenario authoring now demotes starter authority as cell authoring already did, the discard keeps
+  explicitly authored steps and drops only derived assertions, and the notice no longer promises an
+  undo that cannot work.
+  **Every failing test in the repository is named.** `docs/validation/test-debt.md`: 531 files, 454
+  pass, **53 fail**; 3418 tests pass, **111 fail**; **1 chunk produced no report at all**, recorded
+  as crashed rather than counted green. It is labelled a **mixed-revision diagnostic, not exact-HEAD
+  acceptance**, because the sweep overlapped this session's edits. Six files were closed this
+  session; **51 remain open** as named release debt. Taking them seriously is what found the missing
+  authoring control.
+  Validation at `632089057`: `pnpm verify:gates` exit 0, **27/27 journeys** against one build,
+  typecheck 778 unchanged, six touched suites 109 passed / 1 skipped. Not started: **Board
+  Guided/Expert**, and the **Project close/resume lifecycle** - there is still no Close operation
+  anywhere in the product (`grep` returns zero hits; `projectRepository` exposes only
+  list/open/save/autosave/checkpoint/recover).
 - **P2.5K instrument composition and high-zoom frame (2026-09-06, pushed):** the visual
   foundation from P2.5J is locked and unchanged; this pass is composition and interaction.
   **The frame is built in the reader's text size.** At 200% text the Help menu overlapped the
