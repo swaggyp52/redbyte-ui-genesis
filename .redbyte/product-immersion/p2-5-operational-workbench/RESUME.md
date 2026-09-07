@@ -4,6 +4,96 @@
 > Canonical repo docs still win. `docs/ACTIVE_WORK.md` = project truth ·
 > this file = session continuation · the P2.5 PR = public review truth.
 
+## 2026-09-07 - P2.5N One experiment, one primary working area (Opus 5, desktop session)
+
+**Label: REDBYTE INTENTIONAL WORKBENCH CANDIDATE / SIMULATE RECOMPOSED / DESIGN'S FALSE TESTBENCH
+REMOVED / PACKAGE LANDS ON ITS DOSSIER / NOT PUSHED AT TIME OF WRITING / PR #85 DRAFT / NO MERGE /
+NO PRODUCTION.**
+
+Continues P2.5M on the same branch. The assignment named the problem exactly: the first slice
+reclaimed space above the experiment, and the next step had to change the experiment itself.
+
+### Exact source truth
+
+| Fact | Value |
+|---|---|
+| Branch | `claude/redbyte-operational-workbench-convergence-w9k2r4` |
+| Session start HEAD | `4fcbeee12` (the first slice: a tab is an object, a scenario is one experiment) |
+| Commits this session | `13e5d22a5` Simulate composition · `f155fcbbe` Design's clock + the tab-strip regression · `b7c92f9b6` two clippings · `819c11d94` Package landing |
+| Remote exposes | `f35c44254` - the branch is ahead of origin and NOT pushed at time of writing |
+| Baseline for every comparison | detached worktree `.redbyte/worktrees/base-f35c` moved to `4fcbeee12`, node_modules junctioned - not the mixed-revision debt register |
+| Typecheck | 778, +0, shape identical, at every commit |
+| Format version | 1, untouched. Goldens untouched. |
+
+### What changed in the experiment
+
+`.rb-sim-lab-grid` allocated cases + inspector + splitter + a separate evidence deck, and the
+waveform's command bar rendered whether or not a waveform did. Measured at 1280x650 before:
+**timeline 88px of a 467px workspace, run line drawn inside a 1px box, 4 implicit grid rows.**
+
+One primary region now, and a VIEW switch that names what fills it (Timeline / Table / Waveform),
+defaulted by the circuit, remembered per scenario, rendered inside whichever region is currently
+primary. One run line under it, `fit-content(34%)` on the TRACK - a percentage `max-height` on the
+grid ITEM resolves against the area the item is sizing, so it measured 34% of itself: a 91px line
+inside a 31px box. The trace toolbar and canvas moved into the Waveform representation together,
+and splitting the toolbar from the run line let the trace read in the same order as the other two
+(switch, tools, instrument, run line) instead of 260px of chrome above a 204px canvas.
+
+**After, 1280x650, counter with a run:** primary 376px / run line 91px, lanes 244px, 0 tabs,
+0 document overflow. **1440x900 Waveform:** canvas 527px of 717px.
+
+### Two regressions this session caused, and how they were caught
+
+Neither was caught by a test. Both were caught by opening a capture and reading it.
+
+1. The tab strip returning `null` when it had nothing moved every surface into the document
+   column's fixed first grid row. **Design rendered into 30px - the schematic measured 1088x0 and
+   the workspace was blank.** The element stays and collapses; the column's first row sizes to it,
+   so an empty strip now costs nothing instead of 30px everywhere.
+2. Drawing the "missing" output lanes on the timeline produced **two empty duplicates of LD0 and
+   LD1**, because the extra waveform keys are aliases of the same two signals. Reverted, and the
+   real finding recorded (below).
+
+### The LD0 / Q0 investigation, answered
+
+The signal rail counts four outputs on the two-bit counter; the timeline draws two. **The timeline
+is right.** The lab's io-row ids are `q0`/`q1` labelled LD0/LD1 - those ARE the board outputs. The
+run's waveform emits four keys (LD0, LD1, Q0, Q1) for the same two signals;
+`buildCanonicalWaveformSignalAliases` does not collapse `Q0` onto `LD0`, and the io-row id `q0`
+normalises onto the internal register key `Q0`, which is what makes the rail credit an internal
+node to the boundary set. **The alias authority is the defect.** Not repaired this session.
+
+### Failure comparison, by identity
+
+| Family | Baseline `4fcbeee12` | Now | Difference |
+|---|---|---|---|
+| `verifySurface*` | 147 pass / 51 fail | 148 / 51 | identical identities and messages; one net pass |
+| `designSurface*` | 230 / 19 | 230 / 19 | identical identities |
+| Board + Package | 79 / 41 | 79 / 41 | identical identities |
+| `exportSurface*` etc. | 41 / 35 | 41 / 35 | identical identities |
+
+Journeys against the dev server: `full-adder-operational` **passes end to end again** at 1440x900
+and 1366x768 (it had been red on `ide-package-handoff-document` since the landing changed);
+`project-experience`, `compare-verdict`, `package-history`, `runs-document`,
+`shell-status-authority` pass.
+
+### Exact continuation
+
+**Not started:** the Design inspector rebuild (`Logical directionOutput` / `LabelLD0` collisions),
+the Board mapping composition beyond the one clipping closed here, the alias-authority repair, and
+the 35 obsolete Export assertions (`ide-export-trust-banner`, `ide-export-checks-dock`,
+`ide-export-summary-card`, `ide-export-gate-clock`, `ide-export-map-row-*` and friends), which name
+owners retired before this session.
+
+**Not run this session:** `pnpm verify:gates`, the full journey sweep, both golden Basys3 gates
+(untouched), CI, and the push.
+
+**Next action:** push the branch, verify the preview SHA, and update the PR #85 body to the state
+above. Then the Design inspector, then Board.
+
+**Must not be reset:** the branch is ahead of `origin` by this session's four commits plus the
+first slice. Do not reset to `f35c44254`.
+
 ## 2026-09-07 - P2.5M Project as two experiences, and the shortage the probes were not in (Opus 5, desktop session)
 
 **Label: REDBYTE PROJECT TWO-STATE CANDIDATE / BOTTOM PANEL CLOSED AT BROWSER ZOOM / FRAME

@@ -169,6 +169,62 @@ accepted.
   AND RELEASE CONVERGENCE / SOURCE PRESERVED / EXACT CONTINUATION RECORDED**. The §16 local product gate
   is not met; the GitHub/site/Cloudflare phase was not started. Continuation and open list:
   `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+- **P2.5N the intentional workbench: one experiment, one primary working area (2026-09-07,
+  desktop session, NOT pushed at time of writing):** five commits on the same branch,
+  `f35c44254` -> `4fcbeee12` -> `13e5d22a5` -> `f155fcbbe` -> `b7c92f9b6` -> `819c11d94`. No new
+  branch, no retarget, format version 1 untouched.
+  **Simulate was two instruments in one workspace.** The lab grid allocated a cases region, an
+  inspector, a resizable splitter and a separate evidence deck; the timeline and the waveform each
+  computed their own geometry, and the waveform's command bar was on screen whether or not a
+  waveform was. Measured at 1280x650: the timeline got **88px of a 467px workspace** and the run
+  line under it was drawn inside a **1px box**. There is one primary region now and a VIEW switch
+  that names what fills it - Timeline for a clocked circuit, Table for a combinational one,
+  Waveform for the recorded trace - with the choice remembered per scenario and the switch rendered
+  inside whichever region is currently primary. Under it is one run line, capped at a third of the
+  workspace by `fit-content(34%)` on the TRACK (a percentage `max-height` on the grid ITEM resolves
+  against the area the item is sizing, so it measured 34% of itself). Case stepping, the tick range,
+  the radix, the expected overlay, the scrubber, playback and the view/measure tools moved into the
+  trace representation with the canvas. **Now 376px primary / 91px run line, timeline lanes 244px,
+  0 tabs, 0 document overflow;** at 1440x900 the trace canvas fills 527px of its 717px region.
+  **Design's clock ran nothing.** Live mode offered Run / Pause on a wall-clock interval at
+  `speedHz` and a `tick N` readout. On a combinational circuit stepping changed nothing; on a
+  clocked one it applied edges at a rate unrelated to the scenario's clock policy, against no
+  stimulus, with no expected values and no verdict. What is left is exploration: drive an input and
+  the values settle, **Clock edge** applied once when asked (offered only where there is state),
+  **Reset values**, and the surface saying `Exploring · not recorded` with the way to evidence named
+  on it.
+  **Package landed on a file tree.** The `package` workspace root - whose own definition says
+  "the operational package landing" - fell through to the artifact browser because Export routed the
+  dossier on `kind === 'handoff'` only. It lands on the dossier now; the browser is what
+  `package-artifact` draws.
+  **Two honesty repairs.** "Input combinations N of M" is withheld for a clocked circuit: 2^n is the
+  size of a truth table, and two of the inputs it was counting were the clock and the reset. And the
+  "Outputs 4, two lanes" mismatch was investigated and is **not** a missing lane - the lab's io-row
+  ids are `q0`/`q1` labelled LD0/LD1 and those ARE the board outputs, while the run's waveform emits
+  four keys for the same two signals; `buildCanonicalWaveformSignalAliases` does not collapse `Q0`
+  onto `LD0`, and the io-row id `q0` normalises onto the internal register key `Q0`. Adding the two
+  "missing" lanes produced two empty duplicates and was reverted. **The alias authority is the
+  defect and it is recorded, not papered over.**
+  **Two regressions this session caused and caught by opening captures rather than by assertions:**
+  the document tab strip returning `null` when empty moved every surface into the column's first
+  grid row and rendered Design into 30px (the schematic measured 1088x0); and drawing the alias
+  lanes above. Both are fixed; the strip now collapses in place and the column's first row sizes to
+  it, so an empty strip costs nothing instead of 30px on every surface.
+  **Two measured clippings closed:** Board's only instruction sentence was allocated 0px of the
+  345px it needs at 1280x650, and Package's "Download file" was cut off because
+  `.rb-pkg-preview header > div` outranks `.rb-pkg-preview-actions` on specificity.
+  **Validation.** Typecheck **778, unchanged** at every commit. Verify family **148 pass / 51 fail**
+  against a baseline of 147 / 51 - identical failure identities and messages. Design suites
+  **230 / 19**, Board+Package **79 / 41**, Export **41 / 35** - all identical to baseline. The
+  baseline is a detached worktree at the branch's own `4fcbeee12`, not a mixed-revision register.
+  `full-adder-operational-journey` passes end to end at both viewports again (it had been failing
+  on `ide-package-handoff-document`); `project-experience`, `compare-verdict`, `package-history`,
+  `runs-document` and `shell-status-authority` pass. Not run this session: `pnpm verify:gates`, the
+  full journey sweep, both golden gates (untouched), CI.
+  **Not delivered and stated plainly:** the Design inspector rebuild (`Logical directionOutput` /
+  `LabelLD0` collisions), the Board mapping composition beyond the one clipping, the alias-authority
+  repair above, and the 35 obsolete Export assertions, which remain named debt.
+
 - **P2.5L refine in place: data safety, Observe-first, and an honest validation baseline
   (2026-09-06, pushed):** nine commits on the same branch, `50223c14e` -> `632089057`. No new
   branch, no retarget, no architecture change.

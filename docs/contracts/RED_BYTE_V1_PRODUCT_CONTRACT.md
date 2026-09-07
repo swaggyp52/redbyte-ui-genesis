@@ -425,6 +425,84 @@ collapsed to nothing.
 | Capping a panel on the element inside a taller track | It leaves an inert strip of reserved space. The cap belongs to the track. |
 | Percentage caps with no floors on stacked strips | At a short window the floored neighbour takes everything and the capped strips resolve to zero. Measured on Board: `41px / 85.5px / 44.5px` with 623px of the side pane unreachable, and `0px 160px 0px` once the column scrolled without floors. |
 
+### 2026-09-07 - One experiment has one primary working area
+
+**Decided.** A scenario is one experiment. It is drawn one way at a time, in one region, and the
+reader chooses which way with a VIEW switch that sits in whichever region is currently the primary
+one. Timeline is the default for a clocked circuit, Table for a combinational one, and Waveform is
+the recorded trace; the reader's choice is remembered for that scenario while it is open. The
+switch never opens a second document and never a second tab.
+
+Under the instrument is the run line: what the last run did, where the cursor is, what failed, and
+the actions that follow from it. It is one strip, in every representation, and it is capped at a
+third of the workspace. Before a run it says so in the line it already occupies.
+
+What belongs to a representation goes with it. Case stepping, the tick range, the radix, the
+expected overlay, the scrubber, playback and the view/measure tools all describe a drawn trace, so
+they are drawn with the trace. The cursor, the readout, the failure focus and the tail actions
+describe the experiment, so they are in the run line.
+
+**Measured at 1280x650, the two-bit counter after a run:** primary 376px / run line 91px, against
+88px / 255px+ before. The timeline's lanes are 244px; they were 88px in a region whose run line was
+being drawn inside a 1px box.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| The Cases/Evidence deck with a resizable splitter, collapse, and maximize-either-pane | It exists because two instruments are on screen at once and have to be given room at each other's expense. One primary area has nothing to split. The controls, the persisted share and the collapsed strip went with it. |
+| Keeping the trace toolbar on screen in every representation | It is a command bar for a canvas that is not there. Measured, it was the difference between a 244px timeline and an 88px one. |
+| Cases, Timing and Waveform as three documents with three tabs | It says the reader has three experiments open. They have one, looked at three ways. |
+| A percentage `max-height` on the run-line region | A percentage max-height on a grid ITEM resolves against the area the item is sizing, so it measured 34% of itself: a 91px line drawn inside a 31px box. The cap belongs to the track (`fit-content(34%)`). |
+| A 255px placeholder before the first run | The primary area is already the instrument the reader is working in. Unrecorded is not zero, but it is one line, not a panel. |
+
+### 2026-09-07 - Design explores; Simulate records
+
+**Decided.** Design has no clock of its own. Live mode is exploration: drive an input and the values
+settle, apply one clock edge when you ask for one, reset the values, and the surface says
+"Exploring - not recorded" while you do. A circuit with no state is offered no clock edge, because
+there is nothing for one to move. The way to evidence is named on the surface: run a scenario in
+Simulate.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Run / Pause on a wall-clock interval with a speed in Hz | It advanced a counter. On a combinational circuit stepping changed nothing at all; on a clocked one it applied edges at a rate unrelated to the scenario's clock policy, against no stimulus, with no expected values and no verdict. It looked like running a simulation and recorded nothing. |
+| Keeping the "tick N" readout | A tick number with no schedule behind it is a number. "3 clock edges applied" is a fact about what the reader did. |
+| Removing Live mode entirely | Exploring a circuit by driving its inputs is real and useful. What was false was the clock, not the exploration. |
+
+### 2026-09-07 - Package lands on its dossier
+
+**Decided.** The `package` workspace root is the operational landing its own definition describes:
+the project and its board, the export source hash and the package SHA, the mapping count, the
+simulation verdict, the constraint lines, the file count and byte size, and the architecture
+figure. The artifact browser is what `package-artifact` draws, reached from the landing.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Landing on the file tree | A file tree is what you open when you want a file. It is not what tells you whether the thing is ready to hand in. |
+| A "Handoff overview" button on the dossier | It is a button to where the reader already is. From the dossier that action is "Package files"; from the browser it is "Handoff overview". |
+
+### 2026-09-07 - A metric is not offered where it would not be true
+
+**Decided.** "Input combinations N of M" is stated for a combinational circuit and withheld for a
+clocked one. For a combinational circuit the truth table IS the specification and 2^n is its size,
+so the count is a fact the reader can act on. A counter's output depends on the state it is in, not
+only on the inputs applied at that tick, and two of the "inputs" the count included were the clock
+and the reset - a schedule, not a stimulus space. On the two-bit counter it read "3 of 8" against a
+denominator that does not describe the experiment.
+
+**Recorded, not repaired:** the signal rail counts four outputs on the two-bit counter (LD0, LD1,
+Q0, Q1) where the timeline draws two. The two the timeline draws are correct: the lab's io-row ids
+are `q0`/`q1` labelled LD0/LD1, and those ARE the board outputs. The run's waveform emits four keys
+for the same two signals, the alias authority (`buildCanonicalWaveformSignalAliases`) does not
+collapse `Q0` onto `LD0`, and the io-row id `q0` normalises onto the internal register key `Q0`,
+which is what makes the rail credit an internal node to the boundary set. Drawing the two "missing"
+lanes produced two empty duplicates and was reverted. The alias authority is the defect.
+
 ## Attribution
 
 Connor Angiel

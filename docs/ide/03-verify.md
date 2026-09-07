@@ -15,6 +15,48 @@ Mode ID: `verify`
 
 Provide a simulation-first workspace: author a scenario, run deterministic simulation, inspect waveform or circuit replay, and add expected-output assertions when useful.
 
+## One experiment, one primary working area (2026-09-07)
+
+This section supersedes the deck/splitter composition described below and the three-document
+Cases / Timing / Waveform vocabulary wherever they conflict.
+
+A scenario is **one experiment**, drawn one way at a time in **one primary region**:
+
+| Representation | What it draws | Default for |
+|---|---|---|
+| **Timeline** (`ide-verify-view-timeline`) | `TimingLab` / `TimingLanes`: one lane per signal on a time axis, events where the reader places them, outputs as expected-over-observed | a clocked circuit |
+| **Table** (`ide-verify-view-table`) | `CaseLab`: one row per case, inputs beside expected and observed | a combinational circuit |
+| **Waveform** (`ide-verify-view-waveform`) | `WaveformViewer`: the recorded trace, with cursors and measurement | never a default; enabled once a run exists |
+
+The circuit chooses the default; a reader who says otherwise says it for that scenario, and it is
+remembered while the scenario is open. The switch renders inside whichever region is currently
+primary - the stimulus region for Timeline and Table, the trace region for Waveform - so the way
+back is where the way in was. Switching representation never opens a document and never a tab.
+
+**The run line** (`ide-verify-run-line`) sits under the instrument in every representation and
+holds what the last run did: the verdict summary with its details disclosure and `Inspect with
+circuit`, the live readout, edge navigation, the failure focus, and the tail actions
+(`Check…` / `Watch` / `Inspect run`). Its grid track is `fit-content(34%)`, so however much it has
+to say the instrument keeps two thirds of the workspace. Before a run it renders
+`ide-verify-run-line-empty`: "No run recorded yet", with the authored case count.
+
+**The trace toolbar** (`ide-verify-waveform-cmd`) is rendered only in the Waveform representation
+and holds what describes a drawn trace: case stepping, the tick range (`All ticks` / `Fail window`
+/ `Selected`), the radix, the expected overlay, the tick scrubber, and playback. `View and measure`
+(zoom, row density, A/B cursors) is a disclosure in the same representation.
+
+**Retired with this composition:** the Cases/Evidence deck splitter (`ide-verify-deck-handle`), its
+collapse and maximize controls, the collapsed evidence strip, and the persisted deck fraction.
+Simulate no longer reads or writes `workspacePreferences.simulate`.
+
+**Measured** at 1280x650 on the two-bit counter after a run: primary region 376px, run line 91px,
+timeline lanes 244px, 0 tabs, 0 document overflow. At 1440x900 in the Waveform representation the
+canvas fills 527px of its 717px region.
+
+**Input combinations** is stated for a combinational circuit and withheld for a clocked one: 2^n is
+the size of a truth table, which is the specification of a combinational circuit, and says nothing
+about a design whose output depends on the state it is in.
+
 ## Simulation & Replay Studio v1 current contract (2026-07-26)
 
 This section supersedes older Observe/Compare chrome descriptions below where wording conflicts. The current student loop is:

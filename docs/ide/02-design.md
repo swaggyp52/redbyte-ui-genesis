@@ -11,6 +11,25 @@ role: Design surface spec
 Status: Unified Workbench v3 RC source; final exact-SHA certification pending
 Mode ID: `design`
 
+## Design explores; Simulate records (2026-09-07)
+
+Design has no clock of its own. `Live` is exploration:
+
+- driving an input settles the values through the circuit;
+- a circuit with registers offers **Clock edge** (`ide-design-live-step`), applied once when the
+  reader asks, with a count of how many have been applied since reset;
+- a combinational circuit is offered no clock edge, because there is nothing for one to move;
+- **Reset values** (`ide-design-live-reset`) returns inputs and register state to their start;
+- the toolbar says `Exploring · not recorded` while any of this is true.
+
+`Replay` reads the run Simulate recorded; it is read-only evidence and says so.
+
+**Retired:** Run / Pause on a wall-clock interval at `speedHz`, the bare `tick N` readout, and the
+`onRuntimeSimRun` / `onRuntimeSimPause` / `onRuntimeSimSetSpeed` props. What ran was a counter: on a
+combinational circuit stepping changed nothing, and on a clocked one it applied edges at a rate
+unrelated to the scenario's clock policy, against no stimulus, with no expected values and no
+verdict.
+
 ## Purpose
 
 Build deterministic circuit graphs in a canvas-first workspace that stays honest about replay, verify-linked context, and authoring readiness.

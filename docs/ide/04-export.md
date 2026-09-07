@@ -11,6 +11,17 @@ role: Export surface spec
 Status: Unified Workbench v3 RC trust source; final exact-SHA certification pending
 Mode ID: `export`
 
+## The Package landing is the dossier (2026-09-07)
+
+The `package` workspace root draws the handoff dossier (`ide-package-handoff-document`): the
+project and its board, the export source hash and the package SHA, the mapping count, the
+simulation verdict with its counts, the constraint line count, the file count and byte size, and
+the architecture figure. `package-artifact` draws the file browser, reached from the landing with
+**Package files**; from the browser the same action reads **Handoff overview**.
+
+A file tree is what a reader opens when they want a file. It is not what tells them whether the
+thing is ready to hand in.
+
 ## Purpose
 
 Act as the compiler-like Export handoff station for Basys3 Vivado artifacts while distinguishing draft artifacts from trusted verified E0 handoff.
