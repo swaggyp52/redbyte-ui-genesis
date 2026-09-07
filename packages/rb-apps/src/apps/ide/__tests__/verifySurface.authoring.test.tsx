@@ -111,13 +111,60 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
+    // The cell cycles unset -> 1 -> 0 -> unset (CaseLab.tsx:169-172: the first click asserts the
+    // common case). This fixture starts at 0, so one click is the third step and clears the check.
     fireEvent.click(getByTestId('ide-case-lab-exp-0-ld0'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const firstEdit = onVectorsChange.mock.calls[0]?.[0] as Array<{
       expected: Record<string, 0 | 1>;
     }>;
-    expect(firstEdit[0]?.expected).toEqual({ ld0: 1 });
+    expect(firstEdit[0]?.expected).toEqual({});
+  });
+
+  it('cycles an expected cell through the values a student can author', () => {
+    // What this protects is that authoring writes through to the project document at every step,
+    // not the order of the cycle - which is why each step asserts the value it produced.
+    const onVectorsChange = vi.fn();
+    let vectors: Array<{ id: string; tick: number; inputs: Record<string, 0 | 1>; expected: Record<string, 0 | 1> }> = [
+      { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} },
+    ];
+    const view = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={vectors}
+        lastRun={makePassRun()}
+        mappedInputs={BASE_INPUTS}
+        mappedSignals={BASE_SIGNALS}
+        onOpenProjectVectors={vi.fn()}
+        onVectorsChange={onVectorsChange}
+      />
+    );
+
+    const step = (expected: Record<string, 0 | 1>) => {
+      fireEvent.click(view.getByTestId('ide-case-lab-exp-0-ld0'));
+      const written = onVectorsChange.mock.calls[onVectorsChange.mock.calls.length - 1]?.[0] as typeof vectors;
+      expect(written[0]?.expected).toEqual(expected);
+      vectors = written;
+      view.rerender(
+        <VerifySurface
+          deterministicHash="abc123"
+          hasVectors={true}
+          vectors={vectors}
+          lastRun={makePassRun()}
+          mappedInputs={BASE_INPUTS}
+          mappedSignals={BASE_SIGNALS}
+          onOpenProjectVectors={vi.fn()}
+          onVectorsChange={onVectorsChange}
+        />
+      );
+    };
+
+    step({ ld0: 1 });
+    step({ ld0: 0 });
+    step({});
+    expect(onVectorsChange).toHaveBeenCalledTimes(3);
   });
 
   it('preserves imported/example vector expectations that still use io-row node ids', () => {

@@ -21,8 +21,9 @@ export interface VerifyCommandBarProps {
   readonly runDisabled: boolean;
   readonly runPulsing?: boolean;
   /**
-   * When cases exist without saved checks, authoring expected outputs becomes
-   * the primary task while Observe remains available as a secondary run.
+   * True when the cases carry no expected outputs. Observe stays primary and runnable in that
+   * state - it is the ordinary way to use the instrument, not a deficiency. This only offers the
+   * optional route to authoring reference values for a reader who wants a comparison.
    */
   readonly needsExpectedOutputs?: boolean;
   readonly onAuthorExpectedOutputs?: () => void;
@@ -113,6 +114,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   runLabel,
   runDisabled,
   runPulsing,
+  needsExpectedOutputs,
+  onAuthorExpectedOutputs,
   workspaceMode = 'scenario',
   onWorkspaceModeChange,
   configuredCheckCount = 0,
@@ -182,6 +185,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     onRun();
   };
 
+  const explainerText =
+    isCompareMode && !compareAvailable && compareUnavailableReason
+      ? compareUnavailableReason
+      : isCompareMode
+        ? 'Check filled expected outputs against this run.'
+        : 'Record observed outputs without grading expected values.';
   return (
     <div
       ref={commandBarRef}
@@ -251,26 +260,30 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         >
           {runLabel}
         </IdeButton>
+        {needsExpectedOutputs && onAuthorExpectedOutputs ? (
+          <IdeButton
+            tone="secondary"
+            onClick={onAuthorExpectedOutputs}
+            testId="ide-vcb-author-expected"
+            title="Open the cases to add reference outputs, so a run can be compared against them."
+            hierarchySurface="verify"
+            hierarchyRole="secondary"
+          >
+            Add expected outputs
+          </IdeButton>
+        ) : null}
       </div>
       {/* A disabled control whose only explanation is a `title` explains nothing: the tooltip
-          is hidden until hover and browsers do not reliably show one on a disabled button.
-          When Compare is blocked, the reason takes the explainer slot. */}
+          is hidden until hover and browsers do not reliably show one on a disabled button. When
+          COMPARE is selected and blocked, the reason takes this slot - it explains the control
+          the student is trying to use. While Observe is selected, Observe is what gets explained:
+          a run that works is not made to look incomplete by the state of a run nobody asked for. */}
       <span
-        className={`wb-toolbar-meta rb-sim-explainer${!compareAvailable && compareUnavailableReason ? ' is-blocked-reason' : ''}`}
+        className={`wb-toolbar-meta rb-sim-explainer${isCompareMode && !compareAvailable && compareUnavailableReason ? ' is-blocked-reason' : ''}`}
         data-testid="ide-vcb-mode-explainer"
-        title={
-          !compareAvailable && compareUnavailableReason
-            ? compareUnavailableReason
-            : isCompareMode
-              ? 'Check filled expected outputs against this run.'
-              : 'Record observed outputs without grading expected values.'
-        }
+        title={explainerText}
       >
-        {!compareAvailable && compareUnavailableReason
-          ? compareUnavailableReason
-          : isCompareMode
-            ? 'Check filled expected outputs against this run.'
-            : 'Record observed outputs without grading expected values.'}
+        {explainerText}
       </span>
     </div>
   );

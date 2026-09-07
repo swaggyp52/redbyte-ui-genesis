@@ -4645,9 +4645,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : 'split';
   const needsExpectedOutputs =
     totalVectorCount > 0 && outputFields.length > 0 && totalExpectedCaseCount === 0;
-  const draftPresentationStatus =
-    totalVectorCount === 0 ? 'NOT STARTED' : needsExpectedOutputs ? 'NEEDS CHECKS' : 'READY';
-  const readyDraftCanRun = isDraftSession && draftPresentationStatus === 'READY';
+  const draftPresentationStatus = totalVectorCount === 0 ? 'NOT STARTED' : 'READY';
+  // Cases exist, so a run is meaningful now - with or without reference outputs to compare it to.
+  const readyDraftCanRun = isDraftSession && totalVectorCount > 0;
   const sessionStatusBadgeLabel = isDraftSession
     ? draftPresentationStatus
     : verifySession.statusBadge;
@@ -4656,7 +4656,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? 'error'
       : sessionShowsAssertionMatch
         ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
-        : isDraftSession && (draftPresentationStatus === 'NOT STARTED' || needsExpectedOutputs)
+        : isDraftSession && draftPresentationStatus === 'NOT STARTED'
           ? 'warn'
           : verifySession.tone;
   const hasSessionFailureEvidence =

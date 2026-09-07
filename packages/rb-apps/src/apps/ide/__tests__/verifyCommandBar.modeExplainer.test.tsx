@@ -70,4 +70,64 @@ describe('VerifyCommandBar mode explainer contract', () => {
     expect(view.getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('false');
     expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('explains Observe while Observe is selected, even when Compare is blocked', () => {
+    // A run that works must not be made to look incomplete by the state of a run nobody asked
+    // for. The blocked reason belongs to Compare, and only while Compare is what is selected.
+    const reason = 'Fill in at least one expected output to compare against.';
+    const view = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+      />
+    );
+
+    const explainer = view.getByTestId('ide-vcb-mode-explainer');
+    expect(explainer.textContent).toBe('Record observed outputs without grading expected values.');
+    expect(explainer.className).not.toContain('is-blocked-reason');
+    // Observe itself stays runnable with no reference outputs anywhere in the project.
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
+
+    view.rerender(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={true}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+      />
+    );
+
+    const blocked = view.getByTestId('ide-vcb-mode-explainer');
+    expect(blocked.textContent).toBe(reason);
+    expect(blocked.className).toContain('is-blocked-reason');
+  });
+
+  it('offers adding expected outputs as a secondary action without demoting Observe', () => {
+    const onAuthorExpectedOutputs = vi.fn();
+    const view = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason="No expected outputs are filled in yet."
+        needsExpectedOutputs
+        onAuthorExpectedOutputs={onAuthorExpectedOutputs}
+      />
+    );
+
+    const add = view.getByTestId('ide-vcb-author-expected');
+    expect(add.textContent).toBe('Add expected outputs');
+    // Run is the primary action; adding references is offered beside it, not instead of it.
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(add);
+    expect(onAuthorExpectedOutputs).toHaveBeenCalledOnce();
+
+    // With no such need, the offer is absent rather than disabled.
+    view.rerender(
+      <VerifyCommandBar {...BASE} isCompareMode={false} needsExpectedOutputs={false} />
+    );
+    expect(view.queryByTestId('ide-vcb-author-expected')).toBeNull();
+  });
 });
