@@ -6695,6 +6695,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ) : (
           <CaseLab
             runHistory={runHistory}
+            caseOrder={isSequentialRun ? 'time' : 'combination'}
             inputFields={stimulusPanelInputFields}
             outputFields={outputFields}
             vectors={authoredVectors}

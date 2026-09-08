@@ -47,6 +47,13 @@ export interface CaseLabProps {
   readonly onGoToHardware?: () => void;
   /** Run ledger, newest first, for the history line (current vs previous). */
   readonly runHistory?: readonly { readonly runId: string; readonly status: 'pass' | 'fail'; readonly passedRows: number; readonly failedRows: number; readonly ranAtIso: string }[];
+  /**
+   * Which axis the rows are in. Defaults to the truth table this instrument was built for.
+   * A clocked circuit asks for `'time'`: see the comment on `rows`. The case that needs it is
+   * exactly the one the representation switch makes reachable - a reader choosing Table in
+   * front of a counter, where the row order is a sequence and not a specification.
+   */
+  readonly caseOrder?: 'combination' | 'time';
 }
 
 const VERDICT_LABEL: Record<CaseEvidence, string> = {
@@ -97,18 +104,56 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   isUsingFallbackSignals,
   onGoToHardware,
   runHistory,
+  caseOrder = 'combination',
 }) => {
   const [failuresOnly, setFailuresOnly] = useState(false);
   // Multi-selection is presentation state: Shift extends, Ctrl toggles, Escape clears.
   const [selectedTicks, setSelectedTicks] = useState<ReadonlySet<number>>(() => new Set());
   const [anchorTick, setAnchorTick] = useState<number | null>(null);
   const [bulkField, setBulkField] = useState<string>('');
-  const orderedTicks = useMemo(() => [...vectors].map((vector) => vector.tick).sort((a, b) => a - b), [vectors]);
-  const failingTicks = useMemo(() => orderedTicks.filter((tick) => caseEvidenceByTick[tick] === 'fail'), [caseEvidenceByTick, orderedTicks]);
+
+  const failCount = useMemo(
+    () => vectors.filter((v) => caseEvidenceByTick[v.tick] === 'fail').length,
+    [vectors, caseEvidenceByTick]
+  );
+
+  /**
+   * The rows on screen, in the order the experiment is actually in.
+   *
+   * A combinational circuit's cases ARE a truth table: the input combination is the row's
+   * identity, so ordering by it is the specification and the number beside it is a label.
+   * A clocked circuit's cases are ticks in time - its output depends on the state it is in,
+   * not only on the inputs applied at that tick - so the same sort scrambles the experiment.
+   * The two-bit counter drew its seven cases as 0, 1, 6, 2, 3, 4, 5, silently grouped by
+   * whether EN was low, with nothing on screen to say why 6 sits between 1 and 2. This is the
+   * same mistake as counting input combinations for a counter, one instrument over.
+   */
+  const rows = useMemo(() => {
+    const sorted = [...vectors].sort((a, b) =>
+      caseOrder === 'time'
+        ? a.tick - b.tick
+        : comboValue(a, inputFields) - comboValue(b, inputFields) || a.tick - b.tick
+    );
+    return failuresOnly ? sorted.filter((v) => caseEvidenceByTick[v.tick] === 'fail') : sorted;
+  }, [vectors, inputFields, failuresOnly, caseEvidenceByTick, caseOrder]);
+
+  /**
+   * One order authority. Case stepping, failure stepping, Home/End and the arrow keys walked a
+   * tick-sorted list while the table drew a combination-sorted one, so for any case set not
+   * authored in combination order - the counter above, or anything hand-written - ArrowDown did
+   * not move to the row below: from case 1 it selected case 2, which is drawn four rows further
+   * down. "Next" means the next row the reader can see, and while Failures only is on that is
+   * the next row that is still on screen.
+   */
+  const visibleTicks = useMemo(() => rows.map((vector) => vector.tick), [rows]);
+  const failingTicks = useMemo(
+    () => visibleTicks.filter((tick) => caseEvidenceByTick[tick] === 'fail'),
+    [caseEvidenceByTick, visibleTicks]
+  );
   const stepCase = (direction: 1 | -1) => {
-    if (orderedTicks.length === 0) return;
-    const index = selectedTick == null ? -1 : orderedTicks.indexOf(selectedTick);
-    const next = orderedTicks[Math.min(orderedTicks.length - 1, Math.max(0, index + direction))];
+    if (visibleTicks.length === 0) return;
+    const index = selectedTick == null ? -1 : visibleTicks.indexOf(selectedTick);
+    const next = visibleTicks[Math.min(visibleTicks.length - 1, Math.max(0, index + direction))];
     if (next != null && next !== selectedTick) onSelectCase(next);
   };
   const stepFailure = (direction: 1 | -1) => {
@@ -117,20 +162,6 @@ export const CaseLab: React.FC<CaseLabProps> = ({
     const next = failingTicks[(index + direction + failingTicks.length) % failingTicks.length] ?? failingTicks[0];
     onSelectCase(next);
   };
-
-  const failCount = useMemo(
-    () => vectors.filter((v) => caseEvidenceByTick[v.tick] === 'fail').length,
-    [vectors, caseEvidenceByTick]
-  );
-
-  const rows = useMemo(() => {
-    const sorted = [...vectors].sort(
-      (a, b) => comboValue(a, inputFields) - comboValue(b, inputFields) || a.tick - b.tick
-    );
-    return failuresOnly ? sorted.filter((v) => caseEvidenceByTick[v.tick] === 'fail') : sorted;
-  }, [vectors, inputFields, failuresOnly, caseEvidenceByTick]);
-
-  const visibleTicks = rows.map((vector) => vector.tick);
   const selectRange = (fromTick: number, toTick: number) => {
     const a = visibleTicks.indexOf(fromTick);
     const b = visibleTicks.indexOf(toTick);
@@ -176,7 +207,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
       <header className="ide-case-lab-bar" data-testid="ide-case-lab-bar">
         <span className="ide-case-lab-title" data-testid="ide-case-lab-title">Test cases</span>
         <span className="ide-case-lab-count" data-testid="ide-case-lab-count">
-          {vectors.length} case{vectors.length === 1 ? '' : 's'}
+          {vectors.length}
           {failCount ? ` · ${failCount} failing` : ''}
         </span>
         {latestRun ? (
@@ -299,8 +330,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
             else if (event.key === 'Escape') { setSelectedTicks(new Set()); }
             else if (event.key === 'ArrowDown') { event.preventDefault(); stepCase(1); }
             else if (event.key === 'ArrowUp') { event.preventDefault(); stepCase(-1); }
-            else if (event.key === 'Home') { event.preventDefault(); if (orderedTicks[0] != null) onSelectCase(orderedTicks[0]); }
-            else if (event.key === 'End') { event.preventDefault(); const last = orderedTicks[orderedTicks.length - 1]; if (last != null) onSelectCase(last); }
+            else if (event.key === 'Home') { event.preventDefault(); if (visibleTicks[0] != null) onSelectCase(visibleTicks[0]); }
+            else if (event.key === 'End') { event.preventDefault(); const last = visibleTicks[visibleTicks.length - 1]; if (last != null) onSelectCase(last); }
             else if (event.key === 'f' || event.key === 'F') { event.preventDefault(); stepFailure(event.shiftKey ? -1 : 1); }
             else if ((event.key === '1' || event.key === '0' || event.key === 'Backspace' || event.key === 'Delete') && focusFieldId && !(event.target instanceof HTMLInputElement)) {
               // Typing 0 / 1 sets the followed column's expectation for the selected case(s); Backspace/Delete clears it.
@@ -318,7 +349,16 @@ export const CaseLab: React.FC<CaseLabProps> = ({
         >
           <thead>
             <tr className="ide-case-lab-grouphead">
-              <th className="ide-case-lab-num" rowSpan={2} scope="col" title="Case number — rows are ordered by input combination">#</th>
+              <th
+                className="ide-case-lab-num"
+                rowSpan={2}
+                scope="col"
+                data-case-order={caseOrder}
+                data-testid="ide-case-lab-num-head"
+                title={caseOrder === 'time' ? 'Case number — rows are in time order' : 'Case number — rows are ordered by input combination'}
+              >
+                #
+              </th>
               <th className="ide-case-lab-group ide-case-lab-group--in" colSpan={inputFields.length} scope="colgroup">
                 Inputs
               </th>
