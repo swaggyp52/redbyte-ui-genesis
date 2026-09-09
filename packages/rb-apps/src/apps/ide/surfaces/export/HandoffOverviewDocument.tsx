@@ -100,13 +100,14 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
     return map;
   }, [circuit]);
 
-  const mapped = viewModel.pinTable.filter((row) => row.status === 'mapped').length;
+  const mapped = viewModel.pinTable.filter((row) => row.required && row.status === 'mapped').length;
   const required = viewModel.pinTable.filter((row) => row.required).length;
   const reportRows = lastRun?.report.rows ?? [];
   const checksPassed = reportRows.filter((row) => row.status === 'pass').length;
   const checksFailed = reportRows.filter((row) => row.status === 'fail').length;
   const artifactBytes = viewModel.artifacts.reduce((sum, artifact) => sum + artifact.content.length, 0);
-  const runIsCompare = lastRun ? lastRun.runKind !== 'trace' && lastRun.assertionStatus !== 'not-configured' : false;
+  const runIsCompare = Boolean(lastRun && lastRun.runKind !== 'trace' && reportRows.length > 0
+    && lastRun.assertionStatus !== 'not-configured' && lastRun.assertionStatus !== 'not-evaluated');
   const scenarioId = lastRun?.scenarioId ?? null;
   const isSequentialRun = lastRun?.schedule === 'clocked_macro';
   const evidenceDocument: WorkbenchDocument | null = scenarioId ? { kind: 'scenario', scenarioId } : null;
@@ -198,10 +199,10 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
     <article
       className={`rb-doc rb-handoff${presenting ? ' is-presenting' : ''}`}
       data-testid="ide-package-handoff-document"
-      aria-label="Handoff overview"
+      aria-label="Package report"
     >
       <header className="rb-doc-header">
-        <h2 className="rb-doc-title">Handoff</h2>
+        <h2 className="rb-doc-title">Package report</h2>
         <span className="rb-doc-header-sep" aria-hidden="true" />
         <code className="rb-doc-header-code">{projectName}</code>
         <span className="wb-toolbar-meta">{boardLabel} · {fpgaPart} · top {topName}</span>
@@ -325,6 +326,12 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
               </button>
             ) : null}
           </header>
+          {lastRun ? (
+            <p className="wb-toolbar-meta" data-testid="ide-package-handoff-run-identity" data-run-id={lastRun.runId ?? lastRun.reportHash}>
+              Recording {lastRun.runId ?? lastRun.reportHash} · {lastRun.generatedAtIso}
+              {isStale ? ' · Historical results; the current project has changed.' : ' · Current simulation evidence.'}
+            </p>
+          ) : null}
           {lastRun ? (
             <>
               {hasWaveform ? <HandoffWaveformFigure run={lastRun} figureNumber={figWaveform} onSelectTick={linkable ? openWaveformTick : undefined} /> : null}

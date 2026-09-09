@@ -372,6 +372,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
   const [copyError, setCopyError] = useState(false);
   const [technicalEvidenceOpen, setTechnicalEvidenceOpen] = useState(false);
+  const technicalDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!technicalEvidenceOpen) return;
+    const dialog = technicalDialogRef.current;
+    if (!dialog || dialog.open) return;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }, [technicalEvidenceOpen]);
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
     const topVhd = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'top.vhd');
@@ -973,7 +981,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return set;
   }, [currentDownloadEvidence, dirtySinceVerify]);
   const downloadDone = Boolean(currentDownloadEvidence);
-  const lastDownloadKind = currentDownloadEvidence?.downloadKind ?? null;
   const exportTrustAxes = deriveExportTrustAxes({
     structuralBlocked: exportBlocked,
     verifyState,
@@ -1095,7 +1102,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
     const surfaceStatusDetail = useMemo(() => {
       if (downloadDone) {
-        return `${formatExportTrustDetail(exportTrustAxes.verificationTrust)} Unzip the ZIP, then open the .xpr file in Vivado.`;
+        const nextStep = currentDownloadEvidence?.downloadKind === 'kit'
+          ? 'Unzip the flat kit, then run vivado_import.tcl from the extracted folder in Vivado.'
+          : 'Unzip the project ZIP, then open its .xpr file in Vivado.';
+        return `${formatExportTrustDetail(exportTrustAxes.verificationTrust)} ${nextStep}`;
       }
 
       switch (handoffTruth.condition) {
@@ -1106,39 +1116,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         default:
           return handoffTruth.message;
       }
-    }, [downloadDone, exportTrustAxes.verificationTrust, handoffTruth.condition, handoffTruth.message]);
+    }, [currentDownloadEvidence?.downloadKind, downloadDone, exportTrustAxes.verificationTrust, handoffTruth.condition, handoffTruth.message]);
 
-  const primaryExportActionDownloadsProject =
-    handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
-    handoffTruth.primaryCtaIntent === 're-export-current-bundle' ||
-    handoffTruth.primaryCtaIntent === 'program-handoff';
-  const primaryHandoffDisabled =
-    primaryExportActionDownloadsProject
-      ? (!downloadReady || isRebuilding)
-      : (handoffTruth.primaryCtaIntent === 'map-pins' && !onGoToHardware) ||
-        (handoffTruth.primaryCtaIntent === 'design' && !onGoToDesign) ||
-        (handoffTruth.primaryCtaIntent === 'verify' && !onOpenVerify);
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
-  const projectDownloadCompactLabel = isRebuilding
-    ? 'Building...'
-    : handoffTruth.primaryCtaIntent === 'build-current-bundle'
-      ? 'Build Current Bundle'
-      : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
-        ? 'Rebuild Current Bundle'
-    : downloadDone && lastDownloadKind === 'project'
-      ? 'Re-download'
-      : isDraftExport
-        ? 'Download Draft Project ZIP'
-      : isStaleButPassBefore
-        ? 'Download Project ZIP (previous build)'
-        : isStarterScenarioFail
-          ? 'Download Project ZIP (starter)'
-          : 'Download Project ZIP';
-  const primaryExportCtaLabel =
-    handoffTruth.primaryCtaIntent === 'program-handoff'
-      ? projectDownloadCompactLabel
-      : handoffTruth.primaryCtaLabel;
   const gateStackSection = (
     <div className="ide-export-gate-details-panel" data-testid="ide-export-readiness-details">
       <header className="ide-export-section-header">
@@ -1236,14 +1217,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     );
   }, []);
 
-  const resetSteps = useCallback(() => {
-    setRebuildSteps(makeSteps());
-    setIsRebuilding(false);
-  }, []);
-
   const handleDownloadExport = useCallback(async (kind: 'project' | 'kit') => {
     setIsRebuilding(true);
-    resetSteps();
     setDownloadError('');
     const ranAtIso = new Date().toISOString();
 
@@ -1388,37 +1363,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       setIsRebuilding(false);
     }
   }, [
-    resetSteps, markStep, hasBlockingErrors, requiredMappedCount, requiredCount,
+    markStep, hasBlockingErrors, requiredMappedCount, requiredCount,
     verifyResult, dirtySinceVerify, viewModel, onExportBundle, onExportResult,
     project.name, projectSlug, topModule, vivadoPart, determinismHash,
     packageSourceHashes,
     exportTrustAxes.verificationTrust, resolvedWorkflowAuthority.comparePassIncomplete,
     verifyState,
   ]);
-  const handlePrimaryHandoff = useCallback(() => {
-    switch (handoffTruth.primaryCtaIntent) {
-      case 'build-current-bundle':
-      case 're-export-current-bundle':
-        void handleDownloadExport('project');
-        break;
-      case 'map-pins':
-        if (onGoToHardware) onGoToHardware();
-        else onGoToProject?.();
-        break;
-      case 'design':
-        onGoToDesign?.();
-        break;
-      case 'verify':
-        onOpenVerify?.();
-        break;
-      case 'program-handoff':
-        void handleDownloadExport('project');
-        break;
-      default:
-        break;
-    }
-  }, [handoffTruth.primaryCtaIntent, handleDownloadExport, onGoToDesign, onGoToHardware, onGoToProject, onOpenVerify]);
-
   const handleDownloadArtifact = (artifact: ExportArtifactView) => {
     if (typeof window === 'undefined' || artifact.content.trim().length === 0) return;
     const blob = new Blob([artifact.content], { type: 'text/plain;charset=utf-8' });
@@ -1471,22 +1422,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           : 'fail';
 
   const downloadDisabled = !downloadReady || isRebuilding;
-  /* One primary action on this surface, and it must be the one the student came for.
-     When the package is built, browser-verified and downloadable, the download is the goal
-     and "Rebuild Current Bundle" is maintenance; until then the readiness path keeps the
-     emphasis. These two are never both loud. */
-  // The download in the artifact inspector can only be the surface's primary action while that
-  // document is the one on screen. With the dossier open it is not rendered at all, so the
-  // decision strip keeps the primary - one primary, wherever the reader actually is.
-  /**
-   * The dossier is Package's landing (`package`, the workspace root) and is also openable as a
-   * report of its own (`handoff`). Both draw the same document; the artifact browser is what
-   * `package-artifact` draws.
-   */
-  const showsHandoffDossier = activeDocument?.kind === 'handoff' || activeDocument?.kind === 'package';
-  const handoffDownloadIsPrimary =
-    !showsHandoffDossier &&
-    !exportBlocked && !downloadDisabled && handoffTruth.primaryCtaIntent !== 'program-handoff';
+  // Package is the operational workspace. Only a deliberate report document opens the dossier.
+  const showsHandoffDossier = activeDocument?.kind === 'handoff';
+  const previousDownloadEvidence = sessionDownloadEvidence ?? lastExport;
+  const previousDownloadIsStale = Boolean(
+    previousDownloadEvidence?.status === 'ok'
+      && (previousDownloadEvidence.downloadedAtIso || previousDownloadEvidence.packageHash || previousDownloadEvidence.bundleHash)
+      && !currentDownloadEvidence
+  );
+  const generateDownloadLabel = isRebuilding
+    ? 'Generating package…'
+    : isDraftExport
+      ? 'Generate & download draft ZIP'
+      : 'Generate & download checked ZIP';
   const vivadoEvidenceRows = [
     {
       id: 'e0',
@@ -1776,118 +1724,38 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             data-export-derived-state={exportTrustAxes.derived}
           >
             <div className="rb-pkg-decision-copy">
-              <p className="ide-surface-block-label">Build &amp; Export</p>
-              <h2>{surfaceStatusTitle}</h2>
-              <p className="rb-pkg-trust-reason">{trustReason}</p>
-            </div>
-            <div
-              className="rb-pkg-decision-state"
-              data-testid="ide-export-trust-axes"
-              aria-label="Export structure, verification trust, and download action"
-            >
-              <strong data-testid="ide-export-derived-state">
-                {formatExportDerivedState(exportTrustAxes.derived)}
-              </strong>
-              <dl className="rb-pkg-axis-breakdown">
-                <div data-testid="ide-export-structural-axis">
-                  <dt>Structure</dt>
-                  <dd>{exportTrustAxes.structural === 'downloadable' ? 'Downloadable' : 'Blocked'}</dd>
-                </div>
-                <div data-testid="ide-export-verification-axis">
-                  <dt>Behavioral evidence</dt>
-                  <dd data-testid="ide-export-simulation-evidence-tier">
-                    {formatBehavioralEvidenceTier(behavioralEvidenceTier)}
-                  </dd>
-                </div>
-                <div data-testid="ide-export-action-axis">
-                  <dt>Action</dt>
-                  <dd>{exportTrustAxes.action === 'downloaded' ? 'Downloaded' : 'Not downloaded'}</dd>
-                </div>
-                <div>
-                  <dt>Files</dt>
-                  <dd>{viewModel.artifacts.length}</dd>
-                </div>
-              </dl>
+              <p className="ide-surface-block-label">Vivado package</p>
+              <h2 data-testid="ide-export-package-identity">{project.name?.trim() || 'Untitled project'}</h2>
+              <p>{boardTargetLabel} · {vivadoPart} · top <code>{topModule}</code></p>
             </div>
             <div className="rb-pkg-primary" data-testid="ide-export-primary-actions">
-              <IdeButton
-                tone="secondary"
-                onClick={() => setPackageValidation(
-                  exportBlocked
-                    ? {
-                        status: 'blocked',
-                        message: `${viewModel.errors.length || 1} package blocker${viewModel.errors.length === 1 ? '' : 's'} found.`,
-                      }
-                    : {
-                        status: 'ready',
-                        message: `${viewModel.artifacts.length} files structurally valid.`,
-                      }
-                )}
-                testId="ide-export-validate-package"
-              >
-                Validate package
-              </IdeButton>
-              {onOpenDocument ? (
-                <IdeButton
-                  tone="ghost"
-                  onClick={() => onOpenDocument(showsHandoffDossier ? { kind: 'package-artifact' } : { kind: 'handoff' })}
-                  testId="ide-export-open-handoff"
-                >
-                  {showsHandoffDossier ? 'Package files' : 'Handoff overview'}
-                </IdeButton>
-              ) : null}
               {exportBlocked ? (
-                <IdeButton
-                  tone="primary"
-                  onClick={blockedRecovery.action ?? (() => {})}
-                  disabled={!blockedRecovery.action}
-                  testId={blockedRecovery.testId}
-                >
+                <IdeButton tone="primary" onClick={blockedRecovery.action ?? (() => {})}
+                  disabled={!blockedRecovery.action} testId={blockedRecovery.testId}>
                   {blockedRecovery.label}
                 </IdeButton>
-              ) : handoffTruth.primaryCtaIntent === 'program-handoff' ? (
-                <IdeButton
-                  tone="primary"
-                  onClick={() => void handleDownloadExport('project')}
-                  disabled={downloadDisabled}
-                  testId="ide-export-package-download-v1"
-                >
-                  {isRebuilding ? 'Building package…' : 'Download Package'}
-                </IdeButton>
               ) : (
-                <IdeButton
-                  tone={handoffDownloadIsPrimary ? 'secondary' : 'primary'}
-                  onClick={handlePrimaryHandoff}
-                  disabled={primaryHandoffDisabled}
-                  testId="ide-export-package-build-v1"
-                >
-                  {primaryExportCtaLabel}
+                <IdeButton tone="primary" onClick={() => void handleDownloadExport('project')}
+                  disabled={downloadDisabled}
+                  testId={isDraftExport ? 'ide-export-draft-download-v1' : downloadDone ? 'ide-export-package-download-v1' : 'ide-export-package-build-v1'}>
+                  {generateDownloadLabel}
                 </IdeButton>
               )}
-              {isDraftExport && !primaryExportActionDownloadsProject ? (
-                <IdeButton
-                  tone="secondary"
-                  onClick={() => void handleDownloadExport('project')}
-                  disabled={downloadDisabled}
-                  testId="ide-export-draft-download-v1"
-                >
-                  Download draft
+              {onOpenDocument ? (
+                <IdeButton tone="secondary"
+                  onClick={() => onOpenDocument(showsHandoffDossier ? { kind: 'package' } : { kind: 'handoff' })}
+                  testId="ide-export-open-handoff">
+                  {showsHandoffDossier ? 'Back to package' : 'Open report'}
                 </IdeButton>
               ) : null}
-              {!exportBlocked && handoffTruth.primaryCtaIntent === 'program-handoff' ? (
-                <IdeButton
-                  tone="ghost"
-                  onClick={() => void handleDownloadExport('kit')}
-                  disabled={downloadDisabled}
-                  testId="ide-export-kit-download-v1"
-                >
-                  Download flat kit
-                </IdeButton>
-              ) : null}
-              {packageValidation ? (
-                <small className={`rb-pkg-validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
-                  {packageValidation.message} Browser E0 only · Vivado external.
-                </small>
+              <IdeButton tone="ghost" onClick={() => setTechnicalEvidenceOpen(true)}
+                testId="ide-export-open-technical-evidence">Technical details</IdeButton>
+            </div>
+            <div className="rb-pkg-state-summary" data-testid="ide-export-state-summary">
+              <strong data-testid="ide-export-derived-state">{surfaceStatusTitle}</strong>
+              <span>{trustReason}</span>
+              {!exportBlocked && isDraftExport && onOpenVerify ? (
+                <button type="button" className="wb-btn wb-btn--ghost" onClick={onOpenVerify}>Open Simulate</button>
               ) : null}
             </div>
           </section>
@@ -1897,44 +1765,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               {downloadError}
             </IdeCallout>
           ) : null}
-          {downloadDone ? (
-            <IdeCallout
-              tone="success"
-              title={`${formatExportVerificationTrust(currentDownloadEvidence?.verificationTrust ?? 'unverified')} package downloaded`}
-              testId="ide-export-download-success"
-            >
-              {formatExportTrustDetail(currentDownloadEvidence?.verificationTrust ?? 'unverified')} Package SHA-256:{' '}
-              <code>{currentDownloadEvidence?.packageHash ?? currentDownloadEvidence?.bundleHash ?? 'legacy evidence unavailable'}</code>
-            </IdeCallout>
-          ) : null}
+          <div className="rb-pkg-obtain" data-testid="ide-export-obtain-summary">
+            <p data-testid={downloadDone ? 'ide-export-download-success' : 'ide-export-download-record'}>
+              {downloadDone
+                ? `Current ${currentDownloadEvidence?.verificationTrust === 'trusted' ? 'checked' : 'draft'} ZIP generated; browser download requested.`
+                : previousDownloadIsStale
+                  ? 'Previous ZIP is out of date. Generate again for the current design, mapping and stimulus.'
+                  : 'Generation creates the ZIP and requests a browser download.'}
+              <span> A download record does not confirm a file was saved to disk.</span>
+            </p>
+            <p className="rb-pkg-vivado-next" data-testid="ide-export-vivado-next-step">
+              <strong>Next in Vivado</strong> Unzip the project ZIP and open its <code>.xpr</code> project.
+              Review synthesis and implementation before generating a bitstream.
+              <span> Vivado and physical board validation are external.</span>
+            </p>
+          </div>
 
-          <details className="rb-pkg-provenance-map" data-testid="ide-export-provenance-section" aria-label="Package provenance">
-            <summary className="rb-pkg-section-header rb-pkg-provenance-summary">
-              <h3>Provenance</h3>
-              <p className="ide-copy ide-copy--flush">
-                What each generated file depends on. Select a file to open it; select an input to open its workspace.
-                {exportHistory.length >= 2 ? ' Files marked changed differ from the previous recorded package.' : ''}
-              </p>
-            </summary>
-            <ArtifactProvenanceGraph
-              artifacts={viewModel.artifacts}
-              selectedPath={selectedArtifact?.path ?? null}
-              changedPaths={changedArtifactPaths}
-              changedInputs={changedProvenanceInputs}
-              onSelectArtifact={setSelectedArtifactPath}
-              onOpenInput={
-                onOpenDocument
-                  ? (input) => {
-                      if (input === 'design') onOpenDocument({ kind: 'schematic', moduleId: 'top' });
-                      else if (input === 'board') onOpenDocument({ kind: 'board-io', constraintSetId: 'default' });
-                      else if (input === 'simulate') onOpenDocument({ kind: 'runs' });
-                      else onOpenDocument({ kind: 'project-overview' });
-                    }
-                  : undefined
-              }
-            />
-          </details>
-          {exportHistory.length > 0 ? <ExportHistoryPanel history={exportHistory} onOpenArtifact={setSelectedArtifactPath} /> : null}
 
           <section
             className="rb-pkg-files"
@@ -1943,9 +1789,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           >
             <header className="rb-pkg-section-header">
               <div>
-                <p className="ide-surface-block-label">Package files</p>
+                <p className="ide-surface-block-label">Generated files</p>
               </div>
-              <p>{readyArtifactCount} ready · {viewModel.artifacts.length} total</p>
+              <p>{readyArtifactCount} ready · {viewModel.artifacts.length} generated.
+                {' '}The project ZIP adds its <code>.xpr</code> project and setup instructions.</p>
             </header>
             {showsHandoffDossier ? (
               <HandoffOverviewDocument
@@ -1960,7 +1807,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 stateTitle={surfaceStatusTitle}
                 stateReason={trustReason}
                 stateToken={formatExportDerivedState(exportTrustAxes.derived)}
-                isStale={dirtySinceVerify}
+                isStale={verifyProvenance === 'stale'}
                 activeConstraintSetName={activeConstraintSetName}
                 boardConstraintSetId={activeConstraintSetId}
                 downloadEvidence={currentDownloadEvidence ?? null}
@@ -2082,36 +1929,47 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p>No generated package files are available yet.</p>
                 )}
               </article>
-              <aside className="rb-pkg-handoff" data-testid="ide-export-handoff-inspector" aria-label="Vivado handoff inspector">
-                <header><span>Handoff inspector</span><strong>{topModule}</strong></header>
-                <dl>
-                  <div><dt>Evidence tier</dt><dd>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</dd></div>
-                  <div><dt>Top module</dt><dd>{topModule}</dd></div>
-                  <div><dt>Target board</dt><dd>{boardTargetLabel}</dd></div>
-                  <div><dt>FPGA part</dt><dd>{vivadoPart}</dd></div>
-                  <div><dt>Ownership</dt><dd>RedByte generated handoff</dd></div>
-                  <div><dt>Problems</dt><dd>{packageProblemCount}</dd></div>
-                </dl>
-                <div className="rb-pkg-handoff-guidance">
-                  <section>
-                    <h4>What to submit</h4>
-                    <p>Submit the roles requested by your instructor, commonly <code>top.vhd</code> and <code>top.xdc</code>.</p>
-                  </section>
-                  <section>
-                    <h4>Then, in Vivado</h4>
-                    <ol><li>Download and unzip the package.</li><li>Run the included import Tcl or open the generated project.</li><li>Review synthesis and implementation warnings before bitstream generation.</li></ol>
-                  </section>
-                </div>
-                <footer className="rb-pkg-handoff-action">
-                  <IdeButton tone={handoffDownloadIsPrimary ? 'primary' : 'secondary'} onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
-                    {isRebuilding ? 'Building package…' : 'Download package'}
-                  </IdeButton>
-                </footer>
-              </aside>
+
             </div>
             )}
           </section>
 
+          <details className="rb-pkg-provenance-map" data-testid="ide-export-provenance-section" aria-label="Package provenance">
+            <summary className="rb-pkg-section-header rb-pkg-provenance-summary">
+              <h3>Provenance</h3>
+              <p className="ide-copy ide-copy--flush">
+                What each generated file depends on. Select a file to open it; select an input to open its workspace.
+                {exportHistory.length >= 2 ? ' Files marked changed differ from the previous recorded package.' : ''}
+              </p>
+            </summary>
+            <ArtifactProvenanceGraph
+              artifacts={viewModel.artifacts}
+              selectedPath={selectedArtifact?.path ?? null}
+              changedPaths={changedArtifactPaths}
+              changedInputs={changedProvenanceInputs}
+              onSelectArtifact={setSelectedArtifactPath}
+              onOpenInput={
+                onOpenDocument
+                  ? (input) => {
+                      if (input === 'design') onOpenDocument({ kind: 'schematic', moduleId: 'top' });
+                      else if (input === 'board') onOpenDocument({ kind: 'board-io', constraintSetId: 'default' });
+                      else if (input === 'simulate') onOpenDocument({ kind: 'runs' });
+                      else onOpenDocument({ kind: 'project-overview' });
+                    }
+                  : undefined
+              }
+            />
+          </details>
+          {exportHistory.length > 0 ? (
+            <details className="rb-pkg-details" data-testid="ide-export-history-details">
+              <summary>Previous packages and download records ({exportHistory.length})</summary>
+              <ExportHistoryPanel history={exportHistory} onOpenArtifact={setSelectedArtifactPath} />
+            </details>
+          ) : null}
+
+
+          <details className="rb-pkg-details" data-testid="ide-export-readiness-disclosure">
+            <summary>Readiness and submission guidance</summary>
           <section
             className="rb-pkg-upstream"
             data-testid="ide-export-upstream-readiness"
@@ -2163,6 +2021,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </div>
           </section>
 
+          </details>
+
           {guidedLabTask && guidedLabExportSummary ? (
             <section className="rb-pkg-lab" data-testid="ide-export-guided-full-adder-summary">
               <div>
@@ -2178,27 +2038,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             Browser E0 confirms package generation only. Vivado build, bitstream, programming, and physical board behavior remain external.
           </p>
 
-          <section className="rb-pkg-technical-entry" aria-label="Technical package evidence">
-            <div>
-              <p className="ide-surface-block-label">Technical evidence</p>
-            </div>
-            <IdeButton
-              tone="secondary"
-              onClick={() => setTechnicalEvidenceOpen(true)}
-              testId="ide-export-open-technical-evidence"
-            >
-              Open technical evidence
-            </IdeButton>
-          </section>
-
           {technicalEvidenceOpen ? (
-            <div className="rb-pkg-dialog-backdrop">
-              <section
+              <dialog
+                ref={technicalDialogRef}
                 className="rb-pkg-dialog"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="ide-export-v3-dialog-title"
                 data-testid="ide-export-technical-dialog"
+                onCancel={() => setTechnicalEvidenceOpen(false)}
               >
                 <header>
                   <div>
@@ -2213,6 +2061,21 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     Close
                   </IdeButton>
                 </header>
+                  <section data-testid="ide-export-trust-axes" aria-label="Package structure, evidence and download record">
+                    <h3>Current package state</h3>
+                    <dl className="rb-pkg-axis-breakdown">
+                      <div data-testid="ide-export-structural-axis"><dt>Structure</dt><dd>{exportTrustAxes.structural === 'downloadable' ? 'Downloadable' : 'Blocked'}</dd></div>
+                      <div data-testid="ide-export-verification-axis"><dt>Behavioral evidence</dt><dd data-testid="ide-export-simulation-evidence-tier">{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</dd></div>
+                      <div data-testid="ide-export-action-axis"><dt>Download record</dt><dd>{downloadDone ? 'Current ZIP download requested' : previousDownloadIsStale ? 'Previous ZIP is out of date' : 'No download recorded'}</dd></div>
+                      <div><dt>Generated files</dt><dd>{viewModel.artifacts.length}</dd></div>
+                    </dl>
+                    <IdeButton tone="secondary" testId="ide-export-validate-package" onClick={() => setPackageValidation(exportBlocked
+                      ? { status: 'blocked', message: `${viewModel.errors.length || 1} package blockers found.` }
+                      : { status: 'ready', message: `${viewModel.artifacts.length} files structurally valid.` })}>Check package structure</IdeButton>
+                    {packageValidation ? <p role="status" data-testid="ide-export-validation-result">{packageValidation.message} Browser E0 only · Vivado external.</p> : null}
+                    <IdeButton tone="ghost" onClick={() => void handleDownloadExport('kit')} disabled={downloadDisabled} testId="ide-export-kit-download-v1">Generate &amp; download flat kit</IdeButton>
+                  </section>
+
 
                 <section>
                   <h3>Readiness gates</h3>
@@ -2274,7 +2137,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           <dd>{currentDownloadEvidence.packageHash ?? currentDownloadEvidence.bundleHash ?? 'legacy evidence unavailable'}</dd>
                         </div>
                         <div>
-                          <dt>Downloaded at</dt>
+                          <dt>Download requested at</dt>
                           <dd>{currentDownloadEvidence.downloadedAtIso ?? currentDownloadEvidence.ranAtIso ?? 'unknown'}</dd>
                         </div>
                         <div>
@@ -2308,8 +2171,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     {copiedTarget === 'report' ? 'Copied debug report' : 'Copy debug report'}
                   </IdeButton>
                 </section>
-              </section>
-            </div>
+              </dialog>
           ) : null}
         </section>
       </IdePanel>

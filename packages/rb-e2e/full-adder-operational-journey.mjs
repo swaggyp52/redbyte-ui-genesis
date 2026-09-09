@@ -10,7 +10,7 @@
 // only; nothing is loaded, mutated, mapped, or exported through a store.
 //
 // Cross-platform: default Playwright browser resolution, repo-relative evidence
-// directory, os-neutral paths. Runs at 1440x900 and 1366x768.
+// directory, os-neutral paths. Runs at 1440x900, 1366x768, and 1280x650.
 
 import { chromium } from 'playwright';
 import { createRequire } from 'node:module';
@@ -147,9 +147,25 @@ async function openCasesDocument(page) {
 
 /** Click an expected cell until it holds the wanted value ('0', '1' or '' for no check). */
 async function setExpectedCell(page, tick, signalId, want, assert) {
+  const runInspectorToggle = page.locator(tid('ide-verify-drawer-toggle'));
+  if ((await runInspectorToggle.count()) > 0 && (await runInspectorToggle.getAttribute('aria-expanded')) === 'true') {
+    await runInspectorToggle.click();
+  }
   await openCasesDocument(page);
   const cell = page.locator(tid(`ide-case-lab-exp-${tick}-${signalId}`));
   await cell.waitFor({ state: 'visible', timeout: 8000 });
+  const caseGeometry = await cell.evaluate((element) => {
+    const scroller = element.closest('.ide-case-lab-scroll');
+    const header = scroller?.querySelector('thead');
+    const row = element.closest('tr');
+    return { available: scroller?.clientHeight ?? 0, header: header?.getBoundingClientRect().height ?? 0, row: row?.getBoundingClientRect().height ?? 0 };
+  });
+  assert(caseGeometry.available >= caseGeometry.header + caseGeometry.row,
+    `the case editor reserves room for its sticky header and at least one editable row (${JSON.stringify(caseGeometry)})`);
+  if (page.viewportSize()?.width === 1280 && (await summaryKind(page)) === 'fail') {
+    await cell.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'full-adder-case-repair-1280x650.png') });
+  }
   for (let click = 0; click < 4; click += 1) {
     const shown = ((await cell.textContent()) ?? '').trim().replace('·', '');
     if (shown === want) return;
@@ -295,7 +311,8 @@ async function run(width, height) {
   await page.click(tid('mode-button-verify'));
   await page.waitForSelector(tid('ide-vcb-run'), { timeout: 8000 });
   // The prior PASS must be stale after the design edit.
-  await runAndSettle(page, 'broken-circuit Compare', assert);
+  const brokenCircuitRun = await runAndSettle(page, 'broken-circuit Compare', assert);
+  const failedRecording = await page.evaluate(() => { const run = window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun; return JSON.stringify({ report: run.report, waveform: run.waveform, circuit: run.circuitSnapshot }); });
   assert((await summaryKind(page)) === 'fail', `broken circuit should FAIL (got ${await summaryKind(page)})`);
   const failNav = await text(page, 'ide-verify-fail-nav-summary');
   assert(/LD1|SUM/i.test(failNav) && /expected/i.test(failNav) && /got/i.test(failNav),
@@ -339,9 +356,64 @@ async function run(width, height) {
   await page.waitForSelector(tid('node-XOR-xor2_node'), { timeout: 6000 });
   await page.click(tid('mode-button-verify'));
   await page.waitForSelector(tid('ide-vcb-run'), { timeout: 8000 });
-  await runAndSettle(page, 'repaired Compare', assert);
+  const repairedCircuitRun = await runAndSettle(page, 'repaired Compare', assert);
   assert((await summaryKind(page)) === 'pass', `repaired circuit should PASS again (got ${await summaryKind(page)})`);
   console.log(`[${label}] F. Repair (OR->XOR) -> Compare PASS again`);
+
+  // Inspect the retained failed recording through the real run picker after repair.
+  // Its old OR topology and actual failed sample must survive the new passing run unchanged.
+  const recordingPicker = page.getByRole('combobox', { name: 'Recorded run', exact: true });
+  await recordingPicker.selectOption(brokenCircuitRun.runId);
+  await page.waitForFunction((id) => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId === id, brokenCircuitRun.runId);
+  const retainedRecording = await page.evaluate(() => { const run = window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun; return JSON.stringify({ report: run.report, waveform: run.waveform, circuit: run.circuitSnapshot }); });
+  assert(retainedRecording === failedRecording, 'failed recording report, samples and topology are immutable after repair');
+  const failedCase = brokenCircuitRun.rows.find((row) => row.status === 'fail');
+  assert(failedCase, 'retained run contains the authored mismatch');
+  const failedTickIndex = JSON.parse(failedRecording).waveform.findIndex((sample) => sample.tick === failedCase.tick);
+  assert(failedTickIndex >= 0, 'the failed case has a recorded waveform sample');
+  // A historical run cannot apply repairs to the current design. Its recorded scrubber
+  // remains available to inspect any sample, including the original failure.
+  const scrubber = page.locator(tid('ide-verify-tick-scrubber'));
+  await scrubber.focus();
+  await scrubber.press('Home');
+  for (let index = 0; index < failedTickIndex; index += 1) await scrubber.press('ArrowRight');
+  await page.click(tid('ide-verify-inspect-circuit'));
+  const recordedCircuit = page.locator(tid('ide-recorded-circuit'));
+  await recordedCircuit.waitFor({ state: 'visible', timeout: 8000 });
+  assert(await recordedCircuit.locator(tid('node-OR-xor2_node')).count() === 1,
+    'recorded investigation shows the failed OR gate, even after the current design was repaired to XOR');
+  // Follow the known failed output's real schematic port. Its recorded alias may
+  // differ from the report's stored field id, so the circuit owns that resolution.
+  await recordedCircuit.locator(tid('port-ld1_node-in')).click();
+  const recordedSignal = await recordedCircuit.getByRole('combobox', { name: 'Recorded circuit signal', exact: true }).inputValue();
+  assert(/ld1|sum/i.test(recordedSignal), `the recorded output port selects the SUM signal (${recordedSignal})`);
+  const recordedContext = await recordedCircuit.locator(tid('ide-recorded-circuit-context')).textContent();
+  assert(recordedContext.includes(`t${failedCase.tick}`) && recordedContext.includes(`${recordedSignal} = ${failedCase.actual}`),
+    `retained investigation shows the recorded failed signal/sample (${recordedContext})`);
+  assert(await page.locator(tid('ide-verify-region-inspector')).count() === 0,
+    'connected circuit investigation has one interpretation owner, without the legacy lower inspector');
+  assert(await page.locator(tid('ide-verify-drawer-toggle')).count() === 0,
+    'connected investigation does not offer a competing lower inspector');
+  const recordedWhy = recordedCircuit.locator(tid('ide-why-panel'));
+  assert((await recordedWhy.locator(tid('ide-why-header')).textContent()).includes(`tick ${failedCase.tick}`),
+    'connected Why follows the selected recorded tick');
+  assert(/\bOR gate\b/.test(await recordedWhy.locator(tid('ide-why-steps')).textContent()),
+    'connected Why traces the retained failed OR gate');
+  await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-retained-failure-${label}.png`) });
+  await recordedWhy.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-retained-failure-explanation-${label}.png`) });
+  await recordedCircuit.getByRole('button', { name: 'Close circuit investigation', exact: true }).click();
+  const problemsToggle = page.locator(tid('ide-console-toggle'));
+  if ((await problemsToggle.getAttribute('aria-expanded')) !== 'true') await problemsToggle.click();
+  const runInspectorToggle = page.locator(tid('ide-verify-drawer-toggle'));
+  if ((await runInspectorToggle.getAttribute('aria-expanded')) !== 'true') await runInspectorToggle.click();
+  await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-run-inspector-expanded-${label}.png`) });
+  await runInspectorToggle.click();
+  await page.waitForSelector(tid('ide-verify-region-inspector'), { state: 'hidden' });
+  await recordingPicker.selectOption(repairedCircuitRun.runId);
+  await page.waitForFunction((id) => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId === id, repairedCircuitRun.runId);
+  assert((await summaryKind(page)) === 'pass', 'restoring the repaired recording restores current passing evidence');
+  console.log(`[${label}] F2. Retained FAILED run — selected through UI, old OR snapshot and exact failure retained; repaired PASS restored`);
 
   // ── G. BOARD & CONSTRAINTS — the mapping loop, and evidence that follows it ──
   await page.click(tid('mode-button-hardware'));
@@ -394,13 +466,14 @@ async function run(width, height) {
 
   // ── H. PACKAGE — trusted build, real download, ZIP inspected ───────────────
   await page.click(tid('mode-button-export'));
-  // Build & Export opens on the handoff dossier - what was made, what proves it, what to do with
-  // it - and the artifact browser is a second document reached from the dossier's own header.
-  // Asserted on the acceptance path because that path arrives here straight after a run, which is
-  // exactly where the document host used to leave the workspace with no document of its own.
+  // Package opens on the operational files and obtain action. Inspect the report deliberately.
+  await page.waitForSelector(tid('ide-export-package-files'), { timeout: 8000 });
+  assert(await page.locator(tid('ide-package-handoff-document')).count() === 0,
+    'Package must not open on the report');
+  await page.click(tid('ide-export-open-handoff'));
   await page.waitForSelector(tid('ide-package-handoff-document'), { timeout: 8000 });
   assert(await page.locator(tid('ide-package-handoff-manifest')).count() > 0,
-    'the dossier lists the files the package will contain');
+    'the explicitly opened report lists the generated package files');
   await page.click(tid('ide-package-handoff-open-files'));
   await page.waitForSelector(tid('ide-export-package-inspector-v1'), { timeout: 8000 });
   const stateBefore = await page.locator(tid('ide-export-package-inspector-v1')).getAttribute('data-export-package-state');
@@ -409,11 +482,17 @@ async function run(width, height) {
   assert(trustBefore === 'trusted', `verification trust must be trusted after Compare PASS (got ${trustBefore})`);
   const buildButton = page.locator(tid('ide-export-package-build-v1'));
   await buildButton.waitFor({ state: 'visible', timeout: 6000 });
-  assert(/build/i.test(await buildButton.textContent()), 'the primary action builds the current bundle');
+  assert(/generate.*download/i.test(await buildButton.textContent()), 'the primary action generates and downloads the current package');
   const [download] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), buildButton.click()]);
   const zipPath = path.join(EVIDENCE_DIR, `full-adder-package-${label}.zip`);
   await download.saveAs(zipPath);
   const archive = await readPackage(zipPath);
+  const deliveredProjectPath = archive.find(/\.xpr$/i);
+  const deliveredReadme = archive.read(/README\.txt$/i);
+  assert(deliveredProjectPath && deliveredReadme?.includes(path.basename(deliveredProjectPath)),
+    'the ZIP delivers the .xpr project named by its README Open Project instructions');
+  assert(/\.xpr/.test(await text(page, 'ide-export-vivado-next-step')),
+    'the primary Vivado next step refers to the project file that was actually delivered');
   // Report the set this fixture actually produces; never assert a universal file count.
   console.log(`[${label}] H. payload: ${archive.fileNames.length} files + ${archive.directoryCount} directory entries`);
   console.log(`[${label}]    ${archive.fileNames.join('\n           ')}`);
@@ -479,10 +558,12 @@ async function run(width, height) {
       'the previewed .xdc must show the same constraint lines the download carries');
   }
   await page.waitForSelector(tid('ide-export-download-success'), { timeout: 10000 });
-  const successText = await text(page, 'ide-export-download-success');
+  await page.click(tid('ide-export-open-technical-evidence'));
+  const successText = await text(page, 'ide-export-download-evidence');
   const sha = successText.match(/[0-9a-f]{64}/i)?.[0] ?? null;
   assert(sha !== null, `download evidence names the package SHA-256 (got "${successText.slice(0, 120)}")`);
-  assert(/trusted/i.test(successText), 'the downloaded package is recorded as trusted');
+  assert(/browser-verified|trusted/i.test(successText), 'the downloaded package is recorded as browser checked');
+  await page.click(tid('ide-export-close-technical-evidence'));
   await page.waitForFunction(
     () => document.querySelector('[data-testid="ide-export-package-inspector-v1"]')?.getAttribute('data-export-package-state') === 'ready',
     undefined,
@@ -490,6 +571,7 @@ async function run(width, height) {
   );
   await page.waitForSelector(tid('ide-export-package-download-v1'), { state: 'visible', timeout: 6000 });
   console.log(`[${label}] H. Package — trusted build downloaded and inspected: constraints match the UI mapping, the testbench grades the authored expectation, sha ${sha.slice(0, 12)}…, state ready`);
+  await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-package-ready-${label}.png`) });
 
   // Isolate the reload: read the evidence in Simulate BEFORE reloading, so a stale chip can be
   // attributed to the package build rather than to persistence.
@@ -499,8 +581,7 @@ async function run(width, height) {
   assert(/RECORDED/i.test(chipAfterPackage) && /CURRENT/i.test(chipAfterPackage),
     `building and downloading a package must not invalidate simulation evidence (chip reads "${chipAfterPackage}")`);
   await page.click(tid('mode-button-export'));
-  // Returning to a workspace restores the document last read there; the dossier is the default
-  // for a first visit, so accept either and reach the artifacts through the dossier's header.
+  // Returning restores the last document. An explicitly opened report can return to files.
   if (await page.locator(tid('ide-package-handoff-open-files')).count()) {
     await page.click(tid('ide-package-handoff-open-files'));
   }
@@ -617,7 +698,12 @@ async function run(width, height) {
   console.log(`[${label}] PASS — UI-only failure -> trace -> repair -> PASS loop, overflow ${overflow}px, 0 errors\n`);
 }
 
-await run(1440, 900);
-await run(1366, 768);
+const viewports = [[1440, 900], [1366, 768], [1280, 650]];
+const requestedViewport = process.env.RB_JOURNEY_VIEWPORT;
+const selectedViewports = requestedViewport
+  ? viewports.filter(([width, height]) => `${width}x${height}` === requestedViewport)
+  : viewports;
+if (selectedViewports.length === 0) throw new Error(`Unsupported RB_JOURNEY_VIEWPORT: ${requestedViewport}`);
+for (const [width, height] of selectedViewports) await run(width, height);
 await browser.close();
-console.log('PASS — Full Adder operational journey (UI-only core) at 1440x900 and 1366x768.');
+console.log(`PASS — Full Adder operational journey (UI-only core) at ${selectedViewports.map(([width, height]) => `${width}x${height}`).join(', ')}.`);

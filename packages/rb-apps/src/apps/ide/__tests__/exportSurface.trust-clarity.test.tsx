@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { webcrypto } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
@@ -191,401 +192,191 @@ function makeWorkflowAuthority(options: {
   });
 }
 
+type SurfaceProps = React.ComponentProps<typeof ExportSurface>;
+
+function renderPackage(overrides: Partial<SurfaceProps> = {}) {
+  return render(<ExportSurface project={buildMappedProject()} determinismHash="ide-hash"
+    activeDocument={{ kind: 'package' }} {...overrides} />);
+}
+
+function primaryDownload(view: ReturnType<typeof render>) {
+  return view.getByRole('button', { name: /Generate & download (draft|checked) ZIP/ });
+}
+
+function openTechnical(view: ReturnType<typeof render>) {
+  fireEvent.click(view.getByTestId('ide-export-open-technical-evidence'));
+}
+
 describe('ExportSurface trust clarity', () => {
-  afterEach(() => {
-    cleanup();
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-  });
-
-  async function runProjectDownloadInView(
-    ui: React.ReactElement,
-    expectedHash?: string
-  ): Promise<void> {
-    if (!('createObjectURL' in URL)) {
-      Object.defineProperty(URL, 'createObjectURL', {
-        configurable: true,
-        writable: true,
-        value: vi.fn(),
-      });
-    }
-    if (!('revokeObjectURL' in URL)) {
-      Object.defineProperty(URL, 'revokeObjectURL', {
-        configurable: true,
-        writable: true,
-        value: vi.fn(),
-      });
-    }
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export-test');
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  beforeEach(() => {
+    vi.stubGlobal('crypto', webcrypto);
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, writable: true, value: vi.fn(() => 'blob:export-test') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, writable: true, value: vi.fn() });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  });
+  afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-    const onExportResult = vi.fn();
-    const view = render(React.cloneElement(ui, { onExportResult }));
-
-    await act(async () => {
-      fireEvent.click(view.getByTestId('ide-export-dock-download'));
-    });
-
-    await waitFor(() => {
-      expect(onExportResult).toHaveBeenCalled();
-    });
-
-    const latestCall = onExportResult.mock.calls.at(-1)?.[0];
-    expect(latestCall).toEqual(
-      expect.objectContaining({
-        status: 'ok',
-      })
-    );
-    if (expectedHash !== undefined) {
-      expect(latestCall).toEqual(
-        expect.objectContaining({
-          hash: expectedHash,
-        })
-      );
-    }
-
-    expect(view.queryByTestId('ide-export-capsule-error')).toBeNull();
-  }
-
-  it('compare-aligned export state renders as READY without blocked copy', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('READY');
-    expect(banner.textContent).not.toContain('BLOCKED');
-
-    expect(getByTestId('ide-export-package-handoff-status').textContent).toContain('PACKAGE READY');
-    expect(getByTestId('ide-export-handoff-board').textContent).toContain('Basys3');
-    expect(getByTestId('ide-export-artifact-agreement')).toBeTruthy();
+  it('offers a checked package for a current passing comparison without claiming a download occurred', () => {
+    const view = renderPackage({ verifyResult: passResult, workflowAuthority: makeWorkflowAuthority({ verifyResult: passResult }) });
+    expect(primaryDownload(view).textContent).toContain('checked ZIP');
+    expect(primaryDownload(view).hasAttribute('disabled')).toBe(false);
+    expect(view.getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('trusted');
+    expect(view.getByTestId('ide-export-state-summary').textContent).toContain('current comparison evidence agree');
+    expect(view.queryByTestId('ide-export-download-success')).toBeNull();
+    expect(view.getByTestId('ide-export-download-record').textContent).toContain('requests a browser download');
   });
 
-  it('advisory export state names comparison status without blocking download', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('NEEDS REVIEW');
-    expect(banner.textContent).toContain('Expected-output comparison has not run');
-    expect(getByTestId('ide-export-package-handoff-status').textContent).toContain('PACKAGE PARTIAL');
-  });
-
-  it('shows trace-only provenance instead of collapsing it into assertions match', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={traceResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: traceResult })}
-      />
-    );
-
-    expect(getByTestId('ide-export-provenance-verify').textContent).toContain('Trace only');
-    expect(getByTestId('ide-export-trust-reason').textContent).toContain('trace-only run');
-    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Compare checks');
-  });
-
-  it('surfaces stale verify evidence instead of old comparison failure after the design changes', () => {
-    const { getByTestId, queryByText } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={failResult}
-        dirtySinceVerify={true}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: failResult, dirtySinceVerify: true })}
-      />
-    );
-
-    expect(getByTestId('ide-export-trust-banner').textContent).toContain('NEEDS REVIEW');
-    expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).toContain('stale');
-    expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).not.toContain(
-      'differed at tick'
-    );
-    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Open Verify');
-    expect(queryByText(/assertions differ from observed outputs/i)).toBeNull();
-  });
-
-  it('mapping blocker points to Hardware', () => {
-    const onGoToHardware = vi.fn();
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappingBlockedProject()}
-        determinismHash="ide-hash"
-        onGoToHardware={onGoToHardware}
-      />
-    );
-
-    const banner = getByTestId('ide-export-trust-banner');
-    // Trust banner must be in BLOCKED state
-    expect(banner.textContent).toContain('BLOCKED');
-    expect(getByTestId('ide-export-package-handoff-status').textContent).toContain('PACKAGE BLOCKED');
-    // Hardware routing button must be visible
-    expect(getByTestId('ide-export-trust-go-hardware')).toBeTruthy();
-  });
-
-  it('verify blocker points to Verify', () => {
+  it('keeps an unverified draft available and routes the next comparison action to Simulate', () => {
     const onOpenVerify = vi.fn();
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        onOpenVerify={onOpenVerify}
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('NEEDS REVIEW');
-    // Verify routing button must be visible
-    expect(getByTestId('ide-export-trust-go-verify')).toBeTruthy();
+    const view = renderPackage({ onOpenVerify, workflowAuthority: makeWorkflowAuthority() });
+    expect(view.getByTestId('ide-export-state-summary').textContent).toContain('Expected-output comparison has not run');
+    expect(primaryDownload(view).textContent).toContain('draft ZIP');
+    fireEvent.click(view.getByRole('button', { name: 'Open Simulate' }));
+    expect(onOpenVerify).toHaveBeenCalledOnce();
   });
 
-  it('download-allowed advisory state is clearly labeled with consequence', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-
-    const banner = getByTestId('ide-export-trust-banner');
-    // Must show AVAILABLE, not BLOCKED
-    expect(banner.textContent).toContain('NEEDS REVIEW');
-    expect(banner.textContent).not.toContain('BLOCKED');
-    // Consequence language must guide student to next action
-    const consequence = getByTestId('ide-export-trust-consequence');
-    expect(consequence.textContent).toMatch(/Compare|expected-output|export/i);
-    // Download button must remain enabled (not disabled) in AVAILABLE state
-    expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
+  it('names trace-only evidence without upgrading it to a checked package', () => {
+    const view = renderPackage({ verifyResult: traceResult, workflowAuthority: makeWorkflowAuthority({ verifyResult: traceResult }) });
+    expect(view.getByTestId('ide-export-state-summary').textContent).toContain('trace-only run');
+    expect(primaryDownload(view).textContent).toContain('draft ZIP');
+    openTechnical(view);
+    expect(view.getByTestId('ide-export-gate-verify').textContent).toContain('Trace only');
+    expect(view.getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('unverified');
   });
 
-  it('lets project download complete when Verify has not run yet', async () => {
-    const project = buildMappedProject();
-
-    await runProjectDownloadInView(
-      <ExportSurface
-        project={project}
-        determinismHash="ide-hash"
-        workflowAuthority={makeWorkflowAuthority()}
-      />,
-      undefined
-    );
+  it('explains stale evidence instead of presenting an old mismatch as the current failure', () => {
+    const view = renderPackage({ verifyResult: failResult, dirtySinceVerify: true,
+      workflowAuthority: makeWorkflowAuthority({ verifyResult: failResult, dirtySinceVerify: true }) });
+    const state = view.getByTestId('ide-export-state-summary').textContent ?? '';
+    expect(state).toContain('stale');
+    expect(state).not.toContain('differed at tick');
+    expect(primaryDownload(view).textContent).toContain('draft ZIP');
+    openTechnical(view);
+    expect(view.getByTestId('ide-export-gate-verify').textContent).toContain('Stale');
   });
 
-  it('lets project download complete when Verify failed against the current reference', async () => {
-    const project = buildMappedProject();
-
-    await runProjectDownloadInView(
-      <ExportSurface
-        project={project}
-        determinismHash="ide-hash"
-        verifyResult={failResult}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: failResult })}
-      />,
-      undefined
-    );
-  });
-
-  it('lets project download complete when the last comparison-aligned run is stale', async () => {
-    const project = buildMappedProject();
-
-    await runProjectDownloadInView(
-      <ExportSurface
-        project={project}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={true}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult, dirtySinceVerify: true })}
-      />,
-      undefined
-    );
-  });
-
-  it('does not claim the design is valid when live authority is incomplete', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        designReady={false}
-      />
-    );
-
-    expect(getByTestId('ide-export-readiness-design').textContent).toContain('Design incomplete');
-    expect(getByTestId('ide-export-trust-banner').textContent).toContain('BLOCKED');
-  });
-
-  it('keeps export available when verify failed against the selected reference', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={failResult}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: failResult })}
-      />
-    );
-
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('NEEDS REVIEW');
-    expect(getByTestId('ide-export-trust-reason').textContent).toContain('differed at tick');
-    expect(banner.textContent).not.toContain('BLOCKED');
-    expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
-  });
-
-  it('dock pill uses student-facing labels without jargon', () => {
-    const { getByTestId: getVerified } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-    const dock = getVerified('ide-export-checks-dock');
-    expect(dock.textContent).toContain('READY');
-    expect(dock.textContent).not.toContain('COMPARE ALIGNED');
-
-    cleanup();
-
-    const { getByTestId: getAdvisory } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    const advisoryDock = getAdvisory('ide-export-checks-dock');
-    expect(advisoryDock.textContent).toContain('NEEDS REVIEW');
-    expect(advisoryDock.textContent).not.toContain('EXPORT AVAILABLE');
-  });
-
-  it('summary eyebrow distinguishes trusted READY from advisory NEEDS REVIEW', () => {
-    const { getByTestId: getTrusted } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-    expect(getTrusted('ide-export-readiness-hero').textContent).toContain('READY');
-
-    cleanup();
-
-    const { getByTestId: getAdvisory } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    expect(getAdvisory('ide-export-readiness-hero').textContent).toContain('NEEDS REVIEW');
-  });
-
-  it('inspector uses READY for trusted export (not jargon Comparison aligned)', () => {
-    const { queryByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-    const buildState = queryByTestId('ide-export-capsule-build-state');
-    // Inspector may not render in minimal test layout — if it does, verify no jargon
-    if (buildState) {
-      expect(buildState.textContent).toContain('READY');
-      expect(buildState.textContent).not.toContain('Comparison aligned');
-    }
-  });
-
-  it('build details section uses student-friendly label', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-    const dock = getByTestId('ide-export-checks-dock');
-    expect(dock.textContent).toContain('Build details');
-    expect(dock.textContent).not.toContain('Evidence snapshot');
-  });
-
-  it('Readiness gate mapping CTA goes to Map Pins when I/O mapping fails', () => {
+  it('blocks an unmapped package and sends the primary repair action to Board & Constraints', () => {
     const onGoToHardware = vi.fn();
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappingBlockedProject()}
-        determinismHash="ide-hash"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-        onGoToHardware={onGoToHardware}
-        onUpdateMappingPin={vi.fn()}
-      />
-    );
-    fireEvent.click(getByTestId('ide-export-gate-details').querySelector('summary')!);
-    const mappingCta = getByTestId('ide-export-gate-action-mapping');
-    expect(mappingCta.textContent).toContain('Open Map Pins');
-    fireEvent.click(mappingCta);
-    expect(onGoToHardware).toHaveBeenCalledTimes(1);
+    const view = renderPackage({ project: buildMappingBlockedProject(), onGoToHardware });
+    expect(view.getByTestId('ide-export-state-summary').textContent).toMatch(/mapping|pin assignments/i);
+    expect(view.queryByRole('button', { name: /Generate & download (draft|checked) ZIP/ })).toBeNull();
+    fireEvent.click(view.getByTestId('ide-export-blocked-open-map-pins'));
+    expect(onGoToHardware).toHaveBeenCalledOnce();
+  });
+
+  it('does not claim a live structurally blocked design is valid', () => {
+    const onGoToDesign = vi.fn();
+    const view = renderPackage({ designReady: false, onGoToDesign });
+    expect(view.getByTestId('ide-export-derived-state').textContent).toContain('Design blocks export');
+    fireEvent.click(view.getByTestId('ide-export-blocked-open-design'));
+    expect(onGoToDesign).toHaveBeenCalledOnce();
+    openTechnical(view);
+    expect(view.getByTestId('ide-export-structural-axis').textContent).toContain('Blocked');
+  });
+
+  it('does not turn a successful package structure check into behavioral or Vivado evidence', () => {
+    const view = renderPackage({ workflowAuthority: makeWorkflowAuthority() });
+    openTechnical(view);
+    fireEvent.click(view.getByTestId('ide-export-validate-package'));
+    expect(view.getByTestId('ide-export-validation-result').textContent).toContain('files structurally valid');
+    expect(view.getByTestId('ide-export-validation-result').textContent).toContain('Vivado external');
+    expect(view.getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('unverified');
+    expect(view.getByTestId('ide-export-action-axis').textContent).toContain('No download recorded');
+  });
+
+  it.each([
+    ['not run', undefined, false, 'unverified'],
+    ['failed comparison', failResult, false, 'draft'],
+    ['stale passing comparison', passResult, true, 'draft'],
+    ['current passing comparison', passResult, false, 'trusted'],
+  ] as const)('completes real package generation for %s with the correct receipt trust', async (_label, verifyResult, dirtySinceVerify, trust) => {
+    const onExportResult = vi.fn();
+    const view = renderPackage({ verifyResult, dirtySinceVerify, onExportResult,
+      workflowAuthority: makeWorkflowAuthority({ verifyResult, dirtySinceVerify }) });
+    await act(async () => { fireEvent.click(primaryDownload(view)); });
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledOnce(), { timeout: 5000 });
+    const receipt = onExportResult.mock.calls[0][0];
+    expect(receipt).toMatchObject({ status: 'ok', downloadKind: 'project', verificationTrust: trust,
+      sourceHashes: { project: 'ide-hash' }, sourceCurrentness: { project: 'current', export: 'current', mapping: 'current' } });
+    expect(receipt.packageHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledOnce();
+    expect(view.getByTestId('ide-export-download-success').textContent).toContain('browser download requested');
+    expect(view.queryByTestId('ide-export-capsule-error')).toBeNull();
+  });
+
+  it('keeps generation retryable after a download failure without inventing a successful receipt', async () => {
+    vi.mocked(HTMLAnchorElement.prototype.click).mockImplementationOnce(() => { throw new Error('Browser download unavailable'); });
+    const onExportResult = vi.fn();
+    const view = renderPackage({ onExportResult });
+    fireEvent.click(primaryDownload(view));
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledOnce(), { timeout: 5000 });
+    expect(onExportResult.mock.calls[0][0]).toMatchObject({ status: 'blocked' });
+    expect(onExportResult.mock.calls[0][0].packageHash).toBeUndefined();
+    expect(view.getByTestId('ide-export-capsule-error').textContent).toContain('Browser download unavailable');
+    expect(view.queryByTestId('ide-export-download-success')).toBeNull();
+    expect(view.getByTestId('ide-export-download-record').textContent).not.toContain('Previous ZIP');
+    expect(primaryDownload(view).hasAttribute('disabled')).toBe(false);
+    fireEvent.click(primaryDownload(view));
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    expect(onExportResult.mock.calls[1][0]).toMatchObject({ status: 'ok', verificationTrust: 'unverified' });
+    expect(view.getByTestId('ide-export-download-success')).toBeTruthy();
+  });
+
+  it('keeps a current mismatch visible while leaving structurally valid draft generation enabled', () => {
+    const view = renderPackage({ verifyResult: failResult, workflowAuthority: makeWorkflowAuthority({ verifyResult: failResult }) });
+    expect(view.getByTestId('ide-export-state-summary').textContent).toMatch(/differ|mismatch/i);
+    expect(primaryDownload(view).textContent).toContain('draft ZIP');
+    expect(primaryDownload(view).hasAttribute('disabled')).toBe(false);
+    openTechnical(view);
+    expect(view.getByTestId('ide-export-gate-verify').textContent).toContain('t3');
+  });
+
+  it('keeps a mapping-qualified passing run as draft evidence rather than fully checked', () => {
+    const view = renderPackage({ verifyResult: passResult,
+      workflowAuthority: makeWorkflowAuthority({ verifyResult: passResult, verifyQualification: 'incomplete-mapping' }) });
+    expect(primaryDownload(view).textContent).toContain('draft ZIP');
+    expect(view.getByTestId('ide-export-state-summary').textContent).toContain('mapping review');
+    expect(view.getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('draft');
+  });
+
+  it('routes the named technical mapping gate to the same Board owner', () => {
+    const onGoToHardware = vi.fn();
+    const view = renderPackage({ project: buildMappingBlockedProject(), verifyResult: passResult, onGoToHardware,
+      workflowAuthority: makeWorkflowAuthority({ verifyResult: passResult }) });
+    openTechnical(view);
+    const mappingAction = view.getByTestId('ide-export-gate-action-mapping');
+    expect(mappingAction.textContent).toBe('Open Board & Constraints');
+    fireEvent.click(mappingAction);
+    expect(onGoToHardware).toHaveBeenCalledOnce();
+  });
+
+  it('keeps report access secondary to generation and file work', () => {
+    const onOpenDocument = vi.fn();
+    const view = renderPackage({ onOpenDocument });
+    expect(primaryDownload(view).className).toContain('ide-button-primary');
+    expect(view.getByTestId('ide-export-open-handoff').className).not.toContain('ide-button-primary');
+    expect(view.queryByTestId('ide-package-handoff-document')).toBeNull();
+    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity top');
+    fireEvent.click(view.getByRole('button', { name: 'Open report' }));
+    expect(onOpenDocument).toHaveBeenCalledWith({ kind: 'handoff' });
+  });
+
+  it('does not describe an unsuccessful prior export as an out-of-date downloaded ZIP', () => {
+    const view = renderPackage({ lastExport: { status: 'blocked', hash: 'failed-generation', ranAtIso: '2026-09-08T00:00:00.000Z' } });
+    expect(view.getByTestId('ide-export-download-record').textContent).not.toContain('Previous ZIP');
+    openTechnical(view);
+    expect(view.getByTestId('ide-export-action-axis').textContent).toContain('No download recorded');
+  });
+
+  it('generates a flat kit only through technical details and records the actual download kind', async () => {
+    const onExportResult = vi.fn();
+    const view = renderPackage({ onExportResult });
+    expect(view.queryByTestId('ide-export-kit-download-v1')).toBeNull();
+    openTechnical(view);
+    fireEvent.click(view.getByTestId('ide-export-kit-download-v1'));
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledOnce(), { timeout: 5000 });
+    expect(onExportResult.mock.calls[0][0]).toMatchObject({ status: 'ok', downloadKind: 'kit', verificationTrust: 'unverified' });
+    expect(onExportResult.mock.calls[0][0].packageHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(view.getByTestId('ide-export-download-success').textContent).toContain('browser download requested');
   });
 });
-    it('RED TEST: keeps summary, next action, and trust consequence distinct when no verify evidence exists', () => {
-      // This test verifies F-E1/F-E2 fix: the same message should NOT appear in summary + checks dock + consequence
-      const { getByTestId } = render(
-        <ExportSurface
-          project={buildMappedProject()}
-          determinismHash="ide-hash"
-          workflowAuthority={makeWorkflowAuthority()}
-        />
-      );
-
-      const summaryCard = getByTestId('ide-export-summary-card');
-      const checksDock = getByTestId('ide-export-checks-dock');
-      const trustBanner = getByTestId('ide-export-trust-banner');
-
-      // Summary should name the current state (Draft/Available)
-      expect(summaryCard.textContent).toContain('Draft');
-        expect(summaryCard.textContent).toContain('available');
-
-      // Next action dock should name the repair path (not repeat the same warning)
-      expect(checksDock.textContent).toContain('Verify');
-    
-      // Consequence should explain trust implication
-      expect(trustBanner.textContent).toContain('comparison has not run');
-
-      // F-E1 check: The same exact message should NOT appear in both summary and dock
-      const summaryText = summaryCard.textContent || '';
-      const dockText = checksDock.textContent || '';
-      const summaryLines = summaryText.split('\n').filter(l => l.trim());
-      const dockLines = dockText.split('\n').filter(l => l.trim());
-    
-      // Count overlaps - allow some shared words but not full sentence repetition
-      const sharedFullLines = summaryLines.filter(sline => 
-        dockLines.some(dline => 
-          sline.trim() === dline.trim() && sline.trim().length > 10
-        )
-      );
-      expect(sharedFullLines.length).toBeLessThan(2);
-    });

@@ -13,8 +13,8 @@ export interface HandoffWaveformFigureProps {
 }
 
 const LABEL_W = 132;
-const LANE_H = 18;
-const RULER_H = 16;
+const LANE_H = 22;
+const RULER_H = 20;
 
 /**
  * A read-only waveform figure for the handoff dossier: the run's samples as
@@ -76,8 +76,8 @@ export const HandoffWaveformFigure: React.FC<HandoffWaveformFigureProps> = ({ ru
   const failList = Array.from(model.failTicks).sort((left, right) => left - right);
 
   return (
-    <figure className="rb-handoff-figure" data-testid="ide-package-handoff-waveform" data-window-start={model.windowStart} data-window-end={model.windowEnd}>
-      <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={`Waveform of ${model.lanes.length} signals over ticks ${model.windowStart} to ${model.windowEnd}`}>
+    <figure className="rb-handoff-figure" data-testid="ide-package-handoff-waveform" data-run-id={run.runId ?? run.reportHash} data-window-start={model.windowStart} data-window-end={model.windowEnd}>
+      <svg viewBox={`0 0 ${width} ${height}`} width={width} style={{ maxWidth: '100%', height: 'auto' }} role="img" aria-label={`Recorded waveform of ${model.lanes.length} signals over ticks ${model.windowStart} to ${model.windowEnd}`}>
         {model.ticks.map((tick, index) => {
           const x = LABEL_W + index * tickW;
           const isFail = model.failTicks.has(tick);
@@ -85,7 +85,7 @@ export const HandoffWaveformFigure: React.FC<HandoffWaveformFigureProps> = ({ ru
             <g key={tick} onClick={onSelectTick ? () => onSelectTick(tick) : undefined} style={onSelectTick ? { cursor: 'pointer' } : undefined}>
               {isFail ? <rect x={x} y={RULER_H} width={tickW} height={LANE_H * model.lanes.length} fill="var(--wb-danger-soft, rgba(185, 28, 28, 0.12))" /> : null}
               <line x1={x} y1={RULER_H - 3} x2={x} y2={height} stroke="var(--wb-border)" strokeWidth={1} />
-              <text x={x + tickW / 2} y={RULER_H - 5} textAnchor="middle" fontSize={9} fill={isFail ? 'var(--wb-danger, #b91c1c)' : 'var(--wb-text-3)'} fontFamily="var(--wb-font-mono)">
+              <text x={x + tickW / 2} y={RULER_H - 5} textAnchor="middle" fontSize={11} fill={isFail ? 'var(--wb-danger, #b91c1c)' : 'var(--wb-text-3)'} fontFamily="var(--wb-font-mono)">
                 {isFail ? `✕t${tick}` : `t${tick}`}
               </text>
             </g>
@@ -96,24 +96,34 @@ export const HandoffWaveformFigure: React.FC<HandoffWaveformFigureProps> = ({ ru
           const hi = y0 + 3;
           const lo = y0 + LANE_H - 4;
           let d = '';
+          let previousWasBinary = false;
           lane.values.forEach((value, index) => {
             const x = LABEL_W + index * tickW;
-            const y = value === '1' ? hi : value === '0' ? lo : (hi + lo) / 2;
-            d += index === 0 ? `M ${x} ${y}` : ` V ${y}`;
+            if (value !== '1' && value !== '0') {
+              previousWasBinary = false;
+              return;
+            }
+            const y = value === '1' ? hi : lo;
+            d += previousWasBinary ? ` V ${y}` : ` M ${x} ${y}`;
             d += ` H ${x + tickW}`;
+            previousWasBinary = true;
           });
           const tag = roleTag(lane.role);
           return (
-            <g key={lane.name} data-role={lane.role}>
-              <text x={LABEL_W - 30} y={y0 + LANE_H / 2 + 3} textAnchor="end" fontSize={10} fontFamily="var(--wb-font-mono)" fill="var(--wb-text-2)">
+            <g key={lane.name} data-role={lane.role} data-signal={lane.name}>
+              <title>{lane.name}: {lane.values.map((value, index) => `t${model.ticks[index]}=${value === '-' ? 'unavailable' : value}`).join(', ')}</title>
+              <text x={LABEL_W - 30} y={y0 + LANE_H / 2 + 3} textAnchor="end" fontSize={12} fontFamily="var(--wb-font-mono)" fill="var(--wb-text-2)">
                 {lane.name.length > 12 ? `${lane.name.slice(0, 11)}…` : lane.name}
               </text>
               {tag ? (
-                <text x={LABEL_W - 6} y={y0 + LANE_H / 2 + 3} textAnchor="end" fontSize={8} fontFamily="var(--wb-font-mono)" fill="var(--wb-text-3)" letterSpacing="0.04em">
+                <text x={LABEL_W - 6} y={y0 + LANE_H / 2 + 3} textAnchor="end" fontSize={10} fontFamily="var(--wb-font-mono)" fill="var(--wb-text-3)" letterSpacing="0.04em">
                   {tag.toUpperCase()}
                 </text>
               ) : null}
               <path d={d} fill="none" stroke={lane.role === 'output' ? 'var(--wb-focus)' : 'var(--wb-text-2)'} strokeWidth={lane.role === 'output' ? 1.6 : 1.2} strokeDasharray={lane.role === 'output' ? undefined : '0'} />
+              {lane.values.map((value, index) => value === '0' || value === '1' ? null : (
+                <text key={index} x={LABEL_W + (index + 0.5) * tickW} y={y0 + LANE_H / 2 + 3} textAnchor="middle" fontSize={12} fill="var(--wb-text-3)">{value === '-' ? '?' : value}</text>
+              ))}
             </g>
           );
         })}
@@ -121,7 +131,7 @@ export const HandoffWaveformFigure: React.FC<HandoffWaveformFigureProps> = ({ ru
       <figcaption>
         Figure {figureNumber} — Recorded waveform, {model.lanes.length} of {model.lanes.length + model.hidden} signals
         {windowed ? `, ticks t${model.windowStart}–t${model.windowEnd} of ${model.allTickCount}` : ` over ${model.ticks.length} ticks`}
-        {failList.length > 0 ? `; mismatch at ${failList.map((tick) => `t${tick}`).join(', ')}` : ''}. OUT lanes are checked outputs, IN lanes stimulus.
+        {failList.length > 0 ? `; mismatch at ${failList.map((tick) => `t${tick}`).join(', ')}` : ''}. Values come from this recording; ? means unavailable. OUT denotes outputs and IN denotes stimulus.
       </figcaption>
     </figure>
   );

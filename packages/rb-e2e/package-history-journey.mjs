@@ -36,10 +36,9 @@ await page.evaluate(() => {
 await page.waitForTimeout(400);
 
 await page.getByTestId('mode-button-export').click(); await page.waitForTimeout(1500);
-// Build & Export opens on the handoff dossier; package history and provenance belong to the
-// artifact document, which a reader reaches from the dossier's own header.
-const openFiles = page.getByTestId('ide-package-handoff-open-files');
-if (await openFiles.count()) { await openFiles.click(); await page.waitForTimeout(600); }
+// Package lands on its operational files, with the report behind a deliberate action.
+if (await page.getByTestId('ide-package-handoff-document').count()) fail('Package opened on the report');
+await page.getByTestId('ide-export-package-files').waitFor();
 
 // First package.
 if (!(await download())) fail('no download button available for the first package');
@@ -57,7 +56,8 @@ await page.waitForTimeout(1200);
 if (await ledgerLen() < 2) fail(`second download did not record an export (len=${await ledgerLen()})`);
 console.log(`② second package downloaded (after top change) → ledger has ${await ledgerLen()} entries`);
 
-// The package history renders both packages.
+// The explicitly opened package history renders both packages.
+await page.getByTestId('ide-export-history-details').locator('summary').click();
 if (await page.getByTestId('ide-export-history').count() === 0) fail('package history panel not rendered');
 const count = (await page.getByTestId('ide-export-history-count').textContent())?.trim();
 if (!/2 packages/.test(count ?? '')) fail(`history should show 2 packages, got "${count}"`);
