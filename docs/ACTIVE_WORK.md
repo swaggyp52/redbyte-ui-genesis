@@ -8,6 +8,31 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## Current campaign - 2026-09-08 connected product completion
+
+This section supersedes candidate-head and Package-default claims in the dated
+history below. Work continues on
+`claude/redbyte-operational-workbench-convergence-w9k2r4`, draft PR #85 with its
+existing base unchanged. Recovery started at `bd3f2a869`; this is Browser-E0
+candidate work, not a main merge or production release.
+
+The implemented slice connects counter observation and recorded circuit investigation,
+retains full scenario recordings across repair and reopening, makes Board
+assignment and electrical detail contextual, and restores the operational Package
+landing with explicit report access. The dossier-first decision is superseded in
+the V1 product contract. No project format or protected golden changes are allowed.
+
+Current validation and remaining work are maintained in
+`docs/release/product-hardening-ticket-2026-09-08-connected-completion.md` and the
+existing ignored `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+Historical implementation narratives below are evidence of earlier states.
+
+After the final candidate build/push verification, the next technical target is the
+obsolete Project catalog navigation consumer in `ide:gate:examples-contract`, then
+rerunning the complete classroom gate chain. The primary experiment and operational
+Package decisions are settled for this slice. Bounded visual follow-up is the short
+ordinary inspector with Problems expanded and shell labels at 200% root text.
+
 ## Canonical Source
 
 - Canonical clone: `C:\Users\conno\redbyte-ui-genesis-main`

@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-09-08 (Connected experiment and operational handoff)
+
+**Candidate:** `claude/redbyte-operational-workbench-convergence-w9k2r4`, PR #85
+remaining draft with its existing base. Recovered `bd3f2a869` and its two local
+waveform/probe edits before construction; no main, remote, or project-format reset.
+
+**Changes:** Simulate retains full scenario recordings and circuit snapshots and
+can inspect a selected recorded signal/tick beside Design's real schematic renderer.
+Scenario view state is project/scenario scoped; modern check-free observation runs
+survive reload. Explanations preserve missing data and actual sample chronology.
+Board simplifies assignment rows and places electrical/XDC detail at the selected
+mapping. Package opens on generation/files/Vivado next steps, with the report an
+explicit secondary document. The 2026-09-07 dossier-first decision is superseded.
+
+**Evidence boundary:** Node 20.19.0, TypeScript 5.9.3. Browser construction checks
+cover counter edit/observe/stale/rerun, Board assignment/conflict recovery, actual
+draft/checked ZIPs and representative byte comparisons, two-scenario save/reopen,
+and external VCD import. Current validation, final source/build identities and
+remaining limitations belong to the connected-completion ticket and existing
+P2.5 RESUME, not to older at-head claims below. No Vivado or hardware claim.
+
 ## Change Log 2026-08-28 (Production convergence + release engineering, cloud session)
 
 **Subsystem:** Deployment pipeline, CI lanes, public doorway, README, docs

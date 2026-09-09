@@ -472,19 +472,35 @@ Simulate.
 | Keeping the "tick N" readout | A tick number with no schedule behind it is a number. "3 clock edges applied" is a fact about what the reader did. |
 | Removing Live mode entirely | Exploring a circuit by driving its inputs is real and useful. What was false was the clock, not the exploration. |
 
-### 2026-09-07 - Package lands on its dossier
+### 2026-09-08 - Operational Package landing; report opened explicitly
 
-**Decided.** The `package` workspace root is the operational landing its own definition describes:
-the project and its board, the export source hash and the package SHA, the mapping count, the
-simulation verdict, the constraint lines, the file count and byte size, and the architecture
-figure. The artifact browser is what `package-artifact` draws, reached from the landing.
+**Current decision, superseding the 2026-09-07 dossier-first decision.** The
+`package` workspace root presents project/board identity, draft or checked state,
+the primary Generate and download ZIP operation, generated files, and the Vivado
+next step. Handoff overview is an explicit secondary document. Technical details
+and receipt history remain inspectable without occupying the initial working area.
 
-**Rejected, and why:**
+An allowed draft package remains available without configured checks. A checked
+package identifies its supporting current run. After project changes, an older
+receipt remains historical and is not relabeled current. Report waveforms are
+actual recorded samples with gaps preserved; inputs, expectations, or a current
+draft are not substitutes for observations. Browser generation proves artifact
+content only, not Vivado execution or hardware behavior.
 
-| Alternative | Why not |
-|---|---|
-| Landing on the file tree | A file tree is what you open when you want a file. It is not what tells you whether the thing is ready to hand in. |
-| A "Handoff overview" button on the dossier | It is a button to where the reader already is. From the dossier that action is "Package files"; from the browser it is "Handoff overview". |
+### 2026-09-08 - One retained experiment, multiple investigation views
+
+Simulate can show its immutable recording beside the matching real schematic,
+using Design's symbols and net router without starting another engine. The
+scenario, run, signal, and selected tick stay shared when focusing either pane.
+New recordings retain a detached circuit snapshot. A legacy recording lacking a
+matching topology says so rather than painting its values onto a changed design.
+
+Full recordings are retained separately from summary ledger entries (bounded to
+50). The recording picker is scoped to the active scenario; scenario view state
+is scoped to project and scenario. Save/reopen retains current observation-only
+runs as well as checked runs. Missing samples remain unavailable. Register
+explanations use recorded rising edges and actual prior samples; they do not
+infer capture from falling edges or unchanged inputs from an unchanged output.
 
 ### 2026-09-07 - A metric is not offered where it would not be true
 
