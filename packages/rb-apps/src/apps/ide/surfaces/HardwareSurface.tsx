@@ -32,6 +32,7 @@ import { activeConstraintSet } from '../constraintSets';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
+import type { RuntimeLogicValue } from '../sim/simTypes';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
@@ -1005,10 +1006,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         selectedMappingProjection.exactXdcLine,
         `set_property IOSTANDARD ${selectedMappingProjection.ioStandard} [get_ports {${selectedMappingProjection.artifactPortName}}]`,
       ].join('\n')
-    : selectedBoardResource
+    : selectedMappedBoardResource
       ? [
-          `set_property PACKAGE_PIN ${selectedBoardResource.packagePin} [get_ports {${selectedXdcPortRef}}]`,
-          `set_property IOSTANDARD LVCMOS33 [get_ports {${selectedXdcPortRef}}]`,
+          `set_property PACKAGE_PIN ${selectedMappedBoardResource.packagePin} [get_ports {${selectedXdcPortRef}}]`,
+          `set_property IOSTANDARD ${selectedMappedBoardResource.ioStandard} [get_ports {${selectedXdcPortRef}}]`,
         ].join('\n')
       : '';
   const mapModeGroups = useMemo(() => {
@@ -1908,8 +1909,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   // ── Live: signal event log from sim trace ───────────────────────────
   const nodeKeyToMeta = useMemo(() => {
     const m = new Map<string, { label: string; direction: 'in' | 'out' }>();
-    for (const r of ioBusIoRows) {
-      const meta = { label: r.label, direction: r.direction };
+    for (const r of mappingRows) {
+      const meta = { label: getStudentFacingIoLabel(r, r.id), direction: r.direction };
       for (const key of [
         r.id,
         r.label,
@@ -1922,7 +1923,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }
     }
     return m;
-  }, [ioBusIoRows]);
+  }, [mappingRows]);
 
   const recordedVerifyTrace = useMemo(
     () =>
@@ -1930,8 +1931,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         tick: sample.tick,
         signals: Object.fromEntries(
           Object.entries(sample.signals)
-            .filter(([, value]) => value === '0' || value === '1' || value === 0 || value === 1)
-            .map(([key, value]) => [key, value === '1' || value === 1 ? 1 : 0])
+            .filter(([, value]) => String(value) === '0' || String(value) === '1')
+            .map(([key, value]) => [key, String(value) === '1' ? 1 : 0])
         ) as Record<string, 0 | 1>,
       })),
     [verifyLastRun?.reportHash, verifyLastRun?.waveform]
@@ -2000,9 +2001,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     const sw: (0 | 1 | null)[] = Array.from({ length: 16 }, () => null);
     const ld: (0 | 1 | null)[] = Array.from({ length: 16 }, () => null);
     if (recordedVerifyTrace.length === 0) return { sw, ld };
-    const sample =
-      (followedCaseTick != null ? recordedVerifyTrace.find((entry) => entry.tick === followedCaseTick) : null) ??
-      recordedVerifyTrace[recordedVerifyTrace.length - 1];
+    const sample = followedCaseTick != null
+      ? recordedVerifyTrace.find((entry) => entry.tick === followedCaseTick)
+      : recordedVerifyTrace[recordedVerifyTrace.length - 1];
     if (!sample) return { sw, ld };
     const signalEntries = Object.entries(sample.signals);
     for (const row of mappingRows) {
@@ -2030,6 +2031,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return { sw, ld };
   }, [followedCaseTick, mappingRows, recordedVerifyTrace]);
+  const boardValueTick = followedCaseTick ?? recordedVerifyTrace[recordedVerifyTrace.length - 1]?.tick;
+  const boardValuesStale = health.dirtySinceVerify || scenarioDrifted;
+  const boardHasSelectedSample = recordedVerifyTrace.some((sample) => sample.tick === boardValueTick);
 
   interface SignalChangeEvent {
     tick: number;
@@ -2064,7 +2068,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   // ── Assertions: trace × expected vectors ────────────────────────────
   const traceByTick = useMemo(() => {
-    const map = new Map<number, Record<string, 0 | 1>>();
+    const map = new Map<number, Record<string, RuntimeLogicValue>>();
     for (const sample of sim.trace ?? []) {
       map.set(sample.tick, sample.signals);
     }
@@ -3422,17 +3426,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     <table
                       className="rb-board-table"
                       data-testid="ide-hw-map-table"
-                      data-columns="Logical signal|Purpose|Board resource|Package pin|Status|Action"
+                      data-columns="Logical port|Board resource|State|Action"
                       data-work-priority="primary"
                     >
                       <thead><tr>
-                        <th scope="col">Logical signal</th><th scope="col">Purpose</th><th scope="col">Board resource</th>
-                        <th scope="col">Package pin</th><th scope="col">Status</th><th scope="col">Action</th>
+                        <th scope="col">Logical port</th><th scope="col">Board resource</th>
+                        <th scope="col">State</th><th scope="col">Action</th>
                       </tr></thead>
                       {mapModeGroups.map((group) => (
                         <tbody key={group.id} data-testid={`ide-hw-map-group-${group.id}`}>
                           <tr className="rb-board-group-row">
-                            <th scope="rowgroup" colSpan={6}>
+                            <th scope="rowgroup" colSpan={4}>
                               <span className="rb-board-group-heading">
                                 <strong>{group.label}</strong>
                                 <small>{group.rows.length} {group.rows.length === 1 ? 'signal' : 'signals'}</small>
@@ -3445,8 +3449,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             ? projection.required && projection.conflictState === 'missing-pin'
                             : row.required && row.pin.trim().length === 0;
                           const completeness = deriveMappingCompleteness(row);
-                          const resourceChip = formatBoardResourceChip(row.boardResourceType);
-                          const timingChip = formatTimingRoleChip(row.timingRole);
                           const conflictKey = mappingPinConflictKey(row.pin);
                           const projectionHasConflict = Boolean(
                             projection &&
@@ -3468,7 +3470,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           const signalIdentity = splitMappingSignalLabel(
                             projection?.logicalLabel ?? getStudentFacingIoLabel(row, row.id)
                           );
-                          const artifactPortName = projection?.artifactPortName?.trim() || signalIdentity.physical;
+                          const resourceAlias = resolveBoardControlAlias(row.pin);
                           return (
                             <tr
                               key={row.id}
@@ -3483,27 +3485,24 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             >
                               <th scope="row" data-testid={'ide-hw-map-row-signal-' + row.id}>
                                 <strong>{signalIdentity.logical}</strong>
-                                {artifactPortName ? <small>Artifact port: {artifactPortName}</small> : null}
                               </th>
-                              <td data-testid={'ide-hw-map-row-role-' + row.id}>
-                                {row.direction === 'in' ? 'Circuit input' : 'Circuit output'}
-                                {timingChip ? ' · ' + timingChip : resourceChip ? ' · ' + resourceChip : ''}
+                              <td data-testid={'ide-hw-map-row-binding-' + row.id} title={projection?.boardResourceLabel ?? describeBoardControl(row.pin)}>
+                                {resourceAlias ?? (isMissing ? 'Choose resource' : describeBoardControl(row.pin))}
                               </td>
-                              <td data-testid={'ide-hw-map-row-binding-' + row.id}>{projection?.boardResourceLabel ?? describeBoardControl(row.pin)}</td>
-                              <td>{projection?.packagePin ?? describePackagePin(row.pin)}</td>
-                              <td data-testid={'ide-hw-map-row-status-' + row.id}><span className="rb-board-status">{statusLabel}</span></td>
+                              <td data-testid={'ide-hw-map-row-status-' + row.id}><span className={'rb-board-status ' + (hasConflict ? 'is-conflict' : isMissing ? 'is-missing' : statusLabel === 'Assigned' ? 'is-mapped' : '')}>{statusLabel}</span></td>
                               <td>
                                 <button
                                   type="button"
                                   className="wb-btn wb-btn--ghost rb-board-row-action"
                                   data-testid={'ide-hw-map-row-action-' + row.id}
                                   aria-pressed={selectedMappingRowId === row.id}
+                                  aria-label={`${hasConflict ? 'Resolve' : isMissing ? 'Assign' : 'Edit mapping for'} ${signalIdentity.logical}`}
                                   onClick={() => {
                                     chooseMappingRow(row.id);
                                     setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin));
                                   }}
                                 >
-                                  {hasConflict ? 'Resolve' : isMissing ? 'Assign' : 'Edit mapping'}
+                                  {hasConflict ? 'Resolve' : isMissing ? 'Assign' : 'Edit'}
                                 </button>
                               </td>
                             </tr>
@@ -3514,20 +3513,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     </table>
                   </div>
                 )}
-                {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
-                  <details
-                    className="rb-board-electrical"
-                    data-testid="ide-hw-electrical-detail"
-                    open={electricalDetailOpen || conflictingRequiredCount > 0}
-                    onToggle={(event) => setElectricalDetailOpen(event.currentTarget.open)}
-                  >
-                    <summary>
-                      Electrical assignment
-                      <small>package pins and IO standards</small>
-                    </summary>
-                    <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} />
-                  </details>
-                ) : null}
               </section>
 
               <section
@@ -3574,7 +3559,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       data-testid="ide-hw-board-task-copy"
                       title={selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
                     >
-                    {selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
+                    {selectedMappingRow ? `Assign ${selectedMappingLabel}: click a highlighted compatible resource.` : 'Select a logical port, then choose its board resource.'}
                     </p>
                   </div>
                   <div className="rb-board-camera-bar" role="group" aria-label="Board camera" data-testid="ide-hw-board-camera">
@@ -3605,7 +3590,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     viewBox={boardViewBox}
                     density={boardDensity}
                     layers={boardLayers}
-                    values={verifyLastRun ? boardValuesAtTick : null}
+                    values={verifyLastRun && !boardValuesStale ? boardValuesAtTick : null}
                     conflictAliases={conflictAliases}
                     mappedAliases={mapModeAliases}
                     highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
@@ -3631,8 +3616,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     }}
                   />
                 </div>
+                <p className="rb-board-values-provenance" data-testid="ide-hw-map-values-provenance">
+                  {!verifyLastRun || recordedVerifyTrace.length === 0
+                    ? 'Mapping view · no recorded simulation values'
+                    : boardValuesStale
+                      ? 'Prior simulation is stale · rerun in Simulate to show values'
+                      : !boardHasSelectedSample
+                        ? `No recorded sample at tick ${boardValueTick} · values unavailable`
+                        : `Simulated values · recorded tick ${boardValueTick} · no physical board connected`}
+                </p>
               </section>
-              <aside className="rb-board-side" aria-label="Selected mapping and board reference">
+              <aside className="rb-board-side" aria-label="Selected mapping details">
                 {!selectedMappingRow && selectedBoardResource ? (
                   <section className="rb-board-editor" data-testid="ide-hw-selected-resource-card">
                     <div className="rb-board-editor-head">
@@ -3685,8 +3679,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </header>
                   {selectedMappingRow ? (
                     <>
-                      <p className="ide-copy ide-copy--flush">
+                      <p className="ide-copy ide-copy--flush" data-testid="ide-hw-selected-mapping-role">
                         {selectedMappingRow.direction === 'in' ? 'Circuit input' : 'Circuit output'}{' · '}{selectedMappingRow.required ? 'Required' : 'Optional'}
+                        {selectedMappingRow.timingRole ? ` · ${formatTimingRoleChip(selectedMappingRow.timingRole)}` : ''}
                       </p>
                       {selectedSignalConflict ? (
                         <IdeCallout tone="error" title={selectedConflictTitle} testId="ide-hw-selected-mapping-conflict">
@@ -3714,8 +3709,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       </label>
                       <p className="rb-board-consequence" data-testid="ide-hw-selected-mapping-consequence">
                         {selectedBoardResource
-                          ? selectedBoardResource.alias + ' uses package pin ' + selectedBoardResource.packagePin +
-                            '. Export will bind artifact port ' + (selectedMappingProjection?.artifactPortName ?? selectedXdcPortRef) + ' in top.xdc.'
+                          ? selectedResourceNeedsApply
+                            ? `${selectedBoardResource.alias} selected. Save to update this port's assignment and generated constraints.`
+                            : `${selectedMappingLabel} is assigned to ${selectedBoardResource.alias}. Choose another compatible resource to change it.`
                           : 'Choose from the selector or click a highlighted Basys3 resource. Both update the same saved mapping.'}
                       </p>
                       {recommendedResource ? (
@@ -3805,7 +3801,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           ) : null;
                         })()}
                         <IdeButton
-                          tone="secondary"
+                          tone={selectedResourceNeedsApply ? 'primary' : 'secondary'}
                           onClick={() => {
                             if (!selectedBoardResource || !onSetMappingPin) return;
                             assignPin(selectedMappingRow.id, selectedBoardResource.packagePin);
@@ -3828,28 +3824,41 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         ) : null}
                       </div>
                       <div className="ide-hardware-basys3-binding-chain" data-testid="ide-hardware-basys3-binding-chain" aria-label="Selected Basys3 binding chain">
-                        <span data-testid="ide-hardware-chain-signal"><small>Signal</small><strong>{selectedMappingLabel}</strong></span>
+                        <span className="rb-board-detail-label">Saved constraint</span>
+                        <span data-testid="ide-hardware-chain-signal"><small>Logical port</small><strong>{selectedMappingLabel}</strong></span>
                         {selectedMappingProjection ? (
                           <><span aria-hidden="true">-&gt;</span><span data-testid="ide-hardware-chain-artifact"><small>Artifact port</small><strong>{selectedMappingProjection.artifactPortName}</strong></span></>
                         ) : null}
                         <span aria-hidden="true">→</span>
                         <span data-testid="ide-hardware-chain-board"><small>Resource</small><strong>{selectedMappingBoardControl}</strong></span>
                         <span aria-hidden="true">→</span>
-                        <span data-testid="ide-hardware-chain-pin"><small>Pin</small><strong>{selectedMappingPackagePin}</strong></span>
+                        <span data-testid="ide-hardware-chain-pin"><small>Package pin</small><strong>{selectedMappingPackagePin}</strong></span>
+                        <span data-testid="ide-hardware-chain-io-standard"><small>I/O standard</small><strong>{selectedMappedBoardResource?.ioStandard ?? 'Unassigned'}</strong></span>
                         <pre data-testid="ide-hardware-basys3-binding-xdc">{selectedBoardResourceXdc || 'Assign a resource to preview the XDC constraint.'}</pre>
                       </div>
+                      {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
+                        <details
+                          className="rb-board-electrical"
+                          data-testid="ide-hw-electrical-detail"
+                          open={electricalDetailOpen || selectedSignalConflict}
+                          onToggle={(event) => setElectricalDetailOpen(event.currentTarget.open)}
+                        >
+                          <summary>Electrical edit<small>selected port</small></summary>
+                          <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} selectedRowId={selectedMappingRow.id} />
+                        </details>
+                      ) : null}
                     </>
                   ) : (
                     <p className="ide-copy ide-copy--flush">Select Assign or Edit in the table to begin.</p>
                   )}
                 </section>
-                <section className="rb-board-editor rb-board-xdc" data-testid="ide-hw-constraints-tool" aria-label="Constraints">
-                  <div className="rb-board-editor-head">
-                    <span className="ide-surface-block-label">Constraints</span>
+                <details className="rb-board-editor rb-board-xdc rb-board-reference" data-testid="ide-hw-constraints-tool" aria-label="Constraint reference">
+                  <summary className="rb-board-editor-head">
+                    <span className="ide-surface-block-label">Constraint reference</span>
                     <strong data-testid="ide-hw-constraints-active">
                       {constraintSets ? activeConstraintSet(constraintSets.doc)?.name ?? 'Live mapping' : 'Live mapping'}
                     </strong>
-                  </div>
+                  </summary>
                   <p className="ide-copy ide-copy--flush">
                     {constraintSets && activeConstraintSet(constraintSets.doc)
                       ? 'The active set is what Build & Export packages as top.xdc; the lines below are the live mapping.'
@@ -3901,7 +3910,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     })}
                   </ol>
                   {constraintSets ? <ConstraintSetsPanel {...constraintSets} livePinCount={mappedRequiredCount} /> : null}
-                </section>
+                </details>
 
               </aside>
             </div>

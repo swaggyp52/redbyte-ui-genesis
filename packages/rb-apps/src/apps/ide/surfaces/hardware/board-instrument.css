@@ -4,6 +4,7 @@
    Composes wb-* primitives; owns only what is specific to Board. No !important. */
 
 .ide-root .rb-board { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root [data-testid='ide-hardware-panel'] > .ide-panel-body:has(> .rb-board) { display: flex; flex-direction: column; overflow: hidden; }
 
 /* Header: title · progress · metric chips · next action. */
 .ide-root .rb-board-header { flex-wrap: wrap; row-gap: 4px; min-height: var(--wb-toolbar-h); height: auto; padding: 2px var(--wb-space-3); }
@@ -39,7 +40,7 @@
 .ide-root .rb-board-editor .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
 
 /* Workspace grid: assignments | board | side. */
-.ide-root .rb-board-grid { display: grid; grid-template-columns: minmax(400px, 480px) minmax(0, 1fr) minmax(300px, 340px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-board-grid { display: grid; grid-template-columns: minmax(310px, 360px) minmax(0, 1fr) minmax(300px, 340px); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
 .ide-root .rb-board-assignments { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--wb-border-strong); }
 .ide-root .rb-board-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .ide-root .rb-board-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; border-left: 1px solid var(--wb-border-strong); }
@@ -54,6 +55,7 @@
 .ide-root .rb-board-section-header .ide-surface-block-label { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-board-section-header .ide-copy { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-board-stage .rb-board-section-header .ide-copy { white-space: normal; overflow: visible; }
 .ide-root .rb-board-section-header > strong { margin-left: auto; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
 
 /* Assignments table: 24px rows. */
@@ -76,7 +78,12 @@
 .ide-root .rb-board-status.is-mapped { color: var(--wb-ok); }
 .ide-root .rb-board-status.is-conflict { color: var(--wb-err); }
 .ide-root .rb-board-status.is-missing { color: var(--wb-warn); }
-.ide-root .rb-board-row-action { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-board-row-action { min-height: 28px; padding: 0 8px; font-size: var(--wb-text-sm); }
+.ide-root .rb-board-table tbody tr.is-selected th { background: var(--wb-accent-bg-strong); }
+.ide-root .rb-board-table tbody th strong { overflow-wrap: anywhere; }
+.ide-root .rb-board-table tbody td:nth-child(2) { font-family: var(--wb-font-mono); }
+.ide-root .rb-board-table tbody td:last-child { width: 58px; }
+.ide-root .rb-board-table .rb-board-status { text-transform: none; letter-spacing: 0; }
 
 /* Board stage: the Basys3 canvas fills the centre. */
 .ide-root .rb-board-canvas { flex: 1 1 auto; min-height: 0; padding: 8px; overflow: hidden; background: var(--rb-schematic-bg, #f4f6f9); cursor: grab; touch-action: none; }
@@ -141,7 +148,7 @@
 .ide-root .rb-board-assignments thead th { position: sticky; top: 0; z-index: 1; background: var(--wb-surface-2); color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-board-assignments td code,
 .ide-root .rb-board-assignments td button { font: var(--wb-text-sm) var(--wb-font-mono); }
-.ide-root .rb-board-assignments td button { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); }
+.ide-root .rb-board-assignments td button { min-height: 28px; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); }
 .ide-root .rb-board-assignments td small,
 .ide-root .rb-board-assignments td span { font-size: var(--wb-text-xs); color: var(--wb-text-3); }
 .ide-root .rb-board-side,
@@ -278,6 +285,34 @@
 .ide-root .rb-board-electrical > summary::before { content: '\25B8'; width: 12px; color: var(--wb-text-3); }
 .ide-root .rb-board-electrical[open] > summary::before { content: '\25BE'; }
 .ide-root .rb-board-electrical > summary small { margin-left: 0; color: var(--wb-text-3); font-weight: var(--rb-weight-normal); }
+.ide-root .rb-board-reference > summary { cursor: pointer; list-style: none; }
+.ide-root .rb-board-reference > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-board-reference > summary::before { content: '\25B8'; color: var(--wb-text-3); }
+.ide-root .rb-board-reference[open] > summary::before { content: '\25BE'; }
+.ide-root .rb-board-reference > summary:focus-visible,
+.ide-root .rb-board-electrical > summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-board-detail-label { flex-basis: 100%; color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-board-values-provenance { flex: none; margin: 0; padding: 6px var(--wb-space-3); border-top: 1px solid var(--wb-border); color: var(--wb-text-3); font: var(--wb-text-xs) / 1.5 var(--wb-font-ui); }
+
+/* The selected port's advanced editor is a short field list; the shared planner still
+   checks the complete document, so collisions with other ports remain visible. */
+.ide-root .rb-board-side .ide-pin-planner.is-contextual { margin: 0; padding: 8px var(--wb-space-3); border: 0; border-radius: 0; background: var(--wb-surface); box-shadow: none; }
+.ide-root .rb-board-side .ide-pin-planner-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ide-root .rb-board-side .ide-pin-planner-stats { display: flex; flex-wrap: wrap; gap: 8px; font-size: var(--wb-text-xs); }
+.ide-root .rb-board-side .ide-pin-planner-table,
+.ide-root .rb-board-side .ide-pin-planner-table tbody,
+.ide-root .rb-board-side .ide-pin-planner-table tr { display: block; width: 100%; }
+.ide-root .rb-board-side .ide-pin-planner-table thead { display: none; }
+.ide-root .rb-board-side .ide-pin-planner-table td { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; align-items: center; padding: 4px 0; border: 0; color: var(--wb-text); font-size: var(--wb-text-sm); }
+.ide-root .rb-board-side .ide-pin-planner-table td::before { content: attr(data-label); color: var(--wb-text-3); font-family: var(--wb-font-ui); }
+.ide-root .rb-board-side .ide-pin-planner-table td.ide-pin-planner-dir { display: none; }
+.ide-root .rb-board-side .ide-pin-planner-pin-input { box-sizing: border-box; width: 96px; min-height: 28px; padding: 2px 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-board-side .ide-pin-planner-pin-input:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-board-side .ide-pin-planner-conflict { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; color: var(--wb-err); }
+.ide-root .rb-board-side .ide-pin-planner-xdc-body { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--wb-text-xs) / 1.5 var(--wb-font-mono); }
+.ide-root .rb-board-side .ide-pin-planner-badge { background: none; border: 0; border-radius: 0; padding: 0; color: inherit; white-space: normal; }
+.ide-root .rb-board-side .ide-pin-planner-badge.is-conflict,
+.ide-root .rb-board-side .ide-pin-planner-badge.is-issue { color: var(--wb-err); }
 
 /* Measured at 1440x900: the identity chain resolved to 580px of max-content tracks inside a
    337px pane, and the XDC block - spanning every column - inherited 618px and ran 280px past

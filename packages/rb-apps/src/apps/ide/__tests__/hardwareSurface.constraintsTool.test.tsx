@@ -91,6 +91,14 @@ function renderBoard(constraintDoc = createEmptyConstraintSets()) {
 }
 
 describe('Board — Constraints tool', () => {
+  it('keeps the complete constraint reference closed on arrival while the selected mapping stays visible', () => {
+    const { getByTestId } = renderBoard();
+    const reference = getByTestId('ide-hw-constraints-tool') as HTMLDetailsElement;
+    expect(reference.open).toBe(false);
+    expect(reference.querySelector('summary')?.textContent).toContain('Constraint reference');
+    expect(getByTestId('ide-hw-selected-mapping-editor').closest('details')).toBeNull();
+    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN');
+  });
   it('lists the clock line and every signal\'s exact XDC lines, pending ones included', () => {
     const { getByTestId } = renderBoard();
     expect(getByTestId('ide-hw-xdc-line-clock').textContent).toContain('create_clock -name sys_clk');

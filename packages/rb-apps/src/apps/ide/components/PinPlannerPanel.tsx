@@ -22,6 +22,8 @@ import { buildPlannerXdcLines, diffXdc } from '../hardwareXdcPreview';
 export interface PinPlannerPanelProps {
   readonly doc: HardwareMappingDocumentV2;
   readonly onEdit: (operation: HardwareMappingV2EditOperation) => void;
+  /** Flattened Board row identity. Keeps advanced pin edits on the selected port. */
+  readonly selectedRowId?: string;
 }
 
 interface LastEdit {
@@ -35,9 +37,17 @@ function assignmentKey(row: Pick<PinAssignmentRow, 'entryId' | 'bitIndex'>): str
   return row.bitIndex === undefined ? row.entryId : `${row.entryId}:${row.bitIndex}`;
 }
 
-export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit }) => {
+export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit, selectedRowId }) => {
   const summary = useMemo(() => buildPinPlannerSummary(doc), [doc]);
   const currentLines = useMemo(() => buildPlannerXdcLines(doc), [doc]);
+  const visibleRows = useMemo(() => summary.rows.filter((row) => {
+    if (selectedRowId === undefined) return true;
+    const entry = doc.entries.find((candidate) => candidate.id === row.entryId);
+    if (!entry) return false;
+    if (entry.kind === 'bus') return entry.bits.find((bit) => bit.bitIndex === row.bitIndex)?.id === selectedRowId;
+    if (entry.kind === 'slice') return `${entry.id}[${entry.lsb + (row.bitIndex ?? 0)}]` === selectedRowId;
+    return entry.id === selectedRowId;
+  }), [doc.entries, selectedRowId, summary.rows]);
 
   // One-step edit memory for the XDC before/after preview + undo.
   const [lastEdit, setLastEdit] = useState<LastEdit | null>(null);
@@ -96,16 +106,16 @@ export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit })
   const xdcDiff = lastEdit ? diffXdc(lastEdit.beforeLines, currentLines) : null;
 
   return (
-    <section className="ide-pin-planner" data-testid="ide-pin-planner" aria-label="Pin planner">
+    <section className={'ide-pin-planner' + (selectedRowId === undefined ? '' : ' is-contextual')} data-testid="ide-pin-planner" aria-label="Pin planner">
       <header className="ide-pin-planner-head">
-        <div>
+        {selectedRowId === undefined ? <div>
           <p className="ide-surface-block-label">Pin planner</p>
           <h4>Electrical assignment</h4>
-        </div>
+        </div> : null}
         <div className="ide-pin-planner-stats">
-          <span data-testid="ide-pin-planner-mapped">
+          {selectedRowId === undefined ? <span data-testid="ide-pin-planner-mapped">
             {summary.mappedCount}/{summary.totalCount} mapped
-          </span>
+          </span> : null}
           <span
             className={summary.conflicts.length > 0 ? 'is-conflict' : ''}
             data-testid="ide-pin-planner-conflict-count"
@@ -168,7 +178,7 @@ export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit })
             </tr>
           </thead>
           <tbody>
-            {summary.rows.map((row) => {
+            {visibleRows.map((row) => {
               const key = assignmentKey(row);
               const isConflict = row.pin ? conflictPins.has(row.pin.toUpperCase()) : false;
               const issues = issuesByKey.get(key) ?? [];
@@ -179,9 +189,9 @@ export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit })
                   className={`ide-pin-planner-row${isConflict ? ' is-conflict' : ''}${issues.length ? ' has-issue' : ''}`}
                   data-testid={`ide-pin-planner-row-${key}`}
                 >
-                  <td className="ide-pin-planner-label"><code>{row.label}</code></td>
-                  <td className="ide-pin-planner-dir">{row.direction === 'in' ? 'in' : 'out'}</td>
-                  <td>
+                  <td className="ide-pin-planner-label" data-label="Port"><code>{row.label}</code></td>
+                  <td className="ide-pin-planner-dir" data-label="Direction">{row.direction === 'in' ? 'in' : 'out'}</td>
+                  <td data-label="Package pin">
                     <input
                       type="text"
                       className="ide-pin-planner-pin-input"
@@ -209,11 +219,11 @@ export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit })
                       }}
                     />
                   </td>
-                  <td className="ide-pin-planner-resource">
+                  <td className="ide-pin-planner-resource" data-label="Resource">
                     {row.resource ? `${row.resource.label} · ${row.resource.packagePin}` : row.pin ? 'unknown' : '—'}
                   </td>
-                  <td className="ide-pin-planner-iostd">{row.resource?.ioStandard ?? (row.pin ? '—' : '')}</td>
-                  <td className="ide-pin-planner-status">
+                  <td className="ide-pin-planner-iostd" data-label="I/O standard">{row.resource?.ioStandard ?? (row.pin ? '—' : '')}</td>
+                  <td className="ide-pin-planner-status" data-label="State">
                     {isConflict ? (
                       <span className="ide-pin-planner-badge is-conflict" data-testid={`ide-pin-planner-status-${key}`}>
                         conflict
@@ -224,7 +234,7 @@ export const PinPlannerPanel: React.FC<PinPlannerPanelProps> = ({ doc, onEdit })
                         title={issues.join('\n')}
                         data-testid={`ide-pin-planner-status-${key}`}
                       >
-                        check
+                        {selectedRowId === undefined ? 'check' : issues.join(' ')}
                       </span>
                     ) : row.pin ? (
                       <span className="ide-pin-planner-badge is-ok" data-testid={`ide-pin-planner-status-${key}`}>

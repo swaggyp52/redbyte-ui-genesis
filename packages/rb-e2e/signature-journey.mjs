@@ -90,19 +90,16 @@ if (board.led0 !== 'url(#ledLensOn)' || board.led1 !== 'url(#ledLensOff)')
   fail(`simulated board did not mirror the bench (expected LD0 on, LD1 off): ${JSON.stringify(board)}`);
 // Back to the mapping workspace, where the electrical Pin Planner lives.
 await page.getByTestId('ide-hw-mode-btn-map').click(); await page.waitForTimeout(500);
-// The assignment table leads on Board now and the electrical view is a disclosure beneath
-// it, closed until asked for - so this opens it the way a student would.
-const electrical = page.getByTestId('ide-hw-electrical-detail');
-if (await electrical.count()) {
-  if (!(await electrical.evaluate((el) => el.open))) await electrical.locator('summary').click();
-  await page.waitForTimeout(300);
-}
-if (await page.getByTestId('ide-pin-planner').count() === 0) fail('Pin Planner missing');
 const ids = await store(() => {
   const doc = window.__RB_PROJECT_RUNTIME__.getState().hardwareMappingV2;
   const s = doc.entries.filter((e) => e.kind === 'scalar' && e.direction === 'in');
   return { sw0: s[0]?.id, sw1: s[1]?.id, pin0: s[0]?.pin, pin1: s[1]?.pin };
 });
+// Advanced electrical editing follows the logical port selected in the main relation.
+await page.getByTestId(`ide-hw-map-row-action-${ids.sw1}`).click();
+const electrical = page.getByTestId('ide-hw-electrical-detail');
+if (!(await electrical.evaluate((el) => el.open))) await electrical.locator(':scope > summary').click();
+if (await page.getByTestId('ide-pin-planner').count() === 0) fail('Pin Planner missing');
 const sw1Input = page.getByTestId(`ide-pin-planner-pin-input-${ids.sw1}`);
 await sw1Input.click(); await sw1Input.fill(ids.pin0); await sw1Input.press('Enter'); await page.waitForTimeout(400);
 if (!/1 conflict/.test((await page.getByTestId('ide-pin-planner-conflict-count').textContent()) ?? ''))
