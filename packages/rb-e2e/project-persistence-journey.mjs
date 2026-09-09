@@ -45,8 +45,10 @@ const state = () => page.evaluate(() => {
     ledgerProjects: [...new Set(ledger.map((e) => e.projectId ?? 'unowned'))],
     lastRunId: (ledger[ledger.length - 1] ?? {}).runId ?? last?.runId ?? null,
     lastRunProject: last?.projectId ?? null,
-    // A replayable trace needs the per-vector results, not just a pass/fail summary.
+    // Assertions retain their per-vector results; check-free observations retain waveform samples.
     lastRunRows: last?.report?.rows?.length ?? 0,
+    lastRunKind: last?.runKind ?? 'verify',
+    lastRunSamples: last?.waveform?.length ?? 0,
     lastRunPassed: last?.report?.passed ?? null,
     savedProjects: (window.__RB_SAVED_PROJECTS__ ?? []).map((p) => p.projectId),
   };
@@ -109,7 +111,11 @@ const runAndSettle = async (label) => {
   assert(after.lastRunId && after.lastRunId !== before.lastRunId, `[${label}] no new run identity`);
   assert(after.lastRunProject === after.projectId,
     `[${label}] run owned by ${after.lastRunProject}, project is ${after.projectId}`);
-  assert(after.lastRunRows > 0, `[${label}] run carries no per-vector rows`);
+  if (after.lastRunKind === 'trace') {
+    assert(after.lastRunSamples > 0, `[${label}] observation carries no recorded waveform samples`);
+  } else {
+    assert(after.lastRunRows > 0, `[${label}] run carries no per-vector rows`);
+  }
   return after;
 };
 
@@ -828,11 +834,143 @@ try {
     `resuming restored ${resumed.expectations} authored expectations, expected ${beforeClose2.expectations}`);
   console.log(`J resume: ${resumed.projectId} back with ${resumed.nodes} symbols, ` +
     `${resumed.expectations} authored expectations and run ${resumed.lastRunId ?? 'none'}`);
+
+  // K. Two different scenarios own their complete recordings and inspection preferences.
+  // Click the case-number cell: the centre of a row can be an editable expectation button.
+  const experiment = () => page.evaluate(() => {
+    const runtime = window.__RB_PROJECT_RUNTIME__.getState();
+    return {
+      projectId: runtime.projectId,
+      scenarioId: runtime.activeScenarioId,
+      vectors: runtime.scenarios.find((scenario) => scenario.id === runtime.activeScenarioId)?.vectors,
+      runId: runtime.verifyLastRun?.runId ?? null,
+      runKind: runtime.verifyLastRun?.runKind ?? null,
+      waveform: runtime.verifyLastRun?.waveform ?? [],
+    };
+  });
+  const selectScenario = async (id) => {
+    await page.getByTestId(`ide-testbench-document-tab-${id}`).click();
+    await page.waitForFunction((wanted) => window.__RB_PROJECT_RUNTIME__.getState().activeScenarioId === wanted, id);
+  };
+  await openStarter('full-adder', 'Full Adder');
+  await runAndSettle('scenario A');
+  const experimentA = await experiment();
+  await page.getByTestId('ide-case-lab-row-6').locator('td').first().click();
+  await page.getByTestId('ide-verify-view-timeline').click();
+  await page.getByTestId('ide-scenario-create-btn').click();
+  const newExperiment = await experiment();
+  assert(newExperiment.scenarioId !== experimentA.scenarioId, 'New scenario reused A identity');
+  assert(newExperiment.runId === null, 'New scenario borrowed A recording');
+  await page.getByTestId('ide-verify-view-timeline').click();
+  await page.locator('[data-testid^="ide-timing-cell-"]').first().click();
+  assert(JSON.stringify((await experiment()).vectors) !== JSON.stringify(experimentA.vectors),
+    'editing B did not produce different stimulus');
+  await runAndSettle('scenario B observation');
+  const experimentB = await experiment();
+  assert(experimentB.runKind === 'trace', 'B must be a complete check-free observation');
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.getByTestId('ide-case-lab-row-2').locator('td').first().click();
+  await selectScenario(experimentA.scenarioId);
+  assert((await experiment()).runId === experimentA.runId, 'A did not restore its own recording');
+  assert(await page.getByTestId('ide-verify-lab-grid').getAttribute('data-representation') === 'timeline',
+    'A lost its deliberate Timeline representation');
+  await page.getByTestId('ide-verify-view-table').click();
+  assert(await page.getByTestId('ide-case-lab-row-6').getAttribute('aria-selected') === 'true', 'A lost t6');
+  await selectScenario(experimentB.scenarioId);
+  assert((await experiment()).runId === experimentB.runId, 'B did not restore its own recording');
+  assert(await page.getByTestId('ide-case-lab-row-2').getAttribute('aria-selected') === 'true', 'B lost t2');
+  await runCommand('project.save');
+  await waitForSaveQuiet(experimentB.projectId);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.getByTestId('mode-button-verify').click();
+  await page.getByTestId('ide-case-lab').waitFor();
+  assert((await experiment()).runId === experimentB.runId, 'reload discarded the check-free recording');
+  assert(await page.getByTestId('ide-case-lab-row-2').getAttribute('aria-selected') === 'true', 'reload lost B t2');
+  await selectScenario(experimentA.scenarioId);
+  const restoredA = await experiment();
+  assert(restoredA.runId === experimentA.runId, 'reload discarded the other scenario archive');
+  assert(JSON.stringify(restoredA.waveform) === JSON.stringify(experimentA.waveform),
+    'A observations changed after B input edit, run and reload');
+  assert(await page.getByTestId('ide-case-lab-row-6').getAttribute('aria-selected') === 'true', 'reload lost A t6');
+  console.log(`K scenario isolation: A ${experimentA.runId} at t6 and B ${experimentB.runId} at t2; ` +
+    'distinct stimulus, view continuity, check-free trace and exact archived observations survive reload');
+
+  // L. The existing four-instance starter keeps identically named internal pins distinct.
+  // This is a UI-loaded starter and UI Run. The blank-project authoring journey is separate.
+  await openStarter('four-bit-adder-hierarchical', '4-Bit Adder (hierarchical)');
+  await runAndSettle('hierarchical instance inspection');
+  const instanceEvidence = await page.evaluate(() => {
+    const runtime = window.__RB_PROJECT_RUNTIME__.getState();
+    const run = runtime.verifyLastRun;
+    for (const sample of run.waveform) {
+      const signals = Object.keys(sample.signals).filter((name) => /^u-fa\d+__x1\.out$/.test(name));
+      for (const a of signals) for (const b of signals) {
+        if (a === b || sample.signals[a] === sample.signals[b]) continue;
+        const identity = (key) => {
+          const node = run.circuitSnapshot?.nodes.find((entry) => `${entry.id}.out` === key);
+          return { key, value: sample.signals[key], nodeId: node?.id, display: node?.label };
+        };
+        return {
+          projectId: runtime.projectId, runId: run.runId, tick: sample.tick, a: identity(a), b: identity(b),
+          instances: runtime.circuit.nodes.filter((node) => node.config?.moduleDefinitionId).map((node) => node.config.instanceName),
+        };
+      }
+    }
+    return null;
+  });
+  assert(instanceEvidence, 'no recorded sample distinguishes repeated x1 outputs in two instances');
+  await page.getByTestId(`ide-case-lab-row-${instanceEvidence.tick}`).locator('td').first().click();
+  await page.getByRole('button', { name: 'Inspect with circuit', exact: true }).first().click();
+  await page.getByTestId('ide-recorded-circuit').waitFor();
+  for (const identity of [instanceEvidence.a, instanceEvidence.b]) {
+    await page.getByLabel('Recorded circuit signal', { exact: true }).selectOption(identity.display);
+    await page.waitForTimeout(150);
+    const readout = await page.getByTestId('ide-recorded-circuit-context').innerText();
+    assert(readout.includes(`${identity.display} = ${identity.value}`), `wrong instance value: ${readout}`);
+    const shownNodes = await page.getByTestId('ide-recorded-circuit-svg').locator('[data-node-id]')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-node-id')));
+    const other = identity.key === instanceEvidence.a.key ? instanceEvidence.b : instanceEvidence.a;
+    assert(shownNodes.includes(identity.nodeId), `selected instance ${identity.nodeId} was not rendered`);
+    assert(!shownNodes.includes(other.nodeId), `the other instance's matching x1 pin appeared in this scope`);
+    const bodies = await page.getByTestId('ide-recorded-circuit-svg').locator('[data-node-id]')
+      .evaluateAll((nodes) => nodes.map((node) => {
+        const body = node.querySelector('.rb-sym-bounds').getBoundingClientRect();
+        return { id: node.getAttribute('data-node-id'), left: body.left, right: body.right, top: body.top, bottom: body.bottom };
+      }));
+    for (let a = 0; a < bodies.length; a += 1) for (let b = a + 1; b < bodies.length; b += 1) {
+      const width = Math.min(bodies[a].right, bodies[b].right) - Math.max(bodies[a].left, bodies[b].left);
+      const height = Math.min(bodies[a].bottom, bodies[b].bottom) - Math.max(bodies[a].top, bodies[b].top);
+      assert(width <= 0.5 || height <= 0.5,
+        `recorded instance symbols overlap: ${bodies[a].id} / ${bodies[b].id}`);
+    }
+  }
+  await page.screenshot({ path: `${OUT}/hierarchical-recorded-instance.png` });
+  await page.getByRole('button', { name: 'Close circuit investigation', exact: true }).click();
+  await runCommand('project.save');
+  await waitForSaveQuiet(instanceEvidence.projectId);
+  await page.reload({ waitUntil: 'networkidle' });
+  const restoredInstances = await page.evaluate(() => {
+    const runtime = window.__RB_PROJECT_RUNTIME__.getState();
+    return {
+      runId: runtime.verifyLastRun?.runId,
+      instances: runtime.circuit.nodes.filter((node) => node.config?.moduleDefinitionId).map((node) => node.config.instanceName),
+    };
+  });
+  assert(restoredInstances.runId === instanceEvidence.runId, 'reload lost hierarchical recording');
+  assert(JSON.stringify(restoredInstances.instances) === JSON.stringify(instanceEvidence.instances), 'reload changed instance identities');
+  console.log(`L recorded instances: ${instanceEvidence.a.key}=${instanceEvidence.a.value} and ` +
+    `${instanceEvidence.b.key}=${instanceEvidence.b.value} at t${instanceEvidence.tick}; exact circuit scope, values and reload preserved`);
   await page.screenshot({ path: `${OUT}/persistence-final.png` });
   assert(pageErrors.length === 0, `page errors: ${pageErrors.join(' | ')}`);
   console.log('\nPASS — reload, Save As, Duplicate, reopen from Recent, A/B isolation,' +
     '\n       a foreign project that inherits nothing, an older save with no stored evidence,' +
-    '\n       the close-save, and no authored work lost at any transition.');
+    '\n       the close-save, independent scenario recordings/cursors, check-free reload,' +
+    '\n       distinct recorded module-instance values, and no authored work lost at any transition.');
+} catch (error) {
+  await page.screenshot({ path: `${OUT}/persistence-failure.png` }).catch(() => {});
+  console.error('Failure UI:', await page.locator('[role="dialog"]').allTextContents().catch(() => []));
+  console.error('Page errors:', pageErrors);
+  throw error;
 } finally {
   await context.close();
   await browser.close();

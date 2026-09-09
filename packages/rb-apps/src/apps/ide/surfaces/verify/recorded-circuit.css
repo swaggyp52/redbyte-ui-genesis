@@ -1,0 +1,20 @@
+/* Recorded investigation owns its camera, scroll and focused-pane composition. */
+.ide-root .rb-investigation-focus { display: flex; flex-wrap: wrap; gap: 4px; }
+.ide-root .rb-recorded-circuit { gap: 0; }
+.ide-root .rb-recorded-circuit > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ide-root .rb-recorded-circuit button,
+.ide-root .rb-recorded-circuit select { font: inherit; color: var(--wb-text); background: var(--wb-surface); border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); padding: 4px 8px; min-height: 28px; cursor: pointer; }
+.ide-root .rb-recorded-circuit button:focus-visible,
+.ide-root .rb-recorded-circuit select:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+.ide-root .rb-recorded-circuit-context { display: grid; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); overflow-wrap: anywhere; }
+.ide-root .rb-recorded-circuit-context > span { color: var(--wb-text-2); }
+.ide-root .rb-recorded-circuit-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; font-size: var(--wb-text-sm); }
+.ide-root .rb-recorded-circuit-tools label { display: grid; gap: 4px; min-width: 0; }
+.ide-root .rb-recorded-circuit select { max-width: 100%; }
+.ide-root .rb-recorded-circuit-sheet { min-height: 240px; height: 38vh; max-height: 360px; overflow: auto; background: var(--wb-surface-2); border-block: 1px solid var(--wb-border); }
+.ide-root .rb-recorded-circuit-sheet svg { display: block; }
+.ide-root .rb-recorded-circuit-signal { display: grid; gap: 5px; padding: 8px 12px; font-size: var(--wb-text-sm); }
+.ide-root .rb-recorded-circuit .ide-why-panel { padding: 8px 12px; margin: 0; overflow-wrap: anywhere; }
+.ide-root .rb-recorded-circuit .ide-why-steps { padding-left: 20px; }
+.ide-root .rb-recorded-circuit-edit { margin: 10px 12px; align-self: start; }
+.ide-root .rb-recorded-circuit-unavailable { margin: 12px; line-height: 1.5; }

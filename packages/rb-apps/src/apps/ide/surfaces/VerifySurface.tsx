@@ -1,4 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Circuit } from '@redbyte/rb-logic-core';
+import { connectionEndpoints } from '@redbyte/rb-logic-view';
+import { getRuntimeVerifyRunId } from '../runArchive';
+import { buildVerifyCircuitEvidenceHash } from '../verifyProjectHash';
+import { RecordedCircuitInspector } from './verify/RecordedCircuitInspector';
+import { buildRecordedCircuitGeometry } from './verify/recordedCircuitGeometry';
+import { getDesignChipMetadata } from '../designChipMetadata';
+import { findPin } from '@redbyte/rb-logic-view';
+import { useScenarioViewState } from '../useScenarioViewState';
 import { ProblemsPanel } from '../components/ProblemsPanel';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { TestVector } from '@redbyte/rb-utils';
@@ -231,11 +240,15 @@ export interface VerifySurfaceProps {
   deterministicHash: string;
   /** Current project display name — fed into the Verify context header. */
   projectName?: string;
+  projectId?: string;
+  inspectionCircuit?: Circuit;
   /** Board target (e.g. "Basys3") — fed into the Verify context header. */
   board?: string;
   hasVectors: boolean;
   vectors?: TestVector[];
   lastRun?: RuntimeVerifyRun;
+  runArchive?: RuntimeVerifyRun[];
+  onSelectRecordedRun?: (runId: string) => void;
   /** A restored browser-session run is replayable history, but requires one direct rerun. */
   forceRunStale?: boolean;
   /** Why the restored run is stale (run scope read-model); shown with the reload guidance. */
@@ -398,8 +411,12 @@ const VERIFY_WAVEFORM_LABEL_ALLOWANCE = 104;
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   runHistory,
+  runArchive = [],
+  onSelectRecordedRun,
   deterministicHash,
   projectName,
+  projectId,
+  inspectionCircuit,
   board,
   hasVectors,
   vectors,
@@ -626,9 +643,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, customVectors]
   );
 
-  const [selectedTick, setSelectedTick] = useState<number | null>(null);
-  const restoredTickRef = useRef<number | null>(null);
-  const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
+  const viewScopeKey = JSON.stringify([projectId ?? null, activeScenarioId ?? null]);
+  const {
+    state: { selectedTick, selectedSignal, cursorA, cursorB, authoredRepresentation, studioMode },
+    setSelectedTick, setSelectedSignal, setCursorA, setCursorB, setAuthoredRepresentation, setStudioMode,
+  } = useScenarioViewState(projectId && activeScenarioId ? { projectId, scenarioId: activeScenarioId } : null);
+  const restoredTickRef = useRef<number | null>(selectedTick);
   // Which simulation provider is the current run-of-record (Chapter D).
   const [activeSimProvider, setActiveSimProvider] = useState<'browser-logic' | 'imported-vcd'>('browser-logic');
   const [createCheckDialogOpen, setCreateCheckDialogOpen] = useState(false);
@@ -637,7 +657,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const handleSignalSelect = useCallback((signal: string | null) => {
     setSelectedSignal(signal);
     onSignalSelected?.(signal != null ? normalizeSignalKey(signal) : null);
-  }, [onSignalSelected]);
+  }, [onSignalSelected, setSelectedSignal]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
   /**
@@ -646,21 +666,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
    * `Default — Timing` beside `Default — Waveform` used to claim. Kept per scenario so moving
    * between experiments returns each to the way its reader left it.
    */
-  const [studioMode, setStudioMode] = useState<
-    'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
-  >('scenario');
-  const scenarioViewRef = useRef<Map<string, 'scenario' | 'bench' | 'replay'>>(new Map());
-  useEffect(() => {
-    if (!activeScenarioId) return;
-    const remembered = scenarioViewRef.current.get(activeScenarioId);
-    setStudioMode(remembered ?? 'scenario');
-  }, [activeScenarioId]);
-  useEffect(() => {
-    if (!activeScenarioId) return;
-    if (studioMode === 'scenario' || studioMode === 'bench' || studioMode === 'replay') {
-      scenarioViewRef.current.set(activeScenarioId, studioMode);
-    }
-  }, [activeScenarioId, studioMode]);
   /**
    * Which representation of this experiment fills the primary working area.
    *
@@ -670,26 +675,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
    * trace is the third representation and is the same `replay` view the rest of this
    * surface already names, so there is exactly one place that decides.
    */
-  const [authoredRepresentation, setAuthoredRepresentation] = useState<'timeline' | 'table' | null>(null);
-  const representationRef = useRef<Map<string, 'timeline' | 'table' | null>>(new Map());
-  useEffect(() => {
-    if (!activeScenarioId) return;
-    setAuthoredRepresentation(representationRef.current.get(activeScenarioId) ?? null);
-  }, [activeScenarioId]);
-  useEffect(() => {
-    if (!activeScenarioId) return;
-    representationRef.current.set(activeScenarioId, authoredRepresentation);
-  }, [activeScenarioId, authoredRepresentation]);
   const showRecordedView = useCallback(() => {
     setStudioMode('replay');
-  }, []);
+  }, [setStudioMode]);
   const showAuthoredRepresentation = useCallback((next: 'timeline' | 'table') => {
     setAuthoredRepresentation(next);
     setStudioMode((current) => (current === 'scenario' ? current : 'scenario'));
-  }, []);
+  }, [setAuthoredRepresentation, setStudioMode]);
   const toggleLiveIo = useCallback(() => {
     setStudioMode((current) => (current === 'bench' ? 'scenario' : 'bench'));
-  }, []);
+  }, [setStudioMode]);
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -738,8 +733,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   /** Move a lane one step up or down in the display order (persisted with the session). */
   const moveLane = useCallback((signal: string, direction: -1 | 1) => moveLaneRef.current(signal, direction), []);
   const [hiddenSignals, setHiddenSignals] = useState<string[]>([]);
-  const [cursorA, setCursorA] = useState<number | null>(null);
-  const [cursorB, setCursorB] = useState<number | null>(null);
   const [previewingVectorId, setPreviewingVectorId] = useState<string | null>(null);
   const [isStepMode, setIsStepMode] = useState(false);
   // Playback: the browser run completes at once; playing it back tick by tick is
@@ -802,12 +795,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       const raw = sessionStorage.getItem(VERIFY_UI_STORAGE_KEY);
       if (!raw) return;
       const s = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof s.selectedTick === 'number') {
-        restoredTickRef.current = s.selectedTick;
-        setSelectedTick(s.selectedTick);
-      }
-      if (s.cursorA === null || typeof s.cursorA === 'number') setCursorA(s.cursorA as number | null);
-      if (s.cursorB === null || typeof s.cursorB === 'number') setCursorB(s.cursorB as number | null);
       if (typeof s.drawerOpen === 'boolean') setDrawerOpen(s.drawerOpen);
       if (typeof s.tickWidth === 'number') {
         setTickWidth(clampTickWidth(s.tickWidth));
@@ -836,9 +823,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       sessionStorage.setItem(
         VERIFY_UI_STORAGE_KEY,
         JSON.stringify({
-          selectedTick,
-          cursorA,
-          cursorB,
           drawerOpen,
           tickWidth,
           waveformDensity,
@@ -851,7 +835,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         })
       );
     } catch { /* silent — storage quota or unavailable */ }
-  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals, waveformRadix, expandedBuses, showExpectedOverlay]);
+  }, [drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals, waveformRadix, expandedBuses, showExpectedOverlay]);
+
+  useEffect(() => {
+    // Changing the experiment never carries playback or a pending authoring interaction with it.
+    setIsPlaying(false);
+    autoTickRef.current = null;
+    setSelectedFailureKey(null);
+    setSelectedVectorId(null);
+    setPreviewingVectorId(null);
+    setCreateCheckDialogOpen(false);
+    restoredTickRef.current = selectedTick;
+    // The restored tick is read only on scope change; cursor motion is not a reset operation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewScopeKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -929,7 +926,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         inputFields,
         outputFields,
         mappedSignals,
-        circuitNodes: circuitGraph?.nodes,
+        circuitNodes: lastRun?.circuitSnapshot?.nodes ?? circuitGraph?.nodes,
       }),
     [circuitGraph?.nodes, inputFields, lastRun, mappedSignals, outputFields]
   );
@@ -970,6 +967,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (!lastRun) return undefined;
     return {
       ...lastRun,
+      // A presentation-only projection of the immutable recording. Circuit, Why,
+      // and waveform use this same unambiguous signal identity bridge.
+      waveform: lastRun.waveform.map((sample) => {
+        const signals: typeof sample.signals = {};
+        for (const [rawSignal, value] of Object.entries(sample.signals)) {
+          const signal = canonicalWaveformSignalByRawKey.get(normalizeFieldId(rawSignal)) ?? rawSignal;
+          if (!(signal in signals) || normalizeFieldId(rawSignal) === normalizeFieldId(signal)) signals[signal] = value;
+        }
+        return { ...sample, signals };
+      }),
       report: {
         ...lastRun.report,
         rows: runRows,
@@ -981,7 +988,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           }
         : undefined,
     };
-  }, [canonicalEvidenceFailures, lastRun, runRows]);
+  }, [canonicalEvidenceFailures, canonicalWaveformSignalByRawKey, lastRun, runRows]);
   useEffect(() => {
     if (!lastRun) return;
     if (getRuntimeVerifyRunKind(lastRun) === 'verify') {
@@ -1046,7 +1053,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       });
     }, Math.round(650 / playSpeed));
     return () => window.clearInterval(interval);
-  }, [isPlaying, lastRun, playLoop, playSpeed, playStopAtFailure, playbackTicks]);
+  }, [isPlaying, lastRun, playLoop, playSpeed, playStopAtFailure, playbackTicks, setSelectedTick]);
   const togglePlayback = useCallback(() => {
     if (isPlaying) {
       setIsPlaying(false);
@@ -1057,14 +1064,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const index = selectedTick == null ? -1 : playbackTicks.indexOf(selectedTick);
     if (index < 0 || index >= playbackTicks.length - 1) setSelectedTick(playbackTicks[0]);
     setIsPlaying(true);
-  }, [isPlaying, playbackTicks, selectedTick]);
+  }, [isPlaying, playbackTicks, selectedTick, setSelectedTick]);
   // Any manual navigation ends playback: the user has taken the cursor.
   const stopPlayback = useCallback(() => setIsPlaying(false), []);
   const selectTickManually = useCallback((tick: number) => {
     setIsPlaying(false);
     autoTickRef.current = null;
     setSelectedTick(tick);
-  }, []);
+  }, [setSelectedTick]);
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     const waveformSource = lastRun?.waveform ?? [];
@@ -1597,7 +1604,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setSelectedVectorId(target.vectorId ?? null);
     // Open the lower details tray so the authored row is visible without using a shell rail.
     setDrawerOpen(true);
-  }, [handleSignalSelect]);
+  }, [handleSignalSelect, setSelectedTick]);
   const reviewFailureInVerify = useCallback(
     (target: VerifyFailureTarget | VerifyRow | null) => {
       if (!target) return;
@@ -1656,7 +1663,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         failuresAtTick[0];
       applyFailureSelection(nextFailure);
     },
-    [applyFailureSelection, failuresByTick, handleSignalSelect]
+    [applyFailureSelection, failuresByTick, handleSignalSelect, setSelectedTick]
   );
   const selectedTickRows = useMemo(() => {
     if (selectedTick === null) return [];
@@ -1705,7 +1712,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   useEffect(() => {
     if (allWaveformTicks.length === 0) {
-      setSelectedTick(null);
+      // An authored case is a valid selection before there is a recording to inspect.
+      setSelectedTick((previous) => previous !== null && authoredVectors.some((vector) => vector.tick === previous)
+        ? previous : null);
       return;
     }
 
@@ -1716,22 +1725,26 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setSelectedTick((previous) =>
       previous !== null && allWaveformTicks.includes(previous) ? previous : preferredTick
     );
-  }, [allWaveformTicks, lastRun?.firstFailingTick]);
+  }, [allWaveformTicks, authoredVectors, lastRun?.firstFailingTick, setSelectedTick]);
 
   const allWaveformTicksRef = useRef(allWaveformTicks);
   allWaveformTicksRef.current = allWaveformTicks;
+  const tickOverrideScopeRef = useRef(viewScopeKey);
   useEffect(() => {
+    const scopeChanged = tickOverrideScopeRef.current !== viewScopeKey;
+    tickOverrideScopeRef.current = viewScopeKey;
+    if (scopeChanged) return;
     if (selectedTickOverride === null) return;
     const ticks = allWaveformTicksRef.current;
     if (ticks.length > 0 && !ticks.includes(selectedTickOverride)) return;
     setSelectedTick((previous) => (previous === selectedTickOverride ? previous : selectedTickOverride));
     // Applied once per override value; the tick domain is read through the ref so a
     // rebuilt timeline array (windowing) does not re-apply a tick the user moved off.
-  }, [selectedTickOverride]);
+  }, [selectedTickOverride, viewScopeKey, setSelectedTick]);
 
   useEffect(() => {
     onSelectedTickChange?.(selectedTick);
-  }, [onSelectedTickChange, selectedTick]);
+  }, [onSelectedTickChange, selectedTick, viewScopeKey]);
 
   useEffect(() => {
     if (allWaveformTicks.length === 0) {
@@ -1752,9 +1765,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       return allWaveformTicks[allWaveformTicks.length - 1] ?? allWaveformTicks[0];
     });
-  }, [allWaveformTicks, firstFailTickFromRows, selectedTick]);
+  }, [allWaveformTicks, firstFailTickFromRows, selectedTick, setCursorA, setCursorB]);
 
   useEffect(() => {
+    // A recorded signal remains the selected object when its waveform lane is hidden or
+    // outside the current lane filter. Circuit investigation can select that exact history.
+    if (selectedSignal && signalTimeline.some((entry) => entry.signal === selectedSignal)) return;
     if (displaySignalTimeline.length === 0) {
       if (selectedSignal !== null) {
         handleSignalSelect(null);
@@ -1797,7 +1813,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (nextSignal !== selectedSignal) {
       handleSignalSelect(nextSignal);
     }
-  }, [displaySignalTimeline, failingRows, handleSignalSelect, inputFields, outputFields, selectedSignal]);
+  }, [displaySignalTimeline, failingRows, handleSignalSelect, inputFields, outputFields, selectedSignal, signalTimeline]);
 
   useEffect(() => {
     if (failingRows.length === 0) {
@@ -2457,6 +2473,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     studioMode === 'replay'
       ? 'waveform'
       : (authoredRepresentation ?? (isSequentialRun ? 'timeline' : 'table'));
+  const [inspectCircuit, setInspectCircuit] = useState(false);
+  const [investigationFocus, setInvestigationFocus] = useState<'both' | 'circuit' | 'timeline'>('both');
+  const openCircuitInvestigation = () => {
+    setInspectCircuit(true);
+    setInvestigationFocus('both');
+    showRecordedView();
+    if (selectedTick === null) setSelectedTick(lastRun?.firstFailingTick ?? lastRun?.waveform[0]?.tick ?? null);
+    if (selectedSignal === null) setSelectedSignal(outputFields[0]?.label ?? null);
+  };
   /**
    * The representation switch. It is rendered inside whichever region is currently the
    * primary one, never twice, because there is only ever one primary region: the stimulus
@@ -2510,6 +2535,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           no recorded run yet
         </span>
       ) : null}
+      {lastRun && <button type="button" className="rb-sim-representation__choice" aria-pressed={inspectCircuit}
+        onClick={inspectCircuit ? () => setInspectCircuit(false) : openCircuitInvestigation}
+        data-testid="ide-verify-inspect-circuit">{inspectCircuit ? 'Close circuit' : 'Inspect with circuit'}</button>}
+      {lastRun && onSelectRecordedRun && runArchive.filter((run) => run.scenarioId === activeScenarioId).length > 1 &&
+        <label className="rb-recorded-run-choice">Recording <select aria-label="Recorded run" value={getRuntimeVerifyRunId(lastRun)}
+          onChange={(event) => { onSelectRecordedRun(event.target.value); showRecordedView(); }}>
+          {runArchive.filter((run) => run.scenarioId === activeScenarioId).map((run, index) => <option key={getRuntimeVerifyRunId(run)} value={getRuntimeVerifyRunId(run)}>
+            {index + 1} · {run.assertionStatus === 'not-configured' ? 'Observed' : run.status === 'fail' ? 'Checks failed' : 'Checks passed'} · {run.reportHash.slice(0, 8)}
+          </option>)}
+        </select></label>}
+      {inspectCircuit && <div role="group" aria-label="Investigation focus" className="rb-investigation-focus">
+        {(['both', 'timeline', 'circuit'] as const).map((focus) => <button key={focus} type="button"
+          className="rb-sim-representation__choice" aria-pressed={investigationFocus === focus}
+          onClick={() => setInvestigationFocus(focus)}>{focus === 'both' ? 'Together' : focus === 'circuit' ? 'Circuit focus' : 'Timeline focus'}</button>)}
+      </div>}
     </div>
   );
   const signalRoleLookup = useMemo(
@@ -2785,25 +2825,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (traceInputs && traceInputs.length > 0) {
       return traceInputs;
     }
-    const vector =
-      selectedFailureCase.vectorId
-        ? authoredVectors.find((entry) => entry.id === selectedFailureCase.vectorId)
-        : authoredVectors.find((entry) => entry.tick === selectedFailureCase.tick);
     const fallbackInputOrder =
       orderedTraceInputs.length > 0
         ? orderedTraceInputs
         : inputFields.map((field) => ({ key: normalizeFieldId(field.id), label: field.label }));
     const snapshot: Array<{ label: string; value: string }> = [];
-    if (vector) {
-      for (const field of fallbackInputOrder) {
-        snapshot.push({
-          label: field.label,
-          value: String(vector.inputs[field.key] ?? vector.inputs[normalizeFieldId(field.label)] ?? '-'),
-        });
-      }
-      return snapshot;
-    }
-
+    // Missing historical input snapshots stay missing. The current authored draft may have
+    // been edited since this run and cannot supply its recorded failure context.
     const waveformSample = lastRun?.waveform.find((sample) => sample.tick === selectedFailureCase.tick);
     if (!waveformSample) return null;
     for (const field of fallbackInputOrder) {
@@ -2815,7 +2843,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return snapshot;
   }, [
-    authoredVectors,
     inputFields,
     lastRun?.report.inputsByVectorId,
     lastRun?.waveform,
@@ -3409,44 +3436,78 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   // ─── Why inspector: signal explanation ───────────────────────────────────
   const normalizedCircuitGraph = useMemo<ExplainerCircuitGraph | undefined>(() => {
-    if (!circuitGraph) return undefined;
+    const matchingCircuit = lastRun?.circuitSnapshot ?? (
+      inspectionCircuit && lastRun?.evidence?.circuitHash === buildVerifyCircuitEvidenceHash(inspectionCircuit)
+        ? inspectionCircuit : undefined
+    );
+    if (!matchingCircuit) return undefined;
     return {
-      nodes: circuitGraph.nodes,
-      connections: circuitGraph.connections.map((conn) => {
-        const fromObj = typeof conn.from === 'string'
-          ? { nodeId: conn.from, portName: conn.fromPin ?? conn.fromPort ?? 'out' }
-          : { nodeId: conn.from.nodeId, portName: conn.from.portName ?? conn.from.port ?? conn.fromPin ?? conn.fromPort ?? 'out' };
-        const toObj = typeof conn.to === 'string'
-          ? { nodeId: conn.to, portName: conn.toPin ?? conn.toPort ?? 'in' }
-          : { nodeId: conn.to.nodeId, portName: conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in' };
-        return { from: fromObj, to: toObj };
+      nodes: matchingCircuit.nodes,
+      connections: matchingCircuit.connections.map((conn) => {
+        const { from, to } = connectionEndpoints(conn);
+        return { from: { nodeId: from.nodeId, portName: from.port }, to: { nodeId: to.nodeId, portName: to.port } };
       }),
     };
-  }, [circuitGraph]);
+  }, [inspectionCircuit, lastRun]);
+
+  const recordedCircuit = useMemo(() => lastRun?.circuitSnapshot ?? (
+    inspectionCircuit && lastRun?.evidence?.circuitHash === buildVerifyCircuitEvidenceHash(inspectionCircuit)
+      ? inspectionCircuit : null
+  ), [inspectionCircuit, lastRun]);
+  const recordedGeometry = useMemo(() => buildRecordedCircuitGeometry(recordedCircuit?.nodes ?? []), [recordedCircuit]);
+  const resolveRecordedPortSignal = useCallback((nodeId: string, port: string): string | null => {
+    const keys = new Set(surfaceLastRun?.waveform.flatMap((sample) => Object.keys(sample.signals)) ?? []);
+    const canonicalPort = (id: string, name: string) => {
+      const geometry = recordedGeometry.get(id)?.geometry;
+      return geometry ? findPin(geometry, name)?.id ?? name : name;
+    };
+    const lookup = (id: string, name: string) => {
+      for (const endpoint of [`${id}.${canonicalPort(id, name)}`, `${id}.${name}`]) {
+        const canonical = canonicalWaveformSignalByRawKey.get(normalizeFieldId(normalizeSignalKey(endpoint)));
+        if (canonical && keys.has(canonical)) return canonical;
+        if (keys.has(endpoint)) return endpoint;
+      }
+      return null;
+    };
+    const own = lookup(nodeId, port);
+    if (own) return own;
+    const incoming = recordedCircuit?.connections.map(connectionEndpoints).filter((connection) => connection.to.nodeId === nodeId && canonicalPort(nodeId, connection.to.port) === canonicalPort(nodeId, port)) ?? [];
+    if (incoming.length === 1) {
+      return lookup(incoming[0].from.nodeId, incoming[0].from.port);
+    }
+    return null;
+  }, [surfaceLastRun, recordedCircuit, recordedGeometry, canonicalWaveformSignalByRawKey]);
 
   const explainerSignalMappings = useMemo<ExplainerSignalMapping[]>(() => {
-    return (mappedSignals ?? []).map((sig) => ({
-      signalName: sig.label ?? sig.id,
-      nodeId: sig.nodeId ?? sig.id,
-      direction: sig.direction,
-      pin: sig.pin,
+    const mappings: ExplainerSignalMapping[] = (lastRun?.evidence?.ioRows ?? []).map((sig) => ({
+      signalName: canonicalWaveformSignalByRawKey.get(normalizeFieldId(sig.id)) ?? sig.label ?? sig.id,
+      nodeId: sig.nodeId ?? sig.id, direction: sig.direction,
     }));
-  }, [mappedSignals]);
+    for (const [id, entry] of recordedGeometry) {
+      for (const pin of entry.geometry.pins.filter((pin) => pin.direction === 'out')) {
+        const signalName = resolveRecordedPortSignal(id, pin.id);
+        if (signalName && !mappings.some((mapping) => mapping.signalName === signalName)) {
+          mappings.push({ signalName, nodeId: id, port: pin.id, direction: 'out' });
+        }
+      }
+    }
+    return mappings;
+  }, [lastRun, recordedGeometry, resolveRecordedPortSignal, canonicalWaveformSignalByRawKey]);
 
   const signalExplanation = useMemo(() => {
     if (selectedSignal === null || selectedTick === null || !lastRun) return null;
-    const signalRoles = lastRun.report.signalRoles ?? {};
+    const signalRoles = Object.fromEntries(Object.entries(lastRun.report.signalRoles ?? {}).map(([name, role]) => [canonicalWaveformSignalByRawKey.get(normalizeFieldId(name)) ?? name, role]));
     return explainSignal({
       selectedSignal,
       tick: selectedTick,
-      waveform: lastRun.waveform,
+      waveform: surfaceLastRun?.waveform ?? [],
       signalRoles,
       signalMappings: explainerSignalMappings,
       circuitGraph: normalizedCircuitGraph,
       circuitKind: lastRun.meta?.circuitKind,
-      clockSignalName: lastRun.meta?.clockSignalName,
+      clockSignalName: canonicalWaveformSignalByRawKey.get(normalizeFieldId(lastRun.meta?.clockSignalName ?? '')) ?? lastRun.meta?.clockSignalName,
     });
-  }, [selectedSignal, selectedTick, lastRun, explainerSignalMappings, normalizedCircuitGraph]);
+  }, [selectedSignal, selectedTick, lastRun, surfaceLastRun, canonicalWaveformSignalByRawKey, explainerSignalMappings, normalizedCircuitGraph]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -5401,6 +5462,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     for (const row of caseLabReportRows) {
       rowByTickSignal.set(`${row.tick}::${normalizeSignalId(row.signal)}`, row);
     }
+    // An observation has waveform samples without assertion report rows. Read the
+    // same recorded, canonical signal projection used by the waveform and circuit.
+    const sampleByTick = new Map((surfaceLastRun?.waveform ?? []).map((sample) => [sample.tick, sample.signals]));
+    const recordedIoByField = new Map((lastRun?.evidence?.ioRows ?? mappedSignals ?? [])
+      .map((row) => [normalizeFieldId(row.id), row]));
     const fieldSignalKey = new Map<string, string | null>();
     for (const field of outputFields) {
       const resolved = caseLabSignalResolver.resolve(field.id);
@@ -5413,9 +5479,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       for (const field of outputFields) {
         const signalKey = fieldSignalKey.get(field.id);
         const match = signalKey ? rowByTickSignal.get(`${vector.tick}::${signalKey}`) : undefined;
-        if (match?.actual != null && match.actual !== '-') obs[field.id] = match.actual;
+        const recordedIo = recordedIoByField.get(normalizeFieldId(field.id));
+        // A field id such as q0 can also name an internal register. Its recorded
+        // boundary node resolves that ambiguity without borrowing the internal value.
+        const waveformSignal = [field.id, recordedIo?.nodeId ? `${recordedIo.nodeId}.in` : '', recordedIo?.nodeId ? `${recordedIo.nodeId}.out` : '']
+          .map((alias) => canonicalWaveformSignalByRawKey.get(normalizeFieldId(alias)))
+          .find((signal) => signal !== undefined);
+        const actual = match?.actual ?? (waveformSignal ? sampleByTick.get(vector.tick)?.[waveformSignal] : undefined);
+        if (actual != null && actual !== '-') obs[field.id] = actual;
         const authored = (vector.expected ?? {})[field.id];
-        if (match && authored != null) {
+        if (sessionShowsCompareEvidence && match && authored != null) {
           anyChecked = true;
           if (match.status === 'fail') anyFail = true;
         }
@@ -5429,7 +5502,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       else verdict[vector.tick] = 'not-run';
     }
     return { observed, verdict };
-  }, [authoredVectors, caseLabReportRows, caseLabSignalResolver, lastRun, outputFields, testbenchEvidenceIsStale]);
+  }, [authoredVectors, canonicalWaveformSignalByRawKey, caseLabReportRows, caseLabSignalResolver, lastRun, mappedSignals, outputFields, sessionShowsCompareEvidence, surfaceLastRun, testbenchEvidenceIsStale]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
@@ -6484,7 +6557,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           className="rb-sim-lab-frame"
           data-testid="ide-verify-lab-frame"
           data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
+          data-investigation-open={inspectCircuit && lastRun ? 'true' : undefined}
         >
+        {inspectCircuit && lastRun ? representationSwitch : null}
         <div
           ref={labGridRef}
           className="rb-sim-lab-grid"
@@ -6494,6 +6569,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
           data-representation={representation}
+          data-investigation={inspectCircuit && lastRun ? investigationFocus : undefined}
         >
         {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
         {studioMode !== 'replay' ? (
@@ -6661,7 +6737,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
+        {inspectCircuit || studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
         {studioMode === 'bench' ? (
           <ManualBench
             onOpenVirtualBoard={onGoToHardware}
@@ -6694,7 +6770,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         ) : (
           <CaseLab
-            runHistory={runHistory}
+            runHistory={getRuntimeVerifyRunKind(lastRun) === 'trace' ? [] : runHistory?.filter((run) => run.runKind !== 'trace')}
             caseOrder={isSequentialRun ? 'time' : 'combination'}
             inputFields={stimulusPanelInputFields}
             outputFields={outputFields}
@@ -6919,8 +6995,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   }
                   return list;
                 })()}
-                primaryActionLabel={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? 'Inspect with circuit' : undefined}
-                onPrimaryAction={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? handleGoToDesignFromVerify : undefined}
+                primaryActionLabel={lastRun ? 'Inspect with circuit' : undefined}
+                onPrimaryAction={lastRun ? openCircuitInvestigation : undefined}
                 primaryActionTestId="ide-verify-open-circuit-replay"
                 details={(
                   <div className="rb-wave-results-provenance" data-testid="ide-verify-run-provenance">
@@ -6940,7 +7016,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </section>
             ) : null}
             <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
-              {studioMode === 'replay' ? representationSwitch : null}
+              {studioMode === 'replay' && !inspectCircuit ? representationSwitch : null}
               {/* The trace toolbar: case stepping, tick range, radix, the expected overlay, the
                   scrubber and playback. Every one of them describes a drawn trace, so they belong
                   to the representation that draws one. */}
@@ -7419,7 +7495,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   >
                     {selectedSignalIsProbed ? 'Unwatch' : 'Watch'}
                   </button>
-                  {lastRun ? (
+                  {lastRun && !inspectCircuit ? (
                     <button
                       type="button"
                       className={`wb-btn wb-btn--ghost rb-wave-drawer-toggle${drawerOpen ? ' is-open' : ''}`}
@@ -7663,7 +7739,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ) : null}
             />
 
-            {Boolean(lastRun) && drawerOpen && <div className="ide-verify-supporting-strip is-open" data-zone="inspector" data-testid="ide-verify-region-inspector">
+            {/* Connected investigation owns this signal's explanation. Preserve the ordinary
+                inspector preference while its duplicate pane is suspended. */}
+            {Boolean(lastRun) && drawerOpen && !inspectCircuit && <div className="ide-verify-supporting-strip is-open" data-zone="inspector" data-testid="ide-verify-region-inspector">
             <div className="ide-verify-drawer-body">
             <nav className="ide-verify-analysis-tab-nav" data-testid="ide-verify-analysis-tab-nav">
               <div className="ide-verify-drawer-toolbar" data-testid="ide-verify-tab-bar">
@@ -8186,7 +8264,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>}
           </div>}
         </VerifyWaveformRegion>
-        <aside className="rb-sim-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
+        {inspectCircuit && lastRun ? <RecordedCircuitInspector
+          circuit={recordedCircuit} run={surfaceLastRun ?? lastRun} tick={selectedTick} signal={selectedSignal}
+          explanation={signalExplanation} resolveSignal={resolveRecordedPortSignal}
+          onSelectSignal={(signal) => { setSelectedSignal(signal); onSignalSelected?.(signal); }}
+          onClose={() => setInspectCircuit(false)} onEdit={onGoToDesign}
+        /> : <aside className="rb-sim-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
           {studioMode === 'testbench' ? (
             <>
               <header><span>Source inspector</span><strong>testbench.vhd</strong></header>
@@ -8216,7 +8299,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 {/* With no checks on this event there is no check state to report, and reporting
                     "No failure" about an event nothing was asserted on reads as a pass. */}
                 {selectedEventCheckCount > 0 ? (
-                  <div><dt>Check state</dt><dd>{failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : lastRun ? 'Passing at this event' : 'Not evaluated'}</dd></div>
+                  <div><dt>Check state</dt><dd>{!sessionShowsCompareEvidence ? 'Not evaluated' : failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : 'Passing at this event'}</dd></div>
                 ) : null}
                 <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
               </dl>
@@ -8243,7 +8326,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ) : null}
             </>
           )}
-        </aside>
+        </aside>}
         </div>
         </div>
         </VerifyWorkspaceRegion>
@@ -8624,13 +8707,13 @@ export function buildWaveformSignalAliasOwners(input: {
     );
   }
 
-  for (const field of [...input.inputFields, ...input.outputFields]) {
+  for (const field of evidenceRows.length > 0 ? [] : [...input.inputFields, ...input.outputFields]) {
     const canonical =
       resolveCanonical(field.id, field.label) ??
       preferredBoundaryName(field.id, field.label);
     registerAliases(canonical, field.id, field.label);
   }
-  for (const signal of input.mappedSignals ?? []) {
+  for (const signal of evidenceRows.length > 0 ? [] : input.mappedSignals ?? []) {
     const canonical =
       resolveCanonical(signal.id, signal.label) ??
       preferredBoundaryName(signal.id, signal.label);
@@ -8649,17 +8732,28 @@ export function buildWaveformSignalAliasOwners(input: {
   }
 
   const boundaryNodeTypes = new Set(['input', 'output', 'switch', 'lamp', 'clock']);
+  const internalLabelCounts = new Map<string, number>();
+  for (const node of input.circuitNodes ?? []) {
+    if (boundaryNodeTypes.has(node.type.trim().toLowerCase()) || !node.label?.trim()) continue;
+    const label = normalizeFieldId(node.label.trim());
+    internalLabelCounts.set(label, (internalLabelCounts.get(label) ?? 0) + 1);
+  }
   for (const node of input.circuitNodes ?? []) {
     const nodeType = node.type.trim().toLowerCase();
     const logicalLabel = node.label?.trim();
     if (!logicalLabel || boundaryNodeTypes.has(nodeType)) continue;
+    const canonicalName = internalLabelCounts.get(normalizeFieldId(logicalLabel)) === 1 ? logicalLabel : node.id;
     registerAliases(
-      logicalLabel,
+      canonicalName,
       node.id,
       `${node.id}.out`,
       `${node.id}_out`,
       `${node.id}:out`
     );
+    for (const [index, pin] of (getDesignChipMetadata(node.type)?.outputs ?? []).entries()) {
+      registerAliases(index === 0 ? canonicalName : `${node.id}.${pin.id}`,
+        `${node.id}.${pin.id}`, `${node.id}_${pin.id}`, `${node.id}:${pin.id}`);
+    }
   }
 
   for (const entry of input.lastRun?.evidence?.normalizationMap ?? []) {

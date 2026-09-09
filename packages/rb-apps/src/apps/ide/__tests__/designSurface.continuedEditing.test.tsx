@@ -272,6 +272,18 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
 
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
   });
+
+  it('selects the incoming failed signal once, then allows the reader to follow another node', async () => {
+    useLogicViewStore.getState().selectMultipleNodes(['sw0_node'], false);
+    renderSurface({
+      externalDebugTick: 3,
+      externalDebugContext: makeDebugContext(3),
+      externalDebugSignals: new Map([['ld0_node.in', 0]]),
+    });
+    await waitFor(() => expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['ld0_node']));
+    act(() => useLogicViewStore.getState().selectMultipleNodes(['sw0_node'], false));
+    expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['sw0_node']);
+  });
 });
 
 // ── Slice 3: Inspector continuity ────────────────────────────────────────────
@@ -394,8 +406,13 @@ describe('DesignSurface editing power (Slice 2)', () => {
 
     fireEvent.dblClick(view.getByTestId('node-OUTPUT-ld0_node'));
 
+    const input = await view.findByTestId('ide-design-canvas-rename-input');
+    fireEvent.change(input, { target: { value: 'STATUS_LED' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-label-input')).toBeTruthy();
+      expect(useCircuitStore.getState().circuit.nodes.find((node) => node.id === 'ld0_node')?.label).toBe('STATUS_LED');
+      expect(view.queryByTestId('ide-design-canvas-rename-input')).toBeNull();
     });
   });
 

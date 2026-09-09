@@ -3,6 +3,7 @@
 
 import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '@redbyte/rb-theme';
+import { findVerifyRunLedgerEntry } from './ide/runArchive';
 import { analyzeSequentialLogic, type Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import {
@@ -368,6 +369,7 @@ export const IdeApp: React.FC = () => {
   const activeScenarioIdRef = useRef('');
   const verifyLastRunRef = useRef<RuntimeVerifyRun | undefined>(undefined);
   const verifyRunHistoryRef = useRef<VerifyRunLedgerEntry[]>([]);
+  const verifyRunArchiveRef = useRef<RuntimeVerifyRun[]>([]);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   // Pending project-format migration awaiting the user's choice (Chapter G).
   const [pendingMigration, setPendingMigration] = useState<
@@ -460,6 +462,8 @@ export const IdeApp: React.FC = () => {
   const setActiveConstraintSetInStore = useProjectRuntime((state) => state.setActiveConstraintSet);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
+  const verifyRunArchive = useProjectRuntime((state) => state.verifyRunArchive);
+  const selectRecordedRun = useProjectRuntime((state) => state.selectRecordedRun);
   const runtimeSim = useProjectRuntime((state) => state.sim);
   const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
   const exportHistory = useProjectRuntime((state) => state.exportHistory);
@@ -1498,6 +1502,7 @@ export const IdeApp: React.FC = () => {
   activeScenarioIdRef.current = activeScenarioId;
   verifyLastRunRef.current = verifyLastRun;
   verifyRunHistoryRef.current = verifyRunHistory;
+  verifyRunArchiveRef.current = verifyRunArchive;
   sessionMetaRef.current = {
     version: 1,
     savedAt: Date.now(),
@@ -1575,7 +1580,7 @@ export const IdeApp: React.FC = () => {
       // Store the evidence with the project. Without it, reopening the project restores the
       // design and the checks but not the run that proved them, so the student is told to
       // re-run work they already did.
-      runEvidence: { lastRun: verifyLastRunRef.current, history: verifyRunHistoryRef.current },
+      runEvidence: { lastRun: verifyLastRunRef.current, history: verifyRunHistoryRef.current, archive: verifyRunArchiveRef.current },
     });
     if (!result.ok) {
       setLastSavedAt(`Save failed: ${result.error.message}`);
@@ -1620,7 +1625,7 @@ export const IdeApp: React.FC = () => {
         project: renamedProject,
         scenarios,
         activeScenarioId,
-        runEvidence: { lastRun: verifyLastRunRef.current, history: verifyRunHistoryRef.current },
+        runEvidence: { lastRun: verifyLastRunRef.current, history: verifyRunHistoryRef.current, archive: verifyRunArchiveRef.current },
       });
 
       if (saved.ok) {
@@ -1693,6 +1698,7 @@ export const IdeApp: React.FC = () => {
           ? { ...verifyLastRunRef.current, projectId: nextProjectId }
           : undefined,
         history: verifyRunHistoryRef.current.map((entry) => ({ ...entry, projectId: nextProjectId })),
+        archive: verifyRunArchiveRef.current.map((entry) => ({ ...entry, projectId: nextProjectId })),
       },
     });
     if (!saved.ok) {
@@ -1742,6 +1748,7 @@ export const IdeApp: React.FC = () => {
           ? { ...verifyLastRunRef.current, projectId: duplicateId }
           : undefined,
         history: verifyRunHistoryRef.current.map((entry) => ({ ...entry, projectId: duplicateId })),
+        archive: verifyRunArchiveRef.current.map((entry) => ({ ...entry, projectId: duplicateId })),
       },
     });
     if (!result.ok) {
@@ -2002,6 +2009,8 @@ export const IdeApp: React.FC = () => {
       hydratedRuntime.projectId === meta.projectId
         ? structuredClone(hydratedRuntime.verifyRunHistory)
         : [];
+    const reloadRunArchive = hydratedRuntime.projectId === meta.projectId
+      ? structuredClone(hydratedRuntime.verifyRunArchive) : [];
     const reloadLastVerify =
       hydratedRuntime.projectId === meta.projectId
         ? structuredClone(hydratedRuntime.projectHealthCore.lastVerify)
@@ -2071,13 +2080,14 @@ export const IdeApp: React.FC = () => {
         hardwareMappingV2,
         scenarios,
         dirtySinceVerify: restored.projectHealthCore.dirtySinceVerify,
-        latestVerifyLedgerEntry: reloadRunHistory[reloadRunHistory.length - 1] ?? null,
+        latestVerifyLedgerEntry: findVerifyRunLedgerEntry(reloadRunHistory, reloadRun) ?? null,
         currentVerifyProjectHash,
       });
       if (scope.kind === 'foreign') {
         useProjectRuntime.setState((state) => ({
           verifyLastRun: undefined,
           verifyRunHistory: [],
+          verifyRunArchive: [],
           projectHealthCore: {
             ...state.projectHealthCore,
             lastVerify: undefined,
@@ -2089,6 +2099,7 @@ export const IdeApp: React.FC = () => {
         useProjectRuntime.setState((state) => ({
           verifyLastRun: reloadRun,
           verifyRunHistory: reloadRunHistory,
+          verifyRunArchive: reloadRunArchive,
           projectHealthCore: {
             ...state.projectHealthCore,
             lastVerify: reloadLastVerify,
@@ -2152,6 +2163,7 @@ export const IdeApp: React.FC = () => {
         runEvidence: {
           lastRun: verifyLastRunRef.current,
           history: verifyRunHistoryRef.current,
+          archive: verifyRunArchiveRef.current,
         },
       });
       if (saved.ok) {
@@ -2846,7 +2858,7 @@ export const IdeApp: React.FC = () => {
         hardwareMappingV2,
         scenarios,
         dirtySinceVerify: projectHealthCore.dirtySinceVerify,
-        latestVerifyLedgerEntry: verifyRunHistory[verifyRunHistory.length - 1] ?? null,
+        latestVerifyLedgerEntry: findVerifyRunLedgerEntry(verifyRunHistory, verifyLastRun) ?? null,
         currentVerifyProjectHash,
       }),
     [
@@ -2967,7 +2979,8 @@ export const IdeApp: React.FC = () => {
     selectionProjectRef.current = projectId;
     clearEngineeringSelection();
     setVerifySelectedTick(null);
-  }, [clearEngineeringSelection, projectId]);
+    setVerifySelectedSignal(null);
+  }, [clearEngineeringSelection, projectId, activeScenario?.id]);
   // A different project is a different set of objects: nothing from the last one stays selected.
   useEffect(() => {
     clearEngineeringSelection();
@@ -3164,6 +3177,7 @@ export const IdeApp: React.FC = () => {
           runEvidence: {
             lastRun: verifyLastRunRef.current,
             history: verifyRunHistoryRef.current,
+            archive: verifyRunArchiveRef.current,
           },
         });
       }
@@ -3418,6 +3432,10 @@ export const IdeApp: React.FC = () => {
               fallback={<IdeSurfaceLoadingFallback mode="verify" />}
             >
             <VerifySurface
+              projectId={projectId}
+              runArchive={verifyRunArchive}
+              onSelectRecordedRun={selectRecordedRun}
+              inspectionCircuit={simulationCircuit}
               circuitGraph={simulationCircuit}
               buses={circuit.buses ?? []}
               deterministicHash={currentVerifyReplayHash}

@@ -18,6 +18,10 @@
 //      200% text "< Fail" and "Fail >" were 48.5px and 78.9px boxes painting 0px, in a bar that
 //      does not wrap inside a pane that clips and does not scroll.
 //   6. The trace keeps a floor. At 200% text the canvas was 35px under a 226px run line.
+//   7. The verdict of the run is not the thing that gets shrunk. At 1280x650 in the trace
+//      representation the headline had 218px for 274px of words and the scenario 73px for
+//      92px, so a passing run read "Compare passed - outputs match e..." over
+//      "Scenario: D...". The actions still never leave the line; the sentence wraps instead.
 import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
 import path from 'node:path';
 
@@ -171,6 +175,7 @@ const browser = await launchChromium();
 // ── ⑤⑥ hostile scales ──────────────────────────────────────────────────────
 for (const [w, h, root] of [
   [1024, 720, null],
+  [1280, 650, null],
   [1440, 900, 32],
   [720, 450, null],
 ]) {
@@ -202,6 +207,25 @@ for (const [w, h, root] of [
       canvas != null && canvas.h >= 120,
       `[${label}] the trace canvas keeps a floor (box height ${canvas?.h ?? 'absent'})`
     );
+
+    // ⑦ the verdict keeps its words. A sentence that ends in "..." is the one thing on this
+    // surface a reader came for, and it is measured where it is smallest: beside the two
+    // actions, which are deliberately allowed to keep the line.
+    for (const id of ['ide-verify-results-summary-headline', 'ide-verify-results-summary-subline']) {
+      const text = await page.evaluate((sel) => {
+        const n = document.querySelector(sel);
+        if (!n) return null;
+        return {
+          text: (n.textContent || '').trim(),
+          clipped: Math.max(0, Math.round(n.scrollWidth - n.clientWidth)),
+        };
+      }, `[data-testid="${id}"]`);
+      if (!text) continue;
+      assert(
+        text.clipped === 0,
+        `[${label}] ${id} is not truncated (${text.clipped}px of "${text.text}" cut off)`
+      );
+    }
   }
 
   await page.screenshot({ path: path.join(OUT, `instrument-${label.replace(/\s+/g, '-')}.png`) });
@@ -214,4 +238,4 @@ if (failures > 0) {
   console.error(`\nFAIL — ${failures} assertion(s) about the Simulate instrument.`);
   process.exit(1);
 }
-console.log('\nPASS — the ruler holds the cursor in every column it draws, the alternate editor leaves the instrument alone, and the trace and the failure navigation survive 1024x720, 200% text and 200% browser zoom.');
+console.log('\nPASS — the ruler holds the cursor in every column it draws, the alternate editor leaves the instrument alone, the verdict keeps its words, and the trace and the failure navigation survive 1024x720, 1280x650, 200% text and 200% browser zoom.');

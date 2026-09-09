@@ -35,7 +35,7 @@
 
 /* Scenario explorer rows. */
 .ide-root .rb-scn { display: flex; flex-direction: column; min-height: 0; }
-.ide-root .rb-scn-header { gap: 6px; }
+.ide-root .rb-scn-header { gap: 6px; flex-wrap: wrap; height: auto; min-height: var(--wb-toolwindow-header-h); }
 .ide-root .rb-scn-new { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); white-space: nowrap; }
 .ide-root .rb-scn-manage { position: relative; }
 .ide-root .rb-scn-manage > summary { list-style: none; cursor: pointer; }
@@ -147,7 +147,11 @@
 .ide-root .ide-case-lab-filter.is-active { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
 .ide-root .ide-case-lab-filter:disabled,
 .ide-root .ide-case-lab-bar .ide-button:disabled { opacity: 0.45; cursor: default; }
-.ide-root .ide-case-lab-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+/* Two header rows plus three case rows must remain usable with Problems expanded.
+   A definite starting size also keeps the table's full content height out of the
+   parent minimum: long case documents scroll here, while the workspace can scroll
+   when its toolbar and this viewport cannot fit together. */
+.ide-root .ide-case-lab-scroll { flex: 1 1 120px; height: 120px; min-height: 120px; overflow: auto; }
 .ide-root .ide-case-lab-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
 .ide-root .ide-case-lab-table th,
 .ide-root .ide-case-lab-table td { height: 24px; padding: 0 8px; text-align: center; border-bottom: 1px solid var(--wb-border); white-space: nowrap; }
@@ -216,7 +220,7 @@
    Case Lab / Timing document out of the panel. */
 .ide-root .rb-sim-region--result { flex: 0 1 auto; min-height: 0; overflow: auto; }
 .ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 1 0; min-height: clamp(182px, 60%, 240px); padding: 0; border: 0; }
-.ide-root .rb-sim-lab-frame { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; background: transparent; }
+.ide-root .rb-sim-lab-frame { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: auto; background: transparent; }
 .ide-root .rb-sim-lab-grid { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; gap: 0; }
 .ide-root .rb-sim-primary { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
@@ -224,7 +228,7 @@
 .ide-root .rb-sig { display: flex; flex-direction: column; min-height: 0; }
 .ide-root .rb-sig-header { gap: 6px; }
 .ide-root .rb-sig-toprow { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-.ide-root .rb-sig-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ide-root .rb-sig-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .ide-root .rb-sig-title h3 { margin: 0; color: var(--wb-text-2); font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-sig-action { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
 .ide-root .rb-sig-focus { margin: 0; padding: 2px var(--wb-space-3) 4px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
@@ -241,8 +245,8 @@
 .ide-root .rb-sig-row {
   flex: 1;
   min-width: 0;
-  height: 24px;
-  padding: 0 var(--wb-space-3) 0 14px;
+  min-height: 1.5rem;
+  padding: 3px var(--wb-space-3) 3px 14px;
   border: 0;
   border-left: 2px solid transparent;
   border-radius: 0;
@@ -298,10 +302,11 @@
 .ide-root .rb-sim-lab-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 296px;
-  grid-template-rows: minmax(0, 1fr) fit-content(34%);
+  grid-template-rows: minmax(min-content, 1fr) fit-content(34%);
   grid-template-areas: 'cases inspector' 'evidence evidence';
   gap: 0;
 }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) { min-height: min-content; }
 
 /* The representation switch: the head of the primary region, naming what is drawn in it. */
 .ide-root .rb-sim-representation {
@@ -326,7 +331,7 @@
 .ide-root .rb-sim-representation__choice.is-active { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-surface); font-weight: 500; }
 .ide-root .rb-sim-representation__choice:disabled { opacity: 0.45; cursor: default; }
 .ide-root .rb-sim-representation__note { margin-left: 2px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
-.ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: min-content; }
 .ide-root .rb-sim-lab-grid > .rb-sim-inspector { grid-area: inspector; min-height: 0; }
 /* The waveform is the evidence the failure focus points at, and it was being laid out past
    the pane that holds it: measured in a settled Compare FAIL at 1440x900, the canvas ran
@@ -346,7 +351,7 @@
   border-top: 1px solid var(--wb-border-strong);
 }
 .ide-root .rb-sim-lab-grid > .rb-sim-region--waveform > * { min-height: 0; }
-.ide-root .rb-sim-region--stimulus > .ide-case-lab { flex: 1 1 auto; min-height: 0; }
+.ide-root .rb-sim-region--stimulus > .ide-case-lab { flex: 1 1 auto; min-height: min-content; }
 /* The generators are one deliberate line, not a bordered panel occupying 50px of the timeline's
    room while closed. An OS-era rule gave it a card's border, radius, margin and padding; a
    closed disclosure that has nothing to show should look like the other closed disclosures. */
@@ -373,7 +378,8 @@
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure[open] > summary::before { content: '\25BE'; }
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary:hover { color: var(--wb-text); }
 .ide-root .rb-sig-header { display: block; height: auto; padding: 0; }
-.ide-root .rb-sig-toprow { height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); }
+.ide-root .rb-sig-header input { min-height: 1.625rem; }
+.ide-root .rb-sig-toprow { min-height: var(--wb-toolwindow-header-h); flex-wrap: wrap; padding: 0 var(--wb-space-3); }
 .ide-root .ide-case-lab-note { display: flex; align-items: center; gap: 8px; flex: none; min-height: 24px; padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); color: var(--wb-text-2); font-size: var(--wb-text-sm); }
 .ide-root .ide-case-lab-note.is-warn { color: var(--wb-warn); }
 .ide-root .ide-case-lab-note-dismiss { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font-size: var(--wb-text-xs); cursor: pointer; }
@@ -610,6 +616,18 @@
 
 /* Lane reorder controls appear on hover or focus; the row itself takes Alt+Up/Down. */
 .ide-root .rb-sig-entry { position: relative; }
+
+/* The investigation frame owns pane composition. Its shared controls stay outside
+   both panes, and a short/text-scaled viewport scrolls this working region. */
+.ide-root .rb-sim-lab-frame[data-investigation-open] { overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); flex: 1 0 22rem; min-height: 22rem; }
+.ide-root .rb-sim-lab-grid[data-investigation='timeline'] { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'evidence'; }
+.ide-root .rb-sim-lab-grid[data-investigation='timeline'] > .rb-recorded-circuit { display: none; }
+.ide-root .rb-sim-lab-grid[data-investigation='circuit'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: 'inspector'; }
+.ide-root .rb-sim-lab-grid[data-investigation='circuit'] > .rb-sim-region { display: none; }
+@media (max-width: 1000px) {
+  .ide-root .rb-sim-lab-grid[data-investigation='both'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(340px, 55vh) minmax(300px, auto); grid-template-areas: 'evidence' 'inspector'; }
+}
 .ide-root .rb-sig-move { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0; opacity: 0; }
 .ide-root .rb-sig-entry:hover .rb-sig-move, .ide-root .rb-sig-entry:focus-within .rb-sig-move { opacity: 1; }
 .ide-root .rb-sig-move .wb-btn { padding: 0 4px; min-width: 0; height: 18px; font-size: var(--rb-text-micro); line-height: 18px; }
@@ -632,11 +650,11 @@
 .ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
 .ide-root .rb-tl-cell.is-generated { cursor: default; }
 
-/* The drawer height belongs to Simulate. Its previous owner in ide-root.css used !important; this rule
-   outranks every generic .ide-verify-drawer-body rule on specificity alone, now that the one competing
-   !important there is gone. (The supporting strip's closed-state cap was dropped with it: the strip is only
-   ever rendered open, so `:not(.is-open)` could never match.) */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { max-height: min(34vh, 320px); }
+/* The ordinary inspector shares the workbench with its waveform. Legacy 320px
+   minimums overruled the drawer's smaller viewport cap and squeezed its own Close
+   action out of the waveform. The strip gets a bounded share and its body scrolls. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open { display: flex; flex: 0 1 34%; min-height: 0; }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { flex: 1 1 auto; min-height: 0; max-height: min(34vh, 320px); overflow: auto; }
 
 /* One failure, one focus. The investigation hint, the starter-vector note and the export
    note are true but secondary; at full width, stacked, they buried the case table under a

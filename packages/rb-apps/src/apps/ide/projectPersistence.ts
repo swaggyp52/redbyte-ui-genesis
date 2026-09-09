@@ -18,6 +18,8 @@ export const IDE_PROJECT_KEY_PREFIX =
 export interface PersistedIdeRunEvidence {
   /** The full last run - report rows and waveform - which is what makes a trace replayable. */
   lastRun?: RuntimeVerifyRun;
+  /** Bounded complete recordings, including earlier failed runs and other scenarios. */
+  archive?: RuntimeVerifyRun[];
   /** The run ledger: summaries, the history behind the trace. */
   history?: VerifyRunLedgerEntry[];
 }

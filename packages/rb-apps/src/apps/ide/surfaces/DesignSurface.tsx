@@ -3965,6 +3965,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => resolveVerifyLinkedSignalKey(activeDebugContext?.signal ?? null, ioRows, liveSignals, runtimeSim.signals),
     [activeDebugContext?.signal, ioRows, liveSignals, runtimeSim.signals]
   );
+  const appliedDebugSelectionRef = useRef<{
+    session: DesignReplaySession | null | undefined;
+    signal: string;
+    tick: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!activeDebugContext || !debugLinkedSignalKey) {
+      appliedDebugSelectionRef.current = null;
+      return;
+    }
+    const previous = appliedDebugSelectionRef.current;
+    if (previous && previous.session === replaySession && previous.signal === debugLinkedSignalKey && previous.tick === activeDebugContext.tick) return;
+    const nodeId = debugLinkedSignalKey.split('.')[0];
+    if (!editorCircuit.nodes.some((node) => node.id === nodeId)) return;
+    appliedDebugSelectionRef.current = { session: replaySession, signal: debugLinkedSignalKey, tick: activeDebugContext.tick };
+    // A Trace handoff selects the failed signal before showing its inspector. Later user
+    // selections follow the driver/load path without this recorded context pulling them back.
+    selectMultipleNodes([nodeId], false);
+    setActiveRightDockTab('inspector');
+  }, [activeDebugContext, debugLinkedSignalKey, editorCircuit.nodes, replaySession, selectMultipleNodes]);
   const selectedSignalKey = runtimeSim.selectedSignalKey ?? debugLinkedSignalKey ?? verifyLinkedSignalKey ?? selectedWireSignalKey;
   useEffect(() => {
     if (!verifyLinkedSignalKey) return;

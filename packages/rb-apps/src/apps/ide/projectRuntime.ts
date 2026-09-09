@@ -17,6 +17,7 @@ import {
   buildVerifyMappingEvidenceHash,
 } from './verifyProjectHash';
 import { restampRunEvidenceProject, scopeRunEvidenceToProject } from './runScope';
+import { appendRecordedRun, findVerifyRunLedgerEntry, getRuntimeVerifyRunId, latestRecordedScenarioRun, MAX_RECORDED_RUNS } from './runArchive';
 import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import {
   createEmptyProjectSourceModel,
@@ -279,10 +280,13 @@ export interface ProjectWorkspaceSnapshot {
   runEvidence?: {
     lastRun?: RuntimeVerifyRun;
     history?: readonly VerifyRunLedgerEntry[];
+    archive?: readonly RuntimeVerifyRun[];
   };
 }
 
 export interface RuntimeVerifyRun {
+  /** Stable identity shared with the summary ledger. Legacy runs derive it from time/report. */
+  runId?: string;
   /** Project that produced this run. Loaders drop runs owned by another project;
    *  legacy runs are stamped by the envelope that carried them (see runScope.ts). */
   projectId?: string;
@@ -315,6 +319,8 @@ export interface RuntimeVerifyRun {
   waveform: VerifyWaveSample[];
   traceWaveform?: VerifyWaveSample[];
   evidence?: VerifyEvidenceCapsule;
+  /** The exact elaborated topology used by this recording. Absent means history unavailable. */
+  circuitSnapshot?: Circuit;
 }
 
 /**
@@ -430,6 +436,8 @@ export interface ProjectRuntimeState {
   designRevision: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  /** Complete recordings, newest last. Workspace-only; portable project format is unchanged. */
+  verifyRunArchive: RuntimeVerifyRun[];
   /** Bounded, newest-last ledger of package generation/download events. */
   exportHistory: ProjectHealthExportResult[];
   sim: RuntimeSimState;
@@ -514,6 +522,7 @@ export interface ProjectRuntimeState {
     toPort: string;
   }) => void;
   runVerification: (input: RunVerificationInput) => RuntimeVerifyRun;
+  selectRecordedRun: (runId: string) => void;
   clearVerification: () => void;
   recordExport: (result: ProjectHealthExportResult) => void;
   setProjectIdentity: (input: {
@@ -613,6 +622,7 @@ interface PersistedRuntimeState {
   designRevision?: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  verifyRunArchive?: RuntimeVerifyRun[];
   exportHistory?: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   importedWaveform?: ProviderWaveform | null;
@@ -988,6 +998,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               history: workspace.runEvidence.history ?? [],
             })
           : { run: undefined, history: [] as VerifyRunLedgerEntry[] };
+        const restoredRunArchive = normalizeRecordedRunArchive(
+          workspace?.runEvidence?.archive, loadedProjectId, restoredRunEvidence.run, true,
+        );
 
         set({
           projectId: loadedProjectId,
@@ -1030,6 +1043,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // evidence was stored - restores empty, exactly as before.
           verifyLastRun: restoredRunEvidence.run,
           verifyRunHistory: restoredRunEvidence.history,
+          verifyRunArchive: restoredRunArchive,
           exportHistory: [],
           sim: initializeSimulationStateForCircuit(
             elaborateProjectHierarchy(circuit, hierarchy),
@@ -1990,6 +2004,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 } satisfies VerifyEvidenceCapsule)
               : undefined;
           runtimeRun = {
+            runId: `run-${report.generatedAtIso}-${report.reportHash.slice(0, 8)}`,
             projectId: state.projectId,
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
@@ -2018,6 +2033,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             report,
             waveform,
             evidence,
+            circuitSnapshot: structuredClone(simulationCircuit),
           };
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
@@ -2064,6 +2080,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             verifyLastRun: runtimeRun,
             verifyRunHistory: nextHistory,
+            verifyRunArchive: appendRecordedRun(
+              normalizeRecordedRunArchive(state.verifyRunArchive, state.projectId, state.verifyLastRun),
+              cloneVerifyRun(runtimeRun),
+            ),
             scenarioAuthority:
               report.status === 'pass' && runKind === 'verify'
                 ? 'verified'
@@ -2154,6 +2174,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       clearVerification: () => {
         set((state) => ({
           verifyLastRun: undefined,
+          verifyRunArchive: state.verifyRunArchive.filter((run) => run.scenarioId !== state.activeScenarioId),
           scenarioAuthority: deriveScenarioAuthority({
             projectKind: state.projectKind,
             activeExampleId: state.activeExampleId,
@@ -2188,6 +2209,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           exportHistory: [...state.exportHistory, result].slice(-20),
         }));
       },
+      selectRecordedRun: (runId) => {
+        set((state) => {
+          const run = state.verifyRunArchive.find((entry) =>
+            getRuntimeVerifyRunId(entry) === runId && entry.scenarioId === state.activeScenarioId,
+          );
+          if (!run) return state;
+          return {
+            verifyLastRun: cloneVerifyRun(run),
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              lastVerify: healthFromRecordedRun(run),
+              dirtySinceVerify: !recordedRunMatchesScenario(state, run, getActiveScenario(state.scenarios, state.activeScenarioId)),
+            },
+          };
+        });
+      },
       setProjectIdentity: (input) => {
         set((state) => {
           const nextProjectId = (input.projectId ?? '').trim();
@@ -2213,7 +2250,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             projectId: resolvedProjectId,
             ...(rescopedEvidence
-              ? { verifyLastRun: rescopedEvidence.run, verifyRunHistory: rescopedEvidence.history }
+              ? {
+                  verifyLastRun: rescopedEvidence.run,
+                  verifyRunHistory: rescopedEvidence.history,
+                  verifyRunArchive: normalizeRecordedRunArchive(state.verifyRunArchive, resolvedProjectId, rescopedEvidence.run, true),
+                }
               : {}),
             projectName: nextName.length > 0 ? nextName : state.projectName,
             projectDescription:
@@ -2800,6 +2841,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
         verifyRunHistory: state.verifyRunHistory.slice(-50),
+        verifyRunArchive: state.verifyRunArchive.slice(-MAX_RECORDED_RUNS).map(cloneVerifyRun),
         exportHistory: state.exportHistory.slice(-20),
         sim: cloneSimState(state.sim),
         importedWaveform: state.importedWaveform ? structuredClone(state.importedWaveform) : null,
@@ -2913,12 +2955,15 @@ export function mergePersistedRuntimeState(
   });
   const verifyLastRun = scopedEvidence.run;
   const verifyRunHistory = scopedEvidence.history;
+  const verifyRunArchive = invalidateVerifyTrust ? [] : normalizeRecordedRunArchive(
+    candidate.verifyRunArchive, ownerProjectId, verifyLastRun,
+  );
   const restoredVerifyProjectHash = buildCurrentVerifyProjectHash({
     circuit: elaboratedCircuit,
     projectVectors,
     projectIoRows,
   });
-  const latestVerifyLedgerEntry = verifyRunHistory.at(-1);
+  const latestVerifyLedgerEntry = findVerifyRunLedgerEntry(verifyRunHistory, verifyLastRun) ?? verifyRunHistory.at(-1);
   const hasRestoredVerifyProjectHashMismatch =
     !invalidateVerifyTrust &&
     Boolean(latestVerifyLedgerEntry) &&
@@ -3122,6 +3167,7 @@ export function mergePersistedRuntimeState(
     designRevision,
     verifyLastRun: detachedVerifyLastRun,
     verifyRunHistory: detachedVerifyRunHistory,
+    verifyRunArchive: shouldResetDetachedStarterCompareState ? [] : verifyRunArchive,
     exportHistory: Array.isArray(candidate.exportHistory)
       ? (candidate.exportHistory as ProjectHealthExportResult[]).slice(-20)
       : [],
@@ -3310,6 +3356,7 @@ function createEmptyProjectState(
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    verifyRunArchive: [],
     exportHistory: [],
     sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
     projectHealthCore: {
@@ -3381,6 +3428,7 @@ function stateFromExample(
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    verifyRunArchive: [],
     exportHistory: [],
     sim,
     projectHealthCore: {
@@ -3484,21 +3532,71 @@ function resolveActiveScenarioVectors(
   return cloneVectors(materializeScenarioVectors(activeScenario));
 }
 
+function normalizeRecordedRunArchive(
+  value: unknown,
+  projectId: string,
+  fallback?: RuntimeVerifyRun,
+  restamp = false,
+): RuntimeVerifyRun[] {
+  let runs: RuntimeVerifyRun[] = [];
+  for (const candidate of Array.isArray(value) ? value.slice(-MAX_RECORDED_RUNS) : []) {
+    const run = tryCloneVerifyRun(candidate);
+    if (!run || (!restamp && run.projectId && run.projectId !== projectId)) continue;
+    runs = appendRecordedRun(runs, { ...run, projectId });
+  }
+  if (fallback && !runs.some((run) => getRuntimeVerifyRunId(run) === getRuntimeVerifyRunId(fallback))) {
+    runs = appendRecordedRun(runs, { ...cloneVerifyRun(fallback), projectId });
+  }
+  return runs;
+}
+
+function healthFromRecordedRun(run: RuntimeVerifyRun | undefined): ProjectHealthCore['lastVerify'] {
+  return run ? {
+    status: run.status,
+    hash: run.deterministicHash,
+    runKind: getRuntimeVerifyRunKind(run),
+    qualification: run.qualification,
+    reportHash: run.reportHash,
+    report: run.report,
+    failingTick: run.firstFailingTick,
+    ranAtIso: run.generatedAtIso,
+  } : undefined;
+}
+
+function recordedRunMatchesScenario(
+  state: Pick<ProjectRuntimeState, 'circuit' | 'hierarchy' | 'projectIoRows' | 'hardwareMappingV2'>,
+  run: RuntimeVerifyRun | undefined,
+  scenario: VerifyScenario | null | undefined,
+): boolean {
+  if (!run || !scenario || run.scenarioId !== scenario.id || !run.evidence?.circuitHash ||
+      !run.scenarioContentHash || !run.mappingEvidenceHash) return false;
+  const ioMapping = toIoMapping(state.projectIoRows);
+  return run.scenarioContentHash === computeScenarioContentHash(scenario) &&
+    run.evidence.circuitHash === buildVerifyCircuitEvidenceHash(elaborateProjectHierarchy(state.circuit, state.hierarchy)) &&
+    run.mappingEvidenceHash === buildVerifyMappingEvidenceHash(
+      resolveIoMappingFromProjectFields({ ioMapping, hardwareMappingV2: state.hardwareMappingV2 }) ?? ioMapping,
+    );
+}
+
 function commitScenarioSelection(
   state: Pick<
     ProjectRuntimeState,
-    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim' | 'scenarioAuthority'
+    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim' | 'scenarioAuthority' |
+    'verifyLastRun' | 'verifyRunArchive' | 'circuit' | 'hierarchy' | 'projectIoRows' | 'hardwareMappingV2'
   >,
   scenarios: VerifyScenario[],
   activeScenarioId: string
 ): Pick<
   ProjectRuntimeState,
-  'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim' | 'scenarioAuthority'
+  'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim' | 'scenarioAuthority' | 'verifyLastRun'
 > {
   const resolvedActiveScenario =
     getActiveScenario(scenarios, activeScenarioId) ??
     (scenarios.length > 0 ? scenarios[0] : createDefaultScenario(state.projectVectors));
   const compatibilityVectors = materializeScenarioVectors(resolvedActiveScenario);
+  const selectedRun = state.activeScenarioId === resolvedActiveScenario.id
+    ? state.verifyLastRun
+    : latestRecordedScenarioRun(state.verifyRunArchive, resolvedActiveScenario.id);
   // A scenario the student has made their own stops being inherited starter evidence, exactly as
   // editing an expected cell already does. An empty new scenario carries nothing yet, so it does
   // not claim authorship of the starter's values - only one that holds checks or an explicitly
@@ -3510,6 +3608,7 @@ function commitScenarioSelection(
     projectVectors: cloneVectors(compatibilityVectors),
     scenarios,
     activeScenarioId: resolvedActiveScenario.id,
+    verifyLastRun: selectedRun,
     scenarioAuthority:
       state.scenarioAuthority === 'starter' && carriesAuthoredMaterial
         ? 'authored'
@@ -3523,7 +3622,8 @@ function commitScenarioSelection(
     },
     projectHealthCore: {
       ...state.projectHealthCore,
-      dirtySinceVerify: true,
+      lastVerify: healthFromRecordedRun(selectedRun),
+      dirtySinceVerify: !recordedRunMatchesScenario(state, selectedRun, resolvedActiveScenario),
       dirtySinceExport: true,
     },
   };
@@ -4716,6 +4816,7 @@ function normalizeOwnerProjectId(value: unknown): string | undefined {
 function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
+    circuitSnapshot: run.circuitSnapshot ? structuredClone(run.circuitSnapshot) : undefined,
     projectId: normalizeOwnerProjectId(run.projectId),
     runKind: getRuntimeVerifyRunKind(run),
     scenarioVersion:
@@ -4843,7 +4944,9 @@ function isAuthoritativeVerifyRun(run: RuntimeVerifyRun | undefined | null): run
 }
 
 function isLegacyRuntimeTraceVerifyRun(run: RuntimeVerifyRun | undefined | null): boolean {
-  return Boolean(run) && getRuntimeVerifyRunKind(run) === 'trace';
+  // An explicit observation of a saved scenario is a complete recording. Only the old
+  // interactive-simulation projection used the runtime-trace/sim_ identity markers.
+  return Boolean(run) && (run?.scenarioId === 'runtime-trace' || !isAuthoritativeVerifyHash(run?.deterministicHash));
 }
 
 function hasLegacyVerifyTrust(

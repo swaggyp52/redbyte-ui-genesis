@@ -3,6 +3,7 @@
 
 import React from 'react';
 import type { SignalExplanation } from './signalExplainer';
+import './why-inspector.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export const WhyInspectorPanel: React.FC<WhyInspectorPanelProps> = ({ explanatio
             changed from <code>{previousValue}</code>
           </span>
         )}
-        {!changed && (
+        {!changed && previousValue !== null && (
           <span className="ide-why-value-held">unchanged</span>
         )}
       </div>

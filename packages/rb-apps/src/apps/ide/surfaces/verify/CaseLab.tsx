@@ -211,7 +211,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           {failCount ? ` · ${failCount} failing` : ''}
         </span>
         {latestRun ? (
-          <span className="ide-case-lab-history" data-testid="ide-case-lab-history" title={previousRun ? `Previous run: ${previousRun.passedRows} passed · ${previousRun.failedRows} failed` : 'No previous run'}>
+          <span className="ide-case-lab-history" data-testid="ide-case-lab-history" aria-label="Comparison history" title={previousRun ? `Previous comparison: ${previousRun.passedRows} passed · ${previousRun.failedRows} failed` : 'No previous comparison'}>
+            <span>Compare</span>
             <code>{latestRun.status.toUpperCase()}</code>
             {historyDelta !== null ? (
               <span className={historyDelta < 0 ? 'is-better' : historyDelta > 0 ? 'is-worse' : ''}>
