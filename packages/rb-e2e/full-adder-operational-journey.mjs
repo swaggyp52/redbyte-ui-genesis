@@ -17,6 +17,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { BASE_URL } from './harness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -560,7 +561,10 @@ async function run(width, height) {
   await page.waitForSelector(tid('ide-export-download-success'), { timeout: 10000 });
   await page.click(tid('ide-export-open-technical-evidence'));
   const successText = await text(page, 'ide-export-download-evidence');
-  const sha = successText.match(/[0-9a-f]{64}/i)?.[0] ?? null;
+  const sha = (await page.locator(tid('ide-export-download-evidence')).locator('dt')
+    .filter({ hasText: /^Package SHA-256$/ }).locator('..').locator('dd').textContent())?.trim() ?? null;
+  const downloadedSha = createHash('sha256').update(fs.readFileSync(zipPath)).digest('hex');
+  assert(sha === downloadedSha, `displayed package SHA-256 must equal downloaded ZIP bytes (${sha} vs ${downloadedSha})`);
   assert(sha !== null, `download evidence names the package SHA-256 (got "${successText.slice(0, 120)}")`);
   assert(/browser-verified|trusted/i.test(successText), 'the downloaded package is recorded as browser checked');
   await page.click(tid('ide-export-close-technical-evidence'));

@@ -68,9 +68,9 @@ async function readArtifact(page, path) {
     path,
     { timeout: 10000 },
   );
-  return normalize(
-    await page.locator('[data-testid="ide-export-preview-code"]').first().textContent(),
-  );
+  const contentLines = await page.locator('[data-testid="ide-export-preview-code"] .rb-pkg-code-line > span:last-child').allTextContents();
+  assert(contentLines.length > 0, `Artifact ${path} must render its code content`);
+  return normalize(contentLines.join('\n'));
 }
 
 function normalize(value) {
