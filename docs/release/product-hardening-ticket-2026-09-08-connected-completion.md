@@ -121,7 +121,7 @@ that secondary view remains crowded at the smaller size.
   protected Basys3 export goldens. Its typecheck baseline gate accepts inherited
   debt; passing this command does not mean the compiler has no diagnostics.
 - Focused runtime/identity, explanation, Board, Package and Design integration tests
-  pass. Operational Package tests replace retired banner/summary/checks-dock
+  pass: 200 tests in 17 files at the committed implementation checkpoint. Operational Package tests replace retired banner/summary/checks-dock
   assertions while preserving real ZIP trust, failure/retry and routing checks.
 - CSS ownership audit, documentation validation, encoding check and diff hygiene
   are required in final closeout. No suppressions, compiler rebaseline, workflow,
@@ -133,8 +133,16 @@ that secondary view remains crowded at the smaller size.
   Full Adder journeys. Later classroom steps did not run. The suite is not green;
   restoring the retired Project screen is not the repair.
 - Existing compiler diagnostics remain repository debt. Final pinned count,
-  fingerprint and file/code delta are recorded in the existing continuation;
-  introduced diagnostics are fixed rather than hidden by the lower total.
+  fingerprint and file/code delta are recorded in the existing continuation:
+  770 diagnostics, fingerprint `1165a0a5faf044e6` (Hardware 12 to 7, waveform alias
+  tests 2 to 0, Package trust tests 1 to 0). Introduced diagnostics are fixed rather
+  than hidden by the lower total.
+- `repo:status` initially stopped at the export pipeline static gate because its
+  whole-file regex mistook derived child JSX props for forbidden surface inputs.
+  Those child props already exist at recovery HEAD. The gate now checks the
+  declared surface input contract; isolated mutation proof confirms externally
+  supplied `artifacts` and `diagnostics` are still rejected. Final aggregate status
+  and any later blocking step are recorded in the delivery record and PR.
 
 ## Remaining acceptance work
 

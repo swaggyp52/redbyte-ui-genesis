@@ -13,6 +13,8 @@ survive reload. Explanations preserve missing data and actual sample chronology.
 Board simplifies assignment rows and places electrical/XDC detail at the selected
 mapping. Package opens on generation/files/Vivado next steps, with the report an
 explicit secondary document. The 2026-09-07 dossier-first decision is superseded.
+The export pipeline static gate checks the surface input contract, allowing child
+components to receive real derived artifacts while rejecting external preview props.
 
 **Evidence boundary:** Node 20.19.0, TypeScript 5.9.3. Browser construction checks
 cover counter edit/observe/stale/rerun, Board assignment/conflict recovery, actual

@@ -24,7 +24,7 @@ the V1 product contract. No project format or protected golden changes are allow
 
 Current validation and remaining work are maintained in
 `docs/release/product-hardening-ticket-2026-09-08-connected-completion.md` and the
-existing ignored `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
+existing tracked `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 Historical implementation narratives below are evidence of earlier states.
 
 After the final candidate build/push verification, the next technical target is the

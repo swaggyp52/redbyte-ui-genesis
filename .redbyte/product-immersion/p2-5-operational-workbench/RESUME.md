@@ -1,3 +1,92 @@
+<!-- ASTRA_COMPLETION_CURRENT_START -->
+# Current continuation - 2026-09-08 connected product completion
+
+This is the current continuation. Dated entries below are historical and do not
+override this checkpoint, the product contract or the connected-completion ticket.
+
+## Source and delivery
+
+- Canonical checkout: `C:\Users\conno\redbyte-ui-genesis-main`.
+- Branch: `claude/redbyte-operational-workbench-convergence-w9k2r4`.
+- Validated implementation checkpoint: `8f44cfb516ce3544a567dddf14997b33c24c1b0e`.
+  A following documentation commit carries this continuation. It changes no product
+  source. Exact final local/remote/build/preview identities are in
+  `astra-completion/final-delivery.json` and the refreshed PR #85 metadata.
+- PR #85 OPEN/DRAFT, base `claude/redbyte-product-core-convergence-n3pi6t`, unchanged.
+- Delivery status and final committed-bundle proof: see that generated delivery
+  record. It is written after the final docs commit to avoid a self-referential
+  commit hash in this tracked file. The final PR body reports the same boundary.
+
+Commits: `de4ad21e5` contextual Board assignment; `b568f23af` retained recordings and
+connected investigation; `7655136bb` operational Package; `8f44cfb51` current docs.
+The recovered `bd3f2a869` chronology repair and original dirty waveform/probe edits
+were preserved, not reset. No format, golden, lockfile, workflow or remote edits.
+
+## Delivered operations and evidence
+
+- Counter: real timing edit, check-free observation, table's exact observed values,
+  linked real schematic/net/signal/time, stale edit/rerun, expected mismatch at LD0
+  t2, repair, exact immutable failed recording and 200% root text at both 1440x900
+  and 1280x650. Observation says OBSERVED/Not evaluated, never a passing check.
+- Full Adder: UI-loaded starter, authored check failure/repair, actual XOR->OR
+  design failure, Trace/driver navigation and XOR repair, old OR snapshot retained,
+  mapping invalidation/remap/rerun, actual checked ZIP/readback/reload. PASS at
+  1440x900,1366x768,1280x650 including Problems-open ordinary inspector open/close.
+- Scenario/hierarchy: two genuinely different runs/scenarios retain cursor/view/
+  recording/stimulus on switch and reopen. Four-bit hierarchy selects exact own
+  x1 instances at different values, with no symbol-body overlap and saved run.
+  Existing nested-adder workflow authored the reusable module and four instances;
+  separate arithmetic fixture evidence is lower-level, not UI or hardware proof.
+- Board: real compatible resource selection, pin/electrical/XDC context, keyboard,
+  buses/batch, conflicts, constraint sets and reload. Selected-tick simulated values
+  do not fall back to another sample or survive mapping invalidation as current.
+- Package: primary generation/download, generated file access, correct draft/
+  checked/stale/download authority and explicit report/technical dialog. Actual
+  ZIP top.vhd/top.xdc/testbench previews match; project .xpr and delivered README
+  agree. Report's five boundary lanes match the named run's actual samples.
+- External VCD import remains reachable; actual imported sample/provenance/radix/
+  search/pin/reload journey passes. It is external replay evidence.
+
+Matched Board CARRY and Package before/after captures were personally opened at
+1440x900 and 1280x650. Counter/failure/instance/report/text captures were also read.
+Construction images are dirty-candidate dev proof based on recovery bd3, not
+retroactive exact-commit proof. Final bundle proof will be labeled separately.
+
+## Validation and remaining limits
+
+- `verify:gates`: PASS (exit 0) with both protected Basys3 goldens unchanged.
+  Final quiet log: `astra-completion/verify-gates-final.log`.
+- Focused integrated tests: 200/200 PASS in 17 files, including the observation
+  regression and recovered chronology tests.
+- Compiler: Node 20.19.0 / TS 5.9.3, 770 diagnostics / fingerprint 1165a0a5faf044e6.
+  Baseline 778 is inherited debt, not clean typing; introduced diagnostics fixed.
+- CSS audit, docs 29/29, encoding and diff hygiene passed. Final bundled-browser
+  results and source manifest identity are in the generated delivery record.
+- `classroom:gate`: unified buildPASS then first examples-contract timeout on
+  retired Project catalog selectors absent at recovery HEAD. Obsolete consumer,
+  replaced operation covered by actual Start-a-Lab journeys. Later steps not run;
+  aggregate is not green. Do not restore retired Project UI to satisfy it.
+- Correctness and interaction are verified for stated supported operations.
+  Visual primary paths are usable; ordinary inspector+expanded Problems remains
+  crowded at 1280x650; shell text still truncates at 200% root text. No owner acceptance.
+- No full aggregate Vitest, screen-reader acceptance, Vivado, bitstream, programming,
+  physical observation, main merge or production deployment.
+
+## Exact next action
+
+Read `astra-completion/final-delivery.json` for the final git/check/build/preview
+identity and browser results. If that record is absent, closeout was interrupted:
+build this committed candidate using pinned Node, repeat counter at both sizes and
+Full Adder at 1280x650, run the two Board gates, push the existing branch, update
+draft PR #85 and verify the preview SHA. Never infer those steps from the source.
+
+Once delivery is recorded, the next maintenance target is the obsolete Project
+catalog consumer in `scripts/gates/ide-examples-contract.mjs`, then the complete
+classroom chain. Bounded visual follow-up is the ordinary inspector with expanded
+Problems and shell labels at large text. Product decisions remain settled.
+<!-- ASTRA_COMPLETION_CURRENT_END -->
+
+
 # RedByte P2.5 — Operational Classroom Workbench Convergence — RESUME
 
 > Single continuation point for P2.5. Newest entry at the top of the ledger.
