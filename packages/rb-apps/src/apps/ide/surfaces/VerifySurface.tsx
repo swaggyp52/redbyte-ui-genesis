@@ -6080,7 +6080,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     <IdeSurfaceLayout
       mode="verify"
       layoutIntent="workbench"
-      consoleHasBlocking={sessionSignalsAssertionFailure}
+      /* A failed check is a result, not a blocking diagnostic: the run line names it, the Fail
+         navigation reaches it, and the ledger counts it. Forcing the panel open on a failure
+         took 220px of a 650px window from the instrument that shows the mismatch. */
+      consoleHasBlocking={false}
       consoleHasEntries={false}
       leftDockMode={verifyLayoutPolicy.leftDockMode}
       rightDockMode={verifyLayoutPolicy.rightDockMode}
