@@ -172,6 +172,84 @@ try {
     await recordingPicker.selectOption(repairedRun.id);
     assert.equal((await selectedRun()).status, 'pass');
     console.log(`${viewport.width}x${viewport.height}: counter LD0 t${checkTick} expected ${wrong} / actual ${actual} failed; corrected to ${actual}, passed; failed run ${failedRun.id} retained exactly.`);
+
+    // A real logic defect, not a wrong expectation. XOR1 computes Q1's next value (Q1 toggles on
+    // EN·Q0); as an OR, Q1 sticks at 1 once set. The saved checks fail on the recording, the
+    // mismatch traces to the recorded circuit that still draws the OR, the repair happens in
+    // Design, the repaired run passes, and the failed recording keeps its OR topology.
+    await page.getByRole('button', { name: 'Close circuit investigation', exact: true }).click();
+    await tid('mode-button-design').click();
+    await tid('node-XOR-xor1').waitFor();
+    await tid('node-XOR-xor1').click();
+    await tid('ide-design-swap-or').waitFor({ state: 'visible' });
+    await tid('ide-design-swap-or').click();
+    await tid('node-OR-xor1').waitFor();
+    await tid('mode-button-verify').click();
+    await tid('ide-vcb-run').waitFor();
+    const defectRun = await compare();
+    assert.equal(defectRun.status, 'fail', 'An OR in place of XOR1 fails the saved counter checks');
+    assert.ok(defectRun.circuit.nodes.some((node) => node.id === 'xor1' && node.type === 'OR'), 'The failed recording retains the OR topology');
+    const defectRow = defectRun.rows.find((row) => String(row.expected) !== String(row.actual));
+    assert.ok(defectRow, `The failing comparison names a mismatching case: ${JSON.stringify(defectRun.rows.slice(0, 4))}`);
+    await tid('ide-verify-view-table').click();
+    await tid(`ide-case-lab-row-${defectRow.tick}`).locator('td').first().click();
+    await tid('ide-verify-inspect-circuit').click();
+    await tid('ide-recorded-circuit-svg').waitFor();
+    assert.ok(await tid('ide-recorded-circuit-svg').locator('[data-node-id="xor1"]').count() > 0, 'The recorded circuit draws the defective gate');
+    await page.screenshot({ path: path.join(out, `counter-design-defect-${viewport.width}x${viewport.height}.png`) });
+    await page.getByRole('button', { name: 'Close circuit investigation', exact: true }).click();
+    await tid('mode-button-design').click();
+    await tid('node-OR-xor1').click();
+    await tid('ide-design-swap-xor').waitFor({ state: 'visible' });
+    await tid('ide-design-swap-xor').click();
+    await tid('node-XOR-xor1').waitFor();
+    await tid('mode-button-verify').click();
+    await tid('ide-vcb-run').waitFor();
+    const repairedDesignRun = await compare();
+    assert.equal(repairedDesignRun.status, 'pass', 'Restoring XOR1 passes the saved checks again');
+    await recordingPicker.selectOption(defectRun.id);
+    assert.deepEqual(await selectedRun(), defectRun, 'The failed design recording is retained exactly, OR topology included');
+    await recordingPicker.selectOption(repairedDesignRun.id);
+    console.log(`${viewport.width}x${viewport.height}: XOR1 -> OR failed at t${defectRow.tick} (expected ${defectRow.expected}, actual ${defectRow.actual}); repaired in Design, passed; defect run ${defectRun.id} retained with its OR.`);
+
+    // The checked package, then the browser reload: the scenario, both recordings and the package
+    // truth come back, and an unchanged reload is not stale.
+    await tid('mode-button-export').click();
+    await tid('ide-export-package-files').waitFor();
+    const buildButton = tid('ide-export-package-build-v1');
+    await buildButton.waitFor({ state: 'visible' });
+    assert.match(await buildButton.innerText(), /generate.*download/i, 'The primary Package action generates and downloads');
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), buildButton.click()]);
+    await download.saveAs(path.join(out, `counter-package-${viewport.width}x${viewport.height}.zip`));
+    await tid('ide-export-download-success').waitFor();
+    assert.equal(await tid('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust'), 'trusted',
+      'A passing Compare backs a checked package');
+    const runsBeforeReload = await page.evaluate(() => (window.__RB_PROJECT_RUNTIME__.getState().verifyRunHistory ?? []).length);
+    await page.screenshot({ path: path.join(out, `counter-package-${viewport.width}x${viewport.height}.png`) });
+    await page.reload({ waitUntil: 'networkidle' });
+    await tid('ide-export-package-inspector-v1').waitFor({ timeout: 15000 });
+    assert.equal(await tid('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust'), 'trusted',
+      'The checked package survives the reload');
+    await tid('mode-button-verify').click();
+    await tid('ide-vcb-run').waitFor();
+    const afterReload = await page.evaluate(() => {
+      const st = window.__RB_PROJECT_RUNTIME__.getState();
+      return { runs: (st.verifyRunHistory ?? []).length, status: st.verifyLastRun?.status, id: st.verifyLastRun?.runId, dirty: st.projectHealthCore?.dirtySinceVerify };
+    });
+    assert.equal(afterReload.id, repairedDesignRun.id, 'Reload restores the repaired run as the selected recording');
+    assert.equal(afterReload.status, 'pass');
+    assert.equal(afterReload.dirty, false, 'An unchanged reload is not stale');
+    assert.ok(afterReload.runs >= runsBeforeReload, `Reload keeps the run ledger (${afterReload.runs} vs ${runsBeforeReload})`);
+    await recordingPicker.selectOption(defectRun.id);
+    const defectAfterReload = await selectedRun();
+    assert.equal(defectAfterReload.status, 'fail', 'The failed design recording is still selectable after reload');
+    assert.ok(defectAfterReload.circuit.nodes.some((node) => node.id === 'xor1' && node.type === 'OR'), 'Its OR topology survives the reload');
+    await recordingPicker.selectOption(repairedDesignRun.id);
+    await tid('ide-verify-view-table').click();
+    await tid(`ide-case-lab-row-${checkTick}`).locator('td').first().click();
+    await tid('ide-verify-inspect-circuit').click();
+    await tid('ide-recorded-circuit-svg').waitFor();
+    console.log(`${viewport.width}x${viewport.height}: checked package generated; reload restored run ${afterReload.id} (${afterReload.runs} recordings) and the failed design recording.`);
     // Root-text scaling is distinct from browser zoom; keep controls reachable at 200%.
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
     await page.getByRole('button', { name: 'Circuit focus', exact: true }).click();
