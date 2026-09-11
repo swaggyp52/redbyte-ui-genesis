@@ -20629,8 +20629,11 @@ button:disabled,
    design should look like a control. */
 .ide-design-swap-chip {
   font-size: var(--rb-text-meta) !important;
-  padding: 7px 10px !important;
-  min-height: 36px !important;
+  /* The same height as Copy, Duplicate and the tracing buttons around it: at 36px the five
+     chips were the tallest controls in the inspector and took two rows of 18px each. */
+  padding: 0 8px !important;
+  min-height: 0 !important;
+  height: var(--wb-control-h) !important;
   border: 1px solid var(--wb-border) !important;
   border-radius: var(--wb-radius, 4px) !important;
   color: var(--wb-text) !important;

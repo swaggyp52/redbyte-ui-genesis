@@ -5301,8 +5301,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {selectionStatusLabel}
               </span>
             </div>
-            <div className="rb-insp-name-control" data-testid="ide-design-inspector-name-control">
-              <span className="rb-insp-group-label">
+            {/* One field row, label beside control: this block was 64px of a 140px identity card
+                for a single Rename button, in a dock that shows 600px of a 1900px inspector. */}
+            <div className="rb-insp-name-control rb-insp-field" data-testid="ide-design-inspector-name-control">
+              <span>
                 {selectedNode.type === 'INPUT' || selectedNode.type === 'OUTPUT' ? 'Signal name' : 'Part label'}
               </span>
               {renderNodeLabelEditor(selectedNode)}
@@ -5707,6 +5709,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
                 Duplicate
               </IdeButton>
+              {/* Delete is an edit like the two beside it, undoable like them, and red says what it
+                  is; a "Danger" group of one button cost a labelled row of its own. */}
+              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                Delete
+              </IdeButton>
             </div>
             {(() => {
               const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
@@ -5858,14 +5865,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
-          <div className="rb-insp-action-group rb-insp-group--danger" data-testid="ide-design-inspector-danger-group">
-            <span className="rb-insp-group-label">Danger</span>
-            <div className="rb-insp-action-grid">
-              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                Delete node
-              </IdeButton>
-            </div>
-          </div>
         </div>
       );
     }
@@ -6444,6 +6443,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     );
   };
 
+  /* Unrecorded is not zero. Without a recording there is no previous sample and no transition,
+     and the value on the row is the live exploration value, not evidence - so the rows say so
+     instead of printing "Previous 0 / stable" derived from the live value alone. */
+  const snapshotRows = (snapshot: DesignSignalSnapshot | null | undefined) => {
+    const recorded = Boolean(snapshot && snapshot.samples > 0);
+    const value = (input: RuntimeLogicValue | null | undefined) => (input === null || input === undefined ? '—' : String(input));
+    return {
+      currentLabel: recorded ? 'Current' : 'Live value',
+      current: value(snapshot?.currentValue),
+      previous: recorded ? value(snapshot?.previousValue) : 'not recorded',
+      transition: recorded ? snapshot!.transition : 'not recorded',
+      lastTransition: recorded && snapshot!.lastTransitionTick !== null ? String(snapshot!.lastTransitionTick) : '—',
+    };
+  };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
       if (selectedSequentialInspector) {
@@ -6499,22 +6512,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span>Timing context</span>
                   <span>{selectedSequentialInspector.timingContext}</span>
                 </div>
-                <div className="rb-insp-row">
-                  <span>Current</span>
-                  <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-                </div>
-                <div className="rb-insp-row">
-                  <span>Previous</span>
-                  <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-                </div>
-                <div className="rb-insp-row">
-                  <span>Transition</span>
-                  <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-                </div>
-                <div className="rb-insp-row">
-                  <span>Last transition</span>
-                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                </div>
+                {(() => {
+                  const rows = snapshotRows(selectedNodeSignalSnapshot);
+                  return (
+                    <>
+                      <div className="rb-insp-row">
+                        <span>{rows.currentLabel}</span>
+                        <code data-testid="ide-design-context-current">{rows.current}</code>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Previous</span>
+                        <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Transition</span>
+                        <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Last transition</span>
+                        <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                      </div>
+                    </>
+                  );
+                })()}
                 {selectedNodeReplayCausation ? (
                   <div className="rb-insp-row">
                     <span>Why now</span>
@@ -6549,22 +6569,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ) : null}
           <div className="rb-insp-live-summary">
             <div className="rb-insp-facts">
-              <div className="rb-insp-row">
-                <span>Current</span>
-                <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-              </div>
-              <div className="rb-insp-row">
-                <span>Previous</span>
-                <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-              </div>
-              <div className="rb-insp-row">
-                <span>Transition</span>
-                <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-              </div>
-              <div className="rb-insp-row">
-                <span>Last transition</span>
-                <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-              </div>
+              {(() => {
+                const rows = snapshotRows(selectedNodeSignalSnapshot);
+                return (
+                  <>
+                    <div className="rb-insp-row">
+                      <span>{rows.currentLabel}</span>
+                      <code data-testid="ide-design-context-current">{rows.current}</code>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Previous</span>
+                      <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Transition</span>
+                      <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Last transition</span>
+                      <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                    </div>
+                  </>
+                );
+              })()}
               <div className="rb-insp-row">
                 <span>Trace state</span>
                 {(() => {
@@ -6595,22 +6622,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Signal</span>
               <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>
             </div>
-            <div className="rb-insp-row">
-              <span>Current</span>
-              <code data-testid="ide-design-context-current">{selectedWireContext.snapshot?.currentValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Previous</span>
-              <code data-testid="ide-design-context-previous">{selectedWireContext.snapshot?.previousValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Transition</span>
-              <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
-            </div>
-            <div className="rb-insp-row">
-              <span>Last transition</span>
-              <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
-            </div>
+            {(() => {
+              const rows = snapshotRows(selectedWireContext.snapshot);
+              return (
+                <>
+                  <div className="rb-insp-row">
+                    <span>{rows.currentLabel}</span>
+                    <code data-testid="ide-design-context-current">{rows.current}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Previous</span>
+                    <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Transition</span>
+                    <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                  </div>
+                </>
+              );
+            })()}
             {selectedWireReplayCausation ? (
               <div className="rb-insp-row">
                 <span>Why now</span>
@@ -6653,22 +6687,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Signal</span>
               <code data-testid="ide-design-signal-selected">{activeInspectorSignalLabel}</code>
             </div>
-            <div className="rb-insp-row">
-              <span>Current</span>
-              <code data-testid="ide-design-signal-current-value">{activeInspectorSignalSnapshot?.currentValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Previous</span>
-              <code>{activeInspectorSignalSnapshot?.previousValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Transition</span>
-              <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
-            </div>
-            <div className="rb-insp-row">
-              <span>Last transition</span>
-              <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-            </div>
+            {(() => {
+              const rows = snapshotRows(activeInspectorSignalSnapshot);
+              return (
+                <>
+                  <div className="rb-insp-row">
+                    <span>{rows.currentLabel}</span>
+                    <code data-testid="ide-design-signal-current-value">{rows.current}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Previous</span>
+                    <code>{rows.previous}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Transition</span>
+                    <span>{rows.transition}</span>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                  </div>
+                </>
+              );
+            })()}
             {activeInspectorReplayCausation ? (
               <div className="rb-insp-row">
                 <span>Why now</span>
