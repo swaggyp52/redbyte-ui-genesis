@@ -13,6 +13,12 @@ const pkgName = pkg.name || "rb-lib";
 const baseName = pkgName.includes("/") ? pkgName.split("/")[1] : pkgName;
 
 export default defineConfig({
+  // The .ts/.tsx modules are the source of truth and the tracked .js siblings beside them are
+  // mirrors, some stale; Vite's default order tries .js first. Library dists are built from the
+  // same modules the tests verify.
+  resolve: {
+    extensions: [".ts", ".tsx", ".mts", ".cts", ".mjs", ".js", ".jsx", ".cjs", ".json"],
+  },
   plugins: [
     tsconfigPaths(),
     dts({

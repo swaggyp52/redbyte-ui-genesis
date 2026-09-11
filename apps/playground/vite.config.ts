@@ -69,6 +69,12 @@ export default defineConfig({
     },
   },
   resolve: {
+    // The .ts/.tsx modules are the source of truth; 217 tracked .js siblings under packages/*/src
+    // are mirrors, and some are stale. Vite's default order tries .js before .ts, so the app
+    // shipped packages/rb-fpga-toolchain/src/verilog-generator.js - which reports every D
+    // flip-flop's Q as "has no driver" - while vitest, which already prefers .ts, was green.
+    // The app resolves the way the tests do.
+    extensions: ['.ts', '.tsx', '.mts', '.cts', '.mjs', '.js', '.jsx', '.cjs', '.json'],
     alias: {
       react: path.resolve(__dirname, './node_modules/react'),
       'react/jsx-runtime': path.resolve(__dirname, './node_modules/react/jsx-runtime.js'),
