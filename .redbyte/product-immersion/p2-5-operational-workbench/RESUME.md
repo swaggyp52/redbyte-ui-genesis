@@ -8,9 +8,14 @@ override this checkpoint, the product contract or the connected-completion ticke
 
 - Canonical checkout: `C:\Users\conno\redbyte-ui-genesis-main`.
 - Branch: `claude/redbyte-operational-workbench-convergence-w9k2r4`.
-- Validated implementation checkpoint: `8f44cfb516ce3544a567dddf14997b33c24c1b0e`.
-  A following documentation commit carries this continuation. It changes no product
-  source. Exact final local/remote/build/preview identities are in
+- Main campaign implementation checkpoint: `8f44cfb516ce3544a567dddf14997b33c24c1b0e`.
+  The final Board readback correction follows the initially delivered `f59439822`:
+  drawing and state table now share one recorded sample instead of mixing it with
+  the unrecorded I/O bus. Fixing it exposed three more, each measured and closed -
+  a Simulate crash on return from a stepped Board (its shared-tick binding echoed a
+  stale tick and looped), 26 unused board resources labelled as unrecorded, and a
+  dock at 1.49:1/1.52:1 contrast whose stepping control was unreachable at 1280x650.
+  Exact final local/remote/build/preview identities are in
   `astra-completion/final-delivery.json` and the refreshed PR #85 metadata.
 - PR #85 OPEN/DRAFT, base `claude/redbyte-product-core-convergence-n3pi6t`, unchanged.
 - Delivery status and final committed-bundle proof: see that generated delivery
@@ -40,6 +45,8 @@ were preserved, not reset. No format, golden, lockfile, workflow or remote edits
 - Board: real compatible resource selection, pin/electrical/XDC context, keyboard,
   buses/batch, conflicts, constraint sets and reload. Selected-tick simulated values
   do not fall back to another sample or survive mapping invalidation as current.
+  Final expanded-panel readback covers the actual drawn LEDs and state table at
+  matching recorded ticks; missing recorded values stay unavailable.
 - Package: primary generation/download, generated file access, correct draft/
   checked/stale/download authority and explicit report/technical dialog. Actual
   ZIP top.vhd/top.xdc/testbench previews match; project .xpr and delivered README
@@ -75,10 +82,12 @@ retroactive exact-commit proof. Final bundle proof will be labeled separately.
 ## Exact next action
 
 Read `astra-completion/final-delivery.json` for the final git/check/build/preview
-identity and browser results. If that record is absent, closeout was interrupted:
-build this committed candidate using pinned Node, repeat counter at both sizes and
-Full Adder at 1280x650, run the two Board gates, push the existing branch, update
-draft PR #85 and verify the preview SHA. Never infer those steps from the source.
+identity and browser results. Its `completed` flag is the authority: while it is
+false, closeout was interrupted and the remaining steps are its `outstanding` list.
+Closing out means building this committed candidate with pinned Node, repeating the
+counter journey at both sizes and Full Adder at 1280x650, pushing the existing
+branch, updating draft PR #85 and verifying the preview SHA. Never infer those
+steps from the source.
 
 Once delivery is recorded, the next maintenance target is the obsolete Project
 catalog consumer in `scripts/gates/ide-examples-contract.mjs`, then the complete

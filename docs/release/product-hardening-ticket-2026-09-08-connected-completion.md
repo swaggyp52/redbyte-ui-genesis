@@ -144,6 +144,51 @@ that secondary view remains crowded at the smaller size.
   supplied `artifacts` and `diagnostics` are still rejected. Final aggregate status
   and any later blocking step are recorded in the delivery record and PR.
 
+## Final same-recording Board readback - delivered
+
+The compiled `f59439822` counter probe selected tick 2 through Simulate and opened
+the simulated Board with both support panels expanded. The drawing correctly
+showed LD0=1 and LD1=0, while the right-hand "Live Hardware State" table showed
+LD0=0 from the unrecorded I/O bus. This was a real projection-authority defect.
+
+One resolver, `boardResourceForRow`, now answers which board resource a mapping row
+feeds, and every projection of the simulated board uses it: the values filled, the
+rows the state table lists, and the resources the drawing may call unavailable.
+Measured on the counter at both sizes, t2 reads SW0=1 BTNC=0 LD0=1 LD1=0 and t3
+reads LD0=0 LD1=1 in the drawing and the table together, against the values taken
+from the recording's own circuit snapshot rather than from Board's mapping lookup.
+Stale recordings withhold values from both projections; X/Z and absent samples stay
+unavailable; an absent tick says so instead of showing another sample.
+
+**Three defects the repair exposed, each measured before being changed.**
+
+1. *Returning to Simulate after stepping the Board crashed the workspace.* Simulate
+   binds its selected tick to the workbench in both directions - it adopts a tick
+   chosen elsewhere and reports one chosen here - and on mount it reported the tick
+   restored from the scenario's session in the same commit that adopted the inbound
+   tick. That flipped the shared tick back, which was adopted, which was reported:
+   "Maximum update depth exceeded", the Simulate error screen. This is a latent
+   defect of the binding, not of Board; Design's debug-tick stepping writes the same
+   shared tick. The binding is directional now - an adopted tick is not echoed, and
+   the tick being replaced is not reported while the adoption is in flight.
+   `verifySurface.sharedTick` reproduces the loop with no Board code involved and is
+   red without the fix.
+2. *The drawing told the reader 26 times that unused resources were unrecorded.* A
+   null value drew " -" on every unmapped LED, switch and button. Unmapped and
+   unrecorded are different facts; only a resource the recording covers can be
+   missing from it.
+3. *The dock was illegible and its stepping control unreachable.* The heading
+   measured 1.49:1 and every Board status pill 1.52:1, because an OS-era rule
+   painted all of them amber with `!important` - so "Recorded trace" and "Mapped",
+   both OK states, showed as warnings. The rule is retired and the pills take their
+   tone from `theme/redbyte-primitives.css`. The left dock clips at 538px with
+   `overflow-y: hidden` around a 1003px panel, so at 1280x650 Next and the scrubber
+   were drawn at 828-884px with no scrollable ancestor: the Board's only way to step
+   a recording could not be operated at the campaign's smaller size. The dock scrolls
+   and leads with the stepping controls, and the readout names the tick the way
+   Simulate's run line does (`t2 . 3 / 8`) instead of calling the same sample
+   "Case 3".
+
 ## Remaining acceptance work
 
 No Vivado synthesis, bitstream generation, board programming or physical observation

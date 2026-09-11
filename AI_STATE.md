@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-09-11 (Simulated Board readback authority)
+
+Final connected-workflow inspection found that the simulated Board drawing used
+the selected recorded sample but its expanded state table read the unrecorded I/O
+bus. The bounded correction shares the selected state between both projections,
+labels its recording/exploration context, and preserves unavailable sample values.
+One resolver now decides which board resource a mapping row feeds, for the values,
+the state table and the drawing alike.
+
+Closing it exposed three further defects, each reproduced before being changed: the
+Simulate workspace crashed on return from a stepped Board, because its shared-tick
+binding reported a stale restored tick into the same commit that adopted an inbound
+one and the two chased each other ("Maximum update depth exceeded"); the drawing
+marked 26 unmapped resources as unrecorded; and the simulated-board dock measured
+1.49:1 on its heading with its stepping control drawn below an unscrollable clip at
+1280x650. The binding is directional, unmapped is distinguished from unrecorded,
+the OS-era amber pill override is retired and the dock scrolls with stepping first.
+The connected-completion ticket and P2.5 delivery record hold the browser
+reproduction, repair revision and validation. No simulation engine, package format,
+hardware authority or production target changes.
+
 ## Change Log 2026-09-08 (Connected experiment and operational handoff)
 
 **Candidate:** `claude/redbyte-operational-workbench-convergence-w9k2r4`, PR #85
