@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface, updateExpectedCellInVectorSets } from '../surfaces/VerifySurface';
@@ -334,7 +334,38 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
   };
 }
 
+/** Open the run inspector whatever it was left in; these tests care about its contents. */
+function openRunInspector(view: { getByTestId: (id: string) => HTMLElement }): void {
+  const toggle = view.getByTestId('ide-verify-drawer-toggle');
+  if (toggle.getAttribute('aria-expanded') === 'true') return;
+  fireEvent.click(toggle);
+}
+/**
+ * Show the recorded run as a waveform.
+ *
+ * The trace instrument is one representation of the open scenario, not a second region under
+ * the timeline, and the tools that describe a drawn trace - case stepping, the tick range, the
+ * radix, the expected overlay, the scrubber and playback - belong to it. A test about the
+ * scrubber, the trace toolbar or the waveform's lanes therefore asks for that representation
+ * first. What each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+/** Read the same experiment as a case table. */
+function showTableRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-table');
+  if (toggle) fireEvent.click(toggle);
+}
 describe('VerifySurface workstation controls', () => {
+  // Simulate persists the reader's view state - drawer, cursor, zoom, density - in
+  // sessionStorage, and a run no longer normalises any of it (a run records evidence; it does
+  // not rearrange the workspace). Without clearing it, one case's open inspector is the next
+  // case's starting state and a 'click the toggle' step closes the drawer instead of opening it.
+  beforeEach(() => {
+    try { window.sessionStorage.clear(); } catch { /* jsdom without storage */ }
+  });
   afterEach(() => { cleanup(); });
 
   it('surfaces a direct repair path when Compare fails on a saved expected value', () => {
@@ -424,9 +455,12 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(view.queryByTestId('ide-verify-session-guidance')).toBeNull();
+    // A passing compare run now shows the real verdict (not the old observe-only
+    // "Simulation complete"); the point of this test is that it is NOT stale.
     expect(view.getByTestId('ide-verify-results-summary').textContent).toContain(
-      'Simulation complete'
+      'Compare passed'
     );
+    expect(view.getByTestId('ide-verify-results-summary').textContent).not.toContain('stale');
     expect(view.getByTestId('ide-verify-summary-status').textContent).toContain(
       'Checks passing'
     );
@@ -450,12 +484,8 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByTestId, queryByText } = view;
 
-    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain(
-      'Each case drives the circuit inputs'
-    );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
-    expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
-    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('evaluates 1 optional check');
+    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('Check filled expected outputs');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
@@ -465,9 +495,9 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-verify-empty-open-vectors')).toBeNull();
 
-    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(getByTestId('ide-case-lab')).toBeTruthy();
 
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
   });
@@ -490,10 +520,10 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-verify-first-run-collapsed-strip')).toBeNull();
-    expect(getByTestId('ide-verify-stimulus-header')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-bar')).toBeTruthy();
     expect(queryByTestId('ide-verify-testbench-summary')).toBeNull();
     expect(queryByTestId('ide-verify-empty-open-vectors')).toBeNull();
-    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(getByTestId('ide-case-lab')).toBeTruthy();
   });
 
   it('makes expected-output authoring primary while keeping Observe available when checks are empty', async () => {
@@ -515,8 +545,7 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByTestId } = view;
 
-    expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
-    expect(getByTestId('ide-vcb-workspace-checks').textContent).toBe('Checks');
+    expect(queryByTestId('ide-vcb-check-count')).toBeNull();
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('No checks are required');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
     expect(getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
@@ -526,19 +555,16 @@ describe('VerifySurface workstation controls', () => {
       )
     ).toEqual(['Run simulation']);
 
-    fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
+    // Expected cells are inline in the Cases document; no Checks tab to open.
     await waitFor(() => {
-      expect(getByTestId('ide-stimulus-expected-ld0-t0')).toBeTruthy();
+      expect(getByTestId('ide-case-lab-exp-0-ld0')).toBeTruthy();
     });
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
-    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain(
-      'Add optional expected outputs'
-    );
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
 
@@ -617,9 +643,6 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('Latch behavior detected');
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('highlighted control lane');
     expect(queryByTestId('ide-verify-io-summary')).toBeNull();
-    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain(
-      'Author clock/reset and input stimulus as a timeline'
-    );
     expect(queryByTestId('ide-verify-guided-clock-pattern')).toBeNull();
     expect(queryByTestId('ide-verify-sequential-context')).toBeNull();
   });
@@ -849,29 +872,29 @@ describe('VerifySurface workstation controls', () => {
     );
 
     const workbench = container.querySelector(
-      '.ide-verify-scenario-builder-details--postrun'
+      '[data-testid="ide-verify-region-stimulus"]'
     ) as HTMLElement | null;
 
     expect(workbench).toBeTruthy();
-    expect(workbench?.getAttribute('data-state')).toBe('stable');
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
 
     openVerifyUtilities(getByTestId);
     fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
 
-    expect(workbench?.getAttribute('data-state')).toBe('stable');
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
 
     expect(queryByTestId('ide-verify-workbench-toggle')).toBeNull();
-    expect(workbench?.getAttribute('data-state')).toBe('stable');
+    expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
-    expect(workbench?.getAttribute('data-state')).toBe('stable');
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(onGoToDesign).not.toHaveBeenCalled();
     expect(getByTestId('ide-verify-mismatch-goto-design').textContent).toContain('Trace in Design');
@@ -937,16 +960,16 @@ describe('VerifySurface workstation controls', () => {
     openVerifyUtilities(getByTestId);
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-vcb-evidence')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
 
-    expect(queryByTestId('ide-stimulus-toolbar')).toBeTruthy();
+    expect(queryByTestId('ide-case-lab-bar')).toBeTruthy();
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
   });
 
   it('uses waveform ticks as the active readout authority when compare rows are empty', () => {
     const waveformOnlyRun = makeWaveformOnlyRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -961,11 +984,12 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-run-state').textContent).toContain('2 signals · 3 ticks · COMPLETE');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
 
     const waveformViewport = getByTestId('ide-verify-waveform-scroll');
@@ -973,23 +997,23 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.keyDown(waveformViewport, { key: 'ArrowRight' });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
 
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
   });
 
   it('treats the Stimulus case selector as the same selected tick used by Verify readouts', () => {
     const waveformOnlyRun = makeWaveformOnlyRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1005,31 +1029,39 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    // One experiment, one cursor. The case table and the recorded trace are two ways of
+    // reading it, so selecting a case in one is the selected tick in the other - which is
+    // asserted here by crossing between them rather than by having both on screen at once.
+    expect(getByTestId('ide-case-lab-row-0').getAttribute('aria-selected')).toBe('true');
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
+    showTableRepresentation({ queryByTestId });
 
-    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '2' } });
+    fireEvent.click(getByTestId('ide-case-lab-row-2'));
 
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
+    expect(getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
+    expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
-    expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
-    expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
+    showTableRepresentation({ queryByTestId });
 
-    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
+    fireEvent.click(getByTestId('ide-case-lab-row-1'));
 
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-sw0'));
+    expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
+    showWaveformRepresentation({ queryByTestId });
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
   });
 
   it('reflects waveform scrubber selection back into the Stimulus case selector', () => {
     const waveformOnlyRun = makeWaveformOnlyRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1045,16 +1077,19 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
-    expect((getByTestId('ide-stimulus-tick-target') as HTMLSelectElement).value).toBe('2');
+    // Scrubbing the trace moved the experiment's cursor, not the trace's own: the case table
+    // opens on the case that tick belongs to.
+    showTableRepresentation({ queryByTestId });
+    expect(getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
   });
 
   it('uses case-index scrubber positions while keeping sparse sequential tick labels explicit', () => {
     const sparseSequentialRun = makeSparseSequentialRun();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="seq123"
         hasVectors={true}
@@ -1074,6 +1109,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
     const scrubber = getByTestId('ide-verify-tick-scrubber') as HTMLInputElement;
     expect(scrubber.min).toBe('0');
     expect(scrubber.max).toBe('2');
@@ -1146,7 +1182,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     expect(getByTestId('ide-verify-create-check-preview').textContent).toContain('ld0');
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -1254,11 +1290,18 @@ describe('VerifySurface workstation controls', () => {
     expect(view.getByTestId('ide-verify-session-guidance').textContent).toContain(
       'Checked PASS/FAIL evidence is inconclusive'
     );
-    expect(view.getByTestId('ide-vcb-workspace-checks')).toBeTruthy();
-    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
+    // The structural block must NOT silently downgrade the Compare intent to
+    // Observe. Compare stays selected but marked blocked, and the Run action is
+    // disabled — the student runs Observe only by choosing it explicitly.
+    expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
+    expect((view.getByTestId('ide-vcb-use-saved-checks') as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Compare blocked');
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(true);
     expect(view.queryByTestId('ide-verify-repair-panel')).toBeNull();
     expect(view.queryByTestId('ide-verify-results-guidance')).toBeNull();
 
+    // Explicitly switching to Observe re-enables Run as an ungraded trace run.
+    fireEvent.click(view.getByTestId('ide-vcb-observe-only'));
     fireEvent.click(view.getByTestId('ide-vcb-run'));
     expect(onRunVerification).toHaveBeenCalledWith(
       expect.objectContaining({ assertionMode: false, runKind: 'trace' })
@@ -1316,7 +1359,10 @@ describe('VerifySurface workstation controls', () => {
         onOpenProjectVectors={vi.fn()}
       />
     );
-    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
+    // The last run was a failing compare, so the summary now reflects that
+    // verdict rather than masking it as an observe-only run; the repair panel
+    // stays available to fix it.
+    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('fail');
     expect(view.getByTestId('ide-verify-repair-panel')).toBeTruthy();
     expect(view.queryByTestId('ide-vcb-save-expected')).toBeNull();
   });
@@ -1384,7 +1430,7 @@ describe('VerifySurface workstation controls', () => {
     expect(view.queryByTestId('ide-verify-repair-use-observed-all')).toBeNull();
     expect(view.queryByTestId('ide-vcb-save-expected')).toBeNull();
 
-    fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector(view);
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(view.queryByTestId('ide-verify-right-accept-observed')).toBeNull();
     expect(view.queryByTestId('ide-verify-right-capture-row')).toBeNull();
@@ -1419,9 +1465,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(view.getByTestId('ide-vcb-workspace-replay')).toHaveAttribute('aria-selected', 'true');
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain(
-      'evaluates 2 optional checks'
+      'Check filled expected outputs'
     );
     expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
 
@@ -1507,14 +1552,11 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-vcb-workspace-scenario'));
-
-    expect(getByTestId('ide-vcb-workspace-scenario')).toHaveAttribute('aria-selected', 'true');
+    // The workbench document tabs own Cases / Waveform; the bar carries no instrument selector.
+    expect(queryByTestId('ide-vcb-run-mode')).toBeNull();
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain(
-      'evaluates 2 optional checks'
+      'Check filled expected outputs'
     );
-    fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
-    expect(getByTestId('ide-vcb-workspace-checks')).toHaveAttribute('aria-selected', 'true');
     expect(getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
   });
 
@@ -1579,7 +1621,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
 
@@ -1610,8 +1652,8 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
-    expect(getByTestId('ide-stimulus-toolbar')).toBeTruthy();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    expect(getByTestId('ide-case-lab-bar')).toBeTruthy();
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
 
     fireEvent.click(getByTestId('ide-verify-right-accept-observed'));
@@ -1669,7 +1711,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stays in Observe until you choose Compare');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
@@ -1834,13 +1876,19 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
-    expect(getByTestId('ide-verify-results-summary').textContent).toContain('Checks passing');
+    // The summary used to say the outcome three times on one line - a state chip, a
+    // headline sentence, and a subline opening with 'Checks passing'. The subline now
+    // carries what the headline cannot (which scenario ran), so the outcome is asserted
+    // where it is actually stated.
+    const summaryText = getByTestId('ide-verify-results-summary').textContent ?? '';
+    expect(summaryText).toContain('Compare passed');
+    expect(getByTestId('ide-verify-results-summary-state').textContent).toBe('Pass');
     expect(getByTestId('ide-verify-results-summary-metric-cases').textContent).toContain('Run cases2');
     expect(getByTestId('ide-verify-results-summary-metric-passed').textContent).toContain('Checks passed2');
     expect(getByTestId('ide-verify-results-summary-metric-failed').textContent).toContain('Checks failed0');
     expect(getByTestId('ide-verify-results-summary-metric-ticks').textContent).toContain('Run ticks2');
     expect(getByTestId('ide-verify-results-summary-metric-wave-samples').textContent).toContain('Wave samples2');
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
     expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
@@ -1852,7 +1900,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('groups step and transport controls in one primary row while keeping fail/meta navigation separate', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1870,11 +1918,15 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    showWaveformRepresentation({ queryByTestId });
+
     const waveformBar = getByTestId('ide-verify-waveform-bar');
     const primaryRow = getByTestId('ide-verify-waveform-primary');
     const stepControls = getByTestId('ide-verify-step-controls');
     const transport = getByTestId('ide-verify-waveform-transport');
     const failNav = getByTestId('ide-verify-fail-nav');
+    const runLine = getByTestId('ide-verify-run-line');
+    const traceTools = getByTestId('ide-verify-waveform-cmd');
 
     expect(primaryRow.parentElement).toBe(waveformBar);
     expect(stepControls.parentElement).toBe(primaryRow);
@@ -1882,7 +1934,12 @@ describe('VerifySurface workstation controls', () => {
     expect(stepControls.contains(getByTestId('ide-verify-step-mode-toggle'))).toBe(true);
     expect(transport.contains(getByTestId('ide-verify-zoom-all'))).toBe(true);
     expect(transport.contains(getByTestId('ide-verify-tick-scrubber'))).toBe(true);
-    expect(failNav.parentElement).toBe(waveformBar);
+    // Fail navigation is not a trace tool: it is what the run did, so it lives in the run
+    // line, which every representation renders, and not in the trace toolbar, which only the
+    // trace representation renders.
+    expect(traceTools.contains(primaryRow)).toBe(true);
+    expect(traceTools.contains(failNav)).toBe(false);
+    expect(runLine.contains(failNav)).toBe(true);
     expect(primaryRow.contains(failNav)).toBe(false);
   });
 
@@ -1928,7 +1985,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-tick-explainer')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
@@ -1945,7 +2002,7 @@ describe('VerifySurface workstation controls', () => {
     onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
-    expect(getByTestId('ide-mode-verify').getAttribute('data-left-dock-state')).toBe('hidden');
+    expect(getByTestId('ide-mode-verify').getAttribute('data-left-dock-state')).toBe('visible');
   });
 
   it('folds workbench actions and signal-rail controls into their header rows', () => {
@@ -1983,16 +2040,16 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId } = view;
 
-    const workbenchHeader = getByTestId('ide-verify-stimulus-header');
-    expect(workbenchHeader.textContent).toContain('Testbench cases');
+    const workbenchHeader = getByTestId('ide-case-lab-bar');
+    expect(workbenchHeader.textContent).toContain('Test cases');
     expect(workbenchHeader.textContent).not.toContain('Project vectors');
     expect(workbenchHeader.textContent).not.toContain('Show checks');
     expect(view.queryByTestId('ide-stimulus-advanced-tools-toggle')).toBeNull();
 
-    const signalShelf = getByTestId('ide-verify-signal-shelf');
+    const signalShelf = getByTestId('ide-verify-left-dock');
     expect(within(signalShelf).getByText('Signals')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
-    expect(getByTestId('ide-verify-show-all-signals-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
+    expect(getByTestId('ide-verify-show-all-signals')).toBeTruthy();
     expect(within(signalShelf).queryByTestId('ide-verify-fit-waveform')).toBeNull();
   });
 
@@ -2012,7 +2069,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
     expect(getByTestId('ide-verify-lab-grid').getAttribute('data-stimulus-layout')).toBe('stable');
   });
@@ -2095,7 +2152,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-stimulus-header')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-bar')).toBeTruthy();
     expect(() => getByTestId('ide-stimulus-advanced-tools-toggle')).toThrow();
     expect(() => getByTestId('ide-verify-sweep-preset')).toThrow();
     expect(onVectorsChange).not.toHaveBeenCalled();
@@ -2169,7 +2226,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(
-      within(getByTestId('ide-verify-signal-shelf')).getByRole('button', { name: /LD0/i })
+      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
     );
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -2247,7 +2304,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(
-      within(getByTestId('ide-verify-signal-shelf')).getByRole('button', { name: /LD0/i })
+      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
     );
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -2314,7 +2371,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(
-      within(getByTestId('ide-verify-signal-shelf')).getByRole('button', { name: /LD0/i })
+      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
     );
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -2391,7 +2448,8 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByText } = view;
 
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    showWaveformRepresentation(view);
     expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-sw0')).toBeTruthy();
     expect(view.container.querySelectorAll('[data-testid="ide-verify-waveform-row-ld0"]')).toHaveLength(1);
@@ -2446,7 +2504,8 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByText } = view;
 
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    showWaveformRepresentation(view);
     expect(getByTestId('ide-verify-waveform-row-ld0_node_in')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
   });
@@ -2515,7 +2574,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRACE TABLE (TICK LOG)');
     expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();
@@ -2712,11 +2771,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-stimulus-title').textContent).toContain('Testbench cases');
-    fireEvent.click(getByTestId('ide-vcb-workspace-checks'));
-    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain(
-      'Add optional expected outputs'
-    );
+    expect(getByTestId('ide-case-lab-title').textContent).toContain('Test cases');
     expect(queryByTestId('ide-verify-testbench-summary')).toBeNull();
     expect(queryByTestId('ide-verify-testbench-summary-inputs')).toBeNull();
     expect(queryByTestId('ide-verify-testbench-summary-outputs')).toBeNull();
@@ -2791,7 +2846,7 @@ describe('VerifySurface workstation controls', () => {
     );
   });
 
-  it('labels restored browser-session evidence stale even when its hashes still match', () => {
+  it('renders the reload guidance when the app marks restored evidence stale', () => {
     const passRun = makePassRun();
     const rerun = vi.fn();
     const activeScenario = {

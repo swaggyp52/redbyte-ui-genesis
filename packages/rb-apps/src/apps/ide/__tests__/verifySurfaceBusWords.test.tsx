@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import type { RuntimeVerifyRun } from '../projectRuntime';
@@ -63,8 +63,20 @@ function runWithSignals(signals: Record<string, string>): RuntimeVerifyRun {
   };
 }
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The waveform is one representation of one experiment, chosen with the VIEW switch, rather
+ * than a second region drawn under the timeline. A test about the trace canvas, its lanes or
+ * its own tools asks for that representation first; what each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 function renderSurface(run: RuntimeVerifyRun) {
-  return render(
+  const view = render(
     <VerifySurface
       deterministicHash="bus-words-hash"
       hasVectors
@@ -78,6 +90,8 @@ function renderSurface(run: RuntimeVerifyRun) {
       onOpenProjectVectors={vi.fn()}
     />
   );
+  showWaveformRepresentation(view);
+  return view;
 }
 
 describe('VerifySurface bus word lanes', () => {

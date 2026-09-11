@@ -70,6 +70,18 @@ afterEach(() => {
   cleanup();
 });
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The waveform is one representation of one experiment, chosen with the VIEW switch, rather
+ * than a second region drawn under the timeline. A test about the trace canvas, its lanes or
+ * its own tools asks for that representation first; what each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 describe('VerifySurface three-panel workstation', () => {
   it('uses the lower analysis drawer for failure review and keeps waveform selection in sync with mismatch rows', () => {
     const run = makeFailRun();
@@ -98,14 +110,14 @@ describe('VerifySurface three-panel workstation', () => {
     expect(view.getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld0');
+    expect(view.getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld0');
 
     fireEvent.keyDown(window, { key: 'J' });
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
 
     fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));
     expect(view.getByTestId('ide-verify-mismatch-row-ld1_5').className).toContain('is-selected');
-    expect(view.getByTestId('ide-verify-scope-signal').textContent).toContain('ld1');
+    expect(view.getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
   });
@@ -156,6 +168,8 @@ describe('VerifySurface three-panel workstation', () => {
         onFixPath={vi.fn()}
       />
     );
+
+    showWaveformRepresentation(view);
 
     const waveformViewports = view.getAllByTestId('ide-verify-waveform-scroll');
     waveformViewports.forEach((viewport) => {

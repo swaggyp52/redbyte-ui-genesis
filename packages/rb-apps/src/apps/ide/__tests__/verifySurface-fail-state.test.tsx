@@ -50,9 +50,9 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -75,8 +75,18 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
-    expect(container.querySelector('details')).toBeNull();
-    expect(container.querySelector('summary')).toBeNull();
+    // This used to assert that the surface contained no <details> at all - a tag-name proxy for
+    // "the mismatch is not hidden behind an expander", true only while the surface had no
+    // disclosures. The waveform's view and measurement tools are a disclosure now, precisely so
+    // that the evidence they sat on top of gets the room, so the proxy would forbid the change
+    // it was written to protect. The behaviour is asserted where it lives: the failure focus and
+    // the path out of it are on screen, and neither is inside a disclosure.
+    for (const failNav of getAllByTestId('ide-verify-fail-nav-first')) {
+      expect(failNav.closest('details')).toBeNull();
+    }
+    const focus = container.querySelector('[data-testid="ide-verify-fail-nav"]');
+    expect(focus).not.toBeNull();
+    expect(focus?.closest('details')).toBeNull();
   });
 
   it('keeps fail evidence visible after switching the next-run toggle back to trace intent', () => {

@@ -143,12 +143,12 @@ export function formatExportDerivedState(state: ExportDerivedState): string {
     case 'downloadable-unverified':
       return 'Unverified package available';
     case 'downloadable-trusted':
-      return 'Trusted package ready';
+      return 'Browser-verified package ready';
     case 'downloaded-draft':
       return 'Downloaded draft';
     case 'downloaded-unverified':
       return 'Downloaded unverified';
     case 'downloaded-trusted':
-      return 'Downloaded trusted';
+      return 'Downloaded browser-verified';
   }
 }

@@ -53,6 +53,37 @@ No launcher chrome, no OS metaphors, no template carousel on default route.
 3. Error states are actionable and never silent.
 4. Success states use explicit, deterministic language (`PASS`, `READY`, `EXPORTED`).
 
+## Bottom panel and dock preferences (2026-09-07, current)
+
+1. One bottom panel, on every workspace
+- The panel exists on Project, Design, Simulate, Board & Constraints and Build & Export alike.
+  Whether there is anything to report is the panel's answer to give, not a reason for it to
+  disappear; an empty ledger says "No problems. Every authority reports clean."
+- The status bar's problems count opens it, expanded. A count that opens nothing is worse than a
+  panel that reports nothing.
+- Its own bar carries the control that puts it away, and hiding it leaves a strip that brings it
+  back. A layout reset also recovers it.
+- The splitter is operable from the keyboard.
+
+2. Preferences are per surface
+- Each of the three docks remembers visibility, size and expansion for the workspace it is on.
+  Opening Problems on Project is not a statement about Design.
+- Leaving a workspace and coming back restores what that workspace was left in, and a change in the
+  problem count never silently overrides it.
+
+3. Shortage of room
+- The frame must survive both forms: a large text setting inside a fixed viewport, and browser zoom,
+  which shrinks the CSS viewport under everything at once. They fail at different settings and both
+  are measured (`chrome-priority-probe.mjs`, `bottom-panel-zoom-probe.mjs`).
+- No control may draw outside its own box, take a click meant for its neighbour, or shrink one of
+  the six frame priorities to make room for something that is not one of them.
+- The panel's cap belongs to its grid track, so the panel fills what it is given; its bar keeps its
+  height and its content scrolls.
+
+4. Save state
+- With nothing open there is no work to save. The frame says "No project" with a neutral mark and a
+  Save that explains why it is disabled, rather than reporting unsaved changes to a placeholder.
+
 ## Non-Goals (Phase 1)
 
 1. Multi-board support (Basys3 only).

@@ -12,24 +12,36 @@ const PRIMARY_MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 
 const MODE_REGIONS = {
   project: {
-    primary: ['[data-testid="ide-project-professional-overview"]'],
+    primary: ['[data-testid="ide-project-overview-document"]', '[data-testid="ide-project-panel"]'],
     support: [
       ['[data-testid="ide-project-professional-facts"]'],
-      ['[data-testid="ide-project-workspace-grid"]'],
+      ['[data-testid="ide-project-explorer"]'],
     ],
   },
   design: {
     primary: ['[data-testid="ide-design-live-canvas"]'],
     support: [
-      ['[data-testid="ide-design-dock-palette"]'],
-      ['[data-testid="ide-design-toolbar"]'],
+      [
+        '[data-testid="ide-design-palette-section-io"]',
+        '[data-testid="ide-design-board-io-palette"]',
+      ],
+      [
+        '[data-testid="ide-design-inspector-canvas-default"]',
+        '[data-testid="ide-design-selection-inspector"]',
+        '[data-testid="ide-design-inspector-selection-details"]',
+        '[data-testid="ide-design-inspector-actions"]',
+      ],
     ],
   },
   verify: {
     primary: ['[data-testid="ide-verify-lab-grid"]'],
     support: [
-      ['[data-testid="ide-verify-signal-shelf"]'],
-      ['[data-testid="ide-verify-region-stimulus"]', '[data-testid="ide-verify-no-circuit-task"]'],
+      ['[data-testid="ide-left-dock"]'],
+      [
+        '[data-testid="ide-verify-region-stimulus"]',
+        '[data-testid="ide-verify-workspace-waveform"]',
+        '[data-testid="ide-verify-waveform-placeholder"]',
+      ],
     ],
   },
   hardware: {
@@ -40,10 +52,10 @@ const MODE_REGIONS = {
     ],
   },
   export: {
-    primary: ['[data-testid="ide-export-package-inspector-v1"]'],
+    primary: ['[data-testid="ide-export-package-files"]'],
     support: [
+      ['[data-testid="ide-export-package-inspector-v1"]'],
       ['[data-testid="ide-export-upstream-readiness"]'],
-      ['[data-testid="ide-export-package-files"]'],
     ],
   },
 };
@@ -88,7 +100,7 @@ await runIdeGate('IDE shell layout integrity satisfied', async ({ page, baseUrl 
 
 async function assertShellModeIntegrity(page, viewport, mode) {
   if (mode === 'design') {
-    await clearDesignSelection(page);
+    await selectFirstDesignNode(page);
   }
   const state = await readShellModeState(page, mode);
 
@@ -99,6 +111,18 @@ async function assertShellModeIntegrity(page, viewport, mode) {
   );
   assert(state.topBar.visible, `${viewport.label}/${mode}: top bar missing`);
   assert(state.stageNav.visible, `${viewport.label}/${mode}: stage navigation missing`);
+  // Migrated from ide:gate:shell-chrome-contract, which asserted a compact top bar and a
+  // narrow mode rail against `ide-left-rail` - a component deleted in 24de703b6 (2026-07-25),
+  // so the gate could never pass again. The behaviour it protected is real and is asserted
+  // here against the tokens that declare it, which also keeps it true at larger text sizes.
+  assert(
+    state.frameTokens.cmdbarH !== null && Math.abs(state.topBar.height - state.frameTokens.cmdbarH) <= 1,
+    `${viewport.label}/${mode}: top bar is ${state.topBar.height}px but --wb-cmdbar-h declares ${state.frameTokens.cmdbarH}px`
+  );
+  assert(
+    state.frameTokens.railW !== null && Math.abs(state.stageNav.width - state.frameTokens.railW) <= 1,
+    `${viewport.label}/${mode}: mode rail is ${state.stageNav.width}px but --wb-rail-w declares ${state.frameTokens.railW}px`
+  );
   assert(state.mainCount === 1, `${viewport.label}/${mode}: expected one main landmark, got ${state.mainCount}`);
   assert(state.retiredRailCount === 0, `${viewport.label}/${mode}: retired workflow rail returned`);
   assert(state.retiredToggleCount === 0, `${viewport.label}/${mode}: retired dock toggle returned`);
@@ -128,6 +152,20 @@ async function assertShellModeIntegrity(page, viewport, mode) {
   }
 }
 
+
+// The Design inspector dock is contextual: it opens with a selection. Click the first schematic
+// node's body with a real pointer (synthetic events carry no pointer id), then wait for the inspector.
+async function selectFirstDesignNode(page) {
+  // A logic gate, never a board input: clicking an input's body toggles its value, which would
+  // mutate the loaded project (and stale its evidence) in the middle of a layout assertion.
+  const node = page.locator('[data-node-id]:not([data-node-type="INPUT"]):not([data-node-type="OUTPUT"]):not([data-node-type="Switch"]):not([data-node-type="Lamp"])').first();
+  await node.waitFor({ state: 'visible', timeout: 10000 });
+  const body = node.locator('.rb-sym-body, rect, path').first();
+  const box = (await body.boundingBox().catch(() => null)) ?? (await node.boundingBox());
+  assert(box, 'schematic node must have a bounding box to select');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 10000 });
+}
 async function clearDesignSelection(page) {
   const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
   assert(canvas, 'Design canvas must be visible before clearing contextual selection');
@@ -199,7 +237,25 @@ async function readShellModeState(page, mode) {
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
         topBar: rectJson(document.querySelector('[data-testid="ide-top-bar"]')?.getBoundingClientRect?.()),
-        stageNav: rectJson(document.querySelector('[data-testid="ide-stage-nav"]')?.getBoundingClientRect?.()),
+        stageNav: rectJson(document.querySelector('[data-testid="ide-workspace-rail"]')?.getBoundingClientRect?.()),
+        // The frame's declared geometry, so the gate can check the rendered chrome against the
+        // tokens rather than against numbers copied into the gate years ago. Both are in rem so
+        // that raising the reader's text size grows the frame with it; a literal pixel band here
+        // would fail the moment that works correctly.
+        frameTokens: (() => {
+          const root = getComputedStyle(document.documentElement);
+          const px = (name) => {
+            const raw = root.getPropertyValue(name).trim();
+            if (!raw) return null;
+            const probe = document.createElement('div');
+            probe.style.cssText = `position:absolute;visibility:hidden;height:${raw};width:${raw}`;
+            document.body.appendChild(probe);
+            const measured = probe.getBoundingClientRect().height;
+            probe.remove();
+            return Math.round(measured * 100) / 100;
+          };
+          return { cmdbarH: px('--wb-cmdbar-h'), railW: px('--wb-rail-w') };
+        })(),
         mainCount: document.querySelectorAll('main').length,
         retiredRailCount: document.querySelectorAll(
           '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
@@ -209,7 +265,7 @@ async function readShellModeState(page, mode) {
         ).length,
         contextualDockViolationCount: (() => {
           if (expectedMode === 'verify') {
-            return document.querySelectorAll('[data-testid="ide-left-dock"]').length;
+            return document.querySelectorAll('[data-testid="ide-left-dock"]:not(:has([data-testid="ide-verify-signal-rail-header"]))').length;
           }
           if (expectedMode !== 'design') return 0;
           const dock = document.querySelector('[data-testid="ide-right-dock"]');

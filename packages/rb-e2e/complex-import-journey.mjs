@@ -6,10 +6,17 @@
 // Project (source files + cross-probe), Design, Simulate (provider + VCD Analyzer),
 // Board & Constraints (constraint sets), and Build & Export. ~25 steps.
 // Runs at 1440×900.
-import { chromium } from 'playwright';
+//
+// P2.5 grammar note: Project is a document workbench (explorer · document ·
+// inspector). Entering the workspace opens Overview; "Sources" is one click on the
+// explorer's document row. Cross-probe is no longer a standalone pill panel — the
+// design→source direction is the inspector's Source section for the selected
+// module, and the source→design direction is the source document's Relationships
+// list. Both directions are still asserted here, by their current owners.
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BASE_URL, launchChromium } from './harness.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'rb-complex-'));
 
@@ -52,7 +59,7 @@ const VCD = ['$timescale 1ns $end', '$var wire 1 A clk $end', '$var wire 4 B dat
 const vcdPath = join(dir, 'trace.vcd');
 writeFileSync(vcdPath, VCD, 'utf8');
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 let step = 0;
 const ok = (msg) => console.log(`  ${String(++step).padStart(2, '0')}. ${msg}`);
@@ -67,7 +74,20 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+// The inspector's property grid is label/value sibling pairs; the cross-probe rows
+// are labelled by link quality ("Exact"/"Partial"/…) and valued by `path:line`.
+const inspectorRows = () => page.evaluate(() => {
+  const grid = document.querySelector('[data-testid="ide-project-inspector-grid"]');
+  if (!grid) return [];
+  return [...grid.querySelectorAll('.wb-propgrid-label')].map((label) => ({
+    label: (label.textContent ?? '').trim(),
+    value: (label.nextElementSibling?.textContent ?? '').trim(),
+  }));
+});
+const TOP_ENTITY_PROBE = { label: 'Exact', value: 'rtl/gate_top.vhd:2' };
+const hasTopEntityProbe = (rows) => rows.some((r) => r.label === TOP_ENTITY_PROBE.label && r.value === TOP_ENTITY_PROBE.value);
+
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(500);
@@ -82,29 +102,52 @@ ok('imported a complex multi-file project through the real file input');
 await page.getByTestId('mode-button-project').click();
 await page.waitForTimeout(500);
 if (await page.getByTestId('ide-mode-project').count() === 0) fail('not on Project');
-ok('landed on the Project surface');
+if (await page.getByTestId('ide-project-explorer').count() === 0) fail('project explorer missing for a loaded project');
+ok('landed on the Project surface (explorer · document · inspector)');
+
+// Project opens on Overview; the imported sources are one click away in the explorer.
+await page.getByTestId('ide-project-row-doc:sources').click();
+await page.waitForTimeout(350);
+if (await page.getByTestId('ide-project-sources-document').count() === 0) fail('Sources document did not open');
 if (await page.getByTestId('ide-project-sources').count() === 0) fail('source files missing');
-const srcCount = (await page.getByTestId('ide-project-sources-count').textContent())?.trim();
+const srcCount = ((await page.locator('[data-testid="ide-project-sources-document"] .rb-doc-header .wb-toolbar-meta').first().textContent()) ?? '').replace(/\s+/g, ' ').trim();
+if (!srcCount.includes('4 files')) fail(`Sources document does not account for the 4 imported files: "${srcCount}"`);
 ok(`imported source files render (${srcCount})`);
-if (await page.getByTestId('ide-project-sources-group-design').count() === 0) fail('design fileset missing');
-if (await page.getByTestId('ide-project-sources-group-constraint').count() === 0) fail('constraint fileset missing');
+
+// Filesets: HDL lands in the compiled design fileset (the Sources table), XDC lands
+// in the constraint fileset (the explorer's Constraints group). Both are asserted.
+for (const id of ['src-rtl-gate-top-vhd', 'src-rtl-helper-v']) {
+  if (await page.getByTestId(`ide-project-source-${id}`).count() === 0) fail(`design source row missing from the Sources table: ${id}`);
+}
+for (const id of ['src-constraints-basys3-xdc', 'src-constraints-variant-xdc']) {
+  const inConstraints = page.locator('[data-testid="ide-project-explorer-group-constraints"]').getByTestId(`ide-project-row-file:${id}`);
+  if (await inConstraints.count() === 0) fail(`imported XDC not classified into the constraint fileset: ${id}`);
+}
 ok('sources classified into design + constraint filesets');
-if (await page.getByTestId('ide-crossprobe').count() === 0) fail('cross-probe missing');
-const moduleQuality = (await page.getByTestId('ide-crossprobe-quality-module:top:gate_top').textContent())?.trim();
-if (moduleQuality !== 'Exact') fail(`top module cross-probe not Exact: ${moduleQuality}`);
-ok('cross-probe resolves the top module to its entity (Exact)');
-await page.getByTestId('ide-crossprobe-design-module:top:gate_top').locator('button').click();
-await page.waitForTimeout(150);
-if (!(await page.getByTestId('ide-crossprobe-link-module:top:gate_top').getAttribute('class'))?.includes('is-selected'))
-  fail('cross-probe bidirectional highlight failed');
-ok('cross-probe bidirectional highlight works (design → source)');
-await page.getByTestId('ide-crossprobe-clear').click();
-await page.waitForTimeout(100);
-await page.getByTestId('ide-crossprobe-link-module:top:gate_top').locator('button').click();
-await page.waitForTimeout(150);
-if (!(await page.getByTestId('ide-crossprobe-design-module:top:gate_top').getAttribute('class'))?.includes('is-selected'))
-  fail('cross-probe source → design highlight failed');
-ok('cross-probe reverse highlight works (source → design)');
+
+// Cross-probe, design → source: selecting the top module resolves it to its entity.
+await page.getByTestId('ide-project-row-module:top').click();
+await page.waitForTimeout(250);
+if (await page.getByTestId('ide-project-inspector').count() === 0) fail('inspector did not open for the selected top module');
+const moduleProbe = await inspectorRows();
+if (!hasTopEntityProbe(moduleProbe)) fail(`top module cross-probe not Exact at its entity: ${JSON.stringify(moduleProbe)}`);
+ok('cross-probe resolves the top module to its entity (Exact · rtl/gate_top.vhd:2)');
+
+// Cross-probe, source → design: the source document's relationships jump back.
+await page.getByTestId('ide-project-row-file:src-rtl-gate-top-vhd').dblclick();
+await page.waitForTimeout(400);
+if (await page.getByTestId('ide-project-source-file-document').count() === 0) fail('source document did not open from the explorer');
+if (await page.getByTestId('ide-project-source-links').count() === 0) fail('source → design relationships missing');
+const moduleLink = page.locator('[data-testid="ide-project-source-links"] li').filter({ hasText: 'gate_top' }).first();
+if (await moduleLink.count() === 0) fail('no relationship back to the gate_top module');
+const linkQuality = await moduleLink.locator('button').getAttribute('data-quality');
+if (linkQuality !== 'exact') fail(`source → design link is not exact: ${linkQuality}`);
+await moduleLink.locator('button').click();
+await page.waitForTimeout(250);
+const probedKind = ((await page.locator('[data-testid="ide-project-inspector"] .rb-inspector-kind').first().textContent()) ?? '').trim();
+const probedName = ((await page.locator('[data-testid="ide-project-inspector"] .rb-inspector-name').first().textContent()) ?? '').trim();
+if (probedKind !== 'top module' || probedName !== 'gate_top') fail(`source → design probe did not select the top module: "${probedKind}" / "${probedName}"`);
+ok('cross-probe bidirectional highlight works (source line → the design module it produced)');
 await noOverflow(page, 'project');
 
 // ── Design surface ──
@@ -117,18 +160,24 @@ await noOverflow(page, 'design');
 // ── Simulate surface ──
 await page.getByTestId('mode-button-verify').click();
 await page.waitForTimeout(500);
-if (await page.getByTestId('ide-sim-provider-bar').count() === 0) fail('provider bar missing');
-const active0 = (await page.getByTestId('ide-sim-provider-active').textContent())?.trim();
-if (!active0?.includes('Browser logic')) fail('default provider not Browser Logic');
-ok('Simulate: provider bar shows Browser Logic as the run-of-record');
+// P2.5: the provider bar is a *choice*. With only the native simulator there is
+// nothing to choose, so it renders nothing; the import route is the affordance.
+if (await page.getByTestId('ide-sim-provider-bar').count() !== 0) fail('provider bar should not offer a choice before any waveform is imported');
+if (await page.getByTestId('ide-vcd-analyzer-load').count() !== 1) fail('Simulate offers no route to import external waveform evidence');
+ok('Simulate: native run-of-record, with exactly one route to import external evidence');
 await page.getByTestId('ide-vcd-analyzer-file-input').setInputFiles(vcdPath);
 await page.waitForTimeout(400);
 const sigCount = (await page.getByTestId('ide-vcd-analyzer-signal-count').textContent())?.trim();
 if (sigCount !== '3') fail(`VCD signal count wrong: ${sigCount}`);
-ok(`imported a VCD into the Analyzer (${sigCount} signals)`);
+if (await page.getByTestId('ide-sim-provider-bar').count() !== 1) fail('provider bar did not mount once an imported waveform existed');
+if (await page.getByTestId('ide-sim-provider-browser-logic').getAttribute('aria-checked') !== 'true')
+  fail('importing a waveform must not silently change the run-of-record');
+ok(`imported a VCD into the Analyzer (${sigCount} signals); Browser Logic is still the run-of-record`);
 await page.getByTestId('ide-sim-provider-imported-vcd').click();
 await page.waitForTimeout(200);
-if (!(await page.getByTestId('ide-sim-provider-active').textContent())?.includes('Imported')) fail('provider did not switch to Imported');
+if (await page.getByTestId('ide-sim-provider-imported-vcd').getAttribute('aria-checked') !== 'true') fail('provider did not switch to Imported');
+const evidenceLabel = ((await page.getByTestId('ide-vcd-analyzer-evidence').textContent()) ?? '').trim();
+if (!/^Imported evidence/i.test(evidenceLabel)) fail(`imported provenance is not stated honestly: "${evidenceLabel}"`);
 ok('selected the Imported VCD provider (evidence: external, not executed)');
 await page.getByTestId('ide-vcd-analyzer-cursor-value').fill('5');
 await page.waitForTimeout(150);
@@ -187,8 +236,13 @@ await noOverflow(page, 'export');
 // ── Return to Project: the imported artifacts persist within the session ──
 await page.getByTestId('mode-button-project').click();
 await page.waitForTimeout(400);
-if (await page.getByTestId('ide-project-sources').count() === 0) fail('sources lost after navigating the spine');
-if (await page.getByTestId('ide-crossprobe').count() === 0) fail('cross-probe lost after navigating the spine');
+await page.getByTestId('ide-project-row-doc:sources').click();
+await page.waitForTimeout(350);
+if (await page.getByTestId('ide-project-source-src-rtl-gate-top-vhd').count() === 0) fail('sources lost after navigating the spine');
+if (await page.getByTestId('ide-project-source-src-rtl-helper-v').count() === 0) fail('sources lost after navigating the spine');
+await page.getByTestId('ide-project-row-module:top').click();
+await page.waitForTimeout(250);
+if (!hasTopEntityProbe(await inspectorRows())) fail('cross-probe lost after navigating the spine');
 ok('returning to Project shows the imported sources + cross-probe intact');
 
 // ── Whole-session integrity ──

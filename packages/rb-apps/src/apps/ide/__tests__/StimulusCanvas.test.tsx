@@ -132,7 +132,7 @@ describe('StimulusCanvas bulk editing tools', () => {
     ]);
   });
 
-  it('normalizes an invalid controlled selected tick after the available cases shrink', async () => {
+  it('shows the nearest authored case for a controlled tick it no longer has, without writing it back', async () => {
     const onSelectedTickChange = vi.fn();
     const sharedProps = {
       inputFields: [{ id: 'sw0', label: 'SW0' }],
@@ -165,10 +165,14 @@ describe('StimulusCanvas bulk editing tools', () => {
       />
     );
 
+    // The parent owns the tick domain (a timeline tick between authored cases, or
+    // a tick from before a project switch). The canvas displays the nearest case
+    // and never pushes that substitute back — a write-back against a parent that
+    // re-applies its own tick loops until React aborts the render.
     await waitFor(() => {
-      expect(onSelectedTickChange).toHaveBeenCalledWith(0);
+      expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
     });
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
+    expect(onSelectedTickChange).not.toHaveBeenCalled();
   });
 
   it('copies the testbench as tab-delimited text with blank assertions preserved', async () => {

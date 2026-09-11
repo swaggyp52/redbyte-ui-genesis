@@ -69,11 +69,8 @@ function renderSurface(overrides: Partial<React.ComponentProps<typeof DesignSurf
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -135,14 +132,15 @@ describe('DesignSurface library rail', () => {
 
   it('moves focus between library cards with arrow keys', async () => {
     const view = renderSurface();
-    await waitFor(() => expect(view.getByTestId('ide-design-palette-section-common')).toBeTruthy());
-    const first = view.getByTestId('ide-design-common-input');
+    await waitFor(() => expect(view.getByTestId('ide-design-palette-section-io')).toBeTruthy());
+    // Every primitive is listed once under its category; the first I/O row starts the walk.
+    const first = view.getByTestId('ide-design-palette-input');
     first.focus();
     expect(document.activeElement).toBe(first);
 
     fireEvent.keyDown(first, { key: 'ArrowDown' });
     expect(document.activeElement).not.toBe(first);
-    expect((document.activeElement as HTMLElement).classList.contains('ide-palette-card')).toBe(true);
+    expect((document.activeElement as HTMLElement).classList.contains('rb-lib-row')).toBe(true);
 
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
     expect(document.activeElement).toBe(first);

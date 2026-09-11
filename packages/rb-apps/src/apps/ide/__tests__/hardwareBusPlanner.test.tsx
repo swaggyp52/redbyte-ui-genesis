@@ -73,8 +73,9 @@ describe('HardwareBusPlanner', () => {
       a3: getBasys3BoardResource('SW3')!.packagePin,
     });
     const view = render(<HardwareBusPlanner rows={rows} onSetMappingPin={vi.fn()} />);
-    const mapped = view.getByTestId('ide-hw-bus-planner-mapped');
-    expect(mapped.textContent).toContain('Bus already mapped');
+    const mapped = view.getByTestId('ide-hw-bus-planner-summary');
+    expect(mapped.textContent).toContain('mapped');
+    expect(mapped.textContent).toContain('A[3:0]');
     // No misleading "Assign 0 pins" primary button.
     expect(view.queryByTestId('ide-hw-bus-planner-apply')).toBeNull();
   });

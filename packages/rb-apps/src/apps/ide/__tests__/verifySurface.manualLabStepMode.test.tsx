@@ -88,6 +88,18 @@ function makeTwoTickManualLabRun(): RuntimeVerifyRun {
   };
 }
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The waveform is one representation of one experiment, chosen with the VIEW switch, rather
+ * than a second region drawn under the timeline. A test about the trace canvas, its lanes or
+ * its own tools asks for that representation first; what each test protects is unchanged.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 describe('VerifySurface manual lab step workflow', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
@@ -113,9 +125,6 @@ describe('VerifySurface manual lab step workflow', () => {
       />
     );
 
-    expect(screen.getByTestId('ide-verify-step-controls')).toBeTruthy();
-    expect(screen.getByTestId('ide-verify-step-bar')).toBeTruthy();
-    expect(screen.getByTestId('ide-verify-step-mode-toggle').textContent).toMatch(/step cases on/i);
     expect(screen.getByTestId('ide-verify-lab-sequencer')).toBeTruthy();
     expect(screen.getByTestId('ide-verify-lab-sequencer-mode').textContent).toMatch(/manual-event lab mode/i);
     expect(screen.getByTestId('ide-verify-lab-scenario-name').textContent).toContain('Lab Step');
@@ -129,9 +138,16 @@ describe('VerifySurface manual lab step workflow', () => {
         kind: 'pulse_step',
       })
     );
+
+    // Case stepping walks the recorded trace, so it is a tool of the trace representation.
+    showWaveformRepresentation(screen);
+    expect(screen.getByTestId('ide-verify-step-controls')).toBeTruthy();
+    expect(screen.getByTestId('ide-verify-step-bar')).toBeTruthy();
+    expect(screen.getByTestId('ide-verify-step-mode-toggle').textContent).toMatch(/step cases on/i);
   });
 
   it('hides Prev/Next bar when step mode is toggled off but keeps the toggle', () => {
+    // See above: the step controls are drawn with the trace they step through.
     const run = makeTwoTickManualLabRun();
     render(
       <VerifySurface
@@ -149,6 +165,7 @@ describe('VerifySurface manual lab step workflow', () => {
       />
     );
 
+    showWaveformRepresentation(screen);
     fireEvent.click(screen.getByTestId('ide-verify-step-mode-toggle'));
     expect(screen.queryByTestId('ide-verify-step-bar')).toBeNull();
     expect(screen.getByTestId('ide-verify-step-mode-toggle').textContent?.trim()).toBe('Step cases');

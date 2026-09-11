@@ -100,9 +100,9 @@ describe('VerifySurface panel ownership', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
@@ -111,9 +111,9 @@ describe('VerifySurface panel ownership', () => {
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
 
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe('VerifySurface panel ownership', () => {
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
-    const inputSignal = getByTestId('ide-verify-shelf-signal-sw0');
+    const inputSignal = getByTestId('ide-verify-signal-sw0');
 
     expect(inputSignal).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(inputSignal);

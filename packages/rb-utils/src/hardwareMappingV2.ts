@@ -362,3 +362,17 @@ export function applyMaterializedPinToHardwareMappingV2(
 
   return next;
 }
+
+/**
+ * The io-row id the runtime derives from a signal label (`SUM[0]` → `sum_0`).
+ * Rows created from circuit boundary nodes carry this id; vectors and checks
+ * are keyed by it; the export generator resolves it as an alias of the port.
+ */
+export function normalizeBoardRowId(value: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return normalized.length > 0 ? normalized : 'io';
+}

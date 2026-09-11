@@ -24,7 +24,7 @@ const waveform = () => waveformFromVcd(parseVcd(VCD), 'run.vcd');
 const noop = () => {};
 
 describe('VcdAnalyzerPanel', () => {
-  it('shows the empty state and honest provider identity without a waveform', () => {
+  it('collapses to a compact affordance without a waveform (does not dominate a native project)', () => {
     render(
       <VcdAnalyzerPanel
         waveform={null}
@@ -34,10 +34,14 @@ describe('VcdAnalyzerPanel', () => {
         onClear={noop}
       />,
     );
-    expect(screen.getByTestId('ide-vcd-analyzer-empty')).toBeTruthy();
+    // Compact bar, not the full three-zone Analyzer or a giant empty card.
+    expect(screen.getByTestId('ide-vcd-analyzer-compact')).toBeTruthy();
+    expect(screen.queryByTestId('ide-vcd-analyzer-empty')).toBeNull();
+    expect(screen.queryByTestId('ide-vcd-analyzer-signals')).toBeNull();
+    // Still honest and still offers the load affordance.
     expect(screen.getByTestId('ide-vcd-analyzer-provider').textContent).toContain('Imported VCD');
-    expect(screen.getByTestId('ide-vcd-analyzer-honesty').textContent).toContain('executes nothing');
     expect(screen.getByTestId('ide-vcd-analyzer-load')).toBeTruthy();
+    expect(screen.getByTestId('ide-vcd-analyzer').textContent).toContain('never executed');
   });
 
   it('renders the three zones with honest evidence and measurements at the cursor', () => {

@@ -4,10 +4,10 @@
 // original untouched, review, or cancel. The original file is never overwritten;
 // only an in-memory upgraded copy is loaded, durable on save. This journey drives
 // the real file input with a pre-versioned (v0) .rbproj. Runs at 1440×900 and 1366×768.
-import { chromium } from 'playwright';
 import { writeFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { BASE_URL, launchChromium } from './harness.mjs';
 
 // A pre-versioned (v0) document: project-shaped (has a circuit) but no version field.
 const V0_PROJECT = JSON.stringify({
@@ -27,7 +27,7 @@ const dir = mkdtempSync(join(tmpdir(), 'rb-migrate-'));
 const legacyPath = join(dir, 'legacy.rbproj');
 writeFileSync(legacyPath, V0_PROJECT, 'utf8');
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await launchChromium();
 const fail = (m) => { throw new Error(m); };
 
 async function run(width, height) {
@@ -36,7 +36,7 @@ async function run(width, height) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
-  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(500);

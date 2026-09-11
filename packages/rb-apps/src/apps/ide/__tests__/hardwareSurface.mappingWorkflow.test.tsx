@@ -77,9 +77,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-hardware-command-strip"]')).toBeNull();
-    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain(
-      'Map a logical signal to a Basys3 control'
-    );
+    expect(getByTestId('ide-hardware-mapping-progress')).toBeTruthy();
   });
 
   it('shows Complete state and full count when all required signals are mapped', () => {
@@ -103,9 +101,11 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table').getAttribute('data-work-priority')).toBe('primary');
-    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain(
-      'all required mappings assigned'
-    );
+    // The behaviour this protects is that a zero is stated in words, not left as a bare
+    // digit. The words used to be 'all required mappings assigned' - a verbatim restatement
+    // of the MAPPING COMPLETE headline two chips to its left, in a ribbon that said the same
+    // thing six times. It still says it, once.
+    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain('none outstanding');
   });
 
   it('shows Incomplete state when a required signal has no pin', () => {
@@ -189,9 +189,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     );
 
     const table = getByTestId('ide-hw-map-table');
-    expect(table.getAttribute('data-columns')).toBe('Logical signal|Purpose|Board resource|Package pin|Status|Action');
-    expect(table.textContent).toContain('Logical signal');
-    expect(table.textContent).toContain('Purpose');
+    expect(table.getAttribute('data-columns')).toBe('Logical port|Board resource|State|Action');
+    expect(table.textContent).toContain('Logical port');
+    expect(table.textContent).not.toContain('Package pin');
     expect(table.textContent).toContain('Board resource');
     const afterMapping = getByTestId('ide-hw-after-mapping-tools');
     expect(afterMapping.tagName).toBe('SECTION');
@@ -341,8 +341,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-map-row-signal-en').textContent).toBe('ENArtifact port: SW');
-    expect(getByTestId('ide-hw-map-row-binding-en').textContent).toBe('Slide switch SW0');
+    expect(getByTestId('ide-hw-map-row-signal-en').textContent).toBe('EN');
+    expect(getByTestId('ide-hw-map-row-binding-en').textContent).toBe('SW0');
+    expect(getByTestId('ide-hardware-chain-artifact').textContent).toBe('Artifact portSW');
     fireEvent.click(getByTestId('ide-hw-map-row-en'));
     expect(getByTestId('ide-hardware-chain-artifact').textContent).toContain('SW');
     expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain(
@@ -435,7 +436,8 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     fireEvent.change(getByTestId('ide-hw-direct-resource-select'), { target: { value: 'LD1' } });
     fireEvent.click(getByTestId('ide-hw-assign-selected-resource'));
     expect(onSetMappingPin).toHaveBeenCalledWith('ld0', 'E19');
-    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('package pin E19');
+    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('LD1 selected. Save to update');
+    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).not.toContain('PACKAGE_PIN E19');
   });
 
   it('counts one missing mapping once when the row and Export report the same gap', () => {

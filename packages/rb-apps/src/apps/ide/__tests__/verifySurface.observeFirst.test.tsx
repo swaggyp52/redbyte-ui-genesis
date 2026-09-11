@@ -12,6 +12,18 @@ if (!HTMLElement.prototype.scrollIntoView) {
   });
 }
 
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * The scrubber and the tick readout are tools of the trace representation: they describe a
+ * drawn waveform, so they are drawn with it. The cursor they move is the experiment's, which
+ * is what these tests are about, so they ask for that representation before touching them.
+ */
+function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLElement | null }): void {
+  const toggle = view.queryByTestId('ide-verify-view-waveform');
+  if (toggle) fireEvent.click(toggle);
+}
+
 function makeTraceRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'trace-scenario',
@@ -200,7 +212,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-inspect-design')).toBeTruthy();
+    expect(getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
   });
 
   it('hides Open in Design button when no lastRun (draft state)', () => {
@@ -212,7 +224,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(queryByTestId('ide-verify-inspect-design')).toBeNull();
+    expect(queryByTestId('ide-verify-open-circuit-replay')).toBeNull();
   });
 
   it('hides Open in Design button when neither onGoToDesign nor onGoToDesignWithInputs provided', () => {
@@ -223,7 +235,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(queryByTestId('ide-verify-inspect-design')).toBeNull();
+    expect(queryByTestId('ide-verify-open-circuit-replay')).toBeNull();
   });
 
   it('shows Open in Design button when onGoToDesignWithInputs provided even without onGoToDesign', () => {
@@ -236,7 +248,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-inspect-design')).toBeTruthy();
+    expect(getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
   });
 
   it('calls onGoToDesign when Open in Design clicked', () => {
@@ -249,7 +261,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
     expect(onGoToDesign).toHaveBeenCalledOnce();
   });
 
@@ -283,7 +295,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
 
     expect(onDebugTickSelected).toHaveBeenCalledOnce();
     expect(onDebugTickSelected).toHaveBeenCalledWith(
@@ -300,7 +312,7 @@ describe('VerifySurface observe-first model', () => {
     const onGoToDesignWithInputs = vi.fn();
     const onDebugTickSelected = vi.fn();
     const onSignalSelected = vi.fn();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...BASE_PROPS}
         lastRun={makeWaveformOnlyRun()}
@@ -311,7 +323,8 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    showWaveformRepresentation({ queryByTestId });
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
 
@@ -339,18 +352,25 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-scope-signal').textContent?.toLowerCase()).toContain('ld0');
+    expect(getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld0');
 
+    // What matters is that an observation-only run publishes WHICH signal it auto-selected, so
+    // Design can name it. Its one consumer (DesignSurface's stale-replay breadcrumb) renders the
+    // value as text, so the surface publishes the signal's label - pinning the lower-case id here
+    // asserted a form nothing depends on.
     await waitFor(() => {
-      expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
+      expect(onSignalSelected).toHaveBeenCalled();
     });
+    const published = onSignalSelected.mock.calls[onSignalSelected.mock.calls.length - 1]?.[0];
+    expect(published).not.toBeNull();
+    expect(String(published)).toMatch(/^ld0$/i);
   });
 
   it('uses the Stimulus-selected case as the Design handoff tick when the waveform has not been touched', () => {
     const onGoToDesign = vi.fn();
     const onGoToDesignWithInputs = vi.fn();
     const onDebugTickSelected = vi.fn();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...BASE_PROPS}
         lastRun={makeWaveformOnlyRun()}
@@ -361,11 +381,13 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    fireEvent.click(getByTestId('ide-case-lab-row-1'));
+    expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
+    // Selecting a case moved the experiment's cursor, so the trace opens on the same tick.
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
 
     expect(onDebugTickSelected).toHaveBeenCalledOnce();
     expect(onDebugTickSelected).toHaveBeenCalledWith(
@@ -386,6 +408,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
+    showWaveformRepresentation(view);
     await waitFor(() => {
       expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
     });
@@ -444,7 +467,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
     expect(onGoToDesign).toHaveBeenCalledOnce();
   });
 });

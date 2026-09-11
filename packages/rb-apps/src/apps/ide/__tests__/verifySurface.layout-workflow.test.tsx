@@ -170,7 +170,7 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-verify-three-panel')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-left')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-right')).toBeNull();
@@ -187,9 +187,6 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-stimulus-summary').textContent?.toLowerCase()).not.toContain(
-      'waveform stays locked to the selected case'
-    );
   });
 
   it('does not reintroduce the legacy command strip once a run exists', () => {

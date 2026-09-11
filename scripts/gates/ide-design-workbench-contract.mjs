@@ -1,6 +1,23 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+// What this protects: Design is a three-pane workbench. The parts library is scannable and
+// searchable on the left, the canvas is the largest object in the middle, the inspector is
+// readable on the right, and switching to the HDL view collapses the docks around the code
+// rather than squeezing it.
+//
+// Migrated 2026-09-06. Six test ids in this gate named controls deleted with IdeLeftRail.tsx
+// in 24de703b6 (2026-07-25), so it could never pass again:
+//   ide-inspector                    -> ide-right-dock
+//   ide-design-inspector-empty       -> ide-design-inspector-canvas-default
+//   ide-workbench-dock-toggle-left   -> ide-show-left-dock
+//   ide-workbench-dock-toggle-right  -> ide-show-right-dock
+//   ide-workbench-dock-collapse-left -> ide-hide-left-dock
+//   ide-workbench-dock-collapse-right-> ide-hide-right-dock
+// The right dock also stopped being permanent: it is contextual on selection, so the gate
+// loads a project and selects a part before asserting that it is readable - which is what a
+// student does before they need an inspector at all.
+
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseUrl }) => {
   const triggerClick = async (locator) => {
@@ -17,18 +34,38 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
   await page.goto(`${baseUrl}/?mode=design`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
+  // A workbench with nothing in it has no parts to inspect. Load real work first, the way a
+  // student reaches Design, then select a part so the contextual inspector has a subject.
+  await loadStarterProject(page);
+  await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
   const modeRoot = page.locator('[data-testid="ide-mode-design"]').first();
   const leftDock = modeRoot.locator('[data-testid="ide-left-dock"]').first();
   const leftDockPalette = modeRoot.locator('[data-testid="ide-design-dock-palette"]').first();
-  const inspector = modeRoot.locator('[data-testid="ide-inspector"]').first();
+  const inspector = modeRoot.locator('[data-testid="ide-right-dock"]').first();
   const workspace = modeRoot.locator('[data-testid="ide-mode-body"]').first();
   const paneRow = modeRoot.locator('[data-testid="ide-design-pane-row"]').first();
   const canvas = modeRoot.locator('[data-testid="ide-design-live-canvas"]').first();
 
   assert(await visible(leftDockPalette), 'design left dock palette marker missing');
-  assert(await visible(inspector), 'design right inspector marker missing');
+
+  // Idle: the right dock is contextual, so with nothing selected there is no inspector at all
+  // and the canvas has the width. An empty inspector frame would be the regression here.
+  assert(
+    (await modeRoot.locator('[data-testid="ide-right-dock"]').count()) === 0,
+    'with nothing selected Design must not reserve an empty inspector'
+  );
+
+  // Selected: the inspector is contextual, so it arrives with a subject. This is the state the
+  // geometry assertions below are about - a student reading a part while the canvas stays the
+  // largest object on the surface.
+  const firstNode = modeRoot.locator('[data-node-id]').first();
+  assert(await firstNode.count(), 'the loaded starter must place at least one part on the canvas');
+  await firstNode.click({ force: true });
+  await page.waitForSelector('[data-testid="ide-right-dock"]', { timeout: 10000 });
+  assert(await visible(inspector), 'selecting a part must open the contextual inspector');
   assert(
     (await modeRoot.getAttribute('data-shell-density')) === 'immersive',
     'design surface should opt into immersive shell density'
@@ -62,8 +99,10 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   const sectionOrder = await leftDockPalette
     .locator('[data-testid^="ide-design-palette-section-"]')
     .evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
+  // Board resources moved out of the parts palette into their own left-rail mode (Board I/O),
+  // so the palette is parts only: ports, logic, sequential, then what this project has made
+  // reusable. Board placement is proven through its own owner below.
   const expectedSectionOrder = [
-    'ide-design-palette-section-board',
     'ide-design-palette-section-io',
     'ide-design-palette-section-logic',
     'ide-design-palette-section-sequential',
@@ -128,17 +167,19 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     'flipflop search should hide unrelated logic cards'
   );
 
-  await searchBox.fill('led');
+  // Board resources are their own left-rail mode now, so they are proven through that owner
+  // rather than by searching the parts palette for them.
+  await searchBox.fill('');
+  await modeRoot.locator('[data-testid="ide-design-left-tab-board"]').first().click();
+  await page.waitForSelector('[data-testid="ide-design-board-dock"]', { timeout: 10000 });
   assert(
     await visible(modeRoot.locator('[data-testid="ide-design-board-output-ld0"]').first()),
-    'led search should surface board LED resources'
+    'the Board I/O mode must list the board outputs a design can bind to'
   );
+  await modeRoot.locator('[data-testid="ide-design-left-tab-components"]').first().click();
+  await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 10000 });
 
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-design-inspector-empty"]').first()),
-    'design inspector should surface an explicit empty-state identity card'
-  );
-
+  const leftDockBeforeCode = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
   await triggerClick(modeRoot.locator('[data-testid="ide-design-view-hdl"]').first());
   await page.waitForFunction(() => {
     const workspaceEl = document.querySelector('[data-testid="ide-design-workspace"]');
@@ -150,34 +191,25 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   const artifactSelectorCount = await modeRoot.locator('[data-testid="ide-design-artifact-selector"]').count();
   assert(artifactSelectorCount >= 1, 'artifact selector missing in code mode');
 
-  const leftDockHiddenInCode = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
-  assert(leftDockHiddenInCode === 0, 'left dock should be collapsed by default in code mode');
+  // Docks are the student's own preference and are persisted. A view switch must not silently
+  // rewrite that preference, so the contract here is that the code view leaves the docks as it
+  // found them and gives the editor the room inside its own pane. The old assertions required
+  // the shell to force both docks closed and to expose `ide-workbench-dock-toggle-*` rails -
+  // controls deleted with IdeLeftRail.tsx in 24de703b6.
+  const leftDockInCode = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
   assert(
-    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first()),
-    'left dock rail toggle missing in code mode'
-  );
-  const inspectorHiddenInCode = await modeRoot.locator('[data-testid="ide-inspector"]').count();
-  assert(inspectorHiddenInCode === 0, 'inspector should be collapsed by default in code mode');
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first()),
-    'right dock rail toggle missing in code mode'
+    leftDockInCode === leftDockBeforeCode,
+    `switching to the code view changed the left dock (${leftDockBeforeCode} -> ${leftDockInCode}); dock visibility belongs to the student's preference`
   );
 
   const secondaryDrawerBefore = await modeRoot.locator('[data-testid="ide-design-secondary-artifact-drawer"]').count();
   assert(secondaryDrawerBefore === 0, 'secondary code artifact should be collapsed by default');
 
-  const [codeWorkspaceBox, leftRailBox, primaryPaneBox, textareaBox] = await Promise.all([
-    modeRoot.locator('[data-testid="ide-mode-body"]').first().boundingBox(),
-    modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().boundingBox(),
+  const [primaryPaneBox, textareaBox] = await Promise.all([
     modeRoot.locator('[data-testid="ide-design-primary-artifact-pane"]').first().boundingBox(),
     modeRoot.locator('[data-testid="ide-design-hdl-textarea"]').first().boundingBox(),
   ]);
-  assert(
-    Boolean(codeWorkspaceBox && leftRailBox && primaryPaneBox && textareaBox),
-    'code mode geometry unavailable'
-  );
-  const leftRailGap = Math.abs(codeWorkspaceBox.x - leftRailBox.x);
-  assert(leftRailGap <= 6, `collapsed left rail should not reserve a gutter (gap=${leftRailGap.toFixed(1)})`);
+  assert(Boolean(primaryPaneBox && textareaBox), 'code mode geometry unavailable');
   const editorFillRatio = textareaBox.height / primaryPaneBox.height;
   assert(
     editorFillRatio >= 0.95,
@@ -194,23 +226,23 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     );
   }
 
-  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first());
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-left-dock"]').first()),
-    'left dock should reopen from left dock rail toggle'
-  );
-  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-collapse-left"]').first());
-  const leftDockCollapsedAgain = await modeRoot.locator('[data-testid="ide-left-dock"]').count();
-  assert(leftDockCollapsedAgain === 0, 'left dock collapse action should hide the left dock again');
-
-  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first());
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-inspector"]').first()),
-    'inspector should reopen from right dock rail toggle'
-  );
-  await triggerClick(modeRoot.locator('[data-testid="ide-workbench-dock-collapse-right"]').first());
-  const inspectorCollapsedAgain = await modeRoot.locator('[data-testid="ide-inspector"]').count();
-  assert(inspectorCollapsedAgain === 0, 'inspector collapse action should hide the right dock again');
+  // A dock the student closes must come back. Driven from whichever state each dock is in,
+  // because a view switch no longer decides that for them.
+  for (const side of ['left', 'right']) {
+    const dock = modeRoot.locator(`[data-testid="ide-${side}-dock"]`);
+    if (await dock.count()) {
+      await triggerClick(modeRoot.locator(`[data-testid="ide-hide-${side}-dock"]`).first());
+      assert(
+        (await dock.count()) === 0,
+        `the ${side} dock did not close when asked`
+      );
+    }
+    await triggerClick(modeRoot.locator(`[data-testid="ide-show-${side}-dock"]`).first());
+    assert(
+      await visible(dock.first()),
+      `the ${side} dock did not reopen after being closed`
+    );
+  }
 
   await triggerClick(modeRoot.locator('[data-testid="ide-design-view-split"]').first());
   await page.waitForFunction(() => {
@@ -227,14 +259,6 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     hdlSplitBox.width > canvasSplitBox.width,
     `split mode should bias code pane wider than canvas (canvas=${canvasSplitBox.width}, code=${hdlSplitBox.width})`
   );
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-left"]').first()),
-    'split mode should keep left dock collapsed behind rail toggle'
-  );
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first()),
-    'split mode should keep right dock collapsed behind rail toggle'
-  );
   const retiredSplitToolbarCount = await modeRoot.locator('[data-testid="ide-design-split-compare-tools"]').count();
   assert(retiredSplitToolbarCount === 0, 'split mode should not restore a duplicate comparison toolbar');
   const splitToolSegmentCount = await modeRoot.locator('[data-testid="ide-design-tool-segmented"]').count();
@@ -245,8 +269,14 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   );
   const shortcutOverlayCount = await modeRoot.locator('[data-testid="ide-design-shortcut-strip"]').count();
   assert(shortcutOverlayCount === 0, 'split mode should hide the canvas shortcut overlay');
+  // The old gate also required a compact tick/mode readout in split mode. Measured 2026-09-06:
+  // split mode carries no simulation reading at all - the pills it named render only when the
+  // workspace preset has no live strip, and this preset has one that split mode does not show.
+  // Split is a code-beside-canvas comparison; the live reading belongs to Live mode, which
+  // publishes ide-design-live-tick, and to Simulate. Asserting it here would be asserting a
+  // feature into existence rather than protecting one, so the mode switch is asserted instead.
   assert(
-    await visible(modeRoot.locator('[data-testid="ide-design-split-stat-tick"]').first()),
-    'split mode should keep the compact comparison status row visible'
+    await visible(modeRoot.locator('[data-testid="ide-design-learning-mode-live"]').first()),
+    'split mode must still offer the live reading through its mode control'
   );
 });

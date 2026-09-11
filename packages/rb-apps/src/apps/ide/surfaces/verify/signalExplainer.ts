@@ -24,6 +24,8 @@ export interface ExplainerSignalMapping {
   readonly signalName: string;
   readonly nodeId: string;
   readonly direction: 'in' | 'out';
+  /** Circuit port identity for internal recordings; distinct from a package pin. */
+  readonly port?: string;
   readonly pin?: string;
 }
 
@@ -81,6 +83,9 @@ export interface ExplainerInput {
 
 const SEQUENTIAL_NODE_TYPES = new Set([
   'DFlipFlop',
+  'Register1',
+  'RegisterBus',
+  'StateBank',
   'DLatch',
   'TFlipFlop',
   'JKFlipFlop',
@@ -156,19 +161,51 @@ function findNodeById(
 }
 
 function isInputNode(nodeType: string): boolean {
-  return nodeType === 'Switch' || nodeType === 'Clock' || nodeType === 'Input';
+  return ['switch', 'button', 'clock', 'input'].includes(nodeType.toLowerCase());
 }
 
 function isOutputNode(nodeType: string): boolean {
-  return nodeType === 'LED' || nodeType === 'Output';
+  return ['led', 'lamp', 'output'].includes(nodeType.toLowerCase());
 }
 
-function findSignalNodeId(
+function findSignalMapping(
   signal: string,
   mappings: readonly ExplainerSignalMapping[],
+): ExplainerSignalMapping | null {
+  const matches = mappings.filter((mapping) => mapping.signalName === signal);
+  const endpoints = new Set(matches.map((mapping) => `${mapping.nodeId}:${mapping.port ?? ''}`));
+  return endpoints.size === 1 ? matches[0] : null;
+}
+
+function sourcePortKey(nodeType: string, port: string): string {
+  const key = port.toLowerCase();
+  if (SEQUENTIAL_NODE_TYPES.has(nodeType)) {
+    if (['q', 'out'].includes(key)) return 'q';
+    if (['q_inv', 'qbar', 'qn', 'q_n', 'nq'].includes(key)) return 'q_inv';
+  }
+  return key;
+}
+
+/** Resolve an observed source endpoint, never another output of the same node. */
+function findSignalForPort(
+  input: Pick<ExplainerInput, 'waveform' | 'signalMappings'>,
+  graph: ExplainerCircuitGraph,
+  nodeId: string,
+  port: string,
 ): string | null {
-  const mapping = mappings.find((m) => m.signalName === signal);
-  return mapping?.nodeId ?? null;
+  const node = findNodeById(graph, nodeId);
+  if (!node) return null;
+  const observed = new Set(input.waveform.flatMap((sample) => Object.keys(sample.signals)));
+  const candidates = new Set(input.signalMappings.filter((mapping) =>
+    mapping.nodeId === nodeId && (
+      mapping.port ? sourcePortKey(node.type, mapping.port) === sourcePortKey(node.type, port)
+        : isInputNode(node.type) && port.toLowerCase() === 'out'
+    ) && observed.has(mapping.signalName),
+  ).map((mapping) => mapping.signalName));
+  if (candidates.size === 1) return Array.from(candidates)[0];
+  if (candidates.size > 1) return null;
+  const endpoint = `${nodeId}.${port}`;
+  return observed.has(endpoint) ? endpoint : null;
 }
 
 function detectClockEdge(
@@ -176,26 +213,14 @@ function detectClockEdge(
   clockSignal: string,
   tick: number,
 ): { edgeTick: number; edgeDirection: 'rising' | 'falling' } | null {
-  // Check for rising edge at tick (0→1) or tick-1→tick
-  const currentVal = signalValueAt(waveform, clockSignal, tick);
-  const prevVal = signalValueAt(waveform, clockSignal, tick - 1);
-
-  if (prevVal === '0' && currentVal === '1') {
-    return { edgeTick: tick, edgeDirection: 'rising' };
+  // Sample ticks need not be consecutive. Report the latest observed rising transition;
+  // a falling transition is valid stimulus but never a supported register capture.
+  const samples = waveform.filter((sample) => sample.tick <= tick).sort((a, b) => a.tick - b.tick);
+  for (let index = samples.length - 1; index > 0; index--) {
+    if (samples[index - 1].signals[clockSignal] === '0' && samples[index].signals[clockSignal] === '1') {
+      return { edgeTick: samples[index].tick, edgeDirection: 'rising' };
+    }
   }
-  if (prevVal === '1' && currentVal === '0') {
-    return { edgeTick: tick, edgeDirection: 'falling' };
-  }
-
-  // Look back one more tick for edge at tick-1
-  const prevPrevVal = signalValueAt(waveform, clockSignal, tick - 2);
-  if (prevPrevVal === '0' && prevVal === '1') {
-    return { edgeTick: tick - 1, edgeDirection: 'rising' };
-  }
-  if (prevPrevVal === '1' && prevVal === '0') {
-    return { edgeTick: tick - 1, edgeDirection: 'falling' };
-  }
-
   return null;
 }
 
@@ -204,12 +229,14 @@ function findSignalValueForNode(
   mappings: readonly ExplainerSignalMapping[],
   waveform: readonly VerifyWaveSample[],
   tick: number,
+  port: string,
+  graph: ExplainerCircuitGraph,
 ): { signalName: string; value: string } | null {
-  const mapping = mappings.find((m) => m.nodeId === nodeId);
-  if (!mapping) return null;
-  const value = signalValueAt(waveform, mapping.signalName, tick);
+  const signalName = findSignalForPort({ waveform, signalMappings: mappings }, graph, nodeId, port);
+  if (!signalName) return null;
+  const value = signalValueAt(waveform, signalName, tick);
   if (value === null) return null;
-  return { signalName: mapping.signalName, value };
+  return { signalName, value };
 }
 
 // ─── Core Explainer ──────────────────────────────────────────────────────────
@@ -313,6 +340,7 @@ function buildCombinationalExplanation(
     if (isInputNode(driverNode.type)) {
       const inputVal = findSignalValueForNode(
         driver.fromNodeId, input.signalMappings, input.waveform, input.tick,
+        driver.fromPort, graph,
       );
       steps.push({
         description: inputVal
@@ -347,6 +375,7 @@ function buildCombinationalExplanation(
         sourceNodeIds.push(gateDriver.fromNodeId);
         const gateInputVal = findSignalValueForNode(
           gateDriver.fromNodeId, input.signalMappings, input.waveform, input.tick,
+          gateDriver.fromPort, graph,
         );
 
         if (gateInputVal) {
@@ -368,7 +397,7 @@ function buildCombinationalExplanation(
 
   const summary = changed
     ? `${input.selectedSignal} changed to ${currentValue} at tick ${input.tick} based on its input values.`
-    : `${input.selectedSignal} holds at ${currentValue} — its inputs have not changed.`;
+    : `${input.selectedSignal} is ${currentValue} at tick ${input.tick}. The recorded output is unchanged; that does not imply its inputs were unchanged.`;
 
   return {
     selectedSignal: input.selectedSignal,
@@ -389,7 +418,7 @@ function buildSequentialExplanation(
   previousValue: string | null,
   changed: boolean,
   graph: ExplainerCircuitGraph,
-  signalNodeId: string,
+  sequentialPort: string,
   sequentialNodeId: string,
   sequentialNode: ExplainerCircuitGraph['nodes'][number],
 ): SignalExplanation {
@@ -398,6 +427,8 @@ function buildSequentialExplanation(
 
   const ffLabel = getLabelOrType(sequentialNode);
   const ffDisplayName = getDisplayName(sequentialNode.type);
+  const outputPort = sourcePortKey(sequentialNode.type, sequentialPort);
+  const supportedCapture = sequentialNode.type === 'DFlipFlop' && ['q', 'q_inv'].includes(outputPort);
 
   steps.push({
     description: `${input.selectedSignal} is ${currentValue} at tick ${input.tick}.`,
@@ -410,18 +441,23 @@ function buildSequentialExplanation(
   }
 
   steps.push({
-    description: `${input.selectedSignal} is driven by the Q output of ${ffDisplayName} (${ffLabel}).`,
+    description: `${input.selectedSignal} is recorded from port ${sequentialPort} of ${ffDisplayName} (${ffLabel}).`,
     nodeType: sequentialNode.type,
     nodeLabel: sequentialNode.label,
-    port: 'Q',
+    port: sequentialPort,
   });
 
   // Look for clock edge
   let relevantClockEdge: SignalExplanation['relevantClockEdge'];
   let relevantPriorState: SignalExplanation['relevantPriorState'];
-  const clockSignal = input.clockSignalName ?? null;
+  const clockDrivers = findDriverConnections(graph, sequentialNodeId)
+    .filter((connection) => ['clk', 'clock', 'c'].includes(connection.toPort.toLowerCase()));
+  const clockSignal = clockDrivers.length === 1
+    ? findSignalForPort(input, graph, clockDrivers[0].fromNodeId, clockDrivers[0].fromPort)
+    : null;
 
-  if (clockSignal) {
+  if (supportedCapture && clockSignal) {
+    sourceNodeIds.push(clockDrivers[0].fromNodeId);
     const edge = detectClockEdge(input.waveform, clockSignal, input.tick);
     if (edge) {
       relevantClockEdge = {
@@ -438,19 +474,20 @@ function buildSequentialExplanation(
       const dDrivers = findDriverConnections(graph, sequentialNodeId)
         .filter((c) => c.toPort === 'D' || c.toPort === 'd' || c.toPort === 'in');
 
-      for (const dDriver of dDrivers) {
+      for (const dDriver of dDrivers.length === 1 ? dDrivers : []) {
         const dDriverNode = findNodeById(graph, dDriver.fromNodeId);
         if (!dDriverNode) continue;
         sourceNodeIds.push(dDriver.fromNodeId);
 
-        const capturedTick = edge.edgeTick > 0 ? edge.edgeTick - 1 : edge.edgeTick;
+        const capturedTick = edge.edgeTick;
         const dValue = findSignalValueForNode(
           dDriver.fromNodeId, input.signalMappings, input.waveform, capturedTick,
+          dDriver.fromPort, graph,
         );
 
         if (dValue) {
           steps.push({
-            description: `The D input was ${dValue.value} (from ${dValue.signalName}) at tick ${capturedTick}.`,
+            description: `The recorded D input is ${dValue.value} (from ${dValue.signalName}) at tick ${capturedTick}. Pre-capture setup history is not recorded.`,
             nodeType: dDriverNode.type,
             nodeLabel: dDriverNode.label,
             port: 'D',
@@ -465,20 +502,16 @@ function buildSequentialExplanation(
         }
       }
 
-      if (changed) {
-        steps.push({
-          description: `The flip-flop captured its D input on the ${edge.edgeDirection} edge, updating Q to ${currentValue}.`,
-        });
-      } else {
-        steps.push({
-          description: `The flip-flop held its state — Q remained ${currentValue}.`,
-        });
-      }
+      steps.push({ description: `This D flip-flop samples on rising edges. The recorded ${sequentialPort} value is ${currentValue}; this observation alone does not establish whether reset or enable affected the state.` });
     } else {
       steps.push({
-        description: `No clock edge detected near tick ${input.tick}. The flip-flop holds its previous state.`,
+        description: `No rising clock transition is available in the recording before tick ${input.tick}. Capture timing cannot be inferred from this trace.`,
       });
     }
+  } else {
+    steps.push({ description: supportedCapture
+      ? 'No unique recorded driver of this flip-flop clock is available. Capture timing cannot be inferred from another clock signal.'
+      : 'This stateful component is shown as structural context. Capture and reset behavior are not inferred for this component.' });
   }
 
   // Prior state reference
@@ -486,28 +519,29 @@ function buildSequentialExplanation(
     relevantPriorState = {
       signal: input.selectedSignal,
       value: previousValue,
-      tick: input.tick - 1,
+      tick: input.waveform.filter((sample) => sample.tick < input.tick).sort((a, b) => b.tick - a.tick)[0]?.tick ?? input.tick,
     };
   }
 
   // Check for reset
-  const resetConns = findDriverConnections(graph, sequentialNodeId)
-    .filter((c) => c.toPort === 'RST' || c.toPort === 'rst' || c.toPort === 'reset' || c.toPort === 'R');
+  const resetConns = supportedCapture ? findDriverConnections(graph, sequentialNodeId)
+    .filter((c) => ['rst', 'reset', 'clr'].includes(c.toPort.toLowerCase())) : [];
 
-  for (const rstConn of resetConns) {
+  for (const rstConn of resetConns.length === 1 ? resetConns : []) {
     const rstValue = findSignalValueForNode(
       rstConn.fromNodeId, input.signalMappings, input.waveform, input.tick,
+      rstConn.fromPort, graph,
     );
     if (rstValue && rstValue.value === '1') {
       steps.push({
-        description: `Reset is active (${rstValue.signalName} = 1) — the flip-flop may be forced to 0.`,
+        description: `The reset driver ${rstValue.signalName} is recorded as 1 at tick ${input.tick}. This D flip-flop has an active-high clear on Q; ${sequentialPort} remains the selected recorded output.`,
       });
     }
   }
 
   const summary = changed
-    ? `${input.selectedSignal} changed to ${currentValue} at tick ${input.tick} — the ${ffDisplayName} captured a new state on a clock edge.`
-    : `${input.selectedSignal} holds at ${currentValue} — the ${ffDisplayName} state was not updated.`;
+    ? `${input.selectedSignal} changed to ${currentValue} at tick ${input.tick}. Inspect the recorded clock and reset context below.`
+    : `${input.selectedSignal} is ${currentValue} at tick ${input.tick}, driven by ${ffDisplayName}.`;
 
   return {
     selectedSignal: input.selectedSignal,
@@ -515,7 +549,7 @@ function buildSequentialExplanation(
     currentValue,
     previousValue,
     changed,
-    explanationKind: 'sequential',
+    explanationKind: supportedCapture && clockSignal ? 'sequential' : 'partial',
     summary,
     steps,
     sourceNodeIds,
@@ -536,8 +570,14 @@ export function explainSignal(input: ExplainerInput): SignalExplanation {
 
   // Resolve current and previous values
   const currentValue = signalValueAt(waveform, selectedSignal, tick) ?? '-';
-  const previousValue = tick > 0 ? signalValueAt(waveform, selectedSignal, tick - 1) : null;
+  const previousSample = waveform.filter((sample) => sample.tick < tick).sort((a, b) => b.tick - a.tick)[0];
+  const previousValue = previousSample?.signals[selectedSignal] ?? null;
   const changed = previousValue !== null && previousValue !== currentValue && currentValue !== '-';
+  if (currentValue === '-') return {
+    selectedSignal, tick, currentValue: 'Not recorded', previousValue: null, changed: false,
+    explanationKind: 'partial', summary: `No observation of ${selectedSignal} is available at tick ${tick}.`,
+    steps: [], sourceNodeIds: [],
+  };
 
   // Check if this is an input signal
   const role = signalRoles[selectedSignal];
@@ -574,8 +614,8 @@ export function explainSignal(input: ExplainerInput): SignalExplanation {
   }
 
   // Find the circuit node for this signal
-  const signalNodeId = findSignalNodeId(selectedSignal, signalMappings);
-  if (!signalNodeId) {
+  const signalMapping = findSignalMapping(selectedSignal, signalMappings);
+  if (!signalMapping) {
     return {
       selectedSignal,
       tick,
@@ -591,38 +631,55 @@ export function explainSignal(input: ExplainerInput): SignalExplanation {
       sourceNodeIds: [],
     };
   }
+  const signalNodeId = signalMapping.nodeId;
+  const signalNode = findNodeById(circuitGraph, signalNodeId);
+
+  // An internal signal names the node's recorded output, not one of its inputs.
+  if (signalNode && SEQUENTIAL_NODE_TYPES.has(signalNode.type) && signalMapping.port) {
+    return buildSequentialExplanation(input, currentValue, previousValue, changed,
+      circuitGraph, signalMapping.port, signalNode.id, signalNode);
+  }
 
   // Walk backward from boundary node to find its driver
   const boundaryDrivers = findDriverConnections(circuitGraph, signalNodeId);
 
-  // Check if any upstream node is sequential
-  for (const driver of boundaryDrivers) {
+  // Only a unique direct connection to an output boundary preserves the selected
+  // source value. A gate between a register and this signal may transform it.
+  if (signalNode && isOutputNode(signalNode.type) && boundaryDrivers.length === 1) {
+    const driver = boundaryDrivers[0];
     const driverNode = findNodeById(circuitGraph, driver.fromNodeId);
     if (driverNode && SEQUENTIAL_NODE_TYPES.has(driverNode.type)) {
       return buildSequentialExplanation(
         input, currentValue, previousValue, changed,
-        circuitGraph, signalNodeId, driver.fromNodeId, driverNode,
+        circuitGraph, driver.fromPort, driver.fromNodeId, driverNode,
       );
     }
   }
 
-  // Check one more level deep for sequential nodes (output → buffer/gate → DFF)
+  // Preserve every gate in the existing structural trace, but do not attribute
+  // an indirect or competing driver to a register's captured value.
+  let hasSequentialContext = false;
   for (const driver of boundaryDrivers) {
+    const directNode = findNodeById(circuitGraph, driver.fromNodeId);
+    if (directNode && SEQUENTIAL_NODE_TYPES.has(directNode.type)) hasSequentialContext = true;
     const midDrivers = findDriverConnections(circuitGraph, driver.fromNodeId);
     for (const midDriver of midDrivers) {
       const midNode = findNodeById(circuitGraph, midDriver.fromNodeId);
-      if (midNode && SEQUENTIAL_NODE_TYPES.has(midNode.type)) {
-        return buildSequentialExplanation(
-          input, currentValue, previousValue, changed,
-          circuitGraph, signalNodeId, midDriver.fromNodeId, midNode,
-        );
-      }
+      if (midNode && SEQUENTIAL_NODE_TYPES.has(midNode.type)) hasSequentialContext = true;
     }
   }
 
-  // Pure combinational
-  return buildCombinationalExplanation(
+  const structural = buildCombinationalExplanation(
     input, currentValue, previousValue, changed,
     circuitGraph, signalNodeId,
   );
+  if (hasSequentialContext || boundaryDrivers.length > 1 && signalNode && isOutputNode(signalNode.type)) {
+    return {
+      ...structural,
+      explanationKind: 'partial',
+      summary: `${selectedSignal} is recorded as ${currentValue} at tick ${tick}. The upstream structure is shown below; capture timing and stored state are not inferred through this path.`,
+      steps: [...structural.steps, { description: 'An indirect or ambiguous driver path cannot establish a direct register-output observation.' }],
+    };
+  }
+  return structural;
 }

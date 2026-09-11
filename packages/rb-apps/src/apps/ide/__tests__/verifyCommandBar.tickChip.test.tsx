@@ -57,13 +57,16 @@ describe('VerifyCommandBar retired tick-context chip', () => {
     expect(queryByTestId('ide-vcb-design-tick-chip')).toBeNull();
   });
 
-  it('keeps Open in Design as a standalone action without a tick chip sibling', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('renders neither a tick chip nor an in-bar Open-in-Design sibling (both retired from the command bar)', () => {
+    // The command bar was simplified to workspace lenses + run intent + Run.
+    // Trace-to-Design now lives on the waveform/inspector surface
+    // (ide-sim-inspector-trace-design), not as a command-bar action, so the
+    // command bar must repeat neither the tick chip nor an Open-in-Design button.
+    const { queryByTestId } = render(
       <VerifyCommandBar {...BASE} goToDesignTick={1} />
     );
-    const btn = getByTestId('ide-verify-inspect-design');
-    expect(btn).toBeTruthy();
     expect(queryByTestId('ide-vcb-design-tick-chip')).toBeNull();
+    expect(queryByTestId('ide-verify-inspect-design')).toBeNull();
   });
 
   it('hides tick chip when showGoToDesign is false even if tick is set', () => {

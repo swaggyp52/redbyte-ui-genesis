@@ -1,4 +1,20 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
+import {
+  BOARD_CAMERA_ZOOM_STEP,
+  boardCameraDensity,
+  computeBoardViewBox,
+  fitBoardCameraToBounds,
+  isDefaultBoardCamera,
+  panBoardCamera,
+  zoomBoardCamera,
+} from '../boardCamera';
+import { ProblemsPanel } from '../components/ProblemsPanel';
+import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
+import { useEngineeringSelection } from '../engineeringSelection';
+import { useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { normalizeSignalId } from '../signalIdentity';
+import { RelatedMenu } from '../components/RelatedMenu';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -12,14 +28,15 @@ import {
 } from '../components/IdePrimitives';
 import { HardwareBusPlanner } from '../components/HardwareBusPlanner';
 import { ConstraintSetsPanel, type ConstraintSetsPanelProps } from '../components/ConstraintSetsPanel';
+import { activeConstraintSet } from '../constraintSets';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
+import type { RuntimeLogicValue } from '../sim/simTypes';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import { useIoBus } from '../ioBus';
-import { HardwareBoard2D } from '../components/HardwareBoard2D';
+import { HardwareBoard2D, type BoardDisplayValue } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
-import { VirtualBasys3Board, type VirtualBoardResourceMap } from '../components/VirtualBasys3Board';
 import { PinPlannerPanel } from '../components/PinPlannerPanel';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
@@ -60,7 +77,7 @@ import {
   buildGuidedBoundaryOptions,
   buildGuidedHdlCatalogFromText,
   suggestEntryIdFromHdl,
-} from '../hardwareMappingGuidance';
+ recommendBoardResource } from '../hardwareMappingGuidance';
 import {
   getBasys3BoardResource,
   listBasys3BoardResources,
@@ -71,6 +88,7 @@ import {
 import { listBasys3CompatibleBoardAliases } from '../../../fpga/boards/basys3/basys3BoardSurfaceProjection';
 import type { IdeChromeContract } from '../chromeContract';
 import './hardware-mapping-workspace-v3.css';
+import './hardware/board-instrument.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'hardware',
@@ -201,6 +219,8 @@ export interface HardwareSurfaceProps {
   health: ProjectHealth;
   workflowAuthority?: ProjectWorkflowAuthority;
   runtimeSim?: RuntimeSimState;
+  selectedTickOverride?: number | null;
+  onSelectedTickChange?: (tick: number) => void;
   onSimSetInput?: (nodeId: string, v: 0 | 1) => void;
   onGenerateBringUpVectors: () => void;
   onOpenExport: () => void;
@@ -268,6 +288,25 @@ function resolveBoardControlAlias(pin: string | undefined): string | null {
   const trimmed = pin?.trim() ?? '';
   if (!trimmed) return null;
   return resolveBasys3BoardAlias(trimmed) ?? trimmed.toUpperCase();
+}
+
+const BOARD_BUTTON_ALIASES = ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'] as const;
+
+/**
+ * The board resource a mapping row feeds, in the direction that resource has. One answer for
+ * every projection of the simulated board: the values it fills, the state-table rows it lists
+ * and the resources the drawing may call unavailable. Those three used to decide separately,
+ * which is how the drawing and its own table came to disagree.
+ */
+function boardResourceForRow(row: { pin?: string; direction?: string }): { kind: 'sw' | 'ld' | 'btn'; index: number } | null {
+  const alias = (resolveBoardControlAlias(row.pin) ?? '').toUpperCase();
+  const sw = /^SW(\d+)$/.exec(alias);
+  if (sw && row.direction === 'in' && Number(sw[1]) < 16) return { kind: 'sw', index: Number(sw[1]) };
+  const ld = /^LD(\d+)$/.exec(alias);
+  if (ld && row.direction === 'out' && Number(ld[1]) < 16) return { kind: 'ld', index: Number(ld[1]) };
+  const button = (BOARD_BUTTON_ALIASES as readonly string[]).indexOf(alias);
+  if (button >= 0 && row.direction === 'in') return { kind: 'btn', index: button };
+  return null;
 }
 
 function describeBoardControl(pin: string | undefined): string {
@@ -419,6 +458,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   health,
   workflowAuthority,
   runtimeSim,
+  selectedTickOverride,
+  onSelectedTickChange,
   onSimSetInput,
   onGenerateBringUpVectors,
   onOpenExport,
@@ -451,7 +492,52 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     })
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
-  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(() => mappingRows[0]?.id ?? null);
+  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(() => {
+    // Adopt the followed object when it is one of ours; fall back to the first row.
+    const followed = useEngineeringSelection.getState().selected;
+    if (followed?.kind === 'signal' && mappingRows.some((row) => row.id === followed.fieldId)) return followed.fieldId;
+    return mappingRows[0]?.id ?? null;
+  });
+  // The row chosen at mount is a local default: it never displaces a selection
+  // made elsewhere. A row the user picks (or a later change) always publishes.
+  // A ref that flips on first run is not enough — development double-invokes
+  // effects — so the guard compares against the mount-time row itself.
+  const mountedRowIdRef = useRef<string | null | undefined>(undefined);
+  const chooseMappingRow = useCallback((rowId: string | null) => {
+    mountedRowIdRef.current = null;
+    setSelectedMappingRowId(rowId);
+  }, []);
+
+  // ── Engineering-object continuity ──────────────────────────────────────
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  useEffect(() => {
+    if (!selectedMappingRowId) return;
+    if (mountedRowIdRef.current === undefined) mountedRowIdRef.current = selectedMappingRowId;
+    if (selectedMappingRowId === mountedRowIdRef.current && globalSelected && globalOrigin !== 'board-io') return;
+    const row = mappingRows.find((entry) => entry.id === selectedMappingRowId);
+    if (!row) return;
+    const relation = relationshipIndex.resolveField(row.id);
+    const next = { kind: 'signal' as const, fieldId: row.id, runSignal: relation?.run?.resolution.runSignal ?? null, nodeId: row.nodeId ?? relation?.nodeId };
+    if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+    publishSelection(next, 'board-io');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMappingRowId]);
+  useEffect(() => {
+    if (!globalSelected || globalOrigin === 'board-io') return;
+    const fieldId =
+      globalSelected.kind === 'signal'
+        ? globalSelected.fieldId
+        : globalSelected.kind === 'node'
+          ? relationshipIndex.resolveNode(globalSelected.nodeId)?.fieldId ?? null
+          : null;
+    if (!fieldId) return;
+    const row = mappingRows.find((entry) => entry.id === fieldId);
+    if (row && row.id !== selectedMappingRowId) chooseMappingRow(row.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin]);
 
   // Slice N4 — chrome rebuild: Esc returns the user to Map Pins from any
   // sub-mode (bringup / proof / live). Without this, students who entered a
@@ -478,6 +564,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string | null>(() =>
     resolveBoardControlAlias(mappingRows[0]?.pin) ?? null
   );
+  const [electricalDetailOpen, setElectricalDetailOpen] = useState(false);
   const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
   const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
   const [newEntryKind, setNewEntryKind] = useState<HardwareMappingEntryV2['kind']>('scalar');
@@ -654,6 +741,95 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return s;
   }, [mappingRows]);
+  const problemsLedgerCount = useEngineeringProblems(selectProblemCount);
+  const workspacePreferences = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  );
+  const boardLayers = workspacePreferences.board.layers;
+  // ── Board document camera ────────────────────────────────────────────────
+  // Zoom and pan are workspace presentation owned by the preferences (with the
+  // layers); the surface owns the mechanics. A drag previews locally and commits
+  // once on release; wheel, keys and the bar commit per gesture.
+  const boardCamera = workspacePreferences.board.camera;
+  const [liveBoardCamera, setLiveBoardCamera] = useState<typeof boardCamera | null>(null);
+  const shownBoardCamera = liveBoardCamera ?? boardCamera;
+  const boardViewBox = computeBoardViewBox(shownBoardCamera);
+  const boardDensity = boardCameraDensity(shownBoardCamera);
+  const boardCanvasRef = useRef<HTMLDivElement | null>(null);
+  const boardPanRef = useRef<{ pointerId: number; lastX: number; lastY: number; moved: boolean; camera: typeof boardCamera } | null>(null);
+  const boardPanMovedRef = useRef(false);
+  const boardZoomBy = useCallback(
+    (factor: number) => {
+      workspacePreferencesStore.setBoardCamera(zoomBoardCamera(workspacePreferencesStore.getSnapshot().board.camera, factor));
+    },
+    []
+  );
+  const boardPanBy = useCallback((deltaX: number, deltaY: number) => {
+    workspacePreferencesStore.setBoardCamera(panBoardCamera(workspacePreferencesStore.getSnapshot().board.camera, deltaX, deltaY));
+  }, []);
+  const resetBoardCamera = useCallback(() => {
+    workspacePreferencesStore.resetBoardCamera();
+  }, []);
+  /** Screen pixels per board unit for the current viewBox — the pan scale for pointer deltas. */
+  const boardUnitsPerPixel = useCallback(() => {
+    const svg = boardCanvasRef.current?.querySelector('svg');
+    const rect = svg?.getBoundingClientRect();
+    if (!svg || !rect || rect.width <= 0) return 1;
+    const width = Number(boardViewBox.split(' ')[2]);
+    return Number.isFinite(width) && width > 0 ? width / rect.width : 1;
+  }, [boardViewBox]);
+  const handleBoardCanvasPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      boardPanMovedRef.current = false;
+      boardPanRef.current = {
+        pointerId: event.pointerId,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        moved: false,
+        camera: workspacePreferencesStore.getSnapshot().board.camera,
+      };
+    },
+    []
+  );
+  const handleBoardCanvasPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const pan = boardPanRef.current;
+      if (!pan || pan.pointerId !== event.pointerId) return;
+      const deltaX = event.clientX - pan.lastX;
+      const deltaY = event.clientY - pan.lastY;
+      if (!pan.moved && Math.hypot(deltaX, deltaY) < 4) return;
+      if (!pan.moved) {
+        pan.moved = true;
+        boardPanMovedRef.current = true;
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          /* pointer capture is unavailable in some test environments */
+        }
+      }
+      pan.lastX = event.clientX;
+      pan.lastY = event.clientY;
+      const scale = boardUnitsPerPixel();
+      // Dragging the board moves it with the pointer: the camera pans the other way.
+      pan.camera = panBoardCamera(pan.camera, -deltaX * scale * pan.camera.zoom, -deltaY * scale * pan.camera.zoom);
+      setLiveBoardCamera(pan.camera);
+    },
+    [boardUnitsPerPixel]
+  );
+  const handleBoardCanvasPointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = boardPanRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+    boardPanRef.current = null;
+    setLiveBoardCamera(null);
+    if (pan.moved) workspacePreferencesStore.setBoardCamera(pan.camera);
+    // A pan is not a click: resource handlers check the flag on this same event turn.
+    window.setTimeout(() => {
+      boardPanMovedRef.current = false;
+    }, 0);
+  }, []);
   const mappingProjectionById = useMemo(
     () => new Map(mappingProjection.map((projection) => [projection.logicalSignalId, projection])),
     [mappingProjection]
@@ -665,6 +841,68 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     const row = mappingRows.find((r) => r.id === selectedMappingRowId);
     return resolveBoardControlAlias(row?.pin) ?? null;
   }, [selectedMappingRowId, mappingRows]);
+  // Camera: frame the selected resource (reads the selection declared above).
+  const fitBoardCameraToSelected = useCallback(() => {
+    const alias = (selectedBoardResourceAlias ?? selectedMappingRowPin ?? '').trim();
+    const svg = boardCanvasRef.current?.querySelector('svg');
+    if (!alias || !svg) return;
+    const target =
+      svg.querySelector<SVGGraphicsElement>(`[data-board-alias="${alias}"]`) ??
+      svg.querySelector<SVGGraphicsElement>(`[data-testid="ide-hw-map-${alias.toLowerCase()}"]`) ??
+      svg.querySelector<SVGGraphicsElement>(`[data-testid="ide-hw-map-${alias.toLowerCase().replace(/^(ld|sw)(\d+)$/, '$1-$2')}"]`) ??
+      svg.querySelector<SVGGraphicsElement>(`[data-testid="ide-hw-map-${alias.toLowerCase().replace(/^btn(.)$/, 'btn-$1')}"]`);
+    const ctm = svg.getScreenCTM?.();
+    if (!target || !ctm) return;
+    // Screen box → board units through the SVG's own matrix; independent of group transforms.
+    const box = target.getBoundingClientRect();
+    const inverse = ctm.inverse();
+    const toBoard = (x: number, y: number) => {
+      const point = svg.createSVGPoint();
+      point.x = x;
+      point.y = y;
+      const mapped = point.matrixTransform(inverse);
+      return { x: mapped.x, y: mapped.y };
+    };
+    const topLeft = toBoard(box.left, box.top);
+    const bottomRight = toBoard(box.right, box.bottom);
+    workspacePreferencesStore.setBoardCamera(
+      fitBoardCameraToBounds({
+        x: Math.min(topLeft.x, bottomRight.x),
+        y: Math.min(topLeft.y, bottomRight.y),
+        width: Math.abs(bottomRight.x - topLeft.x),
+        height: Math.abs(bottomRight.y - topLeft.y),
+      })
+    );
+  }, [selectedBoardResourceAlias, selectedMappingRowPin]);
+  const handleBoardCanvasWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      boardZoomBy(event.deltaY < 0 ? BOARD_CAMERA_ZOOM_STEP : 1 / BOARD_CAMERA_ZOOM_STEP);
+    },
+    [boardZoomBy]
+  );
+  const handleBoardCanvasKey = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget) return;
+      const step = event.shiftKey ? 60 : 20;
+      let handled = true;
+      if (event.key === '+' || event.key === '=') boardZoomBy(BOARD_CAMERA_ZOOM_STEP);
+      else if (event.key === '-' || event.key === '_') boardZoomBy(1 / BOARD_CAMERA_ZOOM_STEP);
+      else if (event.key === '0') resetBoardCamera();
+      else if (event.key === 'f' || event.key === 'F') fitBoardCameraToSelected();
+      else if (event.key === 'ArrowLeft') boardPanBy(-step, 0);
+      else if (event.key === 'ArrowRight') boardPanBy(step, 0);
+      else if (event.key === 'ArrowUp') boardPanBy(0, -step);
+      else if (event.key === 'ArrowDown') boardPanBy(0, step);
+      else handled = false;
+      if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [boardPanBy, boardZoomBy, fitBoardCameraToSelected, resetBoardCamera]
+  );
   const selectedMappingRow = useMemo(
     () => (selectedMappingRowId ? mappingRows.find((row) => row.id === selectedMappingRowId) ?? null : null),
     [mappingRows, selectedMappingRowId]
@@ -689,6 +927,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? formatBoardResourceChip(selectedMappingRow.boardResourceType) ??
         (selectedMappingRow.direction === 'in' ? 'Input control' : 'Output control')
       : null;
+  // A new row means a new pending choice: the previous row's resource never narrates this one.
+  useEffect(() => {
+    setSelectedBoardResourceAlias(null);
+  }, [selectedMappingRowId]);
   const selectedMappedBoardResource = selectedMappingRow
     ? getBasys3BoardResource(selectedMappingRow.pin)
     : null;
@@ -731,6 +973,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     },
     [mappingProjection.length, mappingProjectionById, mappingRows, pinUsageCounts]
   );
+  /** Board aliases whose mapping is in conflict, for the conflicts layer. */
+  const conflictAliases = useMemo(() => {
+    const aliases = new Set<string>();
+    for (const row of conflictingMappingRows) {
+      const pin = mappingProjectionById.get(row.id)?.packagePin ?? row.pin ?? null;
+      const alias = pin ? getBasys3BoardResource(pin)?.alias : undefined;
+      if (alias) aliases.add(alias);
+    }
+    return aliases;
+  }, [conflictingMappingRows, mappingProjectionById]);
   const selectedAllowedBoardAliases = useMemo(
     () => buildAllowedBoardAliasesForRow(selectedMappingRow),
     [selectedMappingRow]
@@ -777,10 +1029,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         selectedMappingProjection.exactXdcLine,
         `set_property IOSTANDARD ${selectedMappingProjection.ioStandard} [get_ports {${selectedMappingProjection.artifactPortName}}]`,
       ].join('\n')
-    : selectedBoardResource
+    : selectedMappedBoardResource
       ? [
-          `set_property PACKAGE_PIN ${selectedBoardResource.packagePin} [get_ports {${selectedXdcPortRef}}]`,
-          `set_property IOSTANDARD LVCMOS33 [get_ports {${selectedXdcPortRef}}]`,
+          `set_property PACKAGE_PIN ${selectedMappedBoardResource.packagePin} [get_ports {${selectedXdcPortRef}}]`,
+          `set_property IOSTANDARD ${selectedMappedBoardResource.ioStandard} [get_ports {${selectedXdcPortRef}}]`,
         ].join('\n')
       : '';
   const mapModeGroups = useMemo(() => {
@@ -1057,28 +1309,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   // Cross-probe map: board resource alias → mapped logical signal + package pin,
   // derived from the same mapping rows the export pipeline consumes.
-  const virtualBoardResourceMap = useMemo(() => {
-    const rowByNodeId = new Map(mappingRows.map((row) => [row.nodeId, row] as const));
-    const map: Record<string, VirtualBoardResourceMap> = {};
-    const bind = (alias: string, nodeId: string | null) => {
-      if (!nodeId) return;
-      const row = rowByNodeId.get(nodeId);
-      if (!row) return;
-      map[alias] = {
-        signalLabel: getStudentFacingIoLabel(row, row.id),
-        pin: row.pin?.trim() ? row.pin.trim().toUpperCase() : null,
-      };
-    };
-    ioBus.meta.swNodeIds.forEach((nodeId, i) => bind(`SW${i}`, nodeId));
-    ioBus.meta.ldNodeIds.forEach((nodeId, i) => bind(`LD${i}`, nodeId));
-    const btnLabels = ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'];
-    ioBus.meta.btnNodeIds.forEach((nodeId, i) => bind(btnLabels[i], nodeId));
-    return map;
-  }, [mappingRows, ioBus.meta.swNodeIds, ioBus.meta.ldNodeIds, ioBus.meta.btnNodeIds]);
-  const anyVirtualBoardMapping = useMemo(
-    () => mappedSw.some(Boolean) || mappedLd.some(Boolean),
-    [mappedSw, mappedLd]
-  );
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
   const inferredReadiness = useMemo(
     () => ({
@@ -1202,6 +1432,50 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     conflictingMappingRows.find((row) => row.required) ??
     unmappedRequiredPins[0] ??
     null;
+  /** Every signal still needing attention, in table order: conflicts first, then unmapped. */
+  const mappingIssueQueue = useMemo(() => {
+    const seen = new Set<string>();
+    const queue: typeof unmappedRequiredPins = [];
+    for (const row of [...conflictingMappingRows.filter((row) => row.required), ...unmappedRequiredPins]) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      queue.push(row);
+    }
+    return queue;
+  }, [conflictingMappingRows, unmappedRequiredPins]);
+  // Guided mapping: one deterministic recommendation for the selected signal,
+  // one assignment helper that remembers the previous pin so the last step can
+  // be undone, and the next unmapped signal one action away.
+  const recommendedResource = useMemo(() => {
+    if (!selectedMappingRow || selectedMappingRow.pin.trim().length > 0) return null;
+    const occupiedPins = new Set(
+      mappingRows.filter((row) => row.id !== selectedMappingRow.id && row.pin.trim().length > 0).map((row) => row.pin.trim())
+    );
+    return recommendBoardResource({ row: selectedMappingRow, compatibleResources: compatiblePlannerResources, occupiedPins });
+  }, [compatiblePlannerResources, mappingRows, selectedMappingRow]);
+  const [lastAssignment, setLastAssignment] = useState<{ rowId: string; label: string; previousPin: string; assignedPin: string } | null>(null);
+  const assignPin = useCallback(
+    (rowId: string, packagePin: string) => {
+      if (!onSetMappingPin) return;
+      const row = mappingRows.find((entry) => entry.id === rowId);
+      setLastAssignment({ rowId, label: row?.label ?? rowId, previousPin: row?.pin ?? '', assignedPin: packagePin });
+      onSetMappingPin(rowId, packagePin);
+    },
+    [mappingRows, onSetMappingPin]
+  );
+  // Undo is offered only while the row still holds what this step assigned; a bus
+  // plan or any other write in between retires it (it would restore a stale pin).
+  const undoableAssignment =
+    lastAssignment && (mappingRows.find((row) => row.id === lastAssignment.rowId)?.pin ?? '') === lastAssignment.assignedPin
+      ? lastAssignment
+      : null;
+  const undoLastAssignment = useCallback(() => {
+    if (!lastAssignment || !onSetMappingPin) return;
+    onSetMappingPin(lastAssignment.rowId, lastAssignment.previousPin);
+    chooseMappingRow(lastAssignment.rowId);
+    setSelectedBoardResourceAlias(null);
+    setLastAssignment(null);
+  }, [chooseMappingRow, lastAssignment, onSetMappingPin]);
   const hasPresentedDesignBlocker = exportBlockingDiagnostics.some(
     (diagnostic) => isDesignOwnedExportDiagnostic(diagnostic.code, explicitTimingMode)
   );
@@ -1595,7 +1869,26 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     return Array.from(map.entries()).sort(([a], [b]) => a - b);
   }, [expectedIoRows]);
 
-  // ── Bring-Up: compare current step expected vs actual LD values ─────
+  // ── Bring-Up: an expected-I/O row names a signal by field id, label or artifact
+  // port; the relationship index resolves it to a mapped LED (exact identity only).
+  const ledIndexForSignal = useCallback(
+    (signal: string): number | null => {
+      const key = normalizeSignalId(signal);
+      if (!key) return null;
+      const relation = relationshipIndex.signals.find((entry) =>
+        [entry.fieldId, entry.label, entry.board?.artifactPort ?? ''].some(
+          (candidate) => candidate.length > 0 && normalizeSignalId(candidate) === key
+        )
+      );
+      if (!relation) return null;
+      const byNode = ioBus.meta.ldNodeIds.findIndex((nodeId) => nodeId === relation.nodeId);
+      if (byNode >= 0) return byNode;
+      const alias = relation.board?.resource?.alias ?? '';
+      const match = /^LD(\d+)$/i.exec(alias);
+      return match ? Number(match[1]) : null;
+    },
+    [ioBus.meta.ldNodeIds, relationshipIndex]
+  );
   const mismatchedLd = useMemo<boolean[]>(() => {
     if (hwMode !== 'bringup' || bringupTickGroups.length === 0)
       return Array(16).fill(false);
@@ -1603,15 +1896,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (!currentGroup) return Array(16).fill(false);
     const [, signals] = currentGroup;
     return Array.from({ length: 16 }, (_, i) => {
-      const sig = signals.find(
-        (s) =>
-          s.signal.toLowerCase() === `ld${i}` ||
-          s.signal.toLowerCase() === `ld[${i}]`
-      );
+      const sig = signals.find((s) => ledIndexForSignal(s.signal) === i);
       if (!sig) return false;
       return sig.expected !== String(ioBus.state.ld[i]);
     });
-  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld]);
+  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld, ledIndexForSignal]);
 
   const bringupStepPass = useMemo(
     () => mismatchedLd.every((v) => !v),
@@ -1643,8 +1932,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   // ── Live: signal event log from sim trace ───────────────────────────
   const nodeKeyToMeta = useMemo(() => {
     const m = new Map<string, { label: string; direction: 'in' | 'out' }>();
-    for (const r of ioBusIoRows) {
-      const meta = { label: r.label, direction: r.direction };
+    for (const r of mappingRows) {
+      const meta = { label: getStudentFacingIoLabel(r, r.id), direction: r.direction };
       for (const key of [
         r.id,
         r.label,
@@ -1657,7 +1946,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }
     }
     return m;
-  }, [ioBusIoRows]);
+  }, [mappingRows]);
 
   const recordedVerifyTrace = useMemo(
     () =>
@@ -1665,29 +1954,125 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         tick: sample.tick,
         signals: Object.fromEntries(
           Object.entries(sample.signals)
-            .filter(([, value]) => value === '0' || value === '1' || value === 0 || value === 1)
-            .map(([key, value]) => [key, value === '1' || value === 1 ? 1 : 0])
+            .filter(([, value]) => String(value) === '0' || String(value) === '1')
+            .map(([key, value]) => [key, String(value) === '1' ? 1 : 0])
         ) as Record<string, 0 | 1>,
       })),
     [verifyLastRun?.reportHash, verifyLastRun?.waveform]
   );
-  const simulatedBoardTrace = sim.trace?.length ? sim.trace : recordedVerifyTrace;
+  // A recording owns the replay even when an independent exploration trace exists.
+  const isRecordedBoardPreview = Boolean(verifyLastRun);
+  const simulatedBoardTrace = useMemo(() => {
+    if (!verifyLastRun) return sim.trace ?? [];
+    return verifyLastRun.waveform.map((sample) => {
+      // Only logic values are replayed. Anything else stays unrecorded rather than reading as 0.
+      const signals: Record<string, RuntimeLogicValue> = {};
+      for (const [key, raw] of Object.entries(sample.signals)) {
+        const value = String(raw);
+        if (value === '0' || value === '1') signals[key] = value === '1' ? 1 : 0;
+        else if (value === 'X' || value === 'Z') signals[key] = value;
+      }
+      return { ...sample, signals };
+    });
+  }, [verifyLastRun, sim.trace]);
+  // The twin follows the selected case/tick (Cases, Timing, Waveform playback):
+  // the LEDs and switches show the run's state at that tick, not a stale slider.
+  const engineeringCaseTick = useEngineeringSelection((state) =>
+    state.selected?.kind === 'case-tick' ? state.selected.tick : null
+  );
+  const followedCaseTick = selectedTickOverride ?? engineeringCaseTick;
+  useEffect(() => {
+    if (followedCaseTick == null) return;
+    const index = simulatedBoardTrace.findIndex((sample) => sample.tick === followedCaseTick);
+    setSimulatedBoardTraceIndex(index);
+  }, [followedCaseTick, simulatedBoardTrace]);
   const boundedSimulatedBoardTraceIndex = Math.min(
     simulatedBoardTraceIndex,
     Math.max(0, simulatedBoardTrace.length - 1)
   );
   const selectedSimulatedBoardSample =
     simulatedBoardTrace[boundedSimulatedBoardTraceIndex] ?? null;
+  const selectBoardSample = (index: number) => {
+    setSimulatedBoardTraceIndex(index);
+    const sample = simulatedBoardTrace[index];
+    if (sample) onSelectedTickChange?.(sample.tick);
+    if (sample && verifyLastRun) useEngineeringSelection.getState().select(
+      { kind: 'case-tick', scenarioId: verifyLastRun.scenarioId, tick: sample.tick }, 'board-io'
+    );
+  };
+  const boardValuesStale = health.dirtySinceVerify || scenarioDrifted;
 
   const simulatedBoardState = useMemo(() => {
-    const next = {
-      sw: [...ioBus.state.sw],
-      ld: [...ioBus.state.ld],
-      btn: [...ioBus.state.btn],
+    const next: { sw: BoardDisplayValue[]; ld: BoardDisplayValue[]; btn: BoardDisplayValue[] } = {
+      sw: Array.from({ length: 16 }, () => null),
+      ld: Array.from({ length: 16 }, () => null),
+      btn: Array.from({ length: 5 }, () => null),
     };
+    if (isRecordedBoardPreview && boardValuesStale) return next;
+    if (!isRecordedBoardPreview && simulatedBoardTrace.length === 0) return ioBus.state;
     if (!selectedSimulatedBoardSample) return next;
     const signalEntries = Object.entries(selectedSimulatedBoardSample.signals);
     for (const row of mappingRows) {
+      const lookupKeys = new Set(
+        [
+          ...getIoSignalLookupKeys(row, mappingRows),
+          row.id,
+          row.label,
+          row.nodeId,
+          row.nodeId ? `${row.nodeId}.out` : '',
+          row.nodeId ? `${row.nodeId}.in` : '',
+        ]
+          .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
+          .map(normalizeIoSignalKey)
+      );
+      const matched = signalEntries.find(([key]) => lookupKeys.has(normalizeIoSignalKey(key)));
+      if (!matched) continue;
+      const resource = boardResourceForRow(row);
+      if (resource) next[resource.kind][resource.index] = matched[1];
+    }
+    return next;
+  }, [
+    ioBus.state.btn,
+    ioBus.state.ld,
+    ioBus.state.sw,
+    mappingRows,
+    selectedSimulatedBoardSample,
+    isRecordedBoardPreview,
+    simulatedBoardTrace.length,
+    boardValuesStale,
+  ]);
+  const displayedBoardState = hwMode === 'live' ? simulatedBoardState : ioBus.state;
+  // The resources the recorded projection covers: exactly the mapping rows that fill it. A
+  // covered resource without a value is a missing sample; an uncovered one is simply unused.
+  const recordedResources = useMemo(() => {
+    const covered = {
+      sw: Array.from({ length: 16 }, () => false),
+      ld: Array.from({ length: 16 }, () => false),
+      btn: Array.from({ length: 5 }, () => false),
+    };
+    for (const row of mappingRows) {
+      const resource = boardResourceForRow(row);
+      if (resource) covered[resource.kind][resource.index] = true;
+    }
+    return covered;
+  }, [mappingRows]);
+  const selectedBoardTick = selectedSimulatedBoardSample?.tick ?? followedCaseTick;
+  const simulatedBoardSourceLabel = isRecordedBoardPreview ? 'Recorded simulated state' : 'Exploration I/O state';
+
+  // Values for the board twin: only mapped resources, only from the recorded run
+  // at the followed tick (the last sample when nothing is followed). Unmapped
+  // resources stay null and draw nothing; the interactive Live trace never leaks in.
+  const boardValuesAtTick = useMemo(() => {
+    const sw: (0 | 1 | null)[] = Array.from({ length: 16 }, () => null);
+    const ld: (0 | 1 | null)[] = Array.from({ length: 16 }, () => null);
+    if (recordedVerifyTrace.length === 0) return { sw, ld };
+    const sample = followedCaseTick != null
+      ? recordedVerifyTrace.find((entry) => entry.tick === followedCaseTick)
+      : recordedVerifyTrace[recordedVerifyTrace.length - 1];
+    if (!sample) return { sw, ld };
+    const signalEntries = Object.entries(sample.signals);
+    for (const row of mappingRows) {
+      if (!row.pin.trim()) continue;
       const lookupKeys = new Set(
         [
           ...getIoSignalLookupKeys(row, mappingRows),
@@ -1706,17 +2091,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       const alias = resolveBoardControlAlias(row.pin);
       const switchMatch = /^SW(\d+)$/i.exec(alias ?? '');
       const ledMatch = /^LD(\d+)$/i.exec(alias ?? '');
-      if (switchMatch && row.direction === 'in') next.sw[Number(switchMatch[1])] = value;
-      if (ledMatch && row.direction === 'out') next.ld[Number(ledMatch[1])] = value;
+      if (switchMatch && row.direction === 'in') sw[Number(switchMatch[1])] = value;
+      if (ledMatch && row.direction === 'out') ld[Number(ledMatch[1])] = value;
     }
-    return next;
-  }, [
-    ioBus.state.btn,
-    ioBus.state.ld,
-    ioBus.state.sw,
-    mappingRows,
-    selectedSimulatedBoardSample,
-  ]);
+    return { sw, ld };
+  }, [followedCaseTick, mappingRows, recordedVerifyTrace]);
+  const boardValueTick = followedCaseTick ?? recordedVerifyTrace[recordedVerifyTrace.length - 1]?.tick;
+  const boardHasSelectedSample = recordedVerifyTrace.some((sample) => sample.tick === boardValueTick);
 
   interface SignalChangeEvent {
     tick: number;
@@ -1730,13 +2111,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (!simulatedBoardTrace.length) return [];
     const events: SignalChangeEvent[] = [];
     const seenEvents = new Set<string>();
-    let prev: Record<string, 0 | 1> = {};
+    let prev: Record<string, RuntimeLogicValue> = {};
     for (const sample of simulatedBoardTrace) {
       for (const [k, v] of Object.entries(sample.signals)) {
         const meta = nodeKeyToMeta.get(k) ?? nodeKeyToMeta.get(normalizeIoSignalKey(k));
         if (!meta) continue;
         const was = prev[k];
-        if (was !== undefined && was !== v) {
+        if ((was === 0 || was === 1) && (v === 0 || v === 1) && was !== v) {
           const eventKey = `${sample.tick}:${meta.direction}:${meta.label}:${was}:${v}`;
           if (!seenEvents.has(eventKey)) {
             seenEvents.add(eventKey);
@@ -1751,7 +2132,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   // ── Assertions: trace × expected vectors ────────────────────────────
   const traceByTick = useMemo(() => {
-    const map = new Map<number, Record<string, 0 | 1>>();
+    const map = new Map<number, Record<string, RuntimeLogicValue>>();
     for (const sample of sim.trace ?? []) {
       map.set(sample.tick, sample.signals);
     }
@@ -1760,11 +2141,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const hardwareAssertions = useMemo<AssertionEntry[]>(() => {
     return expectedIoRows.map((row) => {
-      const ldMatch = row.signal.match(/ld\[?(\d+)\]?/i);
-      if (!ldMatch) {
+      const ldIdx = ledIndexForSignal(row.signal);
+      if (ldIdx == null) {
         return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
       }
-      const ldIdx = Number(ldMatch[1]);
       const nodeId = ioBus.meta.ldNodeIds[ldIdx];
       if (!nodeId) {
         return { tick: row.tick, signal: row.signal, expected: row.expected, actual: null, pass: false, hasData: false };
@@ -1780,7 +2160,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       const actual = String(rawVal);
       return { tick: row.tick, signal: row.signal, expected: row.expected, actual, pass: actual === row.expected, hasData: true };
     });
-  }, [expectedIoRows, ioBus.meta.ldNodeIds, traceByTick]);
+  }, [expectedIoRows, ioBus.meta.ldNodeIds, ledIndexForSignal, traceByTick]);
 
   const assertionsWithData = useMemo(() => hardwareAssertions.filter((a) => a.hasData), [hardwareAssertions]);
   const assertionFailCount = useMemo(() => assertionsWithData.filter((a) => !a.pass).length, [assertionsWithData]);
@@ -1866,23 +2246,67 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--live" testId="ide-hw-live-dock">
-      <header className="ide-workbench-placeholder-header">
+      <header className="ide-hw-live-dock-header">
         <h3>Simulated board preview</h3>
         <IdeStatusPill tone={simulatedBoardTrace.length > 0 ? 'ok' : 'idle'}>
-          {simulatedBoardTrace.length > 0 ? 'Recorded trace' : 'No trace'}
+          {isRecordedBoardPreview ? 'Recorded trace' : simulatedBoardTrace.length > 0 ? 'Exploration trace' : 'Exploration I/O'}
         </IdeStatusPill>
       </header>
+      {/* Stepping the recording leads: it is the one operation this dock exists for, and at
+          1280x650 it sat 580px down, below the trust note and the facts about the run. */}
+      {simulatedBoardTrace.length > 0 ? (
+        <div className="ide-hw-simulated-trace" data-testid="ide-hw-simulated-board-trace">
+          <div className="ide-inline-actions">
+            <IdeButton
+              tone="ghost"
+              onClick={() => selectBoardSample(Math.max(0, boundedSimulatedBoardTraceIndex - 1))}
+              disabled={boundedSimulatedBoardTraceIndex <= 0}
+              testId="ide-hw-simulated-board-prev"
+            >
+              Previous
+            </IdeButton>
+            {/* Named the way Simulate's run line names it - the tick, then the position - so the
+                same sample is not "case 2" in one workspace and "Case 3" in the next. */}
+            <strong data-testid="ide-hw-simulated-board-readout">
+              {selectedSimulatedBoardSample ? `t${selectedSimulatedBoardSample.tick} · ${boundedSimulatedBoardTraceIndex + 1} / ${simulatedBoardTrace.length}` : `No sample at tick ${selectedBoardTick}`}
+            </strong>
+            <IdeButton
+              tone="ghost"
+              onClick={() => selectBoardSample(Math.min(simulatedBoardTrace.length - 1, boundedSimulatedBoardTraceIndex + 1))}
+              disabled={boundedSimulatedBoardTraceIndex >= simulatedBoardTrace.length - 1}
+              testId="ide-hw-simulated-board-next"
+            >
+              Next
+            </IdeButton>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, simulatedBoardTrace.length - 1)}
+            value={Math.max(0, boundedSimulatedBoardTraceIndex)}
+            onChange={(event) => selectBoardSample(Number(event.target.value))}
+            aria-label={isRecordedBoardPreview ? 'Selected recorded trace case' : 'Selected exploration trace case'}
+            data-testid="ide-hw-simulated-board-trace-scrubber"
+          />
+        </div>
+      ) : null}
       <IdeCallout tone="info" title="Browser simulation only" testId="ide-hw-simulated-board-trust">
         <strong>Not observed hardware behavior</strong>
         <p className="ide-copy ide-copy--flush">
-          This preview projects the selected Verify tick onto mapped Basys3 controls. It is not
-          programming or physical-board evidence.
+          {isRecordedBoardPreview
+            ? 'This preview projects the selected recorded tick onto mapped Basys3 controls. Missing observations remain unavailable.'
+            : 'This preview shows browser exploration values. It is not a recorded verification result.'}
+          {' '}It is not programming or physical-board evidence.
         </p>
       </IdeCallout>
       <div className="ide-kv-list">
+        <div className="ide-kv-row" data-testid="ide-hw-simulated-board-source">
+          <span>{isRecordedBoardPreview ? 'Recorded scenario' : 'Source'}</span>
+          <code>{verifyLastRun ? `${verifyLastRun.scenarioName} · ${verifyLastRun.runId ?? verifyLastRun.reportHash}` : 'Exploration'}</code>
+        </div>
         <div className="ide-kv-row">
-          <span>Selected run tick</span>
-          <code>{selectedSimulatedBoardSample?.tick ?? 'Not run'}</code>
+          <span>{isRecordedBoardPreview ? 'Selected run tick' : 'Exploration tick'}</span>
+          <code data-testid="ide-hw-simulated-board-tick">{selectedBoardTick ?? 'Not recorded'}</code>
         </div>
         <div className="ide-kv-row">
           <span>Mapped I/O</span>
@@ -1905,44 +2329,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span>{vectorsCount}</span>
         </div>
       </div>
-      {simulatedBoardTrace.length > 0 ? (
-        <div className="ide-hw-simulated-trace" data-testid="ide-hw-simulated-board-trace">
-          <div className="ide-inline-actions">
-            <IdeButton
-              tone="ghost"
-              onClick={() => setSimulatedBoardTraceIndex((index) => Math.max(0, index - 1))}
-              disabled={boundedSimulatedBoardTraceIndex === 0}
-              testId="ide-hw-simulated-board-prev"
-            >
-              Previous
-            </IdeButton>
-            <strong data-testid="ide-hw-simulated-board-readout">
-              Case {boundedSimulatedBoardTraceIndex + 1} / {simulatedBoardTrace.length}
-            </strong>
-            <IdeButton
-              tone="ghost"
-              onClick={() =>
-                setSimulatedBoardTraceIndex((index) =>
-                  Math.min(simulatedBoardTrace.length - 1, index + 1)
-                )
-              }
-              disabled={boundedSimulatedBoardTraceIndex >= simulatedBoardTrace.length - 1}
-              testId="ide-hw-simulated-board-next"
-            >
-              Next
-            </IdeButton>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, simulatedBoardTrace.length - 1)}
-            value={boundedSimulatedBoardTraceIndex}
-            onChange={(event) => setSimulatedBoardTraceIndex(Number(event.target.value))}
-            aria-label="Selected Verify trace case"
-            data-testid="ide-hw-simulated-board-trace-scrubber"
-          />
-        </div>
-      ) : null}
       <div className="ide-inline-actions">
         <IdeButton tone="secondary" onClick={onOpenVerify}>Run Verify</IdeButton>
         <IdeButton tone="ghost" onClick={onGenerateBringUpVectors}>Gen Vectors</IdeButton>
@@ -2499,15 +2885,21 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ? bringupInspector
         : proofInspector;
   const liveHardwareRows = useMemo(
-    () => [
-      ...Array.from({ length: 8 }, (_, index) => [`SW${index}`, String(ioBus.state.sw[index] ?? 0)]),
+    () => {
+      const covered = new Set<string>();
+      recordedResources.sw.forEach((on, index) => { if (on) covered.add(`SW${index}`); });
+      recordedResources.btn.forEach((on, index) => { if (on) covered.add(BOARD_BUTTON_ALIASES[index]); });
+      recordedResources.ld.forEach((on, index) => { if (on) covered.add(`LD${index}`); });
+      return [
+      ...Array.from({ length: 16 }, (_, index) => [`SW${index}`, String(displayedBoardState.sw[index] ?? 'Not recorded')]),
       ...Array.from({ length: 5 }, (_, index) => [
-        ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'][index],
-        String(ioBus.state.btn[index] ?? 0),
+        BOARD_BUTTON_ALIASES[index],
+        String(displayedBoardState.btn[index] ?? 'Not recorded'),
       ]),
-      ...Array.from({ length: 8 }, (_, index) => [`LD${index}`, String(ioBus.state.ld[index] ?? 0)]),
-    ],
-    [ioBus.state.btn, ioBus.state.ld, ioBus.state.sw]
+      ...Array.from({ length: 16 }, (_, index) => [`LD${index}`, String(displayedBoardState.ld[index] ?? 'Not recorded')]),
+      ].filter(([alias]) => !isRecordedBoardPreview || covered.has(alias));
+    },
+    [displayedBoardState, recordedResources, isRecordedBoardPreview]
   );
   const hardwareCommandDescription =
     hwMode === 'map'
@@ -2656,7 +3048,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         layoutIntent="workbench"
         leftDockMode="hidden"
         rightDockMode="hidden"
-        consoleMode="hidden"
+        // A board with nothing to map is exactly when a reader wants to know what the workbench
+        // is reporting. Leaving the panel out here took the strip away with it and left the
+        // status bar's problems count doing nothing on this workspace.
+        consoleMode="collapsed"
+        console={<ProblemsPanel origin="bottom-panel" />}
         inspector={null}
       >
         <div
@@ -2692,7 +3088,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       leftDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
       rightDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
       rightDockCanCollapse
-      consoleMode="hidden"
+      // Always present, never conditional: a panel that exists only while a project happens to
+      // have problems takes its own strip away with it, and leaves the status bar's problems count
+      // as a button that does nothing. An empty panel says there is nothing, which is an answer.
+      consoleMode="collapsed"
+      console={<ProblemsPanel origin="bottom-panel" />}
       productSpine={{
         statusLabel: failureTruth.statusLabel,
         statusTone: failureTruth.severity === 'ready'
@@ -2718,7 +3118,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       inspector={
         hwMode === 'map' ? null : <>
           {hwMode !== 'map' && (
-            <IdeInspectorSection title="Live Hardware State" defaultOpen>
+            <IdeInspectorSection title={hwMode === 'live' ? simulatedBoardSourceLabel : 'Exploration I/O state'} defaultOpen>
+              {hwMode === 'live' && <p className="ide-copy" data-testid="ide-hardware-state-source">
+                {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Stale recording; values unavailable for current mapping' : ''}` : 'Browser exploration · no recorded run'}
+              </p>}
               <IdeDataTable
                 columns={['Signal', 'Value']}
                 rows={liveHardwareRows}
@@ -2810,22 +3213,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {/* ── Connection callout strip ── */}
         {/* ── Stage rail: workflow caption + primary stage tabs ── */}
         {hwMode !== 'map' ? (
-        <div className="ide-hw-stage-rail ide-hw-stage-rail--demoted" data-testid="ide-hw-stage-rail">
-          <div className="ide-hw-stage-rail-top">
-            <div className="ide-hw-stage-rail-intro">
-              <span className="ide-hw-stage-kicker">After mapping</span>
-              <p className="ide-hw-stage-caption">
-                Board check, pre-flight, and live simulation stay available, but pin binding is the main hardware job.
-              </p>
-            </div>
+        <div className="wb-toolbar rb-board-rail" data-testid="ide-hw-stage-rail">
+          <div className="rb-board-rail-top">
+            <span className="rb-board-rail-title">Board &amp; Constraints</span>
             {sim.tick > 0 ? (
-              <span className="ide-hw-tick-badge" data-testid="ide-hw-tick-badge">
+              <span className="rb-board-chip" data-testid="ide-hw-tick-badge">
                 Sim t{sim.tick}
               </span>
             ) : null}
           </div>
           <div
-            className="ide-hw-mode-toggle"
+            className="wb-segment rb-board-modes"
             data-testid="ide-hw-mode-toggle"
             role="tablist"
             aria-label="Hardware bring-up stages"
@@ -2834,16 +3232,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               type="button"
               role="tab"
               aria-selected={hwMode === 'map'}
-              className={`ide-hw-mode-segment${hwMode === 'map' ? ' is-active' : ''}`}
+              className={`wb-btn${hwMode === 'map' ? ' is-active' : ''}`}
               data-testid="ide-hw-mode-btn-map"
               onClick={() => {
                 setHwMode('map');
                 setSelectedMappingRowId(null);
               }}
             >
-              <span className="ide-hw-mode-segment-title">Assignments</span>
-              <span className="ide-hw-mode-segment-hint">Bind I/O and inspect XDC</span>
-              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+              <span className="rb-board-mode-title">Assignments</span>
+              <span className="rb-board-mode-status" aria-hidden="true">
                 {mappingReady ? '✓' : mappingAttentionCount > 0 ? '○' : '·'}
               </span>
             </button>
@@ -2851,16 +3248,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               type="button"
               role="tab"
               aria-selected={hwMode === 'bringup'}
-              className={`ide-hw-mode-segment${hwMode === 'bringup' ? ' is-active' : ''}`}
+              className={`wb-btn${hwMode === 'bringup' ? ' is-active' : ''}`}
               data-testid="ide-hw-mode-btn-bringup"
               onClick={() => {
                 setHwMode('bringup');
                 setSelectedMappingRowId(null);
               }}
             >
-              <span className="ide-hw-mode-segment-title">Board Check</span>
-              <span className="ide-hw-mode-segment-hint">Guided board checks</span>
-              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+              <span className="rb-board-mode-title">Board Check</span>
+              <span className="rb-board-mode-status" aria-hidden="true">
                 {vectorsCount > 0 ? '✓' : '○'}
               </span>
             </button>
@@ -2868,16 +3264,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               type="button"
               role="tab"
               aria-selected={hwMode === 'proof'}
-              className={`ide-hw-mode-segment${hwMode === 'proof' ? ' is-active' : ''}`}
+              className={`wb-btn${hwMode === 'proof' ? ' is-active' : ''}`}
               data-testid="ide-hw-mode-btn-proof"
               onClick={() => {
                 setHwMode('proof');
                 setSelectedMappingRowId(null);
               }}
             >
-              <span className="ide-hw-mode-segment-title">Pre-flight</span>
-              <span className="ide-hw-mode-segment-hint">Readiness gate</span>
-              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+              <span className="rb-board-mode-title">Pre-flight</span>
+              <span className="rb-board-mode-status" aria-hidden="true">
                 {confidenceScore === 100 ? '✓' : '·'}
               </span>
             </button>
@@ -2885,16 +3280,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               type="button"
               role="tab"
               aria-selected={hwMode === 'live'}
-              className={`ide-hw-mode-segment${hwMode === 'live' ? ' is-active' : ''}`}
+              className={`wb-btn${hwMode === 'live' ? ' is-active' : ''}`}
               data-testid="ide-hw-mode-btn-live"
               onClick={() => {
                 setHwMode('live');
                 setSelectedMappingRowId(null);
               }}
             >
-              <span className="ide-hw-mode-segment-title">Simulation</span>
-              <span className="ide-hw-mode-segment-hint">Live sandbox</span>
-              <span className="ide-hw-mode-segment-status" aria-hidden="true">
+              <span className="rb-board-mode-title">Simulation</span>
+              <span className="rb-board-mode-status" aria-hidden="true">
                 ·
               </span>
             </button>
@@ -3009,26 +3403,22 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {/* Visual System v1: the assignment table and physical board are one mapping workspace. */}
         {hwMode === 'map' ? (
           <section
-            className="ide-hw-v3"
+            className="rb-board"
             data-testid="ide-hw-board-workspace"
             data-hierarchy-surface="hardware"
             data-hierarchy-role="primary"
           >
-            <header className="ide-hw-v3__progress" data-testid="ide-hw-board-resource-summary">
-              <div className="ide-hw-v3__progress-copy">
+            <header className="wb-toolbar rb-board-header" data-testid="ide-hw-board-resource-summary">
+              <div className="rb-board-title">
                 <p className="ide-surface-block-label">Board &amp; Constraints</p>
-                <h2>Plan Basys3 I/O and constraint intent</h2>
                 <strong data-testid="ide-hardware-mapping-progress">
                   {mappingReady
                     ? 'MAPPING COMPLETE'
                     : `${mappedRequiredCount} / ${totalRequiredCount} REQUIRED MAPPED`}
                 </strong>
-                <p className="ide-copy ide-copy--flush" data-testid="ide-hardware-signal-resource-pin-model">
-                  {SIGNAL_LANGUAGE.mappingBoundary}
-                </p>
               </div>
               <div
-                className={'ide-hw-v3__metrics' + (mappingReady ? ' is-ready' : '')}
+                className={'rb-board-metrics' + (mappingReady ? ' is-ready' : '')}
                 data-testid="ide-hw-mapping-overview"
                 aria-label="Pin mapping progress"
               >
@@ -3038,7 +3428,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <strong>{unresolvedRequiredCount}</strong>
                   <small>
                     {unresolvedRequiredCount === 0
-                      ? 'all required mappings assigned'
+                      ? 'none outstanding'
                       : unresolvedRequiredCount === 1
                         ? 'mapping needs a resource'
                         : 'mappings need resources'}
@@ -3048,12 +3438,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <span>Conflicts</span><strong>{conflictingRequiredCount}</strong>
                 </div>
               </div>
-              <div className="ide-hw-v3__next" data-testid="ide-hw-mapping-next-action">
+              <div className="rb-board-next" data-testid="ide-hw-mapping-next-action">
                 <span>
                   {mappingHandoffBlockedByDesign
                     ? 'Mapping complete · Design blocked'
                     : mappingReady
-                      ? 'Ready for export'
+                      ? 'Next'
                       : 'Next action'}
                 </span>
                 <strong>
@@ -3074,7 +3464,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         ? onOpenExport
                         : () => {
                             if (!nextMappingIssueRow) return;
-                            setSelectedMappingRowId(nextMappingIssueRow.id);
+                            chooseMappingRow(nextMappingIssueRow.id);
                             setSelectedBoardResourceAlias(resolveBoardControlAlias(nextMappingIssueRow.pin));
                           }}
                     disabled={
@@ -3100,50 +3490,33 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </div>
             </header>
 
-            <div className="ide-hw-v3__workspace">
-              <section className="ide-hw-v3__assignments" aria-labelledby="ide-hw-v3-table-title">
-                <header className="ide-hw-v3__section-header">
+            <div className="rb-board-grid">
+              <section className="rb-board-assignments" aria-labelledby="ide-hw-v3-table-title">
+                <header className="rb-board-section-header">
                   <div><p className="ide-surface-block-label">Signal assignments</p><h3 id="ide-hw-v3-table-title">Project I/O</h3></div>
-                  <p className="ide-copy ide-copy--flush">Select Edit to keep one signal in the assignment editor.</p>
                 </header>
                 <HardwareBusPlanner rows={mappingRows} declaredBuses={declaredBuses} onSetMappingPin={onSetMappingPin} />
-                {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
-                  <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} />
-                ) : null}
-                {anyVirtualBoardMapping ? (
-                  <VirtualBasys3Board
-                    switches={ioBus.state.sw}
-                    leds={ioBus.state.ld}
-                    buttons={ioBus.state.btn}
-                    mappedSwitches={mappedSw}
-                    mappedLeds={mappedLd}
-                    resourceMap={virtualBoardResourceMap}
-                    onToggleSwitch={(i) => ioBus.actions.toggleSwitch(i)}
-                    onPressButton={(i, pressed) => ioBus.actions.setButton(i, pressed ? 1 : 0)}
-                    onFocusResource={(alias) => setSelectedBoardResourceAlias(alias)}
-                  />
-                ) : null}
                 {mapModeGroups.length === 0 ? (
                   <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
                     Add inputs and outputs in Design, then return here to assign board resources.
                   </IdeCallout>
                 ) : (
-                  <div className="ide-hw-v3__table-scroll">
+                  <div className="rb-board-table-scroll">
                     <table
-                      className="ide-hw-v3__table"
+                      className="rb-board-table"
                       data-testid="ide-hw-map-table"
-                      data-columns="Logical signal|Purpose|Board resource|Package pin|Status|Action"
+                      data-columns="Logical port|Board resource|State|Action"
                       data-work-priority="primary"
                     >
                       <thead><tr>
-                        <th scope="col">Logical signal</th><th scope="col">Purpose</th><th scope="col">Board resource</th>
-                        <th scope="col">Package pin</th><th scope="col">Status</th><th scope="col">Action</th>
+                        <th scope="col">Logical port</th><th scope="col">Board resource</th>
+                        <th scope="col">State</th><th scope="col">Action</th>
                       </tr></thead>
                       {mapModeGroups.map((group) => (
                         <tbody key={group.id} data-testid={`ide-hw-map-group-${group.id}`}>
-                          <tr className="ide-hw-v3__group-row">
-                            <th scope="rowgroup" colSpan={6}>
-                              <span className="ide-hw-v3__group-heading">
+                          <tr className="rb-board-group-row">
+                            <th scope="rowgroup" colSpan={4}>
+                              <span className="rb-board-group-heading">
                                 <strong>{group.label}</strong>
                                 <small>{group.rows.length} {group.rows.length === 1 ? 'signal' : 'signals'}</small>
                               </span>
@@ -3155,8 +3528,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             ? projection.required && projection.conflictState === 'missing-pin'
                             : row.required && row.pin.trim().length === 0;
                           const completeness = deriveMappingCompleteness(row);
-                          const resourceChip = formatBoardResourceChip(row.boardResourceType);
-                          const timingChip = formatTimingRoleChip(row.timingRole);
                           const conflictKey = mappingPinConflictKey(row.pin);
                           const projectionHasConflict = Boolean(
                             projection &&
@@ -3178,7 +3549,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           const signalIdentity = splitMappingSignalLabel(
                             projection?.logicalLabel ?? getStudentFacingIoLabel(row, row.id)
                           );
-                          const artifactPortName = projection?.artifactPortName?.trim() || signalIdentity.physical;
+                          const resourceAlias = resolveBoardControlAlias(row.pin);
                           return (
                             <tr
                               key={row.id}
@@ -3187,33 +3558,30 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                               data-required={row.required ? 'true' : 'false'}
                               aria-selected={selectedMappingRowId === row.id}
                               onClick={() => {
-                                setSelectedMappingRowId(row.id);
+                                chooseMappingRow(row.id);
                                 setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin));
                               }}
                             >
                               <th scope="row" data-testid={'ide-hw-map-row-signal-' + row.id}>
                                 <strong>{signalIdentity.logical}</strong>
-                                {artifactPortName ? <small>Artifact port: {artifactPortName}</small> : null}
                               </th>
-                              <td data-testid={'ide-hw-map-row-role-' + row.id}>
-                                {row.direction === 'in' ? 'Circuit input' : 'Circuit output'}
-                                {timingChip ? ' · ' + timingChip : resourceChip ? ' · ' + resourceChip : ''}
+                              <td data-testid={'ide-hw-map-row-binding-' + row.id} title={projection?.boardResourceLabel ?? describeBoardControl(row.pin)}>
+                                {resourceAlias ?? (isMissing ? 'Choose resource' : describeBoardControl(row.pin))}
                               </td>
-                              <td data-testid={'ide-hw-map-row-binding-' + row.id}>{projection?.boardResourceLabel ?? describeBoardControl(row.pin)}</td>
-                              <td>{projection?.packagePin ?? describePackagePin(row.pin)}</td>
-                              <td data-testid={'ide-hw-map-row-status-' + row.id}><span className="ide-hw-v3__status">{statusLabel}</span></td>
+                              <td data-testid={'ide-hw-map-row-status-' + row.id}><span className={'rb-board-status ' + (hasConflict ? 'is-conflict' : isMissing ? 'is-missing' : statusLabel === 'Assigned' ? 'is-mapped' : '')}>{statusLabel}</span></td>
                               <td>
                                 <button
                                   type="button"
-                                  className="ide-hw-v3__row-action"
+                                  className="wb-btn wb-btn--ghost rb-board-row-action"
                                   data-testid={'ide-hw-map-row-action-' + row.id}
                                   aria-pressed={selectedMappingRowId === row.id}
+                                  aria-label={`${hasConflict ? 'Resolve' : isMissing ? 'Assign' : 'Edit mapping for'} ${signalIdentity.logical}`}
                                   onClick={() => {
-                                    setSelectedMappingRowId(row.id);
+                                    chooseMappingRow(row.id);
                                     setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin));
                                   }}
                                 >
-                                  {hasConflict ? 'Resolve' : isMissing ? 'Assign' : 'Edit mapping'}
+                                  {hasConflict ? 'Resolve' : isMissing ? 'Assign' : 'Edit'}
                                 </button>
                               </td>
                             </tr>
@@ -3226,31 +3594,184 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 )}
               </section>
 
-              <aside className="ide-hw-v3__side" aria-label="Selected mapping and board reference">
+              <section
+                className="rb-board-stage"
+                data-testid="ide-hw-map-board"
+                data-work-priority="primary"
+                // The marker the scale probe measures this surface by. It named
+                // `basys3-board-workbench`, which no element has carried since the board was
+                // rebuilt, so the probe found nothing and passed both of its checks on nothing.
+                data-hierarchy-focal="board-workbench"
+              >
+                <header className="rb-board-section-header">
+                  <details className="wb-menu-details rb-board-layers" data-testid="ide-board-layers">
+                    <summary className="wb-btn wb-btn--ghost" title="Board layers (persisted with the workspace)">Layers ▾</summary>
+                    <div className="wb-menu" aria-label="Board layers">
+                      {(
+                        [
+                          ['labels', 'Resource labels'],
+                          ['mapped', 'Mapped resources'],
+                          ['compatible', 'Compatible targets'],
+                          ['conflicts', 'Conflicts'],
+                          ['values', 'Simulated values'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={boardLayers[id]}
+                          className="wb-menu-item"
+                          onClick={() => workspacePreferencesStore.setBoardLayer(id as BoardLayerId, !boardLayers[id])}
+                          data-testid={`ide-board-layer-${id}`}
+                        >
+                          <span className="wb-menu-item-check" aria-hidden="true">{boardLayers[id] ? '●' : ''}</span>
+                          <span className="wb-menu-item-label">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                  <div>
+                    <p className="ide-surface-block-label">Basys3</p>
+                    <p
+                      className="ide-copy ide-copy--flush"
+                      data-testid="ide-hw-board-task-copy"
+                      title={selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
+                    >
+                    {selectedMappingRow ? `Assign ${selectedMappingLabel}: click a highlighted compatible resource.` : 'Select a logical port, then choose its board resource.'}
+                    </p>
+                  </div>
+                  <div className="rb-board-camera-bar" role="group" aria-label="Board camera" data-testid="ide-hw-board-camera">
+                    <button type="button" className="rb-board-camera-tool" onClick={() => boardZoomBy(1 / BOARD_CAMERA_ZOOM_STEP)} title="Zoom out (−)" aria-label="Zoom out" data-testid="ide-hw-board-zoom-out">−</button>
+                    <span className="rb-board-camera-zoom" data-testid="ide-hw-board-zoom" aria-live="off">{Math.round(shownBoardCamera.zoom * 100)}%</span>
+                    <button type="button" className="rb-board-camera-tool" onClick={() => boardZoomBy(BOARD_CAMERA_ZOOM_STEP)} title="Zoom in (+)" aria-label="Zoom in" data-testid="ide-hw-board-zoom-in">+</button>
+                    <button type="button" className="rb-board-camera-tool" onClick={fitBoardCameraToSelected} disabled={!(selectedBoardResourceAlias ?? selectedMappingRowPin)} title="Frame the selected resource (F)" data-testid="ide-hw-board-fit-selected">Fit selected</button>
+                    <button type="button" className="rb-board-camera-tool" onClick={resetBoardCamera} disabled={isDefaultBoardCamera(boardCamera)} title="Whole board (0)" data-testid="ide-hw-board-fit">Fit board</button>
+                  </div>
+                </header>
+                <div
+                  ref={boardCanvasRef}
+                  className="rb-board-canvas"
+                  data-testid="ide-hw-board-reference-graphic"
+                  data-density={boardDensity}
+                  data-zoom={Math.round(shownBoardCamera.zoom * 100)}
+                  role="region"
+                  aria-label="Interactive Basys3 board assignment canvas. Drag to pan; Ctrl+wheel, + and − zoom; 0 fits the board; F frames the selected resource"
+                  tabIndex={0}
+                  onWheel={handleBoardCanvasWheel}
+                  onKeyDown={handleBoardCanvasKey}
+                  onPointerDown={handleBoardCanvasPointerDown}
+                  onPointerMove={handleBoardCanvasPointerMove}
+                  onPointerUp={handleBoardCanvasPointerUp}
+                  onPointerCancel={handleBoardCanvasPointerUp}
+                >
+                  <Basys3BoardView
+                    viewBox={boardViewBox}
+                    density={boardDensity}
+                    layers={boardLayers}
+                    values={verifyLastRun && !boardValuesStale ? boardValuesAtTick : null}
+                    conflictAliases={conflictAliases}
+                    mappedAliases={mapModeAliases}
+                    highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
+                    allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : undefined}
+                    assignmentMode={Boolean(selectedMappingRow)}
+                    onSelectAlias={(alias) => {
+                      if (boardPanMovedRef.current) return;
+                      if (!selectedMappingRow) {
+                        // No signal selected: the resource itself is the object. Its owner row (if mapped) follows.
+                        setSelectedBoardResourceAlias(alias);
+                        const clicked = getBasys3BoardResource(alias);
+                        const owner = clicked ? mappingRows.find((row) => row.pin.trim() === clicked.packagePin) : null;
+                        if (owner) chooseMappingRow(owner.id);
+                        return;
+                      }
+                      const resource = compatiblePlannerResources.find((candidate) => candidate.alias === alias);
+                      if (!resource) return;
+                      const occupiedByAnotherSignal = (mappedRowsByPackagePin.get(resource.packagePin) ?? [])
+                        .some((candidate) => candidate.id !== selectedMappingRow.id);
+                      if (occupiedByAnotherSignal) return;
+                      setSelectedBoardResourceAlias(alias);
+                      assignPin(selectedMappingRow.id, resource.packagePin);
+                    }}
+                  />
+                </div>
+                <p className="rb-board-values-provenance" data-testid="ide-hw-map-values-provenance">
+                  {!verifyLastRun || recordedVerifyTrace.length === 0
+                    ? 'Mapping view · no recorded simulation values'
+                    : boardValuesStale
+                      ? 'Prior simulation is stale · rerun in Simulate to show values'
+                      : !boardHasSelectedSample
+                        ? `No recorded sample at tick ${boardValueTick} · values unavailable`
+                        : `Simulated values · recorded tick ${boardValueTick} · no physical board connected`}
+                </p>
+              </section>
+              <aside className="rb-board-side" aria-label="Selected mapping details">
+                {!selectedMappingRow && selectedBoardResource ? (
+                  <section className="rb-board-editor" data-testid="ide-hw-selected-resource-card">
+                    <div className="rb-board-editor-head">
+                      <span className="ide-surface-block-label">Selected resource</span>
+                      <strong>{selectedBoardResource.alias}</strong>
+                    </div>
+                    <dl className="rb-facts rb-facts--compact">
+                      <div className="rb-fact"><dt>Resource</dt><dd>{selectedBoardResource.label}</dd></div>
+                      <div className="rb-fact"><dt>Package pin</dt><dd className="is-mono">{selectedBoardResource.packagePin}</dd></div>
+                      <div className="rb-fact"><dt>Group</dt><dd>{selectedBoardResource.group}</dd></div>
+                      <div className="rb-fact"><dt>Type</dt><dd>{formatPlannerResourceKind(selectedBoardResource)}</dd></div>
+                      <div className="rb-fact"><dt>I/O standard</dt><dd className="is-mono">{selectedBoardResource.ioStandard}</dd></div>
+                      {selectedBoardResource.frequencyMHz ? (
+                        <div className="rb-fact"><dt>Clock</dt><dd>{selectedBoardResource.frequencyMHz} MHz</dd></div>
+                      ) : null}
+                      <div className="rb-fact"><dt>Signal</dt><dd>{mappingRows.find((row) => row.pin.trim() === selectedBoardResource.packagePin)?.label ?? 'Unassigned'}</dd></div>
+                    </dl>
+                    {nextMappingIssueRow && onSetMappingPin ? (() => {
+                      const compatible = buildAllowedBoardAliasesForRow(nextMappingIssueRow)?.has(selectedBoardResource.alias) ?? false;
+                      const owner = mappingRows.find((row) => row.pin.trim() === selectedBoardResource.packagePin && row.id !== nextMappingIssueRow.id) ?? null;
+                      const reason = owner ? `owned by ${owner.label}` : !compatible ? `not compatible with ${nextMappingIssueRow.label}` : null;
+                      return (
+                        <div className="rb-board-editor-actions">
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() => {
+                              assignPin(nextMappingIssueRow.id, selectedBoardResource.packagePin);
+                              chooseMappingRow(nextMappingIssueRow.id);
+                            }}
+                            disabled={Boolean(reason)}
+                            testId="ide-hw-map-next-here"
+                            title={reason ? `${selectedBoardResource.alias} is ${reason}` : `Assign ${nextMappingIssueRow.label} to ${selectedBoardResource.alias}`}
+                          >
+                            Map {nextMappingIssueRow.label} here
+                          </IdeButton>
+                          {reason ? <span className="ide-copy">{selectedBoardResource.alias} is {reason}.</span> : null}
+                        </div>
+                      );
+                    })() : null}
+                  </section>
+                ) : null}
                 <section
-                  className={'ide-hw-v3__editor' + (selectedSignalConflict ? ' is-conflict' : '')}
+                  className={'rb-board-editor' + (selectedSignalConflict ? ' is-conflict' : '')}
                   data-testid="ide-hw-selected-mapping-editor"
                   aria-labelledby="ide-hw-selected-mapping-editor-title"
                 >
-                  <header className="ide-hw-v3__section-header">
+                  <header className="rb-board-section-header">
                     <div><p className="ide-surface-block-label">Selected signal</p><h3 id="ide-hw-selected-mapping-editor-title">{selectedMappingLabel ?? 'Choose a signal'}</h3></div>
                     <strong data-testid="ide-hw-selected-mapping-status">{selectedSignalStatus}</strong>
                   </header>
                   {selectedMappingRow ? (
                     <>
-                      <p className="ide-copy ide-copy--flush">
+                      <p className="ide-copy ide-copy--flush" data-testid="ide-hw-selected-mapping-role">
                         {selectedMappingRow.direction === 'in' ? 'Circuit input' : 'Circuit output'}{' · '}{selectedMappingRow.required ? 'Required' : 'Optional'}
+                        {selectedMappingRow.timingRole ? ` · ${formatTimingRoleChip(selectedMappingRow.timingRole)}` : ''}
                       </p>
                       {selectedSignalConflict ? (
                         <IdeCallout tone="error" title={selectedConflictTitle} testId="ide-hw-selected-mapping-conflict">
                           {selectedConflictMessage}
                         </IdeCallout>
                       ) : null}
-                      <label className="ide-hw-v3__field" htmlFor="ide-hw-direct-resource-select">
+                      <label className="rb-board-field" htmlFor="ide-hw-direct-resource-select">
                         Basys3 resource
                         <select
                           id="ide-hw-direct-resource-select"
-                          value={selectedBoardResourceAlias ?? ''}
+                          value={selectedBoardResourceAlias ?? selectedMappingRowPin ?? ''}
                           onChange={(event) => setSelectedBoardResourceAlias(event.target.value || null)}
                           data-testid="ide-hw-direct-resource-select"
                         >
@@ -3265,18 +3786,104 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           })}
                         </select>
                       </label>
-                      <p className="ide-hw-v3__consequence" data-testid="ide-hw-selected-mapping-consequence">
+                      <p className="rb-board-consequence" data-testid="ide-hw-selected-mapping-consequence">
                         {selectedBoardResource
-                          ? selectedBoardResource.alias + ' uses package pin ' + selectedBoardResource.packagePin +
-                            '. Export will bind artifact port ' + (selectedMappingProjection?.artifactPortName ?? selectedXdcPortRef) + ' in top.xdc.'
+                          ? selectedResourceNeedsApply
+                            ? `${selectedBoardResource.alias} selected. Save to update this port's assignment and generated constraints.`
+                            : `${selectedMappingLabel} is assigned to ${selectedBoardResource.alias}. Choose another compatible resource to change it.`
                           : 'Choose from the selector or click a highlighted Basys3 resource. Both update the same saved mapping.'}
                       </p>
-                      <div className="ide-hw-v3__editor-actions">
+                      {recommendedResource ? (
+                        <div className="rb-board-recommend" data-testid="ide-hw-recommendation">
+                          <span className="ide-surface-block-label">Recommended</span>
+                          <code>{recommendedResource.alias}</code>
+                          <span className="ide-copy">
+                            package pin {recommendedResource.packagePin} ·{' '}
+                            {(() => {
+                              const family = /^SW/.test(recommendedResource.alias) ? 'switch' : /^BTN/.test(recommendedResource.alias) ? 'button' : /^LD/.test(recommendedResource.alias) ? 'LED' : /^CLK/.test(recommendedResource.alias) ? 'clock pin' : 'resource';
+                              const indexMatch = /\[(\d+)\]/.exec(selectedMappingRow.label) ?? /(\d+)$/.exec(selectedMappingRow.id);
+                              const byIndex = indexMatch && recommendedResource.alias.endsWith(indexMatch[1]);
+                              return byIndex ? `${family} matching bit ${indexMatch[1]}` : `first free ${family} in order`;
+                            })()}
+                          </span>
+                          <IdeButton
+                            tone="primary"
+                            onClick={() => {
+                              setSelectedBoardResourceAlias(recommendedResource.alias);
+                              assignPin(selectedMappingRow.id, recommendedResource.packagePin);
+                            }}
+                            disabled={!onSetMappingPin}
+                            testId="ide-hw-use-recommended"
+                          >
+                            Use {recommendedResource.alias}
+                          </IdeButton>
+                        </div>
+                      ) : null}
+                      <div className="rb-board-editor-actions">
+                        {(() => {
+                          // Relative to where the student is, not to the top of the list.
+                          if (mappingIssueQueue.length === 0) return null;
+                          const here = mappingIssueQueue.findIndex((row) => row.id === selectedMappingRow.id);
+                          const step = (delta: number) => {
+                            if (mappingIssueQueue.length === 0) return null;
+                            if (here < 0) return mappingIssueQueue[0];
+                            if (mappingIssueQueue.length === 1) return null;
+                            const index = (here + delta + mappingIssueQueue.length) % mappingIssueQueue.length;
+                            return mappingIssueQueue[index];
+                          };
+                          const previous = step(-1);
+                          const next = step(1);
+                          const go = (row: { id: string } | null) => () => {
+                            if (!row) return;
+                            setSelectedBoardResourceAlias(null);
+                            chooseMappingRow(row.id);
+                          };
+                          return (
+                            <>
+                              {previous ? (
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={go(previous)}
+                                  testId="ide-hw-previous-unmapped"
+                                  title={`Select ${previous.label} (previous signal still needing attention)`}
+                                >
+                                  ← {previous.label}
+                                </IdeButton>
+                              ) : null}
+                              {next ? (
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={go(next)}
+                                  testId="ide-hw-next-unmapped"
+                                  title={`Select ${next.label} (next signal still needing attention)`}
+                                >
+                                  Next: {next.label} →
+                                </IdeButton>
+                              ) : null}
+                            </>
+                          );
+                        })()}
+                        {undoableAssignment ? (
+                          <IdeButton
+                            tone="ghost"
+                            onClick={undoLastAssignment}
+                            testId="ide-hw-undo-assignment"
+                            title={`Restore ${undoableAssignment.label} to ${undoableAssignment.previousPin || 'unmapped'}`}
+                          >
+                            Undo
+                          </IdeButton>
+                        ) : null}
+                        {(() => {
+                          const boardRelated = relationshipIndex.resolveField(selectedMappingRow.id);
+                          return boardRelated ? (
+                            <RelatedMenu relation={boardRelated} activeScenarioId={null} hasRun={boardRelated.run !== null} origin="board-io" testId="ide-board-related" />
+                          ) : null;
+                        })()}
                         <IdeButton
-                          tone="secondary"
+                          tone={selectedResourceNeedsApply ? 'primary' : 'secondary'}
                           onClick={() => {
                             if (!selectedBoardResource || !onSetMappingPin) return;
-                            onSetMappingPin(selectedMappingRow.id, selectedBoardResource.packagePin);
+                            assignPin(selectedMappingRow.id, selectedBoardResource.packagePin);
                           }}
                           disabled={!selectedResourceNeedsApply || !onSetMappingPin}
                           testId="ide-hw-assign-selected-resource"
@@ -3287,7 +3894,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           <IdeButton
                             tone="ghost"
                             onClick={() => {
-                              onSetMappingPin?.(selectedMappingRow.id, '');
+                              assignPin(selectedMappingRow.id, '');
                               setSelectedBoardResourceAlias(null);
                             }}
                             disabled={!onSetMappingPin}
@@ -3296,61 +3903,99 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         ) : null}
                       </div>
                       <div className="ide-hardware-basys3-binding-chain" data-testid="ide-hardware-basys3-binding-chain" aria-label="Selected Basys3 binding chain">
-                        <span data-testid="ide-hardware-chain-signal"><small>Signal</small><strong>{selectedMappingLabel}</strong></span>
+                        <span className="rb-board-detail-label">Saved constraint</span>
+                        <span data-testid="ide-hardware-chain-signal"><small>Logical port</small><strong>{selectedMappingLabel}</strong></span>
                         {selectedMappingProjection ? (
                           <><span aria-hidden="true">-&gt;</span><span data-testid="ide-hardware-chain-artifact"><small>Artifact port</small><strong>{selectedMappingProjection.artifactPortName}</strong></span></>
                         ) : null}
                         <span aria-hidden="true">→</span>
                         <span data-testid="ide-hardware-chain-board"><small>Resource</small><strong>{selectedMappingBoardControl}</strong></span>
                         <span aria-hidden="true">→</span>
-                        <span data-testid="ide-hardware-chain-pin"><small>Pin</small><strong>{selectedMappingPackagePin}</strong></span>
+                        <span data-testid="ide-hardware-chain-pin"><small>Package pin</small><strong>{selectedMappingPackagePin}</strong></span>
+                        <span data-testid="ide-hardware-chain-io-standard"><small>I/O standard</small><strong>{selectedMappedBoardResource?.ioStandard ?? 'Unassigned'}</strong></span>
                         <pre data-testid="ide-hardware-basys3-binding-xdc">{selectedBoardResourceXdc || 'Assign a resource to preview the XDC constraint.'}</pre>
                       </div>
+                      {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
+                        <details
+                          className="rb-board-electrical"
+                          data-testid="ide-hw-electrical-detail"
+                          open={electricalDetailOpen || selectedSignalConflict}
+                          onToggle={(event) => setElectricalDetailOpen(event.currentTarget.open)}
+                        >
+                          <summary>Electrical edit<small>selected port</small></summary>
+                          <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} selectedRowId={selectedMappingRow.id} />
+                        </details>
+                      ) : null}
                     </>
                   ) : (
                     <p className="ide-copy ide-copy--flush">Select Assign or Edit in the table to begin.</p>
                   )}
                 </section>
+                <details className="rb-board-editor rb-board-xdc rb-board-reference" data-testid="ide-hw-constraints-tool" aria-label="Constraint reference">
+                  <summary className="rb-board-editor-head">
+                    <span className="ide-surface-block-label">Constraint reference</span>
+                    <strong data-testid="ide-hw-constraints-active">
+                      {constraintSets ? activeConstraintSet(constraintSets.doc)?.name ?? 'Live mapping' : 'Live mapping'}
+                    </strong>
+                  </summary>
+                  <p className="ide-copy ide-copy--flush">
+                    {constraintSets && activeConstraintSet(constraintSets.doc)
+                      ? 'The active set is what Build & Export packages as top.xdc; the lines below are the live mapping.'
+                      : 'Each signal’s pin becomes these lines in top.xdc. Select a line to select its signal.'}
+                  </p>
+                  <ol className="rb-board-xdc-lines" data-testid="ide-hw-xdc-lines">
+                    {constraintSets?.liveXdcText
+                      ? constraintSets.liveXdcText
+                          .split(/\r?\n/)
+                          .filter((line) => /^create_clock\b/.test(line.trim()))
+                          .slice(0, 1)
+                          .map((line) => (
+                            <li key="clock" className="rb-board-xdc-line is-clock" data-testid="ide-hw-xdc-line-clock">
+                              <span className="rb-board-xdc-signal">Clock</span>
+                              <code>{line.trim()}</code>
+                            </li>
+                          ))
+                      : null}
+                    {mappingRows.map((row) => {
+                      const projection = mappingProjectionById.get(row.id);
+                      const isSelected = selectedMappingRowId === row.id;
+                      const hasPin = row.pin.trim().length > 0 && Boolean(projection?.exactXdcLine);
+                      return (
+                        <li
+                          key={row.id}
+                          className={`rb-board-xdc-line${isSelected ? ' is-selected' : ''}${hasPin ? '' : ' is-pending'}`}
+                          data-testid={`ide-hw-xdc-line-${row.id}`}
+                          aria-current={isSelected ? 'true' : undefined}
+                        >
+                          <button
+                            type="button"
+                            className="rb-board-xdc-select"
+                            onClick={() => chooseMappingRow(row.id)}
+                            title={hasPin ? `Select ${getStudentFacingIoLabel(row, row.id)}` : `${getStudentFacingIoLabel(row, row.id)} has no pin yet — select it to assign one`}
+                            data-testid={`ide-hw-xdc-select-${row.id}`}
+                          >
+                            <span className="rb-board-xdc-signal">{getStudentFacingIoLabel(row, row.id)}</span>
+                            {hasPin && projection ? (
+                              <>
+                                <code>{projection.exactXdcLine}</code>
+                                <code>{`set_property IOSTANDARD ${projection.ioStandard} [get_ports {${projection.artifactPortName}}]`}</code>
+                              </>
+                            ) : (
+                              <code className="is-pending">{'# no pin assigned yet'}</code>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  {constraintSets ? <ConstraintSetsPanel {...constraintSets} livePinCount={mappedRequiredCount} /> : null}
+                </details>
 
-                <section className="ide-hw-v3__board" data-testid="ide-hw-map-board" data-work-priority="primary">
-                  <header className="ide-hw-v3__section-header">
-                    <div>
-                      <p className="ide-surface-block-label">Interactive board</p>
-                      <h3>Basys3</h3>
-                      <p className="ide-copy ide-copy--flush" data-testid="ide-hw-board-task-copy">
-                      {selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
-                      </p>
-                    </div>
-                  </header>
-                  <div
-                    className="ide-hw-v3__board-reference-graphic"
-                    data-testid="ide-hw-board-reference-graphic"
-                    role="region"
-                    aria-label="Interactive Basys3 board assignment canvas"
-                  >
-                    <Basys3BoardView
-                      mappedAliases={mapModeAliases}
-                      highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
-                      allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : new Set<string>()}
-                      assignmentMode={Boolean(selectedMappingRow)}
-                      onSelectAlias={(alias) => {
-                        if (!selectedMappingRow) return;
-                        const resource = compatiblePlannerResources.find((candidate) => candidate.alias === alias);
-                        if (!resource) return;
-                        const occupiedByAnotherSignal = (mappedRowsByPackagePin.get(resource.packagePin) ?? [])
-                          .some((candidate) => candidate.id !== selectedMappingRow.id);
-                        if (occupiedByAnotherSignal) return;
-                        setSelectedBoardResourceAlias(alias);
-                        onSetMappingPin?.(selectedMappingRow.id, resource.packagePin);
-                      }}
-                    />
-                  </div>
-                </section>
               </aside>
             </div>
 
             {guidedLabTask && guidedLabHardwareChecklist ? (
-              <section className="ide-hw-v3__lab" data-testid="ide-hardware-guided-full-adder-mapping">
+              <section className="rb-board-lab" data-testid="ide-hardware-guided-full-adder-mapping">
                 <div>
                   <p className="ide-surface-block-label">Active lab</p>
                   <h3>{guidedLabTask.shortTitle}</h3>
@@ -3364,14 +4009,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </section>
             ) : null}
 
-            <section className="ide-hw-v3__after" data-testid="ide-hw-after-mapping-tools">
+            <section className="rb-board-after" data-testid="ide-hw-after-mapping-tools">
               <div>
                 <p className="ide-surface-block-label">After mapping</p>
-                <p className="ide-copy ide-copy--flush">
-                  Check the assignment, rehearse the lab, or drive the simulated board. Simulation is exploratory and is not hardware evidence.
-                </p>
               </div>
-              <div className="ide-hw-v3__after-actions" data-testid="ide-hw-mode-toggle">
+              <div className="rb-board-after-actions" data-testid="ide-hw-mode-toggle">
                 <IdeButton tone="secondary" onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-bringup">Board Check</IdeButton>
                 <IdeButton tone="secondary" onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-proof">Pre-flight</IdeButton>
                 <IdeButton tone="ghost" onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-live">Open simulated board</IdeButton>
@@ -3402,11 +4044,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
           <div className="ide-hw-board-inner">
             <HardwareBoard2D
-              sw={hwMode === 'live' ? simulatedBoardState.sw : ioBus.state.sw}
-              ld={hwMode === 'live' ? simulatedBoardState.ld : ioBus.state.ld}
-              btn={hwMode === 'live' ? simulatedBoardState.btn : ioBus.state.btn}
+              sw={displayedBoardState.sw}
+              ld={displayedBoardState.ld}
+              btn={displayedBoardState.btn}
               mappedSw={mappedSw}
               mappedLd={mappedLd}
+              recordedResources={hwMode === 'live' && isRecordedBoardPreview ? recordedResources : undefined}
               mismatchedLd={mismatchedLd}
               highlightedSw={currentStepHighlights.sw}
               highlightedLd={currentStepHighlights.ld}
@@ -3451,8 +4094,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         </div>
         )}
-        {/* ── Constraint sets: named XDC sets (Vivado constrs_N), one active ── */}
-        {constraintSets ? <ConstraintSetsPanel {...constraintSets} /> : null}
         {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
         {hardwareWorkflowRibbon}
       </IdePanel>

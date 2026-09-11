@@ -100,27 +100,71 @@ Must:
 - Preserve E0 versus E1/E2/E3 language.
 - Avoid implying hardware readiness from browser state.
 
+Must:
+
+- Keep one bottom panel that exists on every workspace. Whether there is anything to report is the
+  panel's answer to give, not a reason for it to disappear; an empty ledger says so.
+- Let the problems count open the panel, and let the panel be put away and got back.
+- Keep dock preferences per surface. Opening Problems on Project is not a statement about Design;
+  what must hold is that each workspace restores what it was left in, and that a changing problem
+  count never silently overrides a reader's choice.
+- Report the state of the reader's work honestly. With nothing open there is no work to save, and
+  the frame says so rather than reporting unsaved changes to a placeholder.
+- Survive a shortage of room in both of its forms: a large text setting inside a fixed viewport,
+  and browser zoom, which shrinks the CSS viewport under the whole frame. They fail at different
+  settings and both are measured.
+
 Must not:
 
 - Repeat contradictory state across ribbon, rail, panels, and CTAs.
 - Let debug/build chrome dominate the student path.
 - Use "ready" without naming the proof tier.
+- Let any control draw outside its own box, take a click meant for its neighbour, or shrink one of
+  the six frame priorities to make room for something that is not one of them.
 
 ### Project Command Center
 
 Project is the command center, not a starter gallery.
 
+**Project answers a different question depending on whether work is open (2026-09-07).** These are
+two experiences on one route, and which one appears is a fact about the project's lifecycle, not
+about its contents:
+
+| | Start | Overview |
+|---|---|---|
+| The question | What am I going to work on? | What is this project, where did I leave it, what needs attention? |
+| Shown when | nothing is open | a project is open |
+| Strongest element | the reader's own saved work | the circuit |
+| Ways on | blank · course lab · starter · saved · import · recover | one continuation, plus the circuit and each state line |
+
 Must:
 
-- Show blank start, certified starter, saved project, import/recovery, and future instructor lab entry as peer paths with clear priority.
-- Keep no-circuit state neutral.
-- Show recommended next action without requiring scroll at common laptop sizes.
+- Decide between the two states from the lifecycle owner - whether a project is open - and never
+  from whether the circuit has components, whether there are problems, or what the project is
+  named. The launcher placeholder nobody chose is not open work; a blank project a person
+  deliberately created is.
+- Show blank start, certified starter, saved project, import/recovery, and future instructor lab
+  entry as peer paths with clear priority. When the reader has saved work, that is the primary path.
+- Let a reader read a lab, a starter or a saved project without applying it. Browsing is reading.
+- Give the active Overview one dominant object (the circuit), one continuation that follows where
+  the reader last worked, and its state beside it - simulation, mapping, package - each linking to
+  the workspace that owns it. Everything else is one closed disclosure away and nothing is deleted.
+- Keep the reader's own identity editable where it is shown, not behind a disclosure.
+- Keep no-circuit state neutral, and say plainly that the sheet is empty rather than implying a
+  circuit that does not exist.
+- Show the recommended next action without requiring scroll at common laptop sizes.
+- Preserve work across close and resume: closing saves and returns to Start, and resuming from
+  Start reopens that project - not a fresh copy of the lab it came from.
 - Avoid hardcoding ECE141 as the product identity.
 
 Must not:
 
 - Treat starter loading as the only serious path.
 - Report mapping failures before a circuit exists.
+- Invent a recent project the reader never created, including on reload.
+- Hide a saved project because of what it is called.
+- Nominate itself as the continuation, or impose a Design -> Simulate -> Board -> Package march.
+- Calculate readiness a second time. The status lines read the facts the project already derives.
 
 ### Design Workbench
 
@@ -244,6 +288,294 @@ A V1 product slice is done only when:
 - Current-truth docs and cockpit docs are updated.
 - The slice is committed and pushed when requested.
 - GitHub required checks are inspected from live GitHub evidence.
+
+## Approved target: the intentional workbench (2026-09-07)
+
+> **This section is the approved target, not a description of what has shipped.** Where it
+> disagrees with current code, tests, screenshots or DOM structure, this section wins and those
+> are the things that change. Code and focused tests remain the authority on what the product
+> *currently does*; they are not a veto on what it *should* do.
+
+### The navigation model
+
+RedByte is **one project** seen through five task workspaces: Project, Design, Simulate, Board,
+Package. They are not wizard steps and they do not each get a copy of the project.
+
+- **The left rail owns workspace navigation.** Visiting a workspace must not add a tab anywhere.
+- **A tab is another object inside the workspace that owns it** — a second module or source in
+  Design, another scenario in Simulate, a file preview or the report in Package. Project and Board
+  have no root tab. A workspace's own default view is the workspace, not a closable tab.
+- **A scenario is one workbench.** `Default — Cases`, `Default — Timing` and `Default — Waveform`
+  were three documents for one experiment; they become one **scenario document** whose table /
+  timing / waveform presentation is view state belonging to that scenario.
+- **Opening a tab focuses an existing object.** Creating or duplicating a scenario, module or
+  project is an explicit operation. **Closing a view never deletes** the scenario, source, run or
+  project behind it.
+- Persisted navigation carries descriptors and view preferences only. Existing `cases`, `timing`
+  and `waveform` descriptors migrate to their scenario's workbench rather than disappearing.
+
+### Run, playback, and what a result means
+
+- **A scenario is authored stimulus. A run is an immutable recording of executing it.** A run is
+  bound to its scenario, its design/source revision and its engine; it is never rewritten.
+- **Run and Play are different operations.** Run executes; Play walks recorded data. Playback
+  speed changes presentation speed — never a clock frequency and never simulated circuit time.
+- **A run must never start, navigate, or open anything on its own.** Finishing a run does not
+  create a document, does not expand a panel, and does not begin playback.
+- **Observation is a complete task.** One primary Run works on a scenario with no expected
+  outputs. Result language names what happened: "Run complete — no checks configured",
+  "14 checks passed", "1 check failed", "Results are from an earlier version". A failed assertion
+  and a failed execution are different conditions and are named differently.
+- **A percentage without a defined denominator is not a result.** Coverage belongs in run details
+  when its measure is defined, never in the headline.
+- **Editing preserves history.** Changing stimulus or design leaves the previous run intact and
+  marks the comparison stale. Editing an expected value never rewrites an observed one.
+- **Unrecorded is not zero.** Missing sample, unknown, unsupported and logic zero are four
+  different drawings.
+
+### What each workspace opens on
+
+| Workspace | Opens on | Tabs |
+|---|---|---|
+| Project | Start when nothing is open, the project's Overview when something is | none by default; project-browser documents when opened |
+| Design | the active module's schematic | other modules and sources |
+| Simulate | the active scenario's workbench | other scenarios |
+| Board | one mapping surface with contextual detail | none |
+| Package | **the operational package landing** — identity, one primary action, plain state, the file list, the next external step | file previews and the report |
+
+### Superseded defaults
+
+These are replaced at their owners, not restyled:
+
+1. Separate Timing and Waveform documents as the ordinary author/run workflow.
+2. Any automatic navigation, panel expansion or playback on run completion.
+3. Report-first Package navigation (`handoff` as the export default).
+4. Generic run / tick / speed controls in the Design toolbar whose data source is not stated.
+5. The global tab strip that accumulates one tab per workspace visited.
+6. A mandatory Board Guided/Expert fork. Board is one surface with progressive detail.
+
+### Composition rules that apply to every workspace
+
+- The work object — the circuit, the timeline, the board — gets the room. Controls do not consume
+  the first several lanes of the thing they control.
+- Whitespace is allowed; stranded content is not. Density is allowed; unprioritized density is not.
+- Every region states who sizes it and who scrolls it. `overflow: hidden` is not an overflow fix,
+  and the application never scrolls sideways to reach an ordinary control.
+- One primary action per surface, made primary by the restraint around it.
+- Contextual detail appears when it becomes useful, and is not permanently resident.
+
+### What this does not change
+
+Project identity, saved work, import isolation, scenario ownership, immutable run evidence,
+explicit staleness, the supported-construct boundary, honest mapping and export states, and the
+distinction between browser evidence and physical hardware proof all stand exactly as they are.
+
+---
+
+## Decision Record
+
+### 2026-09-07 - Project as two experiences
+
+**Decided.** Project shows Start when nothing is open and the project's own Overview when something
+is. The choice is made by the lifecycle owner. The Overview is composed - identity, circuit, state,
+attention, then disclosures - rather than tabulated.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| One screen deciding by whether the circuit has components | Neither question. It sent a blank project a person deliberately made back to the catalogue, and it would have shown a specification sheet to somebody who had not chosen anything yet. |
+| A specification-sheet Project (the 12-cell fact grid across the top) | It answers "what are this project's attributes", which is not what a reader arrives asking. Measured at 1280x650 it put 776px of content in a 566px pane; the circuit was third in reading order and there was no way to continue. The facts are all still there, one disclosure away. |
+| The gallery as the home of an active project | Browsing is what you do before you have chosen. Once work is open, a catalogue is an interruption. |
+| Metadata-first hierarchy on the Overview | The project's own drawing is the thing a reader recognises. Metadata is what you consult, not what you land on. |
+| A hidden bottom panel that appears when there are problems | Whether there is anything to report is the panel's answer to give. A count in the status bar that opens nothing is worse than a panel that says "no problems". |
+| A second readiness calculation for the Overview's status lines | Two authorities disagree eventually. The lines read the facts the project already derives, in a different register. |
+| Making dock preferences global so all surfaces share one panel state | Rejected for this slice by explicit direction: opening Problems on Project does not need to open it on Design. Per surface, restored on return. |
+
+### 2026-09-07 - The shared bottom panel
+
+**Decided.** One panel, on every workspace including an empty Board. Its resting state is present
+and collapsed - a 28px strip that names itself and carries the control that puts it away. The status
+bar's problems count opens it expanded. Hiding it is the reader's choice; a layout reset undoes that
+choice. Preferences are per surface. The problem count is the panel's content, never its state.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| A panel that appears when there are problems | It takes its own strip with it, and leaves a status-bar count that is a button doing nothing. An empty ledger saying "no problems" is an answer. |
+| A default of hidden-with-a-restore-bar | It contradicted the four surfaces that ask for `collapsed`, and it made "a layout reset recovers the panel" false - a reset restores the default, and the default was the generic bar. |
+| Global dock preferences shared by all surfaces | Rejected by explicit direction for this slice: opening Problems on Project is not a statement about Design. |
+| Forcing the panel open when the count changes | The count is content. Blocking diagnostics still force it into view, which is a different thing and does not write the preference. |
+
+### 2026-09-07 - Shortage of room is measured in both forms
+
+**Decided.** Text zoom and browser zoom are separate failures and both are asserted: a large root
+font inside a fixed viewport, and a CSS viewport shrunk under the whole frame. A control must own
+its own box, never take a click meant for its neighbour, and never shrink one of the six frame
+priorities to make room for something that is not one of them. Where a region cannot hold its
+content, it scrolls; a floor that cannot be met is a scroll, not an overflow, and never a strip
+collapsed to nothing.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Treating the existing 200%-text coverage as covering zoom | Its own header says otherwise. The panel failed at 200% browser zoom while every text-zoom case passed. |
+| Capping a panel on the element inside a taller track | It leaves an inert strip of reserved space. The cap belongs to the track. |
+| Percentage caps with no floors on stacked strips | At a short window the floored neighbour takes everything and the capped strips resolve to zero. Measured on Board: `41px / 85.5px / 44.5px` with 623px of the side pane unreachable, and `0px 160px 0px` once the column scrolled without floors. |
+
+### 2026-09-07 - One experiment has one primary working area
+
+**Decided.** A scenario is one experiment. It is drawn one way at a time, in one region, and the
+reader chooses which way with a VIEW switch that sits in whichever region is currently the primary
+one. Timeline is the default for a clocked circuit, Table for a combinational one, and Waveform is
+the recorded trace; the reader's choice is remembered for that scenario while it is open. The
+switch never opens a second document and never a second tab.
+
+Under the instrument is the run line: what the last run did, where the cursor is, what failed, and
+the actions that follow from it. It is one strip, in every representation, and it is capped at a
+third of the workspace. Before a run it says so in the line it already occupies.
+
+What belongs to a representation goes with it. Case stepping, the tick range, the radix, the
+expected overlay, the scrubber, playback and the view/measure tools all describe a drawn trace, so
+they are drawn with the trace. The cursor, the readout, the failure focus and the tail actions
+describe the experiment, so they are in the run line.
+
+**Measured at 1280x650, the two-bit counter after a run:** primary 376px / run line 91px, against
+88px / 255px+ before. The timeline's lanes are 244px; they were 88px in a region whose run line was
+being drawn inside a 1px box.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| The Cases/Evidence deck with a resizable splitter, collapse, and maximize-either-pane | It exists because two instruments are on screen at once and have to be given room at each other's expense. One primary area has nothing to split. The controls, the persisted share and the collapsed strip went with it. |
+| Keeping the trace toolbar on screen in every representation | It is a command bar for a canvas that is not there. Measured, it was the difference between a 244px timeline and an 88px one. |
+| Cases, Timing and Waveform as three documents with three tabs | It says the reader has three experiments open. They have one, looked at three ways. |
+| A percentage `max-height` on the run-line region | A percentage max-height on a grid ITEM resolves against the area the item is sizing, so it measured 34% of itself: a 91px line drawn inside a 31px box. The cap belongs to the track (`fit-content(34%)`). |
+| A 255px placeholder before the first run | The primary area is already the instrument the reader is working in. Unrecorded is not zero, but it is one line, not a panel. |
+
+### 2026-09-07 - Design explores; Simulate records
+
+**Decided.** Design has no clock of its own. Live mode is exploration: drive an input and the values
+settle, apply one clock edge when you ask for one, reset the values, and the surface says
+"Exploring - not recorded" while you do. A circuit with no state is offered no clock edge, because
+there is nothing for one to move. The way to evidence is named on the surface: run a scenario in
+Simulate.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Run / Pause on a wall-clock interval with a speed in Hz | It advanced a counter. On a combinational circuit stepping changed nothing at all; on a clocked one it applied edges at a rate unrelated to the scenario's clock policy, against no stimulus, with no expected values and no verdict. It looked like running a simulation and recorded nothing. |
+| Keeping the "tick N" readout | A tick number with no schedule behind it is a number. "3 clock edges applied" is a fact about what the reader did. |
+| Removing Live mode entirely | Exploring a circuit by driving its inputs is real and useful. What was false was the clock, not the exploration. |
+
+### 2026-09-08 - Operational Package landing; report opened explicitly
+
+**Current decision, superseding the 2026-09-07 dossier-first decision.** The
+`package` workspace root presents project/board identity, draft or checked state,
+the primary Generate and download ZIP operation, generated files, and the Vivado
+next step. Handoff overview is an explicit secondary document. Technical details
+and receipt history remain inspectable without occupying the initial working area.
+
+An allowed draft package remains available without configured checks. A checked
+package identifies its supporting current run. After project changes, an older
+receipt remains historical and is not relabeled current. Report waveforms are
+actual recorded samples with gaps preserved; inputs, expectations, or a current
+draft are not substitutes for observations. Browser generation proves artifact
+content only, not Vivado execution or hardware behavior.
+
+### 2026-09-08 - One retained experiment, multiple investigation views
+
+Simulate can show its immutable recording beside the matching real schematic,
+using Design's symbols and net router without starting another engine. The
+scenario, run, signal, and selected tick stay shared when focusing either pane.
+New recordings retain a detached circuit snapshot. A legacy recording lacking a
+matching topology says so rather than painting its values onto a changed design.
+
+Full recordings are retained separately from summary ledger entries (bounded to
+50). The recording picker is scoped to the active scenario; scenario view state
+is scoped to project and scenario. Save/reopen retains current observation-only
+runs as well as checked runs. Missing samples remain unavailable. Register
+explanations use recorded rising edges and actual prior samples; they do not
+infer capture from falling edges or unchanged inputs from an unchanged output.
+
+### 2026-09-07 - A metric is not offered where it would not be true
+
+**Decided.** "Input combinations N of M" is stated for a combinational circuit and withheld for a
+clocked one. For a combinational circuit the truth table IS the specification and 2^n is its size,
+so the count is a fact the reader can act on. A counter's output depends on the state it is in, not
+only on the inputs applied at that tick, and two of the "inputs" the count included were the clock
+and the reset - a schedule, not a stimulus space. On the two-bit counter it read "3 of 8" against a
+denominator that does not describe the experiment.
+
+### 2026-09-07 - A name that means two things names neither
+
+**Decided.** Where a normalised signal name is claimed by more than one thing in the circuit, it
+resolves to nothing, and it cannot credit a lane to the boundary. Only a lane carrying the
+boundary's own display name may do that; everything else is internal.
+
+The two-bit counter is the case that named it. Its io row for the board pin is
+`{ id: 'q0', label: 'LD0' }`, and the D flip-flop driving that pin is an instance the student sees
+labelled `Q0`. Normalised, the io row's id and the register's label are the same string. The
+direction map is keyed by both a row's id and its label - correct until an id collides with
+something else - so the register answered to a boundary key. The rail read
+**"Outputs 4 (LD0 LD1 Q0 Q1) / Internal 0 - No internal lanes"** while the timeline, which draws
+the boundary from the io rows, drew two output lanes: two representations of one experiment
+disagreeing about how many outputs the circuit has. It now reads
+**Inputs 3 / Outputs 2 (LD0 LD1) / Internal 2 (Q0 Q1)**, which is the circuit.
+
+The alias authority already computed the ambiguity and threw it away, resolving only names with
+exactly one owner. `buildWaveformSignalAliasOwners` returns the owners;
+`buildCanonicalWaveformSignalAliases` is the subset that resolves;
+`buildAmbiguousWaveformSignalKeys` is the subset that does not.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Drawing the two "missing" lanes on the timeline | They are not missing. The extra waveform keys are the registers, not aliases of the pins - drawing them as boundary outputs produced two empty duplicates of LD0 and LD1 and was reverted. |
+| Resolving `q0` to the boundary because an io row claims it | It is equally claimed by the register. Picking one is a guess, and a guess about signal identity is how evidence stops being evidence. |
+| Renaming the lab's io rows so the ids stop colliding | It fixes one fixture and leaves the product wrong for the next circuit whose register shares a pin's id. |
+
+### 2026-09-07 - A control is where a reader can reach it, and a number is the number
+
+**Decided.** Four rules, each one written after a measurement contradicted it.
+
+**A pane that shrinks re-fits what it draws.** Mounting a dock takes width from the sheet without
+moving the camera. Design's contextual inspector took 280px and left the two-bit counter's output
+pins 96px past the schematic frame and 80px under the dock: six of nine sampled points inside the
+LD0 symbol hit it before, none after, and a click aimed at LD1 pressed the inspector's Delete node
+button. The camera belongs to the reader, so this is not a re-fit on every resize - only when the
+pane has shrunk AND that shrink has put the circuit outside the sheet.
+
+**Every column an instrument draws can hold its cursor, and its decoration does not take the
+click.** The timing ruler drew eleven columns for an eight-cycle run and four of them left the
+cursor on t0 while the readout, the header chip and the observed values reported t7..t10. The tick
+number, the grid line and the edge marker are drawn after the hit rect and sat on top of it, so
+clicking the number - the most obvious way to select a tick - did nothing at all.
+
+**An alternate editor does not destroy the editor it is an alternative to.** "Generators and full
+event editor" took the 662px its content wanted, squeezed the timeline from 476px to 1px, and
+painted over the composer bar: every control along the top answered `elementFromPoint` with the
+disclosure's own summary. An alternate editor takes a bounded, scrolling share; the instrument
+keeps a floor.
+
+**Two numbers on the same screen are the same number, or they are two different things and say
+so.** The package dossier read "4 warnings" 262px from a status bar reading "3 problems". The
+extra one is an evidence advisory built in Export and never entered into the shared ledger. It is
+said as an advisory now; the Warnings count is the ledger's count.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Clipping the schematic to its frame instead of re-fitting | It stops the click landing on Delete node and leaves the pin unreachable. The pin is the thing the reader wants. |
+| Re-fitting whenever the pane resizes | A reader who has zoomed in has content outside the pane on purpose. The trigger is the pane shrinking AND the content leaving, not the pane changing. |
+| Letting the ruler grow spare columns around the cursor | It re-fitted the tick width on every move and slid every column out from under the pointer that had just clicked one. The axis is the experiment's. |
+| Printing "4 warnings (3 in Problems)" | Two numbers with a parenthesis is still two numbers. One of them was not a ledger problem. |
 
 ## Attribution
 

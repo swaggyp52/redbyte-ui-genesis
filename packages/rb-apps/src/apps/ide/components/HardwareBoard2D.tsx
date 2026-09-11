@@ -1,14 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Bit } from '../ioBus';
 import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
 
+export type BoardDisplayValue = Bit | 'X' | 'Z' | null;
+const displayValue = (value: BoardDisplayValue | undefined) => value == null ? 'Not recorded' : String(value);
+
 export interface HardwareBoard2DProps {
-  sw: Bit[];           // length 16 — switch states
-  ld: Bit[];           // length 16 — LED states
-  btn: Bit[];          // length 5 — button states
+  sw: BoardDisplayValue[];  // length 16 — null means no observation
+  ld: BoardDisplayValue[];
+  btn: BoardDisplayValue[];
   mappedSw: boolean[]; // length 16 — whether each SW has a nodeId mapping
   mappedLd: boolean[]; // length 16 — whether each LD has a nodeId mapping
+  /**
+   * The resources a recorded projection covers - the same mapping rows that fill it. A null
+   * value on a covered resource is a sample the recording does not have, drawn as unavailable;
+   * on an uncovered resource it only means the design does not use it. Absent: every resource
+   * counts as covered (exploration and the other callers never pass null values).
+   */
+  recordedResources?: { sw: boolean[]; ld: boolean[]; btn: boolean[] };
   mismatchedLd?: boolean[]; // length 16 — red error overlay (bring-up mismatch)
   highlightedSw?: number[];  // indices to show cyan highlight ring
   highlightedLd?: number[];  // indices to show amber highlight ring
@@ -29,12 +39,17 @@ const BTN_POSITIONS: [number, number][] = [
 ];
 const BTN_LABELS = ['C', 'U', 'D', 'L', 'R'];
 
+// How far a press must travel before it counts as sliding the switch rather than tapping it.
+// Below this, a pointer gesture is an ordinary click and the switch simply toggles.
+const SWITCH_DRAG_THRESHOLD_PX = 4;
+
 export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
   sw,
   ld,
   btn,
   mappedSw,
   mappedLd,
+  recordedResources,
   mismatchedLd,
   highlightedSw,
   highlightedLd,
@@ -54,11 +69,23 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
     return () => window.removeEventListener('pointerup', stopDrag);
   }, [draggingSwitch]);
 
-  const applyDraggedSwitchValue = (index: number, event: React.PointerEvent<SVGGElement>) => {
-    if (!onSetSwitch) return;
+  // One authority per gesture. A press used to set the switch absolutely from where it landed and
+  // the click React dispatches right after it toggled the same switch again, undoing the press:
+  // clicking the lower half of an ON switch was a silent no-op, and a centre click - the hitbox
+  // midpoint is the on/off boundary - could never turn a switch off. So a plain click toggles, and
+  // only a gesture that actually travels reads its value from the pointer, which is the slide
+  // metaphor the drag handler was written for. The ref survives pointerup because the click follows
+  // it; the next press on any switch resets it and the next click clears it.
+  const switchGestureRef = useRef<{ index: number; startY: number; dragged: boolean } | null>(null);
+
+  // Returns whether the pointer position actually decided this switch's value. When the host
+  // supplies no `onSetSwitch`, it did not, and the click that follows must still toggle.
+  const applyDraggedSwitchValue = (index: number, event: React.PointerEvent<SVGGElement>): boolean => {
+    if (!onSetSwitch) return false;
     const rect = event.currentTarget.getBoundingClientRect();
     const nextValue: Bit = event.clientY <= rect.top + rect.height / 2 ? 1 : 0;
     onSetSwitch(index, nextValue);
+    return true;
   };
 
   return (
@@ -196,7 +223,9 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const cx = 10 + 20 + i * 36 + 18;
         const cy = 40;
         const isOn = ld[idx] === 1;
+        const isKnown = ld[idx] === 0 || ld[idx] === 1;
         const isMapped = mappedLd[idx];
+        const isCovered = recordedResources?.ld[idx] ?? true;
         const isActiveLd = activeSignal?.type === 'ld' && activeSignal.index === idx;
         const isMismatch = mismatchedLd?.[idx] ?? false;
 
@@ -204,13 +233,13 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           styles.ledCircle,
           isActiveLd ? styles.active : '',
           isOn ? styles.ledOn : '',
-          isMapped && !isOn ? styles.ledMapped : '',
+          isMapped && isKnown && !isOn ? styles.ledMapped : '',
           isMismatch ? styles.ledMismatch : '',
         ].filter(Boolean).join(' ');
 
         const lensGradId = isMismatch
           ? 'ledLensMismatch'
-          : !isMapped
+          : !isMapped || !isKnown
             ? 'ledLensUnmapped'
             : isOn
               ? 'ledLensOn'
@@ -226,6 +255,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             {/* LED body with lens gradient */}
             <circle
               data-testid={`ide-hw-ld-${idx}`}
+              data-on={ld[idx] == null ? 'unavailable' : String(ld[idx])}
+              aria-label={`LD${idx}: ${isKnown || isCovered ? displayValue(ld[idx]) : 'not in this recording'}`}
               data-active={isActiveLd ? 'true' : undefined}
               className={ledClassName}
               cx={cx}
@@ -286,7 +317,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               className={styles.ledLabel}
               style={{ pointerEvents: 'none' }}
             >
-              {`LD${idx}`}
+              {`LD${idx}${isKnown || !isCovered ? '' : ld[idx] == null ? ' —' : ` ${ld[idx]}`}`}
             </text>
           </g>
         );
@@ -342,6 +373,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
       {/* === Push buttons === */}
       {BTN_POSITIONS.map(([cx, cy], i) => {
         const isPressed = btn[i] === 1;
+        const isKnown = btn[i] === 0 || btn[i] === 1;
+        const isCovered = recordedResources?.btn[i] ?? true;
         const handleBtnInteraction = (isDown: boolean) => {
           onPressButton(i, isDown);
           if (!isDown) onHoverSignal?.(null);
@@ -371,11 +404,13 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             {/* Button cap */}
             <circle
               data-testid={`ide-hw-btn-${i}`}
+              data-on={btn[i] == null ? 'unavailable' : String(btn[i])}
+              aria-label={`BTN${BTN_LABELS[i]}: ${isKnown || isCovered ? displayValue(btn[i]) : 'not in this recording'}`}
               className={styles.btnCircle}
               cx={cx}
               cy={cy}
               r={9}
-              fill={isPressed ? 'url(#btnGradOn)' : 'url(#btnGradOff)'}
+              fill={!isKnown && isCovered ? 'url(#ledLensUnmapped)' : isPressed ? 'url(#btnGradOn)' : 'url(#btnGradOff)'}
               stroke={isPressed ? 'rgba(229,62,62,0.8)' : 'rgba(255,255,255,0.12)'}
               strokeWidth="1"
               style={{ pointerEvents: 'none' }}
@@ -394,7 +429,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               className={styles.btnLabel}
               style={{ pointerEvents: 'none' }}
             >
-              {BTN_LABELS[i]}
+              {`${BTN_LABELS[i]}${isKnown || !isCovered ? '' : btn[i] == null ? ' —' : ` ${btn[i]}`}`}
             </text>
           </g>
         );
@@ -409,8 +444,10 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const trackW = 14;
         const trackH = 22;
         const isOn = sw[idx] === 1;
+        const isKnown = sw[idx] === 0 || sw[idx] === 1;
         const isMapped = mappedSw[idx];
-        const handleY = isOn ? trackY + 1 : trackY + trackH - 11;
+        const isCovered = recordedResources?.sw[idx] ?? true;
+        const handleY = !isKnown && isCovered ? trackY + (trackH - 10) / 2 : isOn ? trackY + 1 : trackY + trackH - 11;
         const isActiveSw = activeSignal?.type === 'sw' && activeSignal.index === idx;
 
         const swGroupClassName = [
@@ -423,6 +460,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           <g
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
+            data-on={sw[idx] == null ? 'unavailable' : String(sw[idx])}
+            aria-label={`SW${idx}: ${isKnown || isCovered ? displayValue(sw[idx]) : 'not in this recording'}`}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}
             opacity={isMapped ? 1 : 0.82}
@@ -437,14 +476,25 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               fill="transparent"
               style={{ cursor: 'pointer', pointerEvents: 'auto' }}
               className={styles.swHitbox}
-              onClick={() => onToggleSwitch(idx)}
+              onClick={() => {
+                const gesture = switchGestureRef.current;
+                switchGestureRef.current = null;
+                // A drag already decided this switch value; toggling here would undo it.
+                if (gesture?.index === idx && gesture.dragged) return;
+                onToggleSwitch(idx);
+              }}
               onPointerDown={(event) => {
                 setDraggingSwitch(idx);
-                applyDraggedSwitchValue(idx, event);
+                switchGestureRef.current = { index: idx, startY: event.clientY, dragged: false };
               }}
               onPointerMove={(event) => {
                 if (draggingSwitch !== idx) return;
-                applyDraggedSwitchValue(idx, event);
+                const gesture = switchGestureRef.current;
+                if (!gesture || gesture.index !== idx) return;
+                if (!gesture.dragged && Math.abs(event.clientY - gesture.startY) < SWITCH_DRAG_THRESHOLD_PX) {
+                  return;
+                }
+                if (applyDraggedSwitchValue(idx, event)) gesture.dragged = true;
               }}
               onPointerUp={() => setDraggingSwitch(null)}
               onMouseEnter={() => onHoverSignal?.({ type: 'sw', index: idx })}
@@ -511,7 +561,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               className={styles.swLabel}
               style={{ pointerEvents: 'none' }}
             >
-              {`SW${idx}`}
+              {`SW${idx}${isKnown || !isCovered ? '' : sw[idx] == null ? ' —' : ` ${sw[idx]}`}`}
             </text>
           </g>
         );

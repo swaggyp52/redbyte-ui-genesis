@@ -45,7 +45,7 @@ export const GANNON_PILOT_LABS: GannonPilotLab[] = [
     exampleId: 'full-adder',
     build: 'A full adder with carry-in, sum, and carry-out logic.',
     difficulty: 'intermediate',
-    submit: 'Submit the browser-E0 ZIP; Vivado proof is separate if assigned.',
+    submit: 'Submit the exported RedByte/Vivado ZIP; Vivado proof is separate if assigned.',
     proofScope: 'vivado-optional',
     startLabel: 'Start Full Adder',
   },
@@ -75,10 +75,10 @@ export const GANNON_PILOT_LABS: GannonPilotLab[] = [
 
 export function formatGannonPilotProofScope(scope: GannonPilotLabProofScope): string {
   if (scope === 'browser-e0') {
-    return 'Browser E0 package proof';
+    return 'Browser simulation and package';
   }
   if (scope === 'vivado-optional') {
-    return 'Browser E0; Vivado E1 if assigned';
+    return 'Browser simulation; Vivado build if assigned';
   }
-  return 'Browser E0; board E3 if assigned';
+  return 'Browser simulation; board observation if assigned';
 }

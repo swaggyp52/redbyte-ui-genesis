@@ -67,6 +67,55 @@ describe('diagnoseVerifyFailure', () => {
     expect(diagnosis.recommendedAction).toContain('Inspect Design');
   });
 
+  it('classifies an undefined (X) observed output as disconnected-output, not an expected-value mismatch', () => {
+    const diagnosis = diagnoseVerifyFailure({
+      status: 'fail',
+      runRowsCount: 8,
+      outputLabels: ['SUM'],
+      failure: {
+        signalLabel: 'SUM',
+        expected: '0',
+        observed: 'X',
+      },
+    });
+
+    expect(diagnosis.category).toBe('disconnected-output');
+    expect(diagnosis.primaryLane).toBe('design');
+    expect(diagnosis.message).toContain('SUM');
+    expect(diagnosis.recommendedAction).toContain('connect a driver');
+  });
+
+  it('treats a floating (no sampled value) observed output as disconnected-output even when the circuit is believed correct', () => {
+    const diagnosis = diagnoseVerifyFailure({
+      status: 'fail',
+      runRowsCount: 8,
+      failure: {
+        signalLabel: 'SUM',
+        expected: '1',
+        observed: '-',
+      },
+      studentBelievesCircuitCorrect: true,
+    });
+
+    expect(diagnosis.category).toBe('disconnected-output');
+    expect(diagnosis.primaryLane).toBe('design');
+  });
+
+  it('still routes a concrete binary (0/1) mismatch to a runnable design-output diagnosis, not structural', () => {
+    const diagnosis = diagnoseVerifyFailure({
+      status: 'fail',
+      runRowsCount: 8,
+      failure: {
+        signalLabel: 'SUM',
+        expected: '0',
+        observed: '1',
+      },
+    });
+
+    expect(diagnosis.category).toBe('design-output-wrong');
+    expect(diagnosis.primaryLane).toBe('design');
+  });
+
   it('keeps expected-value repair explicit when the circuit behavior is believed correct', () => {
     const diagnosis = diagnoseVerifyFailure({
       status: 'fail',

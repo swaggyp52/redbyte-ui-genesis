@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-05
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -10,6 +10,25 @@ role: Design surface spec
 
 Status: Unified Workbench v3 RC source; final exact-SHA certification pending
 Mode ID: `design`
+
+## Design explores; Simulate records (2026-09-07)
+
+Design has no clock of its own. `Live` is exploration:
+
+- driving an input settles the values through the circuit;
+- a circuit with registers offers **Clock edge** (`ide-design-live-step`), applied once when the
+  reader asks, with a count of how many have been applied since reset;
+- a combinational circuit is offered no clock edge, because there is nothing for one to move;
+- **Reset values** (`ide-design-live-reset`) returns inputs and register state to their start;
+- the toolbar says `Exploring · not recorded` while any of this is true.
+
+`Replay` reads the run Simulate recorded; it is read-only evidence and says so.
+
+**Retired:** Run / Pause on a wall-clock interval at `speedHz`, the bare `tick N` readout, and the
+`onRuntimeSimRun` / `onRuntimeSimPause` / `onRuntimeSimSetSpeed` props. What ran was a counter: on a
+combinational circuit stepping changed nothing, and on a clocked one it applied edges at a rate
+unrelated to the scenario's clock policy, against no stimulus, with no expected values and no
+verdict.
 
 ## Purpose
 
@@ -49,6 +68,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 4. Stable right inspector
 - Is selection-driven support in a stable `240-280px` region at desktop widths. At constrained widths selected details move to a stable lower region automatically; the student does not open/close a core rail to recover the canvas.
 - For a selected node, the compact identity and actionable issue guidance come first, primary Actions follow immediately, and teaching/reference/mapping context follows in **Selection details**. Cross-platform font wrapping in secondary context must not push direct edit controls below the `1366x768` classroom first viewport.
+- The inspector is organised as named sections over existing authorities, in this order: Identity (the properties surface: name, kind, rename; there is no standalone Properties section) → Actions → Selection details → **Connectivity** (pin values, input drivers, what the selection drives) → **Evidence** (`ide-design-context-inspector`: live or replayed state, verify focus, probes) → **Mapping** (board resource, package pin, constraint set, the constraint lines the package writes, Open in Board & Constraints) → **Source** (the generated VHDL lines that name the signal, Show HDL beside the schematic; collapsed by default) → **Related** (the documents the signal appears in, as a list). Mapping renders when the selection has a board row or relation, and Related when the signal resolves to a boundary relation; Source renders for any single selected node and says so plainly when the signal is not named in the generated source. Board relations always name the package pin, even when the row stores the board alias.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
 - With no selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It stays secondary to the canvas.
 

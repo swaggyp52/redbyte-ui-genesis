@@ -5,8 +5,8 @@
 // and confirm the ExportHistoryPanel shows both packages, their provenance, and
 // which artifacts changed. Store is read only to assert the ledger; downloads
 // are real download-button clicks.
-import { chromium } from 'playwright';
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+import { BASE_URL, launchChromium } from './harness.mjs';
+const browser = await launchChromium();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const page = await ctx.newPage();
 const errors = [];
@@ -25,7 +25,7 @@ async function download() {
   return false;
 }
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => { try { localStorage.clear(); } catch {} });
 await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(700);
 await page.evaluate(() => {
@@ -36,6 +36,9 @@ await page.evaluate(() => {
 await page.waitForTimeout(400);
 
 await page.getByTestId('mode-button-export').click(); await page.waitForTimeout(1500);
+// Package lands on its operational files, with the report behind a deliberate action.
+if (await page.getByTestId('ide-package-handoff-document').count()) fail('Package opened on the report');
+await page.getByTestId('ide-export-package-files').waitFor();
 
 // First package.
 if (!(await download())) fail('no download button available for the first package');
@@ -53,7 +56,8 @@ await page.waitForTimeout(1200);
 if (await ledgerLen() < 2) fail(`second download did not record an export (len=${await ledgerLen()})`);
 console.log(`② second package downloaded (after top change) → ledger has ${await ledgerLen()} entries`);
 
-// The package history renders both packages.
+// The explicitly opened package history renders both packages.
+await page.getByTestId('ide-export-history-details').locator('summary').click();
 if (await page.getByTestId('ide-export-history').count() === 0) fail('package history panel not rendered');
 const count = (await page.getByTestId('ide-export-history-count').textContent())?.trim();
 if (!/2 packages/.test(count ?? '')) fail(`history should show 2 packages, got "${count}"`);

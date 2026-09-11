@@ -51,6 +51,16 @@ function readableSignal(input: VerifyFailureDiagnosisInput): string {
   return issueSignal?.trim() || 'the output';
 }
 
+// An output whose observed value is X (undefined) or "-" (no sampled value) is
+// not driven to a real logic level. That is a STRUCTURAL failure, not a runnable
+// expected-vs-observed mismatch: the student cannot fix it by editing an expected
+// value, so it must be routed to a Design repair, not the expected-value lane.
+function isFloatingObservedValue(value: string | null | undefined): boolean {
+  if (value == null) return false;
+  const normalized = value.trim().toUpperCase();
+  return normalized === 'X' || normalized === '-';
+}
+
 function hasStructuralOutputIssue(input: VerifyFailureDiagnosisInput): boolean {
   const structuralIssue = input.preflightIssues?.some(
     (issue) =>
@@ -58,7 +68,13 @@ function hasStructuralOutputIssue(input: VerifyFailureDiagnosisInput): boolean {
       issue.kind === 'missing-output-node' ||
       issue.kind === 'missing-output-row'
   );
-  return Boolean(structuralIssue || (input.status === 'fail' && input.runRowsCount === 0 && (input.outputLabels?.length ?? 0) > 0));
+  const floatingObserved =
+    input.status === 'fail' && isFloatingObservedValue(input.failure?.observed);
+  return Boolean(
+    structuralIssue ||
+      floatingObserved ||
+      (input.status === 'fail' && input.runRowsCount === 0 && (input.outputLabels?.length ?? 0) > 0)
+  );
 }
 
 export function diagnoseVerifyFailure(input: VerifyFailureDiagnosisInput): VerifyFailureDiagnosis {
@@ -85,7 +101,7 @@ export function diagnoseVerifyFailure(input: VerifyFailureDiagnosisInput): Verif
       category: 'disconnected-output',
       primaryLane: 'design',
       confidence: 'high',
-      message: `${signal} is not driven, so Compare could not produce observed values.`,
+      message: `${signal} is not driven to a defined value, so Compare cannot check its behavior.`,
       recommendedAction: `Open Design, connect a driver to ${signal}, then rerun Compare.`,
     };
   }

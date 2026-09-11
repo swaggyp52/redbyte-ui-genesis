@@ -21,6 +21,8 @@ export interface ConstraintSetsPanelProps {
   readonly doc: ConstraintSetsDocument;
   /** Generated XDC for the current pin assignments — seeds a captured set. */
   readonly liveXdcText?: string;
+  /** Pins assigned in the live mapping — the implicit active set until one is captured. */
+  readonly livePinCount?: number;
   readonly onAdd: (name: string, xdcText: string) => { ok: boolean; error?: string } | void;
   readonly onRemove: (id: string) => void;
   readonly onRename: (id: string, name: string) => { ok: boolean; error?: string } | void;
@@ -37,7 +39,7 @@ function pinCount(xdcText: string): number {
 
 export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
   doc,
-  liveXdcText,
+  liveXdcText, livePinCount,
   onAdd,
   onRemove,
   onRename,
@@ -75,17 +77,16 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
   };
 
   return (
-    <section className="ide-constraint-sets" data-testid="ide-constraint-sets" aria-label="Constraint sets">
-      <header className="ide-constraint-sets-head">
+    <details className="ide-constraint-sets" data-testid="ide-constraint-sets" aria-label="Constraint sets" open={doc.sets.length > 0}>
+      <summary className="ide-constraint-sets-head">
         <span className="ide-constraint-sets-title">Constraint sets</span>
         <span className="ide-constraint-sets-count" data-testid="ide-constraint-sets-count">
           {doc.sets.length} set{doc.sets.length === 1 ? '' : 's'}
         </span>
-      </header>
+        {doc.sets.length === 0 ? <span className="ide-constraint-sets-live-note">live mapping is active · packaged as top.xdc</span> : null}
+      </summary>
       <p className="ide-constraint-sets-note">
-        Named XDC sets (Vivado <code>constrs_N</code>), one active at a time. The active
-        set is what Build &amp; Export packages. RedByte organizes constraint text — it never
-        runs Vivado or programs a board.
+        One set is active at a time and is what Build &amp; Export packages as <code>top.xdc</code>.
       </p>
 
       {error ? (
@@ -94,9 +95,16 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
         </div>
       ) : null}
 
+      {doc.sets.length === 0 || doc.activeId === null ? (
+        <div className="ide-constraint-sets-live" data-testid="ide-constraint-sets-live" aria-label="Live mapping is the active constraints">
+          <span className="ide-constraint-sets-live-name">Live mapping</span>
+          <code>{livePinCount ?? pinCount(liveXdcText ?? '')} pins</code>
+          <span className="ide-constraint-sets-live-note">active · packaged as top.xdc</span>
+        </div>
+      ) : null}
       {doc.sets.length === 0 ? (
         <p className="ide-constraint-sets-empty" data-testid="ide-constraint-sets-empty">
-          No constraint sets yet. Capture the current pin assignments as your first set.
+          Capture the live assignments as a named set to version them.
         </p>
       ) : (
         <ul className="ide-constraint-sets-list">
@@ -213,6 +221,6 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
           </pre>
         </details>
       ) : null}
-    </section>
+    </details>
   );
 };

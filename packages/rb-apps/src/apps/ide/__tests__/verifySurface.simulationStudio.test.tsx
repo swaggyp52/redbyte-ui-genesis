@@ -77,7 +77,7 @@ describe('Verify Simulation Studio', () => {
     );
 
     expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
-    expect(view.getByTestId('ide-vcb-workspace-checks').textContent).toBe('Checks');
+    expect(view.queryByTestId('ide-vcb-check-count')).toBeNull();
     fireEvent.click(view.getByTestId('ide-vcb-run'));
 
     expect(onRunVerification).toHaveBeenCalledWith(expect.objectContaining({
@@ -95,7 +95,6 @@ describe('Verify Simulation Studio', () => {
     expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('No checks configured');
     expect(view.getByTestId('ide-verify-summary-status').textContent).toBe('Simulation complete · No checks configured');
     expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
-    expect(view.getByTestId('ide-vcb-workspace-replay').getAttribute('aria-selected')).toBe('true');
     expect(view.getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
   });
 
@@ -109,17 +108,17 @@ describe('Verify Simulation Studio', () => {
       />
     );
 
-    expect(view.getByTestId('ide-vcb-workspace-checks').textContent).toBe('Checks 2');
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('2');
     expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('Checks not evaluated');
     expect(view.getByTestId('ide-verify-summary-status').textContent).toContain('Checks not evaluated');
     expect(view.getByTestId('ide-verify-run-announcer').textContent).toContain('Checks not evaluated');
   });
 
-  it('moves expected-output authoring into the optional Checks workspace', () => {
+  it('keeps expected-output authoring optional and cell-level in the Case Lab', () => {
     const view = render(<VerifySurface {...baseProps} />);
 
-    expect(view.getByTestId('ide-verify-stimulus-summary').textContent).toContain('Run the scenario');
-    fireEvent.click(view.getByTestId('ide-vcb-workspace-checks'));
-    expect(view.getByTestId('ide-verify-stimulus-summary').textContent).toContain('Add optional expected outputs');
+    expect(view.getByTestId('ide-case-lab')).toBeTruthy();
+    // No check authored yet: the expected cell is an empty slot, not a requirement.
+    expect(view.getByTestId('ide-case-lab-exp-0-ld0').textContent?.trim()).toBe('\u00b7');
   });
 });

@@ -116,7 +116,7 @@ function renderCellContent(
 ) {
   // If no assertion, show dash
   if (value.expected === null) {
-    return <span style={{ fontSize: '0.72em', color: 'var(--rb-text-tertiary)' }}>—</span>;
+    return <span style={{ fontSize: 'var(--rb-text-meta)', color: 'var(--rb-text-tertiary)' }}>—</span>;
   }
 
   // Render value square (similar to StimulusCanvas cell)
@@ -149,7 +149,7 @@ function renderCellContent(
         borderRadius: 3,
         background: 'var(--rb-error-light, rgba(220, 50, 50, 0.1))',
         border: '1px solid var(--rb-error, #dc3232)',
-        fontSize: '0.7em',
+        fontSize: 'var(--rb-text-meta)',
         color: 'var(--rb-error)',
         fontWeight: 600,
       }}
@@ -202,7 +202,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '0.72em',
+                fontSize: 'var(--rb-text-meta)',
                 color: 'var(--rb-text-tertiary)',
                 fontFamily: 'var(--rb-font-mono, monospace)',
                 cursor: 'default',
@@ -230,7 +230,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
               width: LABEL_W,
               flexShrink: 0,
               paddingLeft: 8,
-              fontSize: '0.68em',
+              fontSize: 'var(--rb-text-meta)',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
               color: 'var(--rb-text-secondary)',
@@ -266,14 +266,14 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                fontSize: '0.8em',
+                fontSize: 'var(--rb-text-meta)',
                 color: 'var(--rb-text-secondary)',
                 fontFamily: 'var(--rb-font-mono, monospace)',
               }}
             >
               {field.label}
               {field.pin && (
-                <code style={{ marginLeft: 4, fontSize: '0.82em', color: 'var(--rb-text-tertiary)' }}>
+                <code style={{ marginLeft: 4, fontSize: 'var(--rb-text-meta)', color: 'var(--rb-text-tertiary)' }}>
                   {field.pin}
                 </code>
               )}
@@ -339,7 +339,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
               width: LABEL_W,
               flexShrink: 0,
               paddingLeft: 8,
-              fontSize: '0.68em',
+              fontSize: 'var(--rb-text-meta)',
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
               color: 'var(--rb-text-secondary)',
@@ -379,7 +379,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                fontSize: '0.8em',
+                fontSize: 'var(--rb-text-meta)',
                 color: 'var(--rb-text-tertiary)',
                 fontStyle: 'italic',
                 fontFamily: 'var(--rb-font-mono, monospace)',
@@ -418,7 +418,7 @@ export const AssertionCanvas: React.FC<AssertionCanvasProps> = ({
                       }}
                     />
                   ) : (
-                    <span style={{ fontSize: '0.72em', color: 'var(--rb-text-tertiary)' }}>—</span>
+                    <span style={{ fontSize: 'var(--rb-text-meta)', color: 'var(--rb-text-tertiary)' }}>—</span>
                   )}
                 </div>
               );

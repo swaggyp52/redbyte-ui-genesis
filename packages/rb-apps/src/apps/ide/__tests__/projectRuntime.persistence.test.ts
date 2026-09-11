@@ -319,6 +319,106 @@ describe('mergePersistedRuntimeState', () => {
     expect(detached.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
   });
 
+  it("keeps a duplicated scenario's checks when the first Design edit detaches a starter", () => {
+    // Editing an expected cell already demoted starter authority, so the loss was invisible to
+    // the test above. Every other authoring path - create, duplicate, rename, reorder, probes,
+    // step edits - returns through commitScenarioSelection, which used to return no authority at
+    // all, so the student's own scenario stayed labelled as the starter's and was stripped.
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('logic-gates');
+
+    const starter = useProjectRuntime.getState();
+    expect(starter.scenarioAuthority).toBe('starter');
+    const starterChecks = starter.projectVectors.filter(
+      (vector) => Object.keys(vector.expected ?? {}).length > 0
+    ).length;
+    expect(starterChecks).toBeGreaterThan(0);
+
+    // The student makes the starter's scenario their own.
+    runtime.duplicateScenario();
+    const owned = useProjectRuntime.getState();
+    expect(owned.scenarioAuthority).toBe('authored');
+    const ownedScenarioId = owned.activeScenarioId;
+    const ownedChecks = owned.projectVectors.filter(
+      (vector) => Object.keys(vector.expected ?? {}).length > 0
+    ).length;
+    expect(ownedChecks).toBe(starterChecks);
+
+    runtime.addDesignNode('NOT', { x: 520, y: 160 });
+
+    const detached = useProjectRuntime.getState();
+    expect(detached.projectKind).toBe('custom');
+    expect(detached.activeExampleId).toBeNull();
+    expect(detached.activeScenarioId).toBe(ownedScenarioId);
+    const survivingChecks = detached.projectVectors.filter(
+      (vector) => Object.keys(vector.expected ?? {}).length > 0
+    ).length;
+    expect(survivingChecks).toBe(ownedChecks);
+    const duplicated = detached.scenarios.find((scenario) => scenario.id === ownedScenarioId);
+    expect(
+      (duplicated?.vectors ?? []).filter((vector) => Object.keys(vector.expected ?? {}).length > 0).length
+    ).toBe(ownedChecks);
+  });
+
+  it("keeps an explicitly authored step when a starter's inherited expectations are discarded", () => {
+    // Discarding the starter's expected values only invalidates the assertions DERIVED from
+    // them. The reconciler used to regenerate the whole step list, which also destroyed every
+    // explicitly authored check with its label, notes, duration and pulse behaviour.
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('logic-gates');
+
+    const starter = useProjectRuntime.getState();
+    expect(starter.scenarios.some((scenario) => scenario.id === starter.activeScenarioId)).toBe(true);
+
+    // A scenario carrying both kinds of step: one derived from the starter's expected values,
+    // and one the student wrote. A starter scenario has no step list until something authors it.
+    const derivedAssert = {
+      id: 'derived:0:assert:ld0:0',
+      order: 0,
+      kind: 'assert_scalar' as const,
+      targetRef: 'ld0',
+      expectedValue: 1 as const,
+      durationTicks: 1,
+      origin: 'derived' as const,
+    };
+    const authoredStep = {
+      id: 'authored:hold-ld0',
+      order: 1,
+      kind: 'assert_scalar' as const,
+      targetRef: 'ld0',
+      expectedValue: 1 as const,
+      durationTicks: 1,
+      label: 'LD0 must stay high here',
+      notes: 'written by the student',
+      origin: 'explicit' as const,
+    };
+    useProjectRuntime.setState((state) => ({
+      scenarios: state.scenarios.map((scenario) =>
+        scenario.id === state.activeScenarioId
+          ? { ...scenario, steps: [derivedAssert, authoredStep] }
+          : scenario
+      ),
+    }));
+    expect(useProjectRuntime.getState().scenarioAuthority).toBe('starter');
+
+    runtime.addDesignNode('NOT', { x: 560, y: 200 });
+
+    const detached = useProjectRuntime.getState();
+    const detachedScenario = detached.scenarios.find(
+      (scenario) => scenario.id === detached.activeScenarioId
+    );
+    const survivor = (detachedScenario?.steps ?? []).find((step) => step.id === 'authored:hold-ld0');
+    expect(survivor).toBeDefined();
+    expect(survivor?.label).toBe('LD0 must stay high here');
+    expect(survivor?.notes).toBe('written by the student');
+    expect(survivor?.expectedValue).toBe(1);
+    // ...and the derived assertions, which described the discarded values, are gone.
+    expect(
+      (detachedScenario?.steps ?? []).some(
+        (step) => step.origin === 'derived' && step.kind === 'assert_scalar'
+      )
+    ).toBe(false);
+  });
   it('preserves an authored testbench when the first Design edit detaches a starter', () => {
     const runtime = useProjectRuntime.getState();
     runtime.loadExample('logic-gates');
@@ -328,7 +428,7 @@ describe('mergePersistedRuntimeState', () => {
       ...vector,
       expected: {
         ...(vector.expected ?? {}),
-        ld0_node: index === 0 || index === 3 ? 1 : 0,
+        ld0: index === 0 || index === 3 ? 1 : 0,
       },
     }));
     runtime.setVectors(authoredVectors);

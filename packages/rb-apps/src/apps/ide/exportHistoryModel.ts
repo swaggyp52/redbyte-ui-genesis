@@ -68,9 +68,36 @@ const COMPARE_FIELDS: Array<{ field: ExportHashChange['field']; read: (v: Export
   { field: 'source', read: (v) => v.sourceHash },
 ];
 
+export type ExportArtifactChangeState = 'changed' | 'added' | 'removed' | 'same' | 'unknown';
+export interface ExportArtifactChange {
+  path: string;
+  state: ExportArtifactChangeState;
+}
 export interface ExportComparison {
   identical: boolean;
   changes: ExportHashChange[];
+  /** File-by-file comparison; 'unknown' when a side recorded no digest for the file. */
+  artifacts: ExportArtifactChange[];
+}
+
+/** Compare two recorded artifact lists file by file, by their recorded content digests. */
+export function compareExportArtifacts(
+  previous: ProjectHealthExportResult,
+  current: ProjectHealthExportResult
+): ExportArtifactChange[] {
+  const previousPaths = previous.artifacts ?? Object.keys(previous.artifactHashes ?? {});
+  const currentPaths = current.artifacts ?? Object.keys(current.artifactHashes ?? {});
+  const ordered = Array.from(new Set([...currentPaths, ...previousPaths]));
+  return ordered.map((path) => {
+    const inPrevious = previousPaths.includes(path);
+    const inCurrent = currentPaths.includes(path);
+    if (inCurrent && !inPrevious) return { path, state: 'added' as const };
+    if (!inCurrent && inPrevious) return { path, state: 'removed' as const };
+    const before = previous.artifactHashes?.[path];
+    const after = current.artifactHashes?.[path];
+    if (!before || !after) return { path, state: 'unknown' as const };
+    return { path, state: before === after ? ('same' as const) : ('changed' as const) };
+  });
 }
 
 /** Compare two export events by their content hashes. */
@@ -87,7 +114,8 @@ export function compareExportEntries(
       changes.push({ field, from, to });
     }
   }
-  return { identical: changes.length === 0, changes };
+  const artifacts = compareExportArtifacts(previous.raw, current.raw);
+  return { identical: changes.length === 0, changes, artifacts };
 }
 
 /** Short display form of a hash (first 12 chars) or an em dash when absent. */

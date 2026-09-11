@@ -25,43 +25,43 @@ export const BusWordLanesPanel: React.FC<BusWordLanesPanelProps> = ({
 }) => {
   if (lanes.length === 0) return null;
   return (
-    <section className="ide-verify-bus-words" data-testid="ide-verify-bus-words">
-      <header className="ide-verify-bus-words-header">
-        <span className="ide-verify-bus-words-title">Bus words</span>
-        <span className="ide-verify-bus-words-hint">
+    <section className="rb-wave-bus-words" data-testid="ide-verify-bus-words">
+      <header className="rb-wave-bus-words-header">
+        <span className="rb-wave-bus-words-title">Bus words</span>
+        <span className="rb-wave-bus-words-hint">
           {selectedTick === null ? 'latest tick' : `tick t${selectedTick}`}
         </span>
       </header>
-      <ul className="ide-verify-bus-words-list">
+      <ul className="rb-wave-bus-words-list">
         {lanes.map((lane) => {
           const cell = busWordAtTick(lane, selectedTick);
           return (
             <li
               key={`${lane.direction}-${lane.name}`}
-              className={`ide-verify-bus-word-lane${lane.direction === 'input' ? ' is-input' : ' is-output'}`}
+              className={`rb-wave-bus-word-lane${lane.direction === 'input' ? ' is-input' : ' is-output'}`}
               data-testid={`ide-verify-bus-word-${laneTestId(lane.name)}`}
             >
-              <div className="ide-verify-bus-word-id">
+              <div className="rb-wave-bus-word-id">
                 <code>{lane.rangeLabel}</code>
-                <span className="ide-verify-bus-word-dir">
+                <span className="rb-wave-bus-word-dir">
                   {lane.direction === 'input' ? 'stimulus' : 'observed'} · {lane.width}b
                 </span>
               </div>
-              <div className="ide-verify-bus-word-value" data-known={cell?.known ? 'true' : 'false'}>
+              <div className="rb-wave-bus-word-value" data-known={cell?.known ? 'true' : 'false'}>
                 <strong data-testid={`ide-verify-bus-word-hex-${laneTestId(lane.name)}`}>
                   {cell ? cell.hex : '—'}
                 </strong>
-                <span className="ide-verify-bus-word-detail">
+                <span className="rb-wave-bus-word-detail">
                   {cell ? `${cell.binary}₂` : '—'}
                   {cell && cell.decimal !== null ? ` · ${cell.decimal}` : ''}
                 </span>
               </div>
-              <div className="ide-verify-bus-word-strip" aria-hidden="true">
+              <div className="rb-wave-bus-word-strip" aria-hidden="true">
                 {lane.cells.map((stripCell) => (
                   <button
                     key={stripCell.tick}
                     type="button"
-                    className={`ide-verify-bus-word-cell${stripCell.tick === selectedTick ? ' is-selected' : ''}${stripCell.known ? '' : ' is-unknown'}`}
+                    className={`rb-wave-bus-word-cell${stripCell.tick === selectedTick ? ' is-selected' : ''}${stripCell.known ? '' : ' is-unknown'}`}
                     onClick={() => onSelectTick?.(stripCell.tick)}
                     title={`t${stripCell.tick}: ${stripCell.binary}${stripCell.decimal !== null ? ` = ${stripCell.decimal}` : ''}`}
                     tabIndex={-1}

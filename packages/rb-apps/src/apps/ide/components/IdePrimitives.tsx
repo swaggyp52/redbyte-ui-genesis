@@ -105,18 +105,34 @@ export const IdePanel: React.FC<{
   );
 };
 
-export const IdeButton: React.FC<{
-  tone?: ButtonTone;
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  testId?: string;
-  type?: 'button' | 'submit';
-  className?: string;
-  title?: string;
-  hierarchySurface?: string;
-  hierarchyRole?: string;
-}> = ({
+/**
+ * The props were a closed list and the rendered <button> spread nothing, so every `aria-*`
+ * a caller passed was silently dropped. The replay toggle passes `aria-pressed={isPlaying}`
+ * and it never reached the DOM: while a replay was running, assistive technology was told
+ * nothing, and the only signal that the button had become Stop was the visible glyph.
+ * Accessibility attributes now reach the element that needs them.
+ */
+type IdeButtonAriaProps = {
+  [K in keyof React.AriaAttributes]?: React.AriaAttributes[K];
+};
+
+export const IdeButton: React.FC<
+  IdeButtonAriaProps & {
+    tone?: ButtonTone;
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    testId?: string;
+    type?: 'button' | 'submit';
+    className?: string;
+    title?: string;
+    hierarchySurface?: string;
+    hierarchyRole?: string;
+    role?: string;
+    id?: string;
+    tabIndex?: number;
+  }
+> = ({
   tone = 'secondary',
   children,
   onClick,
@@ -127,6 +143,7 @@ export const IdeButton: React.FC<{
   title,
   hierarchySurface,
   hierarchyRole,
+  ...rest
 }) => {
   return (
     <button
@@ -138,6 +155,7 @@ export const IdeButton: React.FC<{
       data-hierarchy-surface={hierarchySurface}
       data-hierarchy-role={hierarchyRole}
       title={title}
+      {...rest}
     >
       {children}
     </button>

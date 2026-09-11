@@ -128,11 +128,8 @@ function renderSurface(
           direction: 'out',
         },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -236,9 +233,21 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
     expect(view.queryByTestId('ide-design-sim-story-strip')).toBeNull();
   });
 
-  it('shows the simulation strip when the simulation is running', () => {
+  it('shows the simulation strip once exploration has produced runtime state', () => {
+    // "The simulation is running" is no longer one of the ways there is something to say:
+    // Design has no clock of its own to run. What the strip reports is runtime state the
+    // reader produced by exploring - driving an input, applying a clock edge - and that is
+    // what this asserts. The dock expectations either side of it are unchanged.
     const view = renderSurface({
-      runtimeSim: { ...makePassiveSim(), running: true },
+      runtimeSim: {
+        ...makePassiveSim(),
+        tick: 2,
+        signals: { 'ld0_node.in': 1 },
+        trace: [
+          { tick: 0, signals: { 'ld0_node.in': 0 } },
+          { tick: 1, signals: { 'ld0_node.in': 1 } },
+        ] as RuntimeSimState['trace'],
+      },
     });
 
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
@@ -262,6 +271,18 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
     });
 
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
+  });
+
+  it('selects the incoming failed signal once, then allows the reader to follow another node', async () => {
+    useLogicViewStore.getState().selectMultipleNodes(['sw0_node'], false);
+    renderSurface({
+      externalDebugTick: 3,
+      externalDebugContext: makeDebugContext(3),
+      externalDebugSignals: new Map([['ld0_node.in', 0]]),
+    });
+    await waitFor(() => expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['ld0_node']));
+    act(() => useLogicViewStore.getState().selectMultipleNodes(['sw0_node'], false));
+    expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['sw0_node']);
   });
 });
 
@@ -385,8 +406,13 @@ describe('DesignSurface editing power (Slice 2)', () => {
 
     fireEvent.dblClick(view.getByTestId('node-OUTPUT-ld0_node'));
 
+    const input = await view.findByTestId('ide-design-canvas-rename-input');
+    fireEvent.change(input, { target: { value: 'STATUS_LED' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-label-input')).toBeTruthy();
+      expect(useCircuitStore.getState().circuit.nodes.find((node) => node.id === 'ld0_node')?.label).toBe('STATUS_LED');
+      expect(view.queryByTestId('ide-design-canvas-rename-input')).toBeNull();
     });
   });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, ensureVerifyVectorsReady, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 import { selectFirstVisibleDesignNode } from './_workbenchReconstructionHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
@@ -49,51 +49,22 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     'selecting a circuit object must reveal its contextual Design Inspector',
   );
 
-  // 2. Verify: generate basics -> run -> PASS/FAIL banner
+  // 2. Simulate: authored cases -> run -> completed result
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
-  await ensureVerifyVectorsReady(page);
-  const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
-  const vectorTableVisible = await visible(vectorTable).catch(() => false);
-  const vectorList = page.locator('[data-testid="ide-verify-vector-list-panel"]').first();
-  const vectorListVisible = await visible(vectorList).catch(() => false);
-  const vectorCountText = (
-    await page.locator('[data-testid="ide-verify-vector-list-count"]').first().textContent().catch(() => '')
-  )?.trim() ?? '';
-  const authoringFormVisible = await visible(page.locator('[data-testid="ide-verify-add-vector-form"]').first()).catch(() => false);
-  const runFooter = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
-  const runFooterVisible = await visible(runFooter).catch(() => false);
-  const runFooterText = runFooterVisible ? ((await runFooter.textContent()) ?? '').trim() : '';
-  const firstRunStateText = (
-    await page
-      .locator('[data-testid="ide-verify-empty-state"]')
-      .first()
-      .textContent()
-      .catch(() => '')
-  )?.trim() ?? '';
-  const commandStatusText = (
-    await page
-      .locator('[data-testid="ide-vcb-status"]')
-      .first()
-      .textContent()
-      .catch(() => '')
-  )?.trim() ?? '';
-  const headerRunVisible = await page
-    .locator('[data-testid="ide-vcb-run"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(
-    vectorTableVisible ||
-      (vectorListVisible && /\d+/.test(vectorCountText)) ||
-      authoringFormVisible ||
-      /vector/i.test(runFooterText) ||
-      /current vectors are ready|saved checks available/i.test(firstRunStateText) ||
-      (/ready/i.test(commandStatusText) && headerRunVisible),
-    'verify must surface authored vectors after generating basics',
-  );
-
+  const caseTable = page.getByTestId('ide-case-lab-table');
+  if (!(await caseTable.isVisible())) await page.getByTestId('ide-verify-view-table').click();
+  await caseTable.waitFor({ state: 'visible', timeout: 10000 });
+  const caseRows = caseTable.locator('[data-testid^="ide-case-lab-row-"]');
+  if (await caseRows.count() === 0) {
+    await page.getByTestId('ide-case-lab-generate').click();
+    await caseRows.first().waitFor({ state: 'visible', timeout: 10000 });
+  }
+  const authoredCaseCount = Number((await page.getByTestId('ide-case-lab-count').textContent())?.trim());
+  assert(authoredCaseCount > 0 && authoredCaseCount === await caseRows.count(),
+    'Simulate must expose its authored cases and matching case count before the run');
+  assert(await page.getByTestId('ide-vcb-run').isEnabled(), 'The populated scenario must expose an enabled Run action');
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 
@@ -132,9 +103,12 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const packageState = await inspector.getAttribute('data-export-package-state');
   assert(['blocked', 'draft', 'ready'].includes(packageState ?? ''), `Export must expose a truthful package state, got ${packageState}`);
 
-  const readinessLabel = (await inspector.textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
+  const readinessState = page.getByTestId('ide-export-derived-state');
+  assert(await visible(readinessState), 'Export must show its current package decision');
+  const readinessLabel = (await readinessState.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
   assert(readinessLabel.length > 0, `Export readiness status must have non-empty text, got "${readinessLabel}"`);
-  assert(/Browser E0|Cannot export|Draft|Ready/i.test(readinessLabel), 'Export readiness must name its package state or Browser E0 boundary');
+  assert(/blocks export|draft|not built|stale|current|ready|downloaded/i.test(readinessLabel),
+    `Export readiness must name its current package decision, got "${readinessLabel}"`);
 
   const primaryHandoff = page.locator('[data-testid="ide-export-primary-actions"] button').first();
   assert(await visible(primaryHandoff), 'Export readiness must expose one owning next action');
@@ -157,9 +131,11 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
 
   const firstMappedSignal = page.locator('[data-testid^="ide-hw-map-row-signal-"]').first();
   await firstMappedSignal.waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('[data-testid^="ide-hw-map-row-action-"]').first().click();
+  const selectedArtifact = page.locator('[data-testid="ide-hardware-chain-artifact"]').first();
   assert(
-    /Artifact port:/i.test((await firstMappedSignal.textContent()) ?? ''),
-    'Board & Constraints must label artifact-port identity separately from the logical signal and physical resource',
+    /Artifact port/i.test((await selectedArtifact.textContent()) ?? ''),
+    'Selected mapping detail must label artifact-port identity separately from the logical port and physical resource',
   );
 
   const afterMappingTools = page.locator('[data-testid="ide-hw-after-mapping-tools"]').first();

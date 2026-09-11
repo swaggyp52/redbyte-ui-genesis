@@ -64,6 +64,25 @@ export function crossProbeQualityLabel(quality: CrossProbeQuality): string {
   }
 }
 
+/**
+ * One-line explanation of a link-quality tier, for a row badge's tooltip so the
+ * meaning travels with the relationship instead of a permanent legend key.
+ */
+export function crossProbeQualityDescription(quality: CrossProbeQuality): string {
+  switch (quality) {
+    case 'exact':
+      return 'Exact — this design element is matched to one source location with full confidence.';
+    case 'partial':
+      return 'Partial — matched to source, but some detail (a port, a range) could not be confirmed.';
+    case 'ambiguous':
+      return 'Ambiguous — more than one source location could be this element; RedByte will not guess.';
+    case 'stale':
+      return 'Stale — the source changed since this link was resolved; re-open the source to refresh it.';
+    case 'unavailable':
+      return 'Unavailable — this element is native-only or has no source RedByte can read.';
+  }
+}
+
 export interface CrossProbeLink {
   /** What the link represents on the design side. */
   kind: CrossProbeKind;

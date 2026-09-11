@@ -70,4 +70,102 @@ describe('VerifyCommandBar mode explainer contract', () => {
     expect(view.getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('false');
     expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('explains Observe while Observe is selected, even when Compare is blocked', () => {
+    // A run that works must not be made to look incomplete by the state of a run nobody asked
+    // for. The blocked reason belongs to Compare, and only while Compare is what is selected.
+    const reason = 'Fill in at least one expected output to compare against.';
+    const view = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+      />
+    );
+
+    const explainer = view.getByTestId('ide-vcb-mode-explainer');
+    expect(explainer.textContent).toBe('Record observed outputs without grading expected values.');
+    expect(explainer.className).not.toContain('is-blocked-reason');
+    // Observe itself stays runnable with no reference outputs anywhere in the project.
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
+
+    view.rerender(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={true}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+      />
+    );
+
+    const blocked = view.getByTestId('ide-vcb-mode-explainer');
+    expect(blocked.textContent).toBe(reason);
+    expect(blocked.className).toContain('is-blocked-reason');
+  });
+
+  it('offers adding expected outputs as a secondary action without demoting Observe', () => {
+    const onAuthorExpectedOutputs = vi.fn();
+    const view = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason="No expected outputs are filled in yet."
+        needsExpectedOutputs
+        onAuthorExpectedOutputs={onAuthorExpectedOutputs}
+      />
+    );
+
+    const add = view.getByTestId('ide-vcb-author-expected');
+    expect(add.textContent).toBe('Add expected outputs');
+    // Run is the primary action; adding references is offered beside it, not instead of it.
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(add);
+    expect(onAuthorExpectedOutputs).toHaveBeenCalledOnce();
+
+    // With no such need, the offer is absent rather than disabled.
+    view.rerender(
+      <VerifyCommandBar {...BASE} isCompareMode={false} needsExpectedOutputs={false} />
+    );
+    expect(view.queryByTestId('ide-vcb-author-expected')).toBeNull();
+  });
+
+  it('states what comparison needs when nothing else on the bar says it', () => {
+    // A disabled button will not take focus for its own tooltip, and browsers often decline to
+    // render one at all, so a reason living only in `title` is not stated. When the offer to add
+    // expected outputs is present it already names what comparison needs, by being the thing that
+    // supplies it; with no offer, the requirement is stated instead. Never both, never neither.
+    const reason = 'The design cannot be graded until its outputs are driven.';
+    const withoutOffer = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+      />
+    );
+    const requirement = withoutOffer.getByTestId('ide-vcb-compare-requirement');
+    expect(requirement.textContent).toBe(reason);
+    expect(withoutOffer.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-describedby')).toBe(
+      requirement.getAttribute('id')
+    );
+    expect(withoutOffer.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
+      'Record observed outputs without grading expected values.'
+    );
+    cleanup();
+
+    const withOffer = render(
+      <VerifyCommandBar
+        {...BASE}
+        isCompareMode={false}
+        compareAvailable={false}
+        compareUnavailableReason={reason}
+        needsExpectedOutputs
+        onAuthorExpectedOutputs={vi.fn()}
+      />
+    );
+    expect(withOffer.getByTestId('ide-vcb-author-expected')).toBeTruthy();
+    expect(withOffer.queryByTestId('ide-vcb-compare-requirement')).toBeNull();
+  });
 });

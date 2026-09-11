@@ -52,7 +52,7 @@
 
 .errorMessage {
   color: var(--color-text-secondary, #cccccc);
-  font-size: 16px;
+  font-size: var(--rb-text-title);
   line-height: 1.6;
   margin: 0 0 32px 0;
 }
@@ -70,7 +70,7 @@
   border: none;
   border-radius: 8px;
   padding: 12px 24px;
-  font-size: 16px;
+  font-size: var(--rb-text-title);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -92,7 +92,7 @@
   border: 2px solid var(--color-border-secondary, #444444);
   border-radius: 8px;
   padding: 12px 24px;
-  font-size: 16px;
+  font-size: var(--rb-text-title);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -113,7 +113,7 @@
 .errorDetails summary {
   color: var(--color-text-secondary, #cccccc);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   font-weight: 500;
   margin-bottom: 12px;
 }
@@ -128,7 +128,7 @@
   border-radius: 6px;
   padding: 16px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
+  font-size: var(--rb-text-meta);
   line-height: 1.5;
   color: var(--color-text-tertiary, #aaaaaa);
   overflow-x: auto;

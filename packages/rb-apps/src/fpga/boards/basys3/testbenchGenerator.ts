@@ -15,6 +15,7 @@ import {
   type VerifySchedule,
 } from './verifySchedule';
 import { buildTopLevelBindingRefs, toSignalName } from './basys3ExportModel';
+import { normalizeBoardRowId, resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
 
 interface SignalCatalog {
   inputs: string[];
@@ -57,6 +58,17 @@ interface EntityPortInfo {
   vectorWidth?: number;
 }
 
+
+/**
+ * The mapping the package is built from: the structured V2 document when the
+ * project carries one, else the legacy ioMapping — the same rule the export
+ * service applies. Reading only the legacy field left V2-only projects with no
+ * name aliases, so every stimulus and assertion target fell back to a raw name
+ * the entity never declared.
+ */
+function resolveProjectIoMapping(project: RBProject): RBProject['ioMapping'] {
+  return resolveIoMappingFromProjectFields({ ioMapping: project.ioMapping, hardwareMappingV2: project.hardwareMappingV2 });
+}
 function parseEntityPortInfos(topVhd: string): EntityPortInfo[] {
   // Match Port block ending with "  );" on its own line (handles nested parens in vector types)
   const m = topVhd.match(/\bPort\s*\(([\s\S]*?)\n\s*\);/i);
@@ -185,10 +197,11 @@ function buildLabelToEntityRef(
   };
 
   const allEntries = [
-    ...(project.ioMapping?.inputs ?? []).map((entry) => ({ ...entry, direction: 'in' as const })),
-    ...(project.ioMapping?.outputs ?? []).map((entry) => ({ ...entry, direction: 'out' as const })),
+    ...(resolveProjectIoMapping(project)?.inputs ?? []).map((entry) => ({ ...entry, direction: 'in' as const })),
+    ...(resolveProjectIoMapping(project)?.outputs ?? []).map((entry) => ({ ...entry, direction: 'out' as const })),
   ];
-  const bindingRefs = project.ioMapping ? buildTopLevelBindingRefs(project.ioMapping) : null;
+  const resolvedIoMapping = resolveProjectIoMapping(project);
+  const bindingRefs = resolvedIoMapping ? buildTopLevelBindingRefs(resolvedIoMapping) : null;
   const bindingRefByEntryId = new Map(
     [...(bindingRefs?.inputRefs ?? []), ...(bindingRefs?.outputRefs ?? [])].map((ref) => [ref.entryId, ref] as const)
   );
@@ -238,11 +251,16 @@ function buildLabelToEntityRef(
       registerAlias(toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`), ref);
       registerAlias(entry.label, ref, false);
       registerAlias(nodeLabel, ref, false);
+      // The runtime keys rows, vectors and checks by the label-derived row id
+      // (SUM[0] -> sum_0); a project whose rows were derived that way must
+      // resolve its assertion targets to the same port.
+      registerAlias(entry.label ? normalizeBoardRowId(entry.label) : undefined, ref);
+      registerAlias(nodeLabel ? normalizeBoardRowId(nodeLabel) : undefined, ref);
     }
   };
 
-  processEntries(project.ioMapping?.inputs ?? [], 'in');
-  processEntries(project.ioMapping?.outputs ?? [], 'out');
+  processEntries(resolveProjectIoMapping(project)?.inputs ?? [], 'in');
+  processEntries(resolveProjectIoMapping(project)?.outputs ?? [], 'out');
   return result;
 }
 
@@ -251,7 +269,7 @@ export function generateTestbenchVhdl(
   vectors: TestVector[],
   options?: TestbenchGenerationOptions
 ): string {
-  const derivedSchedule = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+  const derivedSchedule = deriveVerifySchedule(project.circuit, resolveProjectIoMapping(project), project.hdl);
   const scheduleContract =
     options?.scheduleOverride
       ? {
@@ -382,9 +400,10 @@ end architecture sim;
 }
 
 function resolveCanonicalEntityVhd(project: RBProject): string | undefined {
-  if (!project.ioMapping) return undefined;
+  const exportIoMapping = resolveProjectIoMapping(project);
+  if (!exportIoMapping) return undefined;
   try {
-    return exportBasys3Bundle(project.circuit, project.ioMapping, {
+    return exportBasys3Bundle(project.circuit, exportIoMapping, {
       entityName: project.hdl?.top,
     }).topVhd;
   } catch {
@@ -688,8 +707,8 @@ function collectSignals(
     const logicalToCanonical = new Map<string, string>();
 
     const hasIoMapping =
-      (project.ioMapping?.inputs?.length ?? 0) > 0 ||
-      (project.ioMapping?.outputs?.length ?? 0) > 0;
+      (resolveProjectIoMapping(project)?.inputs?.length ?? 0) > 0 ||
+      (resolveProjectIoMapping(project)?.outputs?.length ?? 0) > 0;
 
     if (hasIoMapping) {
       const addLogicalAlias = (alias: string | undefined, canonical: string) => {
@@ -701,7 +720,7 @@ function collectSignals(
 
       // Derive canonical port names from ioMapping — label takes precedence,
       // matching basys3Bundle.toSignalName() and verilog-generator.ts exactly.
-      for (const entry of project.ioMapping?.inputs ?? []) {
+      for (const entry of resolveProjectIoMapping(project)?.inputs ?? []) {
         // Use toSignalName (same sanitizer as basys3ExportModel/top.vhd) so the
         // fallback testbench path emits identical identifiers to the entity.
         const canonical = toSignalName(entry);
@@ -715,7 +734,7 @@ function collectSignals(
         const node = (project.circuit.nodes ?? []).find((n) => n.id === entry.nodeId);
         addLogicalAlias(node?.label, canonical);
       }
-      for (const entry of project.ioMapping?.outputs ?? []) {
+      for (const entry of resolveProjectIoMapping(project)?.outputs ?? []) {
         // Use toSignalName (same sanitizer as basys3ExportModel/top.vhd) so the
         // fallback testbench path emits identical identifiers to the entity.
         const canonical = toSignalName(entry);

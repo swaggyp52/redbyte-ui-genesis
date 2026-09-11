@@ -18,6 +18,8 @@ import {
 
 export interface ExportHistoryPanelProps {
   readonly history: ProjectHealthExportResult[];
+  /** Selecting a file in the comparison opens that artifact in the package browser. */
+  readonly onOpenArtifact?: (path: string) => void;
 }
 
 function kindLabel(view: ExportHistoryEntryView): string {
@@ -51,7 +53,7 @@ const FIELD_LABEL: Record<string, string> = {
   source: 'generated source',
 };
 
-export const ExportHistoryPanel: React.FC<ExportHistoryPanelProps> = ({ history }) => {
+export const ExportHistoryPanel: React.FC<ExportHistoryPanelProps> = ({ history, onOpenArtifact }) => {
   const views = useMemo(() => buildExportHistoryViews(history), [history]);
   const [selectedOrdinal, setSelectedOrdinal] = useState<number | null>(null);
 
@@ -134,20 +136,40 @@ export const ExportHistoryPanel: React.FC<ExportHistoryPanelProps> = ({ history 
                   Byte-identical to the previous package — nothing changed.
                 </p>
               ) : (
-                <ul className="ide-export-comparison-list">
-                  {comparison.changes.map((change) => (
-                    <li
-                      key={change.field}
-                      className="ide-export-comparison-change"
-                      data-testid={`ide-export-comparison-change-${change.field}`}
-                    >
-                      <span className="ide-export-comparison-field">{FIELD_LABEL[change.field]}</span>
-                      <code>{shortHash(change.from)}</code>
-                      <span aria-hidden="true">→</span>
-                      <code>{shortHash(change.to)}</code>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="ide-export-comparison-list">
+                    {comparison.changes.map((change) => (
+                      <li
+                        key={change.field}
+                        className="ide-export-comparison-change"
+                        data-testid={`ide-export-comparison-change-${change.field}`}
+                      >
+                        <span className="ide-export-comparison-field">{FIELD_LABEL[change.field]}</span>
+                        <code>{shortHash(change.from)}</code>
+                        <span aria-hidden="true">→</span>
+                        <code>{shortHash(change.to)}</code>
+                      </li>
+                    ))}
+                  </ul>
+                  {comparison.artifacts.length > 0 ? (
+                    <ul className="ide-export-comparison-files" data-testid="ide-export-comparison-files" aria-label="Files compared">
+                      {comparison.artifacts.map((entry) => (
+                        <li key={entry.path} className={`ide-export-comparison-file is-${entry.state}`} data-testid={`ide-export-comparison-file-${entry.path.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} data-state={entry.state}>
+                          {onOpenArtifact && entry.state !== 'removed' ? (
+                            <button type="button" className="ide-export-comparison-file-open" onClick={() => onOpenArtifact(entry.path)}>
+                              <code>{entry.path}</code>
+                            </button>
+                          ) : (
+                            <code>{entry.path}</code>
+                          )}
+                          <span className="ide-export-comparison-file-state">
+                            {entry.state === 'same' ? 'unchanged' : entry.state === 'unknown' ? 'no digest recorded' : entry.state}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
               )}
             </div>
           ) : (

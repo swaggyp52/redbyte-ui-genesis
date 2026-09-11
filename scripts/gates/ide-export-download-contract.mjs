@@ -68,6 +68,15 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   assert(await currentAction.first().isVisible().catch(() => false), 'current build/download action must be visible');
   assert(!(await currentAction.first().isDisabled().catch(() => true)), 'current build/download action must be enabled');
 
+  // Build & Export opens on the handoff dossier now - the thing the student came to produce -
+  // and the artifact browser is the second document, reached from it. The boundary line and the
+  // file list both live there, so the gate opens Artifacts the way a reader would.
+  const openFiles = page.locator('[data-testid="ide-package-handoff-open-files"]').first();
+  if (await openFiles.count()) {
+    await openFiles.click();
+    await page.waitForTimeout(400);
+  }
+
   const e0Boundary = await page.locator('[data-testid="ide-export-e0-boundary-summary"]').first().textContent();
   assert(/Browser E0/i.test(e0Boundary ?? ''), 'Export readiness must name Browser E0 package generation');
   assert(/external/i.test(e0Boundary ?? ''), 'Export readiness must keep Vivado and board proof external');

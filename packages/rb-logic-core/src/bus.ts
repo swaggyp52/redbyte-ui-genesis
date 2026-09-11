@@ -38,6 +38,13 @@ export const BUS_INPUT_MEMBER_TYPES = ['INPUT', 'Switch'] as const;
 export const BUS_OUTPUT_MEMBER_TYPES = ['OUTPUT', 'Lamp'] as const;
 
 /** Port carrying the value on a bus member, by bus direction. */
+/**
+ * World-space distance between consecutive bits of a bus, which are created as a
+ * downward stack. Exported so a caller can reserve the column it is about to fill
+ * instead of guessing the spacing.
+ */
+export const BUS_MEMBER_SPACING = 72;
+
 export const BUS_MEMBER_PORT: Record<BusDirection, string> = {
   input: 'out',
   output: 'in',
@@ -553,7 +560,7 @@ export function createBusBoundary(circuit: Circuit, spec: CreateBusSpec): Create
   }
 
   const basePosition = spec.position ?? { x: 120, y: 120 };
-  const spacing = spec.spacing ?? 72;
+  const spacing = spec.spacing ?? BUS_MEMBER_SPACING;
   const indices = busIndices({ left: spec.left, right: spec.right });
   let nextId = nextNodeIdNumber(circuit);
   const memberNodes: Node[] = [];

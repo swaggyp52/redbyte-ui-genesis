@@ -85,6 +85,7 @@ export {
   busWordToBits,
   connectBuses,
   createBusBoundary,
+  BUS_MEMBER_SPACING,
   deleteBus,
   formatBusWordHex,
   normalizeBusDeclarations,

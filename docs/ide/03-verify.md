@@ -15,6 +15,82 @@ Mode ID: `verify`
 
 Provide a simulation-first workspace: author a scenario, run deterministic simulation, inspect waveform or circuit replay, and add expected-output assertions when useful.
 
+## One experiment, one primary working area (2026-09-07)
+
+This section supersedes the deck/splitter composition described below and the three-document
+Cases / Timing / Waveform vocabulary wherever they conflict.
+
+A scenario is **one experiment**, drawn one way at a time in **one primary region**:
+
+| Representation | What it draws | Default for |
+|---|---|---|
+| **Timeline** (`ide-verify-view-timeline`) | `TimingLab` / `TimingLanes`: one lane per signal on a time axis, events where the reader places them, outputs as expected-over-observed | a clocked circuit |
+| **Table** (`ide-verify-view-table`) | `CaseLab`: one row per case, inputs beside expected and observed | a combinational circuit |
+| **Waveform** (`ide-verify-view-waveform`) | `WaveformViewer`: the recorded trace, with cursors and measurement | never a default; enabled once a run exists |
+
+The circuit chooses the default; a reader who says otherwise says it for that scenario, and it is
+remembered while the scenario is open. The switch renders inside whichever region is currently
+primary - the stimulus region for Timeline and Table, the trace region for Waveform - so the way
+back is where the way in was. Switching representation never opens a document and never a tab.
+
+**The run line** (`ide-verify-run-line`) sits under the instrument in every representation and
+holds what the last run did: the verdict summary with its details disclosure and `Inspect with
+circuit`, the live readout, edge navigation, the failure focus, and the tail actions
+(`Check…` / `Watch` / `Inspect run`). Its grid track is `fit-content(34%)`, so however much it has
+to say the instrument keeps two thirds of the workspace. Before a run it renders
+`ide-verify-run-line-empty`: "No run recorded yet", with the authored case count.
+
+**The trace toolbar** (`ide-verify-waveform-cmd`) is rendered only in the Waveform representation
+and holds what describes a drawn trace: case stepping, the tick range (`All ticks` / `Fail window`
+/ `Selected`), the radix, the expected overlay, the tick scrubber, and playback. `View and measure`
+(zoom, row density, A/B cursors) is a disclosure in the same representation.
+
+**Retired with this composition:** the Cases/Evidence deck splitter (`ide-verify-deck-handle`), its
+collapse and maximize controls, the collapsed evidence strip, and the persisted deck fraction.
+Simulate no longer reads or writes `workspacePreferences.simulate`.
+
+**Measured** at 1280x650 on the two-bit counter after a run: primary region 376px, run line 91px,
+timeline lanes 244px, 0 tabs, 0 document overflow. At 1440x900 in the Waveform representation the
+canvas fills 527px of its 717px region.
+
+**Input combinations** is stated for a combinational circuit and withheld for a clocked one: 2^n is
+the size of a truth table, which is the specification of a combinational circuit, and says nothing
+about a design whose output depends on the state it is in.
+
+**Direct editing and the cursor.** Every column the ruler draws holds the cursor, including the
+spare columns past the last authored event - the readout, the header chip and the drawn cursor
+always name the same tick. Clicking the tick number selects that tick: the number, the grid line
+and the edge marker are decoration and do not take the click. The event editor edits the event at
+the cursor and says so when there is none ("No event at t7. Click a stimulus cell in that column
+to drive an input there, or use + Add event"), rather than silently editing the first event in the
+scenario. The ruler's spare columns follow the experiment, not the cursor, so selecting one column
+does not re-fit the tick width and move the rest.
+
+**The alternate editors are bounded.** "Event table", "Edit event at tN" and "Generators and full
+event editor" are disclosures the reader opens. An open one takes a bounded, scrolling share
+(55% of the region) and the instrument keeps a 132px floor: opening the generators takes the
+lanes from 432px to 153px, not to 1px, and every control in the composer bar above still answers
+at its own coordinates.
+
+**At hostile scales the instrument is floored and the workspace scrolls.** At 1024x720, at 200%
+text and at 720x450 (a 1440x900 machine at 200% browser zoom) the trace canvas keeps a 160px
+floor, the case table's failure navigation is painted rather than clipped, and the stacked
+template gives the primary instrument 180-220px before the contextual inspector gets anything.
+Where the floors add up to more than the window, `.rb-sim-lab-frame` scrolls.
+
+**Imported evidence.** `VcdAnalyzerPanel` is always mounted and compacts itself: with nothing
+imported it is one row naming the provider and offering Load, and it is the only `.vcd` route on
+the surface. `SimulationProviderBar` appears once there is a second source to choose between.
+
+**Signal identity.** The rail groups a lane as Inputs / Outputs / Internal by name. A normalised
+name claimed by more than one thing in the circuit resolves to nothing and cannot credit a lane to
+the boundary; only a lane carrying the boundary's own display name may do that. The two-bit
+counter is the case: its io row for the board pin is `{ id: 'q0', label: 'LD0' }` and the D
+flip-flop driving it is labelled `Q0`, so the register used to be counted as a board output
+("Outputs 4 / Internal 0" for a circuit with two pins and two registers). Owners come from
+`buildWaveformSignalAliasOwners`; `buildCanonicalWaveformSignalAliases` is the subset that resolves
+and `buildAmbiguousWaveformSignalKeys` the subset that does not.
+
 ## Simulation & Replay Studio v1 current contract (2026-07-26)
 
 This section supersedes older Observe/Compare chrome descriptions below where wording conflicts. The current student loop is:

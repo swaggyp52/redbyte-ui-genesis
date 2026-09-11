@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import type { ProjectHealth } from '../projectHealth';
 import {
   deriveExportCurrent,
@@ -13,11 +13,12 @@ import { buildCurrentVerifyProjectHash } from '../verifyProjectHash';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
 import { workspacePreferencesStore } from '../workspacePreferences';
+import { useEngineeringSelection } from '../engineeringSelection';
 
 afterEach(() => {
   cleanup();
 });
-beforeEach(() => workspacePreferencesStore.reset());
+beforeEach(() => { workspacePreferencesStore.reset(); useEngineeringSelection.getState().clear(); });
 
 type HardwareSurfaceProps = React.ComponentProps<typeof HardwareSurface>;
 
@@ -208,15 +209,15 @@ describe('HardwareSurface readiness', () => {
       verifyLastRun: verifyRun,
     });
 
-    expect(getByTestId('ide-hw-after-mapping-tools').textContent).toContain(
-      'Simulation is exploratory and is not hardware evidence'
-    );
+    expect(getByTestId('ide-hw-map-values-provenance').textContent).toContain('no physical board connected');
 
     fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
 
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toContain('Simulation active');
     expect(getByTestId('ide-hw-mode-btn-live')).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(getByTestId('ide-show-left-dock'));
+    const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
+    if (showRight) fireEvent.click(showRight);
     expect(getByTestId('ide-hw-live-dock').textContent).toContain('Simulated board preview');
     expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
       'Browser simulation only'
@@ -224,13 +225,26 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
       'Not observed hardware behavior'
     );
-    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('Case 1 / 2');
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe(
+      `t${getByTestId('ide-hw-simulated-board-tick').textContent} · 1 / 2`
+    );
     const offLedClass = getByTestId('ide-hw-ld-0').getAttribute('class');
 
     fireEvent.click(getByTestId('ide-hw-simulated-board-next'));
 
-    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('Case 2 / 2');
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe(
+      `t${getByTestId('ide-hw-simulated-board-tick').textContent} · 2 / 2`
+    );
     expect(getByTestId('ide-hw-ld-0').getAttribute('class')).not.toBe(offLedClass);
+    const readout = (alias: string) => Array.from(getByTestId('ide-hardware-live-state-table').querySelectorAll('tbody tr'))
+      .find((row) => row.children[0]?.textContent === alias)?.children[1]?.textContent;
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('1');
+    expect(readout('LD0')).toBe('1');
+    expect(readout('SW0')).toBe('1');
+    expect(getByTestId('ide-hardware-state-source').textContent).toContain('tick 1');
+    fireEvent.click(getByTestId('ide-hw-simulated-board-prev'));
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('0');
+    expect(readout('LD0')).toBe('0');
     expect(getByTestId('ide-hw-signal-log').textContent).toContain('SUM');
   });
 
@@ -245,7 +259,7 @@ describe('HardwareSurface readiness', () => {
     });
 
     const workspace = getByTestId('ide-hw-board-workspace');
-    expect(workspace.textContent).toContain('Plan Basys3 I/O and constraint intent');
+    expect(workspace.textContent).toContain('Board & Constraints');
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table')).toBeTruthy();
     expect(getByTestId('ide-hw-selected-mapping-editor')).toBeTruthy();
@@ -255,11 +269,12 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-dep-chain')).toBeTruthy();
     expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
     expect(getByTestId('ide-hw-map-row-ld0').textContent).toContain('LD0');
-    expect(getByTestId('ide-hw-map-row-ld0').textContent).toContain('U16');
+    fireEvent.click(getByTestId('ide-hw-map-row-action-ld0'));
+    expect(getByTestId('ide-hardware-chain-pin').textContent).toContain('U16');
     expect(queryByTestId('ide-hw-stage-rail')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(queryByTestId('ide-workbench-console')).toBeNull();
+    expect(getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
   });
 
   it('makes mapping progress and the next unresolved signal immediately actionable', () => {
@@ -413,7 +428,14 @@ describe('HardwareSurface readiness', () => {
     });
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
-    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Ready for export');
+    // The behaviour: a manual-event lab with no board oscillator is still handed on to
+    // Build & Export, not held back for a clock. The old assertion read the literal words
+    // 'Ready for export', which were a fourth restatement of MAPPING COMPLETE in the same
+    // ribbon; the region now labels itself 'Next' and names the destination. Assert the
+    // destination and the absence of a clock demand, which is what the test was for.
+    const nextAction = getByTestId('ide-hw-mapping-next-action').textContent ?? '';
+    expect(nextAction).toContain('Build & Export');
+    expect(nextAction).not.toMatch(/oscillator|clock/i);
   });
 
   it('uses semantic Verify roles for non-regex clock signal names', () => {
@@ -453,7 +475,7 @@ describe('HardwareSurface readiness', () => {
     const row = getByTestId('ide-hw-map-row-iom-in0');
     expect(row.textContent).toContain('IN0');
     expect(row.textContent).toContain('SW0');
-    expect(row.textContent).toContain('V17');
+    expect(row.textContent).not.toContain('V17');
     expect(queryByText('iom-in0')).toBeNull();
 
     fireEvent.click(getByTestId('ide-hw-map-row-action-iom-in0'));
@@ -463,22 +485,25 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN V17');
 
     fireEvent.change(getByTestId('ide-hw-direct-resource-select'), { target: { value: 'SW1' } });
-    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('pin V16');
+    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('SW1 selected. Save to update');
+    expect(getByTestId('ide-hardware-chain-pin').textContent).toContain('V17');
     fireEvent.click(getByTestId('ide-hw-assign-selected-resource'));
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'V16');
   });
 
-  it('keeps signal identity, purpose, board resource, package pin, status, and action distinct', () => {
+  it('keeps the port/resource operation primary and purpose/package facts on the selected mapping', () => {
     const { getByTestId } = renderHardware();
     const row = getByTestId('ide-hw-map-row-clk');
 
     expect(getByTestId('ide-hw-map-row-signal-clk').textContent).toBe('CLK100MHZ');
-    expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Circuit input');
-    expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Role: clock');
+    fireEvent.click(getByTestId('ide-hw-map-row-action-clk'));
+    expect(getByTestId('ide-hw-selected-mapping-role').textContent).toContain('Circuit input');
+    expect(getByTestId('ide-hw-selected-mapping-role').textContent).toContain('Role: clock');
     expect(getByTestId('ide-hw-map-row-binding-clk').textContent).toContain('CLK100MHZ');
-    expect(row.textContent).toContain('W5');
+    expect(row.textContent).not.toContain('W5');
+    expect(getByTestId('ide-hardware-chain-pin').textContent).toContain('W5');
     expect(getByTestId('ide-hw-map-row-status-clk').textContent).toBe('Assigned');
-    expect(getByTestId('ide-hw-map-row-action-clk').textContent).toBe('Edit mapping');
+    expect(getByTestId('ide-hw-map-row-action-clk').getAttribute('aria-label')).toBe('Edit mapping for CLK100MHZ');
   });
 
   it('surfaces duplicate package pins as conflicts before export', () => {
@@ -689,5 +714,75 @@ describe('HardwareSurface readiness', () => {
     expect(summary.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(table.compareDocumentPosition(afterMapping) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(afterMapping.compareDocumentPosition(ribbon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps recorded unknown, missing and absent-tick values independent of exploration', () => {
+    const verifyRun = { ...makeVerifyRun('combinational'), waveform: [
+      { tick: 2, signals: { sw0: '1', ld0: 'X', rst: '1' }, mismatches: [] },
+      { tick: 3, signals: { sw0: '0' }, mismatches: [] },
+    ] };
+    act(() => useEngineeringSelection.getState().select({ kind: 'case-tick', scenarioId: verifyRun.scenarioId, tick: 2 }, 'waveform'));
+    const { getByTestId } = renderHardware({ verifyLastRun: verifyRun,
+      mappingRows: [...COMPLETE_MAPPING_ROWS, { id: 'rst', label: 'Reset', direction: 'in', pin: 'U18', required: true, boardResourceType: 'button' }],
+      runtimeSim: { tick: 2, running: false, stepMode: false, speedHz: 1, irHash: '', traceHash: '',
+        inputs: {}, signals: {}, trace: [{ tick: 2, signals: { sw0: 0, ld0: 0, rst: 0 } }], selectedSignalKey: null, probes: [] },
+    });
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
+    fireEvent.click(getByTestId('ide-show-left-dock'));
+    const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
+    if (showRight) fireEvent.click(showRight);
+    const readout = (alias: string) => Array.from(getByTestId('ide-hardware-live-state-table').querySelectorAll('tbody tr'))
+      .find((row) => row.children[0]?.textContent === alias)?.children[1]?.textContent;
+    expect(getByTestId('ide-hw-sw-0').getAttribute('data-on')).toBe('1');
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('X');
+    expect(readout('LD0')).toBe('X');
+    expect(readout('BTNC')).toBe('1');
+    fireEvent.click(getByTestId('ide-hw-simulated-board-next'));
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('unavailable');
+    expect(readout('LD0')).toBe('Not recorded');
+    // Missing from this sample is not the same fact as not used by the design.
+    const ledLabel = (index: number) => getByTestId(`ide-hw-ld-${index}`).parentElement?.querySelector('text')?.textContent;
+    expect(ledLabel(0)).toBe('LD0 —');
+    expect(ledLabel(5)).toBe('LD5');
+    expect(getByTestId('ide-hw-sw-5').querySelector('text')?.textContent).toBe('SW5');
+    expect(getByTestId('ide-hw-ld-5').getAttribute('aria-label')).toBe('LD5: not in this recording');
+    act(() => useEngineeringSelection.getState().select({ kind: 'case-tick', scenarioId: verifyRun.scenarioId, tick: 99 }, 'waveform'));
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('No sample at tick 99');
+    expect(getByTestId('ide-hw-sw-0').getAttribute('data-on')).toBe('unavailable');
+    expect(readout('SW0')).toBe('Not recorded');
+  });
+
+  it('withholds stale recorded values from both Board projections', () => {
+    const { getByTestId } = renderHardware({
+      verifyLastRun: { ...makeVerifyRun('combinational'), waveform: [{ tick: 0, signals: { sw0: '1', ld0: '1' }, mismatches: [] }] },
+      health: makeHealth({ dirtySinceVerify: true, blockingIssues: [] }),
+    });
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
+    const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
+    if (showRight) fireEvent.click(showRight);
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('unavailable');
+    expect(getByTestId('ide-hardware-live-state-table').textContent).toContain('Not recorded');
+    expect(getByTestId('ide-hardware-state-source').textContent).toContain('Stale recording');
+  });
+
+  it('does not replace a missing followed tick with the last recorded sample', () => {
+    const { getByTestId, queryByTestId } = renderHardware({
+      mappingRows: [{ id: 'a', nodeId: 'a', label: 'A', direction: 'in', pin: 'V17', required: true }],
+      verifyLastRun: { ...makeVerifyRun('combinational', { a: 'input' }), waveform: [{ tick: 2, signals: { a: '1' }, mismatches: [] }] },
+    });
+    expect(getByTestId('ide-hw-map-sw-0-value').getAttribute('data-value')).toBe('1');
+    act(() => useEngineeringSelection.getState().select({ kind: 'case-tick', scenarioId: 'scenario', tick: 9 }, 'waveform'));
+    expect(queryByTestId('ide-hw-map-sw-0-value')).toBeNull();
+    expect(getByTestId('ide-hw-map-values-provenance').textContent).toContain('No recorded sample at tick 9');
+  });
+
+  it('withholds stale simulation values from the current assignment view', () => {
+    const { getByTestId, queryByTestId } = renderHardware({
+      health: makeHealth({ dirtySinceVerify: true }),
+      mappingRows: [{ id: 'a', nodeId: 'a', label: 'A', direction: 'in', pin: 'V17', required: true }],
+      verifyLastRun: { ...makeVerifyRun('combinational', { a: 'input' }), waveform: [{ tick: 2, signals: { a: '1' }, mismatches: [] }] },
+    });
+    expect(queryByTestId('ide-hw-map-sw-0-value')).toBeNull();
+    expect(getByTestId('ide-hw-map-values-provenance').textContent).toContain('Prior simulation is stale');
   });
 });

@@ -137,11 +137,8 @@ function renderSurface(
         { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
         { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -678,11 +675,11 @@ describe('DesignSurface debug nav — replay authority', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('switch-toggle-sw0_node-container')).toBeTruthy();
+      expect(view.getByTestId('switch-toggle-sw0_node')).toBeTruthy();
     });
 
-    expect(view.getByTestId('switch-toggle-sw0_node-container').textContent).toContain('SW0 OFF');
-    expect(view.getByTestId('switch-toggle-sw0_node-container').textContent).not.toContain('SW0 ON');
+    expect(view.getByTestId('node-INPUT-sw0_node').getAttribute('data-sim-value')).toBe('0');
+    expect(view.getByTestId('node-INPUT-sw0_node').textContent).toContain('SW0');
   });
 
   it('renders the on-canvas clock widget from the selected replay case, not persisted live node state', async () => {
@@ -738,11 +735,8 @@ describe('DesignSurface debug nav — replay authority', () => {
           { id: 'clk', nodeId: 'clk_node', label: 'CLK', pin: 'W5', port: 'out', direction: 'in' },
           { id: 'q', nodeId: 'q_out', label: 'Q', pin: 'U16', port: 'in', direction: 'out' },
         ]}
-        onRuntimeSimRun={vi.fn()}
-        onRuntimeSimPause={vi.fn()}
         onRuntimeSimStep={vi.fn()}
         onRuntimeSimReset={vi.fn()}
-        onRuntimeSimSetSpeed={vi.fn()}
         onRuntimeSimToggleProbe={vi.fn()}
         onGoToProject={vi.fn()}
         onGoToVerify={vi.fn()}
@@ -762,11 +756,11 @@ describe('DesignSurface debug nav — replay authority', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('switch-toggle-clk_node-container')).toBeTruthy();
+      expect(view.container.querySelector('[data-node-id="clk_node"]')).not.toBeNull();
     });
 
-    expect(view.getByTestId('switch-toggle-clk_node-container').textContent).toContain('W5 1');
-    expect(view.getByTestId('switch-toggle-clk_node-container').textContent).not.toContain('W5 0');
+    expect(view.container.querySelector('[data-node-id="clk_node"]')?.getAttribute('data-sim-value')).toBe('1');
+    expect(view.container.querySelector('[data-node-id="clk_node"]')?.textContent).toContain('W5');
   });
 
   it('removes live simulation inspector chrome while replay is active', async () => {
@@ -780,11 +774,8 @@ describe('DesignSurface debug nav — replay authority', () => {
           { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
           { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
         ]}
-        onRuntimeSimRun={onRun}
-        onRuntimeSimPause={vi.fn()}
         onRuntimeSimStep={onStep}
         onRuntimeSimReset={onReset}
-        onRuntimeSimSetSpeed={vi.fn()}
         onRuntimeSimToggleProbe={vi.fn()}
         onGoToProject={vi.fn()}
         onGoToVerify={vi.fn()}

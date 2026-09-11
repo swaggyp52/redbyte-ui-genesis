@@ -111,11 +111,8 @@ function renderSurface() {
           direction: 'out',
         },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -160,14 +157,15 @@ describe('DesignSurface contextual inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-palette-section-common')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-section-io')).toBeTruthy();
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'edit');
     expect(view.getByTestId('ide-design-learning-mode-replay')).toBeDisabled();
 
     fireEvent.click(view.getByTestId('ide-design-learning-mode-live'));
 
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'live');
-    expect(view.getByText('Exploratory simulation · not saved evidence')).toBeTruthy();
+    expect(view.getByTestId('ide-design-live-transport')).toBeTruthy();
+    expect(view.getByTestId('ide-design-learning-mode-live').getAttribute('title')).toContain('not saved evidence');
   });
 
   it('returns idle inspector space to the canvas when nothing is selected', () => {

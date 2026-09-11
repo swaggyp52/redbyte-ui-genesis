@@ -179,17 +179,17 @@ describe('IdeCommandPalette', () => {
     });
 
     fireEvent.scroll(results);
-    expect(view.getByTestId('ide-command-palette-scroll-down').textContent).toBe('More commands below');
+    expect(view.getByTestId('ide-command-palette-scroll-down').textContent).toBe('More below');
     expect(view.queryByTestId('ide-command-palette-scroll-up')).toBeNull();
 
     scrollTop = 120;
     fireEvent.scroll(results);
-    expect(view.getByTestId('ide-command-palette-scroll-up').textContent).toBe('More commands above');
-    expect(view.getByTestId('ide-command-palette-scroll-down').textContent).toBe('More commands below');
+    expect(view.getByTestId('ide-command-palette-scroll-up').textContent).toBe('More above');
+    expect(view.getByTestId('ide-command-palette-scroll-down').textContent).toBe('More below');
 
     scrollTop = 420;
     fireEvent.scroll(results);
-    expect(view.getByTestId('ide-command-palette-scroll-up').textContent).toBe('More commands above');
+    expect(view.getByTestId('ide-command-palette-scroll-up').textContent).toBe('More above');
     expect(view.queryByTestId('ide-command-palette-scroll-down')).toBeNull();
   });
 
