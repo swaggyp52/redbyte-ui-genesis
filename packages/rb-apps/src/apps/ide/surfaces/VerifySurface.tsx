@@ -1730,19 +1730,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const allWaveformTicksRef = useRef(allWaveformTicks);
   allWaveformTicksRef.current = allWaveformTicks;
   const tickOverrideScopeRef = useRef(viewScopeKey);
+  // The tick on screen this render, and an inbound tick that has been adopted but has not
+  // reached the screen yet. The shared tick is bound both ways - adopted from the workbench and
+  // reported back to it - and those two directions must not answer each other. On mount the
+  // report used to send the tick restored from this scenario's session in the same commit that
+  // adopted a different inbound tick (Board stepping a recording, Design stepping a trace), so
+  // it flipped the override back and the two effects chased each other until React stopped
+  // them: the Simulate workspace error screen.
+  const selectedTickRef = useRef(selectedTick);
+  selectedTickRef.current = selectedTick;
+  const adoptingTickRef = useRef<number | null>(null);
   useEffect(() => {
     const scopeChanged = tickOverrideScopeRef.current !== viewScopeKey;
     tickOverrideScopeRef.current = viewScopeKey;
-    if (scopeChanged) return;
+    if (scopeChanged) {
+      adoptingTickRef.current = null;
+      return;
+    }
     if (selectedTickOverride === null) return;
     const ticks = allWaveformTicksRef.current;
     if (ticks.length > 0 && !ticks.includes(selectedTickOverride)) return;
-    setSelectedTick((previous) => (previous === selectedTickOverride ? previous : selectedTickOverride));
+    if (selectedTickRef.current === selectedTickOverride) return;
+    adoptingTickRef.current = selectedTickOverride;
+    setSelectedTick(selectedTickOverride);
     // Applied once per override value; the tick domain is read through the ref so a
     // rebuilt timeline array (windowing) does not re-apply a tick the user moved off.
   }, [selectedTickOverride, viewScopeKey, setSelectedTick]);
 
   useEffect(() => {
+    const adopting = adoptingTickRef.current;
+    if (adopting !== null) {
+      // Neither the tick being replaced nor the adopted one is news to the owner that sent it.
+      if (selectedTick === adopting) adoptingTickRef.current = null;
+      return;
+    }
     onSelectedTickChange?.(selectedTick);
   }, [onSelectedTickChange, selectedTick, viewScopeKey]);
 
