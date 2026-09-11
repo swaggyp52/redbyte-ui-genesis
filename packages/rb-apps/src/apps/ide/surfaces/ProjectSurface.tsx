@@ -120,6 +120,8 @@ export interface ProjectSurfaceProps {
   }>;
   onOpenSavedProjects?: () => void;
   onOpenRecentProject?: (projectId: string) => void;
+  /** Delete one saved project from this browser, offered on Start behind a confirmation. */
+  onRemoveRecentProject?: (projectId: string) => void;
   /** Read-only look at a saved project for the Start Center preview; never loads it. */
   peekRecentProject?: (projectId: string) => StartCenterPeek | null;
   /** Recovery snapshot state for the Start Center's Recover section. */
@@ -186,6 +188,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   latestRunIsCurrent = null,
   onOpenSavedProjects,
   onOpenRecentProject,
+  onRemoveRecentProject,
   runHistory = [],
   sourceModel,
   crossProbe,
@@ -417,6 +420,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               onOpenExample={onOpenExample}
               onStartGuidedLab={onStartGuidedLab}
               onOpenRecentProject={onOpenRecentProject}
+              onRemoveRecentProject={onRemoveRecentProject}
               onOpenSavedProjects={onOpenSavedProjects}
               onOpenImport={onOpenImport}
               onStartBlankProject={handleStartBlankProject}

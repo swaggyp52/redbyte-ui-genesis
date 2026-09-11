@@ -314,6 +314,37 @@ async function run(width, height) {
   }
 
   await page.screenshot({ path: `${OUT}/overview-blank-${width}x${height}.png` });
+
+  // ── ⑪ A saved project can be deleted from Start, and only that one goes ─────────────────
+  // Two presses on the item's own preview, the second naming the project. The workspace is
+  // untouched because Start is only shown with nothing open.
+  await runCommand('project.close');
+  await page.waitForSelector(tid('ide-project-landing'), { timeout: 10000 });
+  const indexBeforeDelete = await savedIndex();
+  assert(indexBeforeDelete.some((row) => row.endsWith(`|${saved.projectId}`)),
+    `the project to delete is not in the saved index: ${JSON.stringify(indexBeforeDelete)}`);
+  await page.getByTestId('ide-project-start-section-recent').click();
+  await page.waitForSelector(tid('ide-project-recent-panel'), { timeout: 10000 });
+  await page.getByTestId(`ide-project-recent-${saved.projectId}`).click();
+  await page.getByTestId(`ide-project-recent-delete-${saved.projectId}`).click();
+  const indexDuringConfirm = await savedIndex();
+  assert(indexDuringConfirm.length === indexBeforeDelete.length,
+    'asking to delete must not delete anything before the confirmation');
+  const confirmText = (await page.getByTestId('ide-project-recent-delete-confirm-row').innerText()).replace(/\s+/g, ' ');
+  assert(confirmText.includes(saved.projectName), `the confirmation names "${saved.projectName}": "${confirmText}"`);
+  await page.getByTestId('ide-project-recent-delete-confirm').click();
+  await page.waitForTimeout(600);
+  const indexAfterDelete = await savedIndex();
+  assert(!indexAfterDelete.some((row) => row.endsWith(`|${saved.projectId}`)),
+    `the deleted project is still in the saved index: ${JSON.stringify(indexAfterDelete)}`);
+  assert(indexAfterDelete.length === indexBeforeDelete.length - 1,
+    `deleting one project changed the index by ${indexBeforeDelete.length - indexAfterDelete.length}: ${JSON.stringify(indexAfterDelete)}`);
+  assert((await page.locator(tid(`ide-project-recent-${saved.projectId}`)).count()) === 0,
+    'the deleted project is still listed under Recent');
+  const stillOnStart = await surface();
+  assert(stillOnStart.start && !stillOnStart.overview, 'deleting a saved project must leave the reader on Start');
+  console.log(`${at} ⑪ deleted "${saved.projectName}" from Start: index ${indexBeforeDelete.length} -> ${indexAfterDelete.length}, nothing else touched`);
+
   assert(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
   console.log(`${at} PASS`);

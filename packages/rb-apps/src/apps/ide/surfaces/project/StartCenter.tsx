@@ -48,6 +48,8 @@ export interface StartCenterProps {
   readonly onOpenExample: (exampleId: string) => void;
   readonly onStartGuidedLab?: (labId: string) => void;
   readonly onOpenRecentProject?: (projectId: string) => void;
+  /** Delete one saved project from this browser. Offered on the saved item's own preview, behind a confirmation. */
+  readonly onRemoveRecentProject?: (projectId: string) => void;
   readonly onOpenSavedProjects?: () => void;
   readonly onOpenImport: () => void;
   readonly onStartBlankProject?: () => void;
@@ -131,6 +133,7 @@ export const StartCenter: React.FC<StartCenterProps> = ({
   onOpenExample,
   onStartGuidedLab,
   onOpenRecentProject,
+  onRemoveRecentProject,
   onOpenSavedProjects,
   onOpenImport,
   onStartBlankProject,
@@ -348,8 +351,10 @@ export const StartCenter: React.FC<StartCenterProps> = ({
       <section className="rb-start-preview" aria-label="Preview" data-testid="ide-project-start-preview">
         {selected ? (
           <Preview
+            key={selected.id}
             item={selected}
             primary={primaryFor(selected)}
+            onRemove={selected.kind === 'recent' && onRemoveRecentProject ? () => onRemoveRecentProject(selected.project.projectId) : null}
             peekRecentProject={peekRecentProject}
             recoveryLabel={recovery?.label ?? null}
             boardLabel={boardLabel}
@@ -472,12 +477,15 @@ const RowBody: React.FC<{ item: Item }> = ({ item }) => {
 const Preview: React.FC<{
   item: Item;
   primary: { label: string; run: () => void; testId: string } | null;
+  onRemove?: (() => void) | null;
   peekRecentProject?: (projectId: string) => StartCenterPeek | null;
   recoveryLabel: string | null;
   boardLabel: string;
   fpgaPart: string;
-}> = ({ item, primary, peekRecentProject, recoveryLabel, boardLabel, fpgaPart }) => {
+}> = ({ item, primary, onRemove = null, peekRecentProject, recoveryLabel, boardLabel, fpgaPart }) => {
   const recentId = item.kind === 'recent' ? item.project.projectId : null;
+  // Deleting is two deliberate presses on the item's own preview, and the second names what goes.
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const peek = useMemo(() => (recentId && peekRecentProject ? peekRecentProject(recentId) : null), [peekRecentProject, recentId]);
   const example = item.kind === 'lab' ? item.example : item.kind === 'starter' ? item.example : null;
   const circuit = example?.circuit ?? peek?.circuit ?? null;
@@ -505,12 +513,40 @@ const Preview: React.FC<{
             : recoveryLabel ?? 'Snapshot'}
           </p>
         </div>
-        {primary ? (
-          <button type="button" className="wb-btn wb-btn--primary rb-start-primary" onClick={primary.run} data-testid={primary.testId}>
-            {primary.label}
-          </button>
-        ) : null}
+        <div className="rb-start-preview-actions">
+          {primary ? (
+            <button type="button" className="wb-btn wb-btn--primary rb-start-primary" onClick={primary.run} data-testid={primary.testId}>
+              {primary.label}
+            </button>
+          ) : null}
+          {onRemove && recentId && !confirmingRemove ? (
+            <button
+              type="button"
+              className="wb-btn wb-btn--ghost"
+              onClick={() => setConfirmingRemove(true)}
+              data-testid={`ide-project-recent-delete-${recentId}`}
+            >
+              Delete…
+            </button>
+          ) : null}
+        </div>
       </header>
+      {onRemove && recentId && confirmingRemove ? (
+        <div className="rb-start-remove-confirm" role="group" aria-label="Delete saved project" data-testid="ide-project-recent-delete-confirm-row">
+          <p>
+            Delete <strong>{title}</strong> from this browser? Its saved copy goes; a project that is open elsewhere, an
+            exported backup or a recovery snapshot does not.
+          </p>
+          <div className="rb-start-preview-actions">
+            <button type="button" className="wb-btn wb-btn--danger" onClick={onRemove} data-testid="ide-project-recent-delete-confirm">
+              Delete
+            </button>
+            <button type="button" className="wb-btn wb-btn--ghost" onClick={() => setConfirmingRemove(false)} data-testid="ide-project-recent-delete-cancel">
+              Keep
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {circuit && circuit.nodes.length > 0 ? (
         <div className="rb-start-figure" data-testid="ide-project-start-figure">

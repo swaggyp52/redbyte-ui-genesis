@@ -467,6 +467,17 @@
 .ide-root .rb-start-preview-title { margin: 0; font: 600 var(--rb-text-doc) / 1.2 var(--wb-font-ui); color: var(--wb-text); }
 .ide-root .rb-start-preview-sub { margin: 4px 0 0; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); }
 .ide-root .rb-start-primary { flex: none; min-width: 140px; }
+.ide-root .rb-start-preview-actions { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: var(--wb-space-2); }
+/* Deleting a saved project: a second, named press on the item's own preview. */
+.ide-root .rb-start-remove-confirm {
+  display: grid;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-3);
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  background: var(--wb-surface-2);
+}
+.ide-root .rb-start-remove-confirm p { margin: 0; color: var(--wb-text); font: var(--wb-text-md) / 1.45 var(--wb-font-ui); }
 .ide-root .rb-start-figure {
   min-height: 220px;
   max-height: 360px;

@@ -1886,6 +1886,22 @@ export const IdeApp: React.FC = () => {
     [handleLoadSavedProject, refreshSavedProjects, savedProjects, setLastSavedAt]
   );
 
+  /* Start is only shown with nothing open, so the record being deleted is never the workspace's
+     own; the open project, exported backups and the recovery checkpoint are untouched. */
+  const handleRemoveSavedProject = useCallback(
+    (projectIdToRemove: string) => {
+      const entry = savedProjects.find((candidate) => candidate.projectId === projectIdToRemove);
+      const result = projectRepository.remove(projectIdToRemove);
+      refreshSavedProjects();
+      setLastSavedAt(
+        result.ok
+          ? `Deleted "${entry?.projectName ?? projectIdToRemove}" from this browser.`
+          : `Could not delete "${entry?.projectName ?? projectIdToRemove}": ${result.error.message}`
+      );
+    },
+    [refreshSavedProjects, savedProjects, setLastSavedAt]
+  );
+
   const handleOpenProjectFile = useCallback(() => {
     importFileInputRef.current?.click();
   }, []);
@@ -3319,6 +3335,7 @@ export const IdeApp: React.FC = () => {
               recentProjects={recentProjectsForStart}
               onOpenSavedProjects={handleOpenLoadModal}
               onOpenRecentProject={handleOpenRecentProject}
+              onRemoveRecentProject={handleRemoveSavedProject}
               peekRecentProject={peekRecentProject}
               recovery={{
                 available: repositoryState.recoveryAvailable,
