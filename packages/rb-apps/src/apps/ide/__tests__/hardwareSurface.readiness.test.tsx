@@ -216,6 +216,8 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toContain('Simulation active');
     expect(getByTestId('ide-hw-mode-btn-live')).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(getByTestId('ide-show-left-dock'));
+    const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
+    if (showRight) fireEvent.click(showRight);
     expect(getByTestId('ide-hw-live-dock').textContent).toContain('Simulated board preview');
     expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
       'Browser simulation only'
@@ -223,13 +225,26 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
       'Not observed hardware behavior'
     );
-    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('Case 1 / 2');
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe(
+      `t${getByTestId('ide-hw-simulated-board-tick').textContent} · 1 / 2`
+    );
     const offLedClass = getByTestId('ide-hw-ld-0').getAttribute('class');
 
     fireEvent.click(getByTestId('ide-hw-simulated-board-next'));
 
-    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('Case 2 / 2');
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe(
+      `t${getByTestId('ide-hw-simulated-board-tick').textContent} · 2 / 2`
+    );
     expect(getByTestId('ide-hw-ld-0').getAttribute('class')).not.toBe(offLedClass);
+    const readout = (alias: string) => Array.from(getByTestId('ide-hardware-live-state-table').querySelectorAll('tbody tr'))
+      .find((row) => row.children[0]?.textContent === alias)?.children[1]?.textContent;
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('1');
+    expect(readout('LD0')).toBe('1');
+    expect(readout('SW0')).toBe('1');
+    expect(getByTestId('ide-hardware-state-source').textContent).toContain('tick 1');
+    fireEvent.click(getByTestId('ide-hw-simulated-board-prev'));
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('0');
+    expect(readout('LD0')).toBe('0');
     expect(getByTestId('ide-hw-signal-log').textContent).toContain('SUM');
   });
 
@@ -699,6 +714,55 @@ describe('HardwareSurface readiness', () => {
     expect(summary.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(table.compareDocumentPosition(afterMapping) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(afterMapping.compareDocumentPosition(ribbon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps recorded unknown, missing and absent-tick values independent of exploration', () => {
+    const verifyRun = { ...makeVerifyRun('combinational'), waveform: [
+      { tick: 2, signals: { sw0: '1', ld0: 'X', rst: '1' }, mismatches: [] },
+      { tick: 3, signals: { sw0: '0' }, mismatches: [] },
+    ] };
+    act(() => useEngineeringSelection.getState().select({ kind: 'case-tick', scenarioId: verifyRun.scenarioId, tick: 2 }, 'waveform'));
+    const { getByTestId } = renderHardware({ verifyLastRun: verifyRun,
+      mappingRows: [...COMPLETE_MAPPING_ROWS, { id: 'rst', label: 'Reset', direction: 'in', pin: 'U18', required: true, boardResourceType: 'button' }],
+      runtimeSim: { tick: 2, running: false, stepMode: false, speedHz: 1, irHash: '', traceHash: '',
+        inputs: {}, signals: {}, trace: [{ tick: 2, signals: { sw0: 0, ld0: 0, rst: 0 } }], selectedSignalKey: null, probes: [] },
+    });
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
+    fireEvent.click(getByTestId('ide-show-left-dock'));
+    const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
+    if (showRight) fireEvent.click(showRight);
+    const readout = (alias: string) => Array.from(getByTestId('ide-hardware-live-state-table').querySelectorAll('tbody tr'))
+      .find((row) => row.children[0]?.textContent === alias)?.children[1]?.textContent;
+    expect(getByTestId('ide-hw-sw-0').getAttribute('data-on')).toBe('1');
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('X');
+    expect(readout('LD0')).toBe('X');
+    expect(readout('BTNC')).toBe('1');
+    fireEvent.click(getByTestId('ide-hw-simulated-board-next'));
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('unavailable');
+    expect(readout('LD0')).toBe('Not recorded');
+    // Missing from this sample is not the same fact as not used by the design.
+    const ledLabel = (index: number) => getByTestId(`ide-hw-ld-${index}`).parentElement?.querySelector('text')?.textContent;
+    expect(ledLabel(0)).toBe('LD0 —');
+    expect(ledLabel(5)).toBe('LD5');
+    expect(getByTestId('ide-hw-sw-5').querySelector('text')?.textContent).toBe('SW5');
+    expect(getByTestId('ide-hw-ld-5').getAttribute('aria-label')).toBe('LD5: not in this recording');
+    act(() => useEngineeringSelection.getState().select({ kind: 'case-tick', scenarioId: verifyRun.scenarioId, tick: 99 }, 'waveform'));
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('No sample at tick 99');
+    expect(getByTestId('ide-hw-sw-0').getAttribute('data-on')).toBe('unavailable');
+    expect(readout('SW0')).toBe('Not recorded');
+  });
+
+  it('withholds stale recorded values from both Board projections', () => {
+    const { getByTestId } = renderHardware({
+      verifyLastRun: { ...makeVerifyRun('combinational'), waveform: [{ tick: 0, signals: { sw0: '1', ld0: '1' }, mismatches: [] }] },
+      health: makeHealth({ dirtySinceVerify: true, blockingIssues: [] }),
+    });
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
+    const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
+    if (showRight) fireEvent.click(showRight);
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('unavailable');
+    expect(getByTestId('ide-hardware-live-state-table').textContent).toContain('Not recorded');
+    expect(getByTestId('ide-hardware-state-source').textContent).toContain('Stale recording');
   });
 
   it('does not replace a missing followed tick with the last recorded sample', () => {

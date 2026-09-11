@@ -3562,6 +3562,8 @@ export const IdeApp: React.FC = () => {
               workflowAuthority={workflowAuthority}
               runtimeSim={runtimeSim}
               onSimSetInput={setRuntimeSimInput}
+              selectedTickOverride={verifySelectedTick}
+              onSelectedTickChange={setVerifySelectedTick}
               onGenerateBringUpVectors={handleGenerateBringUpVectors}
               onOpenExport={() => setCurrentMode('export')}
               onOpenVerify={() => setCurrentMode('verify')}

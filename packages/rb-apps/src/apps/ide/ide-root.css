@@ -16387,41 +16387,7 @@ details[open].ide-export-evidence-details > summary::before {
   opacity: 0.7 !important;
 }
 
-/* ── 2. Live state table → monitoring console, not spreadsheet ── */
-/* Hide SIGNAL/VALUE header — visually obvious from context */
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] thead {
-  display: none !important;
-}
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] table {
-  border-collapse: collapse !important;
-  width: 100% !important;
-}
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td {
-  padding: 1px 6px !important;
-  font-size: var(--rb-text-micro) !important;
-  line-height: 1.55 !important;
-  border: none !important;
-  vertical-align: middle !important;
-}
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td:first-child {
-  font-family: var(--rb-font-mono) !important;
-  font-size: var(--rb-text-micro) !important;
-  color: rgba(140,180,215,0.55) !important;
-  letter-spacing: 0.04em !important;
-  width: 52px !important;
-}
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] td:last-child {
-  font-family: var(--rb-font-mono) !important;
-  font-size: var(--rb-text-meta) !important;
-  font-weight: 700 !important;
-  color: rgba(46,196,182,0.78) !important;
-  letter-spacing: 0.05em !important;
-}
-/* Zebra rows: very subtle separation between signal groups */
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] tr:nth-child(8),
-[data-ide-mode-marker='hardware'] [data-testid='ide-hardware-live-state-table'] tr:nth-child(16) {
-  border-bottom: 1px solid rgba(56,189,248,0.07) !important;
-}
+/* Board replay readout styling is owned by hardware/board-instrument.css. */
 
 /* ── 4. Mode tabs — instrument selector bar ── */
 [data-ide-mode-marker='hardware'] .ide-hw-mode-toggle {
@@ -17061,12 +17027,8 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(244,200,80,0.78) !important;
 }
 
-/* ── 6. Hardware: NEEDS ACTION status consistent with amber system */
-[data-ide-mode-marker='hardware'] .ide-status-pill {
-  background: rgba(244,185,66,0.1) !important;
-  border-color: rgba(244,185,66,0.3) !important;
-  color: rgba(244,200,80,0.9) !important;
-}
+/* Board status pills take their tone from theme/redbyte-primitives.css. The OS-era override that
+   painted every Board pill amber - OK states included - at 1.52:1 on the light panels is retired. */
 
 /* ── 7. Focus ring: consistent brand color across all surfaces */
 .ide-button:focus-visible,
@@ -17138,45 +17100,6 @@ button:disabled,
   display: block !important;
   font-family: var(--rb-font-mono) !important;
   font-size: var(--rb-text-meta) !important;
-}
-
-/* ── A6. Hardware live-state: correct signal group separators ── */
-/* liveHardwareRows order: SW0-SW7 (rows 1-8), BTNC-BTNR (rows 9-13), LD0-LD7 (rows 14-21) */
-
-/* Separator after SW group (row 8) */
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(8) td {
-  padding-bottom: 5px !important;
-  border-bottom: 1px solid rgba(56,189,248,0.10) !important;
-}
-/* Separator after BTN group (row 13) */
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(13) td {
-  padding-bottom: 5px !important;
-  border-bottom: 1px solid rgba(56,189,248,0.10) !important;
-}
-/* Space before first row of each new group */
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(9) td,
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(14) td {
-  padding-top: 5px !important;
-}
-
-/* Muted group-label prefixes on first row of each group */
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(1) td:first-child::before {
-  content: 'SW  ';
-  font-size: var(--rb-text-micro) !important;
-  opacity: 0.3 !important;
-  letter-spacing: 0.05em !important;
-}
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(9) td:first-child::before {
-  content: 'BTN  ';
-  font-size: var(--rb-text-micro) !important;
-  opacity: 0.3 !important;
-  letter-spacing: 0.05em !important;
-}
-[data-testid='ide-hardware-live-state-table'] tr:nth-child(14) td:first-child::before {
-  content: 'LD  ';
-  font-size: var(--rb-text-micro) !important;
-  opacity: 0.3 !important;
-  letter-spacing: 0.05em !important;
 }
 
 /* ── A7. Hardware signal log empty state: guided, not abandoned ── */

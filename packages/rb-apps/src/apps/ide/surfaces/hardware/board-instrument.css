@@ -1,3 +1,25 @@
+/* Recorded Board readout uses the same light support surfaces as mapping.
+   The old dark-table overrides and row-number group labels have been removed. */
+.ide-root [data-testid='ide-hardware-live-state-table'] table { width: 100%; border-collapse: collapse; }
+.ide-root [data-testid='ide-hardware-live-state-table'] :is(th, td) { padding: 5px 8px; color: var(--wb-text); font: var(--wb-text-sm) / 1.5 var(--wb-font-mono); text-align: left; border-bottom: 1px solid var(--wb-border); }
+.ide-root [data-testid='ide-hardware-live-state-table'] th { background: var(--wb-surface-2); font-weight: 600; }
+.ide-root [data-testid='ide-hardware-state-source'] { color: var(--wb-text-2); overflow-wrap: anywhere; }
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--live { background: var(--wb-surface); color: var(--wb-text); border-color: var(--wb-border-strong); box-shadow: none; }
+/* The dock's own heading. It no longer carries .ide-workbench-placeholder-header, whose two OS-era
+   rules in ide-root.css paint every h3 they match rgba(130,170,210,0.45-0.48) with !important - a
+   dark-dock value that measured 1.49:1 on this light panel. */
+.ide-root .ide-hw-live-dock-header { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.ide-root .ide-hw-live-dock-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) / 1.3 var(--wb-font-ui); }
+/* The dock scrolls inside the left dock, which clips at its own height: at 1280x650 the aside is
+   538px with overflow-y hidden around a 1003px panel, so Next and the scrubber were drawn at
+   828-884px with no scrollable ancestor - the Board's only way to step a recording. */
+.ide-root .ide-hw-dock-panel.ide-hw-dock--live { max-height: 100%; overflow-y: auto; align-content: start; }
+.ide-root .ide-hw-dock--live :is(h3, .ide-kv-row, code) { color: var(--wb-text); }
+.ide-root .ide-hw-dock--live .ide-kv-row { flex-wrap: wrap; gap: 4px 8px; }
+.ide-root .ide-hw-dock--live code { white-space: normal; overflow-wrap: anywhere; }
+.ide-root .ide-hw-dock--live .ide-inline-actions { flex-wrap: wrap; }
+.ide-root [data-testid='ide-hw-simulated-board-readout'] { color: var(--wb-text); font-size: var(--wb-text-sm); }
+
 /* Board & Constraints instrument — the mapping workspace with the board
    central: assignments (left) · Basys3 board (centre) · selected-signal
    editor and XDC consequence (right); the bring-up stage rail as one toolbar.

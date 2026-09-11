@@ -103,6 +103,42 @@ try {
     assert.equal(await tid('ide-case-lab-history').count(), 0, 'An observation is not labeled as a passed comparison');
     assert.match(await tid('ide-sim-context-inspector').innerText(), /Not evaluated/);
     await page.screenshot({ path: path.join(out, `counter-observed-table-${viewport.width}x${viewport.height}.png`) });
+    // One recording/sample owns both the drawing and its expanded state table.
+    const boardRun = await selectedRun();
+    await tid('mode-button-hardware').click();
+    await tid('ide-hw-mode-btn-live').click();
+    if (await tid('ide-show-left-dock').isVisible()) await tid('ide-show-left-dock').click();
+    if (await tid('ide-show-right-dock').isVisible()) await tid('ide-show-right-dock').click();
+    for (const tick of [checkTick, checkTick + 1]) {
+      if (tick !== checkTick) await tid('ide-hw-simulated-board-next').click();
+      await page.waitForFunction((tick) => document.querySelector('[data-testid="ide-hw-simulated-board-tick"]')?.textContent === String(tick), tick);
+      const sample = boardRun.waveform.find((entry) => entry.tick === tick);
+      const table = await tid('ide-hardware-live-state-table').locator('tbody tr').evaluateAll((rows) =>
+        Object.fromEntries(rows.map((row) => [row.cells[0].textContent.trim(), row.cells[1].textContent.trim()])));
+      // The expected value comes from the recording itself, through its own circuit snapshot: the
+      // boundary node carrying each label and that node's recorded output. That is a different route
+      // from Board's mapping lookup, so agreement here is not the product agreeing with itself.
+      const recordedKey = (label) => {
+        const node = boardRun.circuit.nodes.find((entry) => entry.label === label && /^(INPUT|OUTPUT)$/.test(entry.type));
+        assert.ok(node, `The recording's circuit has a boundary node labelled ${label}`);
+        return `${node.id}.out`;
+      };
+      for (const [alias, label, id] of [['LD0', 'LD0', 'ld-0'], ['LD1', 'LD1', 'ld-1'], ['SW0', 'EN', 'sw-0']]) {
+        const expected = sample.signals[recordedKey(label)];
+        assert.match(String(expected), /^[01]$/, `The recording has a binary ${label} at t${tick}`);
+        assert.equal(table[alias], expected, `${alias} table agrees with recording at t${tick}`);
+        assert.equal(await tid(`ide-hw-${id}`).getAttribute('data-on'), expected, `${alias} drawing agrees at t${tick}`);
+      }
+      if (tick === checkTick) assert.equal(table.LD0, actual, 'Board and Simulate report the same LD0 for the same recorded tick');
+      assert.match(await tid('ide-hw-simulated-board-readout').innerText(), new RegExp(`^t${tick} · `), 'Board readout names the tick Simulate names');
+      assert.ok((await tid('ide-hw-simulated-board-source').innerText()).includes(boardRun.id), 'Board identifies the exact recording');
+      await page.screenshot({ path: path.join(out, `counter-board-t${tick}-${viewport.width}x${viewport.height}.png`) });
+    }
+    assert.deepEqual(await selectedRun(), boardRun, 'Board readback does not mutate the recording');
+    await tid('mode-button-verify').click();
+    await tid('ide-verify-view-table').click();
+    await tid(`ide-case-lab-row-${checkTick}`).locator('td').first().click();
+    await ld0Header.click();
     const wrong = actual === '0' ? '1' : '0';
     await setExpected(expectedCell, wrong);
     const failedRun = await compare();

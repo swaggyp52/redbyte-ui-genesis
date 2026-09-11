@@ -3,12 +3,22 @@ import type { Bit } from '../ioBus';
 import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
 
+export type BoardDisplayValue = Bit | 'X' | 'Z' | null;
+const displayValue = (value: BoardDisplayValue | undefined) => value == null ? 'Not recorded' : String(value);
+
 export interface HardwareBoard2DProps {
-  sw: Bit[];           // length 16 — switch states
-  ld: Bit[];           // length 16 — LED states
-  btn: Bit[];          // length 5 — button states
+  sw: BoardDisplayValue[];  // length 16 — null means no observation
+  ld: BoardDisplayValue[];
+  btn: BoardDisplayValue[];
   mappedSw: boolean[]; // length 16 — whether each SW has a nodeId mapping
   mappedLd: boolean[]; // length 16 — whether each LD has a nodeId mapping
+  /**
+   * The resources a recorded projection covers - the same mapping rows that fill it. A null
+   * value on a covered resource is a sample the recording does not have, drawn as unavailable;
+   * on an uncovered resource it only means the design does not use it. Absent: every resource
+   * counts as covered (exploration and the other callers never pass null values).
+   */
+  recordedResources?: { sw: boolean[]; ld: boolean[]; btn: boolean[] };
   mismatchedLd?: boolean[]; // length 16 — red error overlay (bring-up mismatch)
   highlightedSw?: number[];  // indices to show cyan highlight ring
   highlightedLd?: number[];  // indices to show amber highlight ring
@@ -39,6 +49,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
   btn,
   mappedSw,
   mappedLd,
+  recordedResources,
   mismatchedLd,
   highlightedSw,
   highlightedLd,
@@ -212,7 +223,9 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const cx = 10 + 20 + i * 36 + 18;
         const cy = 40;
         const isOn = ld[idx] === 1;
+        const isKnown = ld[idx] === 0 || ld[idx] === 1;
         const isMapped = mappedLd[idx];
+        const isCovered = recordedResources?.ld[idx] ?? true;
         const isActiveLd = activeSignal?.type === 'ld' && activeSignal.index === idx;
         const isMismatch = mismatchedLd?.[idx] ?? false;
 
@@ -220,13 +233,13 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           styles.ledCircle,
           isActiveLd ? styles.active : '',
           isOn ? styles.ledOn : '',
-          isMapped && !isOn ? styles.ledMapped : '',
+          isMapped && isKnown && !isOn ? styles.ledMapped : '',
           isMismatch ? styles.ledMismatch : '',
         ].filter(Boolean).join(' ');
 
         const lensGradId = isMismatch
           ? 'ledLensMismatch'
-          : !isMapped
+          : !isMapped || !isKnown
             ? 'ledLensUnmapped'
             : isOn
               ? 'ledLensOn'
@@ -242,7 +255,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             {/* LED body with lens gradient */}
             <circle
               data-testid={`ide-hw-ld-${idx}`}
-              data-on={isOn ? '1' : '0'}
+              data-on={ld[idx] == null ? 'unavailable' : String(ld[idx])}
+              aria-label={`LD${idx}: ${isKnown || isCovered ? displayValue(ld[idx]) : 'not in this recording'}`}
               data-active={isActiveLd ? 'true' : undefined}
               className={ledClassName}
               cx={cx}
@@ -303,7 +317,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               className={styles.ledLabel}
               style={{ pointerEvents: 'none' }}
             >
-              {`LD${idx}`}
+              {`LD${idx}${isKnown || !isCovered ? '' : ld[idx] == null ? ' —' : ` ${ld[idx]}`}`}
             </text>
           </g>
         );
@@ -359,6 +373,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
       {/* === Push buttons === */}
       {BTN_POSITIONS.map(([cx, cy], i) => {
         const isPressed = btn[i] === 1;
+        const isKnown = btn[i] === 0 || btn[i] === 1;
+        const isCovered = recordedResources?.btn[i] ?? true;
         const handleBtnInteraction = (isDown: boolean) => {
           onPressButton(i, isDown);
           if (!isDown) onHoverSignal?.(null);
@@ -388,11 +404,13 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             {/* Button cap */}
             <circle
               data-testid={`ide-hw-btn-${i}`}
+              data-on={btn[i] == null ? 'unavailable' : String(btn[i])}
+              aria-label={`BTN${BTN_LABELS[i]}: ${isKnown || isCovered ? displayValue(btn[i]) : 'not in this recording'}`}
               className={styles.btnCircle}
               cx={cx}
               cy={cy}
               r={9}
-              fill={isPressed ? 'url(#btnGradOn)' : 'url(#btnGradOff)'}
+              fill={!isKnown && isCovered ? 'url(#ledLensUnmapped)' : isPressed ? 'url(#btnGradOn)' : 'url(#btnGradOff)'}
               stroke={isPressed ? 'rgba(229,62,62,0.8)' : 'rgba(255,255,255,0.12)'}
               strokeWidth="1"
               style={{ pointerEvents: 'none' }}
@@ -411,7 +429,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               className={styles.btnLabel}
               style={{ pointerEvents: 'none' }}
             >
-              {BTN_LABELS[i]}
+              {`${BTN_LABELS[i]}${isKnown || !isCovered ? '' : btn[i] == null ? ' —' : ` ${btn[i]}`}`}
             </text>
           </g>
         );
@@ -426,8 +444,10 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         const trackW = 14;
         const trackH = 22;
         const isOn = sw[idx] === 1;
+        const isKnown = sw[idx] === 0 || sw[idx] === 1;
         const isMapped = mappedSw[idx];
-        const handleY = isOn ? trackY + 1 : trackY + trackH - 11;
+        const isCovered = recordedResources?.sw[idx] ?? true;
+        const handleY = !isKnown && isCovered ? trackY + (trackH - 10) / 2 : isOn ? trackY + 1 : trackY + trackH - 11;
         const isActiveSw = activeSignal?.type === 'sw' && activeSignal.index === idx;
 
         const swGroupClassName = [
@@ -440,7 +460,8 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
           <g
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
-            data-on={isOn ? '1' : '0'}
+            data-on={sw[idx] == null ? 'unavailable' : String(sw[idx])}
+            aria-label={`SW${idx}: ${isKnown || isCovered ? displayValue(sw[idx]) : 'not in this recording'}`}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}
             opacity={isMapped ? 1 : 0.82}
@@ -540,7 +561,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
               className={styles.swLabel}
               style={{ pointerEvents: 'none' }}
             >
-              {`SW${idx}`}
+              {`SW${idx}${isKnown || !isCovered ? '' : sw[idx] == null ? ' —' : ` ${sw[idx]}`}`}
             </text>
           </g>
         );

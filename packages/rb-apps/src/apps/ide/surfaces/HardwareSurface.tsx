@@ -35,7 +35,7 @@ import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
 import type { RuntimeLogicValue } from '../sim/simTypes';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import { useIoBus } from '../ioBus';
-import { HardwareBoard2D } from '../components/HardwareBoard2D';
+import { HardwareBoard2D, type BoardDisplayValue } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
 import { PinPlannerPanel } from '../components/PinPlannerPanel';
 import { useBoardSignal } from '../BoardSignalContext';
@@ -219,6 +219,8 @@ export interface HardwareSurfaceProps {
   health: ProjectHealth;
   workflowAuthority?: ProjectWorkflowAuthority;
   runtimeSim?: RuntimeSimState;
+  selectedTickOverride?: number | null;
+  onSelectedTickChange?: (tick: number) => void;
   onSimSetInput?: (nodeId: string, v: 0 | 1) => void;
   onGenerateBringUpVectors: () => void;
   onOpenExport: () => void;
@@ -286,6 +288,25 @@ function resolveBoardControlAlias(pin: string | undefined): string | null {
   const trimmed = pin?.trim() ?? '';
   if (!trimmed) return null;
   return resolveBasys3BoardAlias(trimmed) ?? trimmed.toUpperCase();
+}
+
+const BOARD_BUTTON_ALIASES = ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'] as const;
+
+/**
+ * The board resource a mapping row feeds, in the direction that resource has. One answer for
+ * every projection of the simulated board: the values it fills, the state-table rows it lists
+ * and the resources the drawing may call unavailable. Those three used to decide separately,
+ * which is how the drawing and its own table came to disagree.
+ */
+function boardResourceForRow(row: { pin?: string; direction?: string }): { kind: 'sw' | 'ld' | 'btn'; index: number } | null {
+  const alias = (resolveBoardControlAlias(row.pin) ?? '').toUpperCase();
+  const sw = /^SW(\d+)$/.exec(alias);
+  if (sw && row.direction === 'in' && Number(sw[1]) < 16) return { kind: 'sw', index: Number(sw[1]) };
+  const ld = /^LD(\d+)$/.exec(alias);
+  if (ld && row.direction === 'out' && Number(ld[1]) < 16) return { kind: 'ld', index: Number(ld[1]) };
+  const button = (BOARD_BUTTON_ALIASES as readonly string[]).indexOf(alias);
+  if (button >= 0 && row.direction === 'in') return { kind: 'btn', index: button };
+  return null;
 }
 
 function describeBoardControl(pin: string | undefined): string {
@@ -437,6 +458,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   health,
   workflowAuthority,
   runtimeSim,
+  selectedTickOverride,
+  onSelectedTickChange,
   onSimSetInput,
   onGenerateBringUpVectors,
   onOpenExport,
@@ -1937,16 +1960,31 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       })),
     [verifyLastRun?.reportHash, verifyLastRun?.waveform]
   );
-  const simulatedBoardTrace = sim.trace?.length ? sim.trace : recordedVerifyTrace;
+  // A recording owns the replay even when an independent exploration trace exists.
+  const isRecordedBoardPreview = Boolean(verifyLastRun);
+  const simulatedBoardTrace = useMemo(() => {
+    if (!verifyLastRun) return sim.trace ?? [];
+    return verifyLastRun.waveform.map((sample) => {
+      // Only logic values are replayed. Anything else stays unrecorded rather than reading as 0.
+      const signals: Record<string, RuntimeLogicValue> = {};
+      for (const [key, raw] of Object.entries(sample.signals)) {
+        const value = String(raw);
+        if (value === '0' || value === '1') signals[key] = value === '1' ? 1 : 0;
+        else if (value === 'X' || value === 'Z') signals[key] = value;
+      }
+      return { ...sample, signals };
+    });
+  }, [verifyLastRun, sim.trace]);
   // The twin follows the selected case/tick (Cases, Timing, Waveform playback):
   // the LEDs and switches show the run's state at that tick, not a stale slider.
-  const followedCaseTick = useEngineeringSelection((state) =>
+  const engineeringCaseTick = useEngineeringSelection((state) =>
     state.selected?.kind === 'case-tick' ? state.selected.tick : null
   );
+  const followedCaseTick = selectedTickOverride ?? engineeringCaseTick;
   useEffect(() => {
     if (followedCaseTick == null) return;
     const index = simulatedBoardTrace.findIndex((sample) => sample.tick === followedCaseTick);
-    if (index >= 0) setSimulatedBoardTraceIndex(index);
+    setSimulatedBoardTraceIndex(index);
   }, [followedCaseTick, simulatedBoardTrace]);
   const boundedSimulatedBoardTraceIndex = Math.min(
     simulatedBoardTraceIndex,
@@ -1954,13 +1992,24 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const selectedSimulatedBoardSample =
     simulatedBoardTrace[boundedSimulatedBoardTraceIndex] ?? null;
+  const selectBoardSample = (index: number) => {
+    setSimulatedBoardTraceIndex(index);
+    const sample = simulatedBoardTrace[index];
+    if (sample) onSelectedTickChange?.(sample.tick);
+    if (sample && verifyLastRun) useEngineeringSelection.getState().select(
+      { kind: 'case-tick', scenarioId: verifyLastRun.scenarioId, tick: sample.tick }, 'board-io'
+    );
+  };
+  const boardValuesStale = health.dirtySinceVerify || scenarioDrifted;
 
   const simulatedBoardState = useMemo(() => {
-    const next = {
-      sw: [...ioBus.state.sw],
-      ld: [...ioBus.state.ld],
-      btn: [...ioBus.state.btn],
+    const next: { sw: BoardDisplayValue[]; ld: BoardDisplayValue[]; btn: BoardDisplayValue[] } = {
+      sw: Array.from({ length: 16 }, () => null),
+      ld: Array.from({ length: 16 }, () => null),
+      btn: Array.from({ length: 5 }, () => null),
     };
+    if (isRecordedBoardPreview && boardValuesStale) return next;
+    if (!isRecordedBoardPreview && simulatedBoardTrace.length === 0) return ioBus.state;
     if (!selectedSimulatedBoardSample) return next;
     const signalEntries = Object.entries(selectedSimulatedBoardSample.signals);
     for (const row of mappingRows) {
@@ -1978,12 +2027,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       );
       const matched = signalEntries.find(([key]) => lookupKeys.has(normalizeIoSignalKey(key)));
       if (!matched) continue;
-      const value = matched[1] === 1 ? 1 : 0;
-      const alias = resolveBoardControlAlias(row.pin);
-      const switchMatch = /^SW(\d+)$/i.exec(alias ?? '');
-      const ledMatch = /^LD(\d+)$/i.exec(alias ?? '');
-      if (switchMatch && row.direction === 'in') next.sw[Number(switchMatch[1])] = value;
-      if (ledMatch && row.direction === 'out') next.ld[Number(ledMatch[1])] = value;
+      const resource = boardResourceForRow(row);
+      if (resource) next[resource.kind][resource.index] = matched[1];
     }
     return next;
   }, [
@@ -1992,7 +2037,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     ioBus.state.sw,
     mappingRows,
     selectedSimulatedBoardSample,
+    isRecordedBoardPreview,
+    simulatedBoardTrace.length,
+    boardValuesStale,
   ]);
+  const displayedBoardState = hwMode === 'live' ? simulatedBoardState : ioBus.state;
+  // The resources the recorded projection covers: exactly the mapping rows that fill it. A
+  // covered resource without a value is a missing sample; an uncovered one is simply unused.
+  const recordedResources = useMemo(() => {
+    const covered = {
+      sw: Array.from({ length: 16 }, () => false),
+      ld: Array.from({ length: 16 }, () => false),
+      btn: Array.from({ length: 5 }, () => false),
+    };
+    for (const row of mappingRows) {
+      const resource = boardResourceForRow(row);
+      if (resource) covered[resource.kind][resource.index] = true;
+    }
+    return covered;
+  }, [mappingRows]);
+  const selectedBoardTick = selectedSimulatedBoardSample?.tick ?? followedCaseTick;
+  const simulatedBoardSourceLabel = isRecordedBoardPreview ? 'Recorded simulated state' : 'Exploration I/O state';
 
   // Values for the board twin: only mapped resources, only from the recorded run
   // at the followed tick (the last sample when nothing is followed). Unmapped
@@ -2032,7 +2097,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     return { sw, ld };
   }, [followedCaseTick, mappingRows, recordedVerifyTrace]);
   const boardValueTick = followedCaseTick ?? recordedVerifyTrace[recordedVerifyTrace.length - 1]?.tick;
-  const boardValuesStale = health.dirtySinceVerify || scenarioDrifted;
   const boardHasSelectedSample = recordedVerifyTrace.some((sample) => sample.tick === boardValueTick);
 
   interface SignalChangeEvent {
@@ -2047,13 +2111,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (!simulatedBoardTrace.length) return [];
     const events: SignalChangeEvent[] = [];
     const seenEvents = new Set<string>();
-    let prev: Record<string, 0 | 1> = {};
+    let prev: Record<string, RuntimeLogicValue> = {};
     for (const sample of simulatedBoardTrace) {
       for (const [k, v] of Object.entries(sample.signals)) {
         const meta = nodeKeyToMeta.get(k) ?? nodeKeyToMeta.get(normalizeIoSignalKey(k));
         if (!meta) continue;
         const was = prev[k];
-        if (was !== undefined && was !== v) {
+        if ((was === 0 || was === 1) && (v === 0 || v === 1) && was !== v) {
           const eventKey = `${sample.tick}:${meta.direction}:${meta.label}:${was}:${v}`;
           if (!seenEvents.has(eventKey)) {
             seenEvents.add(eventKey);
@@ -2182,23 +2246,67 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--live" testId="ide-hw-live-dock">
-      <header className="ide-workbench-placeholder-header">
+      <header className="ide-hw-live-dock-header">
         <h3>Simulated board preview</h3>
         <IdeStatusPill tone={simulatedBoardTrace.length > 0 ? 'ok' : 'idle'}>
-          {simulatedBoardTrace.length > 0 ? 'Recorded trace' : 'No trace'}
+          {isRecordedBoardPreview ? 'Recorded trace' : simulatedBoardTrace.length > 0 ? 'Exploration trace' : 'Exploration I/O'}
         </IdeStatusPill>
       </header>
+      {/* Stepping the recording leads: it is the one operation this dock exists for, and at
+          1280x650 it sat 580px down, below the trust note and the facts about the run. */}
+      {simulatedBoardTrace.length > 0 ? (
+        <div className="ide-hw-simulated-trace" data-testid="ide-hw-simulated-board-trace">
+          <div className="ide-inline-actions">
+            <IdeButton
+              tone="ghost"
+              onClick={() => selectBoardSample(Math.max(0, boundedSimulatedBoardTraceIndex - 1))}
+              disabled={boundedSimulatedBoardTraceIndex <= 0}
+              testId="ide-hw-simulated-board-prev"
+            >
+              Previous
+            </IdeButton>
+            {/* Named the way Simulate's run line names it - the tick, then the position - so the
+                same sample is not "case 2" in one workspace and "Case 3" in the next. */}
+            <strong data-testid="ide-hw-simulated-board-readout">
+              {selectedSimulatedBoardSample ? `t${selectedSimulatedBoardSample.tick} · ${boundedSimulatedBoardTraceIndex + 1} / ${simulatedBoardTrace.length}` : `No sample at tick ${selectedBoardTick}`}
+            </strong>
+            <IdeButton
+              tone="ghost"
+              onClick={() => selectBoardSample(Math.min(simulatedBoardTrace.length - 1, boundedSimulatedBoardTraceIndex + 1))}
+              disabled={boundedSimulatedBoardTraceIndex >= simulatedBoardTrace.length - 1}
+              testId="ide-hw-simulated-board-next"
+            >
+              Next
+            </IdeButton>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, simulatedBoardTrace.length - 1)}
+            value={Math.max(0, boundedSimulatedBoardTraceIndex)}
+            onChange={(event) => selectBoardSample(Number(event.target.value))}
+            aria-label={isRecordedBoardPreview ? 'Selected recorded trace case' : 'Selected exploration trace case'}
+            data-testid="ide-hw-simulated-board-trace-scrubber"
+          />
+        </div>
+      ) : null}
       <IdeCallout tone="info" title="Browser simulation only" testId="ide-hw-simulated-board-trust">
         <strong>Not observed hardware behavior</strong>
         <p className="ide-copy ide-copy--flush">
-          This preview projects the selected Verify tick onto mapped Basys3 controls. It is not
-          programming or physical-board evidence.
+          {isRecordedBoardPreview
+            ? 'This preview projects the selected recorded tick onto mapped Basys3 controls. Missing observations remain unavailable.'
+            : 'This preview shows browser exploration values. It is not a recorded verification result.'}
+          {' '}It is not programming or physical-board evidence.
         </p>
       </IdeCallout>
       <div className="ide-kv-list">
+        <div className="ide-kv-row" data-testid="ide-hw-simulated-board-source">
+          <span>{isRecordedBoardPreview ? 'Recorded scenario' : 'Source'}</span>
+          <code>{verifyLastRun ? `${verifyLastRun.scenarioName} · ${verifyLastRun.runId ?? verifyLastRun.reportHash}` : 'Exploration'}</code>
+        </div>
         <div className="ide-kv-row">
-          <span>Selected run tick</span>
-          <code>{selectedSimulatedBoardSample?.tick ?? 'Not run'}</code>
+          <span>{isRecordedBoardPreview ? 'Selected run tick' : 'Exploration tick'}</span>
+          <code data-testid="ide-hw-simulated-board-tick">{selectedBoardTick ?? 'Not recorded'}</code>
         </div>
         <div className="ide-kv-row">
           <span>Mapped I/O</span>
@@ -2221,44 +2329,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span>{vectorsCount}</span>
         </div>
       </div>
-      {simulatedBoardTrace.length > 0 ? (
-        <div className="ide-hw-simulated-trace" data-testid="ide-hw-simulated-board-trace">
-          <div className="ide-inline-actions">
-            <IdeButton
-              tone="ghost"
-              onClick={() => setSimulatedBoardTraceIndex((index) => Math.max(0, index - 1))}
-              disabled={boundedSimulatedBoardTraceIndex === 0}
-              testId="ide-hw-simulated-board-prev"
-            >
-              Previous
-            </IdeButton>
-            <strong data-testid="ide-hw-simulated-board-readout">
-              Case {boundedSimulatedBoardTraceIndex + 1} / {simulatedBoardTrace.length}
-            </strong>
-            <IdeButton
-              tone="ghost"
-              onClick={() =>
-                setSimulatedBoardTraceIndex((index) =>
-                  Math.min(simulatedBoardTrace.length - 1, index + 1)
-                )
-              }
-              disabled={boundedSimulatedBoardTraceIndex >= simulatedBoardTrace.length - 1}
-              testId="ide-hw-simulated-board-next"
-            >
-              Next
-            </IdeButton>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={Math.max(0, simulatedBoardTrace.length - 1)}
-            value={boundedSimulatedBoardTraceIndex}
-            onChange={(event) => setSimulatedBoardTraceIndex(Number(event.target.value))}
-            aria-label="Selected Verify trace case"
-            data-testid="ide-hw-simulated-board-trace-scrubber"
-          />
-        </div>
-      ) : null}
       <div className="ide-inline-actions">
         <IdeButton tone="secondary" onClick={onOpenVerify}>Run Verify</IdeButton>
         <IdeButton tone="ghost" onClick={onGenerateBringUpVectors}>Gen Vectors</IdeButton>
@@ -2815,15 +2885,21 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ? bringupInspector
         : proofInspector;
   const liveHardwareRows = useMemo(
-    () => [
-      ...Array.from({ length: 8 }, (_, index) => [`SW${index}`, String(ioBus.state.sw[index] ?? 0)]),
+    () => {
+      const covered = new Set<string>();
+      recordedResources.sw.forEach((on, index) => { if (on) covered.add(`SW${index}`); });
+      recordedResources.btn.forEach((on, index) => { if (on) covered.add(BOARD_BUTTON_ALIASES[index]); });
+      recordedResources.ld.forEach((on, index) => { if (on) covered.add(`LD${index}`); });
+      return [
+      ...Array.from({ length: 16 }, (_, index) => [`SW${index}`, String(displayedBoardState.sw[index] ?? 'Not recorded')]),
       ...Array.from({ length: 5 }, (_, index) => [
-        ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'][index],
-        String(ioBus.state.btn[index] ?? 0),
+        BOARD_BUTTON_ALIASES[index],
+        String(displayedBoardState.btn[index] ?? 'Not recorded'),
       ]),
-      ...Array.from({ length: 8 }, (_, index) => [`LD${index}`, String(ioBus.state.ld[index] ?? 0)]),
-    ],
-    [ioBus.state.btn, ioBus.state.ld, ioBus.state.sw]
+      ...Array.from({ length: 16 }, (_, index) => [`LD${index}`, String(displayedBoardState.ld[index] ?? 'Not recorded')]),
+      ].filter(([alias]) => !isRecordedBoardPreview || covered.has(alias));
+    },
+    [displayedBoardState, recordedResources, isRecordedBoardPreview]
   );
   const hardwareCommandDescription =
     hwMode === 'map'
@@ -3042,7 +3118,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       inspector={
         hwMode === 'map' ? null : <>
           {hwMode !== 'map' && (
-            <IdeInspectorSection title="Live Hardware State" defaultOpen>
+            <IdeInspectorSection title={hwMode === 'live' ? simulatedBoardSourceLabel : 'Exploration I/O state'} defaultOpen>
+              {hwMode === 'live' && <p className="ide-copy" data-testid="ide-hardware-state-source">
+                {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Stale recording; values unavailable for current mapping' : ''}` : 'Browser exploration · no recorded run'}
+              </p>}
               <IdeDataTable
                 columns={['Signal', 'Value']}
                 rows={liveHardwareRows}
@@ -3965,11 +4044,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
           <div className="ide-hw-board-inner">
             <HardwareBoard2D
-              sw={hwMode === 'live' ? simulatedBoardState.sw : ioBus.state.sw}
-              ld={hwMode === 'live' ? simulatedBoardState.ld : ioBus.state.ld}
-              btn={hwMode === 'live' ? simulatedBoardState.btn : ioBus.state.btn}
+              sw={displayedBoardState.sw}
+              ld={displayedBoardState.ld}
+              btn={displayedBoardState.btn}
               mappedSw={mappedSw}
               mappedLd={mappedLd}
+              recordedResources={hwMode === 'live' && isRecordedBoardPreview ? recordedResources : undefined}
               mismatchedLd={mismatchedLd}
               highlightedSw={currentStepHighlights.sw}
               highlightedLd={currentStepHighlights.ld}
