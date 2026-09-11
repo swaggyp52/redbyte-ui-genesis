@@ -3762,6 +3762,7 @@ export const IdeApp: React.FC = () => {
                   setStarterPickerOpen(false);
                   handleOpenExample(exampleId);
                 }}
+                compact
                 testId="ide-project-examples-browser"
               />
             </div>

@@ -1597,60 +1597,53 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     failureTruth.condition === 'ready'
       ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are not proven in RedByte and must be captured as external E1/E2/E3 evidence.'
       : failureTruthMessage;
-  const mappingReadyFollowUp = useMemo(() => {
+  /* Once every required signal is mapped the next step is Build & Export - but what Build & Export
+     will offer depends on the evidence, and the Board says which rather than sending a reader to
+     find out. "Draft" and "checked" are Package's own words for its two trust states, so the two
+     surfaces describe the same package the same way. */
+  const mappingReadyNext = useMemo<{ headline: string; reason: string | null }>(() => {
     switch (failureTruth.condition) {
-      case 'design-blocked':
+      case 'ready':
+        return { headline: 'Inspect the checked package in Build & Export', reason: null };
+      case 'export-missing':
         return {
-          commandStrip:
-            'Pin mapping is complete, but the circuit still has a Design blocker. Repair Design before relying on Hardware or Export.',
-          headerHint: 'Mapping complete - Design repair required before Export.',
+          headline: 'Generate the checked package in Build & Export',
+          reason: 'The recorded Compare run is current and passing.',
+        };
+      case 'export-stale':
+        return {
+          headline: 'Regenerate the package in Build & Export',
+          reason: 'The last generated package predates the current design.',
         };
       case 'verify-not-run':
         return {
-          commandStrip:
-            'Pin mapping is complete. Open Simulate to create current evidence before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — open Simulate to create trusted export evidence.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'No run is recorded for this design yet. Run a scenario in Simulate for a checked package.',
         };
       case 'verify-stale':
         return {
-          commandStrip:
-            'Pin mapping is complete, but Verify evidence is stale. Re-run Verify before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — Verify evidence is stale. Open Simulate to refresh before export.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The recorded run is stale. Rerun it in Simulate for a checked package.',
         };
       case 'trace-only':
         return {
-          commandStrip:
-            'Pin mapping is complete. Run Compare in Verify to create current evidence before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — run Compare checks in Verify for trusted export evidence.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The recorded run compared no expected outputs. Compare checks in Simulate for a checked package.',
         };
       case 'assertions-differ':
         return {
-          commandStrip:
-            'Pin mapping is complete, but the latest Compare run differs. Open Simulate to inspect the mismatch before you rely on Hardware or Export.',
-          headerHint:
-            'Mapping complete — latest Compare run differs. Open Simulate to inspect the mismatch before export.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The latest Compare run differs. Inspect the mismatch in Simulate.',
         };
       case 'mapping-review':
         return {
-          commandStrip:
-            'Pin mapping is complete, but the last passing comparison used incomplete mapping. Re-run Compare in Verify so the evidence matches the current board bindings.',
-          headerHint:
-            'Mapping complete — rerun Compare in Verify so the evidence matches the current mapping.',
-        };
-      case 'ready':
-        return {
-          commandStrip:
-            'E0 only: pin mapping, Verify Compare, and Export are current. RedByte does not prove Vivado build, bitstream programming, or board observation; E1/E2/E3 remain external.',
-          headerHint:
-            'Mapping complete - E0 export package is current; E1/E2/E3 proof stays external.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The last passing Compare used a different mapping. Rerun Compare in Simulate for a checked package.',
         };
       default:
-        return {
-          commandStrip: failureTruthMessage,
-          headerHint: `Mapping complete — ${failureTruthPrimaryCtaLabel.toLowerCase()} to continue.`,
-        };
+        return { headline: 'Inspect the package in Build & Export', reason: null };
     }
-  }, [failureTruth.condition, failureTruthMessage, failureTruthPrimaryCtaLabel]);
+  }, [failureTruth.condition]);
   const dominantPrimaryAction = useMemo(() => {
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
@@ -3439,22 +3432,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </div>
               </div>
               <div className="rb-board-next" data-testid="ide-hw-mapping-next-action">
-                <span>
-                  {mappingHandoffBlockedByDesign
-                    ? 'Mapping complete · Design blocked'
-                    : mappingReady
-                      ? 'Next'
-                      : 'Next action'}
+                <span className="rb-board-next-text">
+                  <span>
+                    {mappingHandoffBlockedByDesign
+                      ? 'Mapping complete · Design blocked'
+                      : mappingReady
+                        ? 'Next'
+                        : 'Next action'}
+                  </span>
+                  <strong>
+                    {mappingHandoffBlockedByDesign
+                      ? 'Repair the circuit in Design'
+                      : mappingReady
+                      ? mappingReadyNext.headline
+                      : nextMappingIssueRow
+                        ? (conflictingMappingRows.includes(nextMappingIssueRow) ? 'Resolve ' : 'Assign ') + formatProjectSignalName(nextMappingIssueRow)
+                        : 'Review required assignments'}
+                  </strong>
+                  {mappingReady && !mappingHandoffBlockedByDesign && mappingReadyNext.reason ? (
+                    <small data-testid="ide-hw-mapping-next-reason">{mappingReadyNext.reason}</small>
+                  ) : null}
                 </span>
-                <strong>
-                  {mappingHandoffBlockedByDesign
-                    ? 'Repair the circuit in Design'
-                    : mappingReady
-                    ? 'Inspect the package in Build & Export'
-                    : nextMappingIssueRow
-                      ? (conflictingMappingRows.includes(nextMappingIssueRow) ? 'Resolve ' : 'Assign ') + formatProjectSignalName(nextMappingIssueRow)
-                      : 'Review required assignments'}
-                </strong>
                 <div data-testid="ide-hardware-next-primary">
                   <IdeButton
                     tone="primary"

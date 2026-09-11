@@ -2392,13 +2392,23 @@
 
 .ide-modal {
   width: min(560px, 100%);
+  /* A dialog is bounded by the window it opens in, and its body is what scrolls: measured at
+     1280x720 the starter picker was 4392px tall inside a backdrop that clips at 720px with no
+     scrollable ancestor, so not one of its Load buttons could be reached. */
+  max-height: calc(100vh - 2 * var(--ide-space-4));
   border: 1px solid rgba(138, 170, 200, 0.48);
   border-radius: var(--ide-radius-m);
   background: linear-gradient(180deg, rgba(20, 34, 50, 0.98), rgba(12, 20, 30, 0.98));
   box-shadow: var(--rb-shadow-2);
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--ide-space-3);
   padding: var(--ide-space-4);
+}
+
+/* The starter picker is a library, not a confirmation: give its cards room for columns. */
+.ide-modal:has(> .ide-modal-body > .ide-project-starter-picker) {
+  width: min(1040px, 100%);
 }
 
 .ide-modal-title {
@@ -2409,6 +2419,8 @@
 
 .ide-modal-body {
   color: var(--ide-text-muted);
+  min-height: 0;
+  overflow: auto;
 }
 
 .ide-modal-actions {

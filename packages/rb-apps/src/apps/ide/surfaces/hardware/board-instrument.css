@@ -42,6 +42,11 @@
 .ide-root .rb-board-metrics.is-ready > div:first-child strong { color: var(--wb-ok); }
 .ide-root .rb-board-next { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--wb-text-sm); color: var(--wb-text-2); }
 .ide-root .rb-board-next p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The next step and, when mapping is complete, what Build & Export will offer and why. The header
+   already wraps, so the block takes its own row when the reason needs one; inside it the reason
+   wraps rather than pushing the button off the row. */
+.ide-root .rb-board-next-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 34rem; }
+.ide-root .rb-board-next-text > small { color: var(--wb-text-3); font-size: var(--wb-text-xs); line-height: 1.35; white-space: normal; }
 .ide-root .rb-board-next .ide-button,
 .ide-root .rb-board-after .ide-button,
 .ide-root .rb-board-editor .ide-button,
