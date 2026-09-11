@@ -6445,26 +6445,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         <VerifyResultRegion>
         {/* ── Result / failure context panels ────────────────────────────── */}
-        {drawerOpen && hasSessionFailureEvidence && failureDiagnosis.length > 0 && (
-          <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
-            <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">What to fix first</span>
-            {failureDiagnosis.map((item) => (
-              <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
-                <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
-                <span className="ide-verify-fail-diagnosis-action">{item.action}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
+        {/* The run line is the failure's home: FAIL, the first mismatch, the Fail navigation and the
+            way into the circuit. "What to fix first" restated the same mismatch in a second card
+            above the instrument - at 1280x650, with this disclosure's row, 113px of a failed run's
+            workspace before the first lane, and the lanes had 65px. The diagnosis lives inside
+            the disclosure now, one 28px row above the instrument until the reader asks. */}
         {drawerOpen
           && hasSessionFailureEvidence
-          && (verifyHint || isStarterScenario || (mappingComplete !== false && onGoToExport)) && (
+          && (failureDiagnosis.length > 0 || verifyHint || isStarterScenario || (mappingComplete !== false && onGoToExport)) && (
           <details className="ide-verify-failure-context" data-testid="ide-verify-failure-context">
             <summary className="ide-verify-failure-context__summary">
               More about this failure
             </summary>
             <div className="ide-verify-failure-context__body">
+              {failureDiagnosis.length > 0 ? (
+                <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
+                  <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">What to fix first</span>
+                  {failureDiagnosis.map((item) => (
+                    <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
+                      <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
+                      <span className="ide-verify-fail-diagnosis-action">{item.action}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {verifyHint ? (
                 <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
                   {verifyHint}
@@ -6963,11 +6967,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       ? `Scenario: ${lastRun.scenarioName}`
                       : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
                 }
-                guidanceItems={
-                  !runProofIsStale && sessionSignalsAssertionFailure
-                    ? ['The waveform is still valid simulation evidence. Open Checks or inspect the first mismatch without losing the replay.']
-                    : undefined
-                }
+                /* No guidance sentence on a failed run: the headline names what happened, the
+                   Fail navigation and "Inspect with circuit" beside it are the way on, and in the
+                   investigation layout at 1280x650 the sentence wrapped to five lines inside a
+                   50px run line that then scrolled to reach its own buttons. */
                 metrics={(() => {
                   const list: VerifyResultsMetric[] = [];
                   list.push({
