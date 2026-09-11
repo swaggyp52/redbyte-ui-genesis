@@ -27,6 +27,21 @@ Current validation and remaining work are maintained in
 existing tracked `.redbyte/product-immersion/p2-5-operational-workbench/RESUME.md`.
 Historical implementation narratives below are evidence of earlier states.
 
+**Closed 2026-09-11 at `79d0b1144`** (pushed; PR Fast Checks and Deploy to Cloudflare
+Pages both SUCCESS; preview `/os/version.json` reports the same head and `/os/` serves
+200). The campaign's last open item - the simulated Board drawing the selected recorded
+tick while its state table read the unrecorded I/O bus - is delivered: one resolver
+answers which board resource a mapping row feeds, for the values, the state table and
+the drawing alike. Closing it exposed three more, each measured first and each with an
+assertion that is red without its fix: returning to Simulate from a stepped Board
+crashed the workspace (its shared tick was bound both ways and echoed a stale restored
+tick into the commit that adopted the inbound one - a defect of that binding, which
+Design's debug-tick stepping also writes); the drawing marked 26 unmapped resources as
+unrecorded; and the dock measured 1.49:1 on its heading with its stepping control drawn
+below an unscrollable clip at 1280x650. Both journeys pass against the deployed bundle.
+Not re-run at this head: `verify:gates`, `classroom:gate`, `repo:status` - their last
+measured results and classifications are in `astra-completion/final-delivery.json`.
+
 After the final candidate build/push verification, the next technical target is the
 obsolete Project catalog navigation consumer in `ide:gate:examples-contract`, then
 rerunning the complete classroom gate chain. The primary experiment and operational
