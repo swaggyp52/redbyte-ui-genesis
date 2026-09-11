@@ -1,8 +1,8 @@
 /* Recorded Board readout uses the same light support surfaces as mapping.
    The old dark-table overrides and row-number group labels have been removed. */
-.ide-root [data-testid='ide-hardware-live-state-table'] table { width: 100%; border-collapse: collapse; }
-.ide-root [data-testid='ide-hardware-live-state-table'] :is(th, td) { padding: 5px 8px; color: var(--wb-text); font: var(--wb-text-sm) / 1.5 var(--wb-font-mono); text-align: left; border-bottom: 1px solid var(--wb-border); }
-.ide-root [data-testid='ide-hardware-live-state-table'] th { background: var(--wb-surface-2); font-weight: 600; }
+.ide-root :is([data-testid='ide-hardware-live-state-table'], [data-testid='ide-hw-bringup-step-table']) table { width: 100%; border-collapse: collapse; }
+.ide-root :is([data-testid='ide-hardware-live-state-table'], [data-testid='ide-hw-bringup-step-table']) :is(th, td) { padding: 5px 8px; color: var(--wb-text); font: var(--wb-text-sm) / 1.5 var(--wb-font-mono); text-align: left; border-bottom: 1px solid var(--wb-border); }
+.ide-root :is([data-testid='ide-hardware-live-state-table'], [data-testid='ide-hw-bringup-step-table']) th { background: var(--wb-surface-2); font-weight: 600; }
 .ide-root [data-testid='ide-hardware-state-source'] { color: var(--wb-text-2); overflow-wrap: anywhere; }
 .ide-root [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--live { background: var(--wb-surface); color: var(--wb-text); border-color: var(--wb-border-strong); box-shadow: none; }
 /* The dock's own heading. It no longer carries .ide-workbench-placeholder-header, whose two OS-era

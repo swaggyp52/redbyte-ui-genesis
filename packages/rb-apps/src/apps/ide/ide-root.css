@@ -7601,14 +7601,6 @@ details[open] summary .details-arrow {
   padding-top: var(--ide-space-1);
 }
 
-/* Dock header: reduce weight, it's navigation not a title */
-.ide-workbench-placeholder-header h3 {
-  font-size: var(--rb-text-meta);
-  font-weight: 500;
-  color: rgba(140, 175, 210, 0.6);
-  text-transform: none;
-  letter-spacing: 0;
-}
 
 /* Hero status message: clear, not cramped */
 
@@ -11096,29 +11088,31 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-hw-event-label { color: rgba(160, 195, 230, 0.8); }
 .ide-hw-event-change { color: rgba(244, 185, 66, 0.85); margin-left: auto; }
 
-/* Bringup step */
+/* Bringup step - drawn on the light dock, in the workbench's own text colours. The dark strip,
+   the pale uppercase counter and the blue-on-blue tick chip were the dark shell's; measured on
+   the light dock they read 4.3:1, 1:1 and 2.3:1. */
 .ide-hw-step-header {
   display: flex; align-items: center; gap: 8px;
   padding: 8px var(--ide-space-3);
-  background: rgba(3, 8, 19, 0.98);
-  border-bottom: 1px solid rgba(18, 44, 80, 0.45);
+  background: var(--wb-surface-2);
+  border-bottom: 1px solid var(--wb-border);
 }
 .ide-hw-step-counter {
-  font-size: var(--rb-text-micro); font-weight: 700; color: rgba(80, 120, 160, 0.6);
-  letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--rb-font-mono);
+  font-size: var(--rb-text-meta); font-weight: 600; color: var(--wb-text-2);
+  letter-spacing: 0; text-transform: none; font-family: var(--rb-font-ui);
 }
 .ide-hw-step-tick {
   font-size: var(--rb-text-meta); font-family: var(--rb-font-mono);
-  color: rgba(56, 189, 248, 0.8); background: rgba(56, 189, 248, 0.08);
+  color: var(--wb-text); background: var(--wb-surface); border: 1px solid var(--wb-border-strong);
   padding: 1px 6px; border-radius: 3px; margin-left: auto;
 }
 .ide-hw-step-instruction {
   padding: 10px var(--ide-space-3);
-  font-size: var(--rb-text-body); color: rgba(180, 210, 240, 0.85); line-height: 1.5;
+  font-size: var(--rb-text-body); color: var(--wb-text); line-height: 1.5;
 }
 .ide-hw-step-nav {
   display: flex; gap: 8px; padding: var(--ide-space-2) var(--ide-space-3);
-  border-top: 1px solid rgba(18, 44, 80, 0.35);
+  border-top: 1px solid var(--wb-border);
 }
 
 /* Confidence checklist */
@@ -11131,20 +11125,25 @@ details[open].ide-export-evidence-details > summary::before {
   padding: 5px 0; font-size: var(--rb-text-meta);
 }
 .ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(46,196,182,0.9); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(80,120,160,0.5); }
-.ide-hw-confidence-label { color: rgba(160,195,230,0.8); }
+.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: var(--wb-text-3); }
+.ide-hw-confidence-label { color: var(--wb-text); }
 
-/* Workbench placeholder header — used in all 3 Hardware dock panels */
+/* Dock panel header (Board's check and pre-flight docks, Import's workflow rail). One owner: it
+   sits on the light support surface and its heading reads in the workbench's own text colour.
+   The OS-era versions of this rule painted a near-black strip with a pale-blue h3 - and two later
+   !important rules re-painted every matching h3 rgba(130,170,210,0.45), which measured 1.49:1 on
+   the panels this class is actually used on. */
 .ide-workbench-placeholder-header {
   display: flex; align-items: center; gap: 8px;
   padding: 8px var(--ide-space-3);
-  background: rgba(3, 8, 19, 0.98);
-  border-bottom: 1px solid rgba(18, 44, 80, 0.5);
+  background: var(--wb-surface-2);
+  border-bottom: 1px solid var(--wb-border);
 }
 .ide-workbench-placeholder-header h3 {
-  font-size: var(--rb-text-meta); font-weight: 700;
+  margin: 0;
+  color: var(--wb-text);
+  font: 600 var(--wb-text-sm) / 1.3 var(--wb-font-ui);
   letter-spacing: 0; text-transform: none;
-  color: rgba(80, 130, 180, 0.8); margin: 0;
 }
 
 /* ── Lab Starters Gallery (Sprint C-2) ── */
@@ -16257,11 +16256,16 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 /* Left dock — stage panel reads as part of the workflow spine */
+/* The Board's support docks sit on the light support surface like every other dock. This rule
+   used to paint them rgba(8,18,30,0.92) - the dark shell the rest of the workbench left - which
+   is why their headings had been painted pale with !important and read at 1.49:1 once the
+   heading became light. */
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-surface-panel {
-  border-radius: 12px;
-  border: 1px solid rgba(62, 100, 132, 0.42);
-  background: rgba(8, 18, 30, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-radius: var(--wb-radius);
+  border: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  box-shadow: none;
 }
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--map {
   border-left: 3px solid rgba(56, 189, 248, 0.65);
@@ -16429,14 +16433,6 @@ details[open].ide-export-evidence-details > summary::before {
   font-size: var(--rb-text-meta) !important;
   opacity: 0.62 !important;
   min-height: 26px !important;
-}
-/* Sim tick label */
-[data-ide-mode-marker='hardware'] .ide-workbench-placeholder-header h3 {
-  font-size: var(--rb-text-micro) !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  color: rgba(130,170,210,0.48) !important;
-  font-weight: 600 !important;
 }
 
 /* ── 6. Provenance strip — status axis bar ── */
@@ -17057,16 +17053,6 @@ select:focus-visible {
 ::selection {
   background: rgba(46,196,182,0.22) !important;
   color: rgba(240,255,253,0.98) !important;
-}
-
-/* ── 9. Section title consistency across all surfaces ──────── */
-.ide-workbench-placeholder-header h3,
-.ide-workbench-console-header h4 {
-  font-size: var(--rb-text-micro) !important;
-  font-weight: 700 !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  color: rgba(130,170,210,0.45) !important;
 }
 
 /* ── 10. Consistent disabled state across all surfaces ─────── */
