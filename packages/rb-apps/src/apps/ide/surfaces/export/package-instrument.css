@@ -354,3 +354,4 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-handoff .rb-fact dd { white-space: normal; overflow-wrap: anywhere; }
 .ide-root .rb-handoff .rb-fact dt { white-space: normal; }
 .ide-root .rb-handoff [data-testid='ide-package-handoff-run-identity'] { display: block; white-space: normal; overflow-wrap: anywhere; padding: 4px 0; }
+.ide-root .rb-pkg-download-digest { font-size: .75rem; overflow-wrap: anywhere; }

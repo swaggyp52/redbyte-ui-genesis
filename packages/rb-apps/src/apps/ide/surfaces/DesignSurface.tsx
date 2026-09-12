@@ -363,7 +363,7 @@ interface StaleReplayBreadcrumb {
 
 type DesignReplaySession =
   Pick<RuntimeVerifyRun, 'waveform' | 'meta'> &
-  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence'>>;
+  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence' | 'scenarioName' | 'runId'>>;
 
 interface PaletteItem {
   type: string;
@@ -2831,6 +2831,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount only
+
+  // A representation change is an explicit request for a new composition. Fit after
+  // its two primary tracks have settled, not against the previous canvas width.
+  useEffect(() => {
+    let inner: number | undefined;
+    const outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => { if (editorCircuit.nodes.length) fitToCircuitRef.current(); });
+    });
+    return () => { window.cancelAnimationFrame(outer); if (inner !== undefined) window.cancelAnimationFrame(inner); };
+  }, [designView]);
 
   const zoomIn = useCallback(() => {
     zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
@@ -6858,7 +6868,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           >
             {tab === 'problems' ? (
               <>Problems <span className="wb-toolwindow-count">{problemsLedgerCount}</span></>
-            ) : tab === 'simulation' ? 'Simulation' : 'Output'}
+            ) : tab === 'simulation' ? 'Explore' : 'Output'}
           </button>
         ))}
       </div>
@@ -7791,7 +7801,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Clock edge
                       </button>
                       <span className="wb-toolbar-meta" data-testid="ide-design-live-tick">
-                        <code>{runtimeSim.tick} applied</code>
+                        <code>{runtimeSim.tick} clock {runtimeSim.tick === 1 ? 'edge' : 'edges'} applied</code>
                       </span>
                     </>
                   ) : null}
@@ -7808,41 +7818,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : null}
               {!isCodeWorkspace ? (
-                <div className="wb-segment rb-design-mode" role="group" aria-label="Design mode" data-testid="ide-design-learning-mode" data-mode={effectiveLearningMode}>
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    aria-pressed={effectiveLearningMode === 'edit'}
-                    onClick={handleResumeLiveEditing}
-                    data-testid="ide-design-learning-mode-edit"
-                    title="Author circuit structure"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    aria-pressed={effectiveLearningMode === 'live'}
-                    disabled={!hasRunnablePath}
-                    title={hasRunnablePath ? 'Explore current circuit values (exploratory, not saved evidence)' : 'Connect at least one input to one output through supported logic.'}
-                    onClick={() => {
-                      onClearExternalDebug?.();
-                      setDesignLearningMode('live');
-                    }}
-                    data-testid="ide-design-learning-mode-live"
-                  >
-                    Live
-                  </button>
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    aria-pressed={effectiveLearningMode === 'replay'}
-                    disabled={!replaySession || replayTrace.length === 0}
-                    title={replaySession && replayTrace.length > 0 ? 'Inspect the recorded run (read-only evidence)' : 'Run a scenario in Simulate to create a replay.'}
-                    onClick={() => onSelectDebugTickIndex?.(0)}
-                    data-testid="ide-design-learning-mode-replay"
-                  >
-                    Replay
+                <div className="wb-toolbar-group rb-design-mode" aria-label="Design actions" data-testid="ide-design-learning-mode" data-mode={effectiveLearningMode}>
+                  {isReplayMode ? (
+                    <>
+                      <span className="wb-toolbar-meta">Recorded view · {replaySession?.scenarioName ?? 'Scenario'} · t{effectiveExternalDebugTick}</span>
+                      <button type="button" className="wb-btn wb-btn--ghost" onClick={handleResumeLiveEditing} data-testid="ide-design-current-design">
+                        Return to current design
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wb-btn wb-btn--ghost"
+                      aria-pressed={effectiveLearningMode === 'live'}
+                      disabled={!hasRunnablePath}
+                      title="Drive inputs and inspect exploratory values. Nothing is recorded or checked."
+                      onClick={() => {
+                        if (effectiveLearningMode === 'live') handleResumeLiveEditing();
+                        else { onClearExternalDebug?.(); setDesignLearningMode('live'); }
+                      }}
+                      data-testid="ide-design-explore"
+                    >
+                      {effectiveLearningMode === 'live' ? 'Finish exploring' : 'Explore'}
+                    </button>
+                  )}
+                  <button type="button" className="wb-btn wb-btn--primary" onClick={onGoToVerify} data-testid="ide-design-test-design">
+                    {isReplayMode ? 'Return to experiment' : 'Test this design'}
                   </button>
                 </div>
               ) : null}
@@ -9338,9 +9339,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {liveHdlResult.error}
                     </IdeCallout>
                   )}
-                  <IdeCallout tone="info" title="Generated from the circuit" testId="ide-design-generated-code-note">
-                    This code is read-only in Design. Edit the canvas to regenerate it, or use Import to bring HDL into RedByte.
-                  </IdeCallout>
+                  <p className="rb-design-generated-note" data-testid="ide-design-generated-code-note">
+                    Generated · read-only · updates when you edit the circuit
+                  </p>
                   <div className="ide-design-hdl-primary-pane" data-testid="ide-design-primary-artifact-pane">
                     <textarea
                       className={`ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--primary${primaryArtifactIsEditable ? '' : ' is-readonly'}`}

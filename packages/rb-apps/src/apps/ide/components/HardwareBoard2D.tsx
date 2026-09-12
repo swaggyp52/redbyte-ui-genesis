@@ -4,7 +4,7 @@ import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
 
 export type BoardDisplayValue = Bit | 'X' | 'Z' | null;
-const displayValue = (value: BoardDisplayValue | undefined) => value == null ? 'Not recorded' : String(value);
+const displayValue = (value: BoardDisplayValue | undefined) => value == null ? 'unrecorded' : String(value);
 
 export interface HardwareBoard2DProps {
   sw: BoardDisplayValue[];  // length 16 — null means no observation
@@ -256,6 +256,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <circle
               data-testid={`ide-hw-ld-${idx}`}
               data-on={ld[idx] == null ? 'unavailable' : String(ld[idx])}
+              data-observed-value={ld[idx] == null ? 'unrecorded' : String(ld[idx])}
               aria-label={`LD${idx}: ${isKnown || isCovered ? displayValue(ld[idx]) : 'not in this recording'}`}
               data-active={isActiveLd ? 'true' : undefined}
               className={ledClassName}
@@ -405,6 +406,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <circle
               data-testid={`ide-hw-btn-${i}`}
               data-on={btn[i] == null ? 'unavailable' : String(btn[i])}
+              data-observed-value={btn[i] == null ? 'unrecorded' : String(btn[i])}
               aria-label={`BTN${BTN_LABELS[i]}: ${isKnown || isCovered ? displayValue(btn[i]) : 'not in this recording'}`}
               className={styles.btnCircle}
               cx={cx}
@@ -461,6 +463,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
             data-on={sw[idx] == null ? 'unavailable' : String(sw[idx])}
+              data-observed-value={sw[idx] == null ? 'unrecorded' : String(sw[idx])}
             aria-label={`SW${idx}: ${isKnown || isCovered ? displayValue(sw[idx]) : 'not in this recording'}`}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}

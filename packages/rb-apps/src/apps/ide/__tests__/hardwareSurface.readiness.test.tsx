@@ -18,7 +18,7 @@ import { useEngineeringSelection } from '../engineeringSelection';
 afterEach(() => {
   cleanup();
 });
-beforeEach(() => { workspacePreferencesStore.reset(); useEngineeringSelection.getState().clear(); });
+beforeEach(() => { Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 }); workspacePreferencesStore.reset(); useEngineeringSelection.getState().clear(); });
 
 type HardwareSurfaceProps = React.ComponentProps<typeof HardwareSurface>;
 
@@ -739,7 +739,7 @@ describe('HardwareSurface readiness', () => {
     expect(readout('BTNC')).toBe('1');
     fireEvent.click(getByTestId('ide-hw-simulated-board-next'));
     expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('unavailable');
-    expect(readout('LD0')).toBe('Not recorded');
+    expect(readout('LD0')).toBe('unrecorded');
     // Missing from this sample is not the same fact as not used by the design.
     const ledLabel = (index: number) => getByTestId(`ide-hw-ld-${index}`).parentElement?.querySelector('text')?.textContent;
     expect(ledLabel(0)).toBe('LD0 —');
@@ -749,10 +749,10 @@ describe('HardwareSurface readiness', () => {
     act(() => useEngineeringSelection.getState().select({ kind: 'case-tick', scenarioId: verifyRun.scenarioId, tick: 99 }, 'waveform'));
     expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('No sample at tick 99');
     expect(getByTestId('ide-hw-sw-0').getAttribute('data-on')).toBe('unavailable');
-    expect(readout('SW0')).toBe('Not recorded');
+    expect(readout('SW0')).toBe('unrecorded');
   });
 
-  it('withholds stale recorded values from both Board projections', () => {
+  it('retains historical samples in the recorded Board view while naming changed current inputs', () => {
     const { getByTestId } = renderHardware({
       verifyLastRun: { ...makeVerifyRun('combinational'), waveform: [{ tick: 0, signals: { sw0: '1', ld0: '1' }, mismatches: [] }] },
       health: makeHealth({ dirtySinceVerify: true, blockingIssues: [] }),
@@ -760,9 +760,9 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
     const showRight = document.querySelector('[data-testid="ide-show-right-dock"]');
     if (showRight) fireEvent.click(showRight);
-    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('unavailable');
-    expect(getByTestId('ide-hardware-live-state-table').textContent).toContain('Not recorded');
-    expect(getByTestId('ide-hardware-state-source').textContent).toContain('Stale recording');
+    expect(getByTestId('ide-hw-ld-0').getAttribute('data-on')).toBe('1');
+    expect(getByTestId('ide-hardware-live-state-table').textContent).toContain('1');
+    expect(getByTestId('ide-hardware-state-source').textContent).toContain('current inputs changed');
   });
 
   it('does not replace a missing followed tick with the last recorded sample', () => {

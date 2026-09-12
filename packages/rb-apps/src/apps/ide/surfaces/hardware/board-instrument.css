@@ -358,3 +358,30 @@
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* Board Check has one working column: board above real steps, with its own exit. */
+.ide-root .rb-board-check-panel .ide-surface-command-stack,
+.ide-root .rb-board-check-panel .ide-hw-mode-exit-banner,
+.ide-root .rb-board-check-panel .rb-board-rail { display: none; }
+.ide-root .rb-board-check { display: flex; flex-direction: column; gap: 0; min-width: 0; padding: 0; border: 1px solid var(--wb-border); background: var(--wb-surface); color: var(--wb-text); }
+.ide-root .rb-board-check .ide-hw-board-chrome { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; justify-content: start; align-items: center; gap: 12px; padding: 8px 12px; background: var(--wb-surface-2); border-bottom: 1px solid var(--wb-border); color: var(--wb-text); }
+.ide-root .rb-board-check .ide-hw-board-chrome-title, .ide-root .rb-board-check .ide-hw-board-chrome-eyebrow { color: var(--wb-text); }
+.ide-root .rb-board-check .ide-hw-board-chrome-trail { display: none; }
+.ide-root .rb-board-check-canvas { flex: none; display: flex; justify-content: center; padding: 10px; min-height: 0; background: var(--wb-surface); }
+.ide-root .rb-board-check-wrap { width: min(100%, 600px); min-height: 0; padding: 0; margin: 0; border: 0; box-shadow: none; background: none; }
+.ide-root .rb-board-check-inner { width: 100%; min-height: 0; height: auto; padding: 0; }
+.ide-root .rb-board-check-inner > svg { width: 100%; max-height: 260px; }
+.ide-root .rb-board-check-steps { flex: none; border-top: 1px solid var(--wb-border); padding: 8px 12px; }
+.ide-root .rb-board-check-steps .ide-hw-dock--bringup { border: 0; padding: 0; background: var(--wb-surface); color: var(--wb-text); }
+.ide-root .rb-board-check-steps .ide-workbench-placeholder-header { display: flex; flex-wrap: wrap; gap: 8px; background: none; }
+.ide-root .rb-board-check-steps .ide-hw-step-nav { display: flex; gap: 8px; padding: 6px 0; }
+.ide-root .rb-board-check-steps > details { padding: 6px 0; }
+.ide-root .rb-board-check-steps > details > summary { cursor: pointer; }
+
+.ide-root .rb-board-check-steps .ide-status-pill { color: #196144; background: #eef8f1; border-color: #a3c8b1; }
+
+.ide-root .rb-board-check-verdict { margin: 0 0 8px; color: #243c54; font-size: var(--wb-text-sm); font-weight: 600; }
+.ide-root .rb-board-check-table-wrap { overflow: auto; }
+.ide-root .rb-board-check-table { width: 100%; border-collapse: collapse; color: #23384f; background: #fff; font-size: var(--wb-text-sm); }
+.ide-root .rb-board-check-table th, .ide-root .rb-board-check-table td { padding: 6px 12px; border-bottom: 1px solid #d6e0ea; text-align: left; line-height: 1.4; }
+.ide-root .rb-board-check-table th { color: #344f6c; background: #f1f5f9; font-weight: 600; }

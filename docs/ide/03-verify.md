@@ -11,6 +11,26 @@ role: Verify surface spec
 Status: Unified Workbench v3 RC authority source; final exact-SHA certification pending
 Mode ID: `verify`
 
+
+## Current P2.6B experiment model (2026-09-12)
+
+This section supersedes the representation/run-line/mode descriptions below where they conflict.
+Run evaluates saved optional checks automatically; no Observe/Compare fork or Live I/O peer.
+Reproduce executes the selected recording's retained design/stimulus/engine, leaving edits intact.
+The visible identity strip owns digest, check result, repetition count and recording selection.
+Full values and the FNV-1a/sample-comparison definition are under Run details. Legacy records
+without execution inputs cannot be reproduced and explain why.
+
+Sequential work stays in Time: authored lanes, actual recorded output/internal lanes, cursor,
+A/B measurement, transition/failure navigation and recorded playback. Expected values are an
+optional overlay, never substituted for observations. Table remains the combinational default;
+Recorded trace is its alternative. Details and circuit investigation are mutually exclusive,
+explicit auxiliary views. No default lower Inspect/Checks/Vectors deck.
+
+Circuit investigation uses retained topology and samples. Driver, capturing edge and authored
+stimulus are clickable only when topology and chronology support them; missing/ambiguous
+evidence stops the chain. Imported VCD is a separate disclosure and always external evidence.
+
 ## Purpose
 
 Provide a simulation-first workspace: author a scenario, run deterministic simulation, inspect waveform or circuit replay, and add expected-output assertions when useful.
@@ -249,3 +269,15 @@ Writes (guarded):
 3. `recorder`
 4. `probes`
 5. `oscilloscope`
+
+
+The 512-case hierarchical 4-bit adder import now records 39 native signals and evaluates
+2560 authored checks. Reproduce retains digest 140ba365; explicit save and reload preserve
+both recordings. The browser journey measured 4.049 s to run and 1.017 s to open/select linked
+inspection on this machine. A real quota failure led to lossless packing of waveform columns,
+check rows and repeated normalization metadata at existing runtime/repository storage boundaries.
+The two-run fixture uses about 5.00 million stored characters; larger retained sets still face
+the browser quota and must report save failure. No evidence is silently discarded. Older plain
+JSON saves remain readable; portable format 1 and existing storage keys are unchanged.
+The storage/repository owner batch passes 23/23, including exact mixed X/Z/missing samples and
+both long recordings after rehydration. The latest focused UI/owner batch passes 72/72.

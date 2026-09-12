@@ -111,6 +111,7 @@ describe('workspace preferences', () => {
       visible: false,
       sizePx: 333,
       expanded: false,
+      explicitlyToggled: true,
     });
     expect(store.getSnapshot().design.canvasAppearance).toBe('light');
     expect(store.getSnapshot().design.canvasDensity).toBe('compact');

@@ -263,7 +263,7 @@ const readRunsLedger = async () => {
   }));
 };
 
-/** The always-present evidence word in the status bar. */
+/** Evidence belongs to Simulate and Runs; there is no global evidence word. */
 const statusRunLabel = () => page.textContent(tid('ide-status-run')).catch(() => null);
 
 // G. The counts a transition is never allowed to change.
@@ -446,13 +446,10 @@ try {
   assert(/No runs recorded yet/i.test(foreignLedger.text),
     `Runs does not read as unproven; the ledger says: ${foreignLedger.text.slice(0, 140)}`);
   const foreignStatus = await statusRunLabel();
-  assert(foreignStatus !== null,
-    'the status bar shows no evidence word at all for the newly opened project');
-  assert(!/pass|current/i.test(foreignStatus),
-    `the status bar claims "${foreignStatus}" for a project that has never been run`);
+  assert(foreignStatus === null, 'A global verdict must not duplicate the project-scoped empty Runs ledger');
   console.log(`D3 foreign starter ${foreignProject.projectName} (${foreignProject.projectId}): ${foreignProject.nodes} nodes, ` +
     `${foreignProject.vectors} vectors, ${foreignProject.expectations} expectations, ` +
-    `0 runs, status "${foreignStatus.trim()}"`);
+    `0 runs, status "${foreignStatus ?? 'absent by design'}"`);
 
   // Back to B: its own run, unchanged, and still nobody else's.
   const bStoredBeforeReopen = await storedEvidence(projectB);
@@ -636,7 +633,7 @@ try {
   await page.click(tid('mode-button-verify'));
   await page.waitForTimeout(600);
   if ((await page.locator(tid('ide-case-lab')).count()) === 0) {
-    await page.click(tid('ide-doc-tab-cases:default'));
+    await page.click(tid('ide-verify-details'));
     await page.waitForSelector(tid('ide-case-lab'), { state: 'visible', timeout: 8000 });
   }
   await page.getByTestId('ide-case-lab-duplicate-0').click();
@@ -685,16 +682,16 @@ try {
   console.log(`H3 reopened twice, both times with run ${secondReopen.lastRunId} and ` +
     `${secondReopen.lastRunRows} rows`);
 
-  // H4: the status bar and Simulate must describe the same reopened project the same way.
+  // H4: Simulate owns the reopened recording; no competing global verdict.
+  await page.click(tid('mode-button-verify'));
+  await page.waitForSelector(tid('ide-run-identity'), { state: 'visible' });
   const agreement = await page.evaluate(() => {
     const text = (id) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim() ?? null;
-    return { statusRun: text('ide-status-run'), evidence: text('ide-verify-evidence-state') };
+    return { statusRun: text('ide-status-run'), evidence: text('ide-run-check-result') };
   });
-  assert(agreement.statusRun !== null, 'the status bar has no run state to read');
-  assert(!/not simulated/i.test(agreement.statusRun),
-    `a reopened project with its own restored run reads "${agreement.statusRun}" in the status bar ` +
-    'while Simulate shows the run — two authorities, two answers');
-  console.log(`H4 status bar and Simulate agree on the reopened project: status "${agreement.statusRun}"` +
+  assert(agreement.statusRun === null, 'No global run verdict duplicates the reopened recording');
+  assert(agreement.evidence !== null, 'Simulate must describe its restored recording');
+  console.log(`H4 reopened evidence is scoped to Simulate: global status "${agreement.statusRun}"` +
     (agreement.evidence ? `, evidence "${agreement.evidence}"` : ''));
 
   // ── I. An old backup, imported, must not overwrite the newer saved project ────────────

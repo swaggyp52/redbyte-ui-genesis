@@ -17,6 +17,9 @@ export interface VerifyCommandBarProps {
 
   /** Run action */
   readonly onRun: () => void;
+  readonly onReproduce?: () => void;
+  readonly reproduceDisabledReason?: string;
+  readonly runBlockedReason?: string;
   readonly runLabel: string;
   readonly runDisabled: boolean;
   readonly runPulsing?: boolean;
@@ -111,6 +114,10 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   compareAvailable,
   compareUnavailableReason,
   onRun,
+  onReproduce,
+  reproduceDisabledReason,
+  runBlockedReason,
+  experimentScenarioName,
   runLabel,
   runDisabled,
   runPulsing,
@@ -185,15 +192,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     onRun();
   };
 
-  const showCompareRequirement =
-    !compareAvailable && Boolean(compareUnavailableReason) && !(needsExpectedOutputs && onAuthorExpectedOutputs);
-  const compareRequirementId = 'ide-vcb-compare-requirement-text';
-  const explainerText =
-    isCompareMode && !compareAvailable && compareUnavailableReason
-      ? compareUnavailableReason
-      : isCompareMode
-        ? 'Check filled expected outputs against this run.'
-        : 'Record observed outputs without grading expected values.';
+  const explainerText = runBlockedReason ?? (configuredCheckCount > 0
+    ? configuredCheckCount + ' saved checks are evaluated automatically.'
+    : 'No checks configured · records outputs without a pass/fail verdict.');
   return (
     <div
       ref={commandBarRef}
@@ -204,62 +205,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      <div className="wb-segment rb-sim-seg" role="group" aria-label="Run intent" data-testid="ide-vcb-run-intent">
-        <button
-          type="button"
-          className={`wb-btn${!isCompareMode ? ' is-active' : ''}`}
-          aria-pressed={!isCompareMode}
-          onClick={onSetObserve}
-          data-testid="ide-vcb-observe-only"
-          title="Run the circuit and record observed outputs. No checks are graded."
-        >
-          Observe
-        </button>
-        <button
-          type="button"
-          className={`wb-btn${isCompareMode ? ' is-active' : ''}${!compareAvailable ? ' is-blocked' : ''}`}
-          aria-pressed={isCompareMode}
-          disabled={!compareAvailable}
-          onClick={onSetCompare}
-          data-testid="ide-vcb-use-saved-checks"
-          data-blocked={!compareAvailable ? 'true' : undefined}
-          aria-describedby={showCompareRequirement ? compareRequirementId : undefined}
-          title={
-            !compareAvailable
-              ? compareUnavailableReason ?? 'Author at least one expected output to compare against.'
-              : 'Run the circuit and compare observed outputs against your saved checks.'
-          }
-        >
-          Compare
-        </button>
-      </div>
-      {showCompareRequirement ? (
-        <span
-          className="wb-toolbar-meta rb-sim-explainer is-blocked-reason"
-          id={compareRequirementId}
-          data-testid="ide-vcb-compare-requirement"
-        >
-          {compareUnavailableReason}
-        </span>
-      ) : null}
-      <span className="wb-toolbar-sep" />
-      {onToggleLiveIo ? (
-        <button
-          type="button"
-          className={`wb-btn wb-btn--ghost${liveIoActive ? ' is-active' : ''}`}
-          aria-pressed={liveIoActive}
-          onClick={onToggleLiveIo}
-          data-testid="ide-vcb-workspace-bench"
-          title="Drive inputs and read outputs live — the same state as the simulated board."
-        >
-          Live I/O
-        </button>
-      ) : null}
-      {configuredCheckCount > 0 ? (
-        <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title="Saved expected outputs in this scenario">
-          <code>{configuredCheckCount}</code> checks
-        </span>
-      ) : null}
+      <strong className="wb-toolbar-fact">{experimentScenarioName || 'Current scenario'}</strong>
+      <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count">{configuredCheckCount} optional checks</span>
       <span className="wb-toolbar-spacer" />
       <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
         <IdeButton
@@ -273,31 +220,11 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         >
           {runLabel}
         </IdeButton>
-        {needsExpectedOutputs && onAuthorExpectedOutputs ? (
-          <IdeButton
-            tone="secondary"
-            onClick={onAuthorExpectedOutputs}
-            testId="ide-vcb-author-expected"
-            title="Open the cases to add reference outputs, so a run can be compared against them."
-            hierarchySurface="verify"
-            hierarchyRole="secondary"
-          >
-            Add expected outputs
-          </IdeButton>
-        ) : null}
+        {onReproduce && <IdeButton tone="secondary" onClick={onReproduce} disabled={Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
+          title={reproduceDisabledReason || 'Run the retained design and stimulus again with the same engine.'}>Reproduce</IdeButton>}
       </div>
-      {/* A disabled control whose only explanation is a `title` explains nothing: the tooltip
-          is hidden until hover and browsers do not reliably show one on a disabled button. When
-          COMPARE is selected and blocked, the reason takes this slot - it explains the control
-          the student is trying to use. While Observe is selected, Observe is what gets explained:
-          a run that works is not made to look incomplete by the state of a run nobody asked for. */}
-      <span
-        className={`wb-toolbar-meta rb-sim-explainer${isCompareMode && !compareAvailable && compareUnavailableReason ? ' is-blocked-reason' : ''}`}
-        data-testid="ide-vcb-mode-explainer"
-        title={explainerText}
-      >
-        {explainerText}
-      </span>
+      <span className={`wb-toolbar-meta rb-sim-explainer${runBlockedReason ? ' is-blocked-reason' : ''}`} title={explainerText} data-testid="ide-vcb-mode-explainer">{explainerText}</span>
+      {reproduceDisabledReason && <span className="wb-toolbar-meta">{reproduceDisabledReason}</span>}
     </div>
   );
 };

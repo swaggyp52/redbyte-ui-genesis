@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
+import { createRecordedPortResolver } from './verify/recordedCircuitGeometry';
 import {
   BOARD_CAMERA_ZOOM_STEP,
   boardCameraDensity,
@@ -1851,6 +1852,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     onGoToProject,
   ]);
 
+  const recordedMappingRows = useMemo(() => verifyLastRun?.executionInput?.ioRows.map(row => ({
+    ...row, pin: row.pin ?? '', required: row.required ?? true,
+  })) ?? mappingRows, [verifyLastRun, mappingRows]);
+  const recordedPortSignal = useMemo(() => createRecordedPortResolver(
+    verifyLastRun?.circuitSnapshot, verifyLastRun?.waveform ?? [],
+  ), [verifyLastRun]);
   // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
   const bringupTickGroups = useMemo(() => {
     const map = new Map<number, Array<{ signal: string; expected: string }>>();
@@ -1882,45 +1889,25 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     },
     [ioBus.meta.ldNodeIds, relationshipIndex]
   );
-  const mismatchedLd = useMemo<boolean[]>(() => {
-    if (hwMode !== 'bringup' || bringupTickGroups.length === 0)
-      return Array(16).fill(false);
-    const currentGroup = bringupTickGroups[bringupStepIndex];
-    if (!currentGroup) return Array(16).fill(false);
-    const [, signals] = currentGroup;
-    return Array.from({ length: 16 }, (_, i) => {
-      const sig = signals.find((s) => ledIndexForSignal(s.signal) === i);
-      if (!sig) return false;
-      return sig.expected !== String(ioBus.state.ld[i]);
-    });
-  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld, ledIndexForSignal]);
-
-  const bringupStepPass = useMemo(
-    () => mismatchedLd.every((v) => !v),
-    [mismatchedLd]
-  );
-
-  // ── Bring-Up inspector: actual vs expected rows ─────────────────────
-  const bringupStepRows = useMemo(() => {
+  const bringupObservations = useMemo(() => {
     const group = bringupTickGroups[bringupStepIndex];
     if (!group) return [];
-    const [, signals] = group;
-    return signals.map((s) => {
-      const ldMatch = s.signal.match(/ld\[?(\d+)\]?/i);
-      const rawActual = ldMatch ? String(ioBus.state.ld[Number(ldMatch[1])] ?? '—') : '—';
-      const pass = rawActual === s.expected;
-      const expectedWord = s.expected === '1' ? 'ON' : 'OFF';
-      const actualWord = rawActual === '—' ? '—' : rawActual === '1' ? 'ON' : 'OFF';
-      return [
-        signalHumanLabel(s.signal),
-        expectedWord,
-        actualWord,
-        <IdeStatusPill key={`${s.signal}-pill`} tone={pass ? 'ok' : 'error'}>
-          {pass ? 'MATCH' : 'DIFFER'}
-        </IdeStatusPill>,
-      ];
+    const sample = verifyLastRun?.waveform.find(entry => entry.tick === group[0]);
+    return group[1].map(reference => {
+      const matches = recordedMappingRows.filter(row => [row.id, row.label, row.nodeId ?? '']
+        .some(name => normalizeIoSignalKey(name) === normalizeIoSignalKey(reference.signal)));
+      const row = matches.length === 1 ? matches[0] : undefined;
+      const signal = row?.nodeId ? recordedPortSignal(row.nodeId, row.port || 'in') : null;
+      const actual = sample && signal ? sample.signals[signal] ?? 'unrecorded' : 'unrecorded';
+      return { ...reference, actual, resource: row ? boardResourceForRow(row) : null };
     });
-  }, [bringupTickGroups, bringupStepIndex, ioBus.state.ld]);
+  }, [bringupTickGroups, bringupStepIndex, verifyLastRun, recordedMappingRows, recordedPortSignal]);
+  const mismatchedLd = useMemo(() => Array.from({ length: 16 }, (_, index) => hwMode === 'bringup' &&
+    bringupObservations.some(row => row.resource?.kind === 'ld' && row.resource.index === index && row.actual !== 'unrecorded' && row.actual !== row.expected)), [hwMode, bringupObservations]);
+  const bringupStepHasSamples = bringupObservations.length > 0 && bringupObservations.every(row => row.actual !== 'unrecorded');
+  const bringupStepPass = bringupStepHasSamples && bringupObservations.every(row => row.actual === row.expected);
+  const bringupStepRows = bringupObservations.map(row => [signalHumanLabel(row.signal), row.expected, row.actual,
+    row.actual === 'unrecorded' ? 'Unrecorded' : row.actual === row.expected ? 'Match' : 'Differ']);
 
   // ── Live: signal event log from sim trace ───────────────────────────
   const nodeKeyToMeta = useMemo(() => {
@@ -1984,7 +1971,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     Math.max(0, simulatedBoardTrace.length - 1)
   );
   const selectedSimulatedBoardSample =
-    simulatedBoardTrace[boundedSimulatedBoardTraceIndex] ?? null;
+    (hwMode === 'bringup' ? simulatedBoardTrace.find(sample => sample.tick === bringupTickGroups[bringupStepIndex]?.[0]) :
+      simulatedBoardTrace[boundedSimulatedBoardTraceIndex]) ?? null;
   const selectBoardSample = (index: number) => {
     setSimulatedBoardTraceIndex(index);
     const sample = simulatedBoardTrace[index];
@@ -2001,27 +1989,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ld: Array.from({ length: 16 }, () => null),
       btn: Array.from({ length: 5 }, () => null),
     };
-    if (isRecordedBoardPreview && boardValuesStale) return next;
+
     if (!isRecordedBoardPreview && simulatedBoardTrace.length === 0) return ioBus.state;
     if (!selectedSimulatedBoardSample) return next;
     const signalEntries = Object.entries(selectedSimulatedBoardSample.signals);
-    for (const row of mappingRows) {
-      const lookupKeys = new Set(
-        [
-          ...getIoSignalLookupKeys(row, mappingRows),
-          row.id,
-          row.label,
-          row.nodeId,
-          row.nodeId ? `${row.nodeId}.out` : '',
-          row.nodeId ? `${row.nodeId}.in` : '',
-        ]
-          .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
-          .map(normalizeIoSignalKey)
-      );
-      const matched = signalEntries.find(([key]) => lookupKeys.has(normalizeIoSignalKey(key)));
-      if (!matched) continue;
+    for (const row of isRecordedBoardPreview ? recordedMappingRows : mappingRows) {
+      const key = row.nodeId ? recordedPortSignal(row.nodeId, row.port || (row.direction === 'in' ? 'out' : 'in')) : null;
+      // Legacy recordings without topology can resolve only a unique exact saved field.
+      const matches = !verifyLastRun?.circuitSnapshot ? signalEntries.filter(([name]) =>
+        getIoSignalLookupKeys(row, recordedMappingRows).includes(name)) : [];
+      const value = key ? selectedSimulatedBoardSample.signals[key] : matches.length === 1 ? matches[0][1] : undefined;
       const resource = boardResourceForRow(row);
-      if (resource) next[resource.kind][resource.index] = matched[1];
+      if (resource && value !== undefined) next[resource.kind][resource.index] = value;
     }
     return next;
   }, [
@@ -2032,9 +2011,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     selectedSimulatedBoardSample,
     isRecordedBoardPreview,
     simulatedBoardTrace.length,
-    boardValuesStale,
+    recordedMappingRows,
+    recordedPortSignal,
+    verifyLastRun?.circuitSnapshot,
   ]);
-  const displayedBoardState = hwMode === 'live' ? simulatedBoardState : ioBus.state;
+  const displayedBoardState = hwMode === 'live' || hwMode === 'bringup' ? simulatedBoardState : ioBus.state;
   // The resources the recorded projection covers: exactly the mapping rows that fill it. A
   // covered resource without a value is a missing sample; an uncovered one is simply unused.
   const recordedResources = useMemo(() => {
@@ -2297,7 +2278,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
         <div className="ide-kv-row">
           <span>{isRecordedBoardPreview ? 'Selected run tick' : 'Exploration tick'}</span>
-          <code data-testid="ide-hw-simulated-board-tick">{selectedBoardTick ?? 'Not recorded'}</code>
+          <code data-testid="ide-hw-simulated-board-tick">{selectedBoardTick ?? 'unrecorded'}</code>
         </div>
         <div className="ide-kv-row">
           <span>Mapped I/O</span>
@@ -2426,20 +2407,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const bringupDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--bringup" testId="ide-hw-bringup-dock">
-      <header className="ide-workbench-placeholder-header">
-        <h3>Board Check</h3>
-        <IdeStatusPill
-          tone={
-            bringupTickGroups.length === 0
-              ? 'warn'
-              : bringupStepPass
-                ? 'ok'
-                : 'error'
-          }
-        >
-          {bringupTickGroups.length === 0 ? 'No vectors' : bringupStepPass ? 'MATCH' : 'DIFFER'}
-        </IdeStatusPill>
-      </header>
+      <p className="rb-board-check-verdict" data-testid="ide-hw-bringup-verdict">
+        {bringupTickGroups.length === 0 ? 'No check steps' : !bringupStepHasSamples ? 'This step is unrecorded' : bringupStepPass ? 'Recorded outputs match this reference step' : 'Recorded outputs differ from this reference step'}
+      </p>
       {hasAssertionData && (
         <div className="ide-hw-assert-summary" data-testid="ide-hw-assert-summary">
           <span className={assertionFailCount > 0 ? 'ide-hw-assert-fail-count' : 'ide-hw-assert-pass-count'}>
@@ -2462,35 +2432,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </IdeCallout>
       ) : (
         <div className="ide-hw-bringup-step" data-testid="ide-hw-bringup-step">
-          <div className="ide-hw-step-header">
-            <span className="ide-hw-step-counter">
-              Step {bringupStepIndex + 1} of {bringupTickGroups.length}
-            </span>
-            {currentTick !== undefined && (
-              <code className="ide-hw-step-tick">t{currentTick}</code>
-            )}
-          </div>
-          {(() => {
-            const swSignals = (bringupTickGroups[bringupStepIndex]?.[1] ?? []).filter(s => /sw/i.test(s.signal));
-            if (swSignals.length === 0) return null;
-            const instructions = swSignals.map(s => {
-              const label = signalHumanLabel(s.signal);
-              return s.expected === '1' ? `turn ${label} ON` : `turn ${label} OFF`;
-            });
-            const text = instructions.length === 1
-              ? instructions[0].charAt(0).toUpperCase() + instructions[0].slice(1)
-              : `${instructions.slice(0, -1).join(', ')}, then ${instructions[instructions.length - 1]}`;
-            return (
-              <p className="ide-hw-step-instruction" data-testid="ide-hw-step-instruction">
-                {text}
-              </p>
-            );
-          })()}
-          <IdeDataTable
-            columns={['Signal', 'Expected']}
-            rows={bringupDockRows}
-            testId="ide-hw-bringup-step-table"
-          />
           <div className="ide-hw-step-nav">
             <IdeButton
               tone="ghost"
@@ -2513,6 +2454,30 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               Next →
             </IdeButton>
           </div>
+          <div className="ide-hw-step-header">
+            <span className="ide-hw-step-counter">
+              Step {bringupStepIndex + 1} of {bringupTickGroups.length}
+            </span>
+            {currentTick !== undefined && (
+              <code className="ide-hw-step-tick">t{currentTick}</code>
+            )}
+          </div>
+          {(() => {
+            const inputs = currentTick == null ? undefined : verifyLastRun?.report.inputsAtTick[currentTick];
+            return <div data-testid="ide-hw-step-instruction">
+              <p>Saved browser stimulus at t{currentTick}. Physical board behavior has not been observed.</p>
+              {inputs ? <BoardCheckTable columns={['Input', 'Resource', 'Value']} rows={Object.entries(inputs).map(([key, value]) => {
+                const row = recordedMappingRows.find(row => row.id === key || row.label === key);
+                return [row?.label ?? key, row?.pin ? resolveBoardControlAlias(row.pin) ?? row.pin : 'Unmapped', String(value)];
+              })} testId="ide-hw-bringup-stimulus-table" /> : <p>Stimulus for this step is unrecorded.</p>}
+            </div>;
+          })()}
+          <BoardCheckTable
+            columns={['Signal', 'Expected', 'Recorded']}
+            rows={bringupObservations.map(row => [signalHumanLabel(row.signal), row.expected, row.actual])}
+            testId="ide-hw-bringup-step-table"
+          />
+
         </div>
       )}
     </SurfacePanel>
@@ -2804,12 +2769,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       recordedResources.btn.forEach((on, index) => { if (on) covered.add(BOARD_BUTTON_ALIASES[index]); });
       recordedResources.ld.forEach((on, index) => { if (on) covered.add(`LD${index}`); });
       return [
-      ...Array.from({ length: 16 }, (_, index) => [`SW${index}`, String(displayedBoardState.sw[index] ?? 'Not recorded')]),
+      ...Array.from({ length: 16 }, (_, index) => [`SW${index}`, String(displayedBoardState.sw[index] ?? 'unrecorded')]),
       ...Array.from({ length: 5 }, (_, index) => [
         BOARD_BUTTON_ALIASES[index],
-        String(displayedBoardState.btn[index] ?? 'Not recorded'),
+        String(displayedBoardState.btn[index] ?? 'unrecorded'),
       ]),
-      ...Array.from({ length: 16 }, (_, index) => [`LD${index}`, String(displayedBoardState.ld[index] ?? 'Not recorded')]),
+      ...Array.from({ length: 16 }, (_, index) => [`LD${index}`, String(displayedBoardState.ld[index] ?? 'unrecorded')]),
       ].filter(([alias]) => !isRecordedBoardPreview || covered.has(alias));
     },
     [displayedBoardState, recordedResources, isRecordedBoardPreview]
@@ -2998,8 +2963,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="hardware"
       layoutIntent="workbench"
-      leftDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
-      rightDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
+      leftDockMode={hwMode === 'live' ? 'collapsed' : 'hidden'}
+      rightDockMode={hwMode === 'live' ? 'collapsed' : 'hidden'}
       rightDockCanCollapse
       // Always present, never conditional: a panel that exists only while a project happens to
       // have problems takes its own strip away with it, and leaves the status bar's problems count
@@ -3027,13 +2992,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             ? failureTruthMessage
             : `${mappingAttentionCount} required mapping issue${mappingAttentionCount === 1 ? '' : 's'} still need attention.`,
       }}
-      dock={hwMode === 'map' ? null : activeDock}
+      dock={hwMode === 'live' ? activeDock : null}
       inspector={
-        hwMode === 'map' ? null : <>
+        hwMode !== 'live' ? null : <>
           {hwMode !== 'map' && (
             <IdeInspectorSection title={hwMode === 'live' ? simulatedBoardSourceLabel : 'Exploration I/O state'} defaultOpen>
               {hwMode === 'live' && <p className="ide-copy" data-testid="ide-hardware-state-source">
-                {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Stale recording; values unavailable for current mapping' : ''}` : 'Browser exploration · no recorded run'}
+                {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Retained recording and saved mappings; current inputs changed' : ''}` : 'Browser exploration · no recorded run'}
               </p>}
               <IdeDataTable
                 columns={['Signal', 'Value']}
@@ -3055,10 +3020,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeStatusPill>
         )}
         testId="ide-hardware-panel"
-        className={hasNoBoundaryRows ? 'ide-hardware-panel--no-signals' : undefined}
+        className={hwMode === 'bringup' ? 'rb-board-check-panel' : hasNoBoundaryRows ? 'ide-hardware-panel--no-signals' : undefined}
       >
         <div className="ide-surface-command-stack">
-          {showHardwareCommandStrip ? (
+          {showHardwareCommandStrip && hwMode !== 'bringup' ? (
             <SurfaceCommandStrip
               className="ide-hardware-command-strip"
               testId="ide-hardware-command-strip"
@@ -3192,7 +3157,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ) : null}
 
         {/* ── Scenario provenance strip — hidden on map tab ── */}
-        {hwMode !== 'map' && verifyLastRun && (
+        {hwMode === 'live' && verifyLastRun && (
           <details className="ide-hardware-provenance-details" data-testid="ide-hardware-provenance-details">
             <summary className="ide-hardware-provenance-summary">Last Verify evidence</summary>
             <div className="ide-hardware-provenance-strip" data-testid="ide-hardware-provenance-strip">
@@ -3920,10 +3885,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </section>
           </section>
         ) : (
-        <div className="ide-hw-board-workspace" data-testid="ide-hw-board-workspace">
+        <div className={hwMode === 'bringup' ? 'ide-hw-board-workspace rb-board-check' : 'ide-hw-board-workspace'} data-testid="ide-hw-board-workspace">
           <header className="ide-hw-board-chrome">
+            {hwMode === 'bringup' && <button type="button" className="wb-btn" data-testid="ide-hw-board-check-exit" onClick={() => setHwMode('map')}>← Board assignments</button>}
             <div className="ide-hw-board-chrome-text">
-              <span className="ide-hw-board-chrome-eyebrow">Board workspace</span>
+<span className="ide-hw-board-chrome-eyebrow">{hwMode === 'bringup' ? 'Browser reference steps · no physical-board observation' : 'Board workspace'}</span>
               <strong className="ide-hw-board-chrome-title" data-testid="ide-hw-board-chrome-stage">
                 {hardwareBoardChromeStage}
               </strong>
@@ -3939,16 +3905,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </span>
             </div>
           </header>
-          <div className="ide-hw-board-canvas">
-        <div className="ide-hw-board-wrap">
-          <div className="ide-hw-board-inner">
+          <div className={hwMode === 'bringup' ? 'rb-board-check-canvas' : 'ide-hw-board-canvas'}>
+        <div className={hwMode === 'bringup' ? 'rb-board-check-wrap' : 'ide-hw-board-wrap'}>
+          <div className={hwMode === 'bringup' ? 'rb-board-check-inner' : 'ide-hw-board-inner'}>
             <HardwareBoard2D
               sw={displayedBoardState.sw}
               ld={displayedBoardState.ld}
               btn={displayedBoardState.btn}
               mappedSw={mappedSw}
               mappedLd={mappedLd}
-              recordedResources={hwMode === 'live' && isRecordedBoardPreview ? recordedResources : undefined}
+              recordedResources={(hwMode === 'live' || hwMode === 'bringup') && isRecordedBoardPreview ? recordedResources : undefined}
               mismatchedLd={mismatchedLd}
               highlightedSw={currentStepHighlights.sw}
               highlightedLd={currentStepHighlights.ld}
@@ -3971,11 +3937,23 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         </div>
           </div>
+          {hwMode === 'bringup' && <section className="rb-board-check-steps" aria-label="Board check steps and observations">
+            {bringupDock}
+            <details><summary>Check results and recorded observations</summary>{bringupInspector}</details>
+          </section>}
         </div>
         )}
         {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
-        {hardwareWorkflowRibbon}
+        {hwMode !== 'bringup' ? hardwareWorkflowRibbon : null}
       </IdePanel>
     </IdeSurfaceLayout>
   );
 };
+
+/** Small semantic table inside Board Check; its frame owns the visual treatment. */
+function BoardCheckTable({ columns, rows, testId }: { columns: string[]; rows: React.ReactNode[][]; testId: string }) {
+  return <div className="rb-board-check-table-wrap" data-testid={testId}><table className="rb-board-check-table">
+    <thead><tr>{columns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+    <tbody>{rows.map((row, index) => <tr key={index}>{row.map((value, column) => <td key={column}>{value}</td>)}</tr>)}</tbody>
+  </table></div>;
+}

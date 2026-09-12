@@ -524,3 +524,6 @@
 .ide-root .rb-arch-block[data-dimmed='true'] { opacity: 0.22; }
 .ide-root .rb-arch-wire[data-dimmed='true'] { opacity: 0.18; }
 .ide-root .rb-arch-wire[data-traced='true'] { stroke: var(--wb-accent); stroke-width: 1.8; }
+
+.ide-root .rb-run-group th { background: var(--wb-surface-2); padding-block: 10px; white-space: normal; font-weight: 400; overflow-wrap: anywhere; }
+.ide-root .rb-run-group strong { display: block; margin-bottom: 4px; font-weight: 650; }

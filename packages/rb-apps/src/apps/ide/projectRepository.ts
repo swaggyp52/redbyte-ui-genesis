@@ -1,3 +1,4 @@
+import { recordingStorageReplacer, recordingStorageReviver } from './recordingStorage';
 import type { RBProject } from '../../export/projectFormat';
 import { encodeRBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
@@ -381,7 +382,7 @@ export function createProjectRepository(
         activeScenarioId: input.activeScenarioId,
         runEvidence: input.runEvidence ? structuredClone(input.runEvidence) : undefined,
       };
-      snapshotJson = JSON.stringify(snapshot);
+      snapshotJson = JSON.stringify(snapshot, recordingStorageReplacer);
     } catch {
       const error = createError(
         operation,
@@ -790,7 +791,7 @@ function readSnapshot(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw, recordingStorageReviver);
   } catch {
     return {
       ok: false,

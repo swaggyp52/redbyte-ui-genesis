@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { recordingStorageReplacer, recordingStorageReviver } from './recordingStorage';
 import type { Circuit, CompositeNodeDef, Node, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
 import { BusValidationError, createBusBoundary } from '@redbyte/rb-logic-core';
@@ -17,6 +18,7 @@ import {
   buildVerifyMappingEvidenceHash,
 } from './verifyProjectHash';
 import { restampRunEvidenceProject, scopeRunEvidenceToProject } from './runScope';
+import { BROWSER_ENGINE_VERSION, buildRunIdentity, configurationDigest, outputDigest, compactNativeTrace, type NativeRecordingTrace, type RunIdentity, type RecordedExecutionInput } from './runDeterminism';
 import { appendRecordedRun, findVerifyRunLedgerEntry, getRuntimeVerifyRunId, latestRecordedScenarioRun, MAX_RECORDED_RUNS } from './runArchive';
 import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import {
@@ -101,7 +103,7 @@ import {
   type SimEngineResult,
 } from './sim/simEngine';
 import type { RuntimeLogicValue, RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
-import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
+import { buildCanonicalVerifyWaveSamples, buildVerifyWaveSamplesFromRuntimeTrace } from './sim/traceContract';
 import {
   DEFAULT_SCENARIO_ID,
   createScenario,
@@ -234,6 +236,9 @@ function deriveAuthoritativeHardwareState(
 export type ProjectIoRow = IdeExampleIoRow;
 
 export interface VerifyRunLedgerEntry {
+  identity?: RunIdentity;
+  outputDigest?: string;
+  sequence?: number;
   runId: string;
   /** Owning project; see RuntimeVerifyRun.projectId. */
   projectId?: string;
@@ -285,6 +290,12 @@ export interface ProjectWorkspaceSnapshot {
 }
 
 export interface RuntimeVerifyRun {
+  /** Produced at execution, not reconstructed from today's engine for old recordings. */
+  identity?: RunIdentity;
+  outputDigest?: string;
+  sequence?: number;
+  reproducedFromRunId?: string;
+  executionInput?: RecordedExecutionInput;
   /** Stable identity shared with the summary ledger. Legacy runs derive it from time/report. */
   runId?: string;
   /** Project that produced this run. Loaders drop runs owned by another project;
@@ -318,6 +329,7 @@ export interface RuntimeVerifyRun {
   report: VerifyReport;
   waveform: VerifyWaveSample[];
   traceWaveform?: VerifyWaveSample[];
+  nativeTrace?: NativeRecordingTrace;
   evidence?: VerifyEvidenceCapsule;
   /** The exact elaborated topology used by this recording. Absent means history unavailable. */
   circuitSnapshot?: Circuit;
@@ -348,6 +360,8 @@ export function getRuntimeVerifyRunKind(
 }
 
 export interface RunVerificationInput {
+  /** Resolve retained inputs at the owner; callers cannot substitute a historical topology. */
+  reproduceRunId?: string;
   scenarioId: string;
   scenarioName: string;
   runKind?: VerifyRunKind;
@@ -1881,19 +1895,26 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       runVerification: (input) => {
         let runtimeRun: RuntimeVerifyRun | undefined;
         set((state) => {
-          const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
-          const scenarioId = input.scenarioId.trim() || 'runtime-verify';
+          const source = input.reproduceRunId
+            ? state.verifyRunArchive.find(run => getRuntimeVerifyRunId(run) === input.reproduceRunId && run.projectId === state.projectId)
+            : undefined;
+          if (input.reproduceRunId && (!source?.executionInput || !source.circuitSnapshot || source.identity?.engine !== BROWSER_ENGINE_VERSION)) {
+            throw new Error('This recording cannot be reproduced: its retained inputs or engine version are unavailable.');
+          }
+          const executionIoRows = source?.executionInput?.ioRows ?? state.projectIoRows;
+          const simulationCircuit = source?.circuitSnapshot ?? elaborateProjectHierarchy(state.circuit, state.hierarchy);
+          const scenarioId = source?.scenarioId ?? (input.scenarioId.trim() || 'runtime-verify');
           const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
           const scenarioName =
-            matchedScenario?.name ?? (input.scenarioName.trim() || 'Runtime verification');
-          const scenarioVersion = matchedScenario
+            source?.scenarioName ?? matchedScenario?.name ?? (input.scenarioName.trim() || 'Runtime verification');
+          const scenarioVersion = source ? source.scenarioVersion : matchedScenario
             ? matchedScenario.version
             : Number.isFinite(input.scenarioVersion)
               ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
               : undefined;
           const circuitHash = buildVerifyCircuitEvidenceHash(simulationCircuit);
-          const ioMapping = toIoMapping(state.projectIoRows);
-          const mappingEvidenceHash = buildVerifyMappingEvidenceHash(
+          const ioMapping = toIoMapping(executionIoRows);
+          const mappingEvidenceHash = source?.mappingEvidenceHash ?? buildVerifyMappingEvidenceHash(
             resolveIoMappingFromProjectFields({
               ioMapping,
               hardwareMappingV2: state.hardwareMappingV2,
@@ -1903,26 +1924,26 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             simulationCircuit,
             ioMapping
           );
-          const scheduleContract = input.scheduleContract
+          const scheduleContract = source?.scheduleContract ? cloneVerifyScheduleContract(source.scheduleContract) : input.scheduleContract
             ? cloneVerifyScheduleContract(input.scheduleContract)
             : verifyContext.schedule;
           const model = verifyContext.simModel;
           const clockPolicy =
-            input.clockPolicy ??
+            source?.clockPolicy ?? input.clockPolicy ??
             detectVerifyClockPolicy({
               circuit: simulationCircuit,
-              ioRows: state.projectIoRows,
+              ioRows: executionIoRows,
               scheduleContract,
             });
           const authoredVectors = normalizeVectorsForLiveIo(
-            cloneVectors(input.vectors ?? resolveActiveScenarioVectors(state)),
-            state.projectIoRows,
+            cloneVectors(source?.executionInput?.vectors ?? input.vectors ?? resolveActiveScenarioVectors(state)),
+            executionIoRows,
             clockPolicy
           );
           // This binds the run to the scenario document version. Exact run-input
           // authority remains separate in scenarioStimulusHash + report.vectors,
           // so appended custom rows cannot become Export authority by inheritance.
-          const scenarioContentHash = matchedScenario
+          const scenarioContentHash = source ? source.scenarioContentHash : matchedScenario
             ? computeScenarioContentHash(matchedScenario)
             : undefined;
           const scenarioStimulusHash = computeExecutionStimulusHash(
@@ -1931,7 +1952,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           );
           const runtimeVectors = materializeVectorsForClockPolicy({
             vectors: authoredVectors,
-            ioRows: state.projectIoRows,
+            ioRows: executionIoRows,
             policy: clockPolicy,
           });
           const requestedVerifyRows = (input.rows ?? []).length > 0;
@@ -1939,7 +1960,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             (vector) => Object.keys(vector.expected ?? {}).length > 0
           );
           const runKind =
-            input.runKind ??
+            source?.runKind ?? input.runKind ??
             (input.assertionMode === true
               ? 'verify'
               : input.assertionMode === false
@@ -1958,7 +1979,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               ? runDeterministicVerifyFromModel(
                   simulationCircuit,
                   model,
-                  state.projectIoRows,
+                  executionIoRows,
                   deterministicVectors,
                   scheduleContract,
                   clockPolicy ?? undefined
@@ -1981,7 +2002,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   : 'passing';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(runtimeVectors);
-          const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
+          const signalRoles = deriveIoSignalRoles(executionIoRows, scheduleContract);
           const report = buildVerifyReport({
             scenarioId,
             scenarioName,
@@ -1992,6 +2013,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             generatedAtIso: ranAtIso,
             signalRoles,
           });
+          // Preserve the provider's observations separately from report display aliases.
+          // Optional checks can add names to the display projection without changing an output.
+          const traceWaveform = deterministicResult
+            ? buildVerifyWaveSamplesFromRuntimeTrace(deterministicResult.trace) : undefined;
+          const nativeTrace = traceWaveform ? compactNativeTrace(traceWaveform) : undefined;
           const waveform = buildCanonicalVerifyWaveSamples(
             report,
             deterministicResult?.trace ?? []
@@ -2003,8 +2029,16 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   circuitHash,
                 } satisfies VerifyEvidenceCapsule)
               : undefined;
+          const identity = buildRunIdentity({ circuit: simulationCircuit, ioRows: executionIoRows,
+            vectors: authoredVectors, clockPolicy, schedule: scheduleContract, runKind });
+          const sequence = Math.max(0, ...state.verifyRunHistory.map(run => run.sequence ?? 0), ...state.verifyRunArchive.map(run => run.sequence ?? 0)) + 1;
+          const runId = 'run-' + configurationDigest(identity).slice(0, 12) + '-' + sequence;
           runtimeRun = {
-            runId: `run-${report.generatedAtIso}-${report.reportHash.slice(0, 8)}`,
+            identity,
+            outputDigest: outputDigest({ waveform, nativeTrace }),
+            sequence,
+            reproducedFromRunId: source?.runId,
+            runId,
             projectId: state.projectId,
             scenarioId: report.scenarioId,
             scenarioName: report.scenarioName,
@@ -2016,7 +2050,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             status: report.status,
             simulationStatus,
             assertionStatus,
-            qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
+            qualification: detectIncompleteMappingQualification(executionIoRows, report.status),
             deterministicHash: report.deterministicHash,
             reportHash: report.reportHash,
             firstFailingTick: report.firstFailingTick,
@@ -2028,10 +2062,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               scheduleContract,
               clockPolicy,
               authoredVectors,
-              state.projectIoRows
+              executionIoRows
             ),
             report,
             waveform,
+            nativeTrace,
             evidence,
             circuitSnapshot: structuredClone(simulationCircuit),
           };
@@ -2044,16 +2079,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // The prior inline computation included vector `id` fields (via cloneVectors spread)
           // while buildCurrentVerifyProjectHash strips them — causing a permanent stale loop
           // whenever vectors carried an `id` (e.g., after inserting a clock pattern).
-          const projectHash = buildCurrentVerifyProjectHash({
+          const projectHash = source?.executionInput?.projectHash ?? buildCurrentVerifyProjectHash({
             circuit: simulationCircuit,
             projectVectors: state.projectVectors,
             customVectors: state.customVectors,
-            projectIoRows: state.projectIoRows,
+            projectIoRows: executionIoRows,
           });
+          runtimeRun.executionInput = { ioRows: structuredClone(executionIoRows), vectors: structuredClone(authoredVectors), projectHash };
           const prevEntry = state.verifyRunHistory[state.verifyRunHistory.length - 1] ?? null;
           const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
           const ledgerEntry: VerifyRunLedgerEntry = {
-            runId: `run-${ranAtIso}-${report.reportHash.slice(0, 8)}`,
+            runId,
+            identity,
+            outputDigest: runtimeRun.outputDigest,
+            sequence,
             projectId: state.projectId,
             scenarioId: runtimeRun.scenarioId,
             scenarioName: runtimeRun.scenarioName,
@@ -2084,7 +2123,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               normalizeRecordedRunArchive(state.verifyRunArchive, state.projectId, state.verifyLastRun),
               cloneVerifyRun(runtimeRun),
             ),
-            scenarioAuthority:
+            scenarioAuthority: source ? state.scenarioAuthority :
               report.status === 'pass' && runKind === 'verify'
                 ? 'verified'
                 : deriveScenarioAuthority({
@@ -2111,7 +2150,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 failingTick: report.firstFailingTick,
                 ranAtIso: report.generatedAtIso,
               },
-              dirtySinceVerify: false,
+              dirtySinceVerify: source ? (
+                source.scenarioId !== state.activeScenarioId ||
+                source.scenarioContentHash !== (matchedScenario ? computeScenarioContentHash(matchedScenario) : undefined) ||
+                projectHash !== buildCurrentVerifyProjectHash({ circuit: elaborateProjectHierarchy(state.circuit, state.hierarchy),
+                  projectVectors: state.projectVectors, customVectors: state.customVectors, projectIoRows: state.projectIoRows })
+              ) : false,
               dirtySinceExport: true,
             },
           };
@@ -2801,6 +2845,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage, { replacer: recordingStorageReplacer, reviver: recordingStorageReviver }),
       // Keep the existing persistence envelope version: hierarchy is an additive,
       // optional field normalized by mergePersistedRuntimeState for legacy saves.
       version: 5,
@@ -4817,6 +4862,9 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
     circuitSnapshot: run.circuitSnapshot ? structuredClone(run.circuitSnapshot) : undefined,
+    identity: run.identity ? { ...run.identity } : undefined,
+    nativeTrace: run.nativeTrace ? structuredClone(run.nativeTrace) : undefined,
+    executionInput: run.executionInput ? structuredClone(run.executionInput) : undefined,
     projectId: normalizeOwnerProjectId(run.projectId),
     runKind: getRuntimeVerifyRunKind(run),
     scenarioVersion:
@@ -5239,6 +5287,10 @@ function normalizeVerifyRunLedgerEntry(value: unknown): VerifyRunLedgerEntry | n
   const firstFailure = candidate.firstFailure;
   return {
     runId: candidate.runId,
+    identity: candidate.identity && typeof candidate.identity.design === 'string' && typeof candidate.identity.stimulus === 'string' && typeof candidate.identity.engine === 'string'
+      ? { ...candidate.identity } : undefined,
+    outputDigest: typeof candidate.outputDigest === 'string' ? candidate.outputDigest : undefined,
+    sequence: typeof candidate.sequence === 'number' && Number.isSafeInteger(candidate.sequence) && candidate.sequence > 0 ? candidate.sequence : undefined,
     projectId: normalizeOwnerProjectId(candidate.projectId),
     scenarioId: typeof candidate.scenarioId === 'string' ? candidate.scenarioId : undefined,
     scenarioName: typeof candidate.scenarioName === 'string' ? candidate.scenarioName : undefined,

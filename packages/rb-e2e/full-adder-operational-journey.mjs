@@ -91,7 +91,7 @@ async function runAndSettle(page, label, assert) {
   );
   // The surface must have caught up with the ledger before anything reads it.
   await page.waitForFunction(
-    () => Boolean(document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind')),
+    () => Boolean(document.querySelector('[data-testid="ide-run-check-result"]')?.getAttribute('data-check-status')),
     undefined,
     { timeout: 12000 }
   );
@@ -178,7 +178,7 @@ async function setExpectedCell(page, tick, signalId, want, assert) {
 }
 
 async function summaryKind(page) {
-  return page.locator(tid('ide-verify-results-summary')).getAttribute('data-kind');
+  return page.locator(tid('ide-run-check-result')).getAttribute('data-check-status');
 }
 async function text(page, t) {
   return (await page.locator(tid(t)).textContent().catch(() => '')) ?? '';
@@ -226,12 +226,11 @@ async function run(width, height) {
 
   // ── C. BASELINE COMPARE — PASS ────────────────────────────────────────────
   await page.click(tid('mode-button-verify'));
-  await page.waitForSelector(tid('ide-vcb-use-saved-checks'), { timeout: 8000 });
-  await page.click(tid('ide-vcb-use-saved-checks')); // explicitly select Compare intent
-  assert((await page.locator(tid('ide-vcb-use-saved-checks')).getAttribute('aria-pressed')) === 'true', 'Compare intent selected');
+  await page.waitForSelector(tid('ide-vcb-run'), { timeout: 8000 });
+  assert(await page.getByTestId('ide-vcb-use-saved-checks').count() === 0, 'Run automatically uses the saved optional checks');
   await runAndSettle(page, 'baseline Compare', assert);
   assert((await summaryKind(page)) === 'pass', `baseline Compare should PASS (got ${await summaryKind(page)})`);
-  assert(/Compare passed/i.test(await text(page, 'ide-verify-results-summary')), 'PASS headline present');
+  assert(/checks passed/i.test(await text(page, 'ide-run-check-result')), 'The recording reports its passing optional checks');
   console.log(`[${label}] C. Simulate — Compare PASS on the correct Full Adder`);
 
   // ── C2. AUTHOR AN EXPECTATION THROUGH CASE LAB ────────────────────────────
@@ -266,8 +265,9 @@ async function run(width, height) {
   ).catch(() => {});
   assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')),
     'editing an expectation must invalidate the current evidence');
-  assert(/stale/i.test(await text(page, 'ide-status-run')),
-    'the status bar must agree that the simulation is stale after an authoring edit');
+  assert(await page.getByTestId('ide-status-run').count() === 0,
+    'Historical run state belongs in Simulate, not the global status bar');
+  assert(/checks|Stimulus changed/i.test(await text(page, 'ide-run-input-changes')), 'The recording identifies the changed authored input');
 
   const wrongRun = await runAndSettle(page, 'authored-wrong Compare', assert);
   assert((await summaryKind(page)) === 'fail', 'the run must fail against the wrong authored expectation');
@@ -406,8 +406,8 @@ async function run(width, height) {
   await recordedCircuit.getByRole('button', { name: 'Close circuit investigation', exact: true }).click();
   const problemsToggle = page.locator(tid('ide-console-toggle'));
   if ((await problemsToggle.getAttribute('aria-expanded')) !== 'true') await problemsToggle.click();
-  const runInspectorToggle = page.locator(tid('ide-verify-drawer-toggle'));
-  if ((await runInspectorToggle.getAttribute('aria-expanded')) !== 'true') await runInspectorToggle.click();
+  const runInspectorToggle = page.locator(tid('ide-verify-details'));
+  if ((await runInspectorToggle.getAttribute('aria-pressed')) !== 'true') await runInspectorToggle.click();
   await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-run-inspector-expanded-${label}.png`) });
   await runInspectorToggle.click();
   await page.waitForSelector(tid('ide-verify-region-inspector'), { state: 'hidden' });
@@ -452,7 +452,7 @@ async function run(width, height) {
   await page.click(tid('mode-button-verify'));
   await page.waitForSelector(tid('ide-verify-evidence-state'), { timeout: 8000 });
   assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')), 'restoring the pin does not silently re-bless the run');
-  const statusAfterRestore = await text(page, 'ide-status-run');
+  const statusAfterRestore = await text(page, 'ide-verify-evidence-state');
   assert(/stale/i.test(statusAfterRestore), `the status bar agrees the simulation is stale (got "${statusAfterRestore.trim()}")`);
   await runAndSettle(page, 'restored-mapping Compare', assert);
   assert((await summaryKind(page)) === 'pass', 'Compare passes again on the restored mapping');
@@ -462,7 +462,7 @@ async function run(width, height) {
     { timeout: 8000 }
   );
   assert(/CURRENT/i.test(await text(page, 'ide-verify-evidence-state')), 'the new run is CURRENT');
-  assert(!/stale/i.test(await text(page, 'ide-status-run')), 'the status bar agrees the simulation is current');
+  assert(!/stale/i.test(await text(page, 'ide-verify-evidence-state')), 'Simulate identifies the current recording');
   console.log(`[${label}] G. Board — clear LD1 -> STALE (mapping) -> Use LD1 -> still stale -> re-run -> CURRENT; XDC follows`);
 
   // ── H. PACKAGE — trusted build, real download, ZIP inspected ───────────────

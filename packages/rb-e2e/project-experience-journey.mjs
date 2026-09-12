@@ -307,10 +307,9 @@ async function run(width, height) {
       `(tone ${afterEdit.tone}) - the word is what a reader can act on, not the colour`);
     const statusRun = await page.evaluate(() =>
       document.querySelector('[data-testid="ide-status-run"]')?.textContent.trim() ?? '');
-    assert(/stale/i.test(statusRun),
-      `the status bar and the Overview disagree about the evidence: "${statusRun}" vs "${afterEdit.value}"`);
+    assert(statusRun === '', 'The historical recording does not become global status in Project');
     console.log(`${at} ⑩ evidence: "${afterRun.value}" -> edit -> "${afterEdit.value}" (tone ${afterEdit.tone}), ` +
-      `and the status bar agrees ("${statusRun}")`);
+      `and run-specific state stays with its owning workspace`);
   }
 
   await page.screenshot({ path: `${OUT}/overview-blank-${width}x${height}.png` });

@@ -1,5 +1,46 @@
 # AI State
 
+## P2.6B implementation checkpoint - 2026-09-12
+
+The recorded experiment now displays design + authored stimulus + browser engine identity,
+an output digest, and Reproduce. Execution belongs to projectRuntime and reuses retained
+inputs and topology; ordinals distinguish recordings without timestamps entering identity.
+Output digests use native engine samples, excluding check-driven display aliases. Exact
+sample comparison also detects divergence even if compact digests collide.
+
+Design offers explicitly unrecorded Explore and Test this design without auto-execution.
+Sequential Simulate uses one Time instrument with stimulus and recorded values; Run uses
+the saved optional checks. Zero checks yields a recording, never a passing check verdict.
+An explicit circuit investigation walks recorded driver, capturing edge and authored event.
+One endpoint resolver feeds time, wire and saved Board projections; missing stays unrecorded.
+Project's explorer owns its five documents; an unrelated selected signal does not open its
+inspector. Board Check places real step reference and recorded values below the board.
+Package keeps generation/files first and displays the downloaded ZIP's SHA-256.
+
+The connected counter repair/package/reload journey passed at 1440x900 and 1280x650.
+D1-D3, three-drawing D4 and clickable D5 passed in construction browser runs; VCD import,
+measurement/radix and reload passed at 1440x900 and 1366x768. Three negative controls fail
+semantically with protections removed and pass after restoration. Typecheck remains 770 /
+1165a0a5faf044e6 under Node 20.19.0 and TypeScript 5.9.3. These are construction proofs;
+the final quiet-HEAD build, gate outcomes and full visual verdict belong to the P2.6B ticket.
+
+
+The 512-case hierarchical 4-bit adder import now records 39 native signals and evaluates
+2560 authored checks. Reproduce retains digest 140ba365; explicit save and reload preserve
+both recordings. The browser journey measured 4.049 s to run and 1.017 s to open/select linked
+inspection on this machine. A real quota failure led to lossless packing of waveform columns,
+check rows and repeated normalization metadata at existing runtime/repository storage boundaries.
+The two-run fixture uses about 5.00 million stored characters; larger retained sets still face
+the browser quota and must report save failure. No evidence is silently discarded. Older plain
+JSON saves remain readable; portable format 1 and existing storage keys are unchanged.
+The storage/repository owner batch passes 23/23, including exact mixed X/Z/missing samples and
+both long recordings after rehydration. The latest focused UI/owner batch passes 72/72.
+
+Branch stays claude/redbyte-studio-completion-p2-6-q7m3v8, draft PR #86 with its existing base.
+Format 1, protected goldens and upstream PRs are unchanged. Browser E0 only; no merge,
+retarget, production deployment or hardware proof. Continue through validation convergence.
+
+
 ## Change Log 2026-09-11 (Simulated Board readback authority)
 
 Final connected-workflow inspection found that the simulated Board drawing used

@@ -5,6 +5,20 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## P2.6B consumer migration checkpoint (2026-09-12)
+
+The retired Observe/Compare command-row consumers now assert one Run with optional checks;
+20 command-row tests pass. Hardware readiness now checks retained recorded values and named
+changed inputs rather than expecting a fabricated zero; 26 tests pass. The imported-port-only
+bringup contract no longer fabricates PASS from authored expectations: actual floating X outputs
+remain failures, while project-vector expected IO remains authored data. The focused current-owner
+batch is 72/72. Type diagnostics remain 770 / 1165a0a5faf044e6 (Node 20.19.0, TS 5.9.3).
+
+Project/VCD/complex-import/full-adder journeys follow the current owning disclosure/navigation
+without restoring removed controls. Whole Verify/Design families and classroom consumers remain
+release debt until the final quiet-head census below; this checkpoint does not call them green.
+
+
 Every failing vitest file in the repository, recorded so that no red is dismissed as somebody
 else's. This is a **register of work**, not a list of excuses and not a gate: the campaign fixes
 the entries that cost a student real work first, and the rest stay named here until they are

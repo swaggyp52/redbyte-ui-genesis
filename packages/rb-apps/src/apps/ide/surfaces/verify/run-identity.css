@@ -1,0 +1,20 @@
+.rb-run-identity { min-width: 0; border-top: 1px solid var(--wb-border, #ccd5df); color: var(--wb-text, #223347); padding: 7px 12px; font-size: var(--wb-text-sm, .8125rem); background: var(--wb-surface, #f7f9fb); }
+.rb-run-identity__equation { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.rb-run-identity__term { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.rb-run-identity code { overflow-wrap: anywhere; color: inherit; }
+.rb-run-identity__term > span { color: #526377; }
+.rb-run-identity__status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 5px; }
+.rb-run-identity__status > span:first-child { font-weight: 650; }
+.rb-run-identity__status > span:nth-child(2) { color: #526377; }
+.rb-run-identity__status label { margin-left: auto; }
+.rb-run-identity select { max-width: 100%; color: #24374c; background: #fff; border: 1px solid #a5b5c7; border-radius: 4px; padding: 3px; font: inherit; }
+.rb-run-identity__changes { margin: 6px 0 0; color: #725012; }
+.rb-run-identity__alarm { margin-top: 6px; border-left: 3px solid #b02b2b; padding: 6px 10px; color: #892626; background: #fff3f2; }
+.rb-run-identity__details { margin-top: 5px; }
+.rb-run-identity__details summary { cursor: pointer; color: #365a7b; }
+.rb-run-identity__details dl { margin: 10px 0; }
+.rb-run-identity__details dl > div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 8px; }
+.rb-run-identity__details dd { margin: 0; }
+.rb-run-identity__details ol { padding-left: 1.5rem; max-height: 12rem; overflow-y: auto; }
+.rb-run-identity__details button, .rb-run-identity__alarm button { border: 0; background: none; padding: 4px; color: #245984; text-decoration: underline; font: inherit; cursor: pointer; }
+

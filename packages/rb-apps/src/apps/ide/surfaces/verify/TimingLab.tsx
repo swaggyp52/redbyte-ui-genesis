@@ -18,7 +18,17 @@ export interface TimingLabProps {
   readonly vectors: readonly VerifyAuthorVector[];
   readonly inputFields: readonly VerifyVectorDraftInput[];
   readonly outputFields: readonly VerifyVectorDraftInput[];
+  readonly extraObservedFields?: readonly VerifyVectorDraftInput[];
+  readonly playbackControls?: React.ReactNode;
+  readonly formatObservedValue?: (value: string) => string;
+  readonly showExpectedOverlay?: boolean;
   readonly selectedTick: number | null;
+  readonly selectedSignal?: string | null;
+  readonly onSelectSignal?: (signal: string) => void;
+  readonly cursorA?: number | null;
+  readonly cursorB?: number | null;
+  readonly onSetCursorA?: (tick: number | null) => void;
+  readonly onSetCursorB?: (tick: number | null) => void;
   readonly lens: TimingLens;
   readonly onSelectTick: (tick: number) => void;
   readonly onVectorsChange?: (vectors: VerifyAuthorVector[]) => void;
@@ -71,7 +81,10 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   vectors,
   inputFields,
   outputFields,
+  extraObservedFields = [],
   selectedTick,
+  selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
+  playbackControls, formatObservedValue = value => value, showExpectedOverlay = true,
   lens,
   onSelectTick,
   onVectorsChange,
@@ -284,15 +297,18 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       <TimingLanes
         vectors={orderedVectors}
         inputFields={orderedInputs}
-        outputFields={outputFields}
+        outputFields={[...outputFields, ...extraObservedFields]}
         clockFieldIds={clockSet}
         selectedTick={selectedTick}
+        selectedSignal={selectedSignal} onSelectSignal={onSelectSignal}
+        cursorA={cursorA} cursorB={cursorB} onSetCursorA={onSetCursorA} onSetCursorB={onSetCursorB}
         editable={editable}
         observedValuesByTick={observedValuesByTick}
         caseEvidenceByTick={caseEvidenceByTick}
         onSelectTick={onSelectTick}
         onDriveInput={driveInputAt}
         onCycleExpected={cycleExpectedAt}
+        playbackControls={playbackControls} formatObservedValue={formatObservedValue} showExpectedOverlay={showExpectedOverlay}
         generatedFieldIds={generatedFieldIds}
         generatedValueAt={generatedValueAt}
         generatedNote={generatedNote}
@@ -455,7 +471,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
             </div>
           )}
 
-          {lens === 'checks' ? (
+          {outputFields.length > 0 ? (
             <div className="rb-timing-group" aria-label="Expected output checks">
               <span className="rb-timing-group-label">Expected outputs — unset outputs are observed, not graded</span>
               <div className="rb-timing-toggles">

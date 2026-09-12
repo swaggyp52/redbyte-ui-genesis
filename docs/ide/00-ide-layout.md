@@ -11,6 +11,20 @@ role: IDE shell layout contract
 Status: Draft v1 (Phase 1 lock)
 Scope: `packages/rb-apps/src/apps/IdeApp.tsx` default `/` IDE surface
 
+
+## Current P2.6B panel and Board Check composition (2026-09-12)
+
+Workspace navigation creates no object tabs. At constrained effective width (including larger
+root text), only one auxiliary side panel is shown; visible panel recovery and per-workspace
+preferences remain. Split Design starts with its circuit/source pair. Run-specific status
+stays in Simulate; the global status bar carries save/problems context.
+
+Board assignments retain their board/mapping grammar. Board Check is one light main frame:
+board first, actual step controls and stimulus/expected/recorded table underneath, visible
+Back to assignments. It reads the retained recording at each selected step and never uses
+the exploratory I/O bus as evidence. The recorded Board view retains saved mappings after
+current edits and names that context; current assignments still withhold stale projections.
+
 ## Product Identity
 
 RedByte IDE is a deterministic Basys3 FPGA workflow surface:

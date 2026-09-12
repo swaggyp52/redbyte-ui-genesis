@@ -1,0 +1,38 @@
+import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import fs from 'node:fs';import path from 'node:path';import { createRequire } from 'node:module';import { execFileSync } from 'node:child_process';import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const viteNode=path.join(path.dirname(require.resolve('vite-node/package.json',{paths:[path.dirname(require.resolve('vitest/package.json'))]})),'vite-node.mjs');
+execFileSync(process.execPath,[viteNode,'--config','vitest.config.ts','packages/rb-e2e/fixtures/large-recorded-experiment.ts'],{stdio:'pipe'});
+const out=evidenceDir('large-experiment',process.env.RB_SHOT_LABEL??'current');const browser=await launchChromium();
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});page.setDefaultTimeout(20000);const tid=id=>page.getByTestId(id);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(BASE_URL,{waitUntil:'networkidle'});await tid('ide-project-file-input').setInputFiles(path.resolve('.redbyte/e2e-evidence/large-experiment/fixture.rbproj'));
+ await tid('mode-button-design').click();await tid('ide-design-test-design').click();
+ const start=Date.now();await tid('ide-vcb-run').click();await tid('ide-run-identity').waitFor();const runMs=Date.now()-start;
+ const run=await page.evaluate(()=>JSON.parse(JSON.stringify(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun)));
+ assert.equal(run.waveform.length,512);assert.equal(run.report.rows.length,2560);assert.equal(run.assertionStatus,'passing');
+ const nativeKeys=run.nativeTrace.signals;assert.ok(nativeKeys.length>=30);
+ const initialDigest=await tid('ide-run-output-digest').getAttribute('data-digest');
+ await tid('ide-verify-view-waveform').click();await tid('ide-verify-tick-scrubber').fill('511');
+ assert.match(await tid('ide-verify-selected-tick').innerText(),/511/);
+ const inspectionStart=Date.now();await tid('ide-verify-inspect-circuit').click();
+ const options=await page.getByLabel('Recorded circuit signal').locator('option').evaluateAll(nodes=>nodes.map(node=>({value:node.value,label:node.textContent})));
+ fs.writeFileSync(path.join(out,'signal-options.json'),JSON.stringify(options,null,2));
+ const sum=options.find(option=>/^SUM.*2/i.test(option.label));assert.ok(sum,'The mapped top-level SUM bit is offered');
+ await page.getByLabel('Recorded circuit signal').selectOption(sum.value);
+ const inspectionMs=Date.now()-inspectionStart;
+ await page.screenshot({path:path.join(out,'hierarchical-recording-1440x900.png')});
+ assert.match(await tid('ide-recorded-circuit-context').innerText(),/511/);
+ const labels=await page.getByLabel('Recorded circuit signal').locator('option').allTextContents();
+ assert.ok(labels.some(label=>/u_fa0|fulladdercell0/i.test(label)) && labels.some(label=>/u_fa1|fulladdercell1/i.test(label)),'Internal names retain distinct instance identity');
+ await page.getByLabel('Close circuit investigation').click();await tid('ide-vcb-reproduce').click();await page.waitForFunction(()=>document.querySelector('[data-testid="ide-run-repetition"]')?.textContent?.includes('2 runs'));
+ assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'),initialDigest);
+ await tid('ide-topbar-save-btn').click();
+ const saveDiagnostic=await page.evaluate(()=>({state:document.querySelector('[data-testid="ide-save-state"]')?.getAttribute('data-state'),keys:Object.keys(localStorage).map(key=>({key,chars:localStorage.getItem(key)?.length??0})),body:document.body.innerText.slice(0,2200)}));
+ fs.writeFileSync(path.join(out,'save-diagnostic.json'),JSON.stringify(saveDiagnostic,null,2));
+ await page.locator('[data-testid="ide-save-state"][data-state="saved"]').waitFor();
+ await tid('mode-button-project').click();await tid('ide-project-row-doc:sources').click();assert.match(await page.locator('main').innerText(),/FullAdderCell|full_adder_cell/);
+ await page.reload({waitUntil:'networkidle'});await tid('mode-button-verify').click();assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'),initialDigest);
+ assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'result.json'),JSON.stringify({baseUrl:BASE_URL,runMs,inspectionMs,ticks:512,checks:2560,nativeSignalCount:nativeKeys.length,initialDigest,errors},null,2));
+ console.log('PASS 512-case hierarchical source import, recording, linked identity, reproduction and reload: '+out);
+}finally{await browser.close();}

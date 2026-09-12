@@ -18,3 +18,12 @@
 .ide-root .rb-recorded-circuit .ide-why-steps { padding-left: 20px; }
 .ide-root .rb-recorded-circuit-edit { margin: 10px 12px; align-self: start; }
 .ide-root .rb-recorded-circuit-unavailable { margin: 12px; line-height: 1.5; }
+
+.ide-root .rb-causal-walk { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--wb-border); font-size: var(--wb-text-sm); }
+.ide-root .rb-causal-walk button { text-align: left; white-space: normal; }
+.ide-root .rb-causal-walk p { margin: 0; line-height: 1.5; color: var(--wb-text-2); }
+.ide-root .rb-recorded-circuit > details { padding: 8px 12px; }
+
+.ide-root .rb-recorded-circuit-heading { position: sticky; top: 0; z-index: 2; flex: none; background: var(--wb-surface); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-recorded-circuit-heading > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 12px; }
+.ide-root .rb-sim-lab-grid[data-investigation] > .rb-recorded-circuit { max-height: max(22rem, calc(100vh - 18rem)); overflow: auto; }

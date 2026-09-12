@@ -11,6 +11,16 @@ role: Design surface spec
 Status: Unified Workbench v3 RC source; final exact-SHA certification pending
 Mode ID: `design`
 
+
+## Current P2.6B authoring and handoff (2026-09-12)
+
+Explore replaces the Live label and is explicitly unrecorded. Clock edge and Reset values
+operate only this exploratory state. There is no Edit/Live/Replay peer switch. A recording
+may open a read-only Design view with a visible return to authoring. Test this design opens
+the owning scenario with the selected signal and does not run it. Simulate owns recordings.
+Split defaults to the circuit/source pair with support panels revealed on request. Sources
+and Board I/O share a second library tab row so both stay reachable in the narrow dock.
+
 ## Design explores; Simulate records (2026-09-07)
 
 Design has no clock of its own. `Live` is exploration:

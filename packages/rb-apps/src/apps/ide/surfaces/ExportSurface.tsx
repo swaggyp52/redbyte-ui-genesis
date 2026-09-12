@@ -1774,6 +1774,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   : 'Generation creates the ZIP and requests a browser download.'}
               <span> A download record does not confirm a file was saved to disk.</span>
             </p>
+            {downloadDone && currentDownloadEvidence?.packageHash ? <p className="rb-pkg-download-digest">
+              ZIP SHA-256 <code data-testid="ide-export-package-sha256">{currentDownloadEvidence.packageHash}</code>
+            </p> : null}
             <p className="rb-pkg-vivado-next" data-testid="ide-export-vivado-next-step">
               <strong>Next in Vivado</strong> Unzip the project ZIP and open its <code>.xpr</code> project.
               Review synthesis and implementation before generating a bitstream.

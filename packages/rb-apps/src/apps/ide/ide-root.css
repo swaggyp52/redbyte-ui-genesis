@@ -11278,33 +11278,8 @@ details[open].ide-export-evidence-details > summary::before {
   --ide-workbench-console-height: 92px;
 }
 
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-columns: minmax(212px, 228px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(220px, auto);
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-left {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-workspace {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-right {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  border-left: 0;
-  border-top: 1px solid rgba(52, 86, 118, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  max-height: 34vh;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main.hide-right-dock {
-  grid-template-columns: minmax(212px, 228px) minmax(0, 1fr);
-}
+/* Panel placement is owned by unified-workbench-v3.css. Compact visibility is
+   resolved by IdeWorkbenchShell; a hidden library never leaves an empty grid column. */
 
 .ide-workbench-shell[data-layout-mode='compact'] .ide-panel-header {
   padding: 10px 12px 8px;
@@ -12439,34 +12414,6 @@ details[open].ide-export-evidence-details > summary::before {
   }
 }
 
-/* Live viewport unblock, final authority:
-   when browser zoom shrinks the effective workspace, keep the center tool readable.
-   The right inspector must yield vertical space before it steals horizontal space.
-   Only applies to compact (<1320px) — standard screens keep the side inspector. */
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-columns: var(--ide-workbench-left-width) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(220px, auto);
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-left {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-workspace {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-right {
-  grid-column: 2;
-  grid-row: 2;
-  border-left: 0;
-  border-top: 1px solid rgba(52, 86, 118, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  max-height: 32vh;
-}
-
 .ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock,
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock {
   scrollbar-gutter: stable both-edges;
@@ -12635,12 +12582,6 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(25, 37, 54, 0.92);
   color: #f8fbff;
   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.18);
-}
-
-.ide-workbench-shell[data-layout-mode='compact'][data-ide-mode-marker='design']
-  .ide-workbench-main:not(.hide-right-dock)
-  .ide-workbench-dock-left {
-  padding: 12px 12px 16px;
 }
 
 .ide-design-palette {
@@ -21496,8 +21437,7 @@ button:disabled,
   gap: 20px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-workbench-workspace,
-[data-ide-mode-marker='verify'] .ide-workbench-workspace {
+[data-ide-mode-marker='design'] .ide-workbench-workspace {
   padding: 18px 20px 22px !important;
 }
 
@@ -23594,59 +23534,12 @@ button:disabled,
     minmax(0, 1fr) !important;
 }
 
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main.hide-right-dock {
-  grid-template-columns:
-    var(--ide-workbench-left-slot-width)
-    minmax(0, 1fr) !important;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed {
   grid-template-columns:
     var(--ide-workbench-left-slot-width)
     minmax(0, 1fr)
     var(--ide-workbench-right-slot-width) !important;
-}
-
-/* 2026-06-16 Side dock affordance: collapsed rails are compact restore buttons,
-   not sideways labels. */
-
-/* 2026-06-16 Open side panel density: compact inspectors remain side tools.
-   Hardware/Export support panels should not turn into full-width bottom cards. */
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-columns:
-    var(--ide-workbench-left-slot-width)
-    minmax(0, 1fr)
-    var(--ide-workbench-right-slot-width) !important;
-  grid-template-rows: minmax(0, 1fr) !important;
-}
-
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
-  .ide-workbench-dock-left {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-}
-
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
-  .ide-workbench-workspace {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-}
-
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
-  .ide-workbench-dock-right {
-  grid-column: 3 !important;
-  grid-row: 1 !important;
-  max-height: none !important;
-  border-top: 0 !important;
-  border-left: 1px solid rgba(52, 86, 118, 0.22) !important;
-  box-shadow:
-    inset 1px 0 0 rgba(255, 255, 255, 0.03),
-    0 18px 34px rgba(1, 6, 12, 0.22) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {

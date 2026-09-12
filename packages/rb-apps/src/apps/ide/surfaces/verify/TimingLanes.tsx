@@ -7,14 +7,23 @@ import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas'
 // the expected value overlaid on the observed trace, edge markers on the ruler,
 // the selected tick as a column. Clicking an input cell drives that input at
 // that tick (creating the event if the tick has none); clicking an output cell
-// cycles its expected value (unset → 0 → 1 → unset). Values between events hold.
+// selects that recorded value. Optional checks are edited explicitly in the event editor.
 
 export interface TimingLanesProps {
   readonly vectors: readonly VerifyAuthorVector[];
   readonly inputFields: readonly VerifyVectorDraftInput[];
   readonly outputFields: readonly VerifyVectorDraftInput[];
   readonly clockFieldIds: ReadonlySet<string>;
+  readonly playbackControls?: React.ReactNode;
+  readonly formatObservedValue?: (value: string) => string;
+  readonly showExpectedOverlay?: boolean;
   readonly selectedTick: number | null;
+  readonly selectedSignal?: string | null;
+  readonly onSelectSignal?: (signal: string) => void;
+  readonly cursorA?: number | null;
+  readonly cursorB?: number | null;
+  readonly onSetCursorA?: (tick: number | null) => void;
+  readonly onSetCursorB?: (tick: number | null) => void;
   readonly editable: boolean;
   readonly observedValuesByTick?: Readonly<Record<number, Readonly<Record<string, string>>>>;
   readonly caseEvidenceByTick?: Readonly<Record<number, StimulusCaseEvidenceState>>;
@@ -29,7 +38,7 @@ export interface TimingLanesProps {
   readonly generatedNote?: string;
 }
 
-const LABEL_W = 132;
+const BASE_LABEL_W = 132;
 /**
  * The instrument sizes itself to the room it is given.
  *
@@ -56,8 +65,7 @@ const LANE_H_MIN = 26;
    was capped below the room it had. A trace lane taller than this stops reading as a trace. */
 const LANE_H_MAX = 80;
 const LANE_H_FALLBACK = 34;
-const RULER_H = 22;
-const GROUP_H = 18;
+
 
 const NAMES_ITSELF_CLOCK = /^(clk|clock)\b|\bclk\b/i;
 const NAMES_ITSELF_RESET = /^(rst|reset|nrst|clr|clear)$/i;
@@ -75,6 +83,8 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   generatedValueAt,
   generatedNote,
   selectedTick,
+  selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
+  playbackControls, formatObservedValue = value => value, showExpectedOverlay = true,
   editable,
   observedValuesByTick,
   caseEvidenceByTick,
@@ -85,6 +95,11 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
 }) => {
   // The available box, observed rather than assumed. Until it is known the instrument draws at
   // its fallback size, which is what the previous fixed geometry produced.
+  const [textScale, setTextScale] = useState(() => typeof document === 'undefined' ? 1 :
+    (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16);
+  const LABEL_W = BASE_LABEL_W * textScale;
+  const RULER_H = 22 * textScale;
+  const GROUP_H = 18 * textScale;
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
   useLayoutEffect(() => {
@@ -100,7 +115,11 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
       );
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    const updateScale = () => setTextScale((parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16);
+    const rootObserver = new MutationObserver(updateScale);
+    rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    updateScale();
+    return () => { observer.disconnect(); rootObserver.disconnect(); };
   }, []);
 
   const ordered = useMemo(() => [...vectors].sort((a, b) => a.tick - b.tick), [vectors]);
@@ -177,8 +196,8 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
     if (!box || box.width <= 0 || ticks.length === 0) return TICK_W_FALLBACK;
     const perTick = (box.width - LABEL_W) / ticks.length;
     if (!Number.isFinite(perTick) || perTick <= 0) return TICK_W_FALLBACK;
-    return Math.round(Math.min(TICK_W_MAX, Math.max(TICK_W_MIN, perTick)));
-  }, [box, ticks.length]);
+    return Math.round(Math.min(TICK_W_MAX * textScale, Math.max(TICK_W_MIN * textScale, perTick)));
+  }, [box, ticks.length, textScale, LABEL_W]);
 
   // Lane height follows the height actually available, so five boundary signals are comfortable
   // on a short laptop instead of 26px each in a half-empty region.
@@ -187,8 +206,8 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
     const chrome = RULER_H + GROUP_H * 2 + 4;
     const perLane = (box.height - chrome) / laneCount;
     if (!Number.isFinite(perLane) || perLane <= 0) return LANE_H_FALLBACK;
-    return Math.round(Math.min(LANE_H_MAX, Math.max(LANE_H_MIN, perLane)));
-  }, [box, laneCount]);
+    return Math.round(Math.min(LANE_H_MAX * textScale, Math.max(LANE_H_MIN * textScale, perLane)));
+  }, [box, laneCount, textScale, RULER_H, GROUP_H]);
 
   const width = LABEL_W + ticks.length * TICK_W;
   const height = RULER_H + GROUP_H + stimulusLaneCount * LANE_H + GROUP_H + outputFields.length * LANE_H + 4;
@@ -249,6 +268,17 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
         }
       }}
     >
+      <div className="rb-tl-context" data-testid="ide-time-selection">
+        <strong>{selectedSignal ?? 'Select a signal'} · {selectedTick == null ? 'Select a tick' : 't' + selectedTick}</strong>
+        <code data-testid="ide-time-selected-value">{(() => {
+          const field = inputFields.concat(outputFields).find(field => field.label === selectedSignal);
+          return field && selectedTick != null ? observedValuesByTick?.[selectedTick]?.[field.id] ?? 'unrecorded' : 'unrecorded';
+        })()}</code>
+        <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorA?.(selectedTick)}>Set A</button>
+        <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorB?.(selectedTick)}>Set B</button>
+        {playbackControls}
+        <span>A {cursorA == null ? '—' : 't' + cursorA} · B {cursorB == null ? '—' : 't' + cursorB}{cursorA != null && cursorB != null ? ' · Δ ' + Math.abs(cursorB - cursorA) + ' ticks' : ''}</span>
+      </div>
       <div className="rb-tl-scroll" ref={boxRef}>
         <svg className="rb-tl-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="presentation">
           {/* selected tick column */}
@@ -283,9 +313,9 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
             ))}
           </g>
           {/* group headers */}
-          <text className="rb-tl-group" x={8} y={RULER_H + GROUP_H - 5}>Stimulus</text>
+          <text className="rb-tl-group" x={8} y={RULER_H + GROUP_H - 5}>Stimulus · current draft</text>
           <line className="rb-tl-group-rule" x1={0} x2={width} y1={RULER_H + GROUP_H} y2={RULER_H + GROUP_H} />
-          <text className="rb-tl-group" x={8} y={outputsTop - 5}>Outputs · expected over observed</text>
+          <text className="rb-tl-group" x={8} y={outputsTop - 5}>Recorded signals</text>
           <line className="rb-tl-group-rule" x1={0} x2={width} y1={outputsTop} y2={outputsTop} />
           {/* generated clock lanes: one active edge per tick, read-only */}
           {generatedClocks.map((clockId, laneIndex) => {
@@ -315,6 +345,8 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                 key={field.id}
                 className={`rb-tl-lane rb-tl-lane--input${isClock ? ' is-clock' : ''}${isReset ? ' is-reset' : ''}${isGenerated ? ' is-generated' : ''}`}
                 data-testid={`ide-timing-lane-${field.id}`}
+                onClick={() => onSelectSignal?.(field.label)}
+                data-selected={selectedSignal === field.label ? 'true' : undefined}
                 data-generated={isGenerated ? 'true' : undefined}
               >
                 {isGenerated && generatedNote ? <title>{generatedNote}</title> : null}
@@ -353,6 +385,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                       data-testid={`ide-timing-cell-${field.id}-${tick}`}
                       onClick={() => {
                         onSelectTick(tick);
+                        onSelectSignal?.(field.label);
                         if (editable && !isGenerated) onDriveInput(tick, field.id, value === 1 ? 0 : 1);
                       }}
                     />
@@ -369,12 +402,18 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
               return observed === '1' ? 1 : observed === '0' ? 0 : null;
             }, top);
             return (
-              <g key={field.id} className="rb-tl-lane rb-tl-lane--output" data-testid={`ide-timing-lane-${field.id}`}>
+              <g key={field.id} className="rb-tl-lane rb-tl-lane--output" data-testid={`ide-timing-lane-${field.id}`}
+                onClick={() => onSelectSignal?.(field.label)} data-selected={selectedSignal === field.label ? 'true' : undefined}>
                 <line className="rb-tl-lane-rule" x1={0} x2={width} y1={top + LANE_H} y2={top + LANE_H} />
                 <title>{field.label}</title>
                 <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>
                   {fitLabel(field.label, false)}
                 </text>
+                {ticks.map(tick => {
+                  const expected = expectedAt(field.id, tick); const observed = observedAt(field.id, tick);
+                  return expected != null && observed != null && String(expected) !== observed
+                    ? <rect key={tick} className="rb-tl-mismatch-background" x={x(tick)} y={top} width={TICK_W} height={LANE_H} /> : null;
+                })}
                 <path className="rb-tl-trace rb-tl-trace--observed" d={observedTrace} />
                 {ticks.map((tick) => {
                   const expected = expectedAt(field.id, tick);
@@ -383,12 +422,13 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                   const y = expected === 1 ? top + 5 : top + LANE_H - 6;
                   return (
                     <g key={tick}>
-                      {expected != null ? (
+                      {observed != null && <text className="rb-tl-observed-label" x={x(tick) + TICK_W / 2} y={top + LANE_H / 2 + 4 * textScale} textAnchor="middle">
+                        {formatObservedValue(observed)}
+                      </text>}
+                      {showExpectedOverlay && expected != null ? (
                         <g className={`rb-tl-expected${mismatch ? ' is-fail' : observed != null ? ' is-pass' : ''}`}>
                           <line x1={x(tick) + 4} x2={x(tick) + TICK_W - 4} y1={y} y2={y} />
-                          <text x={x(tick) + TICK_W / 2} y={expected === 1 ? y + 12 : y - 4} textAnchor="middle" className="rb-tl-expected-label">
-                            {expected}
-                          </text>
+                          <title>Expected {expected}</title>
                         </g>
                       ) : null}
                       <rect
@@ -398,11 +438,13 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                         width={TICK_W}
                         height={LANE_H}
                         role="gridcell"
-                        aria-label={`${field.label} at t${tick}: expected ${expected ?? 'unset'}, observed ${observed ?? 'none'}`}
+                        aria-label={`${field.label} at t${tick}: expected ${expected ?? 'unset'}, observed ${observed ?? 'unrecorded'}`}
+                        data-observed-value={observed ?? 'unrecorded'}
                         data-testid={`ide-timing-check-${field.id}-${tick}`}
                         onClick={() => {
                           onSelectTick(tick);
-                          if (editable) onCycleExpected(tick, field.id);
+                          // Selecting recorded evidence never edits its optional check.
+                          onSelectSignal?.(field.label);
                         }}
                       />
                     </g>

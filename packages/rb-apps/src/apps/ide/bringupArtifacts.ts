@@ -702,21 +702,18 @@ function resolveExpectedValue(params: {
     return normalizeBitSymbol(verifyMatch.expected);
   }
 
-  const simulatedMatch = params.simulatedRows.find(
-    (row) => row.tick === params.tick && normalizeIoSignalKey(row.signal) === params.signalName
-  );
-  if (simulatedMatch) {
-    return simulatedMatch.expected;
-  }
-
+  // A project-vector reference preserves the authored expectation. Simulating the
+  // circuit again must not silently replace a deliberately failing check.
   const vectorMatch = params.vectors.find((vector) => vector.tick === params.tick);
-  if (!vectorMatch) return '-';
-  const expected = vectorMatch.expected ?? {};
+  const expected = vectorMatch?.expected ?? {};
   const key = Object.keys(expected).find(
     (candidate) => normalizeIoSignalKey(candidate) === params.signalName
   );
-  if (!key) return '-';
-  return normalizeBitSymbol(expected[key]);
+  if (key) return normalizeBitSymbol(expected[key]);
+  const simulatedMatch = params.simulatedRows.find(
+    (row) => row.tick === params.tick && normalizeIoSignalKey(row.signal) === params.signalName
+  );
+  return simulatedMatch?.expected ?? '-';
 }
 
 function uniqueSortedTicks(rows: Array<{ tick: number }>): number[] {
