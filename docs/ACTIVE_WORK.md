@@ -8,7 +8,56 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
-## Current campaign - 2026-09-08 connected product completion
+## Current campaign - 2026-09-11 P2.6 studio completion and product hardening
+
+This section supersedes the connected-completion section below, which is closed at
+`2d3160131` on PR #85. P2.6 continues on a clean branch,
+`claude/redbyte-studio-completion-p2-6-q7m3v8`, from that exact head, through draft PR #86
+whose base is the PR #85 branch. PR #85 and #84 are untouched, `main` is untouched, project
+format stays 1 and the protected goldens are unchanged. Browser-E0 candidate work; Vivado is
+not installed on this machine, so E1 was not attempted.
+
+Delivered so far, each pushed and CI-green (PR Fast Checks and Deploy to Cloudflare Pages):
+`e166b87e6` the three obsolete gate consumers migrated to the Start Center, the five-column
+README pin map and the Board's next-action line - and the starter picker dialog, found 4392px
+tall in a 720px window with no scrollable ancestor, bounded and scrolling; `84601cf14` the last
+px type tokens on the rem scale (the Overview's project name was 13px at a 32px root) and one
+owner for dock headers, with Board's support docks off the dark shell; `75d136510` the Design
+inspector composed for 1280x650 and its Evidence rows honest about what was never recorded;
+`3b00b9412` the counter journey extended to a real design defect, the checked package and a
+reload; `e10210443` the app resolves the `.ts` modules the tests verify instead of stale `.js`
+mirrors - the shipped Verilog generator had been reporting every flip-flop Q as undriven;
+`ef229054f` a failed check no longer forces the Problems panel open; `9b79dd78e` a saved project
+can be deleted from Start behind a named confirmation; `2909cecd9` a failed run keeps the
+instrument; `4a0abec0a` the gate harness recognises the current Simulate stimulus; `a26378370`
+Pre-flight retired - Board offers Board Check and the simulated board after mapping, the header's
+next line names the package Build & Export will offer, and six consumers read the current owner.
+
+**Campaign pivot (2026-09-12): P2.6B studio coherence.** The owner's direction changes the unit of
+work from clipping defects and gate archaeology to the Design-Simulate partnership: Design owns
+authoring with an explicitly unrecorded Explore, Simulate owns recorded experiments with one Run
+and optional checks, one investigation context carries signal / run / tick between them, one
+Simulate inspector, one Project navigation owner, scoped global status. The second classroom pass
+(21/71 at `2909cecd9`, every log read) is classified in the ticket: none of the 50 is a lost
+capability, 45 are Category B assertions against P2.5 decisions that P2.6B replaces again, one is
+a real defect (the Design left dock's "Board I/O" tab laid out past a 218px strip), and the three
+migrated gates pass at `a26378370`.
+
+Validation at `9b79dd78e`: typecheck 770 / `1165a0a5faf044e6` at every commit; designSurface
+family 231/19 and verifySurface family 155/55 with failure identities identical to `2d3160131`
+(baseline worktree); counter, Full Adder and project-experience journeys pass against the
+running product at 1440x900 and 1280x650 (Full Adder also 1366x768); migrated
+examples-contract gate PASS; CSS audit 0/0; docs 29/29; encoding clean. A full pass of the
+classroom chain, continuing past failures, is recorded with its classification in
+`docs/release/product-hardening-ticket-2026-09-11-p2-6-studio-completion.md`. Continuation:
+`.redbyte/product-immersion/p2-6-studio-completion/RESUME.md`.
+
+Named and not delivered: the Board Check composition (OS-era hero, dark banner, exit banner below
+an unscrollable clip, checklist in a dock that opens collapsed - recomposed in the P2.6B Board
+phase), the 217 tracked `.js` mirrors, the Overview's stranded height at 1440x900, and 200% text
+on the Board table and Simulate inspector.
+
+## Previous campaign - 2026-09-08 connected product completion (closed at 2d3160131)
 
 This section supersedes candidate-head and Package-default claims in the dated
 history below. Work continues on
