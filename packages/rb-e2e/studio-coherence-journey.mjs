@@ -61,8 +61,42 @@ try {
     await page.screenshot({ path: path.join(out, 'design-split-' + viewport.width + 'x' + viewport.height + '.png') });
     assert.equal(await tid('ide-mode-design').getAttribute('data-left-dock-state'), 'hidden', 'Split gives its primary objects the library width');
     assert.equal(await tid('ide-mode-design').getAttribute('data-right-dock-state'), 'hidden', 'Split keeps optional detail recoverable');
+    await tid('mode-button-verify').click();
+    await tid('ide-vcb-run').click();
+    await tid('ide-run-repetition').waitFor();
+    assert.equal(await tid('ide-run-repetition').innerText(), '1 run · no repeat yet');
+    await page.getByRole('gridcell', { name: /^EN at t2:/ }).click();
+    await tid('ide-vcb-run').click();
+    await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.status === 'fail');
+    await tid('ide-verify-inspect-circuit').click();
+    await page.getByLabel('Recorded circuit signal').selectOption('LD0');
+    await tid('ide-timing-lanes').press('Home');
+    await tid('ide-timing-lanes').press('ArrowRight');
+    await tid('ide-timing-lanes').press('ArrowRight');
+    const contextGeometry = await tid('ide-recorded-circuit-context').evaluate(context => {
+      const heading = context.closest('.rb-recorded-circuit-heading').getBoundingClientRect();
+      const bar = document.querySelector('[data-testid="ide-verify-representation"]').getBoundingClientRect();
+      return { headingTop: heading.top, controlsBottom: bar.bottom, context: context.textContent };
+    });
+    assert.ok(contextGeometry.headingTop >= contextGeometry.controlsBottom - 1,
+      'Recording context stays below the shared controls after keyboard focus: ' + JSON.stringify(contextGeometry));
+    const traceHeight = await page.locator('.rb-tl-scroll').evaluate(element => element.getBoundingClientRect().height);
+    assert.ok(traceHeight >= 200, 'The linked trace keeps a useful viewport: ' + traceHeight);
+    const timingBounds = await page.locator('.rb-timing').boundingBox();
+    const generatorBounds = await tid('ide-scenario-generators-disclosure').boundingBox();
+    assert.ok(generatorBounds.y >= timingBounds.y + timingBounds.height - 1,
+      'Generators stay below the complete Time instrument');
+    await page.screenshot({ path: path.join(out, 'linked-context-' + viewport.width + 'x' + viewport.height + '.png') });
+    await page.getByLabel('Close circuit investigation').click();
+    await tid('mode-button-project').click();
+    await tid('ide-project-row-doc:overview').click();
+    assert.equal(await tid('ide-project-problems').count(), 0, 'Overview does not contain a second Problems ledger');
+    assert.match(await tid('ide-project-attention').innerText(), /check-failed/);
+    await tid('ide-project-open-problems').click();
+    assert.equal(await tid('ide-console-toggle').getAttribute('aria-expanded'), 'true',
+      'Open Problems reaches the canonical dock');
     assert.deepEqual(errors, []);
-    results.push({ viewport, tabGeometry, errors });
+    results.push({ viewport, tabGeometry, splitGeometry, sourceAction, contextGeometry, errors });
     await context.close();
   }
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ baseUrl: BASE_URL, results }, null, 2));

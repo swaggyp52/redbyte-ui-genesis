@@ -1,5 +1,28 @@
 # AI State
 
+## P2.6B visual closure checkpoint - 2026-09-12
+
+The product gate passes at pushed 2563b40d4e16a152d02c37aa5d8daf2a5349f9e1, including both
+protected export goldens. All 15 built-browser journeys pass at that same build: determinism,
+causal capture, scenario partnership, recorded repair, Full Adder, nested adder, complex import,
+VCD analyzer, project lifecycle/persistence, studio composition/scale, Board Check, accessibility
+and the 512-case hierarchical experiment. The long fixture measured 2.608 s to run and 1.576 s
+to open/select linked inspection under the concurrent campaign; digest remains 140ba365.
+
+Personal review of all 13 matched built captures identified a second full Problems list in
+Overview and 80 px of the linked recording header behind its shared controls. Overview now
+shows one blocker and opens the canonical Problems dock. Investigation has bounded separate
+pane scrolling, a complete recording header and a minimum useful Time viewport; the event
+editor disclosure cannot overlap the instrument. A singleton recording now says no repeat yet
+in both Simulate and Project. Source browser assertions pass at 1440x900 and 1280x650; the
+Project/recorded-truth batch passes 13/13. The compact Project test explicitly reveals its
+explorer again after opening the inspector, preserving its document-activation assertion.
+
+These final presentation corrections require a fresh build and repeated affected browser
+proof. Classroom, repo-status, final source/CI and the visual report remain closure work.
+No merge, retarget or production deployment. Browser E0 only; implementer review does not
+substitute for Connor Angiel's acceptance.
+
 ## P2.6B review checkpoint - 2026-09-12
 
 This supersedes the first implementation checkpoint below. The first checkpoint is pushed

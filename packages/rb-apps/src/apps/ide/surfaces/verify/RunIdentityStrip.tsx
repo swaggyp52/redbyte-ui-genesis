@@ -34,7 +34,7 @@ export function RunIdentityStrip({ run, archive, changes, onSelect, onDifference
     </div>
     <div className="rb-run-identity__status">
       <span data-testid="ide-run-repetition" role="status">
-        {run.identity ? `${repetition.runs.length} ${repetition.runs.length === 1 ? 'run' : 'runs'} · ${repetition.identical} identical` : 'Older recording · identity unavailable'}
+        {run.identity ? repetition.runs.length === 1 ? '1 run · no repeat yet' : `${repetition.runs.length} runs · ${repetition.identical} identical` : 'Older recording · identity unavailable'}
       </span>
       <span data-testid="ide-run-check-result" data-check-status={run.assertionStatus === 'not-evaluated' ? 'not-evaluated' : checks === 0 ? 'not-configured' : failed > 0 ? 'fail' : 'pass'}>{run.assertionStatus === 'not-evaluated' ? 'Checks not evaluated' : checks === 0 ? 'No checks · outputs recorded' : failed > 0 ? failed + ' of ' + checks + ' checks failed' : checks + ' checks passed'}</span>
       {records.length > 1 && onSelect && <label>Recording <select aria-label="Recorded run" value={getRuntimeVerifyRunId(run)} onChange={event => onSelect(event.target.value)}>

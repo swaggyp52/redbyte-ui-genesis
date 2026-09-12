@@ -14,6 +14,8 @@ Mode ID: `verify`
 
 ## Current P2.6B experiment model (2026-09-12)
 
+The linked investigation reserves its shared controls above two independently scrolling panes. Focusing Time must not obscure the recording header; the trace retains a useful minimum height, and its event-editor disclosure stays below it. One recorded execution says no repeat yet; identical counts describe comparisons after reproduction.
+
 Review refinement: Time uses Up/Down to select a lane and Left/Right to move the tick. Space/Enter edits only the selected authored input; generated clock and recorded output lanes cannot mutate stimulus. Child controls retain their own keyboard actions. Combinational Table inputs remain directly editable. Pre-run check context says no recording.
 
 This section supersedes the representation/run-line/mode descriptions below where they conflict.

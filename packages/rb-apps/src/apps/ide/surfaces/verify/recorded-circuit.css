@@ -26,4 +26,4 @@
 
 .ide-root .rb-recorded-circuit-heading { position: sticky; top: 0; z-index: 2; flex: none; background: var(--wb-surface); border-bottom: 1px solid var(--wb-border); }
 .ide-root .rb-recorded-circuit-heading > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 12px; }
-.ide-root .rb-sim-lab-grid[data-investigation] > .rb-recorded-circuit { max-height: max(22rem, calc(100vh - 18rem)); overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-investigation] > .rb-recorded-circuit { max-height: 100%; overflow: auto; }

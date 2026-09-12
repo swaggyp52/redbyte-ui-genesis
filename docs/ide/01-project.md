@@ -14,6 +14,8 @@ Mode ID: `project`
 
 ## Current P2.6B document and ledger ownership (2026-09-12)
 
+Overview shows one blocker and an Open Problems action; the complete list lives in the canonical dock. The explorer retains its summary/count. Single-run groups say no repeat yet.
+
 The explorer owns Overview, Sources, Architecture, Runs and Compile Order. Visiting those
 roots creates no tabs; source previews remain genuine secondary documents. Inspectors follow
 Project selections and the active document, including deliberate module/source cross-probes.

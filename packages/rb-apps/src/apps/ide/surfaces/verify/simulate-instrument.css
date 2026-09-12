@@ -637,8 +637,11 @@
 
 /* The investigation frame owns pane composition. Its shared controls stay outside
    both panes, and a short/text-scaled viewport scrolls this working region. */
-.ide-root .rb-sim-lab-frame[data-investigation-open] { overflow: auto; }
-.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); flex: 1 0 22rem; min-height: 22rem; }
+.ide-root .rb-sim-lab-frame[data-investigation-open] { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 22rem; overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-investigation] > .rb-sim-primary { min-height: 0; overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-investigation] .rb-timing { flex-shrink: 0; min-height: min-content; }
+.ide-root .rb-sim-lab-grid[data-investigation] .rb-tl { flex-shrink: 0; min-height: 30rem; }
 .ide-root .rb-sim-lab-grid[data-investigation='timeline'] { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'evidence'; }
 .ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='timeline'] { grid-template-areas: 'cases' 'evidence'; }
 .ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='both'] { grid-template-areas: 'cases inspector' 'evidence inspector'; }

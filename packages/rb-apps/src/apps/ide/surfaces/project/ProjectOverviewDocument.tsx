@@ -270,9 +270,9 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
                       Open {leadProblem.fixMode === 'verify' ? 'Simulate' : leadProblem.fixMode === 'hardware' ? 'Board' : leadProblem.fixMode === 'export' ? 'Package' : 'Design'}
                     </button>
                   ) : null}
-                  {problems.length > 1 && onOpenProblems ? (
+                  {onOpenProblems ? (
                     <button type="button" className="wb-link" onClick={onOpenProblems} data-testid="ide-project-open-problems">
-                      {problems.length} problems
+                      Open Problems
                     </button>
                   ) : null}
                 </div>
@@ -373,31 +373,6 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
         </details>
       ) : null}
 
-      {problems.length > 0 ? (
-        <details className="rb-doc-section" data-testid="ide-project-problems">
-          <summary>
-            Problems <span className="wb-toolbar-meta">{problems.length}</span>
-          </summary>
-          <ul className="rb-problem-list">
-            {problems.map((problem) => (
-              <li key={problem.id} className="wb-panel-line" data-tone={problem.severity === 'error' ? 'error' : problem.severity === 'warning' ? 'warn' : undefined}>
-                <span aria-hidden="true">{problem.severity === 'error' ? '✕' : problem.severity === 'warning' ? '▲' : 'i'}</span>
-                <span>
-                  <code>{problem.code}</code> {problem.message}
-                  {problem.fixMode ? (
-                    <>
-                      {' '}
-                      <button type="button" className="wb-link" onClick={() => onNavigateMode(problem.fixMode as IdeMode)}>
-                        Open {problem.fixMode === 'verify' ? 'Simulate' : problem.fixMode === 'hardware' ? 'Board' : problem.fixMode === 'export' ? 'Package' : problem.fixMode === 'design' ? 'Design' : problem.fixMode}
-                      </button>
-                    </>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
     </div>
   );
 };
