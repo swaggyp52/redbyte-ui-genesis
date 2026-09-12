@@ -1,3 +1,38 @@
+## P2.6B review checkpoint - 2026-09-12
+
+This supersedes the first implementation checkpoint below. The first checkpoint is pushed
+as 57f4df2bdbc0b95881c7043d112b09239f634f70. The reviewed follow-up fixes measured Split
+camera double-translation, wraps the source header so Import remains reachable, gives Time
+keyboard lane selection and authored-input editing, restores direct combinational input
+editing, and aligns Reproduce with the command row. Failure context has readable contrast;
+one recording in Project Runs now says no repeat yet.
+
+The actual Full Adder repair/map/download/reload browser journey exposed eight authored
+event ids being discarded on reload. Scenario cloning and persisted-vector normalization
+now preserve valid ids. This keeps exported project bytes and exact package receipts stable;
+execution content hashes still exclude authoring identity. A regression test fails with the
+loss restored and passes with the fix. No receipt/trust checks were weakened.
+
+Construction proof on Node 20.19.0: the Full Adder UI-only core passes at 1440x900, 1366x768,
+1280x650, including actual ZIP SHA-256 and receipt persistence. The persistence/scenario/
+export batch passes 91/91; the keyboard/current-surface batch passes 92/92. The accessibility
+journey passes four viewport/text configurations with measured minimum text contrast 5.17:1,
+visible keyboard focus, usable mapping controls and explicit Package report access. Nested
+adder authoring retains four distinct instances and exact SUM=0111, carry=1 on reload;
+its execution and automatic mapping stages use runtime calls and are not UI-only proof.
+
+Typecheck is 768 diagnostics / b9e8e0eb29ca1d2a, TS 5.9.3. The decrease from 770 removes two
+obsolete control assertions from test consumers; it is not broad production type repair or
+an upward rebaseline. The 460-test Design/Verify census is 374 pass / 86 fail. Against the
+same baseline suite at 2d3160131 (386 pass / 74 fail), 23 failure identities are new, 11 are
+closed, and 63 remain. These are named validation debt, not all pre-existing failures.
+See docs/validation/test-debt.md. No skipped tests, suppressions or golden changes were added.
+
+Final quiet-head build, classroom/product gates, built-bundle journeys and matched visual
+review remain the next closure steps. Browser E0 only. PR #86 remains draft on the existing
+branch and base; no merge, retarget, production deployment, format change or hardware claim.
+
+
 # RedByte P2.6 — Studio Completion → P2.6B Studio Coherence — RESUME
 
 ## P2.6B implementation checkpoint - 2026-09-12

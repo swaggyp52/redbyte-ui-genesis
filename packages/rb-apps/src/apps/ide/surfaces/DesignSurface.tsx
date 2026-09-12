@@ -2700,6 +2700,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
+    // This fit already consumed the new viewport. A queued ResizeObserver must
+    // not apply the old-to-new translation to this newly fitted camera again.
+    lastMeasuredCanvasViewportRef.current = viewport;
     const FIT_MARGIN = 48;
     const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
     const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);

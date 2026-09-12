@@ -3,9 +3,10 @@
 // bus dialog, instance placement, rename). The project runtime store is READ
 // only to locate DOM targets and to assert results — never mutated to author.
 import { mkdirSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { BASE_URL, evidenceDir, launchChromium } from './harness.mjs';
 
-const OUT = evidenceDir('shots');
+const OUT = evidenceDir('nested-adder', process.env.RB_SHOT_LABEL ?? 'current');
 mkdirSync(OUT, { recursive: true });
 const browser = await launchChromium();
 const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
@@ -214,6 +215,13 @@ await placeVia('ide-design-palette-ground', 90, 90);
 const gndId = await newestNodeId('Ground', seen); seen.add(gndId);
 if (!gndId) throw new Error('ground placement failed');
 
+// Give the placement pass a stable canvas. Selecting a symbol can otherwise
+// reveal the inspector between measuring its nudge and reaching its target.
+for (const side of ['left', 'right']) {
+  const hide = page.getByTestId(`ide-hide-${side}-dock`);
+  if (await hide.count()) await hide.click();
+}
+
 // Fit the camera so every placed node is on-screen and clickable.
 async function fitAll() {
   await page.locator('[data-testid="ide-design-canvas"]').click({ position: { x: 700, y: 70 }, force: true });
@@ -277,6 +285,11 @@ async function pressN(key, times, shift) {
 async function moveNodeTo(nodeId, grab, tx, ty) {
   await page.mouse.click(grab.x, grab.y);
   await page.waitForTimeout(140);
+  if (await page.getByTestId('ide-hide-right-dock').count()) {
+    await page.getByTestId('ide-hide-right-dock').click();
+    await page.getByTestId('ide-design-canvas').focus();
+    await page.waitForTimeout(200);
+  }
   if ((await page.locator(`${nodeSel(nodeId)}[data-node-selected="1"]`).count()) === 0) throw new Error(`could not select ${nodeId}`);
   if (GRID_STEP_PX === 0) {
     const before = await centerOf(nodeId);
@@ -299,6 +312,8 @@ async function moveNodeTo(nodeId, grab, tx, ty) {
     }
   }
   const end = await centerOf(nodeId);
+  await page.screenshot({ path: `${OUT}/failure-placement.png` });
+  console.log('placement context', await page.getByTestId('ide-design-canvas').boundingBox());
   throw new Error(`could not move ${nodeId} to ${tx},${ty} (stuck at ${Math.round(end.x)},${Math.round(end.y)})`);
 }
 // Take a symbol by any part of its body that is genuinely exposed, so a
@@ -336,13 +351,16 @@ while (pending.size > 0) {
 // Rename instances u_fa0..u_fa3 (positions are stable now; no re-fit).
 for (let i = 0; i < instId.length; i++) {
   await selectNode(instId[i]);
+  if (await page.getByTestId('ide-show-right-dock').count()) await page.getByTestId('ide-show-right-dock').click();
   const rn = page.getByTestId('ide-design-rename-module-instance');
-  if (await rn.count() > 0) {
+  assert.equal(await rn.count(), 1, 'A placed instance can be renamed through its inspector');
+  {
     await rn.click(); await page.waitForTimeout(120);
     await page.getByTestId('ide-design-module-instance-name-input').fill(`u_fa${i}`);
     await page.getByTestId('ide-design-module-instance-name-save').click(); await page.waitForTimeout(160);
   }
 }
+if (await page.getByTestId('ide-hide-right-dock').count()) await page.getByTestId('ide-hide-right-dock').click();
 console.log('active after rename:', (await G()).active);
 
 // ── Stage C: wire the 4-bit ripple-carry adder through the wire tool ───────────
@@ -424,9 +442,14 @@ const sim = await page.evaluate(() => {
     for (const k of cands) if (sample[k] === '0' || sample[k] === 0) return 0;
     return null;
   };
-  const sumWord = [3, 2, 1, 0].reduce((acc, i) => acc * 2 + (bit(`SUM[${i}]`) ?? 0), 0);
-  return { status: run?.status, sum: sumWord, carry: bit('CARRY'), rawKeys: Object.keys(sample).slice(0, 12) };
+  const sumBits = [3, 2, 1, 0].map(i => bit(`SUM[${i}]`));
+  const sumWord = sumBits.every(value => value === 0 || value === 1)
+    ? sumBits.reduce((acc, value) => acc * 2 + value, 0) : null;
+  return { status: run?.status, sum: sumWord, sumBits, carry: bit('CARRY'), rawKeys: Object.keys(sample).slice(0, 12) };
 });
+assert.deepEqual(sim.sumBits, [0, 1, 1, 1], 'Every SUM bit has an actual recorded binary sample');
+assert.equal(sim.sum, 7, 'The UI-authored hierarchy computes 0xA + 0xD = 0x17');
+assert.equal(sim.carry, 1, 'Carry is recorded, not defaulted from a missing sample');
 console.log('STAGE D sim:', JSON.stringify(sim), '| SUM hex:', '0x' + (sim.sum ?? 0).toString(16).toUpperCase());
 
 // Navigate to Simulate to show the vector word lanes over the authored run.

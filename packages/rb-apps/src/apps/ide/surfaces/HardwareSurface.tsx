@@ -1609,7 +1609,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'export-missing':
         return {
           headline: 'Generate the checked package in Build & Export',
-          reason: 'The recorded Compare run is current and passing.',
+          reason: 'The current recording passes its checks.',
         };
       case 'export-stale':
         return {
@@ -1629,17 +1629,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'trace-only':
         return {
           headline: 'Build & Export offers a draft package',
-          reason: 'The recorded run compared no expected outputs. Compare checks in Simulate for a checked package.',
+          reason: 'The recording has no checks. Add optional expected values and rerun in Simulate for a checked package.',
         };
       case 'assertions-differ':
         return {
           headline: 'Build & Export offers a draft package',
-          reason: 'The latest Compare run differs. Inspect the mismatch in Simulate.',
+          reason: 'The current recording has failed checks. Inspect the mismatch in Simulate.',
         };
       case 'mapping-review':
         return {
           headline: 'Build & Export offers a draft package',
-          reason: 'The last passing Compare used a different mapping. Rerun Compare in Simulate for a checked package.',
+          reason: 'The last passing recording used a different mapping. Rerun in Simulate for a checked package.',
         };
       default:
         return { headline: 'Inspect the package in Build & Export', reason: null };

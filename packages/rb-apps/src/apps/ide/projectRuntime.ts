@@ -5088,6 +5088,7 @@ function normalizePersistedVector(
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<TestVector>;
   return {
+    ...(typeof candidate.id === 'string' && candidate.id.length > 0 ? { id: candidate.id } : {}),
     tick: Number.isFinite(candidate.tick) ? Math.max(0, Math.floor(Number(candidate.tick))) : index,
     inputs: normalizeBitRecord(candidate.inputs as Record<string, unknown> | undefined),
     expected: normalizeBitRecord(candidate.expected as Record<string, unknown> | undefined),

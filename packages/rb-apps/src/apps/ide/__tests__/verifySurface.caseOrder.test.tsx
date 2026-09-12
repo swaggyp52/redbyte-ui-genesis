@@ -103,20 +103,16 @@ describe('Simulate case table — the rows are in the order the experiment is in
     cleanup();
   });
 
-  it('puts a clocked circuit on a time axis when the reader asks for the table', () => {
+  it('keeps a clocked circuit on Time and its event table in chronological order', () => {
     const { getByTestId, container } = renderSurface('sequential');
 
     // Timeline is what a clocked circuit gets without asking; the table is a deliberate choice.
     expect(getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('timeline');
-    showTable(getByTestId);
-    expect(getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('table');
-
-    // Not 0, 1, 6, 2, 3, 4, 5.
-    expect(renderedCaseNumbers(container)).toEqual(['0', '1', '2', '3', '4', '5', '6']);
-    // And the column says which axis it is, rather than claiming one that is not true here.
-    const head = getByTestId('ide-case-lab-num-head');
-    expect(head.getAttribute('data-case-order')).toBe('time');
-    expect(head.getAttribute('title')).toContain('time order');
+    fireEvent.click(getByTestId('ide-scenario-table-disclosure').querySelector('summary')!);
+    expect(Array.from(container.querySelectorAll('.rb-timing-row .rb-timing-time')).map(cell => cell.textContent))
+      .toEqual(['t0', 't1', 't2', 't3', 't4', 't5', 't6']);
+    expect(getByTestId('ide-timing-lab-table').getAttribute('aria-label')).toBe('Scenario events');
+    expect(getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('timeline');
   });
 
   it('keeps the truth table in truth-table order for a combinational circuit', () => {
@@ -157,14 +153,13 @@ describe('Simulate case table — the rows are in the order the experiment is in
 
     // Sequential: rows are 0..6, so the row below case 1 is case 2.
     const seq = renderSurface('sequential');
-    showTable(seq.getByTestId);
     act(() => {
-      fireEvent.click(seq.getByTestId('ide-case-lab-row-1'));
+      fireEvent.click(seq.getByTestId('ide-scenario-event-c1'));
     });
     act(() => {
-      fireEvent.keyDown(seq.getByTestId('ide-case-lab-table'), { key: 'ArrowDown' });
+      fireEvent.keyDown(seq.getByTestId('ide-timing-lanes'), { key: 'ArrowRight' });
     });
-    expect(seq.getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
+    expect(seq.getByTestId('ide-scenario-event-c2').getAttribute('aria-selected')).toBe('true');
   });
 
   it('says the count once — the label beside it is already the noun', () => {

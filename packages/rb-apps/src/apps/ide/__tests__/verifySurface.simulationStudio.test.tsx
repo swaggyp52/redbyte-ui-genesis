@@ -76,8 +76,8 @@ describe('Verify Simulation Studio', () => {
       <VerifySurface {...baseProps} onRunVerification={onRunVerification} />
     );
 
-    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
-    expect(view.queryByTestId('ide-vcb-check-count')).toBeNull();
+    expect(view.getByTestId('ide-vcb-run').textContent).toBe('Run');
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('0 optional checks');
     fireEvent.click(view.getByTestId('ide-vcb-run'));
 
     expect(onRunVerification).toHaveBeenCalledWith(expect.objectContaining({
@@ -91,11 +91,9 @@ describe('Verify Simulation Studio', () => {
       <VerifySurface {...baseProps} lastRun={makeTraceRun()} onGoToDesign={vi.fn()} />
     );
 
-    expect(view.getByTestId('ide-verify-results-summary-headline').textContent).toBe('Simulation complete');
-    expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('No checks configured');
-    expect(view.getByTestId('ide-verify-summary-status').textContent).toBe('Simulation complete · No checks configured');
-    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
-    expect(view.getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
+    expect(view.getByTestId('ide-run-check-result').textContent).toBe('No checks · outputs recorded');
+    expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-configured');
+    expect(view.getByTestId('ide-verify-inspect-circuit')).toBeTruthy();
   });
 
   it('distinguishes authored checks from checks that an observation run did not evaluate', () => {
@@ -103,15 +101,14 @@ describe('Verify Simulation Studio', () => {
       <VerifySurface
         {...baseProps}
         vectors={vectorsWithChecks}
-        lastRun={makeTraceRun()}
+        lastRun={{ ...makeTraceRun(), assertionStatus: 'not-evaluated' }}
         onGoToDesign={vi.fn()}
       />
     );
 
     expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('2');
-    expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('Checks not evaluated');
-    expect(view.getByTestId('ide-verify-summary-status').textContent).toContain('Checks not evaluated');
-    expect(view.getByTestId('ide-verify-run-announcer').textContent).toContain('Checks not evaluated');
+    expect(view.getByTestId('ide-run-check-result').textContent).toBe('Checks not evaluated');
+    expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-evaluated');
   });
 
   it('keeps expected-output authoring optional and cell-level in the Case Lab', () => {

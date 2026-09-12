@@ -14,6 +14,8 @@ Mode ID: `export`
 
 ## Current P2.6B operational Package (2026-09-12)
 
+Review refinement: authored vector ids survive scenario cloning and runtime rehydration. An unchanged reload retains byte-identical exported project inputs and the exact current download receipt. The displayed SHA-256 still names the actual ZIP bytes; a retained receipt does not claim the file still exists on disk.
+
 This supersedes the dossier-first section below. Package opens on identity, one Generate and
 download action, plain trust/currentness, generated files and the Vivado next step. Open report
 is explicit secondary navigation with Back to package. A successful browser request displays

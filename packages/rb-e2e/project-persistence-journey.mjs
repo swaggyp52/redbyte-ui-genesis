@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
 
-const OUT = evidenceDir('persistence');
+const OUT = evidenceDir('persistence', process.env.RB_SHOT_LABEL ?? 'current');
 const VIEWPORT = { width: 1440, height: 900 };
 const tid = (id) => `[data-testid="${id}"]`;
 
@@ -853,13 +853,13 @@ try {
   await runAndSettle('scenario A');
   const experimentA = await experiment();
   await page.getByTestId('ide-case-lab-row-6').locator('td').first().click();
-  await page.getByTestId('ide-verify-view-timeline').click();
+  await page.getByTestId('ide-verify-view-waveform').click();
   await page.getByTestId('ide-scenario-create-btn').click();
   const newExperiment = await experiment();
   assert(newExperiment.scenarioId !== experimentA.scenarioId, 'New scenario reused A identity');
   assert(newExperiment.runId === null, 'New scenario borrowed A recording');
-  await page.getByTestId('ide-verify-view-timeline').click();
-  await page.locator('[data-testid^="ide-timing-cell-"]').first().click();
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.locator('[data-testid^="ide-case-lab-input-"]').first().click();
   assert(JSON.stringify((await experiment()).vectors) !== JSON.stringify(experimentA.vectors),
     'editing B did not produce different stimulus');
   await runAndSettle('scenario B observation');
@@ -869,8 +869,8 @@ try {
   await page.getByTestId('ide-case-lab-row-2').locator('td').first().click();
   await selectScenario(experimentA.scenarioId);
   assert((await experiment()).runId === experimentA.runId, 'A did not restore its own recording');
-  assert(await page.getByTestId('ide-verify-lab-grid').getAttribute('data-representation') === 'timeline',
-    'A lost its deliberate Timeline representation');
+  assert(await page.getByTestId('ide-verify-lab-grid').getAttribute('data-representation') === 'waveform',
+    'A lost its deliberate recorded-trace representation');
   await page.getByTestId('ide-verify-view-table').click();
   assert(await page.getByTestId('ide-case-lab-row-6').getAttribute('aria-selected') === 'true', 'A lost t6');
   await selectScenario(experimentB.scenarioId);

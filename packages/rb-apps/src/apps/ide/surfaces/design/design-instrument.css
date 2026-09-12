@@ -656,3 +656,14 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+/* Split budgets the source header to its own pane. Actions wrap as a group
+   instead of extending underneath the pane's clipped edge. */
+.ide-root [data-design-view='split'] .ide-design-hdl-header {
+  flex-wrap: wrap;
+}
+.ide-root [data-design-view='split'] .ide-design-hdl-actions {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 20rem;
+}

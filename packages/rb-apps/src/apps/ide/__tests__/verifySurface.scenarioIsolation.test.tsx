@@ -31,23 +31,32 @@ describe('Simulate scenario selection integration', () => {
   afterEach(cleanup);
 
   it('restores independent representation and selected case after switching and remounting', () => {
+    const recording = (id: string) => {
+      const vectors = id === 'a' ? aVectors : bVectors;
+      const report = buildVerifyReport({ scenarioId: id, scenarioName: id, status: 'pass', deterministicHash: 'same-circuit',
+        generatedAtIso: '2026-09-12T00:00:00.000Z', rows: [], vectors, signalRoles: { a: 'input', y: 'output' } });
+      return { projectId: 'scenario-isolation-project', scenarioId: id, scenarioName: id, runKind: 'trace', assertionStatus: 'not-configured',
+        status: 'pass', deterministicHash: 'same-circuit', reportHash: report.reportHash, generatedAtIso: report.generatedAtIso, schedule: 'combinational',
+        meta: { circuitKind: 'combinational', clockingProtocol: null, samplePoint: 'steady-state', tick0Meaning: null, clockSignalName: null }, report,
+        waveform: vectors.map(vector => ({ tick: vector.tick, signals: { a: String(vector.inputs.a), y: '0' }, mismatches: [] })) } satisfies RuntimeVerifyRun;
+    };
     const surface = (id: string) => <VerifySurface
       projectId="scenario-isolation-project" activeScenarioId={id}
       hasVectors vectors={id === 'a' ? aVectors : bVectors}
       mappedInputs={[{ id: 'a', label: 'A' }]} mappedSignals={signals}
-      deterministicHash="same-circuit" onOpenProjectVectors={vi.fn()} onVectorsChange={vi.fn()}
+      deterministicHash="same-circuit" lastRun={recording(id)} onOpenProjectVectors={vi.fn()} onVectorsChange={vi.fn()}
     />;
     const rendered = render(surface('a'));
     fireEvent.click(rendered.getByTestId('ide-case-lab-row-1'));
     expect(rendered.getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
-    fireEvent.click(rendered.getByTestId('ide-verify-view-timeline'));
+    fireEvent.click(rendered.getByTestId('ide-verify-view-waveform'));
     expect(readScenarioViewState(sessionStorage, scenarioViewStorageKey({ projectId: 'scenario-isolation-project', scenarioId: 'a' })).selectedTick).toBe(1);
     rendered.rerender(surface('b'));
     expect(rendered.getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('table');
     fireEvent.click(rendered.getByTestId('ide-case-lab-row-0'));
     rendered.rerender(surface('a'));
     expect(readScenarioViewState(sessionStorage, scenarioViewStorageKey({ projectId: 'scenario-isolation-project', scenarioId: 'a' })).selectedTick).toBe(1);
-    expect(rendered.getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('timeline');
+    expect(rendered.getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('waveform');
     fireEvent.click(rendered.getByTestId('ide-verify-view-table'));
     expect(rendered.getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
     rendered.unmount();
@@ -81,11 +90,11 @@ describe('Simulate scenario selection integration', () => {
       lastRun={run} mappedInputs={[{ id: 'a', label: 'A' }]} mappedSignals={signals}
       deterministicHash="internal-recording" onOpenProjectVectors={vi.fn()}
     />);
-    const drawerToggle = view.getByTestId('ide-verify-drawer-toggle');
-    if (drawerToggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(drawerToggle);
+    const drawerToggle = view.getByTestId('ide-verify-details');
+    if (drawerToggle.getAttribute('aria-pressed') !== 'true') fireEvent.click(drawerToggle);
     expect(view.queryByTestId('ide-verify-region-inspector')).not.toBeNull();
     fireEvent.click(view.getAllByRole('button', { name: 'Inspect with circuit' })[0]);
-    expect(view.queryByTestId('ide-verify-drawer-toggle')).toBeNull();
+    expect(view.getByTestId('ide-verify-details').getAttribute('aria-pressed')).toBe('false');
     expect(view.queryByTestId('ide-verify-region-inspector')).toBeNull();
     // Duplicate labels retain the exact instance node IDs as their canonical display names.
     fireEvent.change(view.getByLabelText('Recorded circuit signal'), { target: { value: 'left__x1' } });
@@ -93,7 +102,8 @@ describe('Simulate scenario selection integration', () => {
     fireEvent.change(view.getByLabelText('Recorded circuit signal'), { target: { value: 'right__x1' } });
     expect(view.getByTestId('ide-recorded-circuit-context').textContent).toContain('right__x1 = 1');
     fireEvent.click(view.getByRole('button', { name: 'Close circuit investigation' }));
-    expect(view.getByTestId('ide-verify-drawer-toggle').getAttribute('aria-expanded')).toBe('true');
+    expect(view.getByTestId('ide-verify-details').getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(view.getByTestId('ide-verify-details'));
     expect(view.queryByTestId('ide-verify-region-inspector')).not.toBeNull();
   });
 
@@ -128,6 +138,7 @@ describe('Simulate scenario selection integration', () => {
     expect(view.getByTestId('ide-case-lab-row-0').className).not.toMatch(/is-pass|is-fail/);
     expect(view.queryByTestId('ide-case-lab-history')).toBeNull();
     fireEvent.click(view.getByTestId('ide-case-lab-row-0'));
+    fireEvent.click(view.getByTestId('ide-verify-details'));
     expect(view.getByTestId('ide-sim-context-inspector').textContent).toContain('Not evaluated');
     expect(view.getByTestId('ide-sim-context-inspector').textContent).not.toContain('Passing');
     expect(run.report.rows).toHaveLength(0);

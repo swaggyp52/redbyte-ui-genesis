@@ -61,7 +61,7 @@ function makeRepeatedFailRun(): RuntimeVerifyRun {
 
 describe('VerifySurface hint bridge', () => {
   function openAnalysisDrawer(getByTestId: (id: string) => HTMLElement) {
-    const toggle = getByTestId('ide-verify-drawer-toggle');
+    const toggle = getByTestId('ide-verify-details');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-expanded')).toBe('true');

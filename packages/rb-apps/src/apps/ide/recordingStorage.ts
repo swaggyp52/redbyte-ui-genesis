@@ -48,7 +48,8 @@ export function recordingStorageReviver(_key: string, value: unknown): unknown {
   if (value && typeof value === 'object' && '$rbRows' in value) {
     const packed = value as { $rbRows: number; columns: string[]; cells: unknown[][] };
     if (packed.$rbRows !== 1 || !Array.isArray(packed.columns) || !packed.columns.every(column => typeof column === 'string') ||
-      !Array.isArray(packed.cells) || !packed.cells.every(row => Array.isArray(row) && row.length === packed.columns.length)) throw new Error('Invalid retained check rows');
+      !Array.isArray(packed.cells) || !packed.cells.every(row => Array.isArray(row) && row.length === packed.columns.length &&
+        row.every(cell => cell === null || ['string', 'number', 'boolean'].includes(typeof cell) || (Array.isArray(cell) && cell.length === 0)))) throw new Error('Invalid retained check rows');
     return packed.cells.map(row => Object.fromEntries(packed.columns.flatMap((column, index) => Array.isArray(row[index]) ? [] : [[column, row[index]]])));
   }
   if (!value || typeof value !== 'object' || !('$rbWaveform' in value)) return value;

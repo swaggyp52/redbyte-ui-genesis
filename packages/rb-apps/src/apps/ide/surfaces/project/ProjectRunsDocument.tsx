@@ -43,7 +43,7 @@ export const ProjectRunsDocument: React.FC<ProjectRunsDocumentProps> = ({
           <thead><tr><th>Run</th><th>Scenario</th><th>Checks</th><th>Ticks</th><th>Output digest</th><th>State</th><th>When</th><th>Recording</th></tr></thead>
           {[...groups].map(([key, group]) => <tbody key={key} data-configuration-digest={key}>
             <tr className="rb-run-group"><th colSpan={8}>
-              <strong>{group.length} {group.length === 1 ? 'run' : 'runs'} · {new Set(group.map(run => run.outputDigest).filter(Boolean)).size === 1 ? 'same output digest' : new Set(group.map(run => run.outputDigest).filter(Boolean)).size + ' output digests'}</strong>
+              <strong>{group.length} {group.length === 1 ? 'run' : 'runs'} · {group.length === 1 ? 'no repeat yet' : new Set(group.map(run => run.outputDigest).filter(Boolean)).size === 1 ? 'same output digest' : new Set(group.map(run => run.outputDigest).filter(Boolean)).size + ' output digests'}</strong>
               {group[0].identity ? <span title={`Design ${group[0].identity.design} · Stimulus ${group[0].identity.stimulus} · Engine ${group[0].identity.engine}`}>
                 {' '}Design <code>{group[0].identity.design}</code> + Stimulus <code>{group[0].identity.stimulus}</code> + Engine <code>{group[0].identity.engine}</code>
               </span> : <span> · older recording, configuration identity unavailable</span>}

@@ -25,9 +25,9 @@ const REPO_ROOT = path.resolve(HERE, '..', '..');
 const EVIDENCE_DIR = path.resolve(
   REPO_ROOT,
   '.redbyte',
-  'product-immersion',
-  'p2-5-operational-workbench',
-  'evidence'
+  'e2e-evidence',
+  'full-adder-operational',
+  process.env.RB_SHOT_LABEL ?? 'current'
 );
 fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
 // One base-URL authority for every journey; RB_BASE_URL overrides it.
@@ -607,6 +607,10 @@ async function run(width, height) {
   // ── I. RELOAD — evidence, mapping and package survive the browser ──────────
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector(tid('ide-export-package-inspector-v1'), { timeout: 15000 });
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-export-package-inspector-v1"]')?.getAttribute('data-export-derived-state') === 'downloaded-trusted',
+    undefined, { timeout: 8000 }
+  );
   const stateAfter = await page.locator(tid('ide-export-package-inspector-v1')).getAttribute('data-export-package-state');
   const trustAfter = await page.evaluate(() => {
     const root = document.querySelector('[data-testid="ide-export-package-inspector-v1"]');
@@ -620,22 +624,22 @@ async function run(width, height) {
       dirtySinceVerify: state.projectHealthCore?.dirtySinceVerify ?? null,
     };
   });
-  // `data-export-package-state` tracks the DOWNLOAD ACTION (contract: a trusted package that has
-  // not been downloaded in this session reads "draft"), so a reload legitimately resets it — the
-  // browser cannot know the file is still on disk. What must survive is the package's TRUTH: it is
-  // still structurally downloadable and still browser-verified against the current evidence.
+  // A current, persisted receipt records the exact requested ZIP. It survives reload;
+  // it never claims that the file is still present on the user's disk.
   assert(trustAfter.axes['data-export-verification-trust'] === 'trusted',
     `the package must still be browser-verified after reload — ${JSON.stringify(trustAfter)}`);
   assert(trustAfter.axes['data-export-structural-state'] === 'downloadable',
     `the package must still be downloadable after reload — ${JSON.stringify(trustAfter)}`);
-  assert(trustAfter.axes['data-export-derived-state'] === 'downloadable-trusted',
-    `the derived state must read downloadable-trusted after reload (got ${trustAfter.axes['data-export-derived-state']})`);
+  assert(trustAfter.axes['data-export-derived-state'] === 'downloaded-trusted',
+    `the current receipt must remain downloaded-trusted after reload (got ${trustAfter.axes['data-export-derived-state']})`);
+  assert((await text(page, 'ide-export-package-sha256')).includes(downloadedSha),
+    'The persisted receipt must still name the SHA-256 of the actual downloaded bytes');
   assert(trustAfter.lastExport && trustAfter.lastExport.status === 'ok',
     'the successful build must still be recorded after reload');
   assert(trustAfter.dirtySinceExport === false && trustAfter.dirtySinceVerify === false,
     `an unchanged reload must not mark the project dirty — ${JSON.stringify(trustAfter)}`);
-  assert(stateAfter === 'draft',
-    `the download action resets across reload by contract (got ${stateAfter})`);
+  assert(stateAfter === 'ready',
+    `The exact current download receipt survives reload (got ${stateAfter})`);
   // Exactly one primary action, and it leads to the package.
   const primaryAfterReload = await page.evaluate(() => {
     const surface = document.querySelector('[data-ide-mode-marker="export"]');

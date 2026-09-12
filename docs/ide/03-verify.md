@@ -14,6 +14,8 @@ Mode ID: `verify`
 
 ## Current P2.6B experiment model (2026-09-12)
 
+Review refinement: Time uses Up/Down to select a lane and Left/Right to move the tick. Space/Enter edits only the selected authored input; generated clock and recorded output lanes cannot mutate stimulus. Child controls retain their own keyboard actions. Combinational Table inputs remain directly editable. Pre-run check context says no recording.
+
 This section supersedes the representation/run-line/mode descriptions below where they conflict.
 Run evaluates saved optional checks automatically; no Observe/Compare fork or Live I/O peer.
 Reproduce executes the selected recording's retained design/stimulus/engine, leaving edits intact.

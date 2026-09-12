@@ -220,7 +220,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         >
           {runLabel}
         </IdeButton>
-        {onReproduce && <IdeButton tone="secondary" onClick={onReproduce} disabled={Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
+        {onReproduce && <IdeButton tone="secondary" className="wb-btn" onClick={onReproduce} disabled={Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
           title={reproduceDisabledReason || 'Run the retained design and stimulus again with the same engine.'}>Reproduce</IdeButton>}
       </div>
       <span className={`wb-toolbar-meta rb-sim-explainer${runBlockedReason ? ' is-blocked-reason' : ''}`} title={explainerText} data-testid="ide-vcb-mode-explainer">{explainerText}</span>

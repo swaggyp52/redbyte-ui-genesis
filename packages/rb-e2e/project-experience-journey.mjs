@@ -11,7 +11,7 @@
 // composed page is most likely to be wrong.
 import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
 
-const OUT = evidenceDir('project-experience');
+const OUT = evidenceDir('project-experience', process.env.RB_SHOT_LABEL ?? 'current');
 const tid = (t) => `[data-testid="${t}"]`;
 const browser = await launchChromium();
 

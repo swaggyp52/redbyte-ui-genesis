@@ -7461,6 +7461,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             caseEvidenceByTick={caseLabData.verdict}
             selectedTick={selectedTick}
             onSelectCase={handleStimulusSelectedTickChange}
+            onSetInput={onVectorsChange ? (tick, signalId, next) => onVectorsChange(authoredVectors.map(vector =>
+              vector.tick === tick ? { ...vector, inputs: { ...vector.inputs, [signalId]: next } } : vector)) : undefined}
             onSetExpected={handleCaseSetExpected}
             onSetExpectedMany={handleCaseSetExpectedMany}
             focusFieldId={caseLabFocusFieldId}

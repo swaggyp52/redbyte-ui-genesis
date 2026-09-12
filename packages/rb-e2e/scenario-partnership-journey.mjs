@@ -11,7 +11,7 @@ try{
  if(await tid('ide-show-left-dock').count())await tid('ide-show-left-dock').click();await tid('ide-scenario-create-btn').click();await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().activeScenarioId!==id,a.scenario);
  assert.equal((await read()).run,null,'A new scenario never borrows the first recording');await tid('ide-timing-cell-en-2').click();await tid('ide-vcb-run').click();const b=await read();assert.notEqual(b.vectors,a.vectors);assert.notEqual(b.run,a.run);await tid('ide-timing-check-q1-4').click();
  const selectionB=await tid('ide-time-selection').locator('strong').first().innerText();
- const switchTo=async id=>{if(await tid('ide-show-left-dock').count())await tid('ide-show-left-dock').click();await tid('ide-testbench-document-tab-'+id).click();};
+ const switchTo=async id=>{if(await tid('ide-show-left-dock').count()){await tid('ide-show-left-dock').focus();await page.keyboard.press('Enter');}await tid('ide-testbench-document-tab-'+id).focus();await page.keyboard.press('Enter');};
  await switchTo(a.scenario);assert.equal((await read()).run,a.run);assert.equal((await read()).vectors,a.vectors);assert.equal(await tid('ide-time-selection').locator('strong').first().innerText(),selectionA);
  await switchTo(b.scenario);assert.equal((await read()).run,b.run);assert.equal(await tid('ide-time-selection').locator('strong').first().innerText(),selectionB);
  await page.getByRole('button',{name:'Save',exact:true}).click();await page.reload({waitUntil:'networkidle'});await tid('mode-button-verify').click();assert.equal((await read()).run,b.run);await switchTo(a.scenario);assert.equal((await read()).run,a.run);assert.equal((await read()).vectors,a.vectors);

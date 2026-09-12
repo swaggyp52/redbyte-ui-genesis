@@ -21,6 +21,7 @@ it('preserves exact ticks, hierarchical names, missing/X/Z values, failures and 
   expect(JSON.parse(packed, recordingStorageReviver)).toEqual(record);
   expect(JSON.parse(plain, recordingStorageReviver)).toEqual(record);
   expect(() => JSON.parse('{"$rbWaveform":1,"signals":["a"],"frames":[[0,[],[],{}]]}', recordingStorageReviver)).toThrow(/Invalid/);
+  expect(() => JSON.parse('{"$rbRows":1,"columns":["actual"],"cells":[[["1"]]]}', recordingStorageReviver)).toThrow(/Invalid retained check rows/);
 });
 
 it('retains two long recordings in existing runtime and project storage and restores both', async () => {

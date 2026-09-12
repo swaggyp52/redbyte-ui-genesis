@@ -17,4 +17,3 @@
 .rb-run-identity__details dd { margin: 0; }
 .rb-run-identity__details ol { padding-left: 1.5rem; max-height: 12rem; overflow-y: auto; }
 .rb-run-identity__details button, .rb-run-identity__alarm button { border: 0; background: none; padding: 4px; color: #245984; text-decoration: underline; font: inherit; cursor: pointer; }
-

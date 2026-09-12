@@ -44,7 +44,21 @@ try {
     assert.equal(await tid('ide-status-run').count(), 0, 'Run-specific state lives in the experiment');
     await tid('mode-button-design').click();
     await page.getByRole('button', { name: 'Split', exact: true }).click();
-    await page.screenshot({ path: path.join(out, `design-split-${viewport.width}x${viewport.height}.png`) });
+    await page.waitForTimeout(400);
+    const splitGeometry = await tid('ide-design-canvas').evaluate(canvas => {
+      const box=canvas.getBoundingClientRect();
+      return [...canvas.querySelectorAll('[data-node-id]')].map(node => {
+        const r=node.getBoundingClientRect();return {id:node.getAttribute('data-node-id'),contained:r.left>=box.left-1 && r.right<=box.right+1 && r.top>=box.top-1 && r.bottom<=box.bottom+1};
+      });
+    });
+    assert.ok(splitGeometry.length>=13 && splitGeometry.every(node=>node.contained), 'Split frames every component without a second viewport translation: '+JSON.stringify(splitGeometry));
+    const sourceAction = await tid('ide-design-hdl-go-import').evaluate(button => {
+      const r=button.getBoundingClientRect(), pane=button.closest('.ide-design-pane--hdl').getBoundingClientRect();
+      const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+      return {contained:r.left>=pane.left && r.right<=pane.right,receivesClick:hit===button||button.contains(hit)};
+    });
+    assert.ok(sourceAction.contained && sourceAction.receivesClick, 'Split keeps Import HDL completely inside its source pane');
+    await page.screenshot({ path: path.join(out, 'design-split-' + viewport.width + 'x' + viewport.height + '.png') });
     assert.equal(await tid('ide-mode-design').getAttribute('data-left-dock-state'), 'hidden', 'Split gives its primary objects the library width');
     assert.equal(await tid('ide-mode-design').getAttribute('data-right-dock-state'), 'hidden', 'Split keeps optional detail recoverable');
     assert.deepEqual(errors, []);

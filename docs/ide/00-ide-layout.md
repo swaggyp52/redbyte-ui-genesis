@@ -14,6 +14,8 @@ Scope: `packages/rb-apps/src/apps/IdeApp.tsx` default `/` IDE surface
 
 ## Current P2.6B panel and Board Check composition (2026-09-12)
 
+Review refinement: secondary Reproduce uses the same control height as Run, and the circuit disclosure close control remains sticky and reachable. Keyboard focus is visible within the Time instrument.
+
 Workspace navigation creates no object tabs. At constrained effective width (including larger
 root text), only one auxiliary side panel is shown; visible panel recovery and per-workspace
 preferences remain. Split Design starts with its circuit/source pair. Run-specific status

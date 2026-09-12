@@ -5,7 +5,83 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
-## P2.6B consumer migration checkpoint (2026-09-12)
+## P2.6B reviewed consumer census (2026-09-12)
+
+Command: `node node_modules/vitest/vitest.mjs run verifySurface designSurface --maxWorkers=2 --minWorkers=1 --reporter=json`.
+The same 460 tests run in protected baseline worktree 2d3160131 give 386 pass / 74 fail;
+at pushed 57f4df2bd they give 333 pass / 127 fail; after bounded consumer migration the
+reviewed source gives **374 pass / 86 fail**. This closes 41 failures from the first P2.6B
+checkpoint, but remains 12 failures above baseline. Identity comparison finds **23 newly
+failing identities, 11 closed baseline identities, 63 retained failures**. Of the retained
+failures, 38 have the same first message and 25 a changed message. Counts alone do not
+establish that a changed failure is old. The complete comparison is local ignored evidence
+at `.redbyte/product-immersion/p2-6-studio-completion/p2-6b/surface-failure-comparison.json`.
+
+Migrated consumers use one Run, optional check counts, explicit Details, Table/Recorded trace,
+one result announcement, one selected work area and explicitly opened support panels. The
+current-owner 12-file batch passes 92/92. Receipt/scenario/persistence owners pass 91/91,
+including the newly reproduced lost-event-id defect. No semantic trust assertion is skipped.
+Typecheck is **768 / b9e8e0eb29ca1d2a** (Node 20.19.0, TS 5.9.3): two diagnostics disappear
+with retired control assertions, without suppression or an upward baseline update.
+
+Remaining failures by file (all under packages/rb-apps/src/apps/ide/__tests__):
+
+| File | Failing tests |
+| --- | ---: |
+| `designSurface.blankState.test.tsx` | 1 |
+| `designSurface.canvasChrome.test.tsx` | 2 |
+| `designSurface.fanout.test.tsx` | 4 |
+| `designSurface.multiWireNet.test.tsx` | 1 |
+| `designSurface.placementMode.test.tsx` | 1 |
+| `designSurface.registerFamily.test.tsx` | 1 |
+| `designSurface.selectionContext.test.tsx` | 1 |
+| `designSurface.workstation.test.tsx` | 11 |
+| `verifySurface-fail-state.test.tsx` | 1 |
+| `verifySurface.failure-context.test.tsx` | 2 |
+| `verifySurface.failure-patterns.test.tsx` | 4 |
+| `verifySurface.hints-bridge.test.tsx` | 3 |
+| `verifySurface.layout-workflow.test.tsx` | 3 |
+| `verifySurface.manualLabStepMode.test.tsx` | 2 |
+| `verifySurface.observeFirst.test.tsx` | 9 |
+| `verifySurface.signalIdentity.test.tsx` | 1 |
+| `verifySurface.three-panel.test.tsx` | 2 |
+| `verifySurface.waveform-priority.test.tsx` | 4 |
+| `verifySurface.workspaceLayout.test.tsx` | 1 |
+| `verifySurface.workstation.test.tsx` | 32 |
+
+Newly failing identities require these dispositions; they are not dismissed as old debt:
+
+| File and test | Current failure | Disposition |
+| --- | --- | --- |
+| `designSurface.workstation.test.tsx` — DesignSurface workstation redesign keeps the library stable and reveals the inspector only after selection | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-left-dock"] | Migrate to explicit support-panel opening; preserve selection assertion. |
+| `designSurface.workstation.test.tsx` — DesignSurface workstation redesign keeps Split placement active after the student chooses a library macro | Error: Unable to find an element by: [data-testid="ide-left-dock"] | Migrate to explicit support-panel opening; preserve selection assertion. |
+| `designSurface.workstation.test.tsx` — DesignSurface workstation redesign preserves the camera when returning from split until a measured resize reconciles it | AssertionError: expected { x: 516, y: 360, zoom: 1.6 } to deeply equal { x: -999, y: -777, zoom: 0.5 } | Update camera expectation for measured viewport reconciliation; keep placement containment proof. |
+| `verifySurface-fail-state.test.tsx` — VerifySurface FAIL state (PR14 regression guard) renders the focused FAIL workspace when lastRun is fail | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-left-dock"] | Migrate to explicit support-panel opening; preserve selection assertion. |
+| `verifySurface.manualLabStepMode.test.tsx` — VerifySurface manual lab step workflow defaults step mode on for manual_event_driven_lab runs with multiple ticks | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-step-controls"] | Re-express step navigation through the one Time instrument; do not restore a parallel transport. |
+| `verifySurface.manualLabStepMode.test.tsx` — VerifySurface manual lab step workflow hides Prev/Next bar when step mode is toggled off but keeps the toggle | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-step-mode-toggle"] | Re-express step navigation through the one Time instrument; do not restore a parallel transport. |
+| `verifySurface.observeFirst.test.tsx` — VerifySurface observe-first model shows Open in Design button in command bar when lastRun exists and onGoToDesign provided | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-open-circuit-replay"] | Re-express explicit retained-recording circuit handoff, including missing callbacks. |
+| `verifySurface.observeFirst.test.tsx` — VerifySurface observe-first model shows Open in Design button when onGoToDesignWithInputs provided even without onGoToDesign | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-open-circuit-replay"] | Re-express explicit retained-recording circuit handoff, including missing callbacks. |
+| `verifySurface.observeFirst.test.tsx` — VerifySurface observe-first model publishes the auto-selected observed signal so Design can track observation-only runs live | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-signal-rail-summary"] | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.signalIdentity.test.tsx` — Verify signal identity — a name that means two things counts the register as internal and the pin as an output | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-group-outputs"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+| `verifySurface.workspaceLayout.test.tsx` — VerifySurface workspace layout keeps signals integrated with the workbench without a separate rail | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-left-dock"] | Migrate to explicit support-panel opening; preserve selection assertion. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls does not invent scenario staleness when no active scenario provenance exists | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-results-summary"] | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls focuses first-run compare guidance on the current vectors instead of generator tooling | AssertionError: expected '1 saved checks are evaluated automati…' to contain 'Check filled expected outputs' | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls treats the Stimulus case selector as the same selected tick used by Verify readouts | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-signal-sw0"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls arms assertion checking immediately after capturing outputs as expected | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-signal-ld0"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls revokes a prior Compare FAIL while Design is structurally blocked and keeps Observe ungraded | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-vcb-use-saved-checks"] | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls applies observed repair through a waveform-label alias to the authored expected cell | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-results-summary"] | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls keeps another testbench failure read-only after the active document changes | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-results-summary"] | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls preserves blank assertions when capture updates an existing assertion mask | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-signal-ld0"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls populates truth table rows for a passing run | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-results-summary"] | Re-express against the current result and optional-check owners; retain semantic failure/currentness assertions. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls folds workbench actions and signal-rail controls into their header rows | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-left-dock"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls shows canonical signal lanes when waveform samples use internal node keys | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-left-dock"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+| `verifySurface.workstation.test.tsx` — VerifySurface workstation controls keeps internal trace lanes visible when no mapped I/O lanes are available | TestingLibraryElementError: Unable to find an element by: [data-testid="ide-verify-left-dock"] | Inspect the exact assertion and current recording/panel fixture; preserve the semantic invariant. |
+
+The older inventory below is historical mixed-revision evidence. Whole-family red results
+remain a release limitation even where current browser outcomes pass. Final classroom and
+repo-status results will be recorded separately; unexecuted steps are not passing steps.
+
+## P2.6B first consumer migration checkpoint (2026-09-12)
 
 The retired Observe/Compare command-row consumers now assert one Run with optional checks;
 20 command-row tests pass. Hardware readiness now checks retained recorded values and named

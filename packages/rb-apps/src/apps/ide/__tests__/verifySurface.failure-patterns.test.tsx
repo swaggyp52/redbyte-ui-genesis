@@ -18,7 +18,7 @@ function renderVerify(run: RuntimeVerifyRun) {
   );
   // The failure explainer lives inside the analysis drawer (mismatches tab).
   // For fail+verify runs the tab auto-switches to 'mismatches'; open the drawer to render it.
-  fireEvent.click(result.getByTestId('ide-verify-drawer-toggle'));
+  fireEvent.click(result.getByTestId('ide-verify-details'));
   return result;
 }
 

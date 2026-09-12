@@ -72,7 +72,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getAllByTestId('ide-verify-fail-nav-first').length).toBeGreaterThan(0);
-    expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-pressed')).toBe('false');
+    expect(getAllByTestId('ide-verify-details')[0]?.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
     // This used to assert that the surface contained no <details> at all - a tag-name proxy for

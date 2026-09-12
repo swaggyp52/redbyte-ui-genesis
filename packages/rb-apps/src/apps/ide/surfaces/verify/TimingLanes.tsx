@@ -243,9 +243,29 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
       className="rb-tl"
       data-testid="ide-timing-lanes"
       role="grid"
-      aria-label="Timing lanes — left and right move the selected tick; with Shift, to the next or previous clock edge"
+      aria-label="Timing lanes — up and down select a signal; left and right move the tick; Shift with left or right moves to a clock edge; Space edits the selected driven input"
       tabIndex={0}
       onKeyDown={(event) => {
+        // Child buttons retain their own keyboard action. The grid is one tab stop,
+        // with signal and tick selection shared with pointer-driven inspection.
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          const fields = [...lanes, ...outputFields];
+          if (!fields.length) return;
+          event.preventDefault();
+          const current = fields.findIndex((field) => field.label === selectedSignal);
+          const next = current < 0 ? 0 : (current + (event.key === 'ArrowDown' ? 1 : -1) + fields.length) % fields.length;
+          onSelectSignal?.(fields[next].label);
+          return;
+        }
+        if (event.key === ' ' || event.key === 'Enter') {
+          const field = lanes.find((entry) => entry.label === selectedSignal);
+          if (editable && selectedTick != null && field && !generatedFieldIds?.has(field.id)) {
+            event.preventDefault();
+            onDriveInput(selectedTick, field.id, inputAt(field.id, selectedTick) === 1 ? 0 : 1);
+          }
+          return;
+        }
         if ((event.key === 'ArrowRight' || event.key === 'ArrowLeft') && event.shiftKey && sortedEdges.length > 0) {
           // Shift+Arrow snaps to the next/previous rising edge.
           event.preventDefault();
@@ -315,7 +335,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
           {/* group headers */}
           <text className="rb-tl-group" x={8} y={RULER_H + GROUP_H - 5}>Stimulus · current draft</text>
           <line className="rb-tl-group-rule" x1={0} x2={width} y1={RULER_H + GROUP_H} y2={RULER_H + GROUP_H} />
-          <text className="rb-tl-group" x={8} y={outputsTop - 5}>Recorded signals</text>
+          <text className="rb-tl-group" x={8} y={outputsTop - 5}>{observedTicks.length ? 'Recorded signals' : 'Checks · no recording'}</text>
           <line className="rb-tl-group-rule" x1={0} x2={width} y1={outputsTop} y2={outputsTop} />
           {/* generated clock lanes: one active edge per tick, read-only */}
           {generatedClocks.map((clockId, laneIndex) => {

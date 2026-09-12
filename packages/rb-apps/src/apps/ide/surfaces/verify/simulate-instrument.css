@@ -10,14 +10,19 @@
   height: var(--wb-control-h);
   min-height: 0;
   padding: 0 12px;
-  border: 1px solid var(--wb-accent);
+  border: 1px solid var(--wb-border-strong);
   border-radius: var(--wb-radius);
-  color: var(--wb-accent-text);
-  background: var(--wb-accent);
+  color: var(--wb-text);
+  background: var(--wb-surface);
   box-shadow: none;
   font: 600 var(--wb-text-sm) / 1 var(--wb-font-ui);
   letter-spacing: 0;
   text-transform: none;
+}
+.ide-root .rb-sim-run .ide-button.wb-btn--primary {
+  color: var(--wb-accent-text);
+  background: var(--wb-accent);
+  border-color: var(--wb-accent);
 }
 .ide-root .rb-sim-run .ide-button:disabled { opacity: 0.45; }
 .ide-root .rb-sim-run .ide-button.is-pulsing { box-shadow: 0 0 0 3px var(--wb-accent-bg-strong); }
@@ -868,3 +873,9 @@
 .ide-root .rb-recorded-navigation { display: flex; gap: .375rem; align-items: center; flex-wrap: wrap; }
 .ide-root .rb-tl-context .rb-wave-group { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
 .ide-root .rb-tl-context .rb-wave-group--tail { margin-left: auto; }
+
+/* Keep the existing investigation exit available while either instrument scrolls. */
+.ide-root .rb-sim-representation { position: sticky; top: 0; z-index: 4; }
+.ide-root .rb-tl-context .ide-verify-fail-nav-summary { background: var(--wb-surface); color: var(--wb-text); border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); }
+.ide-root .rb-tl-context .ide-verify-fail-nav-summary * { color: inherit; }
+.ide-root .rb-tl:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }

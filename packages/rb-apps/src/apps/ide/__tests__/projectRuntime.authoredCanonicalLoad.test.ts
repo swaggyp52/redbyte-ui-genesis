@@ -35,6 +35,26 @@ function verifyHash() {
 }
 
 describe('projectRuntime — an authored project rehydrates unchanged', () => {
+  it('preserves authored event identities in both persisted vector owners', () => {
+    act(() => {
+      useProjectRuntime.getState().replaceWithBlankProject();
+      useProjectRuntime.getState().loadExample('full-adder');
+      const vectors = useProjectRuntime.getState().projectVectors.map((vector, index) => ({
+        ...vector, id: 'authored-event-' + index,
+      }));
+      useProjectRuntime.getState().setVectors(vectors);
+    });
+    const before = useProjectRuntime.getState();
+    const scenarioBefore = before.scenarios.find(scenario => scenario.id === before.activeScenarioId)!;
+    expect(scenarioBefore.vectors.map(vector => vector.id)).toEqual(
+      before.projectVectors.map((_, index) => 'authored-event-' + index),
+    );
+    const after = mergePersistedRuntimeState(JSON.parse(JSON.stringify(before)), before);
+    expect(after.projectVectors).toEqual(before.projectVectors);
+    expect(after.scenarios.find(scenario => scenario.id === after.activeScenarioId)?.vectors)
+      .toEqual(scenarioBefore.vectors);
+  });
+
   it('keeps vectors, scenarios and the verify hash identical across a reload of the full adder', () => {
     act(() => {
       useProjectRuntime.getState().replaceWithBlankProject();
@@ -113,10 +133,8 @@ describe('projectRuntime — an authored project rehydrates unchanged', () => {
     const vectors = (scenario as { vectors: Array<Record<string, unknown>> }).vectors;
     expect(vectors.length, 'the scenario must have vectors to hash').toBeGreaterThan(0);
 
-    // The same scenario legitimately arrives with and without vector ids depending on the path it
-    // travelled: `cloneVector` rebuilds vectors without them, and persistence does not carry them.
-    // Both must hash the same, or a run stamped while ids were present reports itself stale the
-    // moment the project is reopened.
+    // Older projects may lack authoring ids. Adding those identities on first edit must
+    // not change execution content, even though new saves preserve them byte for byte.
     const withIds = computeScenarioContentHash({
       ...(scenario as object),
       vectors: vectors.map((vector, index) => ({ ...vector, id: `event-${index + 1}` })),

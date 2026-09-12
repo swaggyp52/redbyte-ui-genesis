@@ -296,7 +296,7 @@ describe('VerifySurface board clock auto mode', () => {
 
     await waitFor(() => {
       expect(view.getByTestId('ide-verify-clock-detected').textContent).toContain('CLK100MHZ');
-      expect(view.getByTestId('ide-verify-clock-reset-summary').textContent).toContain('custom reset');
+      expect(view.getByTestId('ide-verify-clock-reset-summary').textContent).toContain('authored in the Timing lanes');
       expect((view.getByTestId('ide-verify-clock-run-cycles-input') as HTMLInputElement).value)
         .toBe('12');
     });
@@ -427,11 +427,13 @@ describe('VerifySurface board clock auto mode', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('pass');
+
+      expect(view.getByTestId('ide-verify-workspace-waveform').getAttribute('data-state')).not.toBe('stale');
+      expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
     });
     fireEvent.click(view.getByTestId('ide-verify-clock-mode-manual'));
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('stale');
+      expect(view.getByTestId('ide-verify-workspace-waveform').getAttribute('data-state')).toBe('stale');
     });
   });
 
@@ -527,7 +529,9 @@ describe('VerifySurface board clock auto mode', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('pass');
+
+      expect(view.getByTestId('ide-verify-workspace-waveform').getAttribute('data-state')).not.toBe('stale');
+      expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
     });
     const editedScenario = {
       ...activeScenario,
@@ -545,7 +549,7 @@ describe('VerifySurface board clock auto mode', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('stale');
+      expect(view.getByTestId('ide-verify-workspace-waveform').getAttribute('data-state')).toBe('stale');
     });
   });
 
@@ -653,7 +657,9 @@ describe('VerifySurface board clock auto mode', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('pass');
+
+      expect(view.getByTestId('ide-verify-workspace-waveform').getAttribute('data-state')).not.toBe('stale');
+      expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
     });
   });
 
