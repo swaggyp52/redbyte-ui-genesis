@@ -10,13 +10,21 @@ await runIdeGate('IDE hardware checklist contract satisfied', async ({ page, bas
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-hardware"]').click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
+  // Board Check is the board-side checklist: it walks the recorded vectors step by step at the
+  // board, or offers to generate them. Pre-flight - a fourth mode that restated Package's trust
+  // state and the Vivado handoff here - is retired; that reading belongs to Build & Export.
+  await page.locator('[data-testid="ide-hw-mode-btn-bringup"]').click();
 
-  const checklist = page.locator('[data-testid="ide-hw-proof-dock"]');
-  const expectedTable = page.locator('[data-testid="ide-hw-proof-dock"]');
+  const checklist = page.locator('[data-testid="ide-hw-bringup-dock"]');
+  const stepOrGenerate = page
+    .locator('[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]')
+    .first();
   const ifWrong = page.locator('[data-testid="ide-hw-mode-toggle"]');
 
   assert(await visible(checklist), 'hardware checklist panel must render');
-  assert(await visible(expectedTable), 'hardware expected IO panel must render');
+  assert(
+    await visible(stepOrGenerate),
+    'hardware checklist must show a step to perform or the way to generate its vectors',
+  );
   assert(await visible(ifWrong), 'hardware if-wrong panel must render');
 });

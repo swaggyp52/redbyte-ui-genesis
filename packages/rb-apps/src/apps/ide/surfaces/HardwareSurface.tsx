@@ -102,11 +102,6 @@ export const CHROME_CONTRACT = {
       testId: 'ide-hw-mode-exit-back',
     },
     {
-      fromMode: 'proof',
-      label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
-      testId: 'ide-hw-mode-exit-back',
-    },
-    {
       fromMode: 'live',
       label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
       testId: 'ide-hw-mode-exit-back',
@@ -434,7 +429,12 @@ interface AssertionEntry {
   hasData: boolean;
 }
 
-type HwMode = 'live' | 'bringup' | 'proof' | 'map';
+/* Pre-flight was a fourth mode: a confidence checklist, an ASSERT / COMPARE / EXPORT / SCENARIO
+   slab and the Vivado program-handoff prose - every line of it Package's trust state and its
+   "Next in Vivado" said again on the Board, in an OS-era stage banner. Board keeps the mapping
+   surface, the bench check (expected switch and LED states per case, for the board in hand) and
+   the recorded projection; the handoff is Package's. */
+type HwMode = 'live' | 'bringup' | 'map';
 
 function resolveInitialHardwareMode(input: {
   mappingRows: HardwareMappingRow[];
@@ -1659,7 +1659,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'verify':
         return onOpenVerify;
       case 'program-handoff':
-        return () => setHwMode('proof');
+        return onOpenExport;
       default:
         return () => {};
     }
@@ -1799,8 +1799,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         primaryLabel: 'Generate Bring-Up Steps',
         primaryAction: onGenerateBringUpVectors,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: 'Open Pre-flight',
-        secondaryAction: () => setHwMode('proof'),
+        secondaryLabel: OPEN_BUILD_EXPORT_LABEL,
+        secondaryAction: onOpenExport,
       };
     }
 
@@ -1817,10 +1817,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
 
     return {
-      title: 'Follow the board check steps, then review pre-flight',
-      body: 'Once the guided checks match, open Pre-flight for E0 handoff notes and downstream Vivado steps.',
-      primaryLabel: 'Open Pre-flight',
-      primaryAction: () => setHwMode('proof'),
+      title: 'Follow the board check steps, then build the package',
+      body: 'Once the checks match at the board, Build & Export carries the handoff notes and the Vivado steps.',
+      primaryLabel: OPEN_BUILD_EXPORT_LABEL,
+      primaryAction: onOpenExport,
       primaryTestId: 'ide-hardware-next-primary',
       secondaryLabel: 'Simulation',
       secondaryAction: () => setHwMode('live'),
@@ -2231,10 +2231,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     hwMode === 'map'
       ? 'Board & Constraints'
       : hwMode === 'bringup'
-        ? 'Stage 2 · Board Check'
-        : hwMode === 'proof'
-          ? 'Stage 3 · Pre-flight'
-          : 'Stage 4 · Simulation';
+        ? 'Board Check'
+        : 'Simulated board';
 
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
@@ -2520,85 +2518,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     </SurfacePanel>
   );
 
-  const confidencePassCount = confidenceChecks.filter((c) => c.pass).length;
-  const proofDock = (
-    <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--proof" testId="ide-hw-proof-dock">
-      <header className="ide-workbench-placeholder-header">
-        <h3>Pre-flight</h3>
-        <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
-          {confidencePassCount}/{confidenceChecks.length}
-        </IdeStatusPill>
-      </header>
-      <div className="ide-hw-confidence-list" data-testid="ide-hw-confidence-list">
-        {confidenceChecks.map((check) => (
-          <div key={check.label} className={`ide-hw-confidence-row ${check.pass ? 'is-pass' : 'is-pending'}`}>
-            <span className="ide-hw-confidence-icon">{check.pass ? '✓' : '○'}</span>
-            <span className="ide-hw-confidence-label">{check.label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="ide-hw-cert-slab" data-testid="ide-hw-cert-slab">
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">ASSERT</span>
-          <code className="ide-hw-cert-val">{hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '—'}</code>
-        </div>
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">COMPARE</span>
-          <code className="ide-hw-cert-val">{verifyStatus}</code>
-        </div>
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">EXPORT</span>
-          <code className="ide-hw-cert-val">{exportStatus}</code>
-        </div>
-        <div className="ide-hw-cert-row" data-testid="ide-hardware-cert-scenario">
-          <span className="ide-hw-cert-key">SCENARIO</span>
-          <code className={`ide-hw-cert-val ${scenarioDrifted ? 'ide-hw-cert-val--warn' : ''}`}>
-            {verifyLastRun?.scenarioName ?? '—'}
-            {scenarioDrifted ? ' [drift]' : ''}
-          </code>
-        </div>
-      </div>
-      <div className="ide-inline-actions">
-        {failureTruth.condition === 'ready' ? (
-          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
-            {OPEN_BUILD_EXPORT_LABEL}
-          </IdeButton>
-        ) : (
-          <IdeButton tone="primary" onClick={dominantPrimaryAction} testId="ide-hardware-build-export">
-            {failureTruthPrimaryCtaLabel}
-          </IdeButton>
-        )}
-      </div>
-      {failureTruth.condition === 'ready' && (
-        <div className="ide-hw-program-handoff" data-testid="ide-hardware-program-handoff-cta">
-          <p className="ide-copy">
-            The RedByte download is a <strong>Vivado project ZIP</strong> — it does <strong>not</strong> include a bitstream.
-            In Vivado, open the project, run <strong>Generate Bitstream</strong>, then open{' '}
-            <strong>Hardware Manager</strong>, add the generated <code>.bit</code> from the run folder, and use{' '}
-            <strong>Program Device</strong> to flash the Basys3.
-          </p>
-          <p
-            className="ide-copy"
-            data-testid="ide-hardware-submission-hint"
-            style={{ marginTop: 'var(--ide-space-2)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)' }}
-          >
-            <strong>Typical lab hand-in</strong> (follow your rubric): the <strong>export ZIP</strong> from RedByte, plus
-            what your course requires — often a <strong>passing Verify</strong> run and a{' '}
-            <strong>working bitstream from Vivado</strong>, not RedByte export alone.
-          </p>
-        </div>
-      )}
-    </SurfacePanel>
-  );
-
-  const activeDock =
-    hwMode === 'map'
-      ? mapDock
-      : hwMode === 'live'
-        ? liveDock
-        : hwMode === 'bringup'
-          ? bringupDock
-          : proofDock;
+  const activeDock = hwMode === 'map' ? mapDock : hwMode === 'live' ? liveDock : bringupDock;
 
   // ── Inspector nodes ─────────────────────────────────────────────────
   const liveInspector = (
@@ -3197,9 +3117,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <span className="ide-hw-mode-exit-hint" data-testid="ide-hw-mode-exit-hint">
               {hwMode === 'bringup'
                 ? 'Board Check active — press Esc or click Back to return to Board & Constraints.'
-                : hwMode === 'proof'
-                  ? 'Pre-flight active — press Esc or click Back to return to Board & Constraints.'
-                  : 'Simulation active — press Esc or click Back to return to Board & Constraints.'}
+                : 'Simulation active — press Esc or click Back to return to Board & Constraints.'}
             </span>
           </div>
         ) : null}
@@ -3251,22 +3169,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               <span className="rb-board-mode-title">Board Check</span>
               <span className="rb-board-mode-status" aria-hidden="true">
                 {vectorsCount > 0 ? '✓' : '○'}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={hwMode === 'proof'}
-              className={`wb-btn${hwMode === 'proof' ? ' is-active' : ''}`}
-              data-testid="ide-hw-mode-btn-proof"
-              onClick={() => {
-                setHwMode('proof');
-                setSelectedMappingRowId(null);
-              }}
-            >
-              <span className="rb-board-mode-title">Pre-flight</span>
-              <span className="rb-board-mode-status" aria-hidden="true">
-                {confidenceScore === 100 ? '✓' : '·'}
               </span>
             </button>
             <button
@@ -4013,7 +3915,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </div>
               <div className="rb-board-after-actions" data-testid="ide-hw-mode-toggle">
                 <IdeButton tone="secondary" onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-bringup">Board Check</IdeButton>
-                <IdeButton tone="secondary" onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-proof">Pre-flight</IdeButton>
                 <IdeButton tone="ghost" onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-live">Open simulated board</IdeButton>
               </div>
             </section>
@@ -4039,7 +3940,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </div>
           </header>
           <div className="ide-hw-board-canvas">
-        <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
+        <div className="ide-hw-board-wrap">
           <div className="ide-hw-board-inner">
             <HardwareBoard2D
               sw={displayedBoardState.sw}
@@ -4068,26 +3969,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
             />
           </div>
-          {hwMode === 'proof' && (
-            <div
-              className={`ide-hw-proof-verdict ${
-                !hasAssertionData
-                  ? 'is-pending'
-                  : assertionFailCount === 0
-                    ? 'is-valid'
-                    : 'is-invalid'
-              }`}
-              data-testid="ide-hw-proof-verdict"
-            >
-              <span className="ide-hw-proof-verdict-label" data-testid="ide-hw-proof-verdict-label">
-                {!hasAssertionData
-                  ? 'PROOF PENDING'
-                  : assertionFailCount === 0
-                    ? 'PROOF VALID'
-                    : 'PROOF INVALID'}
-              </span>
-            </div>
-          )}
         </div>
           </div>
         </div>

@@ -6357,68 +6357,8 @@ details[open] summary .details-arrow {
 .is-fail .ide-hw-assert-badge { color: #fca5a5; }
 .is-nodata .ide-hw-assert-badge { color: var(--ide-text-muted); }
 
-/* 28C: Confidence checklist */
-.ide-hw-confidence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--ide-space-1) 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  margin-bottom: var(--ide-space-2);
-}
-.ide-hw-confidence-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--rb-text-meta);
-}
-.ide-hw-confidence-icon {
-  font-size: var(--rb-text-meta);
-  width: 14px;
-  flex-shrink: 0;
-}
-.ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(61,186,110,0.9); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(255,255,255,0.2); }
-.ide-hw-confidence-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.ide-hw-confidence-row.is-pass .ide-hw-confidence-label { color: var(--ide-text-soft); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-label { color: rgba(255,255,255,0.3); }
-
-/* 28D: Proof certificate slab */
-.ide-hw-cert-slab {
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(56,189,248,0.15);
-  border-radius: 4px;
-  padding: var(--ide-space-1) var(--ide-space-2);
-  margin-bottom: var(--ide-space-2);
-  font-family: var(--rb-font-mono, monospace);
-}
-.ide-hw-cert-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  padding: 2px 0;
-  font-size: var(--rb-text-micro);
-}
-.ide-hw-cert-key {
-  flex-shrink: 0;
-  width: 48px;
-  color: rgba(56,189,248,0.55);
-  font-size: var(--rb-text-micro);
-  letter-spacing: 0.08em;
-  font-weight: 700;
-}
-.ide-hw-cert-val {
-  color: rgba(200,230,255,0.75);
-  font-size: var(--rb-text-micro);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* 28C / 28D: the Pre-flight confidence checklist and proof certificate slab are retired with
+   Pre-flight (P2.6); no element renders .ide-hw-confidence-* or .ide-hw-cert-* now. */
 
 /* ════════════════════════════════════════════════════════════════
    Phase 29 — Deterministic proof engine
@@ -6429,49 +6369,8 @@ details[open] summary .details-arrow {
   position: relative;
 }
 
-/* 29B: Proof verdict overlay */
-.ide-hw-proof-verdict {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  pointer-events: none;
-  animation: hwVerdictIn 280ms ease forwards;
-}
-@keyframes hwVerdictIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.ide-hw-proof-verdict-label {
-  font-family: var(--rb-font-mono, monospace);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  line-height: 1;
-  text-shadow: 0 0 40px currentColor;
-}
-.ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(61, 186, 110, 0.95); }
-.ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: #fca5a5; }
-.ide-hw-proof-verdict.is-pending .ide-hw-proof-verdict-label { color: rgba(180, 200, 220, 0.4); }
-.ide-hw-proof-verdict-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: rgba(0, 0, 0, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-family: var(--rb-font-mono, monospace);
-}
-.ide-hw-proof-verdict-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: var(--rb-text-micro);
-}
+/* 29B: the Pre-flight proof verdict overlay is retired with Pre-flight itself (P2.6); Package
+   owns the trust state it restated. */
 
 /* 29C: Tick badge in mode toggle bar */
 .ide-hw-tick-badge {
@@ -6531,24 +6430,7 @@ details[open] summary .details-arrow {
   font-family: var(--rb-font-mono, monospace);
 }
 
-/* 30C: Proof HUD repositioned (override Phase 29 centering) */
-.ide-hw-proof-verdict {
-  align-items: flex-end;
-  justify-content: flex-start;
-  padding: 8px;
-  gap: 6px;
-}
-.ide-hw-proof-verdict-label {
-  font-size: var(--rb-text-meta);
-  letter-spacing: 0.1em;
-}
-.ide-hw-proof-verdict-meta {
-  padding: 6px 10px;
-}
-.ide-hw-proof-verdict-row {
-  font-size: var(--rb-text-micro);
-  gap: 8px;
-}
+/* 30C: the Proof HUD override went with the Pre-flight verdict (see 29B). */
 
 /* ════════════════════════════════════════════════════════════════
    Phase 31 — Export: build system UI
@@ -11018,41 +10900,9 @@ details[open].ide-export-evidence-details > summary::before {
   padding: 8px 14px; display: flex; align-items: center; gap: 8px;
 }
 
-/* Proof verdict overlay */
-.ide-hw-proof-verdict {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 4px; padding: var(--ide-space-3);
-  border-radius: var(--ide-radius, 6px); text-align: center;
-}
-.ide-hw-proof-verdict.is-valid {
-  background: rgba(8, 28, 22, 0.97);
-  border: 1px solid rgba(46, 196, 182, 0.38);
-  box-shadow: 0 0 32px rgba(46, 196, 182, 0.08);
-}
-.ide-hw-proof-verdict.is-invalid {
-  background: rgba(20, 8, 8, 0.97);
-  border: 1px solid rgba(255, 80, 80, 0.38);
-  box-shadow: 0 0 32px rgba(255, 80, 80, 0.08);
-}
-.ide-hw-proof-verdict.is-pending { border: 1px solid rgba(30, 60, 110, 0.4); }
-.ide-hw-proof-verdict-label {
-  font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em;
-}
-.ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(46,196,182,0.95); }
-.ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: rgba(255,100,100,0.95); }
-.ide-hw-proof-verdict-meta { font-size: var(--rb-text-meta); color: rgba(120,160,200,0.6); }
+/* The Proof verdict overlay's third set of rules is retired with Pre-flight (see 29B). */
 
-/* Cert slab */
-.ide-hw-cert-slab {
-  background: rgba(3, 8, 18, 0.97);
-  border: 1px solid rgba(30, 60, 110, 0.4);
-  border-radius: var(--ide-radius, 6px);
-  padding: var(--ide-space-2) var(--ide-space-3);
-  font-family: var(--rb-font-mono);
-}
-.ide-hw-cert-row { display: flex; gap: 10px; padding: 3px 0; font-size: var(--rb-text-meta); }
-.ide-hw-cert-key { color: rgba(80, 120, 160, 0.6); white-space: nowrap; }
-.ide-hw-cert-val { color: rgba(160, 200, 240, 0.85); word-break: break-all; }
+/* Cert slab: retired with Pre-flight (see 28D). */
 
 /* Assert formal rows */
 .ide-hw-assert-formal {
@@ -11115,20 +10965,9 @@ details[open].ide-export-evidence-details > summary::before {
   border-top: 1px solid var(--wb-border);
 }
 
-/* Confidence checklist */
-.ide-hw-confidence-list {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: var(--ide-space-2) var(--ide-space-3);
-}
-.ide-hw-confidence-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; font-size: var(--rb-text-meta);
-}
-.ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(46,196,182,0.9); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: var(--wb-text-3); }
-.ide-hw-confidence-label { color: var(--wb-text); }
+/* Confidence checklist: retired with Pre-flight (see 28C). */
 
-/* Dock panel header (Board's check and pre-flight docks, Import's workflow rail). One owner: it
+/* Dock panel header (Board's check dock, Import's workflow rail). One owner: it
    sits on the light support surface and its heading reads in the workbench's own text colour.
    The OS-era versions of this rule painted a near-black strip with a pale-blue h3 - and two later
    !important rules re-painted every matching h3 rgba(130,170,210,0.45), which measured 1.49:1 on
@@ -13799,25 +13638,8 @@ details[open].ide-export-evidence-details > summary::before {
   flex: 1;
 }
 
-/* B4-Hardware: confidence checklist — no column clipping */
-.ide-hw-confidence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ide-hw-confidence-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.ide-hw-confidence-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
+/* B4-Hardware: the confidence checklist's clipping fix went with the checklist (Pre-flight,
+   retired in P2.6). */
 
 /* A5-Project: flightdeck panels — prevent min-width causing overflow on small viewports */
 [data-ide-mode-marker='project'] .ide-project-flightdeck {

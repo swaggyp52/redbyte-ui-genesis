@@ -85,8 +85,8 @@ Single source of truth for Playwright gate selectors. Gate scripts must use thes
 - `ide-hw-mode-toggle`
 - `ide-hw-live-dock`
 - `ide-hw-bringup-dock`
-- `ide-hw-proof-dock`
-- `ide-hw-proof-verdict`
+- `ide-hw-bringup-step` / `ide-hw-bringup-generate` (Board Check has a step to perform, or offers
+  to generate its vectors; `ide-hw-proof-dock` / `ide-hw-proof-verdict` are retired with Pre-flight)
 
 ## Shell / Workbench
 - `ide-root`

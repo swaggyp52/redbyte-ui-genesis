@@ -562,7 +562,7 @@ describe('HardwareSurface readiness', () => {
     expect(readiness.textContent).toContain('external E1/E2/E3 evidence');
     expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Vivado proof pending');
     expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain(
-      'Inspect the package in Build & Export'
+      'Inspect the checked package in Build & Export'
     );
     expect(queryByTestId('ide-hardware-program-handoff-cta')).toBeNull();
 

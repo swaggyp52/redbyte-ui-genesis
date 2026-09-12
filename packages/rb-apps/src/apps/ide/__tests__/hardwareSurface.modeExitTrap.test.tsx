@@ -4,8 +4,9 @@
  * Board & Constraints secondary-tool recovery.
  *
  * The v3 assignment workspace no longer renders the legacy Map tab/rail. Board
- * Check, Pre-flight, and Simulation remain optional after-mapping tools, and
- * each must return safely to the unified assignment workspace.
+ * Check and the simulated board remain optional after-mapping tools, and each
+ * must return safely to the unified assignment workspace. Pre-flight is gone:
+ * it restated Package's trust state and Vivado handoff on the Board.
  */
 
 import React from 'react';
@@ -109,7 +110,7 @@ describe('HardwareSurface Board & Constraints recovery navigation', () => {
 
   it('Escape returns from a secondary tool to the unified assignment workspace', () => {
     const { getByTestId, queryByTestId } = renderHardware();
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
     expect(getByTestId('ide-hw-mode-exit-banner')).toBeTruthy();
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -119,13 +120,19 @@ describe('HardwareSurface Board & Constraints recovery navigation', () => {
     expect(queryByTestId('ide-hw-mode-btn-map')).toBeNull();
   });
 
-  it('hint text is mode-specific (Board Check / Pre-flight / Simulation)', () => {
+  it('hint text is mode-specific (Board Check / Simulation)', () => {
     const { getByTestId } = renderHardware();
     fireEvent.click(getByTestId('ide-hw-mode-btn-bringup'));
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Board Check/i);
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
-    expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Pre-flight/i);
     fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Simulation/i);
+  });
+
+  it('offers no Pre-flight: the handoff and its trust state are Package’s', () => {
+    const { queryByTestId, getByTestId } = renderHardware();
+    expect(queryByTestId('ide-hw-mode-btn-proof')).toBeNull();
+    expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
+    // The way on from a complete mapping is Build & Export, on the mapping header itself.
+    expect(getByTestId('ide-hw-continue-export').textContent).toMatch(/build & export/i);
   });
 });
