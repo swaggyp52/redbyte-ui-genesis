@@ -277,6 +277,14 @@ async function hasCurrentVerifyVectors(page) {
   const directRunVisible = await page.locator('[data-testid="ide-vcb-run"]').first().isVisible().catch(() => false);
   if (stimulusCellCount > 0 && directRunVisible) return true;
 
+  // The scenario workbench draws authored cases as the case table (Table view) or the timing
+  // grid (Timeline view); either beside a visible Run is a ready scenario. The older stimulus
+  // cells above belong to a retired editor, and eight classroom gates stopped here looking
+  // for them.
+  const caseRowCount = await page.locator('[data-testid^="ide-case-lab-row-"]').count().catch(() => 0);
+  const timingCellCount = await page.locator('[data-testid^="ide-timing-cell-"]').count().catch(() => 0);
+  if ((caseRowCount > 0 || timingCellCount > 0) && directRunVisible) return true;
+
   const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
   if (await vectorTable.isVisible().catch(() => false)) return true;
 
