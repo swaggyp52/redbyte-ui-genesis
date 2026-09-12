@@ -14,6 +14,8 @@ Scope: `packages/rb-apps/src/apps/IdeApp.tsx` default `/` IDE surface
 
 ## Current P2.6B panel and Board Check composition (2026-09-12)
 
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
 An empty Simulate workspace presents its start actions without an empty instrument or premature mapping warning. External VCD evidence remains an explicit independent path.
 
 Review refinement: secondary Reproduce uses the same control height as Run, and the circuit disclosure close control remains sticky and reachable. Keyboard focus is visible within the Time instrument.

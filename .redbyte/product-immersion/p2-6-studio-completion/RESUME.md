@@ -1,3 +1,40 @@
+## P2.6B delivery evidence - 2026-09-12
+
+Source implementation and Browser E0 proof are delivered at pushed 0f941296ee1aabbabc6f6401bda346152b8e9fdc.
+This is implementer review; broader release validation remains red and Connor Angiel's
+acceptance is pending. The canonical branch and draft PR #86/base are unchanged.
+
+At that unchanged code head, a fresh Node 20.19.0 build and verify:gates pass, including
+23 reported Vitest invocations / 109 passing tests and both protected export goldens.
+Two existing deleted-rb-shell cases (theme toggle and animations) remain skipped; they are
+not new coverage. No skip or suppression was added in this campaign.
+All 15 built-browser journeys pass. The strengthened empty-state gate also passes at
+1366x768, 1440x900 and 1280x650: no premature mapping/instrument, working Design and recovery
+routes, and the existing starter picker preserves project/circuit identity while browsing.
+The external VCD disclosure remains reachable. The focused empty-state owner is 11/11.
+
+All 13 final matched before/after pairs were personally reviewed against the same starter,
+authored change and viewport. Local evidence lives under .redbyte/e2e-evidence/studio-matched/
+built-0f941296e/; the 26-image review and A-J closeout live under
+.redbyte/product-immersion/p2-6-studio-completion/p2-6b/. These ignored artifacts are local
+proof, not remotely published screenshots. The 512-case / 2560-check / 39-signal experiment
+measured 2.024 s to run and 1.104 s to inspect; two full recordings reload with digest 140ba365.
+
+Typecheck remains 768 / b9e8e0eb29ca1d2a (TS 5.9.3); no upward rebaseline or suppression.
+Design/Verify families remain a measured 374 pass / 86 fail at 2563b40d4, with 23 new,
+11 closed and 63 retained failure identities against baseline. The full classroom diagnostic
+at dfec50b44 is 19 pass / 52 fail; the canonical chain stops at step 3 of 72. The corrected
+empty-state gate is a later targeted result, not a rewritten classroom total. That full census
+and repo-status were not rerun after the empty-state follow-up. repo-status had advanced past
+bring-up and import before stopping on Project Overview; later chain checks remain unmeasured.
+
+Remaining work: named consumer migrations and TypeScript debt; dense failure controls, small
+Split/inactive Board labels and 200% text first-viewport composition; assistive-technology
+review; larger recording storage capacity; and actual owner acceptance. Two long recordings
+use about 5.00 million stored characters, so larger histories can still fail save at quota.
+Vivado/E1, programming/E2 and physical observation/E3 remain unproven. No Vivado install,
+format change, golden regeneration, merge, retarget or production deployment was performed.
+
 ## P2.6B validation follow-up - 2026-09-12
 
 At pushed dfec50b446aeab5b48d1828adf1f8139be32615f, verify:gates passes (23 reported

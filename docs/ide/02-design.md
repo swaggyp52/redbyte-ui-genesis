@@ -14,6 +14,8 @@ Mode ID: `design`
 
 ## Current P2.6B authoring and handoff (2026-09-12)
 
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
 Review refinement: Fit consumes the currently measured viewport once, preventing ResizeObserver from translating the camera a second time after Split opens. The Split HDL header wraps its actions; the entire Import button stays inside the source pane. Browser proof asserts all 13 counter components remain inside the schematic viewport.
 
 Explore replaces the Live label and is explicitly unrecorded. Clock edge and Reset values

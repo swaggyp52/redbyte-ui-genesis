@@ -14,6 +14,8 @@ Mode ID: `verify`
 
 ## Current P2.6B experiment model (2026-09-12)
 
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
 With no circuit, the instrument yields to the start instructions. Design, the existing starter picker and Import/Recover are direct actions; external VCD import stays available. Browsing starters preserves current work. The current instrument stylesheet owns this empty-state rule.
 
 The linked investigation reserves its shared controls above two independently scrolling panes. Focusing Time must not obscure the recording header; the trace retains a useful minimum height, and its event-editor disclosure stays below it. One recorded execution says no repeat yet; identical counts describe comparisons after reproduction.

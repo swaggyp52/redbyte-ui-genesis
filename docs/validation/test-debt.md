@@ -5,6 +5,17 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## P2.6B targeted closure after the census (2026-09-12)
+
+At 0f941296ee1aabbabc6f6401bda346152b8e9fdc, the strengthened ide:gate:verify-no-circuit-task-first
+passes against the built bundle at 1366x768, 1440x900 and 1280x650. The current instrument
+owner suppresses premature mapping/testbench UI; the existing starter picker opens directly
+and browsing preserves the project/circuit. The owner suite passes 11/11. This closes the
+one confirmed empty-state regression in the earlier 19/52 census. The full 71-command
+census was not rerun, so its measured totals below are not changed or projected forward.
+The fresh product gate and all 15 built journeys pass at this code head; broader release
+validation remains red. Typecheck is unchanged at 768 / b9e8e0eb29ca1d2a, without suppression.
+
 ## P2.6B exact classroom diagnostic (2026-09-12)
 
 At dfec50b446aeab5b48d1828adf1f8139be32615f, the unchanged canonical chain passes its
