@@ -10,14 +10,19 @@
   height: var(--wb-control-h);
   min-height: 0;
   padding: 0 12px;
-  border: 1px solid var(--wb-accent);
+  border: 1px solid var(--wb-border-strong);
   border-radius: var(--wb-radius);
-  color: var(--wb-accent-text);
-  background: var(--wb-accent);
+  color: var(--wb-text);
+  background: var(--wb-surface);
   box-shadow: none;
   font: 600 var(--wb-text-sm) / 1 var(--wb-font-ui);
   letter-spacing: 0;
   text-transform: none;
+}
+.ide-root .rb-sim-run .ide-button.wb-btn--primary {
+  color: var(--wb-accent-text);
+  background: var(--wb-accent);
+  border-color: var(--wb-accent);
 }
 .ide-root .rb-sim-run .ide-button:disabled { opacity: 0.45; }
 .ide-root .rb-sim-run .ide-button.is-pulsing { box-shadow: 0 0 0 3px var(--wb-accent-bg-strong); }
@@ -210,7 +215,7 @@
 .ide-root .rb-sim-panel > .ide-panel-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; }
 /* The regions separate themselves (header border, result padding); the workbench section gap does not apply.
    The selector outranks the shell's `[data-layout-intent] … > .ide-panel > .ide-panel-body` gap rule. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace > .rb-sim-panel > .ide-panel-body { gap: 0; }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace > .rb-sim-panel > .ide-panel-body { gap: 0; padding: 0; overflow: auto; }
 .ide-root .rb-sim-command-stack { display: flex; flex-direction: column; margin: 0; padding: 0; background: transparent; }
 .ide-root .rb-sim-region { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .ide-root .rb-sim-region--header { flex: none; border-bottom: 1px solid var(--wb-border-strong); }
@@ -219,7 +224,7 @@
    the callouts could not shrink and, at 200% zoom or with the Problems panel open, pushed the whole
    Case Lab / Timing document out of the panel. */
 .ide-root .rb-sim-region--result { flex: 0 1 auto; min-height: 0; overflow: auto; }
-.ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 1 0; min-height: clamp(182px, 60%, 240px); padding: 0; border: 0; }
+.ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 0 22rem; min-height: 22rem; padding: 0; border: 0; }
 .ide-root .rb-sim-lab-frame { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: auto; background: transparent; }
 .ide-root .rb-sim-lab-grid { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0; gap: 0; }
 .ide-root .rb-sim-primary { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
@@ -301,12 +306,24 @@
    replaces is gone: two instruments competing for one workspace was the thing being fixed. */
 .ide-root .rb-sim-lab-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 296px;
+  grid-template-columns: minmax(0, 1fr) 0;
   grid-template-rows: minmax(min-content, 1fr) fit-content(34%);
   grid-template-areas: 'cases inspector' 'evidence evidence';
   gap: 0;
 }
 .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) { min-height: min-content; }
+.ide-root .rb-sim-lab-grid[data-details-open='true']:not([data-investigation]) { grid-template-columns: minmax(0, 1fr) minmax(250px, 32%); }
+.ide-root .rb-sim-inspector .ide-verify-supporting-strip { min-height: 0; max-height: none; margin: 0; border: 0; background: var(--wb-surface); color: var(--wb-text); }
+.ide-root .rb-sim-inspector .ide-verify-drawer-body, .ide-root .rb-sim-inspector .ide-verify-tab-panel { background: var(--wb-surface); color: var(--wb-text); overflow: visible; }
+.ide-root .rb-sim-inspector .ide-verify-analysis-tab-nav { position: static; flex-wrap: wrap; background: var(--wb-surface-2); color: var(--wb-text); }
+.ide-root .rb-sim-inspector > header { height: auto; min-height: var(--wb-toolwindow-header-h); flex-wrap: wrap; }
+.ide-root .rb-sim-imported-details { flex: none; border-top: 1px solid var(--wb-border); color: var(--wb-text-2); background: var(--wb-surface); font-size: var(--wb-text-sm); }
+.ide-root .rb-sim-imported-details > summary { padding: 5px 12px; cursor: pointer; }
+.ide-root .rb-sim-imported-details[open] { max-height: 65vh; overflow: auto; }
+.ide-root .rb-tl-context { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 3px 8px; font-size: var(--wb-text-sm); border-bottom: 1px solid var(--wb-border); flex: none; }
+.ide-root .rb-tl-lane[data-selected='true'] > .rb-tl-label { fill: var(--wb-accent, #245dc0); font-weight: 700; }
+.ide-root .rb-tl-label { cursor: pointer; }
+
 
 /* The representation switch: the head of the primary region, naming what is drawn in it. */
 .ide-root .rb-sim-representation {
@@ -534,7 +551,7 @@
 .ide-root .rb-tl-tick-label,
 .ide-root .rb-tl-grid,
 .ide-root .rb-tl-edge { pointer-events: none; }
-.ide-root .rb-tl-tick-label { fill: var(--wb-text-3); font: 10px var(--wb-font-mono); }
+.ide-root .rb-tl-tick-label { fill: var(--wb-text-3); font: .625rem var(--wb-font-mono); }
 .ide-root .rb-tl-tick.is-event .rb-tl-tick-label { fill: var(--wb-text); font-weight: 700; }
 .ide-root .rb-tl-tick-hit { fill: transparent; cursor: pointer; }
 .ide-root .rb-tl-tick-hit:hover { fill: var(--wb-hover-bg); }
@@ -543,7 +560,7 @@
 .ide-root .rb-tl-edge { fill: var(--wb-text-2); }
 .ide-root .rb-tl-fail { fill: var(--wb-err); }
 .ide-root .rb-tl-group-rule, .ide-root .rb-tl-lane-rule { stroke: var(--wb-border); stroke-width: 1; }
-.ide-root .rb-tl-label { fill: var(--wb-text); font: 11.5px var(--wb-font-mono); }
+.ide-root .rb-tl-label { fill: var(--wb-text); font: .71875rem var(--wb-font-mono); }
 .ide-root .rb-tl-tag { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
 .ide-root .rb-tl-trace { fill: none; stroke: var(--wb-accent); stroke-width: 1.75; stroke-linejoin: miter; }
 .ide-root .rb-tl-lane.is-clock .rb-tl-trace { stroke: var(--wb-text-2); }
@@ -551,7 +568,8 @@
 .ide-root .rb-tl-trace--observed { stroke: #1f7a4d; }
 .ide-root .rb-tl-cell { fill: transparent; cursor: pointer; }
 .ide-root .rb-tl-cell:hover { fill: var(--wb-hover-bg); }
-.ide-root .rb-tl-cell.is-fail { fill: var(--wb-err-bg); }
+.ide-root .rb-tl-cell.is-fail { fill: transparent; }
+.ide-root .rb-tl-mismatch-background { fill: var(--wb-err-bg); pointer-events: none; }
 .ide-root .rb-tl-expected line { stroke: var(--wb-text-2); stroke-width: 2; stroke-dasharray: 3 2; }
 .ide-root .rb-tl-expected.is-pass line { stroke: var(--wb-ok); }
 .ide-root .rb-tl-expected.is-fail line { stroke: var(--wb-err); }
@@ -593,8 +611,8 @@
    instrument keeps the height, the run line follows it, and the inspector becomes a bottom
    strip. This is the single owner of the stacked template. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) fit-content(30%) minmax(96px, 24%); grid-template-areas: 'cases' 'evidence' 'inspector'; }
-  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(220px, 1fr) minmax(96px, 24%); grid-template-areas: 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) auto; grid-template-areas: 'cases' 'evidence'; }
+  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(220px, 1fr); grid-template-areas: 'evidence'; }
   /* Floors mean the rows can add up to more than the window. The workspace scrolls rather than
      resolving one of them to nothing. */
   .ide-root .rb-sim-lab-frame { overflow-y: auto; }
@@ -619,14 +637,24 @@
 
 /* The investigation frame owns pane composition. Its shared controls stay outside
    both panes, and a short/text-scaled viewport scrolls this working region. */
-.ide-root .rb-sim-lab-frame[data-investigation-open] { overflow: auto; }
-.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); flex: 1 0 22rem; min-height: 22rem; }
+.ide-root .rb-sim-lab-frame[data-investigation-open] { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 22rem; overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-investigation] > .rb-sim-primary { min-height: 0; overflow: auto; }
+.ide-root .rb-sim-lab-grid[data-investigation] .rb-timing { flex-shrink: 0; min-height: min-content; }
+.ide-root .rb-sim-lab-grid[data-investigation] .rb-tl { flex-shrink: 0; min-height: 30rem; }
 .ide-root .rb-sim-lab-grid[data-investigation='timeline'] { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'evidence'; }
+.ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='timeline'] { grid-template-areas: 'cases' 'evidence'; }
+.ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='both'] { grid-template-areas: 'cases inspector' 'evidence inspector'; }
+
 .ide-root .rb-sim-lab-grid[data-investigation='timeline'] > .rb-recorded-circuit { display: none; }
 .ide-root .rb-sim-lab-grid[data-investigation='circuit'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: 'inspector'; }
 .ide-root .rb-sim-lab-grid[data-investigation='circuit'] > .rb-sim-region { display: none; }
 @media (max-width: 1000px) {
   .ide-root .rb-sim-lab-grid[data-investigation='both'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(340px, 55vh) minmax(300px, auto); grid-template-areas: 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='both'] { grid-template-rows: minmax(240px, 45vh) auto minmax(300px, auto); grid-template-areas: 'cases' 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid[data-details-open='true']:not([data-investigation]) { grid-template-columns: minmax(0, 1fr); position: relative; }
+  .ide-root [data-testid='ide-sim-context-inspector'] { position: absolute; z-index: 6; inset: 0 0 0 12%; box-shadow: -4px 0 14px #15243d33; }
+
 }
 .ide-root .rb-sig-move { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 0; opacity: 0; }
 .ide-root .rb-sig-entry:hover .rb-sig-move, .ide-root .rb-sig-entry:focus-within .rb-sig-move { opacity: 1; }
@@ -839,4 +867,23 @@
   .ide-root .rb-sim-toolbar > [data-testid="ide-vcb-check-count"] { order: 8; }
   .ide-root .rb-sim-toolbar > [data-testid="ide-vcb-workspace-bench"] { margin-left: -2px; }
   .ide-root .rb-sim-toolbar > .wb-toolbar-sep { display: none; }
+}
+
+/* Recorded values are actual samples; expected values remain an explicit overlay. */
+.ide-root .rb-tl-observed-label { fill: var(--wb-text); font: .6875rem var(--wb-font-mono); pointer-events: none; }
+.ide-root .rb-tl-context .rb-wave-play-disclosure { position: relative; }
+.ide-root .rb-tl-context .rb-wave-play-disclosure[open] .rb-wave-play { position: absolute; top: 100%; left: 0; z-index: 5; padding: 8px; min-width: 15rem; flex-wrap: wrap; background: var(--wb-surface); border: 1px solid var(--wb-border); }
+.ide-root .rb-recorded-navigation { display: flex; gap: .375rem; align-items: center; flex-wrap: wrap; }
+.ide-root .rb-tl-context .rb-wave-group { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
+.ide-root .rb-tl-context .rb-wave-group--tail { margin-left: auto; }
+
+/* Keep the existing investigation exit available while either instrument scrolls. */
+.ide-root .rb-sim-representation { position: sticky; top: 0; z-index: 4; }
+.ide-root .rb-tl-context .ide-verify-fail-nav-summary { background: var(--wb-surface); color: var(--wb-text); border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); }
+.ide-root .rb-tl-context .ide-verify-fail-nav-summary * { color: inherit; }
+.ide-root .rb-tl:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+
+/* A circuit is required before the experiment instrument has work to show. */
+.ide-root .rb-sim-lab-frame[data-no-circuit-hidden='true'] {
+  display: none;
 }

@@ -288,6 +288,10 @@
   background: transparent;
   box-shadow: none;
 }
+/* Inside a section the content already carries the 12px inset; a stack that added its own left
+   the controls 180px of a 228px section, which is why "Copy · Duplicate · Delete" and
+   "Focus path · Trace net · Pin" each wrapped onto a second row. */
+.ide-root .ide-inspector-content > .rb-insp-section-stack { padding-left: 0; padding-right: 0; border-bottom: 0; }
 .ide-root .rb-insp-eyebrow,
 .ide-root .rb-insp-idle-eyebrow,
 .ide-root .rb-insp-group-label,
@@ -339,8 +343,14 @@
   color: var(--wb-text-3);
   font: var(--wb-text-sm) / 15px var(--wb-font-ui);
 }
-.ide-root .rb-insp-name-control,
 .ide-root .rb-insp-inline-editor { display: block; margin-top: 4px; }
+/* The name control is a field row (label | control) like every other editable fact, and the
+   editor inside it lays its input and buttons on one line. */
+.ide-root .rb-insp-name-control.rb-insp-field { margin-top: 6px; grid-template-columns: 4.5rem minmax(0, 1fr); }
+.ide-root .rb-insp-name-control .ide-design-label-editor { min-width: 0; }
+.ide-root .rb-insp-name-control .ide-design-label-editor-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ide-root .rb-insp-name-control .ide-design-label-editor-row input { flex: 1 1 96px; min-width: 0; }
+.ide-root .rb-insp-name-control .ide-design-label-editor > .ide-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-insp-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
 .ide-root .rb-insp-field > label,
 .ide-root .rb-insp-field > span:first-child { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
@@ -423,6 +433,9 @@
 .ide-root .rb-insp-idle-stat > :last-child,
 .ide-root .rb-insp-io-state-value { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ide-root .rb-insp-idle-stats { display: block; }
+/* An action group stacks its label over its controls. A label-left column was measured and
+   rejected: in a 238px dock it left 108px for the controls, so the five swap chips wrapped onto
+   four rows and the Actions section grew from 226px to 334px. */
 .ide-root .rb-insp-action-group { display: block; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
 .ide-root .rb-insp-action-grid { display: flex; flex-wrap: wrap; gap: 4px; }
 .ide-root .rb-insp-action-grid .ide-button,
@@ -522,13 +535,25 @@
 .ide-root .ide-design-simulation-readout strong { color: var(--wb-text); font-weight: 600; }
 .ide-root .ide-design-console-readout p { margin: 0; }
 
+.ide-root .rb-design-generated-note { margin: 0; padding: 6px 10px; color: #c0d0e3; background: #101e2d; font: var(--wb-text-sm) / 1.5 var(--wb-font-ui); }
+
 /* Probe readout: light chips, not a dark HUD. */
 .ide-root .ide-design-probe-bar { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; max-width: 60%; padding: 0; border: 0; background: transparent; box-shadow: none; pointer-events: none; }
 .ide-root .ide-design-probe-pill { display: inline-flex; align-items: baseline; gap: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); box-shadow: none; }
 .ide-root .ide-design-probe-pill code { color: var(--wb-text); font: inherit; }
 .ide-root .ide-design-probe-value { color: var(--wb-text); font-weight: 700; }
-.ide-root .rb-design-dock-tabs { overflow-x: auto; scrollbar-width: none; }
-.ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 7px; }
+.ide-root .rb-design-dock-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: auto;
+  overflow: visible;
+}
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab {
+  min-width: 0;
+  min-height: 2rem;
+  padding: 4px 7px;
+  white-space: normal;
+}
 
 /* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
 /* ── The schematic toolbar keeps one row ────────────────────────────────────
@@ -630,4 +655,15 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* Split budgets the source header to its own pane. Actions wrap as a group
+   instead of extending underneath the pane's clipped edge. */
+.ide-root [data-design-view='split'] .ide-design-hdl-header {
+  flex-wrap: wrap;
+}
+.ide-root [data-design-view='split'] .ide-design-hdl-actions {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 20rem;
 }

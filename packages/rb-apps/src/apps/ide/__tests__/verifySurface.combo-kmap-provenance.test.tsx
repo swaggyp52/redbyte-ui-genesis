@@ -97,7 +97,7 @@ describe('VerifySurface combo and K-map provenance', () => {
     );
 
     // Open drawer and navigate to the Vectors tab (truth-table + K-map details live there now).
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
 
     // ld1 at input bits '10' (sw0=1, sw1=0) fails: expected 0, observed 1.

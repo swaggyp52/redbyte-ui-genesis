@@ -1,5 +1,5 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { buildGeometryIndex, connectionEndpoints, unionBounds } from '@redbyte/rb-logic-view';
+import { buildGeometryIndex, connectionEndpoints, findPin, unionBounds } from '@redbyte/rb-logic-view';
 import { getDesignChipMetadata } from '../../designChipMetadata';
 import { getDesignChipMetadataForNode } from '../../registerFamilyChipMetadata';
 
@@ -52,5 +52,36 @@ export function buildRecordedInstanceDrawing(circuit: Circuit, scope: string): C
   return {
     nodes: circuit.nodes.filter((node) => visible.has(node.id)).map((node) => positions.has(node.id) ? { ...node, position: positions.get(node.id)! } : node),
     connections: circuit.connections.filter((wire) => { const { from, to } = connectionEndpoints(wire); return visible.has(from.nodeId) && visible.has(to.nodeId); }),
+  };
+}
+
+/** One topology/port resolver for the time instrument, recorded wires and board readback.
+ * Aliases are supplied by the existing presentation projection; an absent sample stays absent.
+ * Ambiguous drivers never borrow a value from another net or module instance. */
+export function createRecordedPortResolver(
+  circuit: Circuit | null | undefined,
+  samples: readonly { signals: Readonly<Record<string, unknown>> }[],
+  alias: (endpoint: string) => string | undefined = endpoint => endpoint,
+) {
+  const geometry = buildRecordedCircuitGeometry(circuit?.nodes ?? []);
+  const keys = new Set(samples.flatMap(sample => Object.keys(sample.signals)));
+  const canonicalPort = (id: string, port: string) => {
+    const entry = geometry.get(id)?.geometry;
+    return entry ? findPin(entry, port)?.id ?? port : port;
+  };
+  const lookup = (id: string, port: string) => {
+    for (const endpoint of [id + '.' + canonicalPort(id, port), id + '.' + port]) {
+      const key = alias(endpoint);
+      if (key && keys.has(key)) return key;
+      if (keys.has(endpoint)) return endpoint;
+    }
+    return null;
+  };
+  return (nodeId: string, port: string): string | null => {
+    const own = lookup(nodeId, port);
+    if (own) return own;
+    const incoming = circuit?.connections.map(connectionEndpoints).filter(connection =>
+      connection.to.nodeId === nodeId && canonicalPort(nodeId, connection.to.port) === canonicalPort(nodeId, port)) ?? [];
+    return incoming.length === 1 ? lookup(incoming[0].from.nodeId, incoming[0].from.port) : null;
   };
 }

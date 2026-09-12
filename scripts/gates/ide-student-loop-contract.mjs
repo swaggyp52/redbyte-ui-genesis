@@ -147,54 +147,59 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     'hardware mode toggle must be visible',
   );
 
-  // 4b. Hardware — after clicking Pre-flight, require proof-only active-mode
-  // evidence. The readiness callout is an alternative only when it names an
-  // unmet prerequisite. The always-present command strip and workflow ribbon
-  // cannot prove transition.
-  const proofModeButton = page.locator('[data-testid="ide-hw-mode-btn-proof"]').first();
-  await proofModeButton.click();
+  // 4b. Hardware — after clicking Board Check, require tool-specific active-mode
+  // evidence: the tool selected, and its dock (a step to perform, or the offer to
+  // generate vectors) or the stage naming Board Check. The readiness callout is
+  // an alternative only when it names an unmet prerequisite. The always-present
+  // command strip and workflow ribbon cannot prove transition. (Pre-flight, the
+  // fourth mode this step used to enter, restated Package's trust state on the
+  // Board and is retired.)
+  const bringupModeButton = page.locator('[data-testid="ide-hw-mode-btn-bringup"]').first();
+  await bringupModeButton.click();
   await page.waitForFunction(() => {
     const isVisibleElement = (element) => {
       if (!(element instanceof HTMLElement)) return false;
       const style = window.getComputedStyle(element);
       return element.getClientRects().length > 0 && style.visibility !== 'hidden';
     };
-    const proofButton = document.querySelector('[data-testid="ide-hw-mode-btn-proof"]');
-    const proofVerdict = document.querySelector('[data-testid="ide-hw-proof-verdict"]');
-    const proofDock = document.querySelector('[data-testid="ide-hw-proof-dock"]');
-    const proofStage = document.querySelector('[data-testid="ide-hw-board-chrome-stage"]');
+    const bringupButton = document.querySelector('[data-testid="ide-hw-mode-btn-bringup"]');
+    const bringupDock = document.querySelector('[data-testid="ide-hw-bringup-dock"]');
+    const bringupStep = document.querySelector(
+      '[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]',
+    );
+    const bringupStage = document.querySelector('[data-testid="ide-hw-board-chrome-stage"]');
     const readinessCallout = document.querySelector('[data-testid="ide-hardware-readiness-callout"]');
     const readinessText = readinessCallout?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-    const proofSpecificState =
-      proofButton?.getAttribute('aria-selected') === 'true' &&
-      (isVisibleElement(proofVerdict) ||
-        isVisibleElement(proofDock) ||
-        (isVisibleElement(proofStage) && /Pre-flight/i.test(proofStage.textContent ?? '')));
+    const bringupSpecificState =
+      bringupButton?.getAttribute('aria-selected') === 'true' &&
+      (isVisibleElement(bringupDock) ||
+        isVisibleElement(bringupStep) ||
+        (isVisibleElement(bringupStage) && /Board Check/i.test(bringupStage.textContent ?? '')));
     const explicitPrerequisite =
       isVisibleElement(readinessCallout) &&
       !/^E0 handoff ready\b/i.test(readinessText) &&
       /blocked|cannot|different|incomplete|locked|missing|must|needs?|not run|required|repair|re-?run|stale/i.test(
         readinessText,
       );
-    return proofButton?.getAttribute('aria-selected') === 'true' &&
-      (proofSpecificState || explicitPrerequisite);
+    return bringupButton?.getAttribute('aria-selected') === 'true' &&
+      (bringupSpecificState || explicitPrerequisite);
   }, undefined, { timeout: 5000 });
 
-  const proofModeSelected = (await proofModeButton.getAttribute('aria-selected')) === 'true';
-  const hasProofVerdict = await page
-    .locator('[data-testid="ide-hw-proof-verdict"]')
+  const bringupModeSelected = (await bringupModeButton.getAttribute('aria-selected')) === 'true';
+  const hasBringupDock = await page
+    .locator('[data-testid="ide-hw-bringup-dock"]')
     .first()
     .isVisible()
     .catch(() => false);
-  const hasProofDock = await page
-    .locator('[data-testid="ide-hw-proof-dock"]')
+  const hasBringupStep = await page
+    .locator('[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]')
     .first()
     .isVisible()
     .catch(() => false);
-  const proofStage = page.locator('[data-testid="ide-hw-board-chrome-stage"]').first();
-  const hasProofStage =
-    (await proofStage.isVisible().catch(() => false)) &&
-    /Pre-flight/i.test((await proofStage.textContent().catch(() => '')) ?? '');
+  const bringupStage = page.locator('[data-testid="ide-hw-board-chrome-stage"]').first();
+  const hasBringupStage =
+    (await bringupStage.isVisible().catch(() => false)) &&
+    /Board Check/i.test((await bringupStage.textContent().catch(() => '')) ?? '');
   const readinessCallout = page.locator('[data-testid="ide-hardware-readiness-callout"]').first();
   const readinessCalloutVisible = await readinessCallout.isVisible().catch(() => false);
   const readinessText = ((await readinessCallout.textContent().catch(() => '')) ?? '')
@@ -207,10 +212,10 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
       readinessText,
     );
   assert(
-    proofModeSelected &&
-      (hasProofVerdict || hasProofDock || hasProofStage || hasExplicitPrerequisite),
-    'Pre-flight must become active with proof-specific workspace evidence, or show an explicit ' +
-      `prerequisite blocker; selected=${proofModeSelected}, verdict=${hasProofVerdict}, ` +
-      `dock=${hasProofDock}, stage=${hasProofStage}, readiness="${readinessText}"`,
+    bringupModeSelected &&
+      (hasBringupDock || hasBringupStep || hasBringupStage || hasExplicitPrerequisite),
+    'Board Check must become active with tool-specific workspace evidence, or show an explicit ' +
+      `prerequisite blocker; selected=${bringupModeSelected}, dock=${hasBringupDock}, ` +
+      `step=${hasBringupStep}, stage=${hasBringupStage}, readiness="${readinessText}"`,
   );
 });

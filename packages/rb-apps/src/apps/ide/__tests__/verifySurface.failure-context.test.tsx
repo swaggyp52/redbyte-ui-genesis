@@ -87,7 +87,7 @@ describe('VerifySurface failure context', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
 
     expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
     expect(getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
@@ -133,7 +133,7 @@ describe('VerifySurface failure context', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
     fireEvent.click(getByTestId('ide-verify-right-fix-action'));
     expect(onFixPath).not.toHaveBeenCalled();

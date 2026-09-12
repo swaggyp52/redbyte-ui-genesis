@@ -322,7 +322,7 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t0-t6 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t1');
@@ -367,7 +367,7 @@ describe('VerifySurface waveform lane priority', () => {
     );
 
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     fireEvent.click(getByTestId('ide-verify-mismatch-row-sum_8'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));

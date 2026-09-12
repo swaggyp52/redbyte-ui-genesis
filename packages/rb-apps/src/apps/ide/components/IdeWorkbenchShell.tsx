@@ -94,14 +94,20 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     });
     observer.observe(shell);
     setLayoutMode(detectLayoutMode(shell.clientWidth));
-    return () => observer.disconnect();
+    const rootStyleObserver = new MutationObserver(() => setLayoutMode(detectLayoutMode(shell.clientWidth)));
+    rootStyleObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    return () => { observer.disconnect(); rootStyleObserver.disconnect(); };
   }, []);
 
   const leftDockAllowed = Boolean(leftDock) && leftDockMode !== 'hidden';
   const rightDockAllowed = Boolean(rightDock) && !hideRightDock && rightDockMode !== 'hidden';
-  const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible;
-  const showRightDock =
-    rightDockAllowed && surfacePreferences.docks.right.visible;
+  const splitDesign = mode === 'design' && preferences.design.view === 'split';
+  const rightRequested = rightDockAllowed && surfacePreferences.docks.right.visible &&
+    (!splitDesign || surfacePreferences.docks.right.explicitlyToggled === true);
+  const showRightDock = rightRequested;
+  const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible &&
+    (!(splitDesign || (mode === 'verify' && layoutMode === 'compact')) || surfacePreferences.docks.left.explicitlyToggled === true) &&
+    !(layoutMode === 'compact' && showRightDock);
   // A blocking diagnostic earns the full panel. Anything advisory earns a strip the student
   // can open. `expanded` mode is an explicit request from the surface and is honoured.
   const consoleExpanded = surfacePreferences.docks.bottom.expanded;
@@ -146,6 +152,9 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   }, [mode]);
 
   const setDockVisible = (dockId: WorkspaceDockId, visible: boolean) => {
+    if (visible && dockId !== 'bottom' && (layoutMode === 'compact' || splitDesign)) {
+      workspacePreferencesStore.setDock(mode, dockId === 'left' ? 'right' : 'left', { visible: false });
+    }
     workspacePreferencesStore.setDock(mode, dockId, { visible });
   };
 
@@ -371,12 +380,14 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
 function detectLayoutMode(width?: number): WorkbenchLayoutMode {
   const effectiveWidth =
-    typeof width === 'number' && Number.isFinite(width)
+    typeof width === 'number' && Number.isFinite(width) && width > 0
       ? width
       : typeof window !== 'undefined'
         ? window.innerWidth
         : 1366;
-  if (effectiveWidth >= 1600) return 'wide';
-  if (effectiveWidth >= 1180) return 'standard';
+  const textScale = typeof document !== 'undefined'
+    ? (Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16 : 1;
+  if (effectiveWidth / textScale >= 1600) return 'wide';
+  if (effectiveWidth / textScale >= 1280) return 'standard';
   return 'compact';
 }

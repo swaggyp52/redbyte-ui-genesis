@@ -11,6 +11,26 @@ role: IDE shell layout contract
 Status: Draft v1 (Phase 1 lock)
 Scope: `packages/rb-apps/src/apps/IdeApp.tsx` default `/` IDE surface
 
+
+## Current P2.6B panel and Board Check composition (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+An empty Simulate workspace presents its start actions without an empty instrument or premature mapping warning. External VCD evidence remains an explicit independent path.
+
+Review refinement: secondary Reproduce uses the same control height as Run, and the circuit disclosure close control remains sticky and reachable. Keyboard focus is visible within the Time instrument.
+
+Workspace navigation creates no object tabs. At constrained effective width (including larger
+root text), only one auxiliary side panel is shown; visible panel recovery and per-workspace
+preferences remain. Split Design starts with its circuit/source pair. Run-specific status
+stays in Simulate; the global status bar carries save/problems context.
+
+Board assignments retain their board/mapping grammar. Board Check is one light main frame:
+board first, actual step controls and stimulus/expected/recorded table underneath, visible
+Back to assignments. It reads the retained recording at each selected step and never uses
+the exploratory I/O bus as evidence. The recorded Board view retains saved mappings after
+current edits and names that context; current assignments still withhold stale projections.
+
 ## Product Identity
 
 RedByte IDE is a deterministic Basys3 FPGA workflow surface:

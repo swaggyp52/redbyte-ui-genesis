@@ -1,3 +1,4 @@
+import { recordingStorageReplacer, recordingStorageReviver } from './recordingStorage';
 import type { RBProject } from '../../export/projectFormat';
 import { encodeRBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
@@ -37,7 +38,8 @@ export type ProjectRepositoryOperation =
   | 'save'
   | 'autosave'
   | 'checkpoint'
-  | 'recover';
+  | 'recover'
+  | 'remove';
 
 export type ProjectRepositoryErrorCode =
   | 'storage-unavailable'
@@ -106,6 +108,13 @@ export interface ProjectRepositoryListValue {
   storageLocation: typeof PROJECT_REPOSITORY_STORAGE_LOCATION;
 }
 
+export interface ProjectRepositoryRemoveValue {
+  version: typeof PROJECT_REPOSITORY_VERSION;
+  operation: 'remove';
+  projectId: string;
+  storageLocation: typeof PROJECT_REPOSITORY_STORAGE_LOCATION;
+}
+
 /**
  * A checkpoint is a pointer to the exact canonical snapshot written before a
  * project-identity replacement. It is not a history stack. If another write
@@ -168,6 +177,12 @@ export interface ProjectRepository {
   recover(
     checkpoint: ProjectRecoveryCheckpoint
   ): ProjectRepositoryResult<ProjectRepositoryOpenValue>;
+  /**
+   * Delete one saved project from this browser: its snapshot and its index entry. Nothing else
+   * moves - other projects keep their bytes, and a recovery checkpoint, which is a separate
+   * safety net, is left where it is.
+   */
+  remove(projectId: string): ProjectRepositoryResult<ProjectRepositoryRemoveValue>;
 }
 
 interface ParsedProjectIndex {
@@ -367,7 +382,7 @@ export function createProjectRepository(
         activeScenarioId: input.activeScenarioId,
         runEvidence: input.runEvidence ? structuredClone(input.runEvidence) : undefined,
       };
-      snapshotJson = JSON.stringify(snapshot);
+      snapshotJson = JSON.stringify(snapshot, recordingStorageReplacer);
     } catch {
       const error = createError(
         operation,
@@ -500,6 +515,60 @@ export function createProjectRepository(
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    remove(projectId) {
+      const operation = 'remove' as const;
+      const normalizedId = projectId.trim();
+      if (!normalizedId) {
+        const error = createError(operation, 'invalid-project-id', 'A project id is required to delete a saved project.', true);
+        registerFailure(error);
+        return { ok: false, error };
+      }
+      const storageResult = resolveStorage(operation, normalizedId);
+      if (!storageResult.ok) {
+        registerFailure(storageResult.error);
+        return storageResult;
+      }
+      const storage = storageResult.value;
+      const indexResult = readIndex(storage, operation);
+      const entries = indexResult.ok ? indexResult.value.entries : [];
+      const storageKey = buildProjectStorageKey(normalizedId);
+      let previousSnapshot: string | null;
+      let previousIndex: string | null;
+      try {
+        previousSnapshot = storage.getItem(storageKey);
+        previousIndex = storage.getItem(IDE_PROJECT_INDEX_KEY);
+      } catch (error) {
+        const repositoryError = classifyStorageError(error, operation, normalizedId);
+        registerFailure(repositoryError);
+        return { ok: false, error: repositoryError };
+      }
+      const listed = entries.some((entry) => entry.projectId === normalizedId);
+      if (previousSnapshot === null && !listed) {
+        const error = createError(operation, 'not-found', `No saved project "${normalizedId}" exists in this browser.`, true, normalizedId);
+        registerFailure(error);
+        return { ok: false, error };
+      }
+      const nextIndex = entries.filter((entry) => entry.projectId !== normalizedId);
+      try {
+        storage.removeItem(storageKey);
+        storage.setItem(IDE_PROJECT_INDEX_KEY, JSON.stringify(nextIndex));
+      } catch (error) {
+        rollbackWrite(storage, storageKey, previousSnapshot, previousIndex);
+        const repositoryError = classifyStorageError(error, operation, normalizedId);
+        registerFailure(repositoryError);
+        return { ok: false, error: repositoryError };
+      }
+      setState({ lastError: null });
+      return {
+        ok: true,
+        value: {
+          version: PROJECT_REPOSITORY_VERSION,
+          operation,
+          projectId: normalizedId,
+          storageLocation: PROJECT_REPOSITORY_STORAGE_LOCATION,
+        },
+      };
     },
     list() {
       const storageResult = resolveStorage('list');
@@ -722,7 +791,7 @@ function readSnapshot(
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw, recordingStorageReviver);
   } catch {
     return {
       ok: false,

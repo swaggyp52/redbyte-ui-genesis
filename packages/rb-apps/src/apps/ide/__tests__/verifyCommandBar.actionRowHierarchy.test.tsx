@@ -19,59 +19,37 @@ afterEach(() => {
 });
 
 describe('VerifyCommandBar compact run-loop hierarchy', () => {
-  it('renders only the mode selector, one Run action, and one short explainer', () => {
-    const view = render(<VerifyCommandBar {...BASE} />);
-    const command = view.getByTestId('ide-verify-command-bar');
-    const buttons = within(command).getAllByRole('button');
-
-    expect(buttons).toHaveLength(3);
-    expect(within(view.getByTestId('ide-vcb-run-authority')).getAllByRole('button')).toHaveLength(1);
-    expect(view.getAllByTestId('ide-vcb-run')).toHaveLength(1);
-    expect(view.queryByTestId('ide-vcb-generate')).toBeNull();
-    expect(view.queryByTestId('ide-vcb-session-summary')).toBeNull();
-    expect(view.queryByTestId('ide-vcb-support-actions')).toBeNull();
-    expect(view.queryByTestId('ide-vcb-utilities-panel')).toBeNull();
-    expect(command.querySelector('details')).toBeNull();
+  it('offers one Run without a mode choice and states the optional check count', () => {
+    const view = render(<VerifyCommandBar {...BASE} configuredCheckCount={0} />);
+    expect(within(view.getByTestId('ide-verify-command-bar')).getAllByRole('button')).toHaveLength(1);
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('0 optional checks');
+    expect(view.queryByTestId('ide-vcb-observe-only')).toBeNull();
+    expect(view.queryByTestId('ide-vcb-use-saved-checks')).toBeNull();
   });
 
-  it('orders the selector before Run and the explainer after Run', () => {
-    const view = render(<VerifyCommandBar {...BASE} />);
-    const mode = view.getByTestId('ide-vcb-run-intent');
+  it('places scenario context before Run and its execution explanation after Run', () => {
+    const view = render(<VerifyCommandBar {...BASE} experimentScenarioName="Carry propagation" />);
+    const context = view.getByText('Carry propagation');
     const run = view.getByTestId('ide-vcb-run-authority');
-    const explainer = view.getByTestId('ide-vcb-mode-explainer');
-
-    expect(mode.compareDocumentPosition(run) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(run.compareDocumentPosition(explainer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(context.compareDocumentPosition(run) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(run.compareDocumentPosition(view.getByTestId('ide-vcb-mode-explainer')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps both mode choices visible and disables Compare until expected values exist', () => {
-    const view = render(<VerifyCommandBar {...BASE} compareAvailable={false} />);
-
-    expect(view.getByTestId('ide-vcb-observe-only').textContent).toBe('Observe');
-    expect(view.getByTestId('ide-vcb-use-saved-checks').textContent).toBe('Compare');
-    expect((view.getByTestId('ide-vcb-use-saved-checks') as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('preserves Observe, Compare, and Run callback behavior', () => {
-    const onSetCompare = vi.fn();
-    const onSetObserve = vi.fn();
+  it('keeps Run available when no optional checks exist', () => {
     const onRun = vi.fn();
-    const view = render(
-      <VerifyCommandBar
-        {...BASE}
-        compareAvailable={true}
-        onSetObserve={onSetObserve}
-        onSetCompare={onSetCompare}
-        onRun={onRun}
-      />
-    );
-
-    fireEvent.click(view.getByTestId('ide-vcb-observe-only'));
-    fireEvent.click(view.getByTestId('ide-vcb-use-saved-checks'));
+    const view = render(<VerifyCommandBar {...BASE} configuredCheckCount={0} onRun={onRun} />);
     fireEvent.click(view.getByTestId('ide-vcb-run'));
-    expect(onSetObserve).toHaveBeenCalledOnce();
-    expect(onSetCompare).toHaveBeenCalledOnce();
     expect(onRun).toHaveBeenCalledOnce();
+    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain('without a pass/fail verdict');
+  });
+
+  it('dispatches current inputs and reproduction through distinct commands', () => {
+    const onRun = vi.fn(); const onReproduce = vi.fn();
+    const view = render(<VerifyCommandBar {...BASE} onRun={onRun} onReproduce={onReproduce} />);
+    fireEvent.click(view.getByTestId('ide-vcb-reproduce'));
+    expect(onReproduce).toHaveBeenCalledOnce(); expect(onRun).not.toHaveBeenCalled();
+    fireEvent.click(view.getByTestId('ide-vcb-run'));
+    expect(onRun).toHaveBeenCalledOnce(); expect(onReproduce).toHaveBeenCalledOnce();
   });
 
   it('restores keyboard focus to the updated Run command after completion', async () => {
@@ -124,7 +102,9 @@ describe('VerifyCommandBar compact run-loop hierarchy', () => {
         runDisabled={true}
       />
     );
-    const observe = view.getByTestId('ide-vcb-observe-only');
+    const observe = document.createElement('button');
+    observe.textContent = 'Scenario navigation';
+    document.body.appendChild(observe);
     observe.focus();
     expect(document.activeElement).toBe(observe);
 
@@ -142,6 +122,7 @@ describe('VerifyCommandBar compact run-loop hierarchy', () => {
     );
 
     expect(document.activeElement).toBe(observe);
+    observe.remove();
   });
 
   it('does not reintroduce legacy status, generation, or repair controls', () => {

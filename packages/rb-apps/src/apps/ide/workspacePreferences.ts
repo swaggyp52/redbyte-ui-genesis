@@ -124,6 +124,8 @@ export type DesignCanvasDensity = 'comfortable' | 'compact';
 
 export interface WorkspaceDockPreferences {
   readonly visible: boolean;
+  /** A deliberate panel toggle, as distinct from the default layout. */
+  readonly explicitlyToggled?: boolean;
   readonly sizePx: number;
   /** Bottom dock only: whether the panel is open rather than showing its strip. */
   readonly expanded: boolean;
@@ -388,6 +390,7 @@ export class WorkspacePreferencesStore {
     const nextDock = normalizeDockPreferences(
       {
         visible: update.visible ?? currentDock.visible,
+        explicitlyToggled: update.visible !== undefined || currentDock.explicitlyToggled === true,
         sizePx: update.sizePx ?? currentDock.sizePx,
         expanded: update.expanded ?? currentDock.expanded,
       },
@@ -550,7 +553,8 @@ function normalizeDockPreferences(
     ? clampDockSize(dockId, record.sizePx)
     : fallback.sizePx;
   const expanded = typeof record.expanded === 'boolean' ? record.expanded : fallback.expanded;
-  return Object.freeze({ visible, sizePx, expanded });
+  const explicitlyToggled = record.explicitlyToggled === true;
+  return Object.freeze({ visible, sizePx, expanded, ...(explicitlyToggled ? { explicitlyToggled: true } : {}) });
 }
 
 function normalizeToolbarCommandIds(value: unknown): readonly IdeCommandId[] {

@@ -19,13 +19,14 @@ interface Props {
   explanation: SignalExplanation | null;
   resolveSignal: (nodeId: string, port: string) => string | null;
   onSelectSignal: (signal: string) => void;
+  onSelectTick?: (tick: number) => void;
   onClose: () => void;
   onEdit?: () => void;
 }
 
 /** Pure recorded presentation: the same symbols and router as Design, with no engine or
  * authoring store. Its camera is local to this inspection, and every value is a recorded sample. */
-export function RecordedCircuitInspector({ circuit, run, tick, signal, explanation, resolveSignal, onSelectSignal, onClose, onEdit }: Props) {
+export function RecordedCircuitInspector({ circuit, run, tick, signal, explanation, resolveSignal, onSelectSignal, onSelectTick, onClose, onEdit }: Props) {
   const [scope, setScope] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const sample = run.waveform.find((entry) => entry.tick === tick);
@@ -74,14 +75,16 @@ export function RecordedCircuitInspector({ circuit, run, tick, signal, explanati
   const height = bounds.maxY - bounds.minY + 96;
   return (
     <aside className="rb-recorded-circuit rb-sim-inspector" data-testid="ide-recorded-circuit" aria-label="Recorded circuit investigation">
+      <div className="rb-recorded-circuit-heading">
       <header>
         <strong>Recorded circuit</strong>
         <button type="button" onClick={onClose} aria-label="Close circuit investigation">Close</button>
       </header>
       <div className="rb-recorded-circuit-context" data-testid="ide-recorded-circuit-context">
         <strong>{run.scenarioName}</strong>
-        <span>Run {run.reportHash.slice(0, 8)} · {tick === null ? 'select a sample' : `t${tick}`} · {signal ?? 'select a signal'}</span>
-        <span>{sample && signal ? `${signal} = ${sample.signals[signal] ?? 'Not recorded'}` : 'No recorded sample selected'}</span>
+        <span>Run {run.sequence ?? run.runId ?? run.reportHash.slice(0, 8)} · {tick === null ? 'select a sample' : `t${tick}`} · {signal ?? 'select a signal'}</span>
+        <span>{sample && signal ? `${signal} = ${sample.signals[signal] ?? 'unrecorded'}` : 'unrecorded'}</span>
+      </div>
       </div>
       {!circuit ? (
         <p className="rb-recorded-circuit-unavailable" role="status">This recording has no matching circuit snapshot. Its waveform remains available. Rerun the current design to investigate it with its circuit.</p>
@@ -96,10 +99,12 @@ export function RecordedCircuitInspector({ circuit, run, tick, signal, explanati
         </div>
         <div className="rb-recorded-circuit-sheet" tabIndex={0} aria-label="Recorded schematic; scroll to inspect enlarged circuit">
           <svg className="rb-schematic" data-renderer="schematic" data-testid="ide-recorded-circuit-svg" role="img" aria-label={`Circuit recorded for ${run.scenarioName}`} viewBox={`${bounds.minX - 48} ${bounds.minY - 48} ${width} ${height}`} style={{ width: `${scale * 100}%`, height: `${scale * 100}%`, minHeight: 230 }}>
-            {nets.flatMap((net) => net.wires.map((wire) => <SchematicWireView key={wire.wireId} wire={wire} camera={camera}
+            {nets.flatMap((net) => net.wires.map((wire) => <g key={wire.wireId} data-recorded-wire-value={values.get(`${wire.fromNodeId}.${wire.fromPort}`) ?? 'unrecorded'}>
+              <title>{resolveSignal(wire.fromNodeId, wire.fromPort) ?? 'Unmapped wire'} = {values.get(`${wire.fromNodeId}.${wire.fromPort}`) ?? 'unrecorded'}</title>
+              <SchematicWireView wire={wire} camera={camera}
               isSelected={resolveSignal(wire.fromNodeId, wire.fromPort) === signal || resolveSignal(wire.toNodeId, wire.toPort) === signal}
               signal={values.get(`${wire.fromNodeId}.${wire.fromPort}`)}
-              onSelect={() => selectPort(wire.fromNodeId, wire.fromPort)} />))}
+              onSelect={() => selectPort(wire.fromNodeId, wire.fromPort)} /></g>))}
             {Array.from(geometry.values()).map((entry) => <SchematicNodeView key={entry.node.id} node={entry.node} geometry={entry.geometry} camera={camera} lod="edit"
               isSelected={selectedNodes.has(entry.node.id)} isTraced={explanation?.sourceNodeIds.includes(entry.node.id)}
               signals={values} onPortClick={selectPort}
@@ -112,7 +117,16 @@ export function RecordedCircuitInspector({ circuit, run, tick, signal, explanati
             {Array.from(new Set(run.waveform.flatMap((entry) => Object.keys(entry.signals)))).map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
-        <WhyInspectorPanel explanation={explanation} />
+        {explanation && <section className="rb-causal-walk" data-testid="ide-causal-walk" aria-label="Walk the recorded cause">
+          <strong>Trace upstream</strong>
+          {(explanation.causalLinks ?? []).map((link, index) => <button key={link.kind + ':' + link.signal + ':' + index}
+            type="button" data-causal-kind={link.kind} data-causal-signal={link.signal} data-causal-tick={link.tick}
+            onClick={() => { setScope(null); onSelectSignal(link.signal); onSelectTick?.(link.tick); }}>
+            {link.label}
+          </button>)}
+          <p>{explanation.causalStop}</p>
+        </section>}
+        <details><summary>Explanation</summary><WhyInspectorPanel explanation={explanation} /></details>
       </>}
       {onEdit && <button className="rb-recorded-circuit-edit" type="button" onClick={onEdit}>Edit current design</button>}
     </aside>

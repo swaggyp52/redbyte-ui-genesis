@@ -2392,13 +2392,23 @@
 
 .ide-modal {
   width: min(560px, 100%);
+  /* A dialog is bounded by the window it opens in, and its body is what scrolls: measured at
+     1280x720 the starter picker was 4392px tall inside a backdrop that clips at 720px with no
+     scrollable ancestor, so not one of its Load buttons could be reached. */
+  max-height: calc(100vh - 2 * var(--ide-space-4));
   border: 1px solid rgba(138, 170, 200, 0.48);
   border-radius: var(--ide-radius-m);
   background: linear-gradient(180deg, rgba(20, 34, 50, 0.98), rgba(12, 20, 30, 0.98));
   box-shadow: var(--rb-shadow-2);
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--ide-space-3);
   padding: var(--ide-space-4);
+}
+
+/* The starter picker is a library, not a confirmation: give its cards room for columns. */
+.ide-modal:has(> .ide-modal-body > .ide-project-starter-picker) {
+  width: min(1040px, 100%);
 }
 
 .ide-modal-title {
@@ -2409,6 +2419,8 @@
 
 .ide-modal-body {
   color: var(--ide-text-muted);
+  min-height: 0;
+  overflow: auto;
 }
 
 .ide-modal-actions {
@@ -6345,68 +6357,8 @@ details[open] summary .details-arrow {
 .is-fail .ide-hw-assert-badge { color: #fca5a5; }
 .is-nodata .ide-hw-assert-badge { color: var(--ide-text-muted); }
 
-/* 28C: Confidence checklist */
-.ide-hw-confidence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--ide-space-1) 0;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  margin-bottom: var(--ide-space-2);
-}
-.ide-hw-confidence-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--rb-text-meta);
-}
-.ide-hw-confidence-icon {
-  font-size: var(--rb-text-meta);
-  width: 14px;
-  flex-shrink: 0;
-}
-.ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(61,186,110,0.9); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(255,255,255,0.2); }
-.ide-hw-confidence-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.ide-hw-confidence-row.is-pass .ide-hw-confidence-label { color: var(--ide-text-soft); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-label { color: rgba(255,255,255,0.3); }
-
-/* 28D: Proof certificate slab */
-.ide-hw-cert-slab {
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(56,189,248,0.15);
-  border-radius: 4px;
-  padding: var(--ide-space-1) var(--ide-space-2);
-  margin-bottom: var(--ide-space-2);
-  font-family: var(--rb-font-mono, monospace);
-}
-.ide-hw-cert-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ide-space-2);
-  padding: 2px 0;
-  font-size: var(--rb-text-micro);
-}
-.ide-hw-cert-key {
-  flex-shrink: 0;
-  width: 48px;
-  color: rgba(56,189,248,0.55);
-  font-size: var(--rb-text-micro);
-  letter-spacing: 0.08em;
-  font-weight: 700;
-}
-.ide-hw-cert-val {
-  color: rgba(200,230,255,0.75);
-  font-size: var(--rb-text-micro);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* 28C / 28D: the Pre-flight confidence checklist and proof certificate slab are retired with
+   Pre-flight (P2.6); no element renders .ide-hw-confidence-* or .ide-hw-cert-* now. */
 
 /* ════════════════════════════════════════════════════════════════
    Phase 29 — Deterministic proof engine
@@ -6417,49 +6369,8 @@ details[open] summary .details-arrow {
   position: relative;
 }
 
-/* 29B: Proof verdict overlay */
-.ide-hw-proof-verdict {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  pointer-events: none;
-  animation: hwVerdictIn 280ms ease forwards;
-}
-@keyframes hwVerdictIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.ide-hw-proof-verdict-label {
-  font-family: var(--rb-font-mono, monospace);
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  line-height: 1;
-  text-shadow: 0 0 40px currentColor;
-}
-.ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(61, 186, 110, 0.95); }
-.ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: #fca5a5; }
-.ide-hw-proof-verdict.is-pending .ide-hw-proof-verdict-label { color: rgba(180, 200, 220, 0.4); }
-.ide-hw-proof-verdict-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: rgba(0, 0, 0, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-family: var(--rb-font-mono, monospace);
-}
-.ide-hw-proof-verdict-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: var(--rb-text-micro);
-}
+/* 29B: the Pre-flight proof verdict overlay is retired with Pre-flight itself (P2.6); Package
+   owns the trust state it restated. */
 
 /* 29C: Tick badge in mode toggle bar */
 .ide-hw-tick-badge {
@@ -6519,24 +6430,7 @@ details[open] summary .details-arrow {
   font-family: var(--rb-font-mono, monospace);
 }
 
-/* 30C: Proof HUD repositioned (override Phase 29 centering) */
-.ide-hw-proof-verdict {
-  align-items: flex-end;
-  justify-content: flex-start;
-  padding: 8px;
-  gap: 6px;
-}
-.ide-hw-proof-verdict-label {
-  font-size: var(--rb-text-meta);
-  letter-spacing: 0.1em;
-}
-.ide-hw-proof-verdict-meta {
-  padding: 6px 10px;
-}
-.ide-hw-proof-verdict-row {
-  font-size: var(--rb-text-micro);
-  gap: 8px;
-}
+/* 30C: the Proof HUD override went with the Pre-flight verdict (see 29B). */
 
 /* ════════════════════════════════════════════════════════════════
    Phase 31 — Export: build system UI
@@ -7589,14 +7483,6 @@ details[open] summary .details-arrow {
   padding-top: var(--ide-space-1);
 }
 
-/* Dock header: reduce weight, it's navigation not a title */
-.ide-workbench-placeholder-header h3 {
-  font-size: var(--rb-text-meta);
-  font-weight: 500;
-  color: rgba(140, 175, 210, 0.6);
-  text-transform: none;
-  letter-spacing: 0;
-}
 
 /* Hero status message: clear, not cramped */
 
@@ -11014,41 +10900,9 @@ details[open].ide-export-evidence-details > summary::before {
   padding: 8px 14px; display: flex; align-items: center; gap: 8px;
 }
 
-/* Proof verdict overlay */
-.ide-hw-proof-verdict {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 4px; padding: var(--ide-space-3);
-  border-radius: var(--ide-radius, 6px); text-align: center;
-}
-.ide-hw-proof-verdict.is-valid {
-  background: rgba(8, 28, 22, 0.97);
-  border: 1px solid rgba(46, 196, 182, 0.38);
-  box-shadow: 0 0 32px rgba(46, 196, 182, 0.08);
-}
-.ide-hw-proof-verdict.is-invalid {
-  background: rgba(20, 8, 8, 0.97);
-  border: 1px solid rgba(255, 80, 80, 0.38);
-  box-shadow: 0 0 32px rgba(255, 80, 80, 0.08);
-}
-.ide-hw-proof-verdict.is-pending { border: 1px solid rgba(30, 60, 110, 0.4); }
-.ide-hw-proof-verdict-label {
-  font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em;
-}
-.ide-hw-proof-verdict.is-valid .ide-hw-proof-verdict-label { color: rgba(46,196,182,0.95); }
-.ide-hw-proof-verdict.is-invalid .ide-hw-proof-verdict-label { color: rgba(255,100,100,0.95); }
-.ide-hw-proof-verdict-meta { font-size: var(--rb-text-meta); color: rgba(120,160,200,0.6); }
+/* The Proof verdict overlay's third set of rules is retired with Pre-flight (see 29B). */
 
-/* Cert slab */
-.ide-hw-cert-slab {
-  background: rgba(3, 8, 18, 0.97);
-  border: 1px solid rgba(30, 60, 110, 0.4);
-  border-radius: var(--ide-radius, 6px);
-  padding: var(--ide-space-2) var(--ide-space-3);
-  font-family: var(--rb-font-mono);
-}
-.ide-hw-cert-row { display: flex; gap: 10px; padding: 3px 0; font-size: var(--rb-text-meta); }
-.ide-hw-cert-key { color: rgba(80, 120, 160, 0.6); white-space: nowrap; }
-.ide-hw-cert-val { color: rgba(160, 200, 240, 0.85); word-break: break-all; }
+/* Cert slab: retired with Pre-flight (see 28D). */
 
 /* Assert formal rows */
 .ide-hw-assert-formal {
@@ -11084,55 +10938,51 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-hw-event-label { color: rgba(160, 195, 230, 0.8); }
 .ide-hw-event-change { color: rgba(244, 185, 66, 0.85); margin-left: auto; }
 
-/* Bringup step */
+/* Bringup step - drawn on the light dock, in the workbench's own text colours. The dark strip,
+   the pale uppercase counter and the blue-on-blue tick chip were the dark shell's; measured on
+   the light dock they read 4.3:1, 1:1 and 2.3:1. */
 .ide-hw-step-header {
   display: flex; align-items: center; gap: 8px;
   padding: 8px var(--ide-space-3);
-  background: rgba(3, 8, 19, 0.98);
-  border-bottom: 1px solid rgba(18, 44, 80, 0.45);
+  background: var(--wb-surface-2);
+  border-bottom: 1px solid var(--wb-border);
 }
 .ide-hw-step-counter {
-  font-size: var(--rb-text-micro); font-weight: 700; color: rgba(80, 120, 160, 0.6);
-  letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--rb-font-mono);
+  font-size: var(--rb-text-meta); font-weight: 600; color: var(--wb-text-2);
+  letter-spacing: 0; text-transform: none; font-family: var(--rb-font-ui);
 }
 .ide-hw-step-tick {
   font-size: var(--rb-text-meta); font-family: var(--rb-font-mono);
-  color: rgba(56, 189, 248, 0.8); background: rgba(56, 189, 248, 0.08);
+  color: var(--wb-text); background: var(--wb-surface); border: 1px solid var(--wb-border-strong);
   padding: 1px 6px; border-radius: 3px; margin-left: auto;
 }
 .ide-hw-step-instruction {
   padding: 10px var(--ide-space-3);
-  font-size: var(--rb-text-body); color: rgba(180, 210, 240, 0.85); line-height: 1.5;
+  font-size: var(--rb-text-body); color: var(--wb-text); line-height: 1.5;
 }
 .ide-hw-step-nav {
   display: flex; gap: 8px; padding: var(--ide-space-2) var(--ide-space-3);
-  border-top: 1px solid rgba(18, 44, 80, 0.35);
+  border-top: 1px solid var(--wb-border);
 }
 
-/* Confidence checklist */
-.ide-hw-confidence-list {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: var(--ide-space-2) var(--ide-space-3);
-}
-.ide-hw-confidence-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; font-size: var(--rb-text-meta);
-}
-.ide-hw-confidence-row.is-pass .ide-hw-confidence-icon { color: rgba(46,196,182,0.9); }
-.ide-hw-confidence-row.is-pending .ide-hw-confidence-icon { color: rgba(80,120,160,0.5); }
-.ide-hw-confidence-label { color: rgba(160,195,230,0.8); }
+/* Confidence checklist: retired with Pre-flight (see 28C). */
 
-/* Workbench placeholder header — used in all 3 Hardware dock panels */
+/* Dock panel header (Board's check dock, Import's workflow rail). One owner: it
+   sits on the light support surface and its heading reads in the workbench's own text colour.
+   The OS-era versions of this rule painted a near-black strip with a pale-blue h3 - and two later
+   !important rules re-painted every matching h3 rgba(130,170,210,0.45), which measured 1.49:1 on
+   the panels this class is actually used on. */
 .ide-workbench-placeholder-header {
   display: flex; align-items: center; gap: 8px;
   padding: 8px var(--ide-space-3);
-  background: rgba(3, 8, 19, 0.98);
-  border-bottom: 1px solid rgba(18, 44, 80, 0.5);
+  background: var(--wb-surface-2);
+  border-bottom: 1px solid var(--wb-border);
 }
 .ide-workbench-placeholder-header h3 {
-  font-size: var(--rb-text-meta); font-weight: 700;
+  margin: 0;
+  color: var(--wb-text);
+  font: 600 var(--wb-text-sm) / 1.3 var(--wb-font-ui);
   letter-spacing: 0; text-transform: none;
-  color: rgba(80, 130, 180, 0.8); margin: 0;
 }
 
 /* ── Lab Starters Gallery (Sprint C-2) ── */
@@ -11428,33 +11278,8 @@ details[open].ide-export-evidence-details > summary::before {
   --ide-workbench-console-height: 92px;
 }
 
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-columns: minmax(212px, 228px) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(220px, auto);
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-left {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-workspace {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-right {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  border-left: 0;
-  border-top: 1px solid rgba(52, 86, 118, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  max-height: 34vh;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main.hide-right-dock {
-  grid-template-columns: minmax(212px, 228px) minmax(0, 1fr);
-}
+/* Panel placement is owned by unified-workbench-v3.css. Compact visibility is
+   resolved by IdeWorkbenchShell; a hidden library never leaves an empty grid column. */
 
 .ide-workbench-shell[data-layout-mode='compact'] .ide-panel-header {
   padding: 10px 12px 8px;
@@ -12589,34 +12414,6 @@ details[open].ide-export-evidence-details > summary::before {
   }
 }
 
-/* Live viewport unblock, final authority:
-   when browser zoom shrinks the effective workspace, keep the center tool readable.
-   The right inspector must yield vertical space before it steals horizontal space.
-   Only applies to compact (<1320px) — standard screens keep the side inspector. */
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-columns: var(--ide-workbench-left-width) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) minmax(220px, auto);
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-left {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-workspace {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) .ide-workbench-dock-right {
-  grid-column: 2;
-  grid-row: 2;
-  border-left: 0;
-  border-top: 1px solid rgba(52, 86, 118, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  max-height: 32vh;
-}
-
 .ide-workbench-shell[data-layout-mode='standard'] .ide-workbench-dock,
 .ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-dock {
   scrollbar-gutter: stable both-edges;
@@ -12785,12 +12582,6 @@ details[open].ide-export-evidence-details > summary::before {
   background: rgba(25, 37, 54, 0.92);
   color: #f8fbff;
   box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.18);
-}
-
-.ide-workbench-shell[data-layout-mode='compact'][data-ide-mode-marker='design']
-  .ide-workbench-main:not(.hide-right-dock)
-  .ide-workbench-dock-left {
-  padding: 12px 12px 16px;
 }
 
 .ide-design-palette {
@@ -13788,25 +13579,8 @@ details[open].ide-export-evidence-details > summary::before {
   flex: 1;
 }
 
-/* B4-Hardware: confidence checklist — no column clipping */
-.ide-hw-confidence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ide-hw-confidence-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.ide-hw-confidence-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
+/* B4-Hardware: the confidence checklist's clipping fix went with the checklist (Pre-flight,
+   retired in P2.6). */
 
 /* A5-Project: flightdeck panels — prevent min-width causing overflow on small viewports */
 [data-ide-mode-marker='project'] .ide-project-flightdeck {
@@ -16245,11 +16019,16 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 /* Left dock — stage panel reads as part of the workflow spine */
+/* The Board's support docks sit on the light support surface like every other dock. This rule
+   used to paint them rgba(8,18,30,0.92) - the dark shell the rest of the workbench left - which
+   is why their headings had been painted pale with !important and read at 1.49:1 once the
+   heading became light. */
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-surface-panel {
-  border-radius: 12px;
-  border: 1px solid rgba(62, 100, 132, 0.42);
-  background: rgba(8, 18, 30, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-radius: var(--wb-radius);
+  border: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  box-shadow: none;
 }
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--map {
   border-left: 3px solid rgba(56, 189, 248, 0.65);
@@ -16417,14 +16196,6 @@ details[open].ide-export-evidence-details > summary::before {
   font-size: var(--rb-text-meta) !important;
   opacity: 0.62 !important;
   min-height: 26px !important;
-}
-/* Sim tick label */
-[data-ide-mode-marker='hardware'] .ide-workbench-placeholder-header h3 {
-  font-size: var(--rb-text-micro) !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  color: rgba(130,170,210,0.48) !important;
-  font-weight: 600 !important;
 }
 
 /* ── 6. Provenance strip — status axis bar ── */
@@ -17045,16 +16816,6 @@ select:focus-visible {
 ::selection {
   background: rgba(46,196,182,0.22) !important;
   color: rgba(240,255,253,0.98) !important;
-}
-
-/* ── 9. Section title consistency across all surfaces ──────── */
-.ide-workbench-placeholder-header h3,
-.ide-workbench-console-header h4 {
-  font-size: var(--rb-text-micro) !important;
-  font-weight: 700 !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  color: rgba(130,170,210,0.45) !important;
 }
 
 /* ── 10. Consistent disabled state across all surfaces ─────── */
@@ -20631,8 +20392,11 @@ button:disabled,
    design should look like a control. */
 .ide-design-swap-chip {
   font-size: var(--rb-text-meta) !important;
-  padding: 7px 10px !important;
-  min-height: 36px !important;
+  /* The same height as Copy, Duplicate and the tracing buttons around it: at 36px the five
+     chips were the tallest controls in the inspector and took two rows of 18px each. */
+  padding: 0 8px !important;
+  min-height: 0 !important;
+  height: var(--wb-control-h) !important;
   border: 1px solid var(--wb-border) !important;
   border-radius: var(--wb-radius, 4px) !important;
   color: var(--wb-text) !important;
@@ -21673,8 +21437,7 @@ button:disabled,
   gap: 20px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-workbench-workspace,
-[data-ide-mode-marker='verify'] .ide-workbench-workspace {
+[data-ide-mode-marker='design'] .ide-workbench-workspace {
   padding: 18px 20px 22px !important;
 }
 
@@ -23771,59 +23534,12 @@ button:disabled,
     minmax(0, 1fr) !important;
 }
 
-.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main.hide-right-dock {
-  grid-template-columns:
-    var(--ide-workbench-left-slot-width)
-    minmax(0, 1fr) !important;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed {
   grid-template-columns:
     var(--ide-workbench-left-slot-width)
     minmax(0, 1fr)
     var(--ide-workbench-right-slot-width) !important;
-}
-
-/* 2026-06-16 Side dock affordance: collapsed rails are compact restore buttons,
-   not sideways labels. */
-
-/* 2026-06-16 Open side panel density: compact inspectors remain side tools.
-   Hardware/Export support panels should not turn into full-width bottom cards. */
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
-  grid-template-columns:
-    var(--ide-workbench-left-slot-width)
-    minmax(0, 1fr)
-    var(--ide-workbench-right-slot-width) !important;
-  grid-template-rows: minmax(0, 1fr) !important;
-}
-
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
-  .ide-workbench-dock-left {
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-}
-
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
-  .ide-workbench-workspace {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-}
-
-.ide-workbench-shell[data-layout-mode='compact']:not([data-ide-mode-marker='design'])
-  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
-  .ide-workbench-dock-right {
-  grid-column: 3 !important;
-  grid-row: 1 !important;
-  max-height: none !important;
-  border-top: 0 !important;
-  border-left: 1px solid rgba(52, 86, 118, 0.22) !important;
-  box-shadow:
-    inset 1px 0 0 rgba(255, 255, 255, 0.03),
-    0 18px 34px rgba(1, 6, 12, 0.22) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {

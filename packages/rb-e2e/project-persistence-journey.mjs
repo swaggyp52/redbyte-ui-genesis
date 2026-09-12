@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
 
-const OUT = evidenceDir('persistence');
+const OUT = evidenceDir('persistence', process.env.RB_SHOT_LABEL ?? 'current');
 const VIEWPORT = { width: 1440, height: 900 };
 const tid = (id) => `[data-testid="${id}"]`;
 
@@ -263,7 +263,7 @@ const readRunsLedger = async () => {
   }));
 };
 
-/** The always-present evidence word in the status bar. */
+/** Evidence belongs to Simulate and Runs; there is no global evidence word. */
 const statusRunLabel = () => page.textContent(tid('ide-status-run')).catch(() => null);
 
 // G. The counts a transition is never allowed to change.
@@ -446,13 +446,10 @@ try {
   assert(/No runs recorded yet/i.test(foreignLedger.text),
     `Runs does not read as unproven; the ledger says: ${foreignLedger.text.slice(0, 140)}`);
   const foreignStatus = await statusRunLabel();
-  assert(foreignStatus !== null,
-    'the status bar shows no evidence word at all for the newly opened project');
-  assert(!/pass|current/i.test(foreignStatus),
-    `the status bar claims "${foreignStatus}" for a project that has never been run`);
+  assert(foreignStatus === null, 'A global verdict must not duplicate the project-scoped empty Runs ledger');
   console.log(`D3 foreign starter ${foreignProject.projectName} (${foreignProject.projectId}): ${foreignProject.nodes} nodes, ` +
     `${foreignProject.vectors} vectors, ${foreignProject.expectations} expectations, ` +
-    `0 runs, status "${foreignStatus.trim()}"`);
+    `0 runs, status "${foreignStatus ?? 'absent by design'}"`);
 
   // Back to B: its own run, unchanged, and still nobody else's.
   const bStoredBeforeReopen = await storedEvidence(projectB);
@@ -636,7 +633,7 @@ try {
   await page.click(tid('mode-button-verify'));
   await page.waitForTimeout(600);
   if ((await page.locator(tid('ide-case-lab')).count()) === 0) {
-    await page.click(tid('ide-doc-tab-cases:default'));
+    await page.click(tid('ide-verify-details'));
     await page.waitForSelector(tid('ide-case-lab'), { state: 'visible', timeout: 8000 });
   }
   await page.getByTestId('ide-case-lab-duplicate-0').click();
@@ -685,16 +682,16 @@ try {
   console.log(`H3 reopened twice, both times with run ${secondReopen.lastRunId} and ` +
     `${secondReopen.lastRunRows} rows`);
 
-  // H4: the status bar and Simulate must describe the same reopened project the same way.
+  // H4: Simulate owns the reopened recording; no competing global verdict.
+  await page.click(tid('mode-button-verify'));
+  await page.waitForSelector(tid('ide-run-identity'), { state: 'visible' });
   const agreement = await page.evaluate(() => {
     const text = (id) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim() ?? null;
-    return { statusRun: text('ide-status-run'), evidence: text('ide-verify-evidence-state') };
+    return { statusRun: text('ide-status-run'), evidence: text('ide-run-check-result') };
   });
-  assert(agreement.statusRun !== null, 'the status bar has no run state to read');
-  assert(!/not simulated/i.test(agreement.statusRun),
-    `a reopened project with its own restored run reads "${agreement.statusRun}" in the status bar ` +
-    'while Simulate shows the run — two authorities, two answers');
-  console.log(`H4 status bar and Simulate agree on the reopened project: status "${agreement.statusRun}"` +
+  assert(agreement.statusRun === null, 'No global run verdict duplicates the reopened recording');
+  assert(agreement.evidence !== null, 'Simulate must describe its restored recording');
+  console.log(`H4 reopened evidence is scoped to Simulate: global status "${agreement.statusRun}"` +
     (agreement.evidence ? `, evidence "${agreement.evidence}"` : ''));
 
   // ── I. An old backup, imported, must not overwrite the newer saved project ────────────
@@ -856,13 +853,13 @@ try {
   await runAndSettle('scenario A');
   const experimentA = await experiment();
   await page.getByTestId('ide-case-lab-row-6').locator('td').first().click();
-  await page.getByTestId('ide-verify-view-timeline').click();
+  await page.getByTestId('ide-verify-view-waveform').click();
   await page.getByTestId('ide-scenario-create-btn').click();
   const newExperiment = await experiment();
   assert(newExperiment.scenarioId !== experimentA.scenarioId, 'New scenario reused A identity');
   assert(newExperiment.runId === null, 'New scenario borrowed A recording');
-  await page.getByTestId('ide-verify-view-timeline').click();
-  await page.locator('[data-testid^="ide-timing-cell-"]').first().click();
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.locator('[data-testid^="ide-case-lab-input-"]').first().click();
   assert(JSON.stringify((await experiment()).vectors) !== JSON.stringify(experimentA.vectors),
     'editing B did not produce different stimulus');
   await runAndSettle('scenario B observation');
@@ -872,8 +869,8 @@ try {
   await page.getByTestId('ide-case-lab-row-2').locator('td').first().click();
   await selectScenario(experimentA.scenarioId);
   assert((await experiment()).runId === experimentA.runId, 'A did not restore its own recording');
-  assert(await page.getByTestId('ide-verify-lab-grid').getAttribute('data-representation') === 'timeline',
-    'A lost its deliberate Timeline representation');
+  assert(await page.getByTestId('ide-verify-lab-grid').getAttribute('data-representation') === 'waveform',
+    'A lost its deliberate recorded-trace representation');
   await page.getByTestId('ide-verify-view-table').click();
   assert(await page.getByTestId('ide-case-lab-row-6').getAttribute('aria-selected') === 'true', 'A lost t6');
   await selectScenario(experimentB.scenarioId);

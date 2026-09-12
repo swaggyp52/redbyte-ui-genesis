@@ -576,9 +576,10 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain(
-      'Inspect the package in Build & Export'
-    );
+    // The next line names Build & Export and the package it will offer (draft or checked, with
+    // the reason); the one control beside it goes there.
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toMatch(/Build & Export/);
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toMatch(/draft package|checked package/i);
     fireEvent.click(getByTestId('ide-hw-continue-export'));
     expect(onOpenExport).toHaveBeenCalledTimes(1);
   });

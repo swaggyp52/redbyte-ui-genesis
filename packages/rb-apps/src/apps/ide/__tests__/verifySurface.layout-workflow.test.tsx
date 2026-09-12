@@ -88,7 +88,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(getByTestId('ide-verify-region-header')).toBeTruthy();
     expect(getByTestId('ide-verify-region-stimulus')).toBeTruthy();
     expect(getByTestId('ide-verify-region-waveform')).toBeTruthy();
-    expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
+    expect(getByTestId('ide-verify-details')).toBeTruthy();
     expect(queryByTestId('ide-verify-region-inspector')).toBeNull();
   });
 
@@ -101,7 +101,7 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    fireEvent.click(traceView.getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(traceView.getByTestId('ide-verify-details'));
     const traceTabs = traceView.getByTestId('ide-verify-analysis-tab-nav');
     expect(within(traceTabs).queryByText('Mismatches')).toBeNull();
 
@@ -115,7 +115,7 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    fireEvent.click(compareView.getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(compareView.getByTestId('ide-verify-details'));
     const compareTabs = compareView.getByTestId('ide-verify-analysis-tab-nav');
     expect(within(compareTabs).getByText('Checks')).toBeTruthy();
   });
@@ -175,7 +175,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(queryByTestId('ide-verify-three-panel-left')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-right')).toBeNull();
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
-    expect(getByTestId('ide-verify-drawer-toggle').getAttribute('aria-expanded')).toBe('false');
+    expect(getByTestId('ide-verify-details').getAttribute('aria-expanded')).toBe('false');
   });
 
   it('keeps the stimulus workbench header compact instead of repeating waveform guidance in the header copy', () => {

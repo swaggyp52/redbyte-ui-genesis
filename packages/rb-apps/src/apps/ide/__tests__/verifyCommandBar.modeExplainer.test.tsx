@@ -1,171 +1,46 @@
 // @vitest-environment jsdom
-
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { VerifyCommandBar, type VerifyCommandBarProps } from '../surfaces/verify/VerifyCommandBar';
+const BASE: VerifyCommandBarProps = { isCompareMode: false, onSetObserve: vi.fn(), onSetCompare: vi.fn(),
+  compareAvailable: false, onRun: vi.fn(), runLabel: 'Run', runDisabled: false };
+afterEach(cleanup);
 
-const BASE: VerifyCommandBarProps = {
-  isCompareMode: false,
-  onSetObserve: vi.fn(),
-  onSetCompare: vi.fn(),
-  compareAvailable: true,
-  onRun: vi.fn(),
-  runLabel: 'Run observe pass',
-  runDisabled: false,
-};
-
-afterEach(() => {
-  cleanup();
-});
-
-describe('VerifyCommandBar mode explainer contract', () => {
-  it('renders the inline Observe explainer beside the run-mode selector', () => {
-    const onSetObserve = vi.fn();
-    const onSetCompare = vi.fn();
-    const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={false}
-        onSetObserve={onSetObserve}
-        onSetCompare={onSetCompare}
-      />
-    );
-
-    expect(getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Record observed outputs without grading expected values.'
-    );
-    expect(getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('true');
-    expect(getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('false');
-
-    fireEvent.click(getByTestId('ide-vcb-observe-only'));
-    fireEvent.click(getByTestId('ide-vcb-use-saved-checks'));
-
-    expect(onSetObserve).toHaveBeenCalledOnce();
-    expect(onSetCompare).toHaveBeenCalledOnce();
-  });
-
-  it('switches the explainer text when Compare mode becomes active', () => {
-    const view = render(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={false}
-      />
-    );
-
-    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Record observed outputs without grading expected values.'
-    );
-
-    view.rerender(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={true}
-      />
-    );
-
-    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Check filled expected outputs against this run.'
-    );
-    expect(view.getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('false');
-    expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('explains Observe while Observe is selected, even when Compare is blocked', () => {
-    // A run that works must not be made to look incomplete by the state of a run nobody asked
-    // for. The blocked reason belongs to Compare, and only while Compare is what is selected.
-    const reason = 'Fill in at least one expected output to compare against.';
-    const view = render(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={false}
-        compareAvailable={false}
-        compareUnavailableReason={reason}
-      />
-    );
-
-    const explainer = view.getByTestId('ide-vcb-mode-explainer');
-    expect(explainer.textContent).toBe('Record observed outputs without grading expected values.');
-    expect(explainer.className).not.toContain('is-blocked-reason');
-    // Observe itself stays runnable with no reference outputs anywhere in the project.
+describe('Run explains its actual inputs and checks', () => {
+  it('states that zero checks produce a recording without a verdict', () => {
+    const view = render(<VerifyCommandBar {...BASE} configuredCheckCount={0} />);
+    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain('without a pass/fail verdict');
     expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
-
-    view.rerender(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={true}
-        compareAvailable={false}
-        compareUnavailableReason={reason}
-      />
-    );
-
-    const blocked = view.getByTestId('ide-vcb-mode-explainer');
-    expect(blocked.textContent).toBe(reason);
-    expect(blocked.className).toContain('is-blocked-reason');
+    expect(view.queryByRole('button', { name: /^Compare$/ })).toBeNull();
   });
-
-  it('offers adding expected outputs as a secondary action without demoting Observe', () => {
-    const onAuthorExpectedOutputs = vi.fn();
-    const view = render(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={false}
-        compareAvailable={false}
-        compareUnavailableReason="No expected outputs are filled in yet."
-        needsExpectedOutputs
-        onAuthorExpectedOutputs={onAuthorExpectedOutputs}
-      />
-    );
-
-    const add = view.getByTestId('ide-vcb-author-expected');
-    expect(add.textContent).toBe('Add expected outputs');
-    // Run is the primary action; adding references is offered beside it, not instead of it.
+  it('automatically explains the current check count when checks are added or removed', () => {
+    const view = render(<VerifyCommandBar {...BASE} configuredCheckCount={0} />);
+    view.rerender(<VerifyCommandBar {...BASE} configuredCheckCount={3} />);
+    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe('3 saved checks are evaluated automatically.');
+    view.rerender(<VerifyCommandBar {...BASE} configuredCheckCount={0} />);
+    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain('No checks configured');
+  });
+  it('states a structural blocking reason in visible text and prevents dispatch', () => {
+    const onRun = vi.fn();
+    const reason = 'Connect the undriven output before checking it.';
+    const view = render(<VerifyCommandBar {...BASE} onRun={onRun} runDisabled runBlockedReason={reason} />);
+    expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(reason);
+    expect(view.getByTestId('ide-vcb-mode-explainer').className).toContain('is-blocked-reason');
+    fireEvent.click(view.getByTestId('ide-vcb-run')); expect(onRun).not.toHaveBeenCalled();
+  });
+  it('offers reproduction only when a recording can be selected', () => {
+    const view = render(<VerifyCommandBar {...BASE} />);
+    expect(view.queryByTestId('ide-vcb-reproduce')).toBeNull();
+    const onReproduce = vi.fn();
+    view.rerender(<VerifyCommandBar {...BASE} onReproduce={onReproduce} />);
+    fireEvent.click(view.getByTestId('ide-vcb-reproduce')); expect(onReproduce).toHaveBeenCalledOnce();
+  });
+  it('explains unavailable saved inputs without disabling the current draft run', () => {
+    const onReproduce = vi.fn(); const reason = 'This recording did not retain reproduction inputs.';
+    const view = render(<VerifyCommandBar {...BASE} onReproduce={onReproduce} reproduceDisabledReason={reason} />);
+    expect(view.getByText(reason)).toBeTruthy();
+    fireEvent.click(view.getByTestId('ide-vcb-reproduce')); expect(onReproduce).not.toHaveBeenCalled();
     expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(add);
-    expect(onAuthorExpectedOutputs).toHaveBeenCalledOnce();
-
-    // With no such need, the offer is absent rather than disabled.
-    view.rerender(
-      <VerifyCommandBar {...BASE} isCompareMode={false} needsExpectedOutputs={false} />
-    );
-    expect(view.queryByTestId('ide-vcb-author-expected')).toBeNull();
-  });
-
-  it('states what comparison needs when nothing else on the bar says it', () => {
-    // A disabled button will not take focus for its own tooltip, and browsers often decline to
-    // render one at all, so a reason living only in `title` is not stated. When the offer to add
-    // expected outputs is present it already names what comparison needs, by being the thing that
-    // supplies it; with no offer, the requirement is stated instead. Never both, never neither.
-    const reason = 'The design cannot be graded until its outputs are driven.';
-    const withoutOffer = render(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={false}
-        compareAvailable={false}
-        compareUnavailableReason={reason}
-      />
-    );
-    const requirement = withoutOffer.getByTestId('ide-vcb-compare-requirement');
-    expect(requirement.textContent).toBe(reason);
-    expect(withoutOffer.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-describedby')).toBe(
-      requirement.getAttribute('id')
-    );
-    expect(withoutOffer.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Record observed outputs without grading expected values.'
-    );
-    cleanup();
-
-    const withOffer = render(
-      <VerifyCommandBar
-        {...BASE}
-        isCompareMode={false}
-        compareAvailable={false}
-        compareUnavailableReason={reason}
-        needsExpectedOutputs
-        onAuthorExpectedOutputs={vi.fn()}
-      />
-    );
-    expect(withOffer.getByTestId('ide-vcb-author-expected')).toBeTruthy();
-    expect(withOffer.queryByTestId('ide-vcb-compare-requirement')).toBeNull();
   });
 });

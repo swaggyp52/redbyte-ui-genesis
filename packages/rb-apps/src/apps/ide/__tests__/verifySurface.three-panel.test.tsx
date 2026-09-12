@@ -103,7 +103,7 @@ describe('VerifySurface three-panel workstation', () => {
     );
 
     expect(view.queryByTestId('ide-verify-three-panel')).toBeNull();
-    fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(view.getByTestId('ide-verify-details'));
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     expect(view.getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
     expect(view.getByTestId('ide-verify-region-inspector')).toBeTruthy();
@@ -141,7 +141,7 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(view.getByTestId('ide-verify-details'));
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     fireEvent.keyDown(window, { key: 'J' });
     fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));

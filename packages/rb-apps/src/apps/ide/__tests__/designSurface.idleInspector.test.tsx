@@ -147,7 +147,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface contextual inspector contract', () => {
-  it('keeps authoring, exploratory simulation, and replay as explicit modes on one canvas', () => {
+  it('offers unrecorded Explore from authoring and opens recordings only from Simulate', () => {
     useCircuitStore.setState({
       circuit: structuredClone(BASE_CIRCUIT),
       isDirty: false,
@@ -159,13 +159,13 @@ describe('DesignSurface contextual inspector contract', () => {
 
     expect(view.getByTestId('ide-design-palette-section-io')).toBeTruthy();
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'edit');
-    expect(view.getByTestId('ide-design-learning-mode-replay')).toBeDisabled();
+    expect(view.queryByTestId('ide-design-learning-mode-replay')).toBeNull();
 
-    fireEvent.click(view.getByTestId('ide-design-learning-mode-live'));
+    fireEvent.click(view.getByTestId('ide-design-explore'));
 
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'live');
     expect(view.getByTestId('ide-design-live-transport')).toBeTruthy();
-    expect(view.getByTestId('ide-design-learning-mode-live').getAttribute('title')).toContain('not saved evidence');
+    expect(view.getByTestId('ide-design-live-note').textContent).toContain('not recorded');
   });
 
   it('returns idle inspector space to the canvas when nothing is selected', () => {

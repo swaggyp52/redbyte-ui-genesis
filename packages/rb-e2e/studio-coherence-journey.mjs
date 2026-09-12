@@ -1,0 +1,106 @@
+// Authoring/exploration and panel ownership, through visible controls.
+import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const out = evidenceDir('studio-coherence', process.env.RB_SHOT_LABEL ?? 'current');
+const browser = await launchChromium();
+const results = [];
+try {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 650 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const tid = id => page.getByTestId(id);
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    await tid('ide-project-start-a-lab-primary').click();
+    await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();
+    await page.locator('[data-testid^="ide-project-gannon-lab-start-"]').first().click();
+    await tid('mode-button-design').click();
+    await tid('ide-design-toolbar').waitFor();
+    const tabGeometry = await page.getByRole('tablist', { name: 'Design tools' }).evaluate(strip => {
+      const parent = strip.getBoundingClientRect();
+      return [...strip.querySelectorAll('[role="tab"]')].map(tab => {
+        const box = tab.getBoundingClientRect();
+        return { label: tab.textContent, contained: box.left >= parent.left - 1 && box.right <= parent.right + 1 };
+      });
+    });
+    await page.screenshot({ path: path.join(out, `design-normal-${viewport.width}x${viewport.height}.png`) });
+    assert.ok(tabGeometry.every(tab => tab.contained), `Every Design tool is offered inside its strip: ${JSON.stringify(tabGeometry)}`);
+    assert.equal(await tid('ide-design-learning-mode-replay').count(), 0, 'A recording is opened from its experiment, never a peer authoring mode');
+    await tid('ide-design-explore').click();
+    assert.match(await tid('ide-design-live-note').innerText(), /not recorded/i);
+    await tid('ide-design-live-step').click();
+    assert.match(await tid('ide-design-live-tick').innerText(), /1 clock edge applied/);
+    await tid('ide-design-live-reset').click();
+    assert.match(await tid('ide-design-live-tick').innerText(), /0 clock edges applied/);
+    assert.equal(await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.length), 0, 'Exploration creates no recording');
+    await tid('ide-design-explore').click();
+    await tid('ide-design-test-design').click();
+    await tid('ide-vcb-run').waitFor();
+    assert.equal(await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.length), 0, 'Test this design hands off without running');
+    assert.equal(await tid('ide-status-run').count(), 0, 'Run-specific state lives in the experiment');
+    await tid('mode-button-design').click();
+    await page.getByRole('button', { name: 'Split', exact: true }).click();
+    await page.waitForTimeout(400);
+    const splitGeometry = await tid('ide-design-canvas').evaluate(canvas => {
+      const box=canvas.getBoundingClientRect();
+      return [...canvas.querySelectorAll('[data-node-id]')].map(node => {
+        const r=node.getBoundingClientRect();return {id:node.getAttribute('data-node-id'),contained:r.left>=box.left-1 && r.right<=box.right+1 && r.top>=box.top-1 && r.bottom<=box.bottom+1};
+      });
+    });
+    assert.ok(splitGeometry.length>=13 && splitGeometry.every(node=>node.contained), 'Split frames every component without a second viewport translation: '+JSON.stringify(splitGeometry));
+    const sourceAction = await tid('ide-design-hdl-go-import').evaluate(button => {
+      const r=button.getBoundingClientRect(), pane=button.closest('.ide-design-pane--hdl').getBoundingClientRect();
+      const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+      return {contained:r.left>=pane.left && r.right<=pane.right,receivesClick:hit===button||button.contains(hit)};
+    });
+    assert.ok(sourceAction.contained && sourceAction.receivesClick, 'Split keeps Import HDL completely inside its source pane');
+    await page.screenshot({ path: path.join(out, 'design-split-' + viewport.width + 'x' + viewport.height + '.png') });
+    assert.equal(await tid('ide-mode-design').getAttribute('data-left-dock-state'), 'hidden', 'Split gives its primary objects the library width');
+    assert.equal(await tid('ide-mode-design').getAttribute('data-right-dock-state'), 'hidden', 'Split keeps optional detail recoverable');
+    await tid('mode-button-verify').click();
+    await tid('ide-vcb-run').click();
+    await tid('ide-run-repetition').waitFor();
+    assert.equal(await tid('ide-run-repetition').innerText(), '1 run · no repeat yet');
+    await page.getByRole('gridcell', { name: /^EN at t2:/ }).click();
+    await tid('ide-vcb-run').click();
+    await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.status === 'fail');
+    await tid('ide-verify-inspect-circuit').click();
+    await page.getByLabel('Recorded circuit signal').selectOption('LD0');
+    await tid('ide-timing-lanes').press('Home');
+    await tid('ide-timing-lanes').press('ArrowRight');
+    await tid('ide-timing-lanes').press('ArrowRight');
+    const contextGeometry = await tid('ide-recorded-circuit-context').evaluate(context => {
+      const heading = context.closest('.rb-recorded-circuit-heading').getBoundingClientRect();
+      const bar = document.querySelector('[data-testid="ide-verify-representation"]').getBoundingClientRect();
+      return { headingTop: heading.top, controlsBottom: bar.bottom, context: context.textContent };
+    });
+    assert.ok(contextGeometry.headingTop >= contextGeometry.controlsBottom - 1,
+      'Recording context stays below the shared controls after keyboard focus: ' + JSON.stringify(contextGeometry));
+    const traceHeight = await page.locator('.rb-tl-scroll').evaluate(element => element.getBoundingClientRect().height);
+    assert.ok(traceHeight >= 200, 'The linked trace keeps a useful viewport: ' + traceHeight);
+    const timingBounds = await page.locator('.rb-timing').boundingBox();
+    const generatorBounds = await tid('ide-scenario-generators-disclosure').boundingBox();
+    assert.ok(generatorBounds.y >= timingBounds.y + timingBounds.height - 1,
+      'Generators stay below the complete Time instrument');
+    await page.screenshot({ path: path.join(out, 'linked-context-' + viewport.width + 'x' + viewport.height + '.png') });
+    await page.getByLabel('Close circuit investigation').click();
+    await tid('mode-button-project').click();
+    await tid('ide-project-row-doc:overview').click();
+    assert.equal(await tid('ide-project-problems').count(), 0, 'Overview does not contain a second Problems ledger');
+    assert.match(await tid('ide-project-attention').innerText(), /check-failed/);
+    await tid('ide-project-open-problems').click();
+    assert.equal(await tid('ide-console-toggle').getAttribute('aria-expanded'), 'true',
+      'Open Problems reaches the canonical dock');
+    assert.deepEqual(errors, []);
+    results.push({ viewport, tabGeometry, splitGeometry, sourceAction, contextGeometry, errors });
+    await context.close();
+  }
+  fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ baseUrl: BASE_URL, results }, null, 2));
+  console.log(`PASS studio coherence: ${results.length} viewports; ${out}`);
+} finally {
+  await browser.close();
+}

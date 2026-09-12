@@ -1,3 +1,4 @@
+import { recordingStorageReplacer, recordingStorageReviver } from './recordingStorage';
 import { decodeRBProject, encodeRBProject, type RBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
 import type { VerifyScenario } from './verifyScenario';
@@ -74,7 +75,7 @@ export function saveIdeProjectSnapshot(input: {
   };
 
   try {
-    localStorage.setItem(buildProjectStorageKey(projectId), JSON.stringify(snapshot));
+    localStorage.setItem(buildProjectStorageKey(projectId), JSON.stringify(snapshot, recordingStorageReplacer));
     upsertProjectIndex({
       projectId: snapshot.projectId,
       projectName: snapshot.projectName,
@@ -94,7 +95,7 @@ export function loadIdeProjectSnapshot(projectId: string): PersistedIdeProjectSn
   try {
     const raw = localStorage.getItem(buildProjectStorageKey(trimmed));
     if (!raw) return null;
-    return parsePersistedIdeProjectSnapshot(JSON.parse(raw));
+    return parsePersistedIdeProjectSnapshot(JSON.parse(raw, recordingStorageReviver));
   } catch {
     return null;
   }

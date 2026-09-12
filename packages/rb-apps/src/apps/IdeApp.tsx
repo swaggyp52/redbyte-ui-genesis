@@ -1,6 +1,7 @@
 // Copyright (c) 2025 Connor Angiel - RedByte OS Genesis
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
+import { getRuntimeVerifyRunId } from './ide/runArchive';
 import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTheme } from '@redbyte/rb-theme';
 import { findVerifyRunLedgerEntry } from './ide/runArchive';
@@ -143,6 +144,7 @@ import {
 import type { IdeImportMeta } from './ide/projectImportMeta';
 import {
   deriveProjectWorkflowAuthority,
+  deriveVerifyCurrent,
   isDesignOwnedExportDiagnostic,
 } from './ide/projectWorkflowAuthority';
 import { resolveBasys3SignalBinding } from '../fpga/boards/basys3/basys3SignalSemantics';
@@ -986,7 +988,7 @@ export const IdeApp: React.FC = () => {
       // Structural compiler/export blockers invalidate assertion grading. Keep
       // Observe available, but never let a checked run publish a misleading
       // PASS/FAIL while Design has no valid output authority.
-      if (input.assertionMode && blockingDesignIssueRef.current) {
+      if (!input.reproduceRunId && input.assertionMode && blockingDesignIssueRef.current) {
         setLastSavedAt('Compare is blocked until the Design issue is repaired.');
         return;
       }
@@ -1038,7 +1040,8 @@ export const IdeApp: React.FC = () => {
     const sample = verifyLastRun.waveform[nextIndex];
     if (!sample) return;
     const signals = new Map<string, 0 | 1>(
-      Object.entries(sample.signals).map(([key, value]) => [key, value === '1' ? 1 : 0])
+      Object.entries(sample.signals).filter(([, value]) => value === '0' || value === '1')
+        .map(([key, value]) => [key, value === '1' ? 1 : 0])
     );
     setDebugState({ tick: sample.tick, signals, context: null });
     setDebugTickIndex(nextIndex);
@@ -1884,6 +1887,22 @@ export const IdeApp: React.FC = () => {
       handleLoadSavedProject(entry);
     },
     [handleLoadSavedProject, refreshSavedProjects, savedProjects, setLastSavedAt]
+  );
+
+  /* Start is only shown with nothing open, so the record being deleted is never the workspace's
+     own; the open project, exported backups and the recovery checkpoint are untouched. */
+  const handleRemoveSavedProject = useCallback(
+    (projectIdToRemove: string) => {
+      const entry = savedProjects.find((candidate) => candidate.projectId === projectIdToRemove);
+      const result = projectRepository.remove(projectIdToRemove);
+      refreshSavedProjects();
+      setLastSavedAt(
+        result.ok
+          ? `Deleted "${entry?.projectName ?? projectIdToRemove}" from this browser.`
+          : `Could not delete "${entry?.projectName ?? projectIdToRemove}": ${result.error.message}`
+      );
+    },
+    [refreshSavedProjects, savedProjects, setLastSavedAt]
   );
 
   const handleOpenProjectFile = useCallback(() => {
@@ -2778,7 +2797,8 @@ export const IdeApp: React.FC = () => {
    * the strip owns which object inside it.
    */
   const workspaceDocuments = useMemo(
-    () => documentHost.open.filter((doc) => workbenchDocumentMode(doc) === activeMode),
+    () => documentHost.open.filter((doc) => workbenchDocumentMode(doc) === activeMode &&
+      (activeMode !== 'project' || doc.kind === 'source-file')),
     [activeMode, documentHost.open]
   );
   // Surfaces open related documents through the navigation seam; the host owner registers once.
@@ -3014,23 +3034,7 @@ export const IdeApp: React.FC = () => {
     ids.add(view === 'code' ? IDE_COMMAND_IDS.showDesignCode : view === 'split' ? IDE_COMMAND_IDS.showDesignSplit : IDE_COMMAND_IDS.showDesignCanvas);
     return ids as ReadonlySet<`${string}.${string}`>;
   }, [themeVariant, workspacePreferences.design.view]);
-  const statusRunState = useMemo(() => {
-    if (!hasCircuit) return null;
-    if (runtimeSim.running) return { label: 'Running', tone: 'warn' as const };
-    switch (projectVerifyState) {
-      case 'assertions-match':
-        return { label: 'Simulation current · pass', tone: 'ok' as const };
-      case 'trace':
-        return { label: 'Simulation observed', tone: 'ok' as const };
-      case 'stale':
-        return { label: 'Simulation stale', tone: 'warn' as const };
-      case 'assertions-differ':
-      case 'verify-error':
-        return { label: 'Simulation failing', tone: 'error' as const };
-      default:
-        return { label: 'Not simulated', tone: 'idle' as const };
-    }
-  }, [hasCircuit, projectVerifyState, runtimeSim.running]);
+  // Run verdicts belong to the selected experiment; the footer owns the Problems ledger.
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -3319,6 +3323,7 @@ export const IdeApp: React.FC = () => {
               recentProjects={recentProjectsForStart}
               onOpenSavedProjects={handleOpenLoadModal}
               onOpenRecentProject={handleOpenRecentProject}
+              onRemoveRecentProject={handleRemoveSavedProject}
               peekRecentProject={peekRecentProject}
               recovery={{
                 available: repositoryState.recoveryAvailable,
@@ -3326,7 +3331,18 @@ export const IdeApp: React.FC = () => {
                 onRestore: handleRecoverProject,
               }}
               runHistory={verifyRunHistory}
-              latestRunIsCurrent={verifyLastRun ? !runIsStale : null}
+              availableRunIds={verifyRunArchive.map(run => getRuntimeVerifyRunId(run))}
+              onOpenRecording={run => {
+                if (!run.scenarioId) return;
+                switchVerifyScenario(run.scenarioId);
+                selectRecordedRun(run.runId);
+                documentHost.openDocument({ kind: 'scenario', scenarioId: run.scenarioId });
+                setCurrentMode('verify');
+              }}
+              latestRunIsCurrent={verifyRunHistory.length ? deriveVerifyCurrent({
+                hasVerifyRun: true, latestVerifyLedgerEntry: verifyRunHistory[verifyRunHistory.length - 1],
+                currentVerifyProjectHash, dirtySinceVerify: projectHealthCore.dirtySinceVerify,
+              }) : null}
               sourceModel={sourceModel}
               crossProbe={{ index: crossProbeIndex, sourceLabels: crossProbeSourceLabels }}
               fpgaConfig={fpgaConfig}
@@ -3461,6 +3477,7 @@ export const IdeApp: React.FC = () => {
               onRunVerification={handleRunVerification}
               onClearVerification={handleClearVerification}
               onOpenProjectVectors={() => setCurrentMode('project')}
+              onOpenStarter={() => setStarterPickerOpen(true)}
               onFixPath={handleVerifyFixPath}
               example={activeExample ?? null}
               onGoToDesign={() => setCurrentMode('design')}
@@ -3651,7 +3668,7 @@ export const IdeApp: React.FC = () => {
         onShowProblems={() =>
           workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true, expanded: true })
         }
-        runState={statusRunState}
+        runState={null}
       />
 
       <input
@@ -3762,6 +3779,7 @@ export const IdeApp: React.FC = () => {
                   setStarterPickerOpen(false);
                   handleOpenExample(exampleId);
                 }}
+                compact
                 testId="ide-project-examples-browser"
               />
             </div>

@@ -4,7 +4,7 @@ import { connectionEndpoints } from '@redbyte/rb-logic-view';
 import { getRuntimeVerifyRunId } from '../runArchive';
 import { buildVerifyCircuitEvidenceHash } from '../verifyProjectHash';
 import { RecordedCircuitInspector } from './verify/RecordedCircuitInspector';
-import { buildRecordedCircuitGeometry } from './verify/recordedCircuitGeometry';
+import { buildRecordedCircuitGeometry, createRecordedPortResolver } from './verify/recordedCircuitGeometry';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import { findPin } from '@redbyte/rb-logic-view';
 import { useScenarioViewState } from '../useScenarioViewState';
@@ -126,9 +126,7 @@ import {
 } from './verify/VerifyPrimaryStatusArea';
 import {
   VerifyContextHeader,
-  VerifyResultsSummary,
   type VerifyResultsKind,
-  type VerifyResultsMetric,
   type VerifyStateTone,
 } from './verify/VerifySurfacePrimitives';
 import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
@@ -138,6 +136,8 @@ import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
+import { RunIdentityStrip } from './verify/RunIdentityStrip';
+import { BROWSER_ENGINE_VERSION, describeRecordingChanges } from '../runDeterminism';
 import { ManualBench } from './verify/ManualBench';
 import { CaseLab } from './verify/CaseLab';
 import { buildFieldSignalResolver, normalizeSignalId } from '../signalIdentity';
@@ -272,6 +272,7 @@ export interface VerifySurfaceProps {
   onRunVerification?: (input: RunVerificationInput) => void;
   onClearVerification?: () => void;
   onOpenProjectVectors: () => void;
+  onOpenStarter?: () => void;
   onFixPath?: (target: VerifyFailureTarget) => void;
   example?: IdeExampleDefinition | null;
   onGoToDesign?: () => void;
@@ -436,6 +437,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onRunVerification,
   onClearVerification,
   onOpenProjectVectors,
+  onOpenStarter,
   onFixPath,
   example,
   onGoToDesign,
@@ -715,13 +717,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Next-run compare intent. This is authoring state only; it does not describe
-  // the meaning of the persisted run currently shown in Verify.
-  const [nextRunUsesAssertions, setNextRunUsesAssertions] = useState(
-    () => getRuntimeVerifyRunKind(lastRun) === 'verify' || (!lastRun && totalExpectedCaseCount > 0)
-  );
-  const runModeTouchedByStudentRef = useRef(false);
-  const vectorCollectionSignatureRef = useRef(vectorCollectionSignature);
+  // Checks belong to the scenario. Run has no second intent authority.
+  const nextRunUsesAssertions = totalExpectedCaseCount > 0;
   const [oracleApplied, setOracleApplied] = useState(false);
   const [selectedFailureKey, setSelectedFailureKey] = useState<string | null>(null);
   // selectedVectorId: pinpoints the specific authored row when a failure has vectorId.
@@ -904,21 +901,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDraftTick(nextVectorTick(vectors));
   }, [vectors]);
 
-  useEffect(() => {
-    if (vectorCollectionSignatureRef.current === vectorCollectionSignature) return;
-    vectorCollectionSignatureRef.current = vectorCollectionSignature;
-    runModeTouchedByStudentRef.current = false;
-  }, [vectorCollectionSignature]);
-
-  useEffect(() => {
-    // Seed the initial run intent only. Do NOT silently switch a student's chosen
-    // Compare intent to Observe when the Design becomes structurally blocked — the
-    // intent stays Compare (shown as blocked) and execution is gated by
-    // compareAvailable, so Compare auto-restores when the Design is repaired.
-    if (lastRun || runModeTouchedByStudentRef.current) return;
-    setNextRunUsesAssertions(totalExpectedCaseCount > 0);
-  }, [lastRun, totalExpectedCaseCount]);
-
   const waveformSignalAliasOwners = useMemo(
     () =>
       buildWaveformSignalAliasOwners({
@@ -989,16 +971,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : undefined,
     };
   }, [canonicalEvidenceFailures, canonicalWaveformSignalByRawKey, lastRun, runRows]);
-  useEffect(() => {
-    if (!lastRun) return;
-    if (getRuntimeVerifyRunKind(lastRun) === 'verify') {
-      setNextRunUsesAssertions(true);
-      return;
-    }
-    if (getRuntimeVerifyRunKind(lastRun) === 'trace') {
-      setNextRunUsesAssertions(false);
-    }
-  }, [lastRun]);
   const tickIndex = useMemo(
     () =>
       surfaceLastRun?.report
@@ -1602,8 +1574,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     // Pin to specific authored row when vectorId is available.
     // When absent, fall back to tick-only; do not imply row-level pinpointing.
     setSelectedVectorId(target.vectorId ?? null);
-    // Open the lower details tray so the authored row is visible without using a shell rail.
-    setDrawerOpen(true);
+    // A failed sample changes selection, not panel ownership. Details opens only by request.
   }, [handleSignalSelect, setSelectedTick]);
   const reviewFailureInVerify = useCallback(
     (target: VerifyFailureTarget | VerifyRow | null) => {
@@ -1632,7 +1603,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Reveal the optional output-check editor inside the Stimulus Workbench.
   // Used by compare/failure CTAs to route students into the secondary checks path.
   const handleEditExpectedOutputs = useCallback(() => {
-    setNextRunUsesAssertions(!gradingBlockedByDesign);
     // Combinational scenarios edit checks in Case Lab; the sequential composer still owns its table.
     const host: HTMLElement | null =
       scenarioBuilderDetailsRef.current ??
@@ -2491,13 +2461,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   /** The one answer to "what is drawn in the primary area right now". */
   const representation: 'timeline' | 'table' | 'waveform' =
-    studioMode === 'replay'
+    isSequentialRun ? 'timeline' : studioMode === 'replay'
       ? 'waveform'
       : (authoredRepresentation ?? (isSequentialRun ? 'timeline' : 'table'));
   const [inspectCircuit, setInspectCircuit] = useState(false);
   const [investigationFocus, setInvestigationFocus] = useState<'both' | 'circuit' | 'timeline'>('both');
   const openCircuitInvestigation = () => {
     setInspectCircuit(true);
+    setDrawerOpen(false);
     setInvestigationFocus('both');
     showRecordedView();
     if (selectedTick === null) setSelectedTick(lastRun?.firstFailingTick ?? lastRun?.waveform[0]?.tick ?? null);
@@ -2515,42 +2486,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       aria-label="How this experiment is drawn"
       data-testid="ide-verify-representation"
     >
-      <span className="rb-sim-representation__label">View</span>
-      <button
-        type="button"
-        className={`rb-sim-representation__choice${representation === 'timeline' ? ' is-active' : ''}`}
-        aria-pressed={representation === 'timeline'}
-        onClick={() => showAuthoredRepresentation('timeline')}
-        data-testid="ide-verify-view-timeline"
-        title="Read this experiment on a time axis: one lane per signal, events where you place them."
-      >
-        Timeline
-      </button>
-      <button
-        type="button"
-        className={`rb-sim-representation__choice${representation === 'table' ? ' is-active' : ''}`}
-        aria-pressed={representation === 'table'}
-        onClick={() => showAuthoredRepresentation('table')}
-        data-testid="ide-verify-view-table"
-        title="Read this experiment as a case table: one row per case, inputs beside expected and observed."
-      >
-        Table
-      </button>
-      <button
-        type="button"
-        className={`rb-sim-representation__choice${representation === 'waveform' ? ' is-active' : ''}`}
-        aria-pressed={representation === 'waveform'}
-        onClick={showRecordedView}
-        disabled={!lastRun}
-        data-testid="ide-verify-view-waveform"
-        title={
-          lastRun
-            ? 'Read the recorded trace: the run exactly as it happened, with cursors and measurement.'
-            : 'No run has been recorded yet. Run this scenario to read its trace.'
-        }
-      >
-        Waveform
-      </button>
+      {isSequentialRun ? <strong className="rb-sim-representation__label">Time instrument</strong> : <>
+        <button type="button" className="rb-sim-representation__choice" aria-pressed={representation === 'table'}
+          onClick={() => showAuthoredRepresentation('table')} data-testid="ide-verify-view-table">Table</button>
+        <button type="button" className="rb-sim-representation__choice" aria-pressed={representation === 'waveform'}
+          onClick={showRecordedView} disabled={!lastRun} data-testid="ide-verify-view-waveform">Recorded trace</button>
+      </>}
+      <button type="button" className="rb-sim-representation__choice" aria-pressed={drawerOpen}
+        onClick={() => { setInspectCircuit(false); setDrawerOpen(value => !value); }} data-testid="ide-verify-details">Details</button>
       {!lastRun ? (
         <span className="rb-sim-representation__note" data-testid="ide-verify-representation-note">
           no recorded run yet
@@ -2559,13 +2502,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       {lastRun && <button type="button" className="rb-sim-representation__choice" aria-pressed={inspectCircuit}
         onClick={inspectCircuit ? () => setInspectCircuit(false) : openCircuitInvestigation}
         data-testid="ide-verify-inspect-circuit">{inspectCircuit ? 'Close circuit' : 'Inspect with circuit'}</button>}
-      {lastRun && onSelectRecordedRun && runArchive.filter((run) => run.scenarioId === activeScenarioId).length > 1 &&
-        <label className="rb-recorded-run-choice">Recording <select aria-label="Recorded run" value={getRuntimeVerifyRunId(lastRun)}
-          onChange={(event) => { onSelectRecordedRun(event.target.value); showRecordedView(); }}>
-          {runArchive.filter((run) => run.scenarioId === activeScenarioId).map((run, index) => <option key={getRuntimeVerifyRunId(run)} value={getRuntimeVerifyRunId(run)}>
-            {index + 1} · {run.assertionStatus === 'not-configured' ? 'Observed' : run.status === 'fail' ? 'Checks failed' : 'Checks passed'} · {run.reportHash.slice(0, 8)}
-          </option>)}
-        </select></label>}
       {inspectCircuit && <div role="group" aria-label="Investigation focus" className="rb-investigation-focus">
         {(['both', 'timeline', 'circuit'] as const).map((focus) => <button key={focus} type="button"
           className="rb-sim-representation__choice" aria-pressed={investigationFocus === focus}
@@ -3476,33 +3412,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? inspectionCircuit : null
   ), [inspectionCircuit, lastRun]);
   const recordedGeometry = useMemo(() => buildRecordedCircuitGeometry(recordedCircuit?.nodes ?? []), [recordedCircuit]);
-  const resolveRecordedPortSignal = useCallback((nodeId: string, port: string): string | null => {
-    const keys = new Set(surfaceLastRun?.waveform.flatMap((sample) => Object.keys(sample.signals)) ?? []);
-    const canonicalPort = (id: string, name: string) => {
-      const geometry = recordedGeometry.get(id)?.geometry;
-      return geometry ? findPin(geometry, name)?.id ?? name : name;
-    };
-    const lookup = (id: string, name: string) => {
-      for (const endpoint of [`${id}.${canonicalPort(id, name)}`, `${id}.${name}`]) {
-        const canonical = canonicalWaveformSignalByRawKey.get(normalizeFieldId(normalizeSignalKey(endpoint)));
-        if (canonical && keys.has(canonical)) return canonical;
-        if (keys.has(endpoint)) return endpoint;
-      }
-      return null;
-    };
-    const own = lookup(nodeId, port);
-    if (own) return own;
-    const incoming = recordedCircuit?.connections.map(connectionEndpoints).filter((connection) => connection.to.nodeId === nodeId && canonicalPort(nodeId, connection.to.port) === canonicalPort(nodeId, port)) ?? [];
-    if (incoming.length === 1) {
-      return lookup(incoming[0].from.nodeId, incoming[0].from.port);
-    }
-    return null;
-  }, [surfaceLastRun, recordedCircuit, recordedGeometry, canonicalWaveformSignalByRawKey]);
+  const resolveRecordedPortSignal = useMemo(() => createRecordedPortResolver(
+    recordedCircuit, surfaceLastRun?.waveform ?? [],
+    endpoint => canonicalWaveformSignalByRawKey.get(normalizeFieldId(normalizeSignalKey(endpoint))),
+  ), [recordedCircuit, surfaceLastRun, canonicalWaveformSignalByRawKey]);
 
   const explainerSignalMappings = useMemo<ExplainerSignalMapping[]>(() => {
     const mappings: ExplainerSignalMapping[] = (lastRun?.evidence?.ioRows ?? []).map((sig) => ({
       signalName: canonicalWaveformSignalByRawKey.get(normalizeFieldId(sig.id)) ?? sig.label ?? sig.id,
-      nodeId: sig.nodeId ?? sig.id, direction: sig.direction,
+      nodeId: sig.nodeId ?? sig.id, fieldId: sig.id, direction: sig.direction,
     }));
     for (const [id, entry] of recordedGeometry) {
       for (const pin of entry.geometry.pins.filter((pin) => pin.direction === 'out')) {
@@ -3515,10 +3433,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return mappings;
   }, [lastRun, recordedGeometry, resolveRecordedPortSignal, canonicalWaveformSignalByRawKey]);
 
+  const timingExtraFields = displaySignalTimeline
+    .filter(lane => !inputFields.concat(outputFields).some(field => field.label === lane.signal))
+    .map(lane => ({ id: 'recorded:' + lane.signal, label: lane.signal }));
+  const timingRecordedValues = Object.fromEntries((surfaceLastRun?.waveform ?? []).map(sample => {
+    const values: Record<string, string> = {};
+    for (const field of inputFields.concat(outputFields)) {
+      const row = lastRun?.evidence?.ioRows?.find(row => row.id === field.id);
+      const port = lastRun?.executionInput?.ioRows.find(entry => entry.id === field.id)?.port;
+      const key = row?.nodeId ? resolveRecordedPortSignal(row.nodeId, port || (row.direction === 'in' ? 'out' : 'in')) : null;
+      const value = key ? sample.signals[key] : sample.signals[field.label];
+      if (value !== undefined) values[field.id] = value;
+    }
+    for (const field of timingExtraFields) {
+      const value = sample.signals[field.label];
+      if (value !== undefined) values[field.id] = value;
+    }
+    return [sample.tick, values];
+  }));
+
   const signalExplanation = useMemo(() => {
     if (selectedSignal === null || selectedTick === null || !lastRun) return null;
     const signalRoles = Object.fromEntries(Object.entries(lastRun.report.signalRoles ?? {}).map(([name, role]) => [canonicalWaveformSignalByRawKey.get(normalizeFieldId(name)) ?? name, role]));
     return explainSignal({
+      recordedStimulus: lastRun.executionInput?.vectors,
       selectedSignal,
       tick: selectedTick,
       waveform: surfaceLastRun?.waveform ?? [],
@@ -3952,21 +3890,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, onVectorsChange, resequenceCaseTicks]
   );
 
-  const handleSetObserveMode = useCallback(() => {
-    runModeTouchedByStudentRef.current = true;
-    setNextRunUsesAssertions(false);
-  }, []);
-
-  const handleSetCompareMode = useCallback(() => {
-    // Selecting Compare records the student's intent even when the Design is
-    // structurally blocked — the toggle then shows Compare as blocked and the
-    // primary status explains why, rather than the intent silently reverting.
-    runModeTouchedByStudentRef.current = true;
-    setNextRunUsesAssertions(true);
-  }, []);
-
   const handleKeepOlderReference = useCallback(() => {
-    setNextRunUsesAssertions(true);
     handleRunWithPreflight(true);
   }, [handleRunWithPreflight]);
 
@@ -3981,7 +3905,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }));
     onVectorsChange?.(resetProjectVectors);
     onCustomVectorsChange?.(resetCustomVectors);
-    setNextRunUsesAssertions(false);
     setOracleApplied(false);
   }, [authoredVectors, customVectors, onCustomVectorsChange, onVectorsChange]);
   const canResetToStimulusOnly =
@@ -4365,8 +4288,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       onVectorsChange?.(result.projectVectors);
       onCustomVectorsChange?.(result.customVectors);
       if (result.capturedAnyExpected) {
-        setNextRunUsesAssertions(true);
-      }
+          }
       setOracleApplied(result.capturedAnyExpected);
       return true;
     },
@@ -4465,8 +4387,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (!changed) return false;
       onVectorsChange?.(nextProjectVectors);
       onCustomVectorsChange?.(nextCustomVectors);
-      setNextRunUsesAssertions(true);
-      setOracleApplied(false);
+        setOracleApplied(false);
       return true;
     },
     [authoredVectors, canApplyRunDerivedRepair, customVectors, onCustomVectorsChange, onVectorsChange, resolveExpectedSignalKey]
@@ -4778,16 +4699,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const showInlineFailureWorkbenchPanels = false;
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = verifySession.runLabel;
-  const compactCommandRunLabel =
-    totalExpectedCaseCount > 0
-      ? lastRun
-        ? nextRunIsCompare
-          ? 'Update Compare'
-          : 'Update Observe'
-        : nextRunIsCompare
-          ? 'Run Compare'
-          : 'Run Observe'
-      : verifySession.runLabel;
+  const compactCommandRunLabel = lastRun ? 'Rerun' : 'Run';
   const hasStructuralOutputRecovery =
     lastRun?.status === 'fail' &&
     failingRows.length === 0 &&
@@ -6076,1029 +5988,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     </section>
   ) : null;
 
-  return (
-    <IdeSurfaceLayout
-      mode="verify"
-      layoutIntent="workbench"
-      consoleHasBlocking={sessionSignalsAssertionFailure}
-      consoleHasEntries={false}
-      leftDockMode={verifyLayoutPolicy.leftDockMode}
-      rightDockMode={verifyLayoutPolicy.rightDockMode}
-      rightDockCanCollapse={false}
-      // Always present, never conditional: a panel that exists only while a project happens to
-      // have problems takes its own strip away with it, and leaves the status bar's problems count
-      // as a button that does nothing. An empty panel says there is nothing, which is an answer.
-      consoleMode="collapsed"
-      shellDensity="immersive"
-      surfaceFrame="edge-to-edge"
-      productSpine={{
-        statusLabel: isNoCircuitTaskFirst
-          ? 'No circuit'
-          : gradingBlockedByDesign
-            ? 'Design blocked'
-            : runProofIsStale
-              ? 'Simulation stale'
-              : simulationEvidenceSummary?.simulationLabel ?? 'Scenario ready',
-        statusTone: isNoCircuitTaskFirst || gradingBlockedByDesign || runProofIsStale ? 'warn' : simulationEvidenceSummary ? 'ok' : 'idle',
-        detail: isNoCircuitTaskFirst
-          ? 'Open Design, load a starter, or import a project before authoring test cases.'
-          : gradingBlockedByDesign
-            ? 'Repair the structural Design issue before relying on a simulation or optional checks.'
-            : simulationEvidenceSummary
-              ? `${displayedAssertionLabel}. ${lastRun?.waveform.length ?? 0} recorded waveform samples are available for replay.`
-              : 'Author stimulus, run the circuit, then inspect the waveform or add optional checks.',
-        primaryLabel: isNoCircuitTaskFirst || gradingBlockedByDesign
-          ? 'Open Design'
-          : 'Run simulation',
-        onPrimary: isNoCircuitTaskFirst || gradingBlockedByDesign
-          ? onGoToDesign
-          : runVerification,
-        primaryDisabled: !isNoCircuitTaskFirst && !gradingBlockedByDesign && runState === 'running',
-        recoveryLabel: hasSessionFailureEvidence ? 'Inspect Design' : onGoToDesign ? 'Open Design' : undefined,
-        onRecovery: hasSessionFailureEvidence ? handleGoToDesignFromVerify : onGoToDesign,
-        doneLabel: simulationEvidenceSummary
-          ? `${simulationEvidenceSummary.simulationLabel}. ${displayedAssertionLabel}.`
-          : 'The scenario is ready to simulate.',
-        blockedLabel: isNoCircuitTaskFirst
-          ? 'No circuit boundary is available to verify.'
-          : gradingBlockedByDesign
-            ? 'Structural Design authority is invalid; checked PASS/FAIL evidence is revoked.'
-          : sessionSignalsAssertionFailure
-            ? `${failingRows.length} failing output check${failingRows.length === 1 ? '' : 's'} need repair.`
-            : sessionStatus === 'stale'
-              ? 'Evidence is stale after project or testbench changes.'
-                : totalVectorCount === 0
-                  ? 'No stimulus cases authored yet.'
-                : totalAssertedCheckCount === 0
-                  ? 'No checks configured. Simulation and replay remain available.'
-                  : 'No blocking simulation issue selected.',
-      }}
-      dock={
-        <div className="rb-sim-dock" data-testid="ide-sim-scenario-explorer">
-        {scenarios && scenarios.length > 0 ? (
-          <TestbenchDocumentTabs
-            scenarios={scenarios}
-            activeScenarioId={activeScenarioId ?? null}
-            onSwitch={(id) => onSwitchScenario?.(id)}
-            onCreate={() => onCreateScenario?.()}
-            onDuplicate={() => onDuplicateScenario?.()}
-            onRename={(name) => onRenameScenario?.(name)}
-            onDelete={(id) => onDeleteScenario?.(id)}
-          />
-        ) : (
-          <div className="ide-sim-scenario-empty">
-            <span>Scenarios</span>
-            <strong>No saved scenario yet</strong>
-            <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
-            <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
-              Create scenario
-            </IdeButton>
-          </div>
-        )}
-        <section
-          className="wb-toolwindow rb-sig"
-          data-testid="ide-verify-left-dock"
-          data-collapsed="false"
-        >
-          <header
-            className="wb-toolwindow-header rb-sig-header"
-            data-testid="ide-verify-signal-rail-header"
-          >
-            <div className="rb-sig-toprow">
-              <div className="rb-sig-title">
-                <h3>Signals</h3>
-                <span className="wb-toolwindow-count rb-sig-count" data-testid="ide-verify-signal-filter-state">
-                  {showMismatchOnlySignals
-                    ? `${visibleSignalCount} flagged`
-                    : showAllSignals
-                      ? `${signalTimeline.length} visible`
-                      : `${visibleSignalCount} relevant`}
-                </span>
-              </div>
-              <div className="rb-sig-actions">
-                {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
-                  <button
-                    type="button"
-                    className="wb-btn wb-btn--ghost rb-sig-action"
-                    onClick={() => {
-                      setShowMismatchOnlySignals(false);
-                      setShowAllSignals((previous) => !previous);
-                    }}
-                    data-testid="ide-verify-show-all-signals"
-                  >
-                    {showAllSignals ? 'Relevant' : 'All'}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <input
-              className="rb-sig-filter"
-              type="search"
-              value={signalFilter}
-              onChange={(event) => setSignalFilter(event.target.value)}
-              placeholder="Filter signals"
-              aria-label="Filter signals"
-              data-testid="ide-verify-signal-filter"
-            />
-            <p className="rb-sig-focus" data-testid="ide-verify-signal-rail-summary">
-              {selectedSignal ? (
-                <>
-                  <code>{selectedSignal}</code> active
-                </>
-              ) : hasSessionFailureEvidence ? (
-                'Showing failing lanes first.'
-              ) : (
-                'Legend and lane filter.'
-              )}
-            </p>
-          </header>
-          <div className="wb-toolwindow-body rb-sig-list" data-testid="ide-verify-signal-list">
-            {displaySignalTimeline.length === 0 ? (
-              lastRun ? (
-                <p className="ide-copy">No signal data in the last run — check circuit mapping.</p>
-              ) : null
-            ) : (
-              (['Inputs', 'Outputs', 'Internal'] as const).map((group) => (
-                <section key={group} className="rb-sig-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
-                  <header className="rb-sig-group-header">
-                    <strong className="rb-sig-group-label">{group}</strong>
-                    <span className="ide-copy">{groupedVisibleSignals[group].length}</span>
-                  </header>
-                  <div className="rb-sig-group-body">
-                      {groupedVisibleSignals[group].length === 0 ? (
-                        <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
-                      ) : (
-                        groupedVisibleSignals[group]
-                          .filter((signalRow) => !signalFilter.trim() || signalRow.signal.toLowerCase().includes(signalFilter.trim().toLowerCase()))
-                          .map((signalRow) => (
-                          <div
-                            key={signalRow.signal}
-                            className="rb-sig-entry"
-                            onMouseEnter={() => handleSignalHover(signalRow.signal)}
-                            onMouseLeave={() => handleSignalHover(null)}
-                          >
-                            <button
-                              className={`rb-sig-row${selectedSignal === signalRow.signal ? ' is-active' : ''}`}
-                              type="button"
-                              aria-pressed={selectedSignal === signalRow.signal}
-                              onClick={() => handleSignalSelect(signalRow.signal)}
-                              onKeyDown={(event) => {
-                                if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
-                                  event.preventDefault();
-                                  moveLane(signalRow.signal, event.key === 'ArrowUp' ? -1 : 1);
-                                }
-                              }}
-                              title="Select this lane · Alt+Up/Down moves it"
-                              data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
-                            >
-                              {signalRow.signal}
-                            </button>
-                            <span className="rb-sig-move" role="group" aria-label={`Move ${signalRow.signal}`}>
-                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, -1)} aria-label={`Move ${signalRow.signal} up`} data-testid={`ide-verify-signal-up-${toTestId(signalRow.signal)}`}>▲</button>
-                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, 1)} aria-label={`Move ${signalRow.signal} down`} data-testid={`ide-verify-signal-down-${toTestId(signalRow.signal)}`}>▼</button>
-                            </span>
-                            {hasSessionFailureEvidence &&
-                            failingRows.some((row) => row.signal === signalRow.signal) ? (
-                              <span className="rb-sig-badge">Mismatch</span>
-                            ) : null}
-                          </div>
-                        ))
-                      )}
-                  </div>
-                </section>
-              ))
-            )}
-          </div>
-        </section>
-        </div>
-      }
-      inspector={null}
-      console={<ProblemsPanel origin="bottom-panel" />}
-    >
-      <div
-        className="ide-verify-run-announcer"
-        data-testid="ide-verify-run-announcer"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {runAnnouncement}
-      </div>
-      <IdePanel
-        className="rb-sim-panel"
-        testId="ide-verify-panel"
-      >
-        <VerifyHeaderRegion>
-        {verifyMode !== 'blocked' ? (
-          <VerifyContextHeader
-            projectName={projectName?.trim() ? projectName.trim() : 'Untitled project'}
-            stateLabel={
-              gradingBlockedByDesign
-                ? 'Design blocked'
-                : runState === 'running'
-                ? 'Running'
-                : verifyMode === 'blocked'
-                  ? 'Blocked'
-                  : isNoCircuitTaskFirst
-                    ? 'No circuit'
-                    : runProofIsStale
-                      ? 'Simulation stale'
-                      : simulationEvidenceSummary
-                        ? `${simulationEvidenceSummary.simulationLabel} · ${displayedAssertionLabel}`
-                        : 'Scenario ready'
-            }
-            stateTone={
-              gradingBlockedByDesign
-                ? 'attention'
-                : runState === 'running'
-                ? 'running'
-                : runProofIsStale
-                  ? 'stale'
-                  : sessionSignalsAssertionFailure
-                    ? 'fail'
-                  : isNoCircuitTaskFirst
-                    ? 'attention'
-                  : simulationEvidenceSummary
-                    ? 'pass'
-                    : isDraftSession && totalVectorCount === 0
-                      ? 'attention'
-                      : 'idle'
-            }
-            scenarioName={
-              activeScenario?.name?.trim()
-                ? activeScenario.name.trim()
-                : lastRun?.scenarioName ?? null
-            }
-          />
-        ) : null}
-        <div className="rb-sim-command-stack">
-        {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
-        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
-        <VerifyCommandBar
-          isCompareMode={nextRunUsesAssertions}
-          onSetObserve={handleSetObserveMode}
-          onSetCompare={handleSetCompareMode}
-          compareAvailable={compareAvailable}
-          compareUnavailableReason={
-            gradingBlockedByDesign
-              ? 'Repair the structural Design issue before running Compare.'
-              : totalExpectedCaseCount === 0
-                ? starterExpectationsWereDiscarded
-                  ? 'The starter\u2019s expected outputs were cleared when you changed the circuit.'
-                  : 'Author at least one expected output to compare against.'
-                : undefined
-          }
-          onRun={runVerification}
-          runLabel={
-            nextRunUsesAssertions && !compareAvailable
-              ? 'Compare blocked'
-              : runProofIsStale
-                ? 'Rerun simulation'
-                : compactCommandRunLabel
-          }
-          runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
-          runPulsing={readyDraftCanRun}
-          needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
-          onAuthorExpectedOutputs={handleEditExpectedOutputs}
-          workspaceMode={studioMode}
-          liveIoActive={studioMode === 'bench'}
-          onToggleLiveIo={toggleLiveIo}
-          configuredCheckCount={totalAssertedCheckCount}
-          hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
-        />
-        )}
-        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && starterExpectationsWereDiscarded ? (
-          <IdeCallout
-            tone="info"
-            title="This project is now yours, and so are its checks"
-            testId="ide-verify-starter-detached-notice"
-          >
-            Changing the circuit detached it from its starter, so the starter&rsquo;s expected
-            outputs no longer describe what it does and were cleared. Anything you had authored
-            yourself is still here. Fill in the expected cells you want graded, or run Observe and
-            author them from what the circuit actually does.
-          </IdeCallout>
-        ) : null}
-        {primaryStatus && !compactPrimaryStatusAction && !(
-          forceRunStale || isRunStale || (isTestbenchStale && !hasStaleAuthoredReference)
-        ) ? (
-          <div
-            className={`ide-verify-session-guidance${forceRunStale ? ' ide-verify-session-guidance--reload' : ''}`}
-            data-testid="ide-verify-session-guidance"
-          >
-            <VerifyPrimaryStatusArea
-              {...primaryStatus}
-              density="embedded"
-              footnote={
-                hasStaleAuthoredReference
-                  ? 'The next run stays in Observe until you choose Compare.'
-                  : undefined
-              }
-              footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
-            />
-          </div>
-        ) : null}
-        </div>
-        </VerifyHeaderRegion>
-
-
-        {guidedLabTask ? (
-          <section className="ide-guided-lab-card" data-testid="ide-verify-guided-full-adder-truth-table">
-            <div>
-              <p className="ide-surface-block-label">Active lab</p>
-              <h3>{guidedLabTask.shortTitle} truth table</h3>
-              <p>
-                Create the eight A/B/Cin cases with saved Sum and Cout expectations. This replaces only
-                the authored Verify case list after confirmation.
-              </p>
-              <div className="ide-guided-lab-checklist">
-                <span className={`ide-guided-lab-check ${guidedLabDesignChecklist?.readyForVerify ? 'is-complete' : 'is-missing'}`}>
-                  <strong>{guidedLabDesignChecklist?.readyForVerify ? 'OK' : 'TODO'}</strong>
-                  Design checklist
-                </span>
-                <span className={`ide-guided-lab-check ${totalVectorCount >= 8 ? 'is-complete' : 'is-missing'}`}>
-                  <strong>{totalVectorCount >= 8 ? 'OK' : 'TODO'}</strong>
-                  {totalVectorCount} Verify case{totalVectorCount === 1 ? '' : 's'}
-                </span>
-              </div>
-            </div>
-            <div className="ide-guided-lab-actions">
-              {onGoToDesign ? (
-                <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-guided-full-adder-open-design">
-                  Open Design
-                </IdeButton>
-              ) : null}
-              <IdeButton
-                tone="primary"
-                onClick={onCreateGuidedLabTruthTable}
-                disabled={!guidedLabDesignChecklist?.readyForVerify || !onCreateGuidedLabTruthTable}
-                testId="ide-verify-create-full-adder-truth-table"
-              >
-                Create Full Adder truth table
-              </IdeButton>
-            </div>
-          </section>
-        ) : null}
-
-        <VerifyResultRegion>
-        {/* ── Result / failure context panels ────────────────────────────── */}
-        {drawerOpen && hasSessionFailureEvidence && failureDiagnosis.length > 0 && (
-          <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
-            <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">What to fix first</span>
-            {failureDiagnosis.map((item) => (
-              <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
-                <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
-                <span className="ide-verify-fail-diagnosis-action">{item.action}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {drawerOpen
-          && hasSessionFailureEvidence
-          && (verifyHint || isStarterScenario || (mappingComplete !== false && onGoToExport)) && (
-          <details className="ide-verify-failure-context" data-testid="ide-verify-failure-context">
-            <summary className="ide-verify-failure-context__summary">
-              More about this failure
-            </summary>
-            <div className="ide-verify-failure-context__body">
-              {verifyHint ? (
-                <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
-                  {verifyHint}
-                </IdeCallout>
-              ) : null}
-
-              {isStarterScenario ? (
-                <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
-                  <span>
-                    <strong>Ran with starter vectors.</strong>{' '}
-                    {isSequentialRun
-                      ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
-                      : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
-                  </span>
-                </IdeCallout>
-              ) : null}
-
-              {mappingComplete !== false && onGoToExport ? (
-                <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
-                  <span className="ide-verify-export-available-label">
-                    Your exported HDL is still available.{' '}
-                    {isStarterScenario
-                      ? 'Export remains advisory until you author a real comparison scenario.'
-                      : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
-                  </span>
-                  <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
-                    Go to Export →
-                  </IdeButton>
-                </div>
-              ) : null}
-            </div>
-          </details>
-        )}
-
-        {sessionSignalsAssertionFailure && oracleApplied && (
-          <IdeCallout tone="info" testId="ide-verify-oracle-applied-note">
-            Expected values updated — re-run to confirm.
-          </IdeCallout>
-        )}
-
-        {previewingVectorId && (
-          <div className="ide-verify-preview-banner" data-testid="ide-verify-preview-banner">
-            <span>Previewing vector —</span>
-            <a
-              className="ide-verify-preview-link"
-              onClick={() => { onGoToDesign?.(); }}
-            >
-              Switch to Design view
-            </a>
-            <span>to see gate states</span>
-            <button
-              className="ide-verify-preview-clear"
-              onClick={() => setPreviewingVectorId(null)}
-              title="Clear preview"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        </VerifyResultRegion>
-
-        <VerifyWorkspaceRegion
-          data-hierarchy-surface="verify"
-          data-hierarchy-role="context"
-        >
-        {isNoCircuitTaskFirst && (
-          <section
-            className="ide-verify-no-circuit-task"
-            data-testid="ide-verify-no-circuit-task"
-            aria-label="Verify needs a circuit before it can run"
-          >
-            <div className="ide-verify-no-circuit-copy">
-              <span className="ide-surface-block-label">Verify starts after Design has a circuit</span>
-              <h2 className="ide-verify-no-circuit-title">Nothing to verify yet</h2>
-              <p className="ide-verify-no-circuit-summary">
-                Build a circuit in Design, load a course starter from Project, or recover/import HDL before running observed or saved checks.
-              </p>
-            </div>
-            <div className="ide-verify-no-circuit-actions">
-              {onGoToDesign && (
-                <IdeButton
-                  tone="primary"
-                  onClick={onGoToDesign}
-                  testId="ide-verify-no-circuit-open-design"
-                >
-                  Open Design
-                </IdeButton>
-              )}
-              <IdeButton
-                tone="secondary"
-                onClick={onOpenProjectVectors}
-                testId="ide-verify-no-circuit-load-starter"
-              >
-                Load starter
-              </IdeButton>
-              {onGoToImport && (
-                <IdeButton
-                  tone="secondary"
-                  onClick={onGoToImport}
-                  testId="ide-verify-no-circuit-import-recover"
-                >
-                  Import / Recover
-                </IdeButton>
-              )}
-            </div>
-            <ol className="ide-verify-no-circuit-steps">
-              <li>Add inputs, outputs, and logic in Design.</li>
-              <li>Return to Verify to observe outputs or compare saved checks.</li>
-              <li>Continue through the RedByte workflow after the circuit behavior is known.</li>
-            </ol>
-          </section>
-        )}
-        <div
-          className="rb-sim-lab-frame"
-          data-testid="ide-verify-lab-frame"
-          data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
-          data-investigation-open={inspectCircuit && lastRun ? 'true' : undefined}
-        >
-        {inspectCircuit && lastRun ? representationSwitch : null}
-        <div
-          ref={labGridRef}
-          className="rb-sim-lab-grid"
-          data-testid="ide-verify-lab-grid"
-          data-stimulus-layout="stable"
-          data-verify-workflow-phase={verifyWorkflowPhase}
-          data-workspace-mode={verifyWorkspaceMode}
-          data-studio-mode={studioMode}
-          data-representation={representation}
-          data-investigation={inspectCircuit && lastRun ? investigationFocus : undefined}
-        >
-        {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
-        {studioMode !== 'replay' ? (
-        <VerifyStimulusRegion
-          className="rb-sim-primary"
-          data-panel-state="stable"
-          data-work-priority="primary"
-        >
-
-        {/* ── BLOCKED mode entry surface ─────────────────────────────────── */}
-        {verifyMode === 'blocked' && (
-          <div className="ide-verify-entry-blocked" data-testid="ide-verify-entry-blocked">
-            <h4 className="ide-verify-entry-blocked-title">Cannot verify this circuit</h4>
-            <p className="ide-verify-entry-blocked-reason">
-              This circuit contains components that cannot be simulated yet.
-              Remove the unsupported component to run verification.
-            </p>
-            {onGoToDesign && (
-              <IdeButton
-                tone="primary"
-                onClick={onGoToDesign}
-                testId="ide-verify-blocked-fix-path"
-              >
-                Fix in Design
-              </IdeButton>
-            )}
-          </div>
-        )}
-
-        {/* ── First-run hero panel — only when no vectors yet; once canvas is populated, step aside ── */}
-        
-
-        {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
-
-        {/* Zone label, IO summary, prerun lanes retired — canvas is self-explanatory */}
-
-        {/* Schema-change banner — neutral info when circuit interface changes */}
-        {showSchemaChangeBanner && (
-          <div className="ide-verify-schema-change-banner" data-testid="ide-verify-schema-change-banner" role="status">
-            <span className="ide-verify-schema-change-msg">
-              Circuit interface updated — inputs or outputs changed.
-              {someVectorsOrphaned
-                ? ' Some vectors reference old signals and will be skipped.'
-                : ' Review your vectors to confirm they match the new design.'}
-            </span>
-            <IdeButton
-              tone="primary"
-              onClick={() => { setShowSchemaChangeBanner(false); handleGenerateBasicVectors(); }}
-            >
-              Regenerate vectors
-            </IdeButton>
-            <button
-              type="button"
-              className="ide-verify-schema-dismiss-btn"
-              onClick={() => setShowSchemaChangeBanner(false)}
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Scenario library strip — rendered whenever scenario library props are provided */}
-        {(activeScheduleContract?.timingMode === 'manual_event_driven_lab' ||
-          effectiveClockPolicy?.overrideMode === 'manual-pulses' ||
-          effectiveClockPolicy?.overrideMode === 'custom-pattern') && (
-          <VerifyLabSequencerPanel
-            modeLabel={sequencerModeLabel}
-            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-            stepCount={labSequencerSteps.length}
-            selectedTick={selectedTick}
-            steps={labSequencerSteps}
-            editableSteps={editableScenarioSteps}
-            stateObservationLabel={stateObservationLabel}
-            stateDetails={selectedStateObservationDetails}
-            onSelectStepTick={(tick) => {
-              setSelectedTick(tick);
-              setIsStepMode(true);
-            }}
-            onQuickAddStep={(kind) => {
-              if (!onAppendScenarioStep) return;
-              const defaultInput = inputFields[0]?.id;
-              const defaultOutput = outputFields[0]?.id;
-              if (kind === 'set_bus') {
-                onAppendScenarioStep({
-                  kind,
-                  targetRef: defaultInput,
-                  value: defaultInput ? { [defaultInput]: 1 } : undefined,
-                  label: 'Quick set bus/slice',
-                });
-                return;
-              }
-              if (kind === 'pulse_step') {
-                const pulseTarget =
-                  Object.entries(signalRoleLookup).find(([, role]) => role === 'clock')?.[0] ?? defaultInput;
-                onAppendScenarioStep({
-                  kind,
-                  targetRef: pulseTarget,
-                  value: 1,
-                  label: 'Quick pulse step',
-                });
-                return;
-              }
-              if (kind === 'apply_reset') {
-                const resetTarget =
-                  Object.entries(signalRoleLookup).find(([, role]) => role === 'reset')?.[0] ?? defaultInput;
-                onAppendScenarioStep({
-                  kind,
-                  targetRef: resetTarget,
-                  value: 1,
-                  label: 'Quick apply reset',
-                });
-                return;
-              }
-              onAppendScenarioStep({
-                kind,
-                targetRef: defaultOutput,
-                expectedValue: 1,
-                label: 'Quick assert output/state',
-              });
-            }}
-            onUpdateStep={(stepId, patch) => {
-              onUpdateScenarioStep?.(stepId, patch);
-            }}
-            onMoveStep={(stepId, direction) => {
-              onMoveScenarioStep?.(stepId, direction);
-            }}
-            onDeleteStep={(stepId) => {
-              onDeleteScenarioStep?.(stepId);
-            }}
-          />
-        )}
-
-        {unsupportedFeedbackDiagnostic && (
-          <div
-            className="ide-verify-unsupported-feedback-banner"
-            data-testid="ide-verify-unsupported-feedback-banner"
-          >
-            <IdeCallout
-              tone="error"
-              title={unsupportedFeedbackDiagnostic.title}
-              testId="ide-verify-unsupported-feedback"
-            >
-              <p className="ide-copy" style={{ margin: 0 }}>
-                {unsupportedFeedbackDiagnostic.message}
-              </p>
-              <p className="ide-copy" style={{ margin: '8px 0 0 0' }}>
-                This is not one of RedByte&apos;s supported stateful topologies. You can still trace
-                the current wiring, but compare and export will stay blocked until you replace it
-                with a supported latch or flip-flop primitive, or the exact 4-NAND D-latch
-                topology.
-              </p>
-              {onGoToDesign && (
-                <div className="ide-inline-actions" style={{ marginTop: 8 }}>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={onGoToDesign}
-                    testId="ide-verify-unsupported-feedback-design"
-                  >
-                    Open Design
-                  </IdeButton>
-                </div>
-              )}
-            </IdeCallout>
-          </div>
-        )}
-
-        {inspectCircuit || studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
-        {studioMode === 'bench' ? (
-          <ManualBench
-            onOpenVirtualBoard={onGoToHardware}
-            onOpenAnalyzer={lastRun ? showRecordedView : undefined}
-            onAddToSequence={onAppendScenarioStep}
-          />
-        ) : studioMode === 'testbench' ? (
-          <ScenarioTestbenchPreview
-            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-            source={generatedTestbenchSource}
-          />
-        ) : representation === 'timeline' ? (
-          <TimingLab
-            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-            vectors={authoredVectors}
-            inputFields={stimulusPanelInputFields}
-            outputFields={outputFields}
-            selectedTick={selectedTick}
-            lens="scenario"
-            onSelectTick={handleStimulusSelectedTickChange}
-            onVectorsChange={onVectorsChange}
-            caseEvidenceByTick={testbenchCaseEvidenceByTick}
-            observedValuesByTick={testbenchObservedValuesByTick}
-            clockFieldIds={clockSignalNames}
-            runCycles={clockOverrideMode === 'auto' ? clockRunCycles : null}
-            onRunCyclesChange={handleClockRunCyclesChange}
-            generatedFieldIds={timingGeneratedFieldIds}
-            generatedValueAt={timingGeneratedValueAt}
-            generatedNote={timingGeneratedNote}
-          />
-        ) : (
-          <CaseLab
-            runHistory={getRuntimeVerifyRunKind(lastRun) === 'trace' ? [] : runHistory?.filter((run) => run.runKind !== 'trace')}
-            caseOrder={isSequentialRun ? 'time' : 'combination'}
-            inputFields={stimulusPanelInputFields}
-            outputFields={outputFields}
-            vectors={authoredVectors}
-            observedByTick={caseLabData.observed}
-            caseEvidenceByTick={caseLabData.verdict}
-            selectedTick={selectedTick}
-            onSelectCase={handleStimulusSelectedTickChange}
-            onSetExpected={handleCaseSetExpected}
-            onSetExpectedMany={handleCaseSetExpectedMany}
-            focusFieldId={caseLabFocusFieldId}
-            onFocusField={handleCaseLabFocusField}
-            onGenerateExhaustive={handleAutoGenerateVectors}
-            onAddCase={onVectorsChange ? handleCaseAdd : undefined}
-            onDuplicateCase={onVectorsChange ? handleCaseDuplicate : undefined}
-            onDeleteCase={onVectorsChange ? handleCaseDelete : undefined}
-            onRun={runVerification}
-            runLabel={compactCommandRunLabel}
-            runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
-            vectorsAreAutoGenerated={vectorsAreAutoGenerated}
-            autoVectorNoticeDismissed={autoVectorBannerDismissed}
-            onDismissAutoVectorNotice={handleDismissAutoVectorBanner}
-            isUsingFallbackSignals={
-              !(mappedSignals?.some((s) => s.direction === 'in')) &&
-              !(mappedInputs && mappedInputs.length > 0)
-            }
-            onGoToHardware={onGoToHardware}
-          />
-        )}
-        {studioMode !== 'bench' && representation === 'timeline' ? (
-        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-generators-disclosure">
-          <summary title="Sweep, hold and pulse generators, and the full event editor">Generators and full event editor</summary>
-          <ScenarioBuilderPanel
-          isFirstRun={isFirstRunState}
-          isSequential={isSequentialRun}
-          authoringModeSummary={scenarioBuilderModeSummary}
-          authoringModeHint={scenarioBuilderModeHint}
-          inputFields={stimulusPanelInputFields}
-          outputFields={outputFields}
-          authoredVectors={authoredVectors}
-          totalVectorCount={totalVectorCount}
-          hasAssertedExpectedCells={totalExpectedCaseCount > 0}
-          selectedTick={selectedTick}
-          onSelectedTickChange={handleStimulusSelectedTickChange}
-          onVectorsChange={onVectorsChange}
-          draftTick={draftTick}
-          draftInputs={draftInputs}
-          draftExpected={draftExpected}
-          onDraftTickChange={setDraftTick}
-          onDraftInputChange={handleDraftInputChange}
-          onDraftExpectedChange={handleDraftExpectedChange}
-          onAddVector={handleAddVector}
-          onGenerateBasics={handleGenerateBasicVectors}
-          onOpenProjectVectors={onOpenProjectVectors}
-          onAutoGenerate={handleAutoGenerateVectors}
-          sweepPreset={sweepPreset}
-          sweepSeed={sweepSeed}
-          sweepHoldTicks={sweepHoldTicks}
-          onSweepPresetChange={setSweepPreset}
-          onSweepSeedChange={setSweepSeed}
-          onSweepHoldTicksChange={setSweepHoldTicks}
-          onGenerateSweep={handleGenerateSweepVectors}
-          holdN={holdN}
-          onHoldNChange={setHoldN}
-          onHoldN={handleHoldN}
-          pulseSignal={pulseSignal}
-          onPulseSignalChange={setPulseSignal}
-          onPulse={handlePulse}
-          vectorsAreAutoGenerated={vectorsAreAutoGenerated}
-          autoVectorBannerDismissed={autoVectorBannerDismissed}
-          onDismissAutoVectorBanner={handleDismissAutoVectorBanner}
-          isUsingFallbackSignals={
-            !(mappedSignals?.some((s) => s.direction === 'in')) &&
-            !(mappedInputs && mappedInputs.length > 0)
-          }
-          onGoToHardware={onGoToHardware}
-          detailsRef={scenarioBuilderDetailsRef}
-          clockLane={clockLaneConfig}
-          stimulusAssist={stimulusAssist}
-          observedValuesByTick={testbenchObservedValuesByTick}
-          caseEvidenceByTick={testbenchCaseEvidenceByTick}
-          showExpectedLanes={totalAssertedCheckCount > 0}
-          />
-        </details>
-        ) : null}
-        </VerifyStimulusRegion>
-        ) : null}
-
-        {/* The splitter, the collapse and the two maximize buttons went out with the deck they
-            divided. A workspace with one primary working area has nothing to split: the
-            representation switch chooses what fills it, and the run line under it is as tall as
-            the sentence it has to say. */}
-
-        <VerifyWaveformRegion>
-          {isDraftSession && studioMode === 'replay' ? (
-            <VerifyWaveformPlaceholder
-              inputNames={stimulusPanelInputFields.map((f) => f.label ?? f.id)}
-              outputNames={outputFields.map((f) => f.label ?? f.id)}
-              clockName={effectiveClockPolicy?.signalLabel ?? clockSignalNames[0]}
-              isSequential={isSequentialRun}
-              hasVectors={totalVectorCount > 0}
-              runLabel={emptyStateRunLabel}
-              onRun={undefined}
-              runDisabled={runState === 'running'}
-              onSeed={undefined}
-            />
-          ) : <div
-            className="ide-verify-workbench ide-verify-workbench-v2"
-            data-testid="ide-verify-workbench"
-            data-zone="results"
-            data-trace-ticks={waveformTicks.length}
-            data-trace-signals={signalTimeline.length}
-            data-layout-mode={layoutMode}
-            data-failure-layout={showInlineFailureWorkbenchPanels ? '1' : '0'}
-          >
-            <VerifyThreePanel
-              testId="ide-verify-three-panel"
-              leftPanel={showInlineFailureWorkbenchPanels ? (
-                <VerifyVectorListPanel
-                  rows={studentFailureRows.map((row) => ({
-                    key: row.key,
-                    tick: row.tick,
-                    signal: row.rawSignal,
-                    signalLabel: row.signalLabel,
-                    expected: row.expected,
-                    actual: row.actual,
-                    vectorId: row.vectorId,
-                    caseIndex: row.caseIndex,
-                  }))}
-                  selectedKey={selectedFailureKey}
-                  onSelectFailureKey={handleThreePanelFailureSelect}
-                  onSelectNextFailure={goToNextFail}
-                  onSelectPreviousFailure={goToPrevFail}
-                />
-              ) : null}
-              centerPanel={(
-            <div className="rb-wave-frame">
-            <div className="rb-wave-deck">
-            {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
-            {lastRun ? (
-              <VerifyResultsSummary
-                kind={
-                  runProofIsStale
-                    ? 'stale'
-                    : sessionShowsAssertionMatch
-                      ? 'pass'
-                      : sessionSignalsAssertionFailure
-                        ? 'fail'
-                        : 'observe-done'
-                }
-                headline={
-                  runProofIsStale
-                    ? 'Simulation evidence is stale'
-                    : sessionShowsAssertionMatch
-                      ? lastRun.qualification === 'incomplete-mapping'
-                        ? 'Compare passed — outputs match (some pins unmapped)'
-                        : 'Compare passed — outputs match expectations'
-                      : sessionSignalsAssertionFailure
-                        ? 'Compare failed — outputs differ from expectations'
-                        : simulationEvidenceSummary?.simulationLabel ?? 'Simulation complete'
-                }
-                subline={
-                  runProofIsStale
-                    ? 'The circuit, scenario, or checks changed. Run the current scenario before using this trace.'
-                    : sessionShowsAssertionMatch || sessionSignalsAssertionFailure
-                      ? `Scenario: ${lastRun.scenarioName}`
-                      : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
-                }
-                guidanceItems={
-                  !runProofIsStale && sessionSignalsAssertionFailure
-                    ? ['The waveform is still valid simulation evidence. Open Checks or inspect the first mismatch without losing the replay.']
-                    : undefined
-                }
-                metrics={(() => {
-                  const list: VerifyResultsMetric[] = [];
-                  list.push({
-                    id: 'cases',
-                    label: 'Run cases',
-                    // A run restored from an older saved project may carry a report without
-                    // its vector list. Crashing the whole results header over a missing count
-                    // is worse than showing the count it can prove.
-                    value: String(lastRun.report?.vectors?.length ?? 0),
-                    tone: 'neutral',
-                  });
-                  if (!runProofIsStale && sessionShowsCompareEvidence) {
-                    list.push({
-                      id: 'passed',
-                      label: 'Checks passed',
-                      value: String(passingRows.length),
-                      tone: 'ok',
-                    });
-                    list.push({
-                      id: 'failed',
-                      label: 'Checks failed',
-                      value: String(failingRows.length),
-                      tone: failingRows.length > 0 ? 'blocked' : 'neutral',
-                    });
-                  }
-                  list.push({
-                    id: 'ticks',
-                    label: 'Run ticks',
-                    value: String(runTickCount),
-                    tone: 'quiet',
-                  });
-                  list.push({
-                    id: 'wave-samples',
-                    label: 'Wave samples',
-                    value: String(lastRun.waveform.length),
-                    tone: 'quiet',
-                  });
-                  // "Coverage 100%" said nothing a reader could check. The measure is authored
-                  // input combinations against the 2^N possible for this circuit's inputs, so it
-                  // says that instead — and only where the denominator exists (it is capped at
-                  // six inputs). It is a detail about the scenario, never the headline.
-                  if (!runProofIsStale && inputCoverage) {
-                    list.push({
-                      id: 'coverage',
-                      label: 'Input combinations',
-                      value: `${inputCoverage.seen} of ${inputCoverage.total}`,
-                      tone: 'neutral',
-                    });
-                  }
-                  return list;
-                })()}
-                primaryActionLabel={lastRun ? 'Inspect with circuit' : undefined}
-                onPrimaryAction={lastRun ? openCircuitInvestigation : undefined}
-                primaryActionTestId="ide-verify-open-circuit-replay"
-                details={(
-                  <div className="rb-wave-results-provenance" data-testid="ide-verify-run-provenance">
-                    <p>
-                      {activeSimProvider === 'imported-vcd' && importedWaveform
-                        ? 'Replayed from an imported external trace. RedByte did not execute it.'
-                        : 'Executed by the browser logic engine in this session.'}
-                    </p>
-                  </div>
-                )}
-              />
-            ) : null}
-            {structuralRecoveryPanel || repairPanel ? (
-              <section className="ide-verify-advanced-failure" data-testid="ide-verify-advanced-failure" aria-label="Failure repair">
-                {structuralRecoveryPanel}
-                {repairPanel}
-              </section>
-            ) : null}
-            <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
-              {studioMode === 'replay' && !inspectCircuit ? representationSwitch : null}
-              {/* The trace toolbar: case stepping, tick range, radix, the expected overlay, the
-                  scrubber and playback. Every one of them describes a drawn trace, so they belong
-                  to the representation that draws one. */}
-              {studioMode === 'replay' ? (
-              <div className="rb-wave-cmd" data-testid="ide-verify-waveform-cmd" role="toolbar" aria-label="Waveform trace tools">
-              <div className="rb-wave-bar" data-testid="ide-verify-waveform-bar">
-                <div className="rb-wave-primary" data-testid="ide-verify-waveform-primary">
-                {canStepThroughCases ? (
-                  <div className="rb-wave-group" data-testid="ide-verify-step-controls">
-                    <IdeButton
-                      tone={isStepMode ? 'secondary' : 'ghost'}
-                      onClick={() => setIsStepMode((previous) => !previous)}
-                      testId="ide-verify-step-mode-toggle"
-                      title={
-                        activeScheduleContract?.timingMode === 'manual_event_driven_lab'
-                          ? 'Lab-style timing: walk one test case at a time and inspect the signal snapshot below the waveform.'
-                          : 'Walk one test case at a time (same tick navigation as the scrubber).'
-                      }
-                    >
-                      {isStepMode ? 'Step cases on' : 'Step cases'}
-                    </IdeButton>
-                    {isStepMode ? (
-                      <div className="rb-wave-step-bar" data-testid="ide-verify-step-bar">
-                        <IdeButton tone="secondary" onClick={goToPrevStep} disabled={totalSteps <= 1} testId="ide-verify-step-prev">
-                          ← Prev
-                        </IdeButton>
-                        <span className="rb-wave-step-position" data-testid="ide-verify-step-position">
-                          {selectedCasePositionLabel}
-                        </span>
-                        <IdeButton tone="secondary" onClick={goToNextStep} disabled={totalSteps <= 1} testId="ide-verify-step-next">
-                          Next →
-                        </IdeButton>
-                        {onDebugTickSelected && selectedTick !== null ? (
-                          <IdeButton tone="ghost" onClick={handleDebugInDesign} testId="ide-verify-step-debug-design">
-                            Open in Design
-                          </IdeButton>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="rb-wave-transport" data-testid="ide-verify-waveform-transport">
-                {/* Center: Zoom + Row density */}
-                <div className="rb-wave-group">
-                  {(['all', 'fail', 'window'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={`rb-wave-zoom${tickZoom === mode ? ' is-active' : ''}`}
-                      onClick={() => {
-                        setTickZoom(mode);
-                        if (mode === 'window') setTickWindowCenter(selectedTick);
-                      }}
-                      data-testid={`ide-verify-zoom-${mode}`}
-                    >
-                      {mode === 'all' ? 'All ticks' : mode === 'fail' ? 'Fail window' : 'Selected'}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="rb-wave-group" role="group" aria-label="Bus radix" data-testid="ide-verify-radix">
+  const traceDisplayControls = (<div className="rb-wave-group" role="group" aria-label="Bus radix" data-testid="ide-verify-radix">
                   {(['bin', 'hex', 'dec'] as const).map((radix) => (
                     <button
                       key={radix}
@@ -7122,158 +6012,47 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   >
                     Expected
                   </button>
-                </div>
+                </div>);
 
-                {/* Right: Tick scrubber + advanced tools */}
-                <div className="rb-wave-group rb-wave-group--right">
-                  {allWaveformTicks.length > 0 && selectedTick !== null ? (
-                    <label className="rb-wave-scrubber" data-testid="ide-verify-tick-nav">
-                      <input
-                        type="range"
-                        min={0}
-                        max={Math.max(allWaveformTicks.length - 1, 0)}
-                        step={1}
-                        value={Math.max(stepIndex, 0)}
-                        onChange={(event) => {
-                          const nextIndex = Number(event.target.value);
-                          const nextTick = allWaveformTicks[nextIndex];
-                          if (typeof nextTick === 'number') {
-                            stopPlayback();
-                            setSelectedTick(nextTick);
-                          }
-                        }}
-                        data-testid="ide-verify-tick-scrubber"
-                      />
-                      <code data-testid="ide-verify-selected-tick" style={{ minWidth: 24 }}>
-                        {selectedCaseTickLabel ?? `t${selectedTick}`}
-                      </code>
-                    </label>
-                  ) : null}
-                  {/* Playback walks a recording. It is not Run, it does not execute anything, and
-                      it does not change a clock frequency — so it does not sit in the bar looking
-                      like the primary operation. Four controls came out of the reader's way here. */}
-                  {lastRun && allWaveformTicks.length > 1 ? (
-                    <details className="rb-wave-play-disclosure" data-testid="ide-verify-playback-disclosure">
-                    <summary title="Step through the recorded samples. Presentation only — nothing is executed.">Playback</summary>
-                    <div className="rb-wave-play" data-testid="ide-verify-playback" role="group" aria-label="Playback">
-                      <IdeButton
-                        tone={isPlaying ? 'secondary' : 'ghost'}
-                        onClick={togglePlayback}
-                        testId="ide-verify-play"
-                        title={isPlaying ? 'Stop playback' : 'Play the run tick by tick'}
-                        aria-pressed={isPlaying}
-                      >
-                        {isPlaying ? '■ Stop' : '▶ Play'}
-                      </IdeButton>
-                      <select
-                        className="rb-wave-play__speed"
-                        value={String(playSpeed)}
-                        onChange={(event) => setPlaySpeed(Number(event.target.value) as 0.5 | 1 | 2)}
-                        aria-label="Playback speed"
-                        data-testid="ide-verify-play-speed"
-                      >
-                        <option value="0.5">0.5×</option>
-                        <option value="1">1×</option>
-                        <option value="2">2×</option>
-                      </select>
-                      <button
-                        type="button"
-                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playLoop ? ' is-on' : ''}`}
-                        onClick={() => setPlayLoop((value) => !value)}
-                        aria-pressed={playLoop}
-                        title={cursorA != null && cursorB != null ? 'Loop the A–B range' : 'Loop all ticks'}
-                        data-testid="ide-verify-play-loop"
-                      >
-                        Loop
-                      </button>
-                      <button
-                        type="button"
-                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playStopAtFailure ? ' is-on' : ''}`}
-                        onClick={() => setPlayStopAtFailure((value) => !value)}
-                        aria-pressed={playStopAtFailure}
-                        title="Stop at the first mismatch"
-                        data-testid="ide-verify-play-stop-at-failure"
-                      >
-                        Stop at fail
-                      </button>
-                    </div>
-                    </details>
-                  ) : null}
-                </div>
-                </div>
-                </div>
-              </div>
-              </div>
-              ) : null}
-              {/* The run line: what the last run did, where the cursor is, what failed, and the
-                  actions that follow from it. It is the same line in every representation. */}
-              <div className="rb-wave-runline" data-testid="ide-verify-run-line" role="group" aria-label="Last run">
-              <div className="rb-wave-bar">
-                {!lastRun ? (
-                  <span className="rb-wave-runline-empty" data-testid="ide-verify-run-line-empty">
-                    <strong>No run recorded yet</strong>
-                    <span>
-                      {totalVectorCount > 0
-                        ? `${totalVectorCount} authored ${totalVectorCount === 1 ? 'case' : 'cases'} — run this scenario to record its trace.`
-                        : 'Author stimulus above, then run this scenario to record its trace.'}
-                    </span>
-                  </span>
-                ) : null}
-                {liveReadout ? (
-                  <div
-                    className={`rb-wave-readout${isPlaying ? ' is-playing' : ''}${liveReadout.failures.length > 0 ? ' has-failure' : ''}`}
-                    data-testid="ide-verify-live-readout"
-                    role="status"
-                    aria-live="off"
+  const selectionTools = <>
+                <div className="rb-wave-group rb-wave-group--tail" data-testid="ide-verify-waveform-tail">
+                  <button
+                    ref={createCheckTriggerRef}
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    disabled={!canCreateCheckFromSelection}
+                    onClick={() => setCreateCheckDialogOpen(true)}
+                    data-testid="ide-verify-create-check-from-value"
+                    title={
+                      canCreateCheckFromSelection
+                        ? 'Create one optional check from the selected output value.'
+                        : 'Select an output lane and an event with an observed 0 or 1.'
+                    }
                   >
-                    <span
-                      className={`rb-wave-evidence-state is-${evidenceStateWord.kind}`}
-                      data-testid="ide-verify-evidence-state"
-                      data-state={evidenceStateWord.kind}
-                      title={evidenceStateWord.detail ?? undefined}
-                    >
-                      <strong>{evidenceStateWord.label}</strong>
-                      {evidenceStateWord.kind === 'stale' && evidenceStateWord.detail ? (
-                        <small data-testid="ide-verify-evidence-state-reason">{evidenceStateWord.detail}</small>
-                      ) : null}
-                    </span>
-                    <span className="rb-wave-readout__pos">
-                      <code>t{selectedTick}</code>
-                      <span className="rb-wave-readout__progress" aria-label="Progress">
-                        <span style={{ transform: `scaleX(${liveReadout.total > 1 ? liveReadout.index / (liveReadout.total - 1) : 1})` }} />
-                      </span>
-                      <small>{liveReadout.index + 1} / {liveReadout.total}</small>
-                    </span>
-                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-changed">
-                      <small>changed</small>
-                      {liveReadout.changedInputs.length === 0 ? (
-                        <code className="is-muted">{liveReadout.index === 0 ? 'initial' : 'none'}</code>
-                      ) : (
-                        liveReadout.changedInputs.slice(0, 8).map((entry) => (
-                          <code key={entry.label}>{entry.label}={entry.value}</code>
-                        ))
-                      )}
-                      {liveReadout.changedInputs.length > 8 ? <small>+{liveReadout.changedInputs.length - 8}</small> : null}
-                    </span>
-                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-outputs">
-                      <small>observed</small>
-                      {liveReadout.outputs.slice(0, 8).map((entry) => (
-                        <code key={entry.signal} className={entry.signal === selectedSignal ? 'is-followed' : undefined}>
-                          {entry.signal}={entry.value}
-                        </code>
-                      ))}
-                      {liveReadout.outputs.length > 8 ? <small>+{liveReadout.outputs.length - 8}</small> : null}
-                    </span>
-                    {liveReadout.failures.length > 0 ? (
-                      <span className="rb-wave-readout__group rb-wave-readout__fail" data-testid="ide-verify-live-failure">
-                        <small>mismatch</small>
-                        {liveReadout.failures.slice(0, 3).map((entry) => (
-                          <code key={entry.signal}>{entry.signal} expected {entry.expected} got {entry.actual}</code>
-                        ))}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
+                    Check…
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    disabled={!selectedSignal || !onToggleProbe}
+                    onClick={() => {
+                      if (!selectedSignal) return;
+                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
+                    }}
+                    data-testid="ide-verify-toggle-selected-probe"
+                    aria-pressed={selectedSignalIsProbed}
+                    title={
+                      selectedSignal
+                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
+                        : 'Select a signal lane to watch it in this scenario.'
+                    }
+                  >
+                    {selectedSignalIsProbed ? 'Unwatch' : 'Watch'}
+                  </button>
+                </div>
+  </>;
+
+  const recordedNavigation = <div className="rb-recorded-navigation">
                 {/* Edge navigation: the followed lane's transitions. */}
                 <div className="rb-wave-group rb-wave-edges" data-testid="ide-verify-edge-nav" aria-label="Transitions of the followed signal">
                   <IdeButton
@@ -7361,408 +6140,57 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     null
                   )}
                 </div>
-              </div>
-              {/* View and measurement controls are reference tools, not evidence. They held a
-                  permanent row directly under the waveform they serve, which in a failure state
-                  was showing 97px of the 448px it needs. They open on request; the evidence
-                  keeps the room. */}
-              {studioMode === 'replay' && allWaveformTicks.length > 0 && (
-                <details className="rb-wave-tools-disclosure" data-testid="ide-verify-waveform-tools">
-                <summary className="rb-wave-tools-summary">View and measure</summary>
-                <div className="rb-wave-tools" data-testid="ide-verify-waveform-tools-panel">
-                  <div className="rb-wave-tools-section">
-                    <span className="rb-wave-tools-label">View</span>
-                    <button
-                      type="button"
-                      className="rb-wave-zoom"
-                      onClick={() => { hasAuthoredWaveformView.current = true; setTickWidth((prev) => clampTickWidth(prev - 8)); }}
-                      data-testid="ide-verify-zoom-out"
-                      title="Zoom out (narrower ticks)"
-                      aria-label="Zoom out waveform"
-                    >
-                      −
-                    </button>
-                    <button
-                      type="button"
-                      className="rb-wave-zoom"
-                      onClick={() => { hasAuthoredWaveformView.current = true; setTickWidth((prev) => clampTickWidth(prev + 8)); }}
-                      data-testid="ide-verify-zoom-in"
-                      title="Zoom in (wider ticks)"
-                      aria-label="Zoom in waveform"
-                    >
-                      +
-                    </button>
-                    <button
-                      type="button"
-                      className="rb-wave-zoom"
-                      onClick={fitWaveformView}
-                      data-testid="ide-verify-zoom-fit"
-                      title="Fit all ticks in view"
-                    >
-                      Fit
-                    </button>
-                    <span className="rb-wave-tools-label">Rows</span>
-                    {(['small', 'normal', 'large'] as const).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        className={`rb-wave-zoom ${waveformDensity === d ? 'is-active' : ''}`}
-                        onClick={() => { hasAuthoredWaveformView.current = true; setWaveformDensity(d); }}
-                        data-testid={`ide-verify-density-${d}`}
-                        aria-label={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
-                        title={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
-                      >
-                        {d === 'small' ? 'S' : d === 'normal' ? 'M' : 'L'}
-                      </button>
-                    ))}
-                  </div>
-                  {selectedTick !== null && (
-                    <div className="rb-wave-tools-section">
-                      <span className="rb-wave-tools-label">Markers</span>
-                      <span className="rb-wave-tools-readouts">
-                        {cursorA !== null && (
-                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
-                        )}
-                        {cursorB !== null && (
-                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-b-value">B t{cursorB}</code>
-                        )}
-                        {cursorDeltaTicks !== null && (
-                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-delta">
-                            Delta {cursorDeltaTicks} ticks
-                          </code>
-                        )}
-                      </span>
-                      <div className="rb-wave-tools-section" data-testid="ide-verify-cursor-controls">
-                        <button
-                          type="button"
-                          className="rb-wave-zoom"
-                          onClick={() => setCursorFromSelected('A')}
-                          data-testid="ide-verify-set-cursor-a"
-                        >
-                          A
-                        </button>
-                        <button
-                          type="button"
-                          className="rb-wave-zoom"
-                          onClick={() => setCursorFromSelected('B')}
-                          data-testid="ide-verify-set-cursor-b"
-                        >
-                          B
-                        </button>
-                        <button
-                          type="button"
-                          className="rb-wave-zoom"
-                          onClick={() => jumpToCursor('A')}
-                          disabled={cursorA === null}
-                          data-testid="ide-verify-jump-cursor-a"
-                        >
-                          Go A
-                        </button>
-                        <button
-                          type="button"
-                          className="rb-wave-zoom"
-                          onClick={() => jumpToCursor('B')}
-                          disabled={cursorB === null}
-                          data-testid="ide-verify-jump-cursor-b"
-                        >
-                          Go B
-                        </button>
-                        <button
-                          type="button"
-                          className="rb-wave-zoom"
-                          onClick={clearCursors}
-                          data-testid="ide-verify-clear-cursors"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                </details>
-              )}
+  </div>;
 
-                <div className="rb-wave-group rb-wave-group--tail" data-testid="ide-verify-waveform-tail">
-                  <button
-                    ref={createCheckTriggerRef}
-                    type="button"
-                    className="wb-btn wb-btn--ghost"
-                    disabled={!canCreateCheckFromSelection}
-                    onClick={() => setCreateCheckDialogOpen(true)}
-                    data-testid="ide-verify-create-check-from-value"
-                    title={
-                      canCreateCheckFromSelection
-                        ? 'Create one optional check from the selected output value.'
-                        : 'Select an output lane and an event with an observed 0 or 1.'
-                    }
-                  >
-                    Check…
-                  </button>
-                  <button
-                    type="button"
-                    className="wb-btn wb-btn--ghost"
-                    disabled={!selectedSignal || !onToggleProbe}
-                    onClick={() => {
-                      if (!selectedSignal) return;
-                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
-                    }}
-                    data-testid="ide-verify-toggle-selected-probe"
-                    aria-pressed={selectedSignalIsProbed}
-                    title={
-                      selectedSignal
-                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
-                        : 'Select a signal lane to watch it in this scenario.'
-                    }
-                  >
-                    {selectedSignalIsProbed ? 'Unwatch' : 'Watch'}
-                  </button>
-                  {lastRun && !inspectCircuit ? (
-                    <button
-                      type="button"
-                      className={`wb-btn wb-btn--ghost rb-wave-drawer-toggle${drawerOpen ? ' is-open' : ''}`}
-                      onClick={() => setDrawerOpen((previous) => !previous)}
-                      data-testid="ide-verify-drawer-toggle"
-                      aria-expanded={drawerOpen}
-                      aria-pressed={drawerOpen}
-                      title={analysisDrawerHint ?? undefined}
-                    >
-                      {drawerOpen ? 'Close inspector' : 'Inspect run'}
-                    </button>
-                  ) : null}
-                  {isSequentialRun ? (
-                    <span className="rb-wave-seq-badge" data-testid="ide-verify-seq-badge">
-                      Sequential
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* No-trace diagnostic — shown when run produced no waveform data */}
-              {verifyPreflightDiagnostics.length > 0 && (
-                <IdeCallout
-                  tone={hasBlockingVerifyPreflightIssue ? 'error' : 'warn'}
-                  title={
-                    hasBlockingVerifyPreflightIssue
-                      ? 'Cannot verify current expectations'
-                      : 'Simulation completed with a wiring warning'
-                  }
-                  testId="ide-verify-preflight-guard"
-                >
-                  <p className="ide-copy">
-                    {hasBlockingVerifyPreflightIssue
-                      ? 'Fix these structural issues before treating this as a logic mismatch.'
-                      : 'The runnable paths remain observable. Disconnected outputs stay X until you repair their wiring.'}
-                  </p>
-                  <ul className="ide-list">
-                    {verifyPreflightDiagnostics.slice(0, 4).map((diagnostic, index) => (
-                      <li key={`${diagnostic.code}-${diagnostic.location?.signal ?? diagnostic.id}-${diagnostic.location?.vectorId ?? index}`}>
-                        <strong>{diagnostic.code}:</strong> {diagnostic.message}
-                      </li>
-                    ))}
-                  </ul>
-                  {onGoToDesign && (
-                    <div className="ide-inline-actions">
+  const playbackControls = lastRun && allWaveformTicks.length > 1 ? (
+                    <details className="rb-wave-play-disclosure" data-testid="ide-verify-playback-disclosure">
+                    <summary title="Step through the recorded samples. Presentation only — nothing is executed.">Playback</summary>
+                    <div className="rb-wave-play" data-testid="ide-verify-playback" role="group" aria-label="Playback">
                       <IdeButton
-                        tone="secondary"
-                        onClick={onGoToDesign}
-                        testId="ide-verify-preflight-open-design"
+                        tone={isPlaying ? 'secondary' : 'ghost'}
+                        onClick={togglePlayback}
+                        testId="ide-verify-play"
+                        title={isPlaying ? 'Stop playback' : 'Play the run tick by tick'}
+                        aria-pressed={isPlaying}
                       >
-                        Open in Design
+                        {isPlaying ? '■ Stop' : '▶ Play'}
                       </IdeButton>
+                      <select
+                        className="rb-wave-play__speed"
+                        value={String(playSpeed)}
+                        onChange={(event) => setPlaySpeed(Number(event.target.value) as 0.5 | 1 | 2)}
+                        aria-label="Playback speed"
+                        data-testid="ide-verify-play-speed"
+                      >
+                        <option value="0.5">0.5×</option>
+                        <option value="1">1×</option>
+                        <option value="2">2×</option>
+                      </select>
+                      <button
+                        type="button"
+                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playLoop ? ' is-on' : ''}`}
+                        onClick={() => setPlayLoop((value) => !value)}
+                        aria-pressed={playLoop}
+                        title={cursorA != null && cursorB != null ? 'Loop the A–B range' : 'Loop all ticks'}
+                        data-testid="ide-verify-play-loop"
+                      >
+                        Loop
+                      </button>
+                      <button
+                        type="button"
+                        className={`wb-btn wb-btn--ghost rb-wave-play__toggle${playStopAtFailure ? ' is-on' : ''}`}
+                        onClick={() => setPlayStopAtFailure((value) => !value)}
+                        aria-pressed={playStopAtFailure}
+                        title="Stop at the first mismatch"
+                        data-testid="ide-verify-play-stop-at-failure"
+                      >
+                        Stop at fail
+                      </button>
                     </div>
-                  )}
-                </IdeCallout>
-              )}
-              {hasNoTrace && (
-                <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
-                  <p className="ide-copy">The run completed but produced no waveform data.</p>
-                  <ul className="ide-list">
-                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Board & Constraints</li>
-                    <li>{sequentialGuidanceCopy.noTraceHint}</li>
-                    <li>Circuit has unconnected gates — verify all nodes are wired</li>
-                  </ul>
-                  <div className="ide-inline-actions">
-                    <IdeButton
-                      tone="primary"
-                      onClick={() => openFailureInDesign({ signal: '', tick: 0, expected: '', actual: '' })}
-                      disabled={!onFixPath}
-                      testId="ide-verify-no-trace-fix"
-                    >
-                      Open in Design
-                    </IdeButton>
-                  </div>
-                </IdeCallout>
-              )}
+                    </details>
+                  ) : null;
 
-              {studioMode === 'replay' ? (
-              <div
-                className="rb-wave-canvas"
-                data-testid="ide-verify-waveform-preview"
-                data-verify-trace-only={isTraceOnly ? '1' : '0'}
-              >
-                <BusWordLanesPanel
-                  lanes={busWordLanes}
-                  selectedTick={selectedTick}
-                  onSelectTick={selectTickManually}
-                />
-                <div
-                  className="rb-wave-scroll"
-                  ref={waveformScrollRef}
-                  onWheel={handleWaveformWheel}
-                  data-layout-mode={layoutMode}
-                  data-testid="ide-verify-waveform-scroll"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-                    if (allWaveformTicks.length === 0) return;
-                    e.preventDefault();
-                    setSelectedTick((prev) => {
-                      const idx = prev !== null ? allWaveformTicks.indexOf(prev) : -1;
-                      if (e.key === 'ArrowRight') {
-                        return allWaveformTicks[Math.min(allWaveformTicks.length - 1, idx + 1)] ?? allWaveformTicks[0];
-                      }
-                      return allWaveformTicks[Math.max(0, idx - 1)] ?? allWaveformTicks[0];
-                    });
-                  }}
-                >
-                {hiddenSignals.length > 0 ? (
-                  <div className="ide-verify-hidden-lanes" data-testid="ide-verify-hidden-lanes">
-                    <span>
-                      {hiddenSignals.length} lane{hiddenSignals.length === 1 ? '' : 's'} hidden
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setHiddenSignals([])}
-                      data-testid="ide-verify-hidden-lanes-restore"
-                    >
-                      Show all
-                    </button>
-                  </div>
-                ) : null}
-                <WaveformViewer
-                  signals={waveformLanes}
-                  ticks={zoomedTicks}
-                  failTicks={sessionShowsCompareEvidence ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
-                  failingSignalKeys={sessionShowsCompareEvidence ? failingSignalKeys : new Set<string>()}
-                  selectedTick={selectedTick}
-                  cursorA={cursorA}
-                  cursorB={cursorB}
-                  changedSignals={changedSignalsAtTick}
-                  expectedValues={expectedValuesByLane}
-                  showExpected={showExpectedOverlay}
-                  expandedBuses={expandedBusSet}
-                  onToggleBus={toggleBus}
-                  pinnedSignals={pinnedSignals}
-                  onSelectTick={selectTickManually}
-                  onSelectSignal={handleSignalSelect}
-                  rowHeight={ROW_H_MAP[waveformDensity]}
-                  tickWidth={tickWidth}
-                  signalMeta={signalMetaForViewer}
-                  isSequential={isSequentialRun}
-                  clockSignals={clockSignals}
-                  signalGroups={laneGroupsForViewer}
-                  onHoverSignal={handleSignalHover}
-                  selectedSignal={selectedSignal}
-                  onTogglePinSignal={(signal) =>
-                    setPinnedSignalOrder((previous) =>
-                      previous.includes(signal)
-                        ? previous.filter((entry) => entry !== signal)
-                        : [...previous, signal]
-                    )
-                  }
-                  onHideSignal={(signal) =>
-                    setHiddenSignals((previous) =>
-                      previous.includes(signal) ? previous : [...previous, signal]
-                    )
-                  }
-                  emptyMessage={
-                    lastRun
-                      ? 'No waveform data in this run — check I/O mapping in Board & Constraints'
-                      : 'Run the current stimulus to observe outputs'
-                  }
-                  ghostSignals={
-                    !lastRun && mappedSignals?.length
-                      ? mappedSignals.map(s => ({
-                          signal: s.id,
-                          label: s.label ?? s.id,
-                          direction: s.direction ?? 'internal',
-                        }))
-                      : undefined
-                  }
-                />
-                </div>
-                {/* Signal Snapshot — shown in step mode, shows all I/O at selected tick */}
-                {isStepMode && stepSnapshotRows.length > 0 && (
-                  <section className="ide-verify-snapshot-panel" data-testid="ide-verify-snapshot-panel">
-                    <header className="ide-design-subheader">
-                      <h4>Signal Snapshot — t{selectedTick}</h4>
-                    </header>
-                    <div className="ide-verify-snapshot-grid" data-testid="ide-verify-snapshot-grid">
-                      {stepSnapshotRows.map((entry) => (
-                        <div
-                          key={entry.signal}
-                          className={`ide-verify-snapshot-row ide-verify-snapshot-row--${entry.status}`}
-                          data-testid={`ide-verify-snapshot-${entry.signal.replace(/[^a-z0-9]/gi, '-')}`}
-                        >
-                          <code className="ide-verify-snapshot-signal">{entry.signal}</code>
-                          <span className="ide-verify-snapshot-actual">{entry.actual}</span>
-                          <span className="ide-verify-snapshot-expected">/ exp {entry.expected}</span>
-                          <IdeStatusPill tone={entry.status === 'pass' ? 'ok' : 'error'}>
-                            {entry.status.toUpperCase()}
-                          </IdeStatusPill>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-                {/* Tick Readout Strip — compact value bar, visible when a tick is selected (non-step mode) */}
-                {selectedTick !== null && lastRun && !isStepMode && displaySignalTimeline.length > 0 && (
-                  <TickReadoutStrip
-                    tick={selectedTick}
-                    signals={waveformLanes}
-                    signalGroups={laneGroupBySignal}
-                  />
-                )}
-              </div>
-              ) : null}
-            </section>
-
-            </div>{/* /ide-verify-instrument-deck */}
-            </div>
-              )}
-              rightPanel={showInlineFailureWorkbenchPanels ? (
-                <VerifyFailureExplanationPanel
-                  failure={selectedFailureExplanationCase}
-                  classification={selectedFailureClassification}
-                  reasonCode={selectedFailureEvidence?.actualReason ?? null}
-                  peers={studentSelectedFailurePeers.map((row) => ({
-                    tick: row.tick,
-                    signal: row.rawSignal,
-                    signalLabel: row.signalLabel,
-                    expected: row.expected,
-                    actual: row.actual,
-                    vectorId: row.vectorId,
-                    caseIndex: row.caseIndex,
-                  }))}
-                  inputSnapshot={selectedFailureInputs}
-                  patternSummary={selectedFailurePattern?.summary ?? null}
-                  patternNextInspect={selectedFailurePattern?.nextInspect ?? null}
-                  onSelectPeer={(peer) => applyFailureSelection(peer)}
-                  onJumpToFix={(failure) => reviewFailureInVerify(failure)}
-                  onOpenInDesign={(failure) => openFailureInDesign(failure)}
-                  onAcceptObserved={canApplyRunDerivedRepair ? handleFailureAcceptObserved : undefined}
-                  onCaptureRow={canApplyRunDerivedRepair ? handleFailureCaptureRow : undefined}
-                  onCaptureSignal={canApplyRunDerivedRepair ? handleFailureCaptureSignal : undefined}
-                  onSetExpectedBit={canApplyRunDerivedRepair ? handleFailureSetExpectedBit : undefined}
-                  onClearExpected={canApplyRunDerivedRepair ? handleFailureClearExpected : undefined}
-                  onRerunCompare={() => handleRunWithPreflight(true)}
-                />
-              ) : null}
-            />
-
-            {/* Connected investigation owns this signal's explanation. Preserve the ordinary
-                inspector preference while its duplicate pane is suspended. */}
-            {Boolean(lastRun) && drawerOpen && !inspectCircuit && <div className="ide-verify-supporting-strip is-open" data-zone="inspector" data-testid="ide-verify-region-inspector">
+  const advancedAnalysis = lastRun ? (<div className="ide-verify-supporting-strip is-open" data-zone="inspector" data-testid="ide-verify-region-inspector">
             <div className="ide-verify-drawer-body">
             <nav className="ide-verify-analysis-tab-nav" data-testid="ide-verify-analysis-tab-nav">
               <div className="ide-verify-drawer-toolbar" data-testid="ide-verify-tab-bar">
@@ -8282,15 +6710,1424 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
             </div>
             </div>
-            </div>}
+            </div>) : null;
+
+  return (
+    <IdeSurfaceLayout
+      mode="verify"
+      layoutIntent="workbench"
+      /* A failed check is a result, not a blocking diagnostic: the run line names it, the Fail
+         navigation reaches it, and the ledger counts it. Forcing the panel open on a failure
+         took 220px of a 650px window from the instrument that shows the mismatch. */
+      consoleHasBlocking={false}
+      consoleHasEntries={false}
+      leftDockMode={verifyLayoutPolicy.leftDockMode}
+      rightDockMode={verifyLayoutPolicy.rightDockMode}
+      rightDockCanCollapse={false}
+      // Always present, never conditional: a panel that exists only while a project happens to
+      // have problems takes its own strip away with it, and leaves the status bar's problems count
+      // as a button that does nothing. An empty panel says there is nothing, which is an answer.
+      consoleMode="collapsed"
+      shellDensity="immersive"
+      surfaceFrame="edge-to-edge"
+      productSpine={{
+        statusLabel: isNoCircuitTaskFirst
+          ? 'No circuit'
+          : gradingBlockedByDesign
+            ? 'Design blocked'
+            : runProofIsStale
+              ? 'Simulation stale'
+              : simulationEvidenceSummary?.simulationLabel ?? 'Scenario ready',
+        statusTone: isNoCircuitTaskFirst || gradingBlockedByDesign || runProofIsStale ? 'warn' : simulationEvidenceSummary ? 'ok' : 'idle',
+        detail: isNoCircuitTaskFirst
+          ? 'Open Design, load a starter, or import a project before authoring test cases.'
+          : gradingBlockedByDesign
+            ? 'Repair the structural Design issue before relying on a simulation or optional checks.'
+            : simulationEvidenceSummary
+              ? `${displayedAssertionLabel}. ${lastRun?.waveform.length ?? 0} recorded waveform samples are available for replay.`
+              : 'Author stimulus, run the circuit, then inspect the waveform or add optional checks.',
+        primaryLabel: isNoCircuitTaskFirst || gradingBlockedByDesign
+          ? 'Open Design'
+          : 'Run simulation',
+        onPrimary: isNoCircuitTaskFirst || gradingBlockedByDesign
+          ? onGoToDesign
+          : runVerification,
+        primaryDisabled: !isNoCircuitTaskFirst && !gradingBlockedByDesign && runState === 'running',
+        recoveryLabel: hasSessionFailureEvidence ? 'Inspect Design' : onGoToDesign ? 'Open Design' : undefined,
+        onRecovery: hasSessionFailureEvidence ? handleGoToDesignFromVerify : onGoToDesign,
+        doneLabel: simulationEvidenceSummary
+          ? `${simulationEvidenceSummary.simulationLabel}. ${displayedAssertionLabel}.`
+          : 'The scenario is ready to simulate.',
+        blockedLabel: isNoCircuitTaskFirst
+          ? 'No circuit boundary is available to verify.'
+          : gradingBlockedByDesign
+            ? 'Structural Design authority is invalid; checked PASS/FAIL evidence is revoked.'
+          : sessionSignalsAssertionFailure
+            ? `${failingRows.length} failing output check${failingRows.length === 1 ? '' : 's'} need repair.`
+            : sessionStatus === 'stale'
+              ? 'Evidence is stale after project or testbench changes.'
+                : totalVectorCount === 0
+                  ? 'No stimulus cases authored yet.'
+                : totalAssertedCheckCount === 0
+                  ? 'No checks configured. Simulation and replay remain available.'
+                  : 'No blocking simulation issue selected.',
+      }}
+      dock={
+        <div className="rb-sim-dock" data-testid="ide-sim-scenario-explorer">
+        {scenarios && scenarios.length > 0 ? (
+          <TestbenchDocumentTabs
+            scenarios={scenarios}
+            activeScenarioId={activeScenarioId ?? null}
+            onSwitch={(id) => onSwitchScenario?.(id)}
+            onCreate={() => onCreateScenario?.()}
+            onDuplicate={() => onDuplicateScenario?.()}
+            onRename={(name) => onRenameScenario?.(name)}
+            onDelete={(id) => onDeleteScenario?.(id)}
+          />
+        ) : (
+          <div className="ide-sim-scenario-empty">
+            <span>Scenarios</span>
+            <strong>No saved scenario yet</strong>
+            <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
+            <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
+              Create scenario
+            </IdeButton>
+          </div>
+        )}
+        <section
+          className="wb-toolwindow rb-sig"
+          data-testid="ide-verify-left-dock"
+          data-collapsed="false"
+        >
+          <header
+            className="wb-toolwindow-header rb-sig-header"
+            data-testid="ide-verify-signal-rail-header"
+          >
+            <div className="rb-sig-toprow">
+              <div className="rb-sig-title">
+                <h3>Signals</h3>
+                <span className="wb-toolwindow-count rb-sig-count" data-testid="ide-verify-signal-filter-state">
+                  {showMismatchOnlySignals
+                    ? `${visibleSignalCount} flagged`
+                    : showAllSignals
+                      ? `${signalTimeline.length} visible`
+                      : `${visibleSignalCount} relevant`}
+                </span>
+              </div>
+              <div className="rb-sig-actions">
+                {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--ghost rb-sig-action"
+                    onClick={() => {
+                      setShowMismatchOnlySignals(false);
+                      setShowAllSignals((previous) => !previous);
+                    }}
+                    data-testid="ide-verify-show-all-signals"
+                  >
+                    {showAllSignals ? 'Relevant' : 'All'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <input
+              className="rb-sig-filter"
+              type="search"
+              value={signalFilter}
+              onChange={(event) => setSignalFilter(event.target.value)}
+              placeholder="Filter signals"
+              aria-label="Filter signals"
+              data-testid="ide-verify-signal-filter"
+            />
+            <p className="rb-sig-focus" data-testid="ide-verify-signal-rail-summary">
+              {selectedSignal ? (
+                <>
+                  <code>{selectedSignal}</code> active
+                </>
+              ) : hasSessionFailureEvidence ? (
+                'Showing failing lanes first.'
+              ) : (
+                'Legend and lane filter.'
+              )}
+            </p>
+          </header>
+          <div className="wb-toolwindow-body rb-sig-list" data-testid="ide-verify-signal-list">
+            {displaySignalTimeline.length === 0 ? (
+              lastRun ? (
+                <p className="ide-copy">No signal data in the last run — check circuit mapping.</p>
+              ) : null
+            ) : (
+              (['Inputs', 'Outputs', 'Internal'] as const).map((group) => (
+                <section key={group} className="rb-sig-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
+                  <header className="rb-sig-group-header">
+                    <strong className="rb-sig-group-label">{group}</strong>
+                    <span className="ide-copy">{groupedVisibleSignals[group].length}</span>
+                  </header>
+                  <div className="rb-sig-group-body">
+                      {groupedVisibleSignals[group].length === 0 ? (
+                        <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
+                      ) : (
+                        groupedVisibleSignals[group]
+                          .filter((signalRow) => !signalFilter.trim() || signalRow.signal.toLowerCase().includes(signalFilter.trim().toLowerCase()))
+                          .map((signalRow) => (
+                          <div
+                            key={signalRow.signal}
+                            className="rb-sig-entry"
+                            onMouseEnter={() => handleSignalHover(signalRow.signal)}
+                            onMouseLeave={() => handleSignalHover(null)}
+                          >
+                            <button
+                              className={`rb-sig-row${selectedSignal === signalRow.signal ? ' is-active' : ''}`}
+                              type="button"
+                              aria-pressed={selectedSignal === signalRow.signal}
+                              onClick={() => handleSignalSelect(signalRow.signal)}
+                              onKeyDown={(event) => {
+                                if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                                  event.preventDefault();
+                                  moveLane(signalRow.signal, event.key === 'ArrowUp' ? -1 : 1);
+                                }
+                              }}
+                              title="Select this lane · Alt+Up/Down moves it"
+                              data-testid={`ide-verify-signal-${toTestId(signalRow.signal)}`}
+                            >
+                              {signalRow.signal}
+                            </button>
+                            <span className="rb-sig-move" role="group" aria-label={`Move ${signalRow.signal}`}>
+                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, -1)} aria-label={`Move ${signalRow.signal} up`} data-testid={`ide-verify-signal-up-${toTestId(signalRow.signal)}`}>▲</button>
+                              <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={() => moveLane(signalRow.signal, 1)} aria-label={`Move ${signalRow.signal} down`} data-testid={`ide-verify-signal-down-${toTestId(signalRow.signal)}`}>▼</button>
+                            </span>
+                            {hasSessionFailureEvidence &&
+                            failingRows.some((row) => row.signal === signalRow.signal) ? (
+                              <span className="rb-sig-badge">Mismatch</span>
+                            ) : null}
+                          </div>
+                        ))
+                      )}
+                  </div>
+                </section>
+              ))
+            )}
+          </div>
+        </section>
+        </div>
+      }
+      inspector={null}
+      console={<ProblemsPanel origin="bottom-panel" />}
+    >
+      <div
+        className="ide-verify-run-announcer"
+        data-testid="ide-verify-run-announcer"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {runAnnouncement}
+      </div>
+      <IdePanel
+        className="rb-sim-panel"
+        testId="ide-verify-panel"
+      >
+        <VerifyHeaderRegion>
+        {verifyMode !== 'blocked' ? (
+          <VerifyContextHeader
+            projectName={projectName?.trim() ? projectName.trim() : 'Untitled project'}
+            stateLabel={
+              gradingBlockedByDesign
+                ? 'Design blocked'
+                : runState === 'running'
+                ? 'Running'
+                : verifyMode === 'blocked'
+                  ? 'Blocked'
+                  : isNoCircuitTaskFirst
+                    ? 'No circuit'
+                    : runProofIsStale
+                      ? 'Simulation stale'
+                      : simulationEvidenceSummary
+                        ? `${simulationEvidenceSummary.simulationLabel} · ${displayedAssertionLabel}`
+                        : 'Scenario ready'
+            }
+            stateTone={
+              gradingBlockedByDesign
+                ? 'attention'
+                : runState === 'running'
+                ? 'running'
+                : runProofIsStale
+                  ? 'stale'
+                  : sessionSignalsAssertionFailure
+                    ? 'fail'
+                  : isNoCircuitTaskFirst
+                    ? 'attention'
+                  : simulationEvidenceSummary
+                    ? 'pass'
+                    : isDraftSession && totalVectorCount === 0
+                      ? 'attention'
+                      : 'idle'
+            }
+            scenarioName={
+              activeScenario?.name?.trim()
+                ? activeScenario.name.trim()
+                : lastRun?.scenarioName ?? null
+            }
+          />
+        ) : null}
+        <div className="rb-sim-command-stack">
+        {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
+        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
+        <VerifyCommandBar
+          isCompareMode={nextRunUsesAssertions}
+          onSetObserve={() => undefined}
+          onSetCompare={() => undefined}
+          compareAvailable={compareAvailable}
+          experimentScenarioName={activeScenario?.name ?? verifyScenarioName}
+          runBlockedReason={gradingBlockedByDesign ? 'Repair the structural Design issue before running.' : undefined}
+          onReproduce={lastRun ? () => {
+            onRunVerification?.({
+              reproduceRunId: getRuntimeVerifyRunId(lastRun),
+              scenarioId: lastRun.scenarioId, scenarioName: lastRun.scenarioName,
+              deterministicHash: lastRun.deterministicHash, rows: [],
+            });
+            showRecordedView();
+          } : undefined}
+          reproduceDisabledReason={lastRun && (!lastRun.executionInput || !lastRun.circuitSnapshot)
+            ? 'This older recording did not retain reproduction inputs.'
+            : lastRun?.identity?.engine && lastRun.identity.engine !== BROWSER_ENGINE_VERSION
+              ? 'The recorded engine is unavailable.' : undefined}
+          onRun={runVerification}
+          runLabel={runState === 'running' ? 'Running…' : compactCommandRunLabel}
+          runDisabled={runState === 'running' || gradingBlockedByDesign}
+          runPulsing={readyDraftCanRun}
+          needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
+          onAuthorExpectedOutputs={handleEditExpectedOutputs}
+          workspaceMode={studioMode}
+          liveIoActive={studioMode === 'bench'}
+          onToggleLiveIo={toggleLiveIo}
+          configuredCheckCount={totalAssertedCheckCount}
+          hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
+        />
+        )}
+        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && starterExpectationsWereDiscarded ? (
+          <IdeCallout
+            tone="info"
+            title="This project is now yours, and so are its checks"
+            testId="ide-verify-starter-detached-notice"
+          >
+            Changing the circuit detached it from its starter, so the starter&rsquo;s expected
+            outputs no longer describe what it does and were cleared. Anything you had authored
+            yourself is still here. Run to record outputs; add optional checks when you want to compare them.
+          </IdeCallout>
+        ) : null}
+        {primaryStatus && !compactPrimaryStatusAction && !(
+          forceRunStale || isRunStale || (isTestbenchStale && !hasStaleAuthoredReference)
+        ) ? (
+          <div
+            className={`ide-verify-session-guidance${forceRunStale ? ' ide-verify-session-guidance--reload' : ''}`}
+            data-testid="ide-verify-session-guidance"
+          >
+            <VerifyPrimaryStatusArea
+              {...primaryStatus}
+              density="embedded"
+              footnote={
+                hasStaleAuthoredReference
+                  ? 'Run evaluates the saved checks against the current design.'
+                  : undefined
+              }
+              footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
+            />
+          </div>
+        ) : null}
+        </div>
+        {lastRun && <RunIdentityStrip run={lastRun} archive={runArchive}
+          changes={describeRecordingChanges(lastRun, {
+            circuit: inspectionCircuit,
+            stimulusHash: computeExecutionStimulusHash(effectiveNextRunVectors, effectiveClockPolicy),
+            scenarioContentHash: currentScenarioContentHash ?? undefined,
+          })}
+          onSelect={onSelectRecordedRun ? runId => { onSelectRecordedRun(runId); showRecordedView(); } : undefined}
+          onDifference={(signal, tick) => { setSelectedSignal(canonicalWaveformSignalByRawKey.get(normalizeFieldId(normalizeSignalKey(signal))) ?? signal); setSelectedTick(tick); openCircuitInvestigation(); }}
+        />}
+        </VerifyHeaderRegion>
+
+
+        {guidedLabTask ? (
+          <section className="ide-guided-lab-card" data-testid="ide-verify-guided-full-adder-truth-table">
+            <div>
+              <p className="ide-surface-block-label">Active lab</p>
+              <h3>{guidedLabTask.shortTitle} truth table</h3>
+              <p>
+                Create the eight A/B/Cin cases with saved Sum and Cout expectations. This replaces only
+                the authored Verify case list after confirmation.
+              </p>
+              <div className="ide-guided-lab-checklist">
+                <span className={`ide-guided-lab-check ${guidedLabDesignChecklist?.readyForVerify ? 'is-complete' : 'is-missing'}`}>
+                  <strong>{guidedLabDesignChecklist?.readyForVerify ? 'OK' : 'TODO'}</strong>
+                  Design checklist
+                </span>
+                <span className={`ide-guided-lab-check ${totalVectorCount >= 8 ? 'is-complete' : 'is-missing'}`}>
+                  <strong>{totalVectorCount >= 8 ? 'OK' : 'TODO'}</strong>
+                  {totalVectorCount} Verify case{totalVectorCount === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+            <div className="ide-guided-lab-actions">
+              {onGoToDesign ? (
+                <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-guided-full-adder-open-design">
+                  Open Design
+                </IdeButton>
+              ) : null}
+              <IdeButton
+                tone="primary"
+                onClick={onCreateGuidedLabTruthTable}
+                disabled={!guidedLabDesignChecklist?.readyForVerify || !onCreateGuidedLabTruthTable}
+                testId="ide-verify-create-full-adder-truth-table"
+              >
+                Create Full Adder truth table
+              </IdeButton>
+            </div>
+          </section>
+        ) : null}
+
+        <VerifyResultRegion>
+        {/* ── Result / failure context panels ────────────────────────────── */}
+        {/* The run line is the failure's home: FAIL, the first mismatch, the Fail navigation and the
+            way into the circuit. "What to fix first" restated the same mismatch in a second card
+            above the instrument - at 1280x650, with this disclosure's row, 113px of a failed run's
+            workspace before the first lane, and the lanes had 65px. The diagnosis lives inside
+            the disclosure now, one 28px row above the instrument until the reader asks. */}
+        {drawerOpen
+          && hasSessionFailureEvidence
+          && (failureDiagnosis.length > 0 || verifyHint || isStarterScenario || (mappingComplete !== false && onGoToExport)) && (
+          <details className="ide-verify-failure-context" data-testid="ide-verify-failure-context">
+            <summary className="ide-verify-failure-context__summary">
+              More about this failure
+            </summary>
+            <div className="ide-verify-failure-context__body">
+              {failureDiagnosis.length > 0 ? (
+                <div className="ide-verify-fail-diagnosis" data-testid="ide-verify-fail-diagnosis">
+                  <span className="ide-verify-fail-diagnosis-header" data-testid="ide-verify-fail-diagnosis-header">What to fix first</span>
+                  {failureDiagnosis.map((item) => (
+                    <div key={item.signal} className="ide-verify-fail-diagnosis-row" data-testid="ide-verify-fail-diagnosis-row">
+                      <span className="ide-verify-fail-diagnosis-label">{item.label}</span>
+                      <span className="ide-verify-fail-diagnosis-action">{item.action}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {verifyHint ? (
+                <IdeCallout tone="info" title="Something to investigate" testId="ide-verify-hint-callout" className="ide-callout--hint">
+                  {verifyHint}
+                </IdeCallout>
+              ) : null}
+
+              {isStarterScenario ? (
+                <IdeCallout tone="warn" testId="ide-verify-auto-vector-fail-note">
+                  <span>
+                    <strong>Ran with starter vectors.</strong>{' '}
+                    {isSequentialRun
+                      ? 'Starter vectors may not drive your clock correctly. Author a scenario with explicit clock transitions to test your design.'
+                      : 'Author your own scenario with specific saved checks when you want explicit output verification.'}
+                  </span>
+                </IdeCallout>
+              ) : null}
+
+              {mappingComplete !== false && onGoToExport ? (
+                <div className="ide-verify-export-available-note" data-testid="ide-verify-export-available">
+                  <span className="ide-verify-export-available-label">
+                    Your exported HDL is still available.{' '}
+                    {isStarterScenario
+                      ? 'Export remains advisory until you author a real comparison scenario.'
+                      : 'Export reflects your current circuit — verify trust is separate from HDL availability.'}
+                  </span>
+                  <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-verify-go-to-export">
+                    Go to Export →
+                  </IdeButton>
+                </div>
+              ) : null}
+            </div>
+          </details>
+        )}
+
+        {sessionSignalsAssertionFailure && oracleApplied && (
+          <IdeCallout tone="info" testId="ide-verify-oracle-applied-note">
+            Expected values updated — re-run to confirm.
+          </IdeCallout>
+        )}
+
+        {previewingVectorId && (
+          <div className="ide-verify-preview-banner" data-testid="ide-verify-preview-banner">
+            <span>Previewing vector —</span>
+            <a
+              className="ide-verify-preview-link"
+              onClick={() => { onGoToDesign?.(); }}
+            >
+              Switch to Design view
+            </a>
+            <span>to see gate states</span>
+            <button
+              className="ide-verify-preview-clear"
+              onClick={() => setPreviewingVectorId(null)}
+              title="Clear preview"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        </VerifyResultRegion>
+
+        <VerifyWorkspaceRegion
+          data-hierarchy-surface="verify"
+          data-hierarchy-role="context"
+        >
+        {isNoCircuitTaskFirst && (
+          <section
+            className="ide-verify-no-circuit-task"
+            data-testid="ide-verify-no-circuit-task"
+            aria-label="Simulation needs a circuit before it can run"
+          >
+            <div className="ide-verify-no-circuit-copy">
+              <span className="ide-surface-block-label">Simulate starts after Design has a circuit</span>
+              <h2 className="ide-verify-no-circuit-title">Nothing to simulate yet</h2>
+              <p className="ide-verify-no-circuit-summary">
+                Build a circuit in Design, load a starter from Project, or import/recover a project before running an experiment.
+              </p>
+            </div>
+            <div className="ide-verify-no-circuit-actions">
+              {onGoToDesign && (
+                <IdeButton
+                  tone="primary"
+                  onClick={onGoToDesign}
+                  testId="ide-verify-no-circuit-open-design"
+                >
+                  Open Design
+                </IdeButton>
+              )}
+              <IdeButton
+                tone="secondary"
+                onClick={onOpenStarter ?? onOpenProjectVectors}
+                testId="ide-verify-no-circuit-load-starter"
+              >
+                Load starter
+              </IdeButton>
+              {onGoToImport && (
+                <IdeButton
+                  tone="secondary"
+                  onClick={onGoToImport}
+                  testId="ide-verify-no-circuit-import-recover"
+                >
+                  Import / Recover
+                </IdeButton>
+              )}
+            </div>
+            <ol className="ide-verify-no-circuit-steps">
+              <li>Add inputs, outputs, and logic in Design.</li>
+              <li>Return to Simulate and Run your stimulus with optional saved checks.</li>
+              <li>Continue through the RedByte workflow after the circuit behavior is known.</li>
+            </ol>
+          </section>
+        )}
+        <div
+          className="rb-sim-lab-frame"
+          data-testid="ide-verify-lab-frame"
+          data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
+          data-investigation-open={inspectCircuit && lastRun ? 'true' : undefined}
+        >
+        {inspectCircuit && lastRun ? representationSwitch : null}
+        <div
+          ref={labGridRef}
+          className="rb-sim-lab-grid"
+          data-testid="ide-verify-lab-grid"
+          data-stimulus-layout="stable"
+          data-verify-workflow-phase={verifyWorkflowPhase}
+          data-workspace-mode={verifyWorkspaceMode}
+          data-studio-mode={isSequentialRun ? 'scenario' : studioMode}
+          data-representation={representation}
+          data-details-open={drawerOpen ? 'true' : 'false'}
+          data-unified-time={isSequentialRun ? 'true' : undefined}
+          data-investigation={inspectCircuit && lastRun ? investigationFocus : undefined}
+        >
+        {/* The Waveform document is the trace instrument; the case grid belongs to the Cases/Timing document. */}
+        {studioMode !== 'replay' || isSequentialRun ? (
+        <VerifyStimulusRegion
+          className="rb-sim-primary"
+          data-panel-state="stable"
+          data-work-priority="primary"
+        >
+
+        {/* ── BLOCKED mode entry surface ─────────────────────────────────── */}
+        {verifyMode === 'blocked' && (
+          <div className="ide-verify-entry-blocked" data-testid="ide-verify-entry-blocked">
+            <h4 className="ide-verify-entry-blocked-title">Cannot verify this circuit</h4>
+            <p className="ide-verify-entry-blocked-reason">
+              This circuit contains components that cannot be simulated yet.
+              Remove the unsupported component to run verification.
+            </p>
+            {onGoToDesign && (
+              <IdeButton
+                tone="primary"
+                onClick={onGoToDesign}
+                testId="ide-verify-blocked-fix-path"
+              >
+                Fix in Design
+              </IdeButton>
+            )}
+          </div>
+        )}
+
+        {/* ── First-run hero panel — only when no vectors yet; once canvas is populated, step aside ── */}
+
+
+        {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
+
+        {/* Zone label, IO summary, prerun lanes retired — canvas is self-explanatory */}
+
+        {/* Schema-change banner — neutral info when circuit interface changes */}
+        {showSchemaChangeBanner && (
+          <div className="ide-verify-schema-change-banner" data-testid="ide-verify-schema-change-banner" role="status">
+            <span className="ide-verify-schema-change-msg">
+              Circuit interface updated — inputs or outputs changed.
+              {someVectorsOrphaned
+                ? ' Some vectors reference old signals and will be skipped.'
+                : ' Review your vectors to confirm they match the new design.'}
+            </span>
+            <IdeButton
+              tone="primary"
+              onClick={() => { setShowSchemaChangeBanner(false); handleGenerateBasicVectors(); }}
+            >
+              Regenerate vectors
+            </IdeButton>
+            <button
+              type="button"
+              className="ide-verify-schema-dismiss-btn"
+              onClick={() => setShowSchemaChangeBanner(false)}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Scenario library strip — rendered whenever scenario library props are provided */}
+        {(activeScheduleContract?.timingMode === 'manual_event_driven_lab' ||
+          effectiveClockPolicy?.overrideMode === 'manual-pulses' ||
+          effectiveClockPolicy?.overrideMode === 'custom-pattern') && (
+          <details className="rb-sim-sequence-details" data-testid="ide-manual-sequence-details">
+          <summary>Manual sequence editor</summary>
+          <VerifyLabSequencerPanel
+            modeLabel={sequencerModeLabel}
+            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+            stepCount={labSequencerSteps.length}
+            selectedTick={selectedTick}
+            steps={labSequencerSteps}
+            editableSteps={editableScenarioSteps}
+            stateObservationLabel={stateObservationLabel}
+            stateDetails={selectedStateObservationDetails}
+            onSelectStepTick={(tick) => {
+              setSelectedTick(tick);
+              setIsStepMode(true);
+            }}
+            onQuickAddStep={(kind) => {
+              if (!onAppendScenarioStep) return;
+              const defaultInput = inputFields[0]?.id;
+              const defaultOutput = outputFields[0]?.id;
+              if (kind === 'set_bus') {
+                onAppendScenarioStep({
+                  kind,
+                  targetRef: defaultInput,
+                  value: defaultInput ? { [defaultInput]: 1 } : undefined,
+                  label: 'Quick set bus/slice',
+                });
+                return;
+              }
+              if (kind === 'pulse_step') {
+                const pulseTarget =
+                  Object.entries(signalRoleLookup).find(([, role]) => role === 'clock')?.[0] ?? defaultInput;
+                onAppendScenarioStep({
+                  kind,
+                  targetRef: pulseTarget,
+                  value: 1,
+                  label: 'Quick pulse step',
+                });
+                return;
+              }
+              if (kind === 'apply_reset') {
+                const resetTarget =
+                  Object.entries(signalRoleLookup).find(([, role]) => role === 'reset')?.[0] ?? defaultInput;
+                onAppendScenarioStep({
+                  kind,
+                  targetRef: resetTarget,
+                  value: 1,
+                  label: 'Quick apply reset',
+                });
+                return;
+              }
+              onAppendScenarioStep({
+                kind,
+                targetRef: defaultOutput,
+                expectedValue: 1,
+                label: 'Quick assert output/state',
+              });
+            }}
+            onUpdateStep={(stepId, patch) => {
+              onUpdateScenarioStep?.(stepId, patch);
+            }}
+            onMoveStep={(stepId, direction) => {
+              onMoveScenarioStep?.(stepId, direction);
+            }}
+            onDeleteStep={(stepId) => {
+              onDeleteScenarioStep?.(stepId);
+            }}
+          />
+          </details>
+        )}
+
+        {unsupportedFeedbackDiagnostic && (
+          <div
+            className="ide-verify-unsupported-feedback-banner"
+            data-testid="ide-verify-unsupported-feedback-banner"
+          >
+            <IdeCallout
+              tone="error"
+              title={unsupportedFeedbackDiagnostic.title}
+              testId="ide-verify-unsupported-feedback"
+            >
+              <p className="ide-copy" style={{ margin: 0 }}>
+                {unsupportedFeedbackDiagnostic.message}
+              </p>
+              <p className="ide-copy" style={{ margin: '8px 0 0 0' }}>
+                This is not one of RedByte&apos;s supported stateful topologies. You can still trace
+                the current wiring, but compare and export will stay blocked until you replace it
+                with a supported latch or flip-flop primitive, or the exact 4-NAND D-latch
+                topology.
+              </p>
+              {onGoToDesign && (
+                <div className="ide-inline-actions" style={{ marginTop: 8 }}>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={onGoToDesign}
+                    testId="ide-verify-unsupported-feedback-design"
+                  >
+                    Open Design
+                  </IdeButton>
+                </div>
+              )}
+            </IdeCallout>
+          </div>
+        )}
+
+        {inspectCircuit || studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
+        {studioMode === 'bench' ? (
+          <ManualBench
+            onOpenVirtualBoard={onGoToHardware}
+            onOpenAnalyzer={lastRun ? showRecordedView : undefined}
+            onAddToSequence={onAppendScenarioStep}
+          />
+        ) : studioMode === 'testbench' ? (
+          <ScenarioTestbenchPreview
+            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+            source={generatedTestbenchSource}
+          />
+        ) : representation === 'timeline' ? (
+          <TimingLab
+            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+            vectors={authoredVectors}
+            inputFields={stimulusPanelInputFields}
+            outputFields={outputFields}
+            selectedTick={selectedTick}
+            lens="scenario"
+            selectedSignal={selectedSignal}
+            onSelectSignal={handleSignalSelect}
+            cursorA={cursorA} cursorB={cursorB}
+            onSetCursorA={setCursorA} onSetCursorB={setCursorB}
+            onSelectTick={handleStimulusSelectedTickChange}
+            onVectorsChange={onVectorsChange}
+            caseEvidenceByTick={testbenchCaseEvidenceByTick}
+            observedValuesByTick={timingRecordedValues}
+            extraObservedFields={timingExtraFields}
+            playbackControls={<>{playbackControls}{recordedNavigation}{selectionTools}</>}
+            showExpectedOverlay={showExpectedOverlay}
+            formatObservedValue={value => /^[01]{2,}$/.test(value) ? formatBusValue(value, waveformRadix) : value}
+            clockFieldIds={clockSignalNames}
+            runCycles={clockOverrideMode === 'auto' ? clockRunCycles : null}
+            onRunCyclesChange={handleClockRunCyclesChange}
+            generatedFieldIds={timingGeneratedFieldIds}
+            generatedValueAt={timingGeneratedValueAt}
+            generatedNote={timingGeneratedNote}
+          />
+        ) : (
+          <CaseLab
+            runHistory={getRuntimeVerifyRunKind(lastRun) === 'trace' ? [] : runHistory?.filter((run) => run.runKind !== 'trace')}
+            caseOrder={isSequentialRun ? 'time' : 'combination'}
+            inputFields={stimulusPanelInputFields}
+            outputFields={outputFields}
+            vectors={authoredVectors}
+            observedByTick={caseLabData.observed}
+            caseEvidenceByTick={caseLabData.verdict}
+            selectedTick={selectedTick}
+            onSelectCase={handleStimulusSelectedTickChange}
+            onSetInput={onVectorsChange ? (tick, signalId, next) => onVectorsChange(authoredVectors.map(vector =>
+              vector.tick === tick ? { ...vector, inputs: { ...vector.inputs, [signalId]: next } } : vector)) : undefined}
+            onSetExpected={handleCaseSetExpected}
+            onSetExpectedMany={handleCaseSetExpectedMany}
+            focusFieldId={caseLabFocusFieldId}
+            onFocusField={handleCaseLabFocusField}
+            onGenerateExhaustive={handleAutoGenerateVectors}
+            onAddCase={onVectorsChange ? handleCaseAdd : undefined}
+            onDuplicateCase={onVectorsChange ? handleCaseDuplicate : undefined}
+            onDeleteCase={onVectorsChange ? handleCaseDelete : undefined}
+            onRun={runVerification}
+            runLabel={compactCommandRunLabel}
+            runDisabled={runState === 'running' || (nextRunUsesAssertions && !compareAvailable)}
+            vectorsAreAutoGenerated={vectorsAreAutoGenerated}
+            autoVectorNoticeDismissed={autoVectorBannerDismissed}
+            onDismissAutoVectorNotice={handleDismissAutoVectorBanner}
+            isUsingFallbackSignals={
+              !(mappedSignals?.some((s) => s.direction === 'in')) &&
+              !(mappedInputs && mappedInputs.length > 0)
+            }
+            onGoToHardware={onGoToHardware}
+          />
+        )}
+        {studioMode !== 'bench' && representation === 'timeline' ? (
+        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-generators-disclosure">
+          <summary title="Sweep, hold and pulse generators, and the full event editor">Generators and full event editor</summary>
+          <ScenarioBuilderPanel
+          isFirstRun={isFirstRunState}
+          isSequential={isSequentialRun}
+          authoringModeSummary={scenarioBuilderModeSummary}
+          authoringModeHint={scenarioBuilderModeHint}
+          inputFields={stimulusPanelInputFields}
+          outputFields={outputFields}
+          authoredVectors={authoredVectors}
+          totalVectorCount={totalVectorCount}
+          hasAssertedExpectedCells={totalExpectedCaseCount > 0}
+          selectedTick={selectedTick}
+          onSelectedTickChange={handleStimulusSelectedTickChange}
+          onVectorsChange={onVectorsChange}
+          draftTick={draftTick}
+          draftInputs={draftInputs}
+          draftExpected={draftExpected}
+          onDraftTickChange={setDraftTick}
+          onDraftInputChange={handleDraftInputChange}
+          onDraftExpectedChange={handleDraftExpectedChange}
+          onAddVector={handleAddVector}
+          onGenerateBasics={handleGenerateBasicVectors}
+          onOpenProjectVectors={onOpenProjectVectors}
+          onAutoGenerate={handleAutoGenerateVectors}
+          sweepPreset={sweepPreset}
+          sweepSeed={sweepSeed}
+          sweepHoldTicks={sweepHoldTicks}
+          onSweepPresetChange={setSweepPreset}
+          onSweepSeedChange={setSweepSeed}
+          onSweepHoldTicksChange={setSweepHoldTicks}
+          onGenerateSweep={handleGenerateSweepVectors}
+          holdN={holdN}
+          onHoldNChange={setHoldN}
+          onHoldN={handleHoldN}
+          pulseSignal={pulseSignal}
+          onPulseSignalChange={setPulseSignal}
+          onPulse={handlePulse}
+          vectorsAreAutoGenerated={vectorsAreAutoGenerated}
+          autoVectorBannerDismissed={autoVectorBannerDismissed}
+          onDismissAutoVectorBanner={handleDismissAutoVectorBanner}
+          isUsingFallbackSignals={
+            !(mappedSignals?.some((s) => s.direction === 'in')) &&
+            !(mappedInputs && mappedInputs.length > 0)
+          }
+          onGoToHardware={onGoToHardware}
+          detailsRef={scenarioBuilderDetailsRef}
+          clockLane={clockLaneConfig}
+          stimulusAssist={stimulusAssist}
+          observedValuesByTick={testbenchObservedValuesByTick}
+          caseEvidenceByTick={testbenchCaseEvidenceByTick}
+          showExpectedLanes={totalAssertedCheckCount > 0}
+          />
+        </details>
+        ) : null}
+        </VerifyStimulusRegion>
+        ) : null}
+
+        {/* The splitter, the collapse and the two maximize buttons went out with the deck they
+            divided. A workspace with one primary working area has nothing to split: the
+            representation switch chooses what fills it, and the run line under it is as tall as
+            the sentence it has to say. */}
+
+        <VerifyWaveformRegion>
+          {isDraftSession && studioMode === 'replay' ? (
+            <VerifyWaveformPlaceholder
+              inputNames={stimulusPanelInputFields.map((f) => f.label ?? f.id)}
+              outputNames={outputFields.map((f) => f.label ?? f.id)}
+              clockName={effectiveClockPolicy?.signalLabel ?? clockSignalNames[0]}
+              isSequential={isSequentialRun}
+              hasVectors={totalVectorCount > 0}
+              runLabel={emptyStateRunLabel}
+              onRun={undefined}
+              runDisabled={runState === 'running'}
+              onSeed={undefined}
+            />
+          ) : <div
+            className="ide-verify-workbench ide-verify-workbench-v2"
+            data-testid="ide-verify-workbench"
+            data-zone="results"
+            data-trace-ticks={waveformTicks.length}
+            data-trace-signals={signalTimeline.length}
+            data-layout-mode={layoutMode}
+            data-failure-layout={showInlineFailureWorkbenchPanels ? '1' : '0'}
+          >
+            <VerifyThreePanel
+              testId="ide-verify-three-panel"
+              leftPanel={showInlineFailureWorkbenchPanels ? (
+                <VerifyVectorListPanel
+                  rows={studentFailureRows.map((row) => ({
+                    key: row.key,
+                    tick: row.tick,
+                    signal: row.rawSignal,
+                    signalLabel: row.signalLabel,
+                    expected: row.expected,
+                    actual: row.actual,
+                    vectorId: row.vectorId,
+                    caseIndex: row.caseIndex,
+                  }))}
+                  selectedKey={selectedFailureKey}
+                  onSelectFailureKey={handleThreePanelFailureSelect}
+                  onSelectNextFailure={goToNextFail}
+                  onSelectPreviousFailure={goToPrevFail}
+                />
+              ) : null}
+              centerPanel={(
+            <div className="rb-wave-frame">
+            <div className="rb-wave-deck">
+            {structuralRecoveryPanel || repairPanel ? (
+              <section className="ide-verify-advanced-failure" data-testid="ide-verify-advanced-failure" aria-label="Failure repair">
+                {structuralRecoveryPanel}
+                {repairPanel}
+              </section>
+            ) : null}
+            <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
+              {!isSequentialRun && studioMode === 'replay' && !inspectCircuit ? representationSwitch : null}
+              {/* The trace toolbar: case stepping, tick range, radix, the expected overlay, the
+                  scrubber and playback. Every one of them describes a drawn trace, so they belong
+                  to the representation that draws one. */}
+              {!isSequentialRun && studioMode === 'replay' ? (
+              <div className="rb-wave-cmd" data-testid="ide-verify-waveform-cmd" role="toolbar" aria-label="Waveform trace tools">
+              <div className="rb-wave-bar" data-testid="ide-verify-waveform-bar">
+                <div className="rb-wave-primary" data-testid="ide-verify-waveform-primary">
+                {canStepThroughCases ? (
+                  <div className="rb-wave-group" data-testid="ide-verify-step-controls">
+                    <IdeButton
+                      tone={isStepMode ? 'secondary' : 'ghost'}
+                      onClick={() => setIsStepMode((previous) => !previous)}
+                      testId="ide-verify-step-mode-toggle"
+                      title={
+                        activeScheduleContract?.timingMode === 'manual_event_driven_lab'
+                          ? 'Lab-style timing: walk one test case at a time and inspect the signal snapshot below the waveform.'
+                          : 'Walk one test case at a time (same tick navigation as the scrubber).'
+                      }
+                    >
+                      {isStepMode ? 'Step cases on' : 'Step cases'}
+                    </IdeButton>
+                    {isStepMode ? (
+                      <div className="rb-wave-step-bar" data-testid="ide-verify-step-bar">
+                        <IdeButton tone="secondary" onClick={goToPrevStep} disabled={totalSteps <= 1} testId="ide-verify-step-prev">
+                          ← Prev
+                        </IdeButton>
+                        <span className="rb-wave-step-position" data-testid="ide-verify-step-position">
+                          {selectedCasePositionLabel}
+                        </span>
+                        <IdeButton tone="secondary" onClick={goToNextStep} disabled={totalSteps <= 1} testId="ide-verify-step-next">
+                          Next →
+                        </IdeButton>
+                        {onDebugTickSelected && selectedTick !== null ? (
+                          <IdeButton tone="ghost" onClick={handleDebugInDesign} testId="ide-verify-step-debug-design">
+                            Open in Design
+                          </IdeButton>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="rb-wave-transport" data-testid="ide-verify-waveform-transport">
+                {/* Center: Zoom + Row density */}
+                <div className="rb-wave-group">
+                  {(['all', 'fail', 'window'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`rb-wave-zoom${tickZoom === mode ? ' is-active' : ''}`}
+                      onClick={() => {
+                        setTickZoom(mode);
+                        if (mode === 'window') setTickWindowCenter(selectedTick);
+                      }}
+                      data-testid={`ide-verify-zoom-${mode}`}
+                    >
+                      {mode === 'all' ? 'All ticks' : mode === 'fail' ? 'Fail window' : 'Selected'}
+                    </button>
+                  ))}
+                </div>
+
+                {traceDisplayControls}
+
+                {/* Right: Tick scrubber + advanced tools */}
+                <div className="rb-wave-group rb-wave-group--right">
+                  {allWaveformTicks.length > 0 && selectedTick !== null ? (
+                    <label className="rb-wave-scrubber" data-testid="ide-verify-tick-nav">
+                      <input
+                        type="range"
+                        min={0}
+                        max={Math.max(allWaveformTicks.length - 1, 0)}
+                        step={1}
+                        value={Math.max(stepIndex, 0)}
+                        onChange={(event) => {
+                          const nextIndex = Number(event.target.value);
+                          const nextTick = allWaveformTicks[nextIndex];
+                          if (typeof nextTick === 'number') {
+                            stopPlayback();
+                            setSelectedTick(nextTick);
+                          }
+                        }}
+                        data-testid="ide-verify-tick-scrubber"
+                      />
+                      <code data-testid="ide-verify-selected-tick" style={{ minWidth: 24 }}>
+                        {selectedCaseTickLabel ?? `t${selectedTick}`}
+                      </code>
+                    </label>
+                  ) : null}
+                  {/* Playback walks a recording. It is not Run, it does not execute anything, and
+                      it does not change a clock frequency — so it does not sit in the bar looking
+                      like the primary operation. Four controls came out of the reader's way here. */}
+                  {playbackControls}
+                </div>
+                </div>
+                </div>
+              </div>
+              </div>
+              ) : null}
+              {/* The run line: what the last run did, where the cursor is, what failed, and the
+                  actions that follow from it. It is the same line in every representation. */}
+              {!isSequentialRun && <div className="rb-wave-runline" data-testid="ide-verify-run-line" role="group" aria-label="Last run">
+              <div className="rb-wave-bar">
+                {!lastRun ? (
+                  <span className="rb-wave-runline-empty" data-testid="ide-verify-run-line-empty">
+                    <strong>No run recorded yet</strong>
+                    <span>
+                      {totalVectorCount > 0
+                        ? `${totalVectorCount} authored ${totalVectorCount === 1 ? 'case' : 'cases'} — run this scenario to record its trace.`
+                        : 'Author stimulus above, then run this scenario to record its trace.'}
+                    </span>
+                  </span>
+                ) : null}
+                {!isSequentialRun && liveReadout ? (
+                  <div
+                    className={`rb-wave-readout${isPlaying ? ' is-playing' : ''}${liveReadout.failures.length > 0 ? ' has-failure' : ''}`}
+                    data-testid="ide-verify-live-readout"
+                    role="status"
+                    aria-live="off"
+                  >
+                    <span
+                      className={`rb-wave-evidence-state is-${evidenceStateWord.kind}`}
+                      data-testid="ide-verify-evidence-state"
+                      data-state={evidenceStateWord.kind}
+                      title={evidenceStateWord.detail ?? undefined}
+                    >
+                      <strong>{evidenceStateWord.label}</strong>
+                      {evidenceStateWord.kind === 'stale' && evidenceStateWord.detail ? (
+                        <small data-testid="ide-verify-evidence-state-reason">{evidenceStateWord.detail}</small>
+                      ) : null}
+                    </span>
+                    <span className="rb-wave-readout__pos">
+                      <code>t{selectedTick}</code>
+                      <span className="rb-wave-readout__progress" aria-label="Progress">
+                        <span style={{ transform: `scaleX(${liveReadout.total > 1 ? liveReadout.index / (liveReadout.total - 1) : 1})` }} />
+                      </span>
+                      <small>{liveReadout.index + 1} / {liveReadout.total}</small>
+                    </span>
+                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-changed">
+                      <small>changed</small>
+                      {liveReadout.changedInputs.length === 0 ? (
+                        <code className="is-muted">{liveReadout.index === 0 ? 'initial' : 'none'}</code>
+                      ) : (
+                        liveReadout.changedInputs.slice(0, 8).map((entry) => (
+                          <code key={entry.label}>{entry.label}={entry.value}</code>
+                        ))
+                      )}
+                      {liveReadout.changedInputs.length > 8 ? <small>+{liveReadout.changedInputs.length - 8}</small> : null}
+                    </span>
+                    <span className="rb-wave-readout__group" data-testid="ide-verify-live-outputs">
+                      <small>observed</small>
+                      {liveReadout.outputs.slice(0, 8).map((entry) => (
+                        <code key={entry.signal} className={entry.signal === selectedSignal ? 'is-followed' : undefined}>
+                          {entry.signal}={entry.value}
+                        </code>
+                      ))}
+                      {liveReadout.outputs.length > 8 ? <small>+{liveReadout.outputs.length - 8}</small> : null}
+                    </span>
+                    {liveReadout.failures.length > 0 ? (
+                      <span className="rb-wave-readout__group rb-wave-readout__fail" data-testid="ide-verify-live-failure">
+                        <small>mismatch</small>
+                        {liveReadout.failures.slice(0, 3).map((entry) => (
+                          <code key={entry.signal}>{entry.signal} expected {entry.expected} got {entry.actual}</code>
+                        ))}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {recordedNavigation}
+              </div>
+              {/* View and measurement controls are reference tools, not evidence. They held a
+                  permanent row directly under the waveform they serve, which in a failure state
+                  was showing 97px of the 448px it needs. They open on request; the evidence
+                  keeps the room. */}
+              {!isSequentialRun && studioMode === 'replay' && allWaveformTicks.length > 0 && (
+                <details className="rb-wave-tools-disclosure" data-testid="ide-verify-waveform-tools">
+                <summary className="rb-wave-tools-summary">View and measure</summary>
+                <div className="rb-wave-tools" data-testid="ide-verify-waveform-tools-panel">
+                  <div className="rb-wave-tools-section">
+                    <span className="rb-wave-tools-label">View</span>
+                    <button
+                      type="button"
+                      className="rb-wave-zoom"
+                      onClick={() => { hasAuthoredWaveformView.current = true; setTickWidth((prev) => clampTickWidth(prev - 8)); }}
+                      data-testid="ide-verify-zoom-out"
+                      title="Zoom out (narrower ticks)"
+                      aria-label="Zoom out waveform"
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className="rb-wave-zoom"
+                      onClick={() => { hasAuthoredWaveformView.current = true; setTickWidth((prev) => clampTickWidth(prev + 8)); }}
+                      data-testid="ide-verify-zoom-in"
+                      title="Zoom in (wider ticks)"
+                      aria-label="Zoom in waveform"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      className="rb-wave-zoom"
+                      onClick={fitWaveformView}
+                      data-testid="ide-verify-zoom-fit"
+                      title="Fit all ticks in view"
+                    >
+                      Fit
+                    </button>
+                    <span className="rb-wave-tools-label">Rows</span>
+                    {(['small', 'normal', 'large'] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        className={`rb-wave-zoom ${waveformDensity === d ? 'is-active' : ''}`}
+                        onClick={() => { hasAuthoredWaveformView.current = true; setWaveformDensity(d); }}
+                        data-testid={`ide-verify-density-${d}`}
+                        aria-label={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
+                        title={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
+                      >
+                        {d === 'small' ? 'S' : d === 'normal' ? 'M' : 'L'}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedTick !== null && (
+                    <div className="rb-wave-tools-section">
+                      <span className="rb-wave-tools-label">Markers</span>
+                      <span className="rb-wave-tools-readouts">
+                        {cursorA !== null && (
+                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-a-value">A t{cursorA}</code>
+                        )}
+                        {cursorB !== null && (
+                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-b-value">B t{cursorB}</code>
+                        )}
+                        {cursorDeltaTicks !== null && (
+                          <code className="ide-verify-scope-cursor" data-testid="ide-verify-cursor-delta">
+                            Delta {cursorDeltaTicks} ticks
+                          </code>
+                        )}
+                      </span>
+                      <div className="rb-wave-tools-section" data-testid="ide-verify-cursor-controls">
+                        <button
+                          type="button"
+                          className="rb-wave-zoom"
+                          onClick={() => setCursorFromSelected('A')}
+                          data-testid="ide-verify-set-cursor-a"
+                        >
+                          A
+                        </button>
+                        <button
+                          type="button"
+                          className="rb-wave-zoom"
+                          onClick={() => setCursorFromSelected('B')}
+                          data-testid="ide-verify-set-cursor-b"
+                        >
+                          B
+                        </button>
+                        <button
+                          type="button"
+                          className="rb-wave-zoom"
+                          onClick={() => jumpToCursor('A')}
+                          disabled={cursorA === null}
+                          data-testid="ide-verify-jump-cursor-a"
+                        >
+                          Go A
+                        </button>
+                        <button
+                          type="button"
+                          className="rb-wave-zoom"
+                          onClick={() => jumpToCursor('B')}
+                          disabled={cursorB === null}
+                          data-testid="ide-verify-jump-cursor-b"
+                        >
+                          Go B
+                        </button>
+                        <button
+                          type="button"
+                          className="rb-wave-zoom"
+                          onClick={clearCursors}
+                          data-testid="ide-verify-clear-cursors"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                </details>
+              )}
+
+                {selectionTools}
+              </div>}
+
+              {/* No-trace diagnostic — shown when run produced no waveform data */}
+              {verifyPreflightDiagnostics.length > 0 && (
+                <IdeCallout
+                  tone={hasBlockingVerifyPreflightIssue ? 'error' : 'warn'}
+                  title={
+                    hasBlockingVerifyPreflightIssue
+                      ? 'Cannot verify current expectations'
+                      : 'Simulation completed with a wiring warning'
+                  }
+                  testId="ide-verify-preflight-guard"
+                >
+                  <p className="ide-copy">
+                    {hasBlockingVerifyPreflightIssue
+                      ? 'Fix these structural issues before treating this as a logic mismatch.'
+                      : 'The runnable paths remain observable. Disconnected outputs stay X until you repair their wiring.'}
+                  </p>
+                  <ul className="ide-list">
+                    {verifyPreflightDiagnostics.slice(0, 4).map((diagnostic, index) => (
+                      <li key={`${diagnostic.code}-${diagnostic.location?.signal ?? diagnostic.id}-${diagnostic.location?.vectorId ?? index}`}>
+                        <strong>{diagnostic.code}:</strong> {diagnostic.message}
+                      </li>
+                    ))}
+                  </ul>
+                  {onGoToDesign && (
+                    <div className="ide-inline-actions">
+                      <IdeButton
+                        tone="secondary"
+                        onClick={onGoToDesign}
+                        testId="ide-verify-preflight-open-design"
+                      >
+                        Open in Design
+                      </IdeButton>
+                    </div>
+                  )}
+                </IdeCallout>
+              )}
+              {hasNoTrace && (
+                <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
+                  <p className="ide-copy">The run completed but produced no waveform data.</p>
+                  <ul className="ide-list">
+                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Board & Constraints</li>
+                    <li>{sequentialGuidanceCopy.noTraceHint}</li>
+                    <li>Circuit has unconnected gates — verify all nodes are wired</li>
+                  </ul>
+                  <div className="ide-inline-actions">
+                    <IdeButton
+                      tone="primary"
+                      onClick={() => openFailureInDesign({ signal: '', tick: 0, expected: '', actual: '' })}
+                      disabled={!onFixPath}
+                      testId="ide-verify-no-trace-fix"
+                    >
+                      Open in Design
+                    </IdeButton>
+                  </div>
+                </IdeCallout>
+              )}
+
+              {!isSequentialRun && studioMode === 'replay' ? (
+              <div
+                className="rb-wave-canvas"
+                data-testid="ide-verify-waveform-preview"
+                data-verify-trace-only={isTraceOnly ? '1' : '0'}
+              >
+                <BusWordLanesPanel
+                  lanes={busWordLanes}
+                  selectedTick={selectedTick}
+                  onSelectTick={selectTickManually}
+                />
+                <div
+                  className="rb-wave-scroll"
+                  ref={waveformScrollRef}
+                  onWheel={handleWaveformWheel}
+                  data-layout-mode={layoutMode}
+                  data-testid="ide-verify-waveform-scroll"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+                    if (allWaveformTicks.length === 0) return;
+                    e.preventDefault();
+                    setSelectedTick((prev) => {
+                      const idx = prev !== null ? allWaveformTicks.indexOf(prev) : -1;
+                      if (e.key === 'ArrowRight') {
+                        return allWaveformTicks[Math.min(allWaveformTicks.length - 1, idx + 1)] ?? allWaveformTicks[0];
+                      }
+                      return allWaveformTicks[Math.max(0, idx - 1)] ?? allWaveformTicks[0];
+                    });
+                  }}
+                >
+                {hiddenSignals.length > 0 ? (
+                  <div className="ide-verify-hidden-lanes" data-testid="ide-verify-hidden-lanes">
+                    <span>
+                      {hiddenSignals.length} lane{hiddenSignals.length === 1 ? '' : 's'} hidden
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHiddenSignals([])}
+                      data-testid="ide-verify-hidden-lanes-restore"
+                    >
+                      Show all
+                    </button>
+                  </div>
+                ) : null}
+                <WaveformViewer
+                  signals={waveformLanes}
+                  ticks={zoomedTicks}
+                  failTicks={sessionShowsCompareEvidence ? new Set(failingRows.map((row) => row.tick)) : new Set<number>()}
+                  failingSignalKeys={sessionShowsCompareEvidence ? failingSignalKeys : new Set<string>()}
+                  selectedTick={selectedTick}
+                  cursorA={cursorA}
+                  cursorB={cursorB}
+                  changedSignals={changedSignalsAtTick}
+                  expectedValues={expectedValuesByLane}
+                  showExpected={showExpectedOverlay}
+                  expandedBuses={expandedBusSet}
+                  onToggleBus={toggleBus}
+                  pinnedSignals={pinnedSignals}
+                  onSelectTick={selectTickManually}
+                  onSelectSignal={handleSignalSelect}
+                  rowHeight={ROW_H_MAP[waveformDensity]}
+                  tickWidth={tickWidth}
+                  signalMeta={signalMetaForViewer}
+                  isSequential={isSequentialRun}
+                  clockSignals={clockSignals}
+                  signalGroups={laneGroupsForViewer}
+                  onHoverSignal={handleSignalHover}
+                  selectedSignal={selectedSignal}
+                  onTogglePinSignal={(signal) =>
+                    setPinnedSignalOrder((previous) =>
+                      previous.includes(signal)
+                        ? previous.filter((entry) => entry !== signal)
+                        : [...previous, signal]
+                    )
+                  }
+                  onHideSignal={(signal) =>
+                    setHiddenSignals((previous) =>
+                      previous.includes(signal) ? previous : [...previous, signal]
+                    )
+                  }
+                  emptyMessage={
+                    lastRun
+                      ? 'No waveform data in this run — check I/O mapping in Board & Constraints'
+                      : 'Run the current stimulus to observe outputs'
+                  }
+                  ghostSignals={
+                    !lastRun && mappedSignals?.length
+                      ? mappedSignals.map(s => ({
+                          signal: s.id,
+                          label: s.label ?? s.id,
+                          direction: s.direction ?? 'internal',
+                        }))
+                      : undefined
+                  }
+                />
+                </div>
+                {/* Signal Snapshot — shown in step mode, shows all I/O at selected tick */}
+                {isStepMode && stepSnapshotRows.length > 0 && (
+                  <section className="ide-verify-snapshot-panel" data-testid="ide-verify-snapshot-panel">
+                    <header className="ide-design-subheader">
+                      <h4>Signal Snapshot — t{selectedTick}</h4>
+                    </header>
+                    <div className="ide-verify-snapshot-grid" data-testid="ide-verify-snapshot-grid">
+                      {stepSnapshotRows.map((entry) => (
+                        <div
+                          key={entry.signal}
+                          className={`ide-verify-snapshot-row ide-verify-snapshot-row--${entry.status}`}
+                          data-testid={`ide-verify-snapshot-${entry.signal.replace(/[^a-z0-9]/gi, '-')}`}
+                        >
+                          <code className="ide-verify-snapshot-signal">{entry.signal}</code>
+                          <span className="ide-verify-snapshot-actual">{entry.actual}</span>
+                          <span className="ide-verify-snapshot-expected">/ exp {entry.expected}</span>
+                          <IdeStatusPill tone={entry.status === 'pass' ? 'ok' : 'error'}>
+                            {entry.status.toUpperCase()}
+                          </IdeStatusPill>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {/* Tick Readout Strip — compact value bar, visible when a tick is selected (non-step mode) */}
+                {selectedTick !== null && lastRun && !isStepMode && displaySignalTimeline.length > 0 && (
+                  <TickReadoutStrip
+                    tick={selectedTick}
+                    signals={waveformLanes}
+                    signalGroups={laneGroupBySignal}
+                  />
+                )}
+              </div>
+              ) : null}
+            </section>
+
+            </div>{/* /ide-verify-instrument-deck */}
+            </div>
+              )}
+              rightPanel={showInlineFailureWorkbenchPanels ? (
+                <VerifyFailureExplanationPanel
+                  failure={selectedFailureExplanationCase}
+                  classification={selectedFailureClassification}
+                  reasonCode={selectedFailureEvidence?.actualReason ?? null}
+                  peers={studentSelectedFailurePeers.map((row) => ({
+                    tick: row.tick,
+                    signal: row.rawSignal,
+                    signalLabel: row.signalLabel,
+                    expected: row.expected,
+                    actual: row.actual,
+                    vectorId: row.vectorId,
+                    caseIndex: row.caseIndex,
+                  }))}
+                  inputSnapshot={selectedFailureInputs}
+                  patternSummary={selectedFailurePattern?.summary ?? null}
+                  patternNextInspect={selectedFailurePattern?.nextInspect ?? null}
+                  onSelectPeer={(peer) => applyFailureSelection(peer)}
+                  onJumpToFix={(failure) => reviewFailureInVerify(failure)}
+                  onOpenInDesign={(failure) => openFailureInDesign(failure)}
+                  onAcceptObserved={canApplyRunDerivedRepair ? handleFailureAcceptObserved : undefined}
+                  onCaptureRow={canApplyRunDerivedRepair ? handleFailureCaptureRow : undefined}
+                  onCaptureSignal={canApplyRunDerivedRepair ? handleFailureCaptureSignal : undefined}
+                  onSetExpectedBit={canApplyRunDerivedRepair ? handleFailureSetExpectedBit : undefined}
+                  onClearExpected={canApplyRunDerivedRepair ? handleFailureClearExpected : undefined}
+                  onRerunCompare={() => handleRunWithPreflight(true)}
+                />
+              ) : null}
+            />
+
+            {/* Connected investigation owns this signal's explanation. Preserve the ordinary
+                inspector preference while its duplicate pane is suspended. */}
           </div>}
         </VerifyWaveformRegion>
         {inspectCircuit && lastRun ? <RecordedCircuitInspector
           circuit={recordedCircuit} run={surfaceLastRun ?? lastRun} tick={selectedTick} signal={selectedSignal}
           explanation={signalExplanation} resolveSignal={resolveRecordedPortSignal}
           onSelectSignal={(signal) => { setSelectedSignal(signal); onSignalSelected?.(signal); }}
+          onSelectTick={setSelectedTick}
           onClose={() => setInspectCircuit(false)} onEdit={onGoToDesign}
-        /> : <aside className="rb-sim-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
+        /> : drawerOpen ? <aside className="rb-sim-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
           {studioMode === 'testbench' ? (
             <>
               <header><span>Source inspector</span><strong>testbench.vhd</strong></header>
@@ -8310,10 +8147,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </>
           ) : (
             <>
-              <header><span>Inspector</span><strong>{selectedSignal ?? (selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : 'Select an event')}</strong></header>
+              <header><button type="button" className="wb-btn" onClick={() => setDrawerOpen(false)} aria-label="Close simulation details">Close</button><strong>{selectedSignal ?? (selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : 'Select an event')}</strong></header>
               <dl>
                 <div><dt>Event</dt><dd>{selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : '—'}</dd></div>
-                <div><dt>Time</dt><dd>{selectedAuthoredEvent ? `t${selectedAuthoredEvent.tick}` : '—'}</dd></div>
+                <div><dt>Time</dt><dd>{selectedTick != null ? `t${selectedTick}` : '—'}</dd></div>
                 <div><dt>Input changes</dt><dd>{selectedEventChangedInputs.length > 0 ? selectedEventChangedInputs.map((field) => field.label).join(', ') : 'None at this event'}</dd></div>
                 <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? 'Not recorded'}</dd></div>
                 <div><dt>Saved checks</dt><dd>{selectedEventCheckCount > 0 ? selectedEventCheckCount : 'None'}</dd></div>
@@ -8347,7 +8184,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ) : null}
             </>
           )}
-        </aside>}
+          {isSequentialRun && traceDisplayControls}
+          {totalAssertedCheckCount > 0 && <IdeButton tone="secondary" onClick={handleResetToStimulusOnly} testId="ide-sim-clear-checks">Clear optional checks</IdeButton>}
+          {advancedAnalysis}
+        </aside> : null}
         </div>
         </div>
         </VerifyWorkspaceRegion>
@@ -8389,6 +8229,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ) : null}
         {/* Provider selection is about external evidence. It belongs with the imported trace it
             selects, not permanently under every internally executed run. */}
+        <details className="rb-sim-imported-details" data-testid="ide-sim-imported-evidence">
+          <summary>Imported evidence · load or inspect a VCD</summary>
         {importedWaveform ? (
           <SimulationProviderBar
             hasImportedWaveform
@@ -8417,6 +8259,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onClear={onClearImportedWaveform ?? (() => {})}
             isActiveProvider={activeSimProvider === 'imported-vcd'}
         />
+        </details>
       </IdePanel>
     </IdeSurfaceLayout>
   );

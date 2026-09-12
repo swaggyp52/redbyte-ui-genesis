@@ -23,6 +23,7 @@ export interface CaseLabProps {
   readonly caseEvidenceByTick: Record<number, CaseEvidence>;
   readonly selectedTick: number | null;
   readonly onSelectCase: (tick: number) => void;
+  readonly onSetInput?: (tick: number, signalId: string, next: 0 | 1) => void;
   readonly onSetExpected: (tick: number, signalId: string, next: 0 | 1 | null) => void;
   /** One write for many cases (bulk edits must not race each other through stale snapshots). */
   readonly onSetExpectedMany?: (edits: readonly { tick: number; signalId: string; next: 0 | 1 | null }[]) => void;
@@ -87,6 +88,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   selectedTick,
   onSelectCase,
   onSetExpected,
+  onSetInput,
   onSetExpectedMany,
   focusFieldId = null,
   onFocusField,
@@ -413,7 +415,12 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                     <td className="ide-case-lab-num" title={`Case ${vector.tick}`}>{vector.tick}</td>
                     {inputFields.map((field) => (
                       <td key={field.id} className="ide-case-lab-in">
-                        <code>{asBit(vector.inputs[field.id]) || '0'}</code>
+                        {onSetInput ? <button type="button" className="wb-btn wb-btn--ghost"
+                          data-testid={'ide-case-lab-input-' + vector.tick + '-' + field.id}
+                          aria-label={(field.label ?? field.id) + ' input at t' + vector.tick + ': ' + (asBit(vector.inputs[field.id]) || '0') + '; toggle value'}
+                          onClick={event => { event.stopPropagation(); onSetInput(vector.tick, field.id, asBit(vector.inputs[field.id]) === '1' ? 0 : 1); onSelectCase(vector.tick); }}>
+                          <code>{asBit(vector.inputs[field.id]) || '0'}</code>
+                        </button> : <code>{asBit(vector.inputs[field.id]) || '0'}</code>}
                       </td>
                     ))}
                     {outputFields.map((field) => {

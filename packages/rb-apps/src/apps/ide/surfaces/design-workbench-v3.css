@@ -575,13 +575,15 @@
   border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
+/* The rename control is one field row in the identity card, the height of every other control
+   there; at 40px it was the tallest thing in the inspector and made a 64px block of one button. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-editor .ide-button,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-input {
-  min-height: 40px;
+  min-height: var(--wb-control-h);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-editor > .ide-button {
-  width: 100%;
+  max-width: 100%;
   justify-content: flex-start;
 }
 

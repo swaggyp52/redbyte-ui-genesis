@@ -22,10 +22,9 @@ function expandVerifyWorkbenchDocks(view: {
   queryByTestId: (testId: string) => HTMLElement | null;
   getByTestId: (testId: string) => HTMLElement;
 }) {
-  const leftToggle = view.queryByTestId('ide-workbench-dock-toggle-left');
+  const leftToggle = view.queryByTestId('ide-show-left-dock');
   if (leftToggle) fireEvent.click(leftToggle);
-  const rightToggle = view.queryByTestId('ide-workbench-dock-toggle-right');
-  if (rightToggle) fireEvent.click(rightToggle);
+  // Simulate's context is opened through Details, not a second shell inspector.
 }
 
 function makePassRun(): RuntimeVerifyRun {
@@ -336,7 +335,7 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
 
 /** Open the run inspector whatever it was left in; these tests care about its contents. */
 function openRunInspector(view: { getByTestId: (id: string) => HTMLElement }): void {
-  const toggle = view.getByTestId('ide-verify-drawer-toggle');
+  const toggle = view.getByTestId('ide-verify-details');
   if (toggle.getAttribute('aria-expanded') === 'true') return;
   fireEvent.click(toggle);
 }
@@ -956,7 +955,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-results-summary-headline').textContent).toContain(
       'Simulation complete'
     );
-    expect(getByTestId('ide-verify-drawer-toggle')).toBeTruthy();
+    expect(getByTestId('ide-verify-details')).toBeTruthy();
     openVerifyUtilities(getByTestId);
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-vcb-evidence')).toBeNull();

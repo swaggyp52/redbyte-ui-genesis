@@ -11,6 +11,21 @@ role: Export surface spec
 Status: Unified Workbench v3 RC trust source; final exact-SHA certification pending
 Mode ID: `export`
 
+
+## Current P2.6B operational Package (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+Review refinement: authored vector ids survive scenario cloning and runtime rehydration. An unchanged reload retains byte-identical exported project inputs and the exact current download receipt. The displayed SHA-256 still names the actual ZIP bytes; a retained receipt does not claim the file still exists on disk.
+
+This supersedes the dossier-first section below. Package opens on identity, one Generate and
+download action, plain trust/currentness, generated files and the Vivado next step. Open report
+is explicit secondary navigation with Back to package. A successful browser request displays
+the ZIP SHA-256 beside it; the browser journey saves the real download and hashes its bytes.
+Draft, checked and stale remain distinct; browser generation does not prove Vivado or hardware.
+EXPECTED_IO without trusted run rows preserves authored project expectations. A separate
+simulation must not silently replace a deliberately failing expected value.
+
 ## The Package landing is the dossier (2026-09-07)
 
 The `package` workspace root draws the handoff dossier (`ide-package-handoff-document`): the

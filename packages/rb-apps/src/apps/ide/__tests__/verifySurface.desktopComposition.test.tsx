@@ -4,7 +4,7 @@
 // result evidence collapsed into compact strip.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -64,14 +64,17 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
   });
 
   it('guides a no-circuit cold start instead of presenting a runnable command bar', () => {
+    const openStarter = vi.fn();
+    const openProject = vi.fn();
     const { queryByTestId, getByTestId } = render(
       <VerifySurface
         deterministicHash="comp-empty"
+        onOpenStarter={openStarter}
         hasVectors={false}
         vectors={[]}
         mappedInputs={[]}
         mappedSignals={[]}
-        onOpenProjectVectors={vi.fn()}
+        onOpenProjectVectors={openProject}
         onVectorsChange={vi.fn()}
         verifyMode="combinational"
       />
@@ -80,6 +83,9 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(queryByTestId('ide-verify-command-strip')).toBeNull();
     expect(queryByTestId('ide-verify-command-bar')).toBeNull();
     expect(getByTestId('ide-verify-no-circuit-task')).toBeTruthy();
+    fireEvent.click(getByTestId('ide-verify-no-circuit-load-starter'));
+    expect(openStarter).toHaveBeenCalledOnce();
+    expect(openProject).not.toHaveBeenCalled();
   });
 
   it('renders exactly one VerifyCommandBar (ide-verify-command-bar)', () => {
@@ -119,10 +125,10 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
-    expect(getByTestId('ide-verify-results-summary').getAttribute('role')).toBeNull();
-    expect(getByTestId('ide-verify-results-summary').getAttribute('aria-live')).toBeNull();
-    expect(getByTestId('ide-verify-results-summary-metrics')).toBeTruthy();
-    expect(getByTestId('ide-verify-results-summary-metric-passed')).toBeTruthy();
+    expect(getByTestId('ide-run-identity').getAttribute('role')).toBeNull();
+    expect(getByTestId('ide-run-identity').getAttribute('aria-live')).toBeNull();
+    expect(getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
+    expect(getByTestId('ide-run-output-digest').textContent).toMatch(/^[a-f0-9]{8}$/);
   });
 
   it('keeps one dedicated announcer mounted and changes its text for distinct runs with identical outcomes', async () => {
@@ -135,10 +141,10 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
 
     const firstPass = makePassRun();
     view.rerender(<VerifySurface {...BASE_PROPS} lastRun={firstPass} />);
-    await waitFor(() => expect(announcer.textContent).toContain('Verification run 1. Compare passed.'));
+    await waitFor(() => expect(announcer.textContent).toContain('Simulation run 1. Simulation complete'));
     const firstAnnouncement = announcer.textContent;
     expect(view.getByTestId('ide-verify-run-announcer')).toBe(announcer);
-    expect(view.getByTestId('ide-verify-results-summary').getAttribute('role')).toBeNull();
+    expect(view.getByTestId('ide-run-identity').getAttribute('role')).toBeNull();
 
     view.rerender(<VerifySurface {...BASE_PROPS} lastRun={firstPass} />);
     expect(announcer.textContent).toBe(firstAnnouncement);
@@ -149,7 +155,7 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
         lastRun={{ ...firstPass }}
       />
     );
-    await waitFor(() => expect(announcer.textContent).toContain('Verification run 2. Compare passed.'));
+    await waitFor(() => expect(announcer.textContent).toContain('Simulation run 2. Simulation complete'));
     expect(view.getByTestId('ide-verify-run-announcer')).toBe(announcer);
     expect(announcer.textContent).not.toBe(firstAnnouncement);
 
@@ -172,7 +178,7 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
-    const passHero = getByTestId('ide-verify-pass-hero');
+    const passHero = getByTestId('ide-run-identity');
     expect(passHero.closest('details')).toBeNull();
     expect(passHero.textContent?.length ?? 0).toBeGreaterThan(20);
   });

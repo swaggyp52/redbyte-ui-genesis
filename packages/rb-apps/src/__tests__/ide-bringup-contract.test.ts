@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
-import type { RuntimeVerifyRun } from '../apps/ide/projectRuntime';
+import { useProjectRuntime, type RuntimeVerifyRun } from '../apps/ide/projectRuntime';
 import { generateBringUpVectors } from '../apps/ide/bringupArtifacts';
 import { buildVerifyReport, buildVerifyWaveSamples } from '../apps/ide/verifyReport';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
@@ -128,50 +128,11 @@ function buildSignalRoles(ioMapping: IoMapping) {
 }
 
 function buildFixtureRuntimeVerifyRun(project: RBProject): RuntimeVerifyRun {
-  const scheduleContract = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
-  const outputSignals = (project.ioMapping?.outputs ?? []).map((entry) => entry.label ?? entry.id);
-  const rows = (project.vectors ?? []).flatMap((vector) =>
-    outputSignals.map((signal) => {
-      const expected = normalizeBitSymbol(vector.expected?.[signal]);
-      return {
-        tick: vector.tick,
-        signal,
-        expected,
-        actual: expected,
-      };
-    })
-  );
-  const report = buildVerifyReport({
-    scenarioId: 'bringup-contract-fixture',
-    scenarioName: 'Bring-up Contract Fixture',
-    status: 'pass',
-    deterministicHash: 'verify_bringup_contract_fixture',
-    rows,
-    vectors: buildVerifyVectors(project.vectors ?? []),
-    generatedAtIso: GENERATED_AT_ISO,
-    signalRoles: buildSignalRoles(project.ioMapping ?? buildFixtureIoMapping()),
-  });
-
-  return {
-    scenarioId: report.scenarioId,
-    scenarioName: report.scenarioName,
-    status: report.status,
-    deterministicHash: report.deterministicHash,
-    reportHash: report.reportHash,
-    firstFailingTick: report.firstFailingTick,
-    generatedAtIso: report.generatedAtIso,
-    schedule: scheduleContract.schedule,
-    scheduleContract,
-    meta: {
-      circuitKind: scheduleContract.schedule === 'clocked_macro' ? 'sequential' : 'combinational',
-      clockingProtocol: scheduleContract.schedule === 'clocked_macro' ? 'clocked_macro' : null,
-      samplePoint: scheduleContract.samplePoint,
-      tick0Meaning: scheduleContract.tick0Meaning,
-      clockSignalName: scheduleContract.clockSignalName ?? null,
-    },
-    report,
-    waveform: buildVerifyWaveSamples(report),
-  };
+  useProjectRuntime.getState().loadFromProject(project);
+  const state = useProjectRuntime.getState();
+  return state.runVerification({ scenarioId: state.activeScenarioId, scenarioName: 'Bring-up Contract Fixture',
+    deterministicHash: 'verify_bringup_contract_fixture', rows: [], assertionMode: true,
+    ranAtIso: GENERATED_AT_ISO });
 }
 
 async function buildVivadoKitZip(artifacts: ReturnType<typeof buildExportViewModel>['artifacts']) {
@@ -204,7 +165,7 @@ function normalizeBitSymbol(value: unknown): string {
 }
 
 describe('IDE bring-up contract', () => {
-  it('builds deterministic bring-up vectors and exports the canonical bring-up proof artifacts', async () => {
+  it('exports deterministic bring-up references without treating a port-only HDL projection as passing browser proof', async () => {
     const project = buildFixtureProject(loadFixtureVhdl());
     const ioRows = buildBringUpIoRows(project.ioMapping ?? buildFixtureIoMapping());
     const vectorsA = generateBringUpVectors({
@@ -227,8 +188,12 @@ describe('IDE bring-up contract', () => {
     });
 
     const runtimeVerifyRun = buildFixtureRuntimeVerifyRun(project);
-    expect(runtimeVerifyRun.status).toBe('pass');
-    expect(runtimeVerifyRun.schedule).toBe('clocked_macro');
+    expect(runtimeVerifyRun.status).toBe('fail');
+    // This imported HDL fixture provides a port projection, not simulated counter logic.
+    // Its disconnected outputs are unknown. A test must not manufacture actual=expected.
+    expect(runtimeVerifyRun.evidence?.preflight.filter(issue => issue.kind === 'floating-output')).toHaveLength(4);
+    expect(runtimeVerifyRun.report.rows.every(row => row.actual === 'X')).toBe(true);
+    expect(runtimeVerifyRun.schedule).toBe('combinational');
 
     const exportViewModel = buildExportViewModel(project, runtimeVerifyRun);
     expect(exportViewModel.status).toBe('ok');
@@ -271,19 +236,16 @@ describe('IDE bring-up contract', () => {
     };
     expect(expectedIo.schemaVersion).toBe('rb.expected-io.v1');
     expect(expectedIo.evidenceLevel).toBe('E0');
-    expect(expectedIo.source).toBe('verify-run');
-    expect(expectedIo.generatedAtIso).toBe(GENERATED_AT_ISO);
-    expect(expectedIo.verifyHash).toBe(runtimeVerifyRun.deterministicHash);
-    expect(expectedIo.verifyReportHash).toBe(runtimeVerifyRun.reportHash);
+    expect(expectedIo.source).toBe('project-vectors');
+    expect(expectedIo.generatedAtIso).toBe(project.updatedAt);
+    expect(expectedIo.verifyHash).toBeUndefined();
+    expect(expectedIo.verifyReportHash).toBeUndefined();
     expect(expectedIo.signals).toHaveLength(4);
     const q0Signal = expectedIo.signals?.find((entry) => entry.signal === 'q0' && entry.pin === 'LD0');
     expect(q0Signal?.packagePin).toBe('U16');
-    expect(q0Signal?.values).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ tick: 0, expected: '0' }),
-        expect.objectContaining({ tick: 3, expected: '1' }),
-      ])
-    );
+    expect(q0Signal?.values).toEqual((project.vectors ?? []).map(vector => ({
+      tick: vector.tick, expected: normalizeBitSymbol(vector.expected?.q0),
+    })));
 
     expect(programArtifact?.content).toContain('open_hw_manager');
     expect(programArtifact?.content).toContain('connect_hw_server');
@@ -306,7 +268,7 @@ describe('IDE bring-up contract', () => {
     const programText = await zip.file('program_and_test.tcl')!.async('string');
     expect(bringupText).toContain('# Basys3 Bring-Up');
     const zippedExpectedIo = JSON.parse(expectedIoText) as { source?: string };
-    expect(zippedExpectedIo.source).toBe('verify-run');
+    expect(zippedExpectedIo.source).toBe('project-vectors');
     expect(programText).toContain('open_hw_manager');
   });
 });

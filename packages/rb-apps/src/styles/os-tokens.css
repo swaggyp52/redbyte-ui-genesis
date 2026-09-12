@@ -96,12 +96,16 @@
   /* Type scale — semantic aliases
      CONSTRAINT: body >= 13px, nothing below 11px for readability.
      Projector test: section headers must be readable from back row (~15px+). */
-  --rb-text-os-title: 24px;
-  --rb-text-window-title: 13px;
-  --rb-text-section: 15px;
-  --rb-text-body: 13px;
-  --rb-text-label: 11px;
-  --rb-text-caption: 11px;
+  /* rem, identical to the pixel each replaces at a 16px root. These are read by 197 IDE
+     declarations, and `--rb-text-body` was re-declared here in px after the type scale had
+     defined it in rem - so the project's own name on its Overview measured 13px at a 32px root
+     while the "saved just now" beside it measured 24px. */
+  --rb-text-os-title: 1.5rem;
+  --rb-text-window-title: 0.8125rem;
+  --rb-text-section: 0.9375rem;
+  --rb-text-body: 0.8125rem;
+  --rb-text-label: 0.6875rem;
+  --rb-text-caption: 0.6875rem;
 
   /* Line heights */
   --rb-leading-tight: 1.2;

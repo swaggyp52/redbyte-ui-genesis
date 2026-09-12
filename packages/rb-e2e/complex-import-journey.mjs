@@ -165,6 +165,7 @@ await page.waitForTimeout(500);
 if (await page.getByTestId('ide-sim-provider-bar').count() !== 0) fail('provider bar should not offer a choice before any waveform is imported');
 if (await page.getByTestId('ide-vcd-analyzer-load').count() !== 1) fail('Simulate offers no route to import external waveform evidence');
 ok('Simulate: native run-of-record, with exactly one route to import external evidence');
+await page.getByTestId('ide-sim-imported-evidence').locator('summary').click();
 await page.getByTestId('ide-vcd-analyzer-file-input').setInputFiles(vcdPath);
 await page.waitForTimeout(400);
 const sigCount = (await page.getByTestId('ide-vcd-analyzer-signal-count').textContent())?.trim();
@@ -212,6 +213,7 @@ if (await page.getByTestId('ide-constraint-sets').count() === 0) fail('constrain
 const setCount = (await page.getByTestId('ide-constraint-sets-count').textContent())?.trim();
 if (setCount !== '2 sets') fail(`expected 2 seeded sets, got ${setCount}`);
 ok(`Board & Constraints: 2 sets seeded from the imported XDC`);
+await page.getByTestId('ide-hw-constraints-tool').locator(':scope > summary').click();
 const cs = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().constraintSets.sets.map((s) => s.id));
 await page.getByTestId(`ide-constraint-set-activate-${cs[1]}`).click();
 await page.waitForTimeout(150);
