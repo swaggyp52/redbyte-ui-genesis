@@ -14,6 +14,8 @@ Mode ID: `project`
 
 ## Current P2.6B document and ledger ownership (2026-09-12)
 
+The shared bounded starter picker is also reachable directly from an empty Simulate workspace; browsing it does not replace the current project. Earlier command-center and Change Project labels below are historical where they conflict with this current owner.
+
 Overview shows one blocker and an Open Problems action; the complete list lives in the canonical dock. The explorer retains its summary/count. Single-run groups say no repeat yet.
 
 The explorer owns Overview, Sources, Architecture, Runs and Compile Order. Visiting those

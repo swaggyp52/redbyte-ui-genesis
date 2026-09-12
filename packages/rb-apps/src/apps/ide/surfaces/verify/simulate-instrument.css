@@ -882,3 +882,8 @@
 .ide-root .rb-tl-context .ide-verify-fail-nav-summary { background: var(--wb-surface); color: var(--wb-text); border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); }
 .ide-root .rb-tl-context .ide-verify-fail-nav-summary * { color: inherit; }
 .ide-root .rb-tl:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+
+/* A circuit is required before the experiment instrument has work to show. */
+.ide-root .rb-sim-lab-frame[data-no-circuit-hidden='true'] {
+  display: none;
+}

@@ -4,7 +4,7 @@
 // result evidence collapsed into compact strip.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -64,14 +64,17 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
   });
 
   it('guides a no-circuit cold start instead of presenting a runnable command bar', () => {
+    const openStarter = vi.fn();
+    const openProject = vi.fn();
     const { queryByTestId, getByTestId } = render(
       <VerifySurface
         deterministicHash="comp-empty"
+        onOpenStarter={openStarter}
         hasVectors={false}
         vectors={[]}
         mappedInputs={[]}
         mappedSignals={[]}
-        onOpenProjectVectors={vi.fn()}
+        onOpenProjectVectors={openProject}
         onVectorsChange={vi.fn()}
         verifyMode="combinational"
       />
@@ -80,6 +83,9 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(queryByTestId('ide-verify-command-strip')).toBeNull();
     expect(queryByTestId('ide-verify-command-bar')).toBeNull();
     expect(getByTestId('ide-verify-no-circuit-task')).toBeTruthy();
+    fireEvent.click(getByTestId('ide-verify-no-circuit-load-starter'));
+    expect(openStarter).toHaveBeenCalledOnce();
+    expect(openProject).not.toHaveBeenCalled();
   });
 
   it('renders exactly one VerifyCommandBar (ide-verify-command-bar)', () => {

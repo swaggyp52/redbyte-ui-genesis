@@ -5,6 +5,89 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## P2.6B exact classroom diagnostic (2026-09-12)
+
+At dfec50b446aeab5b48d1828adf1f8139be32615f, the unchanged canonical chain passes its
+build and examples then fails at Project command center (step 3 of 72). Its remaining
+69 steps are unexecuted. The separate diagnostic continuation runs all 71 post-build
+commands with three independent preview workers at the same build: **19 pass / 52 fail**.
+This continuation is not the canonical chain's exit status. No source or HEAD changed
+during the census. Full logs and classification are local ignored evidence under
+.redbyte/product-immersion/p2-6-studio-completion/p2-6b/classroom-final/.
+
+The one confirmed product regression is empty Simulate showing its instrument and a mapping
+warning before a circuit exists. The current frame's CSS owner now handles that state;
+the existing starter picker is opened directly. Source proof and 11 owner tests pass;
+the committed built gate is recorded in the closure checkpoint. That follow-up does not
+rewrite the original census. The other rows name the failing consumers and their measured
+assertions, not a blanket claim that all unexecuted semantic checks would pass.
+
+Disposition by category: Project consumers migrate to Start/Overview/explorer; shell consumers
+to rail/menu/object identity; Design consumers to current View/Explore/Hierarchy and panel
+policy; Simulate consumers to one Run, optional checks, Time/Table and explicit Details;
+Board consumers to current mapping/resource/detail composition; Package consumers to the
+current ZIP action and explicit report. Preserve each unique editing, currentness, trust,
+value, recovery and visibility invariant. Do not restore retired modes or weaken trust tests.
+
+| Failing command | Category | Observed assertion (abbreviated; full log retained) |
+| --- | --- | --- |
+| `ide:gate:project-command-center` | retired Project consumer | Project first launch must expose the start workspace |
+| `ide:gate:project-loaded-paths-first-viewport` | retired Project consumer | 1366x768: loaded command center must be measurable |
+| `ide:gate:project-loaded-command-surface` | retired Project consumer | Project command surface failures: 1366x768: 1366x768/Project command board: missing visible region for [data-testid="ide-project-command-board-v1"] 1440x900: 1440x900/Project command board: missing visible region for [data-testid="ide-project-command |
+| `ide:gate:interaction-affordance` | retired shell consumer | top bar must keep one visible Help affordance |
+| `ide:gate:project-identity-editing` | retired shell consumer | locator.click: Timeout 30000ms exceeded. Call log:   - waiting for locator('[data-testid="ide-board-chip"]').first() |
+| `ide:gate:side-dock-affordance` | Design panel or control consumer | Side dock affordance failures: 1366x768/design: 1366x768: Design Library must be readable but bounded (264px) 1366x768/verify: 1366x768: Simulate must not spend workspace width on a separate Signals rail 1440x900/design: 1440x900: Design Library must |
+| `ide:gate:open-side-panel-density` | Board composition consumer | Open side panel density failures: 1366x768/hardware: hardware: direct detail workspace is too narrow (359px) 1440x900/hardware: hardware: direct detail workspace is too narrow (359px) |
+| `ide:gate:workbench-obstruction-usability` | Design panel or control consumer | Workbench obstruction usability failures: 1366x768/design: 1366x768/design: stable left support width 264px is outside 180-240px 1366x768/verify: 1366x768/verify: left support region should yield to the primary work object until it has useful context |
+| `ide:gate:active-mode-reload-recovery` | retired shell consumer | Project starter load should show design; topbar showed "" |
+| `ide:gate:student-task-completion-flow` | Design panel or control consumer | Student task flow failures: 1366x768: 1366x768: Design Library must remain a stable 180-230px region {"top":32,"left":56,"right":320,"bottom":718,"width":264,"height":686,"visibleWidth":264,"visibleHeight":686} 1440x900: 1440x900: Design Library must |
+| `ide:gate:authoring-depth-release-safety` | retired Project consumer | Authoring depth failures: 1366x768: 1366x768: Project must expose Change Project 1440x900: 1440x900: Project must expose Change Project |
+| `ide:gate:design-canvas-zoom-integrity` | Design panel or control consumer | locator.waitFor: Timeout 5000ms exceeded. Call log:   - waiting for locator('[data-testid="ide-design-overflow-reset"]') to be visible |
+| `ide:gate:design-workbench-v1` | Design panel or control consumer | locator.waitFor: Timeout 5000ms exceeded. Call log:   - waiting for locator('[data-testid^="ide-design-hierarchy-row-"]').first() to be visible |
+| `ide:gate:design-canvas-direct-workbench` | Design panel or control consumer | loaded starter direct controls: direct view tools must remain inside the Design toolbar |
+| `ide:gate:workbench-stability-overhaul` | Design panel or control consumer | 1366x768: direct canvas view tools must remain inside the Design toolbar |
+| `ide:gate:design-palette-build-contract` | Design panel or control consumer | locator.evaluate: Timeout 30000ms exceeded. Call log:   - waiting for locator('[data-testid="ide-design-board-input-sw0"]').first() |
+| `ide:gate:verify-reality-contract` | Simulate owner consumer | Verify must expose the Scenario workspace before a run |
+| `ide:gate:verify-saved-checks-default` | Simulate owner consumer | 1366x768: starter saved checks must remain visible in the Checks workspace ({"scenarioSelected":false,"checksSelected":false,"checksAvailable":false,"checkCount":0,"runLabel":"Run","modeExplainer":"12 saved checks are evaluated automatically."}) |
+| `ide:gate:verify-testbench-usable-layout` | Simulate owner consumer | 1366x768: Verify must expose the v3 Simulation Studio job definition ("Active scenarioLogic Gates: AND / OR / XOR/DefaultScenario ready") |
+| `ide:gate:verify-signals-dock-not-clipped` | Simulate owner consumer | Simulate signal shelf failures: 1366x768: page.waitForSelector: Timeout 5000ms exceeded. Call log:   - waiting for locator('[data-testid="ide-verify-signal-shelf"]') to be visible 1440x900: page.waitForSelector: Timeout 5000ms exceeded. Call log:   - |
+| `ide:gate:verify-no-circuit-task-first` | real empty-state regression | 1366x768: blank Simulate must not blame mapping/hardware or waveform apparatus (verify starts after design has a circuit nothing to verify yet build a circuit in design, load a course starter from project, or recover/import hdl before running observe |
+| `ide:gate:verify-workbench-layout-reset` | Simulate owner consumer | Compare checks must be selectable for starter checks |
+| `ide:gate:verify-postrun-workbench-usability` | Simulate owner consumer | Verify post-run workbench failures: 1366x768: 1366x768: Compare checks must be selectable 1440x900: 1440x900: Compare checks must be selectable 1093x614: 1093x614: Compare checks must be selectable |
+| `ide:gate:verify-evidence-workbench` | Simulate owner consumer | first-run stimulus editor must be visible ([data-testid="ide-verify-add-vector-form"]) |
+| `ide:gate:complex-build-signal-trace-debugging` | Design panel or control consumer | locator.waitFor: Timeout 5000ms exceeded. Call log:   - waiting for getByTestId('ide-design-overflow-reset').first() to be visible |
+| `ide:gate:testbench-editor-and-export-confidence-flow` | Simulate owner consumer | initial Verify: case-table editor must be visible |
+| `ide:gate:export-handoff-station` | Package operational consumer | draft export primary action must be visible |
+| `ide:gate:export-first-viewport-artifacts` | Simulate owner consumer | Export first-viewport artifact failures: 1366x768: 1366x768: Verify Compare mode must be available 1440x900: 1440x900: Verify Compare mode must be available |
+| `ide:gate:export-package-inspector` | Simulate owner consumer | Export inspector failures: 1366x768: Compare mode must be selectable 1440x900: Compare mode must be selectable |
+| `ide:gate:export-artifact-direct-preview` | Simulate owner consumer | Export direct-preview failures: 1366x768: 1366x768: Verify Compare mode must be available 1440x900: 1440x900: Verify Compare mode must be available |
+| `ide:gate:export-e2e-contract` | Simulate owner consumer | Simulate must expose Scenario, Checks, and one Run simulation authority |
+| `ide:gate:export-trust-integrity` | Simulate owner consumer | trusted export proof requires Compare checks in Verify |
+| `ide:gate:hardware-basys3-workbench` | Simulate owner consumer | Hardware ready boundary requires Verify Compare mode |
+| `ide:gate:hardware-first-viewport` | Board composition consumer | Hardware first-viewport hierarchy failures: 1366x768: page.waitForSelector: Timeout 15000ms exceeded. Call log:   - waiting for locator('[data-testid="ide-hw-board-workspace"].ide-hw-v3') to be visible 1440x900: page.waitForSelector: Timeout 15000ms  |
+| `ide:gate:shell-navigation-overhaul` | retired shell consumer | shell navigation overhaul failures: 1366x768: 1366x768/fresh-project: horizontal stage navigation must be readable and bounded, got {"visible":false,"width":0,"height":0,"top":0,"bottom":0} 1440x900: 1440x900/fresh-project: horizontal stage navigatio |
+| `ide:gate:primary-work-object-dominance` | Design panel or control consumer | primary work object dominance failures: 1366x768: 1366x768: Design stable-workspace canvas is too narrow (1014px); expected at least 1093px 1440x900: 1440x900: Design stable-workspace canvas is too narrow (1088px); expected at least 1152px |
+| `ide:gate:nested-scroll-regression` | Simulate owner consumer | nested scroll regression failures: 1366x768: Verify checks workspace control must be visible 1440x900: Verify checks workspace control must be visible |
+| `ide:gate:workbench-reconstruction-v1` | retired shell consumer | workbench reconstruction failures: 1366x768: 1366x768/design-loaded: expected 52px horizontal stage navigation {"topbar":{"visible":true,"top":0,"bottom":32,"height":32},"stageNav":{"visible":false,"top":0,"height":0},"ribbon":{"visible":false,"top": |
+| `ide:gate:design-dual-tool-windows` | Design panel or control consumer | Design support-dock failures: classroom-stable: classroom-stable/default workspace: support tools must preserve a usable canvas {"layoutMode":"standard","supportDockPolicy":"persistent-configurable","leftDockState":"visible","rightDockState":"hidden" |
+| `ide:gate:design-library-not-cropped` | Design panel or control consumer | Design library failures: 1366x768: 1366x768: Design library must remain a compact 172-224px support tool (264px) 1440x900: 1440x900: Design library must remain a compact 172-224px support tool (264px) |
+| `ide:gate:design-tool-window-coexistence` | Design panel or control consumer | Design tool-window failures: 1366x768: 1366x768: Library width is not tool-like {"selector":"[data-testid=\"ide-left-dock\"]","visible":true,"top":32,"left":56,"right":320,"bottom":718,"width":264,"height":686,"visibleWidth":264,"visibleHeight":686," |
+| `ide:gate:verify-task-plane-usability` | Simulate owner consumer | 1366x768: Verify must expose the v3 Simulation Studio job definition ("Active scenarioLogic Gates: AND / OR / XOR/DefaultScenario ready") |
+| `ide:gate:hardware-board-dominance` | Board composition consumer | Hardware table-first hierarchy failures: 1366x768: 1366x768/mapping table: too narrow (359px < 519px) 1440x900: 1440x900/mapping table: too narrow (359px < 547px) |
+| `ide:gate:hardware-board-unblocked` | Board composition consumer | Hardware board failures: 1366x768: 1366x768: primary mapping table is too narrow {"selector":"[data-testid=\"ide-hw-map-table\"]","visible":true,"top":191,"left":66,"right":425,"bottom":450,"width":359,"height":259,"visibleWidth":359,"visibleHeight": |
+| `ide:gate:release-readiness-visual-contract` | Design panel or control consumer | Release-readiness visual failures: 1366x768: 1366x768: Design Library must remain a compact support tool {"selector":"[data-testid=\"ide-left-dock\"]","visible":true,"top":32,"left":56,"right":320,"bottom":718,"width":264,"height":686,"visibleWidth": |
+| `ide:gate:action-first-entry-surfaces` | retired Project consumer | Action-first entry failures: 1366x768: 1366x768/Project start surface: missing visible region for [data-testid="ide-project-start-hub"] 1440x900: 1440x900/Project start surface: missing visible region for [data-testid="ide-project-start-hub"] |
+| `ide:gate:outer-workflow-action-density` | retired Project consumer | Outer workflow density failures: 1366x768: 1366x768/project command board action surface: missing visible region for [data-testid="ide-project-command-board-v1"] 1440x900: 1440x900/project command board action surface: missing visible region for [dat |
+| `ide:gate:card-chrome-regression` | retired Project consumer | Card chrome regression failures: 1366x768: 1366x768/project: surface root not found 1440x900: 1440x900/project: surface root not found |
+| `ide:gate:release-solidification-v1` | Simulate owner consumer | Release solidification failures: 1366x768: Compare mode must be selectable 1440x900: Compare mode must be selectable |
+| `ide:gate:release-solidification-v2` | retired Project consumer | Release solidification v2 failures: 1366x768: 1366x768: current Project start surface must remain visible null 1440x900: 1440x900: current Project start surface must remain visible null |
+| `ide:gate:workbench-space-utilization` | retired Project consumer | Workbench space utilization failures: 1366x768/project: 1366x768: Project command center must be visible 1366x768/design: 1366x768: Design canvas is squeezed to 1014.0px; expected at least 1093px 1366x768/verify-before-run: 1366x768: Verify before ru |
+| `ide:gate:import-recovery-contract` | retired Project consumer | Loaded Project must keep command center visible |
+
+repo-status --skip-build reports nine PASS lines including the advisory Git check, then
+fails Project Overview. Bring-up and import are now green; the direct Overview gate reads
+an empty retired landing-title selector. Later repo-status checks remain unmeasured.
+
 ## P2.6B reviewed consumer census (2026-09-12)
 
 Command: `node node_modules/vitest/vitest.mjs run verifySurface designSurface --maxWorkers=2 --minWorkers=1 --reporter=json`.

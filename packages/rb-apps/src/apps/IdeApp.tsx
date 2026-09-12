@@ -3477,6 +3477,7 @@ export const IdeApp: React.FC = () => {
               onRunVerification={handleRunVerification}
               onClearVerification={handleClearVerification}
               onOpenProjectVectors={() => setCurrentMode('project')}
+              onOpenStarter={() => setStarterPickerOpen(true)}
               onFixPath={handleVerifyFixPath}
               example={activeExample ?? null}
               onGoToDesign={() => setCurrentMode('design')}

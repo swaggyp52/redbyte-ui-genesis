@@ -272,6 +272,7 @@ export interface VerifySurfaceProps {
   onRunVerification?: (input: RunVerificationInput) => void;
   onClearVerification?: () => void;
   onOpenProjectVectors: () => void;
+  onOpenStarter?: () => void;
   onFixPath?: (target: VerifyFailureTarget) => void;
   example?: IdeExampleDefinition | null;
   onGoToDesign?: () => void;
@@ -436,6 +437,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onRunVerification,
   onClearVerification,
   onOpenProjectVectors,
+  onOpenStarter,
   onFixPath,
   example,
   onGoToDesign,
@@ -7179,13 +7181,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <section
             className="ide-verify-no-circuit-task"
             data-testid="ide-verify-no-circuit-task"
-            aria-label="Verify needs a circuit before it can run"
+            aria-label="Simulation needs a circuit before it can run"
           >
             <div className="ide-verify-no-circuit-copy">
-              <span className="ide-surface-block-label">Verify starts after Design has a circuit</span>
-              <h2 className="ide-verify-no-circuit-title">Nothing to verify yet</h2>
+              <span className="ide-surface-block-label">Simulate starts after Design has a circuit</span>
+              <h2 className="ide-verify-no-circuit-title">Nothing to simulate yet</h2>
               <p className="ide-verify-no-circuit-summary">
-                Build a circuit in Design, load a course starter from Project, or recover/import HDL before running observed or saved checks.
+                Build a circuit in Design, load a starter from Project, or import/recover a project before running an experiment.
               </p>
             </div>
             <div className="ide-verify-no-circuit-actions">
@@ -7200,7 +7202,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
               <IdeButton
                 tone="secondary"
-                onClick={onOpenProjectVectors}
+                onClick={onOpenStarter ?? onOpenProjectVectors}
                 testId="ide-verify-no-circuit-load-starter"
               >
                 Load starter
@@ -7217,7 +7219,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>
             <ol className="ide-verify-no-circuit-steps">
               <li>Add inputs, outputs, and logic in Design.</li>
-              <li>Return to Verify to observe outputs or compare saved checks.</li>
+              <li>Return to Simulate and Run your stimulus with optional saved checks.</li>
               <li>Continue through the RedByte workflow after the circuit behavior is known.</li>
             </ol>
           </section>

@@ -2321,10 +2321,6 @@
 
 }
 
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-frame[data-no-circuit-hidden='true'] {
-  display: none;
-}
-
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-no-circuit-task {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.34fr);

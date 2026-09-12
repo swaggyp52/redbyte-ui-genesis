@@ -1,5 +1,34 @@
 # AI State
 
+## P2.6B validation follow-up - 2026-09-12
+
+At pushed dfec50b446aeab5b48d1828adf1f8139be32615f, verify:gates passes (23 reported
+Vitest invocations, 109 passing tests, both protected export goldens) and all 15 built
+browser journeys pass. All 13 matched final captures were personally reviewed. The 512-case
+experiment measured 2.746 s to run and 1.578 s to inspect; digest remains 140ba365.
+
+The canonical classroom chain passes build and examples, then fails Project command center
+at step 3 of 72 on its retired start-hub assertion. A separate diagnostic continuation of
+all 71 post-build commands at that unchanged build gives 19 pass / 52 fail. The clipping
+gate, both guided import recovery gates, and the 31-test determinism/parity suite pass.
+The exact per-command failures are classified in docs/validation/test-debt.md and ignored
+local evidence under p2-6b/classroom-final. This is not a green classroom release.
+repo-status --skip-build now passes bring-up and import, then stops at Project Overview's
+retired landing-title assertion; later checks in that chain remain unmeasured.
+
+One real regression in that census is corrected: the no-circuit instrument retained a hiding
+rule for the retired frame class. Its rule now belongs to the current instrument, while
+the Design, starter and Import/Recover actions and external VCD disclosure remain available.
+Load starter opens the existing bounded picker instead of taking an open blank project to
+Overview. Browsing does not replace work. Source browser checks pass at 1440x900 and 1280x650;
+the focused owner suite passes 11/11. The existing gate retains its navigation and visibility
+invariants and adds 1280x650. A fresh committed build and affected proof follow this checkpoint.
+
+Typecheck remains 768 / b9e8e0eb29ca1d2a (Node 20.19.0, TS 5.9.3), with no suppression or
+upward rebaseline. Full Design/Verify families remain 374 pass / 86 fail at 2563b40d4, with
+23 new, 11 closed and 63 retained failure identities versus baseline. Browser E0 only.
+No merge, retarget or production deployment; this review is not Connor Angiel's acceptance.
+
 ## P2.6B visual closure checkpoint - 2026-09-12
 
 The product gate passes at pushed 2563b40d4e16a152d02c37aa5d8daf2a5349f9e1, including both
