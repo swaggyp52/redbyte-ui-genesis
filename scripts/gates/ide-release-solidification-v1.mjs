@@ -44,6 +44,7 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
   await openLogicGatesStarter(page, baseUrl, `release-solidification-verify-${viewport.label}`);
   await openMode(page, baseUrl, 'verify', `release-solidification-verify-${viewport.label}`);
   await runComparePass(page);
+  await page.getByTestId('ide-verify-view-waveform').click();
   await assertBuildHash(page, `${viewport.label}/Verify`);
 
   const metrics = await page.evaluate(() => {
@@ -82,9 +83,9 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
       workspace: box('[data-testid="ide-verify-workspace"]'),
       labFrame: box('[data-testid="ide-verify-lab-frame"]'),
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
-      scenarioTab: box('[data-testid="ide-vcb-workspace-scenario"]'),
+      scenarioTab: box('[data-testid="ide-verify-view-table"]'),
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
-      signals: box('[data-testid="ide-verify-signal-shelf"]'),
+      signals: box('[data-testid="ide-sim-scenario-explorer"]'),
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       bottomClippedActions: bottomClippedButtons
         .map((button) => button.textContent?.replace(/\s+/g, ' ').trim() || button.getAttribute('aria-label') || 'button')
@@ -98,8 +99,8 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
 
   assert(metrics.phase === 'post-run', `${viewport.label}: Verify should be in post-run phase for this proof`);
   assert(
-    metrics.signals?.visibleWidth >= Math.round(viewport.width * 0.60) && metrics.signals?.height <= 160,
-    `${viewport.label}: integrated Signals shelf should stay wide and shallow instead of stealing a side rail ${JSON.stringify(metrics.signals)}`
+    metrics.signals?.visibleWidth >= 180 && metrics.signals?.visibleWidth <= 300,
+    `${viewport.label}: Scenarios and Signals must share one bounded explorer ${JSON.stringify(metrics.signals)}`
   );
   assert(metrics.workspace?.extraX <= 1, `${viewport.label}: Verify workspace has internal horizontal overflow ${JSON.stringify(metrics.workspace)}`);
   assert(metrics.labFrame?.extraX <= 1, `${viewport.label}: Verify lab frame has internal horizontal overflow ${JSON.stringify(metrics.labFrame)}`);
@@ -127,6 +128,8 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
 
   const checklist = page.locator('[data-testid="ide-export-upstream-readiness"]').first();
   const e0Boundary = page.locator('[data-testid="ide-export-e0-boundary-summary"]').first();
+  // Generated files remain the primary document; readiness is a real disclosure.
+  await page.getByTestId('ide-export-readiness-disclosure').locator('summary').click();
   assert(await visible(checklist), `${viewport.label}: Export must expose direct upstream readiness`);
   assert(await visible(e0Boundary), `${viewport.label}: Export must expose the Browser E0 boundary directly`);
   const checklistText = normalized(`${await checklist.textContent()} ${await e0Boundary.textContent()}`);
@@ -145,7 +148,7 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
   assert(/external|Vivado|Basys3/i.test(checklistText), `${viewport.label}: Export checklist must separate external proof`);
 
   const contextualActions = page.locator(
-    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid^="ide-export-blocked-open-"]'
+    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid="ide-export-draft-download-v1"], [data-testid^="ide-export-blocked-open-"]'
   );
   const visibleContextualActions = await contextualActions.evaluateAll((elements) =>
     elements.filter((element) => {

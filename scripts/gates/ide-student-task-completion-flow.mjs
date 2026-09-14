@@ -216,7 +216,7 @@ async function assertVerifyFailRepairPass(page, viewport) {
   let status = await clickRunAndReadStatus(page);
   assert(isVerifyPass(status), `${viewport.label}: Verify should pass saved checks, got "${status}"`);
   assert(await visible(page.locator('[data-testid="ide-verify-region-waveform"]').first()), `${viewport.label}: Verify waveform region missing`);
-  assert(await visible(page.locator('[data-testid="ide-vcb-workspace-scenario"]').first()), `${viewport.label}: Scenario authoring tab missing after replay`);
+  assert(await visible(page.locator('[data-testid="ide-verify-view-table"]').first()), `${viewport.label}: Case Table representation missing after recording`);
   await openChecksWorkspace(page, viewport.label);
 
   const target = await pickExpectedCell(page);
@@ -235,8 +235,8 @@ async function assertVerifyFailRepairPass(page, viewport) {
 }
 
 async function openChecksWorkspace(page, label) {
-  const checksTab = page.locator('[data-testid="ide-vcb-workspace-checks"]').first();
-  assert(await visible(checksTab), `${label}: optional Checks workspace must remain reachable`);
+  const checksTab = page.locator('[data-testid="ide-verify-view-table"]').first();
+  assert(await visible(checksTab), `${label}: optional checks in Case Table must remain reachable`);
   await checksTab.click();
   await page.locator('[data-testid="ide-verify-region-stimulus"]').first().waitFor({ state: 'visible', timeout: 5000 });
 }
@@ -276,11 +276,10 @@ async function clickPreferredVerifyRun(page) {
 }
 
 async function pickExpectedCell(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  const cells = await page.locator('[data-testid^="ide-case-lab-exp-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') ?? '';
-      const title = element.getAttribute('title') ?? '';
-      const parsedTitle = /:\s*(0|1|not set)\s*-\s*drag/i.exec(title);
+      const parsedTitle = /^(0|1)$/.exec(element.textContent?.trim() ?? '');
       return {
         testId,
         value: parsedTitle?.[1] === '1' ? 1 : parsedTitle?.[1] === '0' ? 0 : null,
@@ -306,10 +305,8 @@ async function clickExpectedCellToValue(page, target, expectedValue) {
 }
 
 async function readExpectedCellValue(page, testId) {
-  const title = await page.getByTestId(testId).first().getAttribute('title');
-  if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
-  if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
-  return null;
+  const value = (await page.getByTestId(testId).innerText()).trim();
+  return value === '1' ? 1 : value === '0' ? 0 : null;
 }
 
 async function assertHardwareMappingWorkbench(page, viewport) {
@@ -329,6 +326,8 @@ async function assertExportHandoff(page, viewport) {
   assert(await visible(readinessHero), `${viewport.label}: Export readiness authority missing`);
   const upstream = page.locator('[data-testid="ide-export-upstream-readiness"]').first();
   const fileBrowser = page.locator('[data-testid="ide-export-file-browser"]').first();
+  const readiness = page.getByTestId('ide-export-readiness-disclosure');
+  if (await readiness.getAttribute('open') === null) await readiness.locator('summary').click();
   assert(await visible(upstream), `${viewport.label}: Export upstream readiness ownership missing`);
   assert(await visible(fileBrowser), `${viewport.label}: Export v3 package file browser missing`);
   const text = ((await page.locator('[data-testid="ide-mode-export"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');

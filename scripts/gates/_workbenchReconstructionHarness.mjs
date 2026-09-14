@@ -8,7 +8,11 @@ import {
 } from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
-export const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
+// A fixed candidate may be tested while documentation or a disjoint source slice
+// is being prepared. The caller must name that build explicitly; ordinary gates
+// continue to require the current checkout's revision.
+export const CURRENT_SHA = process.env.RB_GATE_EXPECTED_SHA?.slice(0, 7)
+  || execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 
 export const CLASSROOM_VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -76,7 +80,9 @@ export async function assertBuildHash(page, label) {
   const shellSha = await page.evaluate(() =>
     document.querySelector('[data-testid="ide-top-bar"]')?.getAttribute('data-build-sha')?.trim() ?? ''
   );
-  const legacyVisibleSha = ((await page.locator('.ide-build-badge-sha').first().textContent().catch(() => '')) ?? '').trim();
+  const legacyVisibleSha = shellSha ? '' : await page.evaluate(() =>
+    document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? ''
+  );
   const actualSha = shellSha || legacyVisibleSha;
   assert(actualSha === CURRENT_SHA, `${label}: shell build sha ${actualSha || 'missing'} != ${CURRENT_SHA}`);
 }

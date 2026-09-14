@@ -25,8 +25,8 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_SPACE_SCREENSHOTS_DIR
   : '';
 
 const SPACE_BUDGETS = {
-  // Idle Design deliberately withholds the empty Inspector, so the canvas must
-  // own at least four fifths of the classroom-width workspace.
+  // Preserve the 80% floor within the document column, including its Library.
+  // The activity rail belongs to the application, outside that workspace.
   designCanvasWidthRatio: 0.80,
   designCanvasHeightRatio: 0.52,
   verifyWaveformMinWidthRatio: 0.36,
@@ -89,13 +89,14 @@ await runIdeGate('IDE workbench space utilization satisfied', async ({ page, bas
       await waitForVerifyResult(page, { timeout: 15000 });
       const status = await normalizedText(page.locator('[data-testid="ide-verify-summary-status"]').first());
       assert(isVerifyPass(status), `${viewport.label}: Verify Compare should PASS, got "${status}"`);
+      await page.getByTestId('ide-verify-view-waveform').click();
       await capture(page, viewport, 'verify-pass-observation');
       await assertVerifySpace(page, viewport, 'PASS observation');
     });
 
     await checkSurface(failures, page, viewport, 'hardware', async () => {
       await openMode(page, 'hardware');
-      await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
+      await page.waitForSelector('.rb-board-grid', { timeout: 15000 });
       await capture(page, viewport, 'hardware');
       await assertHardwareSpace(page, viewport);
     });
@@ -164,14 +165,18 @@ async function checkSurface(failures, page, viewport, surface, callback) {
 async function assertProjectSpace(page, viewport) {
   await assertNoHorizontalOverflow(page, viewport, 'Project');
   await assertVisiblePrimary(page, viewport, 'Project command center', [
+    '[data-testid="ide-project-overview-document"]',
     '[data-testid="ide-project-command-center"]',
     '[data-testid="ide-project-landing"]',
   ]);
   await assertActionInViewport(page, viewport, 'Project primary action', [
+    '[data-testid="ide-project-continue"]',
     '[data-testid="ide-project-command-strip-primary-cta"]',
     '[data-testid="ide-project-path-continue"]',
     '[data-testid="ide-project-build-fresh-primary"]',
-  ]);
+  ], 28);
+  await page.getByTestId('ide-project-continue').click();
+  await page.getByTestId('ide-mode-design').waitFor({ state: 'visible' });
 }
 
 async function assertDesignSpace(page, viewport) {
@@ -180,9 +185,9 @@ async function assertDesignSpace(page, viewport) {
   const canvas = metrics.rects.designCanvas;
   assert(canvas.visible, `${viewport.label}: Design canvas must be visible`);
   assert(
-    canvas.width >= viewport.width * SPACE_BUDGETS.designCanvasWidthRatio,
+    canvas.width >= metrics.rects.workspace.width * SPACE_BUDGETS.designCanvasWidthRatio,
     `${viewport.label}: Design canvas is squeezed to ${canvas.width.toFixed(1)}px; expected at least ${Math.round(
-      viewport.width * SPACE_BUDGETS.designCanvasWidthRatio
+      metrics.rects.workspace.width * SPACE_BUDGETS.designCanvasWidthRatio
     )}px`
   );
   assert(
@@ -233,7 +238,7 @@ async function assertDesignStableRegions(page, viewport) {
     `${viewport.label}: selected Design object must reveal a bounded 220-300px Inspector (${metrics.rects.rightDock.width.toFixed(1)}px)`
   );
   assert(
-    metrics.rects.designCanvas.width >= viewport.width * 0.6,
+    metrics.rects.designCanvas.width >= 820,
     `${viewport.label}: contextual Inspector leaves only ${metrics.rects.designCanvas.width.toFixed(1)}px for the circuit canvas`
   );
   assert(
@@ -284,16 +289,16 @@ async function assertVerifySpace(page, viewport, phase) {
 
 function assertStableVerifySignals(metrics, viewport, phase) {
   assert(
-    !metrics.rects.leftDock.visible,
-    `${viewport.label}: Simulate ${phase} must not spend width on a separate Signals rail`
+    metrics.rects.leftDock.visible && metrics.rects.leftDock.width >= 180 && metrics.rects.leftDock.width <= 300,
+    `${viewport.label}: Simulate ${phase} must bound its shared Scenarios/Signals explorer`
   );
   assert(
     metrics.rects.verifySignalShelf.visible && metrics.rects.verifySignalShelfList.visible,
-    `${viewport.label}: Simulate ${phase} must keep its integrated signal shelf visible`
+    `${viewport.label}: Simulate ${phase} must keep its signal list visible`
   );
   assert(
-    metrics.rects.verifySignalShelf.width >= viewport.width * 0.8,
-    `${viewport.label}: Simulate ${phase} signal shelf is too narrow (${metrics.rects.verifySignalShelf.width.toFixed(1)}px)`
+    metrics.rects.verifySignalShelf.width >= 180 && metrics.rects.verifySignalShelf.width <= 300,
+    `${viewport.label}: Simulate ${phase} signal explorer lost its usable bounded width (${metrics.rects.verifySignalShelf.width.toFixed(1)}px)`
   );
   assert(
     metrics.retiredDockControlCount === 0,
@@ -307,7 +312,9 @@ async function assertHardwareSpace(page, viewport) {
   const table = metrics.rects.hardwareTable;
   const board = metrics.rects.hardwareBoard;
   assert(board.visible || table.visible, `${viewport.label}: Hardware board/table focal region must be visible`);
-  const focal = table.visible ? table : board;
+  const focal = metrics.rects.hardwareWorkspace;
+  assert(table.width >= 320 && board.width >= 300, `${viewport.label}: Board must retain usable assignments and board visual widths`);
+  assert(!rectanglesOverlap(table, board), `${viewport.label}: assignments must not cover the board visual`);
   assert(
     focal.width >= viewport.width * SPACE_BUDGETS.hardwareFocalMinWidthRatio,
     `${viewport.label}: Hardware focal width ${focal.width.toFixed(1)}px is below useful size`
@@ -327,8 +334,9 @@ async function assertExportSpace(page, viewport) {
   await assertActionInViewport(page, viewport, 'Export primary handoff action', [
     '[data-testid="ide-export-package-build-v1"]',
     '[data-testid="ide-export-package-download-v1"]',
+    '[data-testid="ide-export-draft-download-v1"]',
     '[data-testid="ide-export-primary-actions"] button',
-  ]);
+  ], 28); // Current desktop document command floor; legacy import retains 40px.
 }
 
 async function assertImportSpace(page, viewport) {
@@ -353,11 +361,11 @@ async function assertVisiblePrimary(page, viewport, label, selectors) {
   assert(rect.visibleHeight >= 96, `${viewport.label}: ${label} is too short in the first viewport`);
 }
 
-async function assertActionInViewport(page, viewport, label, selectors) {
+async function assertActionInViewport(page, viewport, label, selectors, minHeight = 40) {
   const rect = await firstVisibleRect(page, selectors);
   assert(rect.visible, `${viewport.label}: ${label} must be visible`);
   assert(rect.top < viewport.height - 40, `${viewport.label}: ${label} starts below the useful first viewport`);
-  assert(rect.visibleHeight >= 40, `${viewport.label}: ${label} is below the 40px primary-control floor`);
+  assert(rect.visibleHeight >= minHeight, `${viewport.label}: ${label} is below its ${minHeight}px control floor`);
   assert(rect.visibleWidth >= 40, `${viewport.label}: ${label} is clipped horizontally`);
   const textMetrics = await page.evaluate((selector) => {
     const element = selector ? document.querySelector(selector) : null;
@@ -476,19 +484,20 @@ async function readSurfaceMetrics(page) {
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       rects: {
         shell: rect('[data-ide-mode-marker]'),
-        workspace: rect('[data-testid="ide-mode-body"]'),
+        workspace: rect('[data-testid="ide-document-column"]'),
         leftDock: rect('[data-testid="ide-left-dock"]'),
         rightDock: rect('[data-testid="ide-right-dock"]'),
         designCanvas: rect('[data-testid="ide-design-live-canvas"]'),
         verifyStimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
-        verifyGrid: rect('.ide-stimulus-grid-scroll'),
+        verifyGrid: rect('.ide-case-lab-scroll'),
         verifySignals: rect('[data-testid="ide-verify-left-dock"]'),
-        verifySignalShelf: rect('[data-testid="ide-verify-signal-shelf"]'),
-        verifySignalShelfList: rect('[data-testid="ide-verify-signal-shelf-list"]'),
+        verifySignalShelf: rect('[data-testid="ide-sim-scenario-explorer"]'),
+        verifySignalShelfList: rect('[data-testid="ide-verify-signal-list"]'),
         verifyWaveform: rect(
           '[data-testid="ide-verify-region-waveform"], [data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-svg"]'
         ),
-        hardwareBoard: rect('[data-testid="ide-hw-board-workspace"], [data-testid="ide-hw-map-board"]'),
+        hardwareBoard: rect('[data-testid="ide-hw-map-board"]'),
+        hardwareWorkspace: rect('.rb-board-grid'),
         hardwareTable: rect('[data-testid="ide-hw-map-table"]'),
       },
       design: {
@@ -505,7 +514,7 @@ async function readSurfaceMetrics(page) {
       },
       verify: {
         gridExtraX: (() => {
-          const element = document.querySelector('.ide-stimulus-grid-scroll');
+          const element = document.querySelector('.ide-case-lab-scroll');
           return element ? Math.max(0, element.scrollWidth - element.clientWidth) : 9999;
         })(),
       },

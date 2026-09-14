@@ -349,7 +349,11 @@ export async function setVerifyRunMode(page, mode) {
   const simulationText = ((await simulationBar.textContent().catch(() => '')) ?? '')
     .replace(/\s+/g, ' ')
     .trim();
-  return /checks\s+[1-9]\d*|evaluates\s+[1-9]\d*\s+optional check/i.test(simulationText);
+  // Adjacent inline elements can concatenate scenario name + count in
+  // textContent. Read the dedicated count before using historical copy.
+  const currentCount = await simulationBar.locator('[data-testid="ide-vcb-check-count"]').textContent().catch(() => '');
+  if (/^[1-9]\d*\s+optional checks/i.test(currentCount?.trim() ?? '')) return true;
+  return /checks\s+[1-9]\d*|evaluates\s+[1-9]\d*\s+optional check|[1-9]\d*\s+saved checks/i.test(simulationText);
 }
 
 export async function saveObservedOutputs(page) {
@@ -397,12 +401,16 @@ export async function runIdeGate(name, runScenario) {
     // Say "there is no build" in those words. A gate that navigates to an empty preview fails
     // on its first selector, which reads exactly like a product regression and has sent more
     // than one investigation looking for a test id that was never missing.
-    assertPreviewBuildExists();
-    const port = await reservePort();
-    const baseUrl = `http://${HOST}:${port}`;
-    previewProcess = startPreviewProcess(port, (chunk) => {
-      previewLogs += chunk;
-    });
+    const externalBaseUrl = process.env.RB_GATE_BASE_URL?.replace(/\/+$/, '');
+    let baseUrl = externalBaseUrl;
+    if (!baseUrl) {
+      assertPreviewBuildExists();
+      const port = await reservePort();
+      baseUrl = `http://${HOST}:${port}`;
+      previewProcess = startPreviewProcess(port, (chunk) => {
+        previewLogs += chunk;
+      });
+    }
 
     await waitForPreview(baseUrl);
 
@@ -486,13 +494,8 @@ async function ensureProjectMode(page) {
 }
 
 async function clickLocatorElement(locator) {
-  await locator.waitFor({ state: 'attached', timeout: 10000 });
-  await locator.evaluate((element) => {
-    if (!(element instanceof HTMLElement)) {
-      throw new Error('expected clickable HTMLElement');
-    }
-    element.click();
-  });
+  await locator.waitFor({ state: 'visible', timeout: 10000 });
+  await locator.click();
 }
 
 async function confirmExampleReplacementIfNeeded(page) {
@@ -501,7 +504,7 @@ async function confirmExampleReplacementIfNeeded(page) {
     return;
   }
 
-  await confirmButton.click({ force: true });
+  await confirmButton.click();
   await page.locator('[data-testid="ide-example-confirm-modal"]').first().waitFor({
     state: 'hidden',
     timeout: 5000,

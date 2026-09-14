@@ -22,10 +22,10 @@ const CANVAS_VIEW_TOOL_IDS = new Set([
 ]);
 
 const RESPONSIVE_CANVAS_VIEW_TOOL_IDS = new Map([
-  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
-  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
-  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
-  ['ide-design-center-selection-canvas', 'ide-design-overflow-center-selection'],
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
+  ['ide-design-center-selection-canvas', 'ide-design-menu-fit-selection'],
 ]);
 
 const screenshotDir = process.env.RB_DESIGN_CANVAS_ZOOM_INTEGRITY_SCREENSHOTS_DIR

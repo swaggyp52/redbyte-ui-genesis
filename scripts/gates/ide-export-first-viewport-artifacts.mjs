@@ -125,69 +125,34 @@ async function openReadyToBuildExport(page, baseUrl, viewportLabel) {
 }
 
 async function assertArtifactReachability(page, label) {
-  const scrollOwner = page.locator('[data-testid="ide-mode-body"]').first();
-  const ownerBox = await scrollOwner.boundingBox();
-  assert(ownerBox, `${label}: Export workspace must have a measurable scroll owner`);
-  const initialScrollTop = await scrollOwner.evaluate((element) => element.scrollTop);
-  await page.mouse.move(ownerBox.x + ownerBox.width / 2, ownerBox.y + Math.min(ownerBox.height / 2, 300));
-  await page.mouse.wheel(0, 640);
-  await page.waitForTimeout(80);
-  const userScrollTop = await scrollOwner.evaluate((element) => element.scrollTop);
-
-  const state = await page.evaluate(({ initialScrollTop, userScrollTop }) => {
-    const scrollOwner = document.querySelector('[data-testid="ide-mode-body"]');
-    const fileBrowser = document.querySelector('[data-testid="ide-export-file-browser"]');
-    const testbench = document.querySelector('[data-testid="ide-export-file-testbench-vhd"]');
-    if (
-      !(scrollOwner instanceof HTMLElement) ||
-      !(fileBrowser instanceof HTMLElement) ||
-      !(testbench instanceof HTMLElement)
-    ) {
-      return null;
-    }
-
-    testbench.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-
-    const ownerRect = scrollOwner.getBoundingClientRect();
-    const targetRect = testbench.getBoundingClientRect();
-    return {
-      overflowY: getComputedStyle(scrollOwner).overflowY,
-      clientHeight: scrollOwner.clientHeight,
-      scrollHeight: scrollOwner.scrollHeight,
-      initialScrollTop,
-      userScrollTop,
-      finalScrollTop: scrollOwner.scrollTop,
-      fileBrowserScrollTop: fileBrowser.scrollTop,
-      targetTop: Number(targetRect.top.toFixed(1)),
-      targetBottom: Number(targetRect.bottom.toFixed(1)),
-      ownerTop: Number(ownerRect.top.toFixed(1)),
-      ownerBottom: Number(ownerRect.bottom.toFixed(1)),
-      targetVisible:
-        targetRect.width > 1 &&
-        targetRect.height > 1 &&
-        targetRect.top >= Math.max(0, ownerRect.top) - 1 &&
-        targetRect.bottom <= Math.min(innerHeight, ownerRect.bottom) + 1,
-    };
-  }, { initialScrollTop, userScrollTop });
-
-  assert(state, `${label}: Export scroll owner or testbench artifact is missing`);
-  assert(
-    /auto|scroll/.test(state.overflowY),
-    `${label}: Export workspace must advertise student-scrollable overflow: ${JSON.stringify(state)}`
-  );
-  assert(
-    state.scrollHeight > state.clientHeight + 1,
-    `${label}: Export workspace must expose vertical overflow: ${JSON.stringify(state)}`
-  );
-  assert(
-    state.userScrollTop > state.initialScrollTop,
-    `${label}: Export workspace did not move after a real wheel gesture: ${JSON.stringify(state)}`
-  );
-  assert(
-    state.targetVisible,
-    `${label}: testbench.vhd is not reachable through the visible Export scroll containers: ${JSON.stringify(state)}`
-  );
-  return state;
+  const browser = page.getByTestId('ide-export-file-browser');
+  const testbench = page.getByTestId('ide-export-file-testbench-vhd');
+  await browser.waitFor();
+  const before = await browser.evaluate(element => ({
+    clientHeight: element.clientHeight, scrollHeight: element.scrollHeight, scrollTop: element.scrollTop,
+  }));
+  // A compact file list that fits must not be forced to overflow merely to pass
+  // this gate. If it does overflow, exercise its real wheel owner first.
+  if (before.scrollHeight > before.clientHeight + 1) {
+    const box = await browser.boundingBox();
+    assert(box, label + ': generated file list must be measurable');
+    await page.mouse.move(box.x + box.width / 2, Math.min(box.y + box.height / 2, page.viewportSize().height - 40));
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(100);
+    const after = await browser.evaluate(element => element.scrollTop);
+    assert(after > before.scrollTop, label + ': overflowing file list must respond to a real wheel gesture');
+  }
+  await testbench.click();
+  await page.waitForFunction(() =>
+    document.querySelector('[data-testid="ide-export-preview-path"]')?.textContent?.trim() === 'testbench.vhd');
+  const box = await testbench.boundingBox();
+  const viewport = page.viewportSize();
+  assert(box && viewport && box.x >= 0 && box.x + box.width <= viewport.width + 1
+    && box.y >= 0 && box.y + box.height <= viewport.height + 1,
+    label + ': testbench artifact must be fully visible and operable');
+  assert((await page.getByTestId('ide-export-preview-code').innerText()).trim().length > 0,
+    label + ': activating testbench must expose a non-empty generated preview');
+  return { fileList: before, targetBox: box, selectedPath: 'testbench.vhd' };
 }
 
 async function capture(page, label) {

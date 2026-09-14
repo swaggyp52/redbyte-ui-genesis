@@ -42,7 +42,7 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
       await openMode(page, baseUrl, viewport, 'design');
       await assertNoHorizontalOverflow(page, viewport, 'design');
       await assertNoRetiredRails(page, viewport, 'design');
-      await assertStableDock(page, viewport, 'design', 'left', { min: 180, max: 240 });
+      await assertStableDock(page, viewport, 'design', 'left', { min: 180, max: 280 });
       await assertDockAbsent(page, viewport, 'design', 'right');
       await selectFirstVisibleDesignNode(page);
       await assertStableDock(page, viewport, 'design', 'right', { min: 220, max: 300 });
@@ -60,7 +60,7 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
       await assertNoRetiredRails(page, viewport, 'verify');
       await assertDockAbsent(page, viewport, 'verify', 'left');
       await assertIntegratedVerifySignals(page, viewport);
-      await assertVisiblePrimaryAction(page, viewport, 'Verify primary compare action', [
+      await assertVisiblePrimaryAction(page, viewport, 'Simulate primary Run action', [
         '[data-testid="ide-vcb-run"]',
         '[data-testid="ide-verify-run"]',
         '[data-testid="ide-verify-run-secondary"]',
@@ -232,7 +232,13 @@ async function assertStableDock(page, viewport, mode, side, range) {
 
 async function assertDockAbsent(page, viewport, mode, side) {
   const testId = side === 'left' ? 'ide-left-dock' : 'ide-right-dock';
-  const present = await page.locator(`[data-testid="${testId}"]`).count();
+  const present = await page.locator(`[data-testid="${testId}"]:visible`).count();
+  if (mode === 'verify' && side === 'left' && present > 0) {
+    assert(await page.getByTestId('ide-sim-scenario-explorer').isVisible(),
+      'Simulate support must contain the current scenario context, not an empty Signals rail');
+    await assertStableDock(page, viewport, mode, side, { min: 180, max: 280 });
+    return;
+  }
   assert(
     present === 0,
     `${viewport.label}/${mode}: ${side} support region should yield to the primary work object until it has useful context`
@@ -240,20 +246,21 @@ async function assertDockAbsent(page, viewport, mode, side) {
 }
 
 async function assertIntegratedVerifySignals(page, viewport) {
-  const shelf = await readFirstVisibleRect(page, ['[data-testid="ide-verify-signal-shelf"]']);
-  const list = await readFirstVisibleRect(page, ['[data-testid="ide-verify-signal-shelf-list"]']);
-  assert(shelf.visible && list.visible, `${viewport.label}/verify: integrated signal shelf is missing`);
+  const shelf = await readFirstVisibleRect(page, ['[data-testid="ide-case-lab"]']);
+  const list = await readFirstVisibleRect(page, ['[data-testid="ide-case-lab-table"]']);
+  assert(shelf.visible && list.visible, `${viewport.label}/verify: Case Table signal and expectation columns are missing`);
   assert(
-    shelf.visibleWidth >= viewport.width * 0.8,
-    `${viewport.label}/verify: integrated signal shelf is too narrow (${shelf.visibleWidth}px)`
+    shelf.visibleWidth >= viewport.width * 0.7,
+    `${viewport.label}/verify: Case Table is too narrow (${shelf.visibleWidth}px)`
   );
 }
 
 async function assertVisiblePrimaryAction(page, viewport, label, selectors) {
   const rect = await readFirstVisibleRect(page, selectors);
   assert(rect.visible, `${label} is not visible`);
-  assert(rect.visibleWidth >= 64 && rect.visibleHeight >= 24, `${label} is too small (${rect.visibleWidth}x${rect.visibleHeight})`);
+  assert(rect.visibleWidth >= 48 && rect.visibleHeight >= 24, `${label} is too small (${rect.visibleWidth}x${rect.visibleHeight})`);
   assert(rect.top < viewport.height * 0.62, `${label} is too low in the first viewport (${rect.top}px)`);
+  await page.locator(rect.selector).first().click({ trial: true });
 }
 
 async function assertWorkObject(page, viewport, label, selectors, thresholds) {

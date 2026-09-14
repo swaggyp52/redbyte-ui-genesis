@@ -91,7 +91,7 @@ async function runAuthoringDepthPath(page, baseUrl, viewport) {
   await openMode(page, baseUrl, 'project', `authoring-depth-release-safety-${viewport.label}`);
   await assertProjectContinuity(page, viewport);
 
-  await clickVisible(page, '[data-testid="ide-project-path-course-starter"]', `${viewport.label}: Course Starter path`);
+  await clickVisible(page, '[data-testid="ide-menu-item-project.open-starter"]', `${viewport.label}: Course Starter path`);
   await loadStarterProject(page, { exactExampleId: 'half-adder' });
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Design starter`);
@@ -110,13 +110,13 @@ async function runAuthoringDepthPath(page, baseUrl, viewport) {
 }
 
 async function resetStorage(page, baseUrl) {
-  await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=authoring-depth-storage-reset`, {
-    waitUntil: 'domcontentloaded',
-  });
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  await page.goto(baseUrl + '/?mode=project&e2e=1&gate=authoring-depth-reset');
+  await page.getByTestId('ide-mode-project').waitFor();
+  if (await page.getByTestId('ide-project-overview-document').isVisible()) {
+    await page.getByTestId('ide-menu-file').click();
+    await page.getByTestId('ide-menu-item-project.close').click();
+    await page.getByTestId('ide-project-landing').waitFor();
+  }
 }
 
 async function assertSurfaceSafe(page, label) {
@@ -190,33 +190,17 @@ async function assertPartialBlankAuthoring(page, viewport, options = {}) {
 
 async function assertProjectContinuity(page, viewport) {
   await assertSurfaceSafe(page, `${viewport.label}/Project after blank authoring`);
-  const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
-  assert(await changeProject.isVisible().catch(() => false), `${viewport.label}: Project must expose Change Project`);
-  await changeProject.click();
-  await page.locator('[data-testid="ide-project-entry-paths"]').first().waitFor({ state: 'visible', timeout: 10000 });
-  const state = await page.evaluate(() => ({
-    stageRailCount: document.querySelectorAll(
-      '[data-testid="mode-button-project"], [data-testid="mode-button-design"], [data-testid="mode-button-verify"], [data-testid="mode-button-hardware"], [data-testid="mode-button-export"]'
-    ).length,
-    hasDesignRail: Boolean(document.querySelector('[data-testid="mode-button-design"]')),
-    hasVerifyRoute: Boolean(
-      document.querySelector('[data-testid="ide-project-command-action-verify"]') ??
-      document.querySelector('[data-testid="mode-button-verify"]')
-    ),
-    hasMapRail: Boolean(document.querySelector('[data-testid="mode-button-hardware"]')),
-    hasExportRail: Boolean(document.querySelector('[data-testid="mode-button-export"]')),
-    bodyPrimaryCount: document.querySelectorAll('[data-testid^="ide-project-command-action-"]').length,
-    hasBuildFresh: Boolean(document.querySelector('[data-testid="ide-project-path-build-fresh"]')),
-    hasCourseStarter: Boolean(document.querySelector('[data-testid="ide-project-path-course-starter"]')),
-    hasContinue: Boolean(document.querySelector('[data-testid="ide-project-command-strip-primary-cta"]')),
-    nextStep: document.querySelector('[data-testid="ide-project-command-strip-next-step-copy"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
-  }));
-  assert(
-    state.stageRailCount === 5 && state.hasDesignRail && state.hasVerifyRoute && state.hasMapRail && state.hasExportRail,
-    `${viewport.label}: Project lost five-stage rail continuity ${JSON.stringify(state)}`
-  );
-  assert(state.bodyPrimaryCount === 1, `${viewport.label}: Project must keep exactly one body next-stage action ${JSON.stringify(state)}`);
-  assert(state.hasBuildFresh && state.hasCourseStarter && state.hasContinue, `${viewport.label}: Project lost repeated-use start paths ${JSON.stringify(state)}`);
+  await page.getByTestId('ide-project-overview-document').waitFor();
+  assert(await page.locator('[data-testid="ide-workspace-rail"] [role="tab"]').count() === 5,
+    'Project must preserve the five-stage rail');
+  assert(await page.getByTestId('ide-project-continue').count() === 1,
+    'Loaded Project must retain exactly one continuation');
+  await page.getByTestId('ide-menu-file').click();
+  for (const command of ['project.build-fresh', 'project.open-starter', 'surface.import-recover.open', 'project.open']) {
+    const action = page.getByTestId('ide-menu-item-' + command);
+    assert(await action.isVisible(), 'Repeated-use File path must remain reachable: ' + command);
+    await action.click({ trial: true });
+  }
 }
 
 async function assertStarterDesignLoop(page, viewport) {
@@ -333,7 +317,7 @@ async function revealDock(page, side) {
   const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-inspector"]';
   if (await page.locator(dockSelector).first().isVisible().catch(() => false)) return;
   const toggleSelector =
-    side === 'left' ? '[data-testid="ide-workbench-dock-toggle-left"]' : '[data-testid="ide-workbench-dock-toggle-right"]';
+    side === 'left' ? '[data-testid="ide-show-left-dock"]' : '[data-testid="ide-show-right-dock"]';
   await clickVisible(page, toggleSelector, `show ${side} dock`);
   await page.waitForSelector(dockSelector, { timeout: 5000 });
 }

@@ -11,10 +11,10 @@ const VIEWPORTS = [
 ];
 
 const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
-  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
-  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
-  ['ide-design-fit-circuit-canvas', 'ide-design-overflow-fit'],
-  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-menu-fit'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
 ]);
 
 const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR
@@ -119,72 +119,19 @@ async function assertCleanWorkbench(page, viewport, label) {
 }
 
 async function assertDirectDesignControls(page, viewport) {
-  const usesResponsiveTools = viewport.width <= 1500;
-  const state = await page.evaluate(() => {
-    const isVisible = (element) => {
-      if (!(element instanceof HTMLElement)) return false;
-      const style = window.getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 1 && rect.height > 1;
-    };
-    const byTestId = (testId) => document.querySelector(`[data-testid="${testId}"]`);
-    const host = byTestId('ide-design-canvas-view-tools');
-    const overflow = byTestId('ide-design-toolbar-overflow');
-    const toolbar = byTestId('ide-design-toolbar');
-    return {
-      toggleVisible: isVisible(byTestId('ide-design-view-tools-toggle')),
-      presetsVisible: isVisible(byTestId('ide-design-zoom-presets')),
-      hostVisible: isVisible(host),
-      hostOpen: host?.getAttribute('data-open') === 'true',
-      hostInsideToolbar: Boolean(host && toolbar?.contains(host)),
-      controlsVisible: isVisible(byTestId('ide-design-canvas-controls')),
-      overflowVisible: isVisible(overflow),
-      overflowOpen: overflow?.hasAttribute('open') ?? false,
-      overflowInsideToolbar: Boolean(overflow && toolbar?.contains(overflow)),
-      directControls: Object.fromEntries(
-        [
-          'ide-design-zoom-out',
-          'ide-design-zoom-in',
-          'ide-design-fit-circuit-canvas',
-          'ide-design-zoom-reset',
-          'ide-design-center-selection-canvas',
-        ].map((testId) => [testId, isVisible(byTestId(testId))])
-      ),
-      responsiveControls: Object.fromEntries(
-        [
-          'ide-design-overflow-zoom-out',
-          'ide-design-overflow-zoom-in',
-          'ide-design-overflow-fit',
-          'ide-design-overflow-reset',
-        ].map((testId) => [testId, Boolean(byTestId(testId))])
-      ),
-    };
-  });
-
-  assert(!state.toggleVisible, `${viewport.label}: canvas controls must not be hidden behind a view-tools toggle`);
-  assert(!state.presetsVisible, `${viewport.label}: obsolete zoom preset strip must remain absent`);
-  assert(state.hostInsideToolbar, `${viewport.label}: direct canvas view tools must remain inside the Design toolbar`);
-  if (usesResponsiveTools) {
-    assert(!state.hostVisible, `${viewport.label}: desktop camera host must yield at classroom width`);
-    assert(!state.controlsVisible, `${viewport.label}: hidden desktop controls must not occupy classroom toolbar space`);
-    assert(state.overflowVisible, `${viewport.label}: More tools must expose responsive camera controls`);
-    assert(!state.overflowOpen, `${viewport.label}: responsive camera menu must close after each action`);
-    assert(state.overflowInsideToolbar, `${viewport.label}: More tools must remain inside the Design toolbar`);
-    for (const [testId, visible] of Object.entries(state.directControls)) {
-      assert(!visible, `${viewport.label}: desktop canvas control ${testId} must not compete with More tools`);
-    }
-    for (const [testId, present] of Object.entries(state.responsiveControls)) {
-      assert(present, `${viewport.label}: responsive canvas control ${testId} must remain available`);
-    }
-  } else {
-    assert(state.hostVisible, `${viewport.label}: direct canvas view-tools host must remain visible`);
-    assert(state.hostOpen, `${viewport.label}: direct canvas view-tools host must remain open`);
-    assert(state.controlsVisible, `${viewport.label}: direct canvas controls must remain visible`);
-    assert(!state.overflowVisible, `${viewport.label}: desktop toolbar must not duplicate camera controls in More tools`);
-    for (const [testId, visible] of Object.entries(state.directControls)) {
-      assert(visible, `${viewport.label}: direct canvas control ${testId} must remain visible`);
-    }
+  const toolbar = page.getByTestId('ide-design-toolbar');
+  const box = await toolbar.boundingBox();
+  assert(box, `${viewport.label}: Design toolbar must be measurable`);
+  for (const id of ['ide-design-tool-select', 'ide-design-tool-wire', 'ide-design-fit-circuit-canvas', 'ide-design-center-selection-canvas', 'ide-design-zoom-out', 'ide-design-zoom-readout', 'ide-design-zoom-in']) {
+    const control = page.getByTestId(id);
+    const rect = await control.boundingBox();
+    assert(rect && rect.x >= box.x && rect.y >= box.y && rect.x + rect.width <= box.x + box.width + 1 && rect.y + rect.height <= box.y + box.height + 1, `${viewport.label}: direct control ${id} must fit its toolbar`);
+    if (await control.isEnabled()) await control.click({ trial: true });
   }
+  const viewMenu = page.getByTestId('ide-design-toolbar-overflow');
+  assert(await viewMenu.isVisible(), 'View menu must remain reachable');
+  assert(await viewMenu.getAttribute('open') === null, 'View menu must close after camera operations');
+  assert(!(await page.getByTestId('ide-design-zoom-presets').isVisible()), 'Retired zoom presets must remain absent');
 }
 
 async function waitForCameraAccess(page) {
@@ -210,7 +157,7 @@ async function clickCanvasTool(page, primaryTestId) {
   const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
   assert(Boolean(responsiveTestId), `missing responsive camera mapping for ${primaryTestId}`);
   const overflow = page.locator('[data-testid="ide-design-toolbar-overflow"]').first();
-  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: More tools must be visible`);
+  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: View menu must be visible`);
   const wasOpen = (await overflow.getAttribute('open')) !== null;
   if (!wasOpen) await overflow.locator('summary').click();
 

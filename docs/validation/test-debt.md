@@ -5,6 +5,31 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## P2.6C implementation results (2026-09-14)
+
+The final local surface batch passes 468/468 with zero skipped or pending tests:
+the same 460 Design/Verify cases plus eight waveform grouping cases. This closes
+the earlier 86 measured family failures, including the 23 introduced in P2.6B.
+Current consumers exercise Run with optional checks, Time/Case representations,
+Details/Checks repair, canonical signal identity and immutable retained evidence.
+They do not restore retired peer modes or weaken the recorded-value assertions.
+
+Storage owner tests pass 89/89. Native IndexedDB and real UI recovery cover
+non-destructive migration, failed/aborted transactions, conflicting tabs, exact
+last-good preservation, complete backup and retry. A negative control reproduces
+the stale retry race and the guarded implementation passes. The ten 512-case,
+three-configuration workload preserves all recordings and receipts through Close,
+reload, reopen and oldest-configuration reproduction.
+
+TypeScript currently reports 570 diagnostics under TS 5.9.3 and Node 20.19.0,
+down from the P2.6B 768 report. The committed regression baseline is unchanged;
+this is a reduction in existing debt, not a claim of a clean product typecheck.
+
+Final canonical classroom, repo-status and fixed-build delivery results are still
+pending at this implementation checkpoint. Source subsets below the aggregate
+do not stand in for those commands. Detailed results remain in ignored p2-6c
+evidence directories; the current delivery summary is in ACTIVE_WORK.
+
 ## P2.6B targeted closure after the census (2026-09-12)
 
 At 0f941296ee1aabbabc6f6401bda346152b8e9fdc, the strengthened ide:gate:verify-no-circuit-task-first

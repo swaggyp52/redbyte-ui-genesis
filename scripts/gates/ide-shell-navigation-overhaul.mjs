@@ -93,25 +93,25 @@ async function assertShellChrome(page, viewport, label) {
     return {
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       topbar: rect('[data-testid="ide-top-bar"]'),
-      stageNav: rect('[data-testid="ide-stage-nav"]'),
-      stageTrack: rect('[data-testid="ide-stage-nav"] .ide-stage-nav'),
+      stageNav: rect('[data-testid="ide-workspace-rail"]'),
+      stageTrack: rect('[data-testid="ide-workspace-rail"] [role="tablist"]'),
       ribbon: rect('[data-testid="ide-proof-ribbon"]'),
       statusBar: rect('[data-testid="ide-status-bar"]'),
-      layoutShell: rect('.ide-layout-shell'),
+      layoutShell: rect('[data-testid="ide-document-column"]'),
       retiredRailCount: document.querySelectorAll(
         '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
       ).length,
       retiredToggleCount: document.querySelectorAll(
         '[data-testid^="ide-workbench-dock-toggle-"], [data-testid*="dock-collapse"], .ide-workbench-dock-toggle-rail'
       ).length,
-      stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-stage-nav"] .ide-stage-nav-label'))
+      stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-workspace-rail"] [role="tab"] > span:first-of-type'))
         .filter((label) => label.getBoundingClientRect().width > 1 && label.getBoundingClientRect().height > 1)
         .map((label) => label.textContent?.trim() ?? ''),
       importIsUtility: (() => {
         const topbar = document.querySelector('[data-testid="ide-top-bar"]');
-        const stageNav = document.querySelector('[data-testid="ide-stage-nav"]');
+        const stageNav = document.querySelector('[data-testid="ide-workspace-rail"] [role="tablist"]');
         const importButton = document.querySelector('[data-testid="mode-button-import"]');
-        return Boolean(importButton && topbar?.contains(importButton) && !stageNav?.contains(importButton));
+        return Boolean(importButton && document.querySelector('[data-testid="ide-workspace-rail"]')?.contains(importButton) && !stageNav?.contains(importButton));
       })(),
       productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]'))
         .filter((element) => element.getBoundingClientRect().width > 1 && element.getBoundingClientRect().height > 1)
@@ -132,11 +132,11 @@ async function assertShellChrome(page, viewport, label) {
   );
   assert(state.productSpineCount === 0, `${viewport.label}/${label}: duplicate page product spine is still visible`);
   assert(
-    state.stageNav.visible && state.stageNav.height >= 40 && state.stageNav.height <= 60,
+    state.stageNav.visible && state.stageNav.width >= 48 && state.stageNav.width <= 80 && state.stageNav.height >= viewport.height * 0.8,
     `${viewport.label}/${label}: horizontal stage navigation must be readable and bounded, got ${JSON.stringify(state.stageNav)}`
   );
   assert(
-    state.stageTrack.visible && state.stageTrack.width >= 620 && state.stageTrack.width <= viewport.width,
+    state.stageTrack.visible && state.stageTrack.width <= 80 && state.stageTrack.height >= 180 && state.stageTrack.bottom <= viewport.height,
     `${viewport.label}/${label}: five-stage track must be horizontally reachable, got ${JSON.stringify(state.stageTrack)}`
   );
   assert(state.retiredRailCount === 0, `${viewport.label}/${label}: retired workflow rail returned`);
@@ -144,14 +144,14 @@ async function assertShellChrome(page, viewport, label) {
   assert(
     // The v3 stage track visually overlaps the workspace edge by 8px to avoid a
     // dead chrome band while keeping labels and controls fully readable.
-    state.layoutShell.top >= state.stageNav.bottom - 10 && state.layoutShell.top <= state.stageNav.bottom + 2,
+    state.layoutShell.top >= state.topbar.bottom - 1 && state.layoutShell.top <= state.topbar.bottom + 2,
     `${viewport.label}/${label}: workbench must begin directly under stage navigation (${JSON.stringify({
       stageNav: state.stageNav,
       layoutShell: state.layoutShell,
     })})`
   );
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']),
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board', 'Package']),
     `${viewport.label}/${label}: expected one five-stage workflow, got ${JSON.stringify(state.stageLabels)}`
   );
   assert(state.importIsUtility, `${viewport.label}/${label}: Import must be a separate utility, not step 6`);
@@ -185,7 +185,7 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
       };
     };
     const primarySelectors = {
-      project: ['[data-testid="ide-project-command-board-v1"]'],
+      project: ['[data-testid="ide-project-overview-document"]'],
       design: ['[data-testid="ide-design-live-canvas"]'],
       verify: ['[data-testid="ide-verify-lab-grid"]'],
       hardware: ['[data-testid="ide-hw-map-table"]'],
@@ -200,7 +200,7 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
     return {
       activeMode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? '',
       primary,
-      activeButtonVisible: Boolean(document.querySelector(`[data-testid="mode-button-${expectedMode}"][data-active="true"]`)),
+      activeButtonVisible: Boolean(document.querySelector(`[data-testid="mode-button-${expectedMode}"][data-state="current"]`)),
     };
   }, mode);
 

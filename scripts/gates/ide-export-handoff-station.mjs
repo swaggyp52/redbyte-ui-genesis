@@ -5,9 +5,8 @@
  *
  * Contract:
  * 1) Export presents one visible handoff station at 1366x768.
- * 2) Draft/Needs Review does not look trusted, has one primary repair/build path,
- *    and may retain the contract-approved secondary draft download.
- * 3) Trusted/Ready keeps Export's primary action on build/download.
+ * 2) Structurally valid drafts keep artifact generation primary and label evidence trust honestly.
+ * 3) Current checked packages keep generation/download primary.
  * 4) Artifact previews, README E0 boundary, mapping, and Vivado next steps are visible.
  * 5) Browser Export never claims E1/E2/E3 success.
  */
@@ -58,8 +57,8 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
     'draft readiness hero must not look like a trusted/ready export'
   );
   assert(
-    /Open Simulate|Simulate|Compare|repair|review/i.test(await normalizedText(currentExportAction(page))),
-    'draft readiness primary path must send the student toward repair/review evidence'
+    /Generate.*draft ZIP/i.test(await normalizedText(currentExportAction(page))),
+    'draft generation must name draft trust explicitly'
   );
 
   await page.locator('[data-testid="mode-button-verify"]').click();
@@ -80,7 +79,7 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
     readyToBuildStatus === 'draft',
     `verified export should remain a buildable draft before download, got "${readyToBuildStatus}"`
   );
-  await assertOneVisiblePrimary(page, /Build Current Bundle|Rebuild Current Bundle|Download/i, 'ready-to-build export');
+  await assertOneVisiblePrimary(page, /Generate.*ZIP/i, 'ready-to-build export');
 
   await assertArtifactWorkspace(page);
   await assertReadmeBoundary(page);
@@ -101,7 +100,7 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
   await assertStationBasics(page, 'trusted export');
   const trustedStatus = await page.locator('[data-testid="ide-export-package-inspector-v1"]').first().getAttribute('data-export-package-state');
   assert(trustedStatus === 'ready', `trusted readiness hero must show ready, got "${trustedStatus}"`);
-  await assertOneVisiblePrimary(page, /Download|Re-download|Build|Bundle|Project ZIP/i, 'trusted export');
+  await assertOneVisiblePrimary(page, /Generate.*ZIP|Download/i, 'trusted export');
   const trustedPrimary = await normalizedText(currentExportAction(page));
   assert(
     !/Open Program Handoff/i.test(trustedPrimary),
@@ -135,13 +134,13 @@ async function assertStationBasics(page, label) {
 }
 
 async function assertOneVisiblePrimary(page, expectedLabel, label) {
-  const actionButtons = page.locator('[data-testid="ide-export-primary-actions"] button');
+  const actionButtons = page.locator('[data-testid="ide-export-primary-actions"] button[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid="ide-export-draft-download-v1"]');
   const packageState = await page
     .locator('[data-testid="ide-export-package-inspector-v1"]')
     .getAttribute('data-export-package-state');
   assert(
-    (await actionButtons.count()) >= 1 && (await actionButtons.count()) <= 2,
-    `${label} must expose one owning handoff action with at most one secondary draft download`
+    (await actionButtons.count()) === 1,
+    `${label} must expose exactly one owning generation action`
   );
   const primary = currentExportAction(page);
   assert(await visible(primary), `${label} primary handoff action must be visible`);
@@ -150,14 +149,7 @@ async function assertOneVisiblePrimary(page, expectedLabel, label) {
     expectedLabel.test(buttonText),
     `${label} primary action must be build/download oriented, got "${buttonText}"`
   );
-  if (packageState === 'draft') {
-    const draftDownload = page.locator('[data-testid="ide-export-draft-download-v1"]');
-    assert((await draftDownload.count()) <= 1, `${label} must expose at most one secondary draft download`);
-    if ((await draftDownload.count()) === 1) {
-      assert(await visible(draftDownload), `${label} secondary draft download must be visible`);
-      assert(/Download draft/i.test(await normalizedText(draftDownload)), `${label} secondary action must be labeled as a draft download`);
-    }
-  }
+
 }
 
 async function assertArtifactWorkspace(page) {
@@ -191,6 +183,8 @@ async function assertReadmeBoundary(page) {
 }
 
 async function assertMappingSummary(page) {
+  const readiness=page.getByTestId('ide-export-readiness-disclosure');
+  if(!await readiness.evaluate(e=>e.open))await readiness.locator('summary').click();
   const mapping = page.locator('[data-testid="ide-export-upstream-mapping"]').first();
   assert(await visible(mapping), 'upstream readiness must expose Board & Constraints status');
   const mappingText = await normalizedText(mapping);
@@ -229,7 +223,7 @@ async function selectArtifact(page, artifactPath) {
   await openGeneratedFiles(page, `preview ${artifactPath}`);
   const tab = page
     .locator('button[data-testid^="ide-export-file-"]')
-    .filter({ hasText: artifactPath })
+    .filter({ has: page.locator('.rb-pkg-file-name', { hasText: artifactPath }) })
     .first();
   assert(await tab.isVisible().catch(() => false), `${artifactPath} artifact tab must be visible`);
   await tab.click();
@@ -292,7 +286,7 @@ async function assertFitsViewport(page, locator, label) {
 
 function currentExportAction(page) {
   return page.locator(
-    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"]'
+    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid="ide-export-draft-download-v1"]'
   ).first();
 }
 

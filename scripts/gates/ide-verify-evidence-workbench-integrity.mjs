@@ -98,25 +98,18 @@ async function assertNoMeaningfulOverlap(page, specs, phase) {
   }
 }
 
-function parseCellValueFromTitle(title) {
-  const value = String(title ?? '');
-  if (/:\s*1\s*-\s*drag/i.test(value)) return 1;
-  if (/:\s*0\s*-\s*drag/i.test(value)) return 0;
-  return null;
-}
-
 async function pickRenderedExpectedTarget(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  const cells = await page.locator('[data-testid^="ide-case-lab-exp-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') || '';
       const title = element.getAttribute('title') || '';
-      const match = /^ide-stimulus-expected-(.+)-t(\d+)$/.exec(testId);
-      const parsedTitle = /:\s*(0|1|not set)\s*-\s*drag/i.exec(title);
+      const match = /^ide-case-lab-exp-(\d+)-(.+)$/.exec(testId);
+      const value = element.querySelector('code')?.textContent?.trim();
       return {
         testId,
-        signal: match?.[1] ?? '',
-        tick: match?.[2] ? Number(match[2]) : -1,
-        value: parsedTitle?.[1] === '1' ? 1 : parsedTitle?.[1] === '0' ? 0 : null,
+        signal: match?.[2] ?? '',
+        tick: match?.[1] ? Number(match[1]) : -1,
+        value: value === '1' ? 1 : value === '0' ? 0 : null,
         title,
       };
     })
@@ -131,8 +124,8 @@ async function pickRenderedExpectedTarget(page) {
 }
 
 async function readRenderedCellValue(page, target) {
-  const title = await page.getByTestId(target.testId).first().getAttribute('title');
-  return parseCellValueFromTitle(title);
+  const value = await page.getByTestId(target.testId).first().locator('code').textContent();
+  return value === '1' ? 1 : value === '0' ? 0 : null;
 }
 
 async function clickExpectedCellToValue(page, target, expectedValue) {
@@ -166,21 +159,21 @@ async function clickRunAndWaitForNewResult(page) {
 }
 
 async function assertWorkbenchGeometry(page, phase) {
-  const workspace = await box(page, '[data-testid="ide-verify-workspace"]', `${phase} workspace`);
+  const workspace = await box(page, '[data-testid="ide-verify-lab-grid"]', `${phase} workspace`);
   const studioMode = await page.locator('[data-testid="ide-verify-lab-grid"]').first().getAttribute('data-studio-mode');
   if (studioMode === 'scenario' || studioMode === 'checks') {
     const stimulus = await box(page, '[data-testid="ide-verify-region-stimulus"]', `${phase} stimulus region`);
-    const editor = await box(page, '[data-testid="ide-verify-add-vector-form"]', `${phase} stimulus editor`);
+    const editor = await box(page, '[data-testid="ide-case-lab"]', `${phase} stimulus editor`);
     assert(editor.width >= 320, `${phase} stimulus editor must remain readable (width=${editor.width})`);
     assert(stimulus.width >= Math.min(900, workspace.width * 0.9), `${phase} ${studioMode} must own the authoring workspace (width=${stimulus.width})`);
-    assert(!(await isVisible(page, '[data-testid="ide-verify-region-waveform"]')), `${phase} hidden Replay must not compete with ${studioMode}`);
+    assert(!(await isVisible(page, '[data-testid="ide-verify-waveform-svg"]')), `${phase} recorded lanes must not compete with the case table`);
     await assertNoMeaningfulOverlap(
       page,
       [
         { selector: '[data-testid="ide-verify-stimulus-header"]', label: 'stimulus header' },
         { selector: '.ide-verify-run-summary-slot--inline', label: 'testbench summary' },
         { selector: '[data-testid="ide-stimulus-toolbar"]', label: 'stimulus toolbar' },
-        { selector: '.ide-stimulus-grid-scroll', label: 'stimulus table' },
+        { selector: '.ide-case-lab-scroll', label: 'stimulus table' },
       ],
       `${phase} stimulus evidence stack`,
     );
@@ -213,15 +206,17 @@ async function assertWorkbenchGeometry(page, phase) {
 }
 
 async function selectStudioMode(page, mode) {
-  const tab = page.locator(`[data-testid="ide-vcb-workspace-${mode}"]`).first();
-  assert(await tab.isVisible().catch(() => false), `${mode} workspace tab must be visible`);
+  const representation = mode === 'replay' ? 'waveform' : 'table';
+  const tab = page.getByTestId('ide-verify-view-' + representation).first();
+  assert(await tab.isVisible(), representation + ' representation must remain directly available');
   await tab.click();
   await page.waitForFunction(
-    (expectedMode) => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === expectedMode,
-    mode,
+    expected => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-representation') === expected,
+    representation,
     { timeout: 5000 },
   );
 }
+
 
 await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ page, baseUrl }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
@@ -237,29 +232,25 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
   await ensureVerifyVectorsReady(page);
-  await requireVisible(page, '[data-testid="ide-verify-add-vector-form"]', 'first-run stimulus editor');
-  await requireVisible(page, '[data-testid="ide-vcb-run-mode"]', 'Simulation Studio workspace selector');
+  await requireVisible(page, '[data-testid="ide-case-lab"]', 'first-run stimulus editor');
+  await requireVisible(page, '[data-testid="ide-verify-representation"]', 'representation controls');
   await requireVisible(page, '[data-testid="ide-vcb-run"]', 'unified Run simulation authority');
-  await requireVisible(page, '[data-testid="ide-vcb-workspace-scenario"]', 'Scenario workspace tab');
-  await requireVisible(page, '[data-testid="ide-vcb-workspace-checks"]', 'Checks workspace tab');
+  await requireVisible(page, '[data-testid="ide-verify-view-table"]', 'Scenario workspace tab');
+  await requireVisible(page, '[data-testid="ide-verify-view-waveform"]', 'Checks workspace tab');
 
-  const modeCopy = await text(page.locator('[data-testid="ide-vcb-mode-explainer"]'));
+  const modeCopy = await page.getByTestId('ide-vcb-check-count').getAttribute('title');
   assert(
-    /evaluates\s+\d+\s+optional check/i.test(modeCopy),
+    /checks.*automatically/i.test(modeCopy),
     `mode explainer must describe automatic optional-check evaluation, got "${modeCopy}"`
   );
   await assertWorkbenchGeometry(page, 'pre-run-scenario');
   await selectStudioMode(page, 'checks');
-  await requireVisible(page, '[data-testid^="ide-stimulus-expected-"]', 'first-run expected-output cells');
-  const expectedChecksLabel = page.locator('.ide-stimulus-group-header--asserted .ide-stimulus-group-label').first();
-  const expectedChecksText = await text(expectedChecksLabel);
-  const expectedChecksTitle = (await expectedChecksLabel.getAttribute('title')) ?? '';
-  assert(
-    await expectedChecksLabel.isVisible().catch(() => false) &&
-    expectedChecksText === 'Expected · Unset = no check' &&
-      /Expected outputs; (Unset means no check|empty cells are not compared)/i.test(expectedChecksTitle),
-    `visible workbench must label saved checks and explain unset cells, got text="${expectedChecksText}" title="${expectedChecksTitle}"`
-  );
+  await requireVisible(page, '[data-testid^="ide-case-lab-exp-"]', 'first-run expected-output cells');
+  const expectedHeaders = page.getByTestId('ide-case-lab-table').locator('th.ide-case-lab-exp');
+  assert(await expectedHeaders.count() >= 2, 'each output must label expected values beside observations');
+  const expectedCopy = await page.locator('[data-testid^="ide-case-lab-exp-"]').first().getAttribute('title');
+  assert(/Expected.*0.*1.*none/i.test(expectedCopy), 'expected cell must explain its optional values: ' + expectedCopy);
+
   assert(
     !(await isVisible(page, '[data-testid="ide-verify-first-run-collapsed-strip"]')),
     'ready starter vectors must not hide the first-run editor behind a collapsed strip'
@@ -271,10 +262,10 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   let status = await clickRunAndWaitForNewResult(page);
   assert(isVerifyPass(status), `initial unified simulation should PASS its authored checks, got "${status}"`);
   await selectStudioMode(page, 'replay');
-  await requireVisible(page, '[data-testid="ide-verify-results-summary"]', 'simulation result summary');
-  const initialResultKind = await page.locator('[data-testid="ide-verify-results-summary"]').first().getAttribute('data-kind');
+  await requireVisible(page, '[data-testid="ide-run-check-result"]', 'simulation result summary');
+  const initialResultKind = await page.locator('[data-testid="ide-run-check-result"]').first().getAttribute('data-check-status');
   assert(
-    initialResultKind === 'observe-done' || initialResultKind === 'pass',
+    initialResultKind === 'pass',
     `simulation result summary must report completed browser evidence, got "${initialResultKind}"`,
   );
   await requireVisible(page, '[data-testid="ide-verify-waveform-svg"]', 'post-run waveform lanes');
@@ -299,6 +290,7 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   await requireVisible(page, '[data-testid="ide-verify-fail-nav-summary"]', 'first mismatch summary');
   const failNav = await text(page.locator('[data-testid="ide-verify-fail-nav-summary"]'));
   assert(/expected/i.test(failNav) && /got/i.test(failNav), `first mismatch summary must show expected and observed values, got "${failNav}"`);
+  await page.getByTestId('ide-verify-details').click();
   await assertWorkbenchGeometry(page, 'simulation-fail-replay');
   await capture(page, '03-simulation-fail-first-mismatch.png');
 
@@ -308,10 +300,10 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   status = await clickRunAndWaitForNewResult(page);
   assert(isVerifyPass(status), `repaired expected output should PASS unified simulation, got "${status}"`);
   await selectStudioMode(page, 'replay');
-  await requireVisible(page, '[data-testid="ide-verify-results-summary"]', 'repaired simulation result summary');
-  const repairedResultKind = await page.locator('[data-testid="ide-verify-results-summary"]').first().getAttribute('data-kind');
+  await requireVisible(page, '[data-testid="ide-run-check-result"]', 'repaired simulation result summary');
+  const repairedResultKind = await page.locator('[data-testid="ide-run-check-result"]').first().getAttribute('data-check-status');
   assert(
-    repairedResultKind === 'observe-done' || repairedResultKind === 'pass',
+    repairedResultKind === 'pass',
     `repaired simulation result summary must report completed browser evidence, got "${repairedResultKind}"`,
   );
   await assertWorkbenchGeometry(page, 'repair-pass-replay');
@@ -319,6 +311,9 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
 });
 
 async function assertDirectFailureEvidence(page, label) {
+  const details = page.getByTestId('ide-verify-details');
+  if (await details.getAttribute('aria-pressed') !== 'true') await details.click();
+  await page.getByTestId('ide-verify-analysis-tab-nav').getByRole('button', { name: 'Checks', exact: true }).click();
   const repairPanel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const repairDecision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
   const failedCase = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();

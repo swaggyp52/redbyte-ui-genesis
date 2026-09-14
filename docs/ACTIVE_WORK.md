@@ -8,6 +8,43 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## P2.6C implementation checkpoint - 2026-09-14
+
+The authorized candidate remains on claude/redbyte-studio-completion-p2-6-q7m3v8,
+draft PR #86, with its existing operational-workbench base. This checkpoint is
+local implementation evidence; final committed build, aggregate validation,
+push and exact preview verification remain pending.
+
+Shared workbench typography and theme tokens now govern the instrument surfaces.
+Project gives its circuit and next action prominence; Simulate keeps Run and
+Reproduce direct while recording hashes and advanced timing controls use
+disclosures. Split follows the measured canvas without discarding deliberate
+camera changes. Board legends are readable, Board Check has usable parallel
+space, and Package keeps generated files above the downloadable receipt details.
+Narrow Project panels recover through the existing shell controls with keyboard
+focus return. The unreachable failure repair panel is being reconciled with the
+current Details/Checks owner as part of final browser verification.
+
+ProjectRepository and the existing runtime now use transactional IndexedDB behind
+their current ownership boundaries. Legacy bytes remain intact through migration;
+recordings are not silently pruned. Complete session backups include scenarios,
+retained recordings, receipts and imported VCD evidence while .rbproj stays format 1.
+Source proof includes native migration/abort/conflict cases and real UI write-failure
+backup, successful retry and exact reopen. The ten 512-case, three-configuration
+close/reopen/reproduce workload and remaining concurrency checks are in progress.
+
+The final surface batch passes 468/468: 460 Design/Verify cases plus eight waveform
+group cases, versus the P2.6B Design/Verify 374/86 report;
+current source TypeScript reports 570 diagnostics with TS 5.9.3, versus the prior
+768 report. The existing regression baseline is unchanged. Focused consumer
+migrations preserve actual authoring, failing checks, repair, immutable evidence,
+navigation and ZIP trust assertions. A green source subset is not a green canonical
+classroom chain. Local detailed evidence is under
+.redbyte/product-immersion/p2-6-studio-completion/p2-6c/ and .redbyte/e2e-evidence/.
+
+Browser E0 only. No merge, retarget, production deployment, Vivado execution,
+programming or physical observation is claimed. Owner acceptance remains pending.
+
 ## P2.6B delivery evidence - 2026-09-12
 
 Source implementation and Browser E0 proof are delivered at pushed 0f941296ee1aabbabc6f6401bda346152b8e9fdc.

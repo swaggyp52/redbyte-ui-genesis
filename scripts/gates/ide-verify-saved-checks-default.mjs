@@ -54,11 +54,11 @@ await runIdeGate('IDE Verify saved checks remain active in unified simulation sa
       `${viewport.label}: first-run authoring must remain in Scenario, got ${JSON.stringify(before)}`
     );
     assert(
-      /run simulation/i.test(before.runLabel),
+      /^Run|Rerun/i.test(before.runLabel),
       `${viewport.label}: the single Run action must remain simulation-oriented, got "${before.runLabel}"`
     );
     assert(
-      /evaluates\s+[1-9]\d*\s+optional check/i.test(before.modeExplainer),
+      /[1-9]\d*\s+saved checks.*evaluated/i.test(before.modeExplainer),
       `${viewport.label}: run explainer must disclose automatic saved-check evaluation, got "${before.modeExplainer}"`
     );
 
@@ -69,32 +69,38 @@ await runIdeGate('IDE Verify saved checks remain active in unified simulation sa
     await capture(page, viewport, '02-after-compare-pass');
 
     const after = await readRunModeState(page);
+    assert(JSON.stringify(after.expectedValues) === JSON.stringify(before.expectedValues),
+      `${viewport.label}: Run must preserve every authored expected value`);
     assert(
       after.checkCount === before.checkCount,
       `${viewport.label}: saved checks must remain intact after PASS, got ${JSON.stringify(after)}`
     );
     assert(
-      /run simulation/i.test(after.runLabel),
+      /^Run|Rerun/i.test(after.runLabel),
       `${viewport.label}: Run must remain a single simulation action after PASS, got "${after.runLabel}"`
     );
 
-    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().click();
+    await page.locator('[data-testid="ide-verify-view-table"]').first().click();
     const checks = await readRunModeState(page);
     assert(
       checks.checksSelected,
       `${viewport.label}: students must be able to open saved checks, got ${JSON.stringify(checks)}`
     );
     assert(
-      await page.locator('[data-testid^="ide-stimulus-expected-"]').first().isVisible().catch(() => false),
+      await page.locator('[data-testid^="ide-case-lab-exp-"]').first().isVisible().catch(() => false),
       `${viewport.label}: Checks workspace must expose expected-output cells`
     );
 
-    await page.locator('[data-testid="ide-vcb-workspace-scenario"]').first().click();
+    await page.getByTestId('ide-verify-view-waveform').click();
+    await page.getByTestId('ide-verify-workspace-waveform').waitFor();
+    await page.getByTestId('ide-verify-view-table').click();
     const restored = await readRunModeState(page);
     assert(
       restored.scenarioSelected && restored.checkCount === before.checkCount,
       `${viewport.label}: returning to Scenario must preserve saved checks, got ${JSON.stringify(restored)}`
     );
+    assert(JSON.stringify(restored.expectedValues) === JSON.stringify(before.expectedValues),
+      `${viewport.label}: changing representation must preserve every saved check`);
   }
 
   assert(
@@ -116,19 +122,20 @@ async function openLogicGatesVerify(page, baseUrl, viewportLabel) {
 
 async function readRunModeState(page) {
   return page.evaluate(() => {
-    const scenario = document.querySelector('[data-testid="ide-vcb-workspace-scenario"]');
-    const checks = document.querySelector('[data-testid="ide-vcb-workspace-checks"]');
+    const table = document.querySelector('[data-testid="ide-case-lab"]');
     const run = document.querySelector('[data-testid="ide-vcb-run"]');
     const explainer = document.querySelector('[data-testid="ide-vcb-mode-explainer"]');
-    const checksText = (checks?.textContent ?? '').replace(/\s+/g, ' ').trim();
-    const checkCount = Number.parseInt(checksText.match(/\b(\d+)\b/)?.[1] ?? '0', 10);
+    const expected = [...document.querySelectorAll('[data-testid^="ide-case-lab-exp-"]')];
+    const countText = document.querySelector('[data-testid="ide-vcb-check-count"]')?.textContent ?? '';
+    const checkCount = Number(countText.match(/\d+/)?.[0] ?? 0);
     return {
-      scenarioSelected: scenario?.getAttribute('aria-selected') === 'true',
-      checksSelected: checks?.getAttribute('aria-selected') === 'true',
-      checksAvailable: Boolean(checks) && !(checks instanceof HTMLButtonElement && checks.disabled),
-      checkCount: Number.isFinite(checkCount) ? checkCount : 0,
-      runLabel: (run?.textContent ?? '').replace(/\s+/g, ' ').trim(),
-      modeExplainer: (explainer?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      scenarioSelected: Boolean(table && table.getBoundingClientRect().height > 0),
+      checksSelected: expected.some(cell => cell.getBoundingClientRect().height > 0),
+      checksAvailable: expected.length > 0,
+      expectedValues: expected.map(cell => ({ id: cell.getAttribute('data-testid'), value: cell.textContent?.trim() })),
+      checkCount,
+      runLabel: run?.textContent?.trim() ?? '',
+      modeExplainer: explainer?.textContent?.trim() ?? '',
     };
   });
 }

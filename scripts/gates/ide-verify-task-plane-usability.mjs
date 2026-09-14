@@ -3,19 +3,14 @@
 import { spawnSync } from 'node:child_process';
 
 const STEPS = [
-  ['verify-testbench-usable-layout', ['-s', 'ide:gate:verify-testbench-usable-layout']],
-  ['verify-postrun-workbench-usability', ['-s', 'ide:gate:verify-postrun-workbench-usability']],
-  ['verify-workbench-layout-reset', ['-s', 'ide:gate:verify-workbench-layout-reset']],
+  'verify-testbench-usable-layout',
+  'verify-postrun-workbench-usability',
+  'verify-workbench-layout-reset',
 ];
 
-for (const [name, args] of STEPS) {
+for (const name of STEPS) {
   console.log(`[ide:gate:verify-task-plane-usability] START ${name}`);
-  const command = process.platform === 'win32' ? 'cmd.exe' : 'pnpm';
-  const commandArgs =
-    process.platform === 'win32'
-      ? ['/d', '/s', '/c', ['pnpm', ...args].join(' ')]
-      : args;
-  const result = spawnSync(command, commandArgs, {
+  const result = spawnSync(process.execPath, [`scripts/gates/ide-${name}.mjs`], {
     stdio: 'inherit',
     env: { ...process.env },
   });

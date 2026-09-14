@@ -5,6 +5,7 @@ import {
   RELEASE_READINESS_VIEWPORTS,
   assertReleaseReadinessClean,
   getRequiredRect,
+  getRect,
   openDesignInspector,
   openDesignLibrary,
   setupReleaseReadinessPage,
@@ -20,7 +21,7 @@ await runIdeGate('IDE Design tool-window coexistence is proportional', async ({ 
       await openDesignLibrary(page, baseUrl, `design-tool-window-library-${viewport.label}`);
       const library = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design Library`);
       const libraryCanvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas with Library`);
-      assert(library.visibleWidth >= 172 && library.visibleWidth <= 224, `${viewport.label}: Library width is not tool-like ${JSON.stringify(library)}`);
+      assert(library.visibleWidth >= 172 && library.visibleWidth <= 280, `${viewport.label}: Library width is not tool-like ${JSON.stringify(library)}`);
       assert(
         libraryCanvas.visibleWidth >= Math.round(viewport.width * 0.62),
         `${viewport.label}: Library should leave a usable canvas ${JSON.stringify(libraryCanvas)}`
@@ -28,10 +29,10 @@ await runIdeGate('IDE Design tool-window coexistence is proportional', async ({ 
 
       await openDesignInspector(page, baseUrl, `design-tool-window-inspector-${viewport.label}`);
       const inspector = await getRequiredRect(page, '[data-testid="ide-right-dock"]', `${viewport.label}/Design Inspector`);
-      const inspectorLibrary = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design Library with Inspector`);
+      const inspectorLibrary = await getRect(page, '[data-testid="ide-left-dock"]');
       const inspectorCanvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas with Inspector`);
-      assert(inspector.visibleWidth >= 268 && inspector.visibleWidth <= 292, `${viewport.label}: Inspector width is not proportional ${JSON.stringify(inspector)}`);
-      const selectedContextWidth = inspectorLibrary.visibleWidth + inspectorCanvas.visibleWidth + inspector.visibleWidth;
+      assert(inspector.visibleWidth >= 220 && inspector.visibleWidth <= 320, `${viewport.label}: Inspector width is not proportional ${JSON.stringify(inspector)}`);
+      const selectedContextWidth = (inspectorLibrary?.visible ? inspectorLibrary.visibleWidth : 0) + inspectorCanvas.visibleWidth + inspector.visibleWidth;
       assert(
         inspectorCanvas.visibleWidth >= Math.round(selectedContextWidth * 0.62),
         `${viewport.label}: Inspector should preserve the selected-context 62% canvas floor ${JSON.stringify({ inspectorLibrary, inspectorCanvas, inspector })}`

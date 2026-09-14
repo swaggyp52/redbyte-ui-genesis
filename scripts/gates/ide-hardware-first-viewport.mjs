@@ -81,9 +81,11 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
         `${viewport.label}: mapping table visible height ${observation.table.visibleHeight.toFixed(1)}px < 200px`
       );
       assert(
-        observation.table.visibleWidth >= observation.board.visibleWidth,
-        `${viewport.label}: mapping table must remain the primary work object ${JSON.stringify({ table: observation.table, board: observation.board })}`
+        observation.table.visibleWidth >= 320 && observation.board.visibleWidth >= 320,
+        `${viewport.label}: mapping list and board must both retain useful space ${JSON.stringify({ table: observation.table, board: observation.board })}`
       );
+      assert(await page.getByTestId('ide-hw-map-sw-0').getAttribute('data-resource-state') === 'selected',
+        `${viewport.label}: selecting SW0 must highlight its exact resource beside the mapping list`);
       assert(
         observation.board.visibleWidth >= 250,
         `${viewport.label}: Basys3 board reference must remain proportionally visible ${JSON.stringify(observation.board)}`
@@ -130,7 +132,7 @@ async function openStarterHardware(page, baseUrl, viewportLabel) {
   await page.locator('[data-testid="mode-button-hardware"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForSelector('[data-testid="ide-hw-board-workspace"].ide-hw-v3', {
+  await page.waitForSelector('[data-testid="ide-hw-board-workspace"].rb-board', {
     state: 'visible',
     timeout: 15000,
   });
@@ -168,7 +170,7 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
       const editor = document.querySelector('[data-testid="ide-hw-selected-mapping-editor"]');
       if (!workspace || !table || !board || !editor || !mode) return false;
       if (mode.getAttribute('data-ide-mode-marker') !== 'hardware') return false;
-      if (!workspace.classList.contains('ide-hw-v3')) return false;
+      if (!workspace.classList.contains('rb-board')) return false;
 
       const workspaceRect = workspace.getBoundingClientRect();
       const tableRect = table.getBoundingClientRect();
@@ -177,7 +179,7 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
       return (
         workspaceRect.top <= 200 &&
         tableRect.top <= 560 &&
-        tableRect.width >= 620 &&
+        tableRect.width >= 320 &&
         boardRect.top <= 560 &&
         boardVisibleHeight >= 150 &&
         editor.getBoundingClientRect().width >= 250
@@ -231,7 +233,7 @@ async function readHardwareFirstViewportState(page) {
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
       mapWorkspaceActive:
-        document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('ide-hw-v3') === true &&
+        document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('rb-board') === true &&
         !Array.from(document.querySelectorAll('[data-testid="ide-hw-stage-rail"]')).some((element) => {
           const rect = element.getBoundingClientRect();
           const style = getComputedStyle(element);

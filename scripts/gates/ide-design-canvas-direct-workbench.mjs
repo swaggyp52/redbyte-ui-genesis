@@ -10,11 +10,11 @@ const VIEWPORTS = [
 ];
 
 const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
-  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
-  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
-  ['ide-design-fit-circuit-canvas', 'ide-design-overflow-fit'],
-  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
-  ['ide-design-center-selection-canvas', 'ide-design-overflow-center-selection'],
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-menu-fit'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
+  ['ide-design-center-selection-canvas', 'ide-design-menu-fit-selection'],
 ]);
 
 const SCREENSHOT_ROOT = process.env.RB_DESIGN_CANVAS_DIRECT_WORKBENCH_SCREENSHOTS_DIR
@@ -99,28 +99,11 @@ function assertDirectCanvas(metrics, viewport, label) {
   assert(metrics.visibleNodeCount >= 3, `${label}: loaded graph nodes disappeared (${metrics.visibleNodeCount})`);
   assert(metrics.visibleWireCount >= 1, `${label}: loaded graph wires disappeared (${metrics.visibleWireCount})`);
   assert(!metrics.toggle.visible, `${label}: canvas controls must not be hidden behind a view-tools toggle`);
-  assert(metrics.viewTools.insideToolbar, `${label}: direct view tools must remain inside the Design toolbar`);
   assert(!metrics.presets.visible, `${label}: obsolete zoom preset strip must remain absent`);
-  if (usesResponsiveTools) {
-    assert(!metrics.viewTools.visible, `${label}: desktop camera host must yield at classroom width`);
-    assert(!metrics.controls.visible, `${label}: hidden desktop controls must not occupy classroom toolbar space`);
-    assert(metrics.overflow.visible, `${label}: More tools must expose responsive camera controls`);
-    assert(!metrics.overflow.open, `${label}: responsive camera menu must close after each action`);
-    assert(metrics.overflow.insideToolbar, `${label}: More tools must remain inside the Design toolbar`);
-    for (const [testId, visible] of Object.entries(metrics.directControls)) {
-      assert(!visible, `${label}: desktop canvas control ${testId} must not compete with More tools`);
-    }
-    for (const [testId, present] of Object.entries(metrics.responsiveControls)) {
-      assert(present, `${label}: responsive canvas control ${testId} must remain available`);
-    }
-  } else {
-    assert(metrics.viewTools.visible, `${label}: desktop view tools host must remain visible`);
-    assert(metrics.viewTools.open === true, `${label}: desktop view tools host must remain open`);
-    assert(metrics.controls.visible, `${label}: direct desktop canvas controls must remain visible`);
-    assert(!metrics.overflow.visible, `${label}: desktop toolbar must not duplicate camera controls in More tools`);
-    for (const [testId, visible] of Object.entries(metrics.directControls)) {
-      assert(visible, `${label}: direct canvas control ${testId} must remain visible`);
-    }
+  assert(metrics.overflow.visible && metrics.overflow.insideToolbar, `${label}: View menu must remain in the Design toolbar`);
+  assert(!metrics.overflow.open, `${label}: View menu must close after each camera action`);
+  for (const [testId, visible] of Object.entries(metrics.directControls)) {
+    assert(visible, `${label}: direct canvas control ${testId} must remain visible`);
   }
   assert(!metrics.minimap.visible, `${label}: minimap must not cover starter graph by default`);
   assert(
@@ -167,7 +150,7 @@ async function readDirectCanvasMetrics(page) {
     const minimapEl = getElement('.rb-minimap');
     const viewTools = getRect('[data-testid="ide-design-canvas-view-tools"]');
     const overflowSummary = overflowSummaryEl?.getBoundingClientRect?.() ?? new DOMRect(0, 0, 0, 0);
-    const visibleCameraHost = isVisible(viewToolsEl) ? viewTools : overflowSummary;
+    const visibleCameraHost = toolbarEl?.getBoundingClientRect() ?? overflowSummary;
     const visibleNodes = Array.from(document.querySelectorAll('[data-node-id]')).filter((node) => {
       const rect = node.getBoundingClientRect();
       return rect.width > 4 && rect.height > 4 && intersects(rect, liveCanvas) && intersects(rect, viewport);
@@ -209,17 +192,17 @@ async function readDirectCanvasMetrics(page) {
           'ide-design-zoom-out',
           'ide-design-zoom-in',
           'ide-design-fit-circuit-canvas',
-          'ide-design-zoom-reset',
+          'ide-design-zoom-readout',
           'ide-design-center-selection-canvas',
         ].map((testId) => [testId, isVisible(getElement(`[data-testid="${testId}"]`))])
       ),
       responsiveControls: Object.fromEntries(
         [
-          'ide-design-overflow-zoom-out',
-          'ide-design-overflow-zoom-in',
-          'ide-design-overflow-fit',
-          'ide-design-overflow-reset',
-          'ide-design-overflow-center-selection',
+          'ide-design-menu-zoom-out',
+          'ide-design-menu-zoom-in',
+          'ide-design-menu-fit',
+          'ide-design-zoom-reset',
+          'ide-design-menu-fit-selection',
         ].map((testId) => [testId, Boolean(getElement(`[data-testid="${testId}"]`))])
       ),
       visibleNodeCount: visibleNodes.length,
@@ -242,7 +225,7 @@ async function clickCanvasTool(page, primaryTestId) {
   const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
   assert(Boolean(responsiveTestId), `missing responsive camera mapping for ${primaryTestId}`);
   const overflow = page.locator('[data-testid="ide-design-toolbar-overflow"]').first();
-  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: More tools must be visible`);
+  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: View menu must be visible`);
   const wasOpen = (await overflow.getAttribute('open')) !== null;
   if (!wasOpen) await overflow.locator('summary').click();
 

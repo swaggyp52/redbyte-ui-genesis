@@ -29,17 +29,17 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
         (await page.locator('[data-testid^="ide-product-spine-"]:visible').count()) === 0,
         `${viewport.label}: retired duplicate product spine must stay absent`,
       );
-      const commandRect = await assertVisibleRect(page, ['[data-testid="ide-project-command-board-v1"]'], `${viewport.label}/Project command board`, {
+      const commandRect = await assertVisibleRect(page, ['[data-testid="ide-project-overview-document"]'], `${viewport.label}/Project command board`, {
         maxTop: 240,
         minWidth: Math.round(viewport.width * 0.52),
         minHeight: 88,
       });
       assert(
-        commandRect.top >= 56,
+        commandRect.top >= 32,
         `${viewport.label}: Project command board must sit below the compact top bar, got top=${commandRect.top}`
       );
       assert(
-        (await page.locator('[data-testid="ide-project-command-strip-primary-cta"]:visible').count()) === 1,
+        (await page.locator('[data-testid="ide-project-continue"]:visible').count()) === 1,
         `${viewport.label}: loaded Project must expose exactly one body primary action`,
       );
       const stageButtons = page.locator('[data-testid="mode-button-project"], [data-testid="mode-button-design"], [data-testid="mode-button-verify"], [data-testid="mode-button-hardware"], [data-testid="mode-button-export"]');
@@ -47,10 +47,10 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
       assert(await visible(page.locator('[data-testid="mode-button-import"]').first()), `${viewport.label}: Import utility must remain visible`);
       await assertCommandConsoleNotCards(page, viewport);
 
-      const commandText = await normalizedText(page.locator('[data-testid="ide-project-command-board-v1"]').first());
-      assert(/next:\s*simulate/i.test(commandText), `${viewport.label}: command board must name Next: Simulate for the loaded starter`);
+      const commandText = await normalizedText(page.locator('[data-testid="ide-project-overview-document"]').first());
+      assert(/continue in design/i.test(commandText), `${viewport.label}: command board must name Next: Simulate for the loaded starter`);
       assert(
-        (await page.locator('[data-testid="ide-project-command-action-verify"]:visible').count()) === 1,
+        (await page.locator('[data-testid="ide-project-continue"]:visible').count()) === 1,
         `${viewport.label}: the sole body primary must expose Simulate routing truth`,
       );
       assert(
@@ -58,8 +58,8 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
         `${viewport.label}: Design must remain peer navigation in the five-stage rail, not a duplicate body action`,
       );
 
-      await page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first().click();
-      await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+      await page.locator('[data-testid="ide-project-continue"]').first().click();
+      await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
       await openMode(page, baseUrl, 'project', `project-loaded-command-surface-${viewport.label}-primary-return`);
 
       const peerRailActions = [
@@ -84,7 +84,7 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
       await openMode(page, baseUrl, 'project', `project-loaded-command-surface-${viewport.label}-import-return`);
 
       assert(
-        await visible(page.locator('[data-testid="ide-project-command-board-v1"]').first()),
+        await visible(page.locator('[data-testid="ide-project-overview-document"]').first()),
         `${viewport.label}: Project command board must survive command navigation`
       );
 
@@ -104,7 +104,7 @@ async function normalizedText(locator) {
 
 async function assertCommandConsoleNotCards(page, viewport) {
   const metrics = await page.evaluate((viewportHeight) => {
-    const root = document.querySelector('[data-testid="ide-project-command-board-v1"]');
+    const root = document.querySelector('[data-testid="ide-project-overview-document"]');
     if (!root) return { rootFound: false, passiveBoxedBlocks: 999, boxedMetricCards: 999, labels: ['missing root'] };
 
     const candidates = Array.from(

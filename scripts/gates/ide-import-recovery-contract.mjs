@@ -51,24 +51,11 @@ async function openProject(page, baseUrl) {
 }
 
 async function openImportFromProject(page) {
-  const importPrimary = page.locator('[data-testid="ide-project-import-primary"]').first();
-  if (await visible(importPrimary)) {
-    assert(/Import Project/i.test(await text(importPrimary)), 'Project first launch must label the utility action Import Project');
-    await importPrimary.click();
-    await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
-    return;
-  }
-
-  const importPath = page.locator('[data-testid="ide-project-path-import-recover"]').first();
-  if (!(await visible(importPath))) {
-    const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
-    assert(await visible(changeProject), 'Loaded Project must expose Change Project before replacement/recovery paths');
-    await changeProject.click();
-  }
-  assert(await visible(importPath), 'Loaded Project must reveal Import Project after Change Project opens');
-  assert(/Import Project/i.test(await text(importPath)), 'Loaded Project must label the disclosed utility action Import Project');
-  await importPath.click();
-  await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
+  const primary = page.getByTestId('ide-project-import-primary');
+  const action = await visible(primary) ? primary : page.getByTestId('mode-button-import');
+  assert(await visible(action), 'Project must retain a direct Import utility');
+  await action.click();
+  await page.getByTestId('ide-mode-import').waitFor();
 }
 
 async function openMode(page, mode) {
@@ -227,7 +214,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   const nonZipUpload = await buildNonZipUploadFixture();
 
   await openProject(page, baseUrl);
-  const projectLanding = page.locator('[data-testid="ide-project-command-center"]').first();
+  const projectLanding = page.locator('[data-testid="ide-project-landing"]').first();
   assert(await visible(projectLanding), 'Project command center must be visible before import');
   assert(
     /Import Project/i.test(await text(projectLanding)),
@@ -261,15 +248,9 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await openProject(page, baseUrl);
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await openMode(page, 'project');
-  const loadedProject = page.locator('[data-testid="ide-project-command-center"]').first();
+  const loadedProject = page.locator('[data-testid="ide-project-overview-document"]').first();
   assert(await visible(loadedProject), 'Loaded Project must keep command center visible');
-  const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
-  assert(await visible(changeProject), 'Loaded Project must expose Change Project');
-  await changeProject.click();
-  assert(
-    await visible(page.locator('[data-testid="ide-project-path-import-recover"]').first()),
-    'Loaded Project must reveal Import Project after Change Project opens'
-  );
+  assert(await visible(page.getByTestId('mode-button-import')), 'Loaded Project must retain the Import utility');
   await screenshotIfRequested(page, 'project-loaded-import-recover-entry-1366x768');
 
   await openImportFromProject(page);
@@ -388,8 +369,9 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await screenshotIfRequested(page, 'imported-project-design-1366x768');
 
   await openMode(page, 'project');
-  const bridgeText = await text(page.locator('[data-testid="ide-project-bridge"]').first());
-  assert(/full restore/i.test(bridgeText), 'Project must surface full import fidelity after manifest restore');
+  await page.getByTestId('ide-project-details').locator('summary').click();
+  const bridgeText = await text(page.getByTestId('ide-project-fact-kind'));
+  assert(/import full/i.test(bridgeText), 'Project must surface full import fidelity after manifest restore');
   await screenshotIfRequested(page, 'imported-project-project-state-1366x768');
 
   await openMode(page, 'verify');

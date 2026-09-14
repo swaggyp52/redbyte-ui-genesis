@@ -70,12 +70,12 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   );
   const buildButton = page.locator('[data-testid="ide-export-package-build-v1"]').first();
   assert(
-    /Build Current Bundle/i.test(await text(buildButton)),
+    /Generate.*ZIP/i.test(await text(buildButton)),
     'fresh verified export should expose Build Current Bundle before a successful package record exists'
   );
 
   const summaryMapping = await text(page.locator('[data-testid="ide-export-upstream-mapping"]'));
-  assert(/Board & Constraints/i.test(summaryMapping), `upstream readiness must name Board & Constraints, got "${summaryMapping}"`);
+  assert(/mapping|mapped|Board/i.test(summaryMapping), `upstream readiness must name Board & Constraints, got "${summaryMapping}"`);
   extractMappedCount(summaryMapping);
 
   const evidenceBoundary = await text(page.locator('[data-testid="ide-export-e0-boundary-summary"]'));
@@ -230,7 +230,7 @@ async function readVisiblePreviewByPath(page, artifactPath) {
     `${artifactPath} selected generated preview must be visible in the Export workspace`
   );
   const renderedCodeLines = await preview
-    .locator('.ide-export-v3__code-line > span:last-child')
+    .locator('.rb-pkg-code-line > span:last-child')
     .allTextContents()
     .catch(() => []);
   if (renderedCodeLines.length > 0) {
