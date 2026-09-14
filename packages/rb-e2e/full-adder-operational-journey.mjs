@@ -25,9 +25,9 @@ const REPO_ROOT = path.resolve(HERE, '..', '..');
 const EVIDENCE_DIR = path.resolve(
   REPO_ROOT,
   '.redbyte',
-  'product-immersion',
-  'p2-5-operational-workbench',
-  'evidence'
+  'e2e-evidence',
+  'full-adder-operational',
+  process.env.RB_SHOT_LABEL ?? 'current'
 );
 fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
 // One base-URL authority for every journey; RB_BASE_URL overrides it.
@@ -91,7 +91,7 @@ async function runAndSettle(page, label, assert) {
   );
   // The surface must have caught up with the ledger before anything reads it.
   await page.waitForFunction(
-    () => Boolean(document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind')),
+    () => Boolean(document.querySelector('[data-testid="ide-run-check-result"]')?.getAttribute('data-check-status')),
     undefined,
     { timeout: 12000 }
   );
@@ -178,7 +178,7 @@ async function setExpectedCell(page, tick, signalId, want, assert) {
 }
 
 async function summaryKind(page) {
-  return page.locator(tid('ide-verify-results-summary')).getAttribute('data-kind');
+  return page.locator(tid('ide-run-check-result')).getAttribute('data-check-status');
 }
 async function text(page, t) {
   return (await page.locator(tid(t)).textContent().catch(() => '')) ?? '';
@@ -226,12 +226,11 @@ async function run(width, height) {
 
   // ── C. BASELINE COMPARE — PASS ────────────────────────────────────────────
   await page.click(tid('mode-button-verify'));
-  await page.waitForSelector(tid('ide-vcb-use-saved-checks'), { timeout: 8000 });
-  await page.click(tid('ide-vcb-use-saved-checks')); // explicitly select Compare intent
-  assert((await page.locator(tid('ide-vcb-use-saved-checks')).getAttribute('aria-pressed')) === 'true', 'Compare intent selected');
+  await page.waitForSelector(tid('ide-vcb-run'), { timeout: 8000 });
+  assert(await page.getByTestId('ide-vcb-use-saved-checks').count() === 0, 'Run automatically uses the saved optional checks');
   await runAndSettle(page, 'baseline Compare', assert);
   assert((await summaryKind(page)) === 'pass', `baseline Compare should PASS (got ${await summaryKind(page)})`);
-  assert(/Compare passed/i.test(await text(page, 'ide-verify-results-summary')), 'PASS headline present');
+  assert(/checks passed/i.test(await text(page, 'ide-run-check-result')), 'The recording reports its passing optional checks');
   console.log(`[${label}] C. Simulate — Compare PASS on the correct Full Adder`);
 
   // ── C2. AUTHOR AN EXPECTATION THROUGH CASE LAB ────────────────────────────
@@ -266,8 +265,9 @@ async function run(width, height) {
   ).catch(() => {});
   assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')),
     'editing an expectation must invalidate the current evidence');
-  assert(/stale/i.test(await text(page, 'ide-status-run')),
-    'the status bar must agree that the simulation is stale after an authoring edit');
+  assert(await page.getByTestId('ide-status-run').count() === 0,
+    'Historical run state belongs in Simulate, not the global status bar');
+  assert(/checks|Stimulus changed/i.test(await text(page, 'ide-run-input-changes')), 'The recording identifies the changed authored input');
 
   const wrongRun = await runAndSettle(page, 'authored-wrong Compare', assert);
   assert((await summaryKind(page)) === 'fail', 'the run must fail against the wrong authored expectation');
@@ -406,8 +406,8 @@ async function run(width, height) {
   await recordedCircuit.getByRole('button', { name: 'Close circuit investigation', exact: true }).click();
   const problemsToggle = page.locator(tid('ide-console-toggle'));
   if ((await problemsToggle.getAttribute('aria-expanded')) !== 'true') await problemsToggle.click();
-  const runInspectorToggle = page.locator(tid('ide-verify-drawer-toggle'));
-  if ((await runInspectorToggle.getAttribute('aria-expanded')) !== 'true') await runInspectorToggle.click();
+  const runInspectorToggle = page.locator(tid('ide-verify-details'));
+  if ((await runInspectorToggle.getAttribute('aria-pressed')) !== 'true') await runInspectorToggle.click();
   await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-run-inspector-expanded-${label}.png`) });
   await runInspectorToggle.click();
   await page.waitForSelector(tid('ide-verify-region-inspector'), { state: 'hidden' });
@@ -452,7 +452,7 @@ async function run(width, height) {
   await page.click(tid('mode-button-verify'));
   await page.waitForSelector(tid('ide-verify-evidence-state'), { timeout: 8000 });
   assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')), 'restoring the pin does not silently re-bless the run');
-  const statusAfterRestore = await text(page, 'ide-status-run');
+  const statusAfterRestore = await text(page, 'ide-verify-evidence-state');
   assert(/stale/i.test(statusAfterRestore), `the status bar agrees the simulation is stale (got "${statusAfterRestore.trim()}")`);
   await runAndSettle(page, 'restored-mapping Compare', assert);
   assert((await summaryKind(page)) === 'pass', 'Compare passes again on the restored mapping');
@@ -462,7 +462,7 @@ async function run(width, height) {
     { timeout: 8000 }
   );
   assert(/CURRENT/i.test(await text(page, 'ide-verify-evidence-state')), 'the new run is CURRENT');
-  assert(!/stale/i.test(await text(page, 'ide-status-run')), 'the status bar agrees the simulation is current');
+  assert(!/stale/i.test(await text(page, 'ide-verify-evidence-state')), 'Simulate identifies the current recording');
   console.log(`[${label}] G. Board — clear LD1 -> STALE (mapping) -> Use LD1 -> still stale -> re-run -> CURRENT; XDC follows`);
 
   // ── H. PACKAGE — trusted build, real download, ZIP inspected ───────────────
@@ -607,6 +607,10 @@ async function run(width, height) {
   // ── I. RELOAD — evidence, mapping and package survive the browser ──────────
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector(tid('ide-export-package-inspector-v1'), { timeout: 15000 });
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-export-package-inspector-v1"]')?.getAttribute('data-export-derived-state') === 'downloaded-trusted',
+    undefined, { timeout: 8000 }
+  );
   const stateAfter = await page.locator(tid('ide-export-package-inspector-v1')).getAttribute('data-export-package-state');
   const trustAfter = await page.evaluate(() => {
     const root = document.querySelector('[data-testid="ide-export-package-inspector-v1"]');
@@ -620,22 +624,22 @@ async function run(width, height) {
       dirtySinceVerify: state.projectHealthCore?.dirtySinceVerify ?? null,
     };
   });
-  // `data-export-package-state` tracks the DOWNLOAD ACTION (contract: a trusted package that has
-  // not been downloaded in this session reads "draft"), so a reload legitimately resets it — the
-  // browser cannot know the file is still on disk. What must survive is the package's TRUTH: it is
-  // still structurally downloadable and still browser-verified against the current evidence.
+  // A current, persisted receipt records the exact requested ZIP. It survives reload;
+  // it never claims that the file is still present on the user's disk.
   assert(trustAfter.axes['data-export-verification-trust'] === 'trusted',
     `the package must still be browser-verified after reload — ${JSON.stringify(trustAfter)}`);
   assert(trustAfter.axes['data-export-structural-state'] === 'downloadable',
     `the package must still be downloadable after reload — ${JSON.stringify(trustAfter)}`);
-  assert(trustAfter.axes['data-export-derived-state'] === 'downloadable-trusted',
-    `the derived state must read downloadable-trusted after reload (got ${trustAfter.axes['data-export-derived-state']})`);
+  assert(trustAfter.axes['data-export-derived-state'] === 'downloaded-trusted',
+    `the current receipt must remain downloaded-trusted after reload (got ${trustAfter.axes['data-export-derived-state']})`);
+  assert((await text(page, 'ide-export-package-sha256')).includes(downloadedSha),
+    'The persisted receipt must still name the SHA-256 of the actual downloaded bytes');
   assert(trustAfter.lastExport && trustAfter.lastExport.status === 'ok',
     'the successful build must still be recorded after reload');
   assert(trustAfter.dirtySinceExport === false && trustAfter.dirtySinceVerify === false,
     `an unchanged reload must not mark the project dirty — ${JSON.stringify(trustAfter)}`);
-  assert(stateAfter === 'draft',
-    `the download action resets across reload by contract (got ${stateAfter})`);
+  assert(stateAfter === 'ready',
+    `The exact current download receipt survives reload (got ${stateAfter})`);
   // Exactly one primary action, and it leads to the package.
   const primaryAfterReload = await page.evaluate(() => {
     const surface = document.querySelector('[data-ide-mode-marker="export"]');

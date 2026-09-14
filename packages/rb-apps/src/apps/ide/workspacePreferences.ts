@@ -124,6 +124,8 @@ export type DesignCanvasDensity = 'comfortable' | 'compact';
 
 export interface WorkspaceDockPreferences {
   readonly visible: boolean;
+  /** A deliberate panel toggle, as distinct from the default layout. */
+  readonly explicitlyToggled?: boolean;
   readonly sizePx: number;
   /** Bottom dock only: whether the panel is open rather than showing its strip. */
   readonly expanded: boolean;
@@ -183,11 +185,11 @@ const AUTHORING_SURFACES = createSurfacePreferences({
     right: { visible: true, sizePx: 288, expanded: false },
   },
   design: {
-    // 220px gave the component library 177px of usable width once dock chrome was taken out,
-    // and one library row needs a 34px kind badge, a part name and a port signature such as
-    // "a, b to out". The rail was rendering a 276px row into a 175px box with hidden overflow.
-    left: { visible: true, sizePx: 264, expanded: false },
-    right: { visible: true, sizePx: 280, expanded: false },
+    // The library's narrow composition puts the interface below the part name.
+    // Keep both supports usable while leaving the circuit most of a laptop workspace.
+    // Existing user-resized docks retain their saved dimensions.
+    left: { visible: true, sizePx: 220, expanded: false },
+    right: { visible: true, sizePx: 236, expanded: false },
   },
   verify: {
     left: { visible: true, sizePx: 240, expanded: false },
@@ -388,6 +390,7 @@ export class WorkspacePreferencesStore {
     const nextDock = normalizeDockPreferences(
       {
         visible: update.visible ?? currentDock.visible,
+        explicitlyToggled: update.visible !== undefined || currentDock.explicitlyToggled === true,
         sizePx: update.sizePx ?? currentDock.sizePx,
         expanded: update.expanded ?? currentDock.expanded,
       },
@@ -550,7 +553,8 @@ function normalizeDockPreferences(
     ? clampDockSize(dockId, record.sizePx)
     : fallback.sizePx;
   const expanded = typeof record.expanded === 'boolean' ? record.expanded : fallback.expanded;
-  return Object.freeze({ visible, sizePx, expanded });
+  const explicitlyToggled = record.explicitlyToggled === true;
+  return Object.freeze({ visible, sizePx, expanded, ...(explicitlyToggled ? { explicitlyToggled: true } : {}) });
 }
 
 function normalizeToolbarCommandIds(value: unknown): readonly IdeCommandId[] {

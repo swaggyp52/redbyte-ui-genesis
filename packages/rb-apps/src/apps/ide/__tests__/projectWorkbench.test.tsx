@@ -148,7 +148,8 @@ describe('Project workbench — loaded project', () => {
     expect(useEngineeringSelection.getState().selected).toEqual({ kind: 'scenario', scenarioId: 'scn-1' });
     expect(view.getByTestId('ide-project-inspector').textContent).toContain('Default');
     expect(view.getByTestId('ide-project-inspector').textContent).toContain('combinational');
-    fireEvent.doubleClick(row);
+    fireEvent.click(view.getByTestId('ide-show-left-dock'));
+    fireEvent.doubleClick(view.getByTestId('ide-project-row-scenario:scn-1'));
     // A scenario is one experiment, not a Cases document beside a Timing one and a Waveform
     // one: opening it opens the experiment, and how it is drawn is a choice inside it.
     expect(onOpenDocument).toHaveBeenCalledWith({ kind: 'scenario', scenarioId: 'scn-1' });
@@ -156,8 +157,12 @@ describe('Project workbench — loaded project', () => {
 
   it('routes a problem to its owning workspace from the overview', () => {
     const onNavigateMode = vi.fn();
-    const view = render(<ProjectSurface {...baseProps({ onNavigateMode })} />);
-    expect(view.getByTestId('ide-project-problems').textContent).toContain('RBP1005');
+    const onOpenProblems = vi.fn();
+    const view = render(<ProjectSurface {...baseProps({ onNavigateMode, onOpenProblems })} />);
+    expect(view.getByTestId('ide-project-attention').textContent).toContain('RBP1005');
+    expect(view.queryByTestId('ide-project-problems')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-project-open-problems'));
+    expect(onOpenProblems).toHaveBeenCalledOnce();
     fireEvent.click(view.getByTestId('ide-project-problem-fix-issue:RBP1005'));
     expect(onNavigateMode).toHaveBeenCalledWith('hardware');
   });

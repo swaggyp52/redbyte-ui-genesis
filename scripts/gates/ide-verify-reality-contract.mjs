@@ -37,15 +37,15 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   const runBtn = page.locator('[data-testid="ide-vcb-run"]').first();
   assert(!(await runBtn.isDisabled().catch(() => false)), 'run button must be enabled once vectors exist');
   assert(
-    await page.locator('[data-testid="ide-vcb-workspace-scenario"]').first().isVisible().catch(() => false),
+    await page.locator('[data-testid="ide-case-lab"]').first().isVisible().catch(() => false),
     'Verify must expose the Scenario workspace before a run'
   );
   assert(
-    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().isVisible().catch(() => false),
+    await page.locator('[data-testid="ide-vcb-check-count"]').first().isVisible().catch(() => false),
     'Verify must expose optional Checks beside the Scenario workspace'
   );
   assert(
-    /Run simulation/i.test((await runBtn.textContent().catch(() => '')) ?? ''),
+    /^Run$/i.test((await runBtn.textContent().catch(() => '')) ?? ''),
     'Verify must expose one simulation run authority'
   );
   assert(
@@ -70,6 +70,7 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
     'no-trace guard must not appear when deterministic trace was captured'
   );
 
+  await page.getByTestId('ide-verify-view-waveform').click();
   const workbench = page.locator('[data-testid="ide-verify-workbench"]').first();
   assert(await visible(workbench), 'verify workbench must render after run');
 
@@ -81,11 +82,8 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   const waveformGrid = page.locator('[data-testid="ide-verify-workspace-waveform"]').first();
   assert(await visible(waveformGrid), 'waveform grid must be visible after run');
 
-  const signalShelf = page.locator('[data-testid="ide-verify-signal-shelf"]').first();
-  const signalShelfList = page.locator('[data-testid="ide-verify-signal-shelf-list"]').first();
-  assert(await visible(signalShelf), 'integrated signal shelf must remain visible after run');
-  assert(await visible(signalShelfList), 'integrated signal shelf list must remain visible after run');
+  const signalRows = page.locator('[data-testid^="ide-verify-waveform-row-"]');
+  assert(await signalRows.count() >= 1, 'Recorded trace must expose signal identities beside their actual values');
+  assert(await visible(signalRows.first()), 'First recorded signal must be visible in the trace');
 
-  const signalRows = await page.locator('[data-testid^="ide-verify-shelf-signal-"]').count().catch(() => 0);
-  assert(signalRows >= 1, `integrated signal shelf must show at least one signal, got ${signalRows}`);
 });

@@ -2321,10 +2321,6 @@
 
 }
 
-.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-frame[data-no-circuit-hidden='true'] {
-  display: none;
-}
-
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-no-circuit-task {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.34fr);
@@ -2546,9 +2542,9 @@
     min-width: 0;
   }
 
-  .ide-root .ide-workbench-dock-left,
-.ide-root .ide-workbench-dock-right,
-.ide-root .ide-inspector {
+  .ide-root .ide-workbench-shell:not([data-narrow-project='true']) .ide-workbench-dock-left,
+  .ide-root .ide-workbench-shell:not([data-narrow-project='true']) .ide-workbench-dock-right,
+  .ide-root .ide-workbench-shell:not([data-narrow-project='true']) .ide-inspector {
     display: none !important;
   }
 

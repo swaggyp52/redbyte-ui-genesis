@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -94,6 +96,7 @@ beforeEach(() => {
   useCircuitStore.getState().reset();
   useCircuitStore.setState({ circuit: structuredClone(BASE_CIRCUIT), isDirty: false, past: [], future: [] });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -206,7 +209,7 @@ describe('DesignSurface — single-node inspector action groups', () => {
     expect(traceGroup).toBeTruthy();
 
     // Trace actions must live inside the trace group, not at the top level
-    const traceBtn = view.getByTestId('ide-design-context-trace');
+    const traceBtn = view.getByTestId('ide-design-context-focus-path');
     expect(traceGroup.contains(traceBtn)).toBe(true);
   });
 

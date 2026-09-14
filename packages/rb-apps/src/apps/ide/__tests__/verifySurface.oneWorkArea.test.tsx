@@ -117,7 +117,7 @@ describe('Simulate composition — one experiment, one primary working area', ()
     // no clock, so the table is what the reader gets without asking.
     expect(getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('table');
     expect(getByTestId('ide-verify-view-table').getAttribute('aria-pressed')).toBe('true');
-    expect(getByTestId('ide-verify-view-timeline').getAttribute('aria-pressed')).toBe('false');
+    expect(document.querySelector('[data-testid="ide-verify-view-timeline"]')).toBeNull();
   });
 
   it('offers the recorded trace only once there is one, and says so before then', () => {
@@ -135,7 +135,7 @@ describe('Simulate composition — one experiment, one primary working area', ()
     const withRun = renderSurface(makeRun());
     expect(withRun.getByTestId('ide-verify-view-waveform').hasAttribute('disabled')).toBe(false);
     expect(withRun.queryByTestId('ide-verify-run-line-empty')).toBeNull();
-    expect(withRun.getByTestId('ide-verify-results-summary')).toBeTruthy();
+    expect(withRun.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
   });
 
   it('draws exactly one representation at a time, and the trace tools go with the trace', () => {
@@ -148,14 +148,6 @@ describe('Simulate composition — one experiment, one primary working area', ()
     // describe a drawn trace, so none of them is on screen while the table is.
     expect(queryByTestId('ide-verify-waveform-cmd')).toBeNull();
     expect(queryByTestId('ide-verify-tick-scrubber')).toBeNull();
-
-    act(() => {
-      fireEvent.click(getByTestId('ide-verify-view-timeline'));
-    });
-    expect(getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('timeline');
-    expect(getByTestId('ide-timing-lanes')).toBeTruthy();
-    expect(queryByTestId('ide-case-lab')).toBeNull();
-    expect(queryByTestId('ide-verify-waveform-preview')).toBeNull();
 
     act(() => {
       fireEvent.click(getByTestId('ide-verify-view-waveform'));
@@ -180,13 +172,13 @@ describe('Simulate composition — one experiment, one primary working area', ()
 
     expect(getByTestId('ide-verify-run-line')).toBeTruthy();
     act(() => {
-      fireEvent.click(getByTestId('ide-verify-view-timeline'));
+      fireEvent.click(getByTestId('ide-verify-view-table'));
     });
     expect(getByTestId('ide-verify-run-line')).toBeTruthy();
     act(() => {
       fireEvent.click(getByTestId('ide-verify-view-waveform'));
     });
     expect(getByTestId('ide-verify-run-line')).toBeTruthy();
-    expect(getByTestId('ide-verify-results-summary')).toBeTruthy();
+    expect(getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
   });
 });

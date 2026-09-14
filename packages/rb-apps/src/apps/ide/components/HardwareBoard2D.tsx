@@ -4,7 +4,7 @@ import type { BoardSignal } from '../BoardSignalContext';
 import styles from './HardwareBoard2D.module.css';
 
 export type BoardDisplayValue = Bit | 'X' | 'Z' | null;
-const displayValue = (value: BoardDisplayValue | undefined) => value == null ? 'Not recorded' : String(value);
+const displayValue = (value: BoardDisplayValue | undefined) => value == null ? 'unrecorded' : String(value);
 
 export interface HardwareBoard2DProps {
   sw: BoardDisplayValue[];  // length 16 — null means no observation
@@ -210,12 +210,12 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
       <line x1="18" y1="175" x2="602" y2="175" stroke="rgba(0,200,100,0.07)" strokeWidth="1" />
 
       {/* === Silkscreen labels === */}
-      <text x="18" y="14" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" letterSpacing="1" style={{ pointerEvents: 'none' }}>LD15{'                                                    '}LD0</text>
-      <text x="18" y="192" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" letterSpacing="1" style={{ pointerEvents: 'none' }}>SW15{'                                                    '}SW0</text>
-      <text x="18" y="118" fontFamily="IBM Plex Mono, monospace" fontSize="7"
-        fill="rgba(210,220,240,0.18)" style={{ pointerEvents: 'none' }}>BTN</text>
+      <text x="18" y="23" fontFamily="IBM Plex Mono, monospace" fontSize="9"
+        fill="#aabbd0" letterSpacing="1" style={{ pointerEvents: 'none' }}>LED outputs</text>
+      <text x="18" y="181" fontFamily="IBM Plex Mono, monospace" fontSize="9"
+        fill="#aabbd0" letterSpacing="1" style={{ pointerEvents: 'none' }}>Switch inputs</text>
+      <text x="18" y="118" fontFamily="IBM Plex Mono, monospace" fontSize="9"
+        fill="#aabbd0" style={{ pointerEvents: 'none' }}>BTN</text>
 
       {/* === LEDs row === */}
       {Array.from({ length: 16 }, (_, i) => {
@@ -248,7 +248,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
         // board reads as "available, awaiting binding" instead of "greyed out, broken."
         // The existing `ledLensUnmapped` gradient already provides visual differentiation
         // from mapped/on states, so a subtle desaturation suffices instead of fading.
-        const opacity = isMapped ? 1 : 0.78;
+        const opacity = 1;
 
         return (
           <g key={`ld-${idx}`} opacity={opacity}>
@@ -256,6 +256,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <circle
               data-testid={`ide-hw-ld-${idx}`}
               data-on={ld[idx] == null ? 'unavailable' : String(ld[idx])}
+              data-observed-value={ld[idx] == null ? 'unrecorded' : String(ld[idx])}
               aria-label={`LD${idx}: ${isKnown || isCovered ? displayValue(ld[idx]) : 'not in this recording'}`}
               data-active={isActiveLd ? 'true' : undefined}
               className={ledClassName}
@@ -310,9 +311,9 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <text
               x={cx}
               y={58}
-              fontSize={7}
+              fontSize={10}
               fontFamily="IBM Plex Mono, monospace"
-              fill={isMapped ? 'rgba(180,230,220,0.4)' : 'rgba(255,255,255,0.15)'}
+              fill={isMapped ? '#ddf4ed' : '#aabbd0'}
               textAnchor="middle"
               className={styles.ledLabel}
               style={{ pointerEvents: 'none' }}
@@ -405,6 +406,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <circle
               data-testid={`ide-hw-btn-${i}`}
               data-on={btn[i] == null ? 'unavailable' : String(btn[i])}
+              data-observed-value={btn[i] == null ? 'unrecorded' : String(btn[i])}
               aria-label={`BTN${BTN_LABELS[i]}: ${isKnown || isCovered ? displayValue(btn[i]) : 'not in this recording'}`}
               className={styles.btnCircle}
               cx={cx}
@@ -422,9 +424,9 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <text
               x={cx}
               y={cy + 22}
-              fontSize={7}
+              fontSize={10}
               fontFamily="IBM Plex Mono, monospace"
-              fill="rgba(180,230,220,0.35)"
+              fill="#ddf4ed"
               textAnchor="middle"
               className={styles.btnLabel}
               style={{ pointerEvents: 'none' }}
@@ -461,10 +463,11 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             key={`sw-${idx}`}
             data-testid={`ide-hw-sw-${idx}`}
             data-on={sw[idx] == null ? 'unavailable' : String(sw[idx])}
+              data-observed-value={sw[idx] == null ? 'unrecorded' : String(sw[idx])}
             aria-label={`SW${idx}: ${isKnown || isCovered ? displayValue(sw[idx]) : 'not in this recording'}`}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}
-            opacity={isMapped ? 1 : 0.82}
+            opacity={1}
           >
             {/* Expanded switch hitbox (invisible, pointer-catching) */}
             <rect
@@ -554,10 +557,10 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             <text
               x={centerX}
               y={220}
-              fontSize={7}
+              fontSize={10}
               fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"
-              fill={isMapped ? 'rgba(180,230,220,0.4)' : 'rgba(255,255,255,0.12)'}
+              fill={isMapped ? '#ddf4ed' : '#aabbd0'}
               className={styles.swLabel}
               style={{ pointerEvents: 'none' }}
             >

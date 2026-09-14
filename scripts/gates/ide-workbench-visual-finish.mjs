@@ -16,27 +16,31 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_VISUAL_FINISH_SCREENSHOTS_DIR
 
 const metricsLog = [];
 
-await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl }) => {
+await runIdeGate('IDE workbench visual finish satisfied', async ({ page: seedPage, baseUrl }) => {
   const consoleFindings = [];
-  page.on('console', (message) => {
-    const text = message.text();
-    if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
-      consoleFindings.push({ type: message.type(), text, location: message.location() });
-    }
-  });
-  page.on('pageerror', (error) => {
-    consoleFindings.push({ type: 'pageerror', text: error.message });
-  });
-
-  await page.addInitScript(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('rb-onboarding-v1-seen', '1');
-  });
-
   const failures = [];
 
   for (const viewport of VIEWPORTS) {
+    // A fresh-start case owns a fresh browser profile. Clearing localStorage is
+    // insufficient now that complete sessions correctly persist in IndexedDB.
+    const context = await seedPage.context().browser().newContext({ viewport });
+    const page = await context.newPage();
+    page.on('console', (message) => {
+      const text = message.text();
+      if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
+        consoleFindings.push({ type: message.type(), text, location: message.location() });
+      }
+    });
+    page.on('pageerror', (error) => {
+      consoleFindings.push({ type: 'pageerror', text: error.message });
+    });
+
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('rb-onboarding-v1-seen', '1');
+    });
+
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     await checkSurface(failures, page, viewport, 'import-empty-no-project', async () => {
@@ -99,6 +103,7 @@ await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl
         '[data-testid="ide-export-readiness-hero"]',
       ]);
     });
+    await context.close();
   }
 
   await writeMetrics();

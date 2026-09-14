@@ -37,7 +37,7 @@
   letter-spacing: 0;
   text-transform: none;
 }
-.ide-root .rb-pkg-primary .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-pkg-primary .ide-button-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
 .ide-root .rb-pkg-validation { color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-pkg-validation.is-ok { color: var(--wb-ok); }
 .ide-root .rb-pkg-validation.is-error,
@@ -81,9 +81,9 @@
 }
 .ide-root .rb-pkg-file-group button:hover { background: var(--wb-hover-bg); }
 .ide-root .rb-pkg-file-group button.is-selected { border-left-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
-.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-mono); }
+.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: 600 var(--rb-text-micro) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--wb-font-mono); }
-.ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-availability.is-ready { color: var(--wb-ok); }
 .ide-root .rb-pkg-file-availability-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .ide-root .rb-pkg-file-role-empty { margin: 0; padding: 2px var(--wb-space-3) 4px 14px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
@@ -105,7 +105,7 @@
 .ide-root .rb-pkg-preview header > div.rb-pkg-preview-actions { display: inline-flex; gap: 4px; flex: none; margin-left: auto; }
 .ide-root .rb-pkg-preview pre { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px 0; overflow: auto; background: var(--wb-code-bg, #0f151e); color: var(--wb-code-text, #e6ecf5); font: var(--wb-text-sm) / 18px var(--wb-font-mono); }
 .ide-root .rb-pkg-code-line { display: grid; grid-template-columns: 48px minmax(0, 1fr); }
-.ide-root .rb-pkg-line-number { padding-right: 12px; color: var(--wb-code-gutter, #6b7a90); text-align: right; user-select: none; }
+.ide-root .rb-pkg-line-number { padding-right: 12px; color: var(--wb-plane-text-2); text-align: right; user-select: none; }
 .ide-root .rb-pkg-preview > p { margin: 0; padding: 12px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
 
 /* Upstream readiness rows · submission roles · lab · boundary · technical entry. */
@@ -167,7 +167,7 @@
 
 /* Corrected structure: the hero section IS the column root; the decision block is the strip. */
 .ide-root .rb-pkg.rb-pkg-hero { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 0; min-height: 0; padding: 0; border: 0; background: var(--wb-surface); }
-.ide-root .rb-pkg-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; flex: none; min-height: var(--wb-toolbar-h); padding: 10px 12px; border-bottom: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-decision { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; flex: none; min-height: var(--wb-toolbar-h); padding: 12px 16px; border-bottom: 1px solid var(--wb-border-strong); background: var(--wb-surface); }
 .ide-root .rb-pkg-decision .rb-pkg-submission-answer { color: var(--wb-text-2); font-size: var(--wb-text-sm); }
 
 /* narrow package */
@@ -319,7 +319,9 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-pkg-state-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; flex-basis: 100%; min-width: 0; font: var(--wb-text-sm) / 1.45 var(--wb-font-ui); }
 .ide-root .rb-pkg-state-summary strong { color: var(--wb-text); }
 .ide-root .rb-pkg-state-summary span { color: var(--wb-text-2); overflow-wrap: anywhere; }
-.ide-root .rb-pkg-obtain { flex: none; padding: 8px 12px; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-obtain { flex: none; padding: 6px 12px; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-pkg-obtain > summary { cursor: pointer; color: var(--wb-text-2); font: 500 var(--wb-text-sm) / 1.5 var(--wb-font-ui); }
+.ide-root .rb-pkg-obtain[open] > summary { margin-bottom: 8px; }
 .ide-root .rb-pkg-obtain p { margin: 0; color: var(--wb-text-2); font: var(--wb-text-sm) / 1.5 var(--wb-font-ui); }
 .ide-root .rb-pkg-obtain p + p { margin-top: 5px; }
 .ide-root .rb-pkg-obtain p > span { color: var(--wb-text-3); }
@@ -354,3 +356,4 @@ html.rb-presenting .ide-root .rb-handoff-click { display: none; }
 .ide-root .rb-handoff .rb-fact dd { white-space: normal; overflow-wrap: anywhere; }
 .ide-root .rb-handoff .rb-fact dt { white-space: normal; }
 .ide-root .rb-handoff [data-testid='ide-package-handoff-run-identity'] { display: block; white-space: normal; overflow-wrap: anywhere; padding: 4px 0; }
+.ide-root .rb-pkg-download-digest { font-size: .75rem; overflow-wrap: anywhere; }

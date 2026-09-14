@@ -27,6 +27,13 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'repeat-fail',
+      scenarioName: 'Repeated failure case',
+      status: 'fail',
+      deterministicHash: 'det_repeat_fail',
+      generatedAtIso: '2026-03-08T15:00:00.000Z',
+      reportHash: 'rep_repeat_fail',
       vectors: [
         { id: 'vec-01', tick: 1, inputs: { sw0: 0 }, expected: { ld0: 1, ld1: 0 } },
         { id: 'vec-02', tick: 5, inputs: { sw0: 1 }, expected: { ld0: 0, ld1: 1 } },
@@ -46,7 +53,7 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
         { tick: 5, signal: 'ld0', expected: '0', actual: '1', status: 'fail', vectorId: 'vec-02' },
         { tick: 5, signal: 'ld1', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-02' },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       {
         tick: 1,
@@ -87,7 +94,9 @@ describe('VerifySurface failure context', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    const details = getByTestId('ide-verify-details');
+    if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks' }));
 
     expect(getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t1');
     expect(getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
@@ -133,7 +142,7 @@ describe('VerifySurface failure context', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
     fireEvent.click(getByTestId('ide-verify-right-fix-action'));
     expect(onFixPath).not.toHaveBeenCalled();
@@ -142,7 +151,7 @@ describe('VerifySurface failure context', () => {
 
     fireEvent.click(getByTestId('ide-verify-right-open-design'));
     expect(onFixPath).toHaveBeenCalledWith({
-      signal: 'ld0',
+      signal: 'LD0',
       tick: 1,
       expected: '1',
       actual: '0',

@@ -368,6 +368,8 @@ export interface ExamplesBrowserProps {
   activeExampleId?: string | null;
   onLoad: (exampleId: string) => void;
   defaultExpanded?: boolean;
+  /** A picker dialog: search and cards, without the tag toolbar. */
+  compact?: boolean;
   testId?: string;
 }
 
@@ -397,6 +399,7 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
   activeExampleId,
   onLoad,
   defaultExpanded = true,
+  compact = false,
   testId,
 }) => {
   const [query, setQuery] = useState('');
@@ -506,34 +509,39 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
               data-testid="ide-projectx-examples-search"
               aria-label="Search examples"
             />
-            <div
-              className="ide-projectx-examples-tags"
-              data-testid="ide-projectx-examples-tags"
-              role="toolbar"
-              aria-label="Filter by tag"
-            >
-              <button
-                type="button"
-                className={`ide-projectx-tag ${activeTag === null ? 'is-active' : ''}`}
-                onClick={() => setActiveTag(null)}
-                data-testid="ide-projectx-tag-all"
-                aria-pressed={activeTag === null}
+            {/* In a picker dialog the reader is choosing, not browsing a catalogue: the search
+                already covers every tag, and twenty-five chips above the first card were
+                unprioritized density in a 560px column. */}
+            {compact ? null : (
+              <div
+                className="ide-projectx-examples-tags"
+                data-testid="ide-projectx-examples-tags"
+                role="toolbar"
+                aria-label="Filter by tag"
               >
-                All
-              </button>
-              {allTags.map((tag) => (
                 <button
-                  key={tag}
                   type="button"
-                  className={`ide-projectx-tag ${activeTag === tag ? 'is-active' : ''}`}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                  data-testid={`ide-projectx-tag-${slug(tag)}`}
-                  aria-pressed={activeTag === tag}
+                  className={`ide-projectx-tag ${activeTag === null ? 'is-active' : ''}`}
+                  onClick={() => setActiveTag(null)}
+                  data-testid="ide-projectx-tag-all"
+                  aria-pressed={activeTag === null}
                 >
-                  {tag}
+                  All
                 </button>
-              ))}
-            </div>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`ide-projectx-tag ${activeTag === tag ? 'is-active' : ''}`}
+                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                    data-testid={`ide-projectx-tag-${slug(tag)}`}
+                    aria-pressed={activeTag === tag}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="ide-projectx-examples-grid" data-testid="ide-projectx-examples-grid">
             {filtered.length === 0 ? (

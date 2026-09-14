@@ -3,6 +3,7 @@ import {
   saveLabSessionMeta,
   loadLabSessionMeta,
   clearLabSessionMeta,
+  shouldKeepHydratedRuntime,
   type LabSessionMeta,
 } from '../persistence/labSession';
 
@@ -71,5 +72,17 @@ describe('clearLabSessionMeta', () => {
     saveLabSessionMeta(VALID_META);
     clearLabSessionMeta();
     expect(loadLabSessionMeta()).toBeNull();
+  });
+});
+
+describe('interrupted metadata writes', () => {
+  it('preserves a hydrated newer project or closed home when the metadata points to older work', () => {
+    expect(shouldKeepHydratedRuntime(VALID_META, 'newer-project', true)).toBe(true);
+    expect(shouldKeepHydratedRuntime(VALID_META, 'closed-home', true)).toBe(true);
+    expect(shouldKeepHydratedRuntime(null, 'newer-project', true)).toBe(true);
+  });
+  it('keeps metadata-only legacy reopen and matching-session navigation available', () => {
+    expect(shouldKeepHydratedRuntime(VALID_META, 'placeholder-project', false)).toBe(false);
+    expect(shouldKeepHydratedRuntime(VALID_META, VALID_META.projectId, true)).toBe(false);
   });
 });

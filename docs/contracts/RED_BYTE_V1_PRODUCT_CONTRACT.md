@@ -577,6 +577,53 @@ said as an advisory now; the Warnings count is the ledger's count.
 | Letting the ruler grow spare columns around the cursor | It re-fitted the tick width on every move and slid every column out from under the pointer that had just clicked one. The axis is the experiment's. |
 | Printing "4 warnings (3 in Problems)" | Two numbers with a parenthesis is still two numbers. One of them was not a ledger problem. |
 
+### 2026-09-12 - Determinism made visible; Design and Simulate as partners
+
+**Decided.** Design is the editor. Explore is an explicit, unrecorded probe with a single
+clock-edge operation only for stateful circuits and Reset values. Recorded Design context is
+entered only from an immutable recording, identifies scenario/run/tick, and offers return to
+current authoring and the experiment. Test this design carries meaningful signal/instance context
+to the active scenario without running it.
+
+Simulate owns one Run: execute authored stimulus and evaluate any configured optional checks.
+Zero checks produces a useful recording, never PASS. Rerun uses the current design and scenario;
+Reproduce executes the retained design/stimulus/engine configuration and compares output digests.
+The recording displays those three identities in short form with full values available. A changed
+input is named. Identical repetitions are counted within the retained ledger; any divergence is
+an alarm with the first differing signal/tick, not a silent new row. Engine identity is versioned
+independently from presentation builds. External VCD evidence never claims internal execution.
+
+The sequential primary instrument unifies authored stimulus, generated clock schedule, recorded
+outputs, internal watches, cursor and optional checks. A detailed event editor is contextual.
+Table remains the combinational default. One Details region owns signal/tick, checks, failures
+and run details. Linked circuit inspection is a primary split with the same recording, cursor
+and signal; its causal hops come from retained topology and actual samples and stop at missing
+evidence. Current editable topology is never silently substituted for recorded topology.
+
+Project's explorer owns Overview, Sources, Architecture, Runs and Compile Order. Only secondary
+source objects earn Project tabs. The inspector follows the active object, not an unrelated
+persistent selection. Runs groups repeated identities/digests without losing individual evidence.
+The Problems dock owns the ledger; the global footer does not repeat a historical run verdict.
+
+The shell sizes support regions and each region owns its scroll. At ordinary widths the primary
+object stays dominant; at 1280px or enlarged text only one auxiliary panel is resident. Split
+Design gives circuit and source the initial width, with panels explicitly recoverable. Explicit
+dock choices persist per workspace; reset restores the defaults. The bottom dock rests collapsed.
+
+**Rejected, and why:**
+
+| Alternative | Why not |
+|---|---|
+| Edit / Live / Replay as peer modes | Authoring is Design's purpose; exploration is not recorded evidence and a recording must have an owner. |
+| Observe versus Compare as permanent run intent | Optional checks are data on one experiment, not two executions a student must distinguish. Legacy trace recordings retain their original meaning. |
+| Report hash alone, or a new row for every unexplained rerun | Neither exposes the three inputs nor proves repeated outputs. Output identity excludes timestamps, labels and display settings. |
+| Timeline and Waveform as independent sequential destinations | They divide stimulus from its consequence; one experiment needs one time axis. |
+| A new global investigation or simulation store | Project, hierarchy, scenarios, recordings and selection already own the facts; coordination is derived. |
+| Permanent library, inspector and bottom analysis deck beside Split | They take the room from the two objects the reader explicitly chose. |
+| Five Project destinations in both explorer and tabs | Two owners ask the reader to choose which navigation is real. |
+| Global Simulation failing while editing or mapping | A historical experiment's result is not the active workspace's status. |
+| A narrated cause without recorded samples | Connectivity is evidence of a path, not proof of a state transition. |
+
 ## Attribution
 
 Connor Angiel

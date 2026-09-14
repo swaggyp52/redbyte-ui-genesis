@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import '@testing-library/jest-dom/vitest';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
@@ -63,9 +64,9 @@ describe('VerifySurface workspace layout', () => {
   it('keeps signals integrated with the workbench without a separate rail', () => {
     const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
 
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table').textContent).toContain('SW0');
+    expect(getByTestId('ide-case-lab-col-ld0').textContent).toContain('LD0');
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });

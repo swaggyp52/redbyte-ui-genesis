@@ -43,14 +43,13 @@ await runIdeGate('IDE primary work object dominance satisfied', async ({ page, b
 
       await openMode(page, baseUrl, viewport, 'design');
       await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
-      const designCanvas = await assertPrimaryRect(page, viewport, 'Design stable-workspace canvas', ['[data-testid="ide-design-live-canvas"]'], {
+      // The activity rail is outside the document workspace. Keep the original
+      // 80% dominance floor against that workspace, including its open Library.
+      const workAreaWidth = await page.getByTestId('ide-document-column').evaluate((element) => element.clientWidth);
+      await assertPrimaryRect(page, { ...viewport, width: workAreaWidth }, 'Design stable-workspace canvas', ['[data-testid="ide-design-live-canvas"]'], {
         minWidthRatio: 0.8,
         minHeightRatio: 0.54,
       });
-      console.log(
-        `OBSERVE ${viewport.label}: Design canvas is ${(designCanvas.visibleWidth / viewport.width * 100).toFixed(1)}% of viewport; ` +
-        `idle gate floor 80%; strategic 70% target ${designCanvas.visibleWidth >= viewport.width * 0.7 ? 'met' : 'not met'}.`
-      );
       await assertStableSupportRegions(page, viewport, 'design');
       await assertPrimaryRect(page, viewport, 'Design canvas with contextual Inspector', ['[data-testid="ide-design-live-canvas"]'], {
         minWidthRatio: 0.6,
@@ -62,17 +61,18 @@ await runIdeGate('IDE primary work object dominance satisfied', async ({ page, b
       assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare mode must be selectable`);
       await clickVerifyRun(page);
       await waitForVerifyResult(page, { timeout: 15000 });
+      await page.getByTestId('ide-verify-view-waveform').click();
       await page.waitForSelector('[data-testid="ide-verify-waveform-svg"]', { timeout: 10000 });
       await assertVerifyPostRunEvidenceRepairBalance(page, viewport);
 
       await openMode(page, baseUrl, viewport, 'hardware');
-      await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
-      await assertPrimaryRect(page, viewport, 'Map Pins table-first workspace', ['[data-testid="ide-hw-map-table"]'], {
+      await page.waitForSelector('.rb-board', { timeout: 15000 });
+      await assertPrimaryRect(page, viewport, 'Board and assignments workspace', ['.rb-board-grid'], {
         minWidthRatio: 0.45,
         minHeightRatio: 0.37,
       });
       await assertStableSupportRegions(page, viewport, 'hardware');
-      await assertPrimaryRect(page, viewport, 'Map Pins table with direct stable supports', ['[data-testid="ide-hw-map-table"]'], {
+      await assertPrimaryRect(page, viewport, 'Board with direct assignment supports', ['.rb-board-grid'], {
         minWidthRatio: 0.45,
         minHeightRatio: 0.37,
       });
@@ -149,12 +149,12 @@ async function assertVerifyPostRunEvidenceRepairBalance(page, viewport) {
   assert(state.phase === 'post-run', `${viewport.label}: Verify must be post-run after Compare, got ${JSON.stringify(state)}`);
   assert(state.studioMode === 'replay', `${viewport.label}: completed simulation must open the Replay workspace`);
   assert(
-    state.waveform.visibleWidth >= viewport.width * 0.8,
-    `${viewport.label}: Replay waveform is too narrow (${state.waveform.visibleWidth}px); expected at least ${Math.round(viewport.width * 0.8)}px`
+    state.waveform.visibleWidth >= state.documentWidth * 0.95,
+    `${viewport.label}: recorded trace must fill the document beside its bounded explorer (${state.waveform.visibleWidth}px)`
   );
   assert(
-    state.signalShelf.visibleWidth >= viewport.width * 0.8,
-    `${viewport.label}: Replay must retain a prominent integrated signal shelf (${state.signalShelf.visibleWidth}px)`
+    state.signalShelf.visible && state.signalShelf.visibleWidth >= 180 && state.signalShelf.visibleWidth <= 300,
+    `${viewport.label}: recorded trace must keep a usable, bounded signal explorer (${state.signalShelf.visibleWidth}px)`
   );
   assert(
     state.scenarioTab.visible,
@@ -165,17 +165,17 @@ async function assertVerifyPostRunEvidenceRepairBalance(page, viewport) {
     `${viewport.label}: Verify waveform evidence should not need mini horizontal scroll (${state.waveformScrollExtraX}px)`
   );
 
-  await page.getByTestId('ide-vcb-workspace-scenario').click();
+  await page.getByTestId('ide-verify-view-table').click();
   await page.waitForSelector('[data-testid="ide-verify-region-stimulus"]', { state: 'visible', timeout: 5000 });
   const scenario = await readVerifyStudioState(page);
-  assert(scenario.studioMode === 'scenario', `${viewport.label}: Scenario tab must reopen authoring`);
+  assert(scenario.studioMode !== 'replay', `${viewport.label}: Table must reopen case authoring`);
   assert(
-    scenario.stimulus.visibleWidth >= viewport.width * 0.8,
+    scenario.stimulus.visibleWidth >= scenario.documentWidth * 0.95,
     `${viewport.label}: Scenario authoring is too narrow (${scenario.stimulus.visibleWidth}px)`
   );
   assert(
-    scenario.signalShelf.visibleWidth >= viewport.width * 0.8,
-    `${viewport.label}: Scenario authoring must keep the integrated signal shelf prominent`
+    scenario.signalShelf.visible && scenario.signalShelf.visibleWidth >= 180 && scenario.signalShelf.visibleWidth <= 300,
+    `${viewport.label}: case authoring must keep the bounded signal explorer available`
   );
 }
 
@@ -206,11 +206,12 @@ async function readVerifyStudioState(page) {
     return {
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       studioMode: labGrid?.getAttribute('data-studio-mode') ?? '',
+      documentWidth: document.querySelector('[data-testid="ide-mode-body"]')?.clientWidth ?? 0,
       labGrid: rect('[data-testid="ide-verify-lab-grid"]'),
       stimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
       waveform: rect('[data-testid="ide-verify-region-waveform"]'),
-      signalShelf: rect('[data-testid="ide-verify-signal-shelf"]'),
-      scenarioTab: rect('[data-testid="ide-vcb-workspace-scenario"]'),
+      signalShelf: rect('[data-testid="ide-sim-scenario-explorer"]'),
+      scenarioTab: rect('[data-testid="ide-verify-view-table"]'),
       waveformScrollExtraX: (() => {
         const element = document.querySelector('[data-testid="ide-verify-waveform-scroll"]');
         return element ? Math.max(0, element.scrollWidth - element.clientWidth) : 0;
@@ -266,12 +267,12 @@ async function readSupportState(page, mode) {
     const designMode = expectedMode === 'design' || expectedMode === 'design-selected';
     const primarySelector = designMode
       ? '[data-testid="ide-design-live-canvas"]'
-      : '.ide-hw-v3__table-scroll';
+      : '[data-testid="ide-hw-map-board"]';
     const supportSelectors = expectedMode === 'design'
       ? ['[data-testid="ide-left-dock"]']
       : expectedMode === 'design-selected'
         ? ['[data-testid="ide-left-dock"]', '[data-testid="ide-right-dock"]']
-      : ['[data-testid="ide-hw-selected-mapping-editor"]', '[data-testid="ide-hw-map-board"]'];
+      : ['[data-testid="ide-hw-selected-mapping-editor"]', '[data-testid="ide-hw-map-table"]'];
     return {
       leftDockVisible,
       rightDockVisible,

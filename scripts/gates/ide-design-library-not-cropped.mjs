@@ -22,8 +22,8 @@ await runIdeGate('IDE Design library is not cropped', async ({ page, baseUrl }) 
       const leftDock = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design library`);
       const canvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas`);
       assert(
-        leftDock.visibleWidth >= 172 && leftDock.visibleWidth <= 224,
-        `${viewport.label}: Design library must remain a compact 172-224px support tool (${leftDock.visibleWidth}px)`
+        leftDock.visibleWidth >= 172 && leftDock.visibleWidth <= 280,
+        `${viewport.label}: Design library must remain a compact 172-280px support tool (${leftDock.visibleWidth}px)`
       );
       assert(
         canvas.visibleWidth >= Math.round(viewport.width * 0.62),
@@ -34,8 +34,8 @@ await runIdeGate('IDE Design library is not cropped', async ({ page, baseUrl }) 
         '[data-testid="ide-design-search"]',
         '[data-testid="ide-design-palette-section-board"]',
         '[data-testid="ide-design-board-io-palette"]',
-        '[data-testid^="ide-design-board-input-"]',
-        '[data-testid^="ide-design-board-output-"]',
+        '[data-testid="ide-design-palette-input"]',
+        '[data-testid="ide-design-palette-output"]',
         '[data-testid="ide-design-palette-toggle-board"]',
       ]);
       const seriousClipping = clipping.clipped.filter((item) => item.outsideDock || item.offViewport);

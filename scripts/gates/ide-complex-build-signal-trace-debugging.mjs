@@ -29,15 +29,16 @@ const VIEWPORTS = [
 ];
 
 const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
-  ['ide-design-zoom-out', 'ide-design-overflow-zoom-out'],
-  ['ide-design-zoom-in', 'ide-design-overflow-zoom-in'],
-  ['ide-design-fit-circuit-canvas', 'ide-design-overflow-fit'],
-  ['ide-design-zoom-reset', 'ide-design-overflow-reset'],
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-menu-fit'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
 ]);
 
 await mkdir(SCREENSHOT_DIR, { recursive: true });
 
 await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ page, baseUrl }) => {
+  try {
   const browserProblems = captureBrowserProblems(page);
   await installCleanStudentContext(page);
 
@@ -56,6 +57,11 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
     await assertSurfaceSafe(page, `${viewport.label} Project startup`);
+    if (await page.getByTestId('ide-project-overview-document').isVisible()) {
+      await page.getByTestId('ide-menu-file').click();
+      await page.getByTestId('ide-menu-item-project.close').click();
+      await page.getByTestId('ide-project-landing').waitFor();
+    }
 
     await clickVisible(
       page,
@@ -106,6 +112,11 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
     JSON.stringify(record, null, 2),
   );
   assert(browserProblems.length === 0, `Browser console/page errors: ${JSON.stringify(browserProblems.slice(0, 8))}`);
+  } catch (error) {
+    await capture(page, 'failure.png');
+    console.error(error instanceof Error ? error.stack : String(error));
+    throw error;
+  }
 });
 
 async function installCleanStudentContext(page) {
@@ -141,6 +152,13 @@ async function buildWrongFullAdderSumCircuit(page) {
     [nodes.wrongOr, 'out', nodes.SUM_OUT, 'in'],
   ];
 
+  // Arrange the completed graph in one stable camera frame before wiring.
+  await fitCenterZoom(page);
+  for (const [id, position] of [
+    [nodes.A, { x: 0.10, y: 0.28 }], [nodes.B, { x: 0.10, y: 0.48 }],
+    [nodes.CIN, { x: 0.10, y: 0.68 }], [nodes.XOR_AB, { x: 0.38, y: 0.38 }],
+    [nodes.wrongOr, { x: 0.62, y: 0.50 }], [nodes.SUM_OUT, { x: 0.86, y: 0.50 }],
+  ]) await moveNodeToCanvasFraction(page, id, position);
   for (const wire of wires) {
     await connectPorts(page, ...wire);
   }
@@ -169,6 +187,9 @@ async function buildFullAdderSumCases(page) {
 }
 
 async function assertWrongBuildRepairPanel(page, options) {
+  const details = page.getByTestId('ide-verify-details');
+  if (await details.getAttribute('aria-pressed') !== 'true') await details.click();
+  await page.getByTestId('ide-verify-analysis-tab-nav').getByRole('button', { name: 'Checks', exact: true }).click();
   await page.waitForSelector('[data-testid="ide-verify-repair-panel"]', { timeout: 10000 });
   const panel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const decision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
@@ -264,52 +285,23 @@ async function authorExpectedCases(page, cases) {
 async function openExpectedAuthoring(page, cases) {
   const firstOutputId = Object.keys(cases[0]?.expected ?? {})[0];
   assert(Boolean(firstOutputId), 'complex-build scenario must define at least one expected output');
-  const firstExpectedCell = page.getByTestId(`ide-stimulus-expected-${firstOutputId}-t0`).first();
-  if (await firstExpectedCell.isVisible().catch(() => false)) return;
-
-  const checksWorkspace = page.getByTestId('ide-vcb-workspace-checks').first();
-  if (await checksWorkspace.isVisible().catch(() => false)) {
-    await checksWorkspace.click();
-    await firstExpectedCell.waitFor({ state: 'visible', timeout: 5000 });
-    return;
-  }
-
-  // Compatibility path for the earlier Verify command bar.
-  const authorExpected = page.getByTestId('ide-vcb-author-expected').first();
-  const authoringDiagnostics = await page.locator('[data-testid*="expected"], [data-testid*="vcb"]').evaluateAll((elements) =>
-    elements.slice(0, 40).map((element) => {
-      const style = window.getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return {
-        testId: element.getAttribute('data-testid'),
-        text: element.textContent?.replace(/\s+/g, ' ').trim().slice(0, 120) ?? '',
-        display: style.display,
-        visibility: style.visibility,
-        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-        disabled: element instanceof HTMLButtonElement ? element.disabled : null,
-      };
-    })
-  );
-  assert(await authorExpected.isVisible().catch(() => false),
-    `Expected-output authoring action must be visible: ${JSON.stringify(authoringDiagnostics)}`);
-  assert(await authorExpected.isEnabled().catch(() => false), 'Add expected outputs action must be enabled');
-  await authorExpected.click();
-  await firstExpectedCell.waitFor({ state: 'visible', timeout: 5000 });
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.getByTestId('ide-case-lab-exp-0-' + firstOutputId).waitFor();
 }
 
 async function ensureCaseCount(page, desired) {
-  await page.waitForSelector('[data-testid="ide-stimulus-add-tick"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-case-lab-add"]', { timeout: 15000 });
   for (let guard = 0; guard < desired + 4; guard += 1) {
     const count = await readTickCount(page);
     if (count >= desired) return;
-    await page.locator('[data-testid="ide-stimulus-add-tick"]').first().click();
+    await page.locator('[data-testid="ide-case-lab-add"]').first().click();
     await page.waitForTimeout(120);
   }
   assert(false, `could not create ${desired} Verify cases`);
 }
 
 async function setInputCell(page, fieldId, tick, value) {
-  const testId = `ide-stimulus-cell-${fieldId}-t${tick}`;
+  const testId = `ide-case-lab-input-${tick}-${fieldId}`;
   const cell = page.getByTestId(testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -323,7 +315,7 @@ async function setInputCell(page, fieldId, tick, value) {
 }
 
 async function setExpectedCell(page, fieldId, tick, value) {
-  const testId = `ide-stimulus-expected-${fieldId}-t${tick}`;
+  const testId = `ide-case-lab-exp-${tick}-${fieldId}`;
   const cell = page.getByTestId(testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -337,23 +329,12 @@ async function setExpectedCell(page, fieldId, tick, value) {
 }
 
 async function readCellValue(page, testId) {
-  const title = await page.getByTestId(testId).first().getAttribute('title');
-  if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
-  if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
-  return null;
+  const value = (await page.getByTestId(testId).innerText()).trim();
+  return value === '1' ? 1 : value === '0' ? 0 : null;
 }
 
 async function readTickCount(page) {
-  const ids = await page.locator('[data-testid^="ide-stimulus-cell-"]').evaluateAll((elements) =>
-    Array.from(
-      new Set(
-        elements
-          .map((element) => /-t(\d+)$/.exec(element.getAttribute('data-testid') ?? '')?.[1])
-          .filter(Boolean),
-      ),
-    ).map(Number),
-  );
-  return ids.length;
+  return page.locator('[data-testid^="ide-case-lab-row-"]').count();
 }
 
 async function renameProject(page, name) {
@@ -372,13 +353,10 @@ async function renameProject(page, name) {
 }
 
 async function revealDesignLibrary(page) {
-  const palette = page.locator('[data-testid="ide-design-dock-palette"]').first();
-  if (await palette.isVisible().catch(() => false)) return;
-  const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"], [data-testid="ide-design-library-toggle"]').first();
-  if (await toggle.isVisible().catch(() => false)) {
-    await toggle.click();
-  }
-  await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 10000 });
+  const library = page.getByTestId('ide-left-dock');
+  if (await library.isVisible()) return;
+  await page.getByTestId('ide-show-left-dock').click();
+  await library.waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function placeAndLabel(page, selector, label, position) {
@@ -390,6 +368,7 @@ async function placeAndLabel(page, selector, label, position) {
 
 async function placeFromPalette(page, selector, position) {
   await revealDesignLibrary(page);
+  await page.getByTestId(selector.includes("ide-design-board-") ? "ide-design-left-tab-board" : "ide-design-left-tab-components").click();
   const before = await readNodeIds(page);
   const button = page.locator(selector).first();
   assert(await button.isVisible().catch(() => false), `palette entry ${selector} must be visible`);
@@ -437,7 +416,7 @@ async function editNodeLabel(page, nodeId, label) {
 }
 
 async function clickNode(page, nodeId) {
-  const body = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
+  const body = page.locator(`[data-node-id="${nodeId}"]`).first();
   await body.waitFor({ state: 'visible', timeout: 8000 });
   await body.click();
   if (await activeWireStart(page)) {
@@ -483,7 +462,7 @@ async function waitForConnectionCount(page, expected, label) {
 }
 
 async function moveNodeToCanvasFraction(page, nodeId, position) {
-  const node = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
+  const node = page.locator(`[data-node-id="${nodeId}"] .rb-sym-body, [data-node-id="${nodeId}"] .logic-node-body`).first();
   const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
   const nodeBox = await node.boundingBox();
   const canvasBox = await canvas.boundingBox();
@@ -577,6 +556,9 @@ async function exerciseDesignCamera(page) {
 }
 
 async function fitCenterZoom(page) {
+  const fitted = await readDesignCamera(page, 'before fit exercise');
+  await clickCanvasTool(page, 'ide-design-zoom-out', 'Zoom out before Fit');
+  await waitForDesignZoomChange(page, fitted.zoom, 'fit precondition');
   const before = await readDesignCamera(page, 'before Fit circuit');
   await clickCanvasTool(page, 'ide-design-fit-circuit-canvas', 'Fit circuit');
   await page.waitForFunction(
@@ -607,7 +589,7 @@ async function clickCanvasTool(page, primaryTestId, label) {
     const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
     assert(Boolean(responsiveTestId), `${label}: missing responsive camera mapping for ${primaryTestId}`);
     overflow = page.getByTestId('ide-design-toolbar-overflow').first();
-    assert(await overflow.isVisible().catch(() => false), `${label}: More tools must be visible`);
+    assert(await overflow.isVisible().catch(() => false), `${label}: View menu must be visible`);
     closeOverflow = (await overflow.getAttribute('open')) === null;
     if (closeOverflow) await overflow.locator('summary').click();
     control = page.getByTestId(responsiveTestId).first();

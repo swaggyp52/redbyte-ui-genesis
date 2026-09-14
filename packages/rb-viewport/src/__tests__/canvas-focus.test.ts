@@ -37,6 +37,40 @@ describe('CanvasHost — click-to-focus model (RC-P5)', () => {
     expect(onActive).toHaveBeenCalled();
   });
 
+  it('routes Escape only to the canvas whose endpoint stopped pointer bubbling', () => {
+    const activeKey = vi.fn();
+    const otherKey = vi.fn();
+    const { getByTestId } = render(React.createElement(React.Fragment, null,
+      React.createElement(CanvasHost, { id: 'other-canvas', onKeyDownActive: otherKey },
+        React.createElement('div', { 'data-testid': 'other' }, 'other')),
+      React.createElement(CanvasHost, { id: 'test-canvas', onKeyDownActive: activeKey },
+        React.createElement('svg', null, React.createElement('rect', {
+          'data-testid': 'endpoint',
+          onPointerDown: (event: React.PointerEvent) => { event.preventDefault(); event.stopPropagation(); },
+        }))),
+    ));
+    fireEvent.pointerDown(getByTestId('other'));
+    fireEvent.pointerDown(getByTestId('endpoint'));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(isCanvasActive('test-canvas')).toBe(true);
+    expect(activeKey).toHaveBeenCalledTimes(1);
+    expect(activeKey.mock.calls[0][0].key).toBe('Escape');
+    expect(otherKey).not.toHaveBeenCalled();
+  });
+
+  it('keeps text-entry keyboard events out of canvas shortcuts', () => {
+    const onKeyDownActive = vi.fn();
+    const { getByTestId } = render(React.createElement(CanvasHost,
+      { id: 'test-canvas', onKeyDownActive },
+      React.createElement('input', { 'data-testid': 'label' }),
+    ));
+    const input = getByTestId('label');
+    fireEvent.pointerDown(input);
+    input.focus();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(onKeyDownActive).not.toHaveBeenCalled();
+  });
+
   it('does NOT have onPointerEnter handler (no hover activation)', () => {
     const { container } = render(
       React.createElement(CanvasHost, { id: 'test-canvas' },

@@ -159,12 +159,9 @@ export function computeScenarioContentHash(scenario: VerifyScenario): string {
   return `scn_${digestValue({
     id: scenario.id,
     version: scenario.version,
-    // Content is what will execute — tick, stimulus and checks. A vector's `id` is authoring
-    // identity, not content, and it does not survive every clone/persist path (`cloneVector`
-    // rebuilds vectors without it). Hashing it made a run stamped while ids were present
-    // unable to match the same scenario after a reload, so an untouched project reported
-    // "stale" for a change that never happened. The project hash strips ids for exactly this
-    // reason; this hash now agrees with it.
+    // Content is what will execute — tick, stimulus and checks. A vector's id is
+    // authoring identity, not execution content. Preserve it through cloning/persistence
+    // for stable exported bytes, while older vectors without ids execute identically.
     vectors: materializeScenarioVectors(scenario).map((vector) => ({
       tick: vector.tick,
       inputs: vector.inputs,
@@ -400,6 +397,7 @@ function normalizeOptionalText(value: unknown): string | undefined {
 
 function cloneVector(v: TestVector): TestVector {
   return {
+    ...(typeof v.id === 'string' && v.id.length > 0 ? { id: v.id } : {}),
     tick: v.tick,
     inputs: { ...v.inputs },
     expected: { ...(v.expected ?? {}) },

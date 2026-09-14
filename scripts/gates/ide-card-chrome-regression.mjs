@@ -23,7 +23,7 @@ await runIdeGate('IDE card chrome regression guard satisfied', async ({ page, ba
       await openLogicGatesStarter(page, baseUrl, `card-chrome-regression-${viewport.label}`);
       await openMode(page, baseUrl, 'project', `card-chrome-regression-${viewport.label}`);
       await assertCardChrome(page, viewport, 'project', {
-        root: '[data-testid="ide-project-command-center"]',
+        root: '[data-testid="ide-project-overview-document"]',
         maxLargeStaticBlocks: 2,
       });
 

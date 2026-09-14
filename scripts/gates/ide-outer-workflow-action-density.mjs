@@ -25,17 +25,13 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
       await openMode(page, baseUrl, 'project', `outer-workflow-action-density-${viewport.label}`);
       await assertBuildHash(page, viewport.label);
       await assertNoProductSpine(page, `${viewport.label}/Project`);
-      const projectDirect = await assertActionCluster(page, viewport, 'project command board', '[data-testid="ide-project-command-board-v1"]', 2, {
-        maxTop: 300,
-      });
-      assert(/Simulate/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must keep its current next-stage Simulate action direct`);
-      assert(/Change Project/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must expose Change Project`);
-      await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
-      const projectDisclosed = await assertActionCluster(page, viewport, 'project disclosed alternatives', '[data-testid="ide-project-command-board-v1"]', 7, {
-        maxTop: 300,
-      });
-      assert(/Build Fresh/i.test(projectDisclosed.labels.join(' | ')), `${viewport.label}/Project disclosed alternatives must keep Build Fresh`);
-      assert(/Import Project/i.test(projectDisclosed.labels.join(' | ')), `${viewport.label}/Project disclosed alternatives must keep Import Project`);
+      const projectDirect = await assertActionCluster(page, viewport, 'Project Overview', '[data-testid="ide-project-overview-document"]', 2, { maxTop: 180 });
+      assert(/Continue in Design|Continue.*Simulate/i.test(projectDirect.labels.join(' | ')), 'Project must retain a direct continuation');
+      await page.getByTestId('ide-menu-file').click();
+      for (const command of ['project.build-fresh', 'project.open-starter', 'surface.import-recover.open', 'project.open']) {
+        assert(await page.getByTestId('ide-menu-item-' + command).isVisible(), 'File must retain ' + command);
+      }
+      await page.keyboard.press('Escape');
 
       await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=outer-workflow-action-density-${viewport.label}-import`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
@@ -52,7 +48,7 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
       const exportActions = await assertActionCluster(page, viewport, 'export readiness', '[data-testid="ide-export-package-inspector-v1"]', 1, {
         minHeight: 96,
       });
-      assert(/Build Current Bundle|Download Current Bundle/i.test(exportActions.labels.join(' | ')), `${viewport.label}/Export must keep one owning package action`);
+      assert(/Generate.*ZIP|Download.*ZIP/i.test(exportActions.labels.join(' | ')), `${viewport.label}/Export must keep one owning package action`);
       await assertVisibleRect(page, ['[data-testid="ide-export-package-files"]'], `${viewport.label}/Export generated files`, {
         minWidth: Math.round(viewport.width * 0.52),
         minHeight: 110,

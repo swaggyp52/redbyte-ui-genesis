@@ -125,16 +125,13 @@ describe('Verify signal identity — a name that means two things', () => {
       />
     );
 
-    const outputs = view.getByTestId('ide-verify-group-outputs');
-    const internal = view.getByTestId('ide-verify-group-internal');
-
-    expect(within(outputs).getByText('LD0')).toBeTruthy();
-    expect(within(outputs).queryByText('Q0')).toBeNull();
-    expect(within(internal).getByText('Q0')).toBeTruthy();
-
-    // And the counts the rail publishes agree with that.
-    expect(outputs.textContent).toContain('Outputs1');
-    expect(internal.textContent).toContain('Internal1');
-    expect(internal.textContent).not.toContain('No internal lanes');
+    const output = view.getByTestId('ide-timing-lane-q0');
+    const internal = view.getByTestId('ide-timing-lane-recorded:Q0');
+    expect(output.querySelector('title')?.textContent).toBe('LD0');
+    expect(internal.querySelector('title')?.textContent).toBe('Q0');
+    expect(view.container.querySelectorAll('[data-testid="ide-timing-lane-q0"]')).toHaveLength(1);
+    expect(view.container.querySelectorAll('[data-testid="ide-timing-lane-recorded:Q0"]')).toHaveLength(1);
+    expect(view.getByTestId('ide-timing-check-q0-1').getAttribute('data-observed-value')).toBe('1');
+    expect(view.getByTestId('ide-timing-check-recorded:Q0-1').getAttribute('data-observed-value')).toBe('1');
   });
 });

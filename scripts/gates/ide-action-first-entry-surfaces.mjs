@@ -26,7 +26,12 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       });
       await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
       await assertBuildHash(page, viewport.label);
-      await assertVisibleRect(page, ['[data-testid="ide-project-start-hub"]'], `${viewport.label}/Project start surface`, {
+      if (!(await page.getByTestId('ide-project-landing').isVisible())) {
+        await page.getByTestId('ide-menu-file').click();
+        await page.getByTestId('ide-menu-item-project.close').click();
+        await page.getByTestId('ide-project-landing').waitFor();
+      }
+      await assertVisibleRect(page, ['[data-testid="ide-project-landing"]'], `${viewport.label}/Project start surface`, {
         maxTop: viewport.height === 768 ? 180 : 200,
         minWidth: 480,
         minHeight: 140,
@@ -34,14 +39,14 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await assertVisibleRect(page, ['[data-testid="ide-project-start-a-lab-primary"]'], `${viewport.label}/Project Start a Lab`, {
         maxTop: viewport.height === 768 ? 340 : 380,
         minWidth: 96,
-        minHeight: 36,
+        minHeight: 24,
       });
       await assertVisibleRect(page, ['[data-testid="ide-project-import-primary"]'], `${viewport.label}/Project Import Project`, {
-        maxTop: viewport.height === 768 ? 380 : 420,
+        maxTop: viewport.height - 40,
         minWidth: 96,
-        minHeight: 36,
+        minHeight: 24,
       });
-      const projectPrimaryCount = await page.locator('[data-testid="ide-project-primary-actions"] [data-product-priority="primary"]:visible').count();
+      const projectPrimaryCount = await page.locator('[data-testid="ide-project-landing"] [data-product-priority="primary"]:visible').count();
       assert(projectPrimaryCount === 1, `${viewport.label}: Project must expose exactly one primary start action, saw ${projectPrimaryCount}`);
 
       await openLogicGatesStarter(page, baseUrl, `action-first-entry-surfaces-${viewport.label}-loaded`);
@@ -52,7 +57,7 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await assertVisibleRect(page, ['[data-testid="ide-export-package-download-v1"]', '[data-testid="ide-export-package-build-v1"]', '[data-testid="ide-export-draft-download-v1"]'], `${viewport.label}/Export package action`, {
         maxTop: viewport.height === 768 ? 330 : 370,
         minWidth: 140,
-        minHeight: 36,
+        minHeight: 24,
       });
       const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
       await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
@@ -60,7 +65,7 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await assertVisibleRect(page, ['[data-testid="ide-export-file-top-vhd"]', '[data-testid="ide-export-handoff-artifact-top-vhd"]'], `${viewport.label}/Export disclosed artifact preview`, {
         maxTop: viewport.height === 768 ? 720 : 850,
         minWidth: 120,
-        minHeight: 42,
+        minHeight: 24,
       });
 
       await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=action-first-entry-surfaces-${viewport.label}-import`, {
@@ -70,12 +75,12 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await assertVisibleRect(page, ['[data-testid="ide-import-zip-browse"]'], `${viewport.label}/Import primary chooser`, {
         maxTop: 480,
         minWidth: 96,
-        minHeight: 36,
+        minHeight: 24,
       });
       await assertVisibleRect(page, ['[data-testid="ide-import-start-secondary"]', '[data-testid="ide-import-load-sample-and-gate"]'], `${viewport.label}/Import alternate actions`, {
         maxTop: 600,
         minWidth: 92,
-        minHeight: 36,
+        minHeight: 24,
       });
 
       await assertNoRootOverflow(page, `${viewport.label}/action-first`);

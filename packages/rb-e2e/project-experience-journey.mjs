@@ -10,8 +10,9 @@
 // Runs at 1440x900 and at a deliberately short 1280x650, because a short window is where a
 // composed page is most likely to be wrong.
 import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
+import { readDurableRecord } from '../../scripts/gates/_durableStorage.mjs';
 
-const OUT = evidenceDir('project-experience');
+const OUT = evidenceDir('project-experience', process.env.RB_SHOT_LABEL ?? 'current');
 const tid = (t) => `[data-testid="${t}"]`;
 const browser = await launchChromium();
 
@@ -40,13 +41,12 @@ async function run(width, height) {
     start: Boolean(document.querySelector('[data-testid="ide-project-landing"]')),
     overview: Boolean(document.querySelector('[data-testid="ide-project-overview-document"]')),
   }));
-  const savedIndex = () => page.evaluate(() => {
-    try {
-      const raw = localStorage.getItem('rb.ide.projects.v1.index');
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list.map((e) => `${e.projectName}|${e.projectId}`) : ['<not an array>'];
-    } catch { return ['<unreadable>']; }
-  });
+  const savedIndex = async () => {
+    const raw = await readDurableRecord(page, 'rb.ide.projects.v1.index');
+    const list = raw ? JSON.parse(raw) : [];
+    assert(Array.isArray(list), 'committed saved-project index must be an array');
+    return list.map((entry) => `${entry.projectName}|${entry.projectId}`);
+  };
   const runCommand = async (id) => {
     await page.keyboard.press('Control+k');
     await page.waitForSelector(tid('ide-command-palette'), { state: 'visible', timeout: 8000 });
@@ -307,13 +307,43 @@ async function run(width, height) {
       `(tone ${afterEdit.tone}) - the word is what a reader can act on, not the colour`);
     const statusRun = await page.evaluate(() =>
       document.querySelector('[data-testid="ide-status-run"]')?.textContent.trim() ?? '');
-    assert(/stale/i.test(statusRun),
-      `the status bar and the Overview disagree about the evidence: "${statusRun}" vs "${afterEdit.value}"`);
+    assert(statusRun === '', 'The historical recording does not become global status in Project');
     console.log(`${at} ⑩ evidence: "${afterRun.value}" -> edit -> "${afterEdit.value}" (tone ${afterEdit.tone}), ` +
-      `and the status bar agrees ("${statusRun}")`);
+      `and run-specific state stays with its owning workspace`);
   }
 
   await page.screenshot({ path: `${OUT}/overview-blank-${width}x${height}.png` });
+
+  // ── ⑪ A saved project can be deleted from Start, and only that one goes ─────────────────
+  // Two presses on the item's own preview, the second naming the project. The workspace is
+  // untouched because Start is only shown with nothing open.
+  await runCommand('project.close');
+  await page.waitForSelector(tid('ide-project-landing'), { timeout: 10000 });
+  const indexBeforeDelete = await savedIndex();
+  assert(indexBeforeDelete.some((row) => row.endsWith(`|${saved.projectId}`)),
+    `the project to delete is not in the saved index: ${JSON.stringify(indexBeforeDelete)}`);
+  await page.getByTestId('ide-project-start-section-recent').click();
+  await page.waitForSelector(tid('ide-project-recent-panel'), { timeout: 10000 });
+  await page.getByTestId(`ide-project-recent-${saved.projectId}`).click();
+  await page.getByTestId(`ide-project-recent-delete-${saved.projectId}`).click();
+  const indexDuringConfirm = await savedIndex();
+  assert(indexDuringConfirm.length === indexBeforeDelete.length,
+    'asking to delete must not delete anything before the confirmation');
+  const confirmText = (await page.getByTestId('ide-project-recent-delete-confirm-row').innerText()).replace(/\s+/g, ' ');
+  assert(confirmText.includes(saved.projectName), `the confirmation names "${saved.projectName}": "${confirmText}"`);
+  await page.getByTestId('ide-project-recent-delete-confirm').click();
+  await page.waitForTimeout(600);
+  const indexAfterDelete = await savedIndex();
+  assert(!indexAfterDelete.some((row) => row.endsWith(`|${saved.projectId}`)),
+    `the deleted project is still in the saved index: ${JSON.stringify(indexAfterDelete)}`);
+  assert(indexAfterDelete.length === indexBeforeDelete.length - 1,
+    `deleting one project changed the index by ${indexBeforeDelete.length - indexAfterDelete.length}: ${JSON.stringify(indexAfterDelete)}`);
+  assert((await page.locator(tid(`ide-project-recent-${saved.projectId}`)).count()) === 0,
+    'the deleted project is still listed under Recent');
+  const stillOnStart = await surface();
+  assert(stillOnStart.start && !stillOnStart.overview, 'deleting a saved project must leave the reader on Start');
+  console.log(`${at} ⑪ deleted "${saved.projectName}" from Start: index ${indexBeforeDelete.length} -> ${indexAfterDelete.length}, nothing else touched`);
+
   assert(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   await context.close();
   console.log(`${at} PASS`);

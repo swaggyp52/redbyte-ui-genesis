@@ -61,10 +61,10 @@ function makeRepeatedFailRun(): RuntimeVerifyRun {
 
 describe('VerifySurface hint bridge', () => {
   function openAnalysisDrawer(getByTestId: (id: string) => HTMLElement) {
-    const toggle = getByTestId('ide-verify-drawer-toggle');
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    const toggle = getByTestId('ide-verify-details');
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
   }
 
   it('surfaces the unmapped-pin hint from real mapping state', () => {

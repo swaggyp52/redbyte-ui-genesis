@@ -118,5 +118,5 @@ export const CanvasHost = ({ id, ariaLabel = 'Interactive circuit canvas', child
             clearIfActive(id);
         };
     }, [id, deactivate]);
-    return (_jsx("div", { ref: containerRef, role: "region", "aria-label": ariaLabel, tabIndex: 0, onPointerDown: handlePointerDown, onFocus: handleFocus, onBlur: handleBlurContainer, className: className, style: { position: 'relative', width: '100%', height: '100%', outline: 'none' }, children: children }));
+    return (_jsx("div", { ref: containerRef, role: "region", "aria-label": ariaLabel, tabIndex: 0, onPointerDownCapture: handlePointerDown, onFocus: handleFocus, onBlur: handleBlurContainer, className: className, style: { position: 'relative', width: '100%', height: '100%', outline: 'none' }, children: children }));
 };

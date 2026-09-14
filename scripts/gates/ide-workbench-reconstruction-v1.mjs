@@ -42,6 +42,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
         minHeight: Math.round(viewport.height * 0.34),
       });
       await runComparePass(page);
+      await page.getByTestId('ide-verify-view-waveform').click();
       await assertVisibleRect(page, ['[data-testid="ide-verify-region-waveform"]'], `${viewport.label}/verify evidence`, {
         maxTop: 340 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.40),
@@ -50,7 +51,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
 
       await openMode(page, baseUrl, 'hardware', `workbench-reconstruction-v1-${viewport.label}`);
       await assertShellChrome(page, viewport, 'hardware');
-      await assertVisibleRect(page, ['[data-testid="ide-hw-board-workspace"]'], `${viewport.label}/hardware board workspace`, {
+      await assertVisibleRect(page, ['.rb-board'], `${viewport.label}/hardware board workspace`, {
         maxTop: 178 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.78),
         minHeight: Math.round(viewport.height * 0.48),
@@ -103,18 +104,17 @@ async function assertShellChrome(page, viewport, label) {
     };
     return {
       topbar: rect('[data-testid="ide-top-bar"]'),
-      stageNav: rect('[data-testid="ide-stage-nav"]'),
+      stageNav: rect('[data-testid="ide-workspace-rail"]'),
       ribbon: rect('[data-testid="ide-proof-ribbon"]'),
       footer: rect('[data-testid="ide-status-bar"]'),
-      shell: rect('[data-ide-mode-marker]'),
-      surfaceColumn: rect('.ide-surface-column'),
-      stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-stage-nav"] .ide-stage-nav-label'))
+      shell: rect('.wb-body'),
+      surfaceColumn: rect('[data-testid="ide-document-column"]'),
+      stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-workspace-rail"] [data-testid^="mode-button-"]'))
         .map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
       importIsUtility: (() => {
-        const topbar = document.querySelector('[data-testid="ide-top-bar"]');
-        const stageNav = document.querySelector('[data-testid="ide-stage-nav"]');
+        const stageNav = document.querySelector('[data-testid="ide-workspace-rail"]');
         const importButton = document.querySelector('[data-testid="mode-button-import"]');
-        return Boolean(importButton && topbar?.contains(importButton) && !stageNav?.contains(importButton));
+        return Boolean(importButton && stageNav?.contains(importButton) && importButton.getBoundingClientRect().top > window.innerHeight * 0.75);
       })(),
       retiredRailCount: document.querySelectorAll(
         '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
@@ -126,7 +126,7 @@ async function assertShellChrome(page, viewport, label) {
   });
   await assertNoRootOverflow(page, `${viewport.label}/${label}`);
   assert(state.topbar.visible && state.topbar.height <= 60, `${viewport.label}/${label}: compact topbar is too tall ${JSON.stringify(state)}`);
-  assert(state.stageNav.visible && Math.abs(state.stageNav.height - 52) <= 1, `${viewport.label}/${label}: expected 52px horizontal stage navigation ${JSON.stringify(state)}`);
+  assert(state.stageNav.visible && state.stageNav.height >= viewport.height * 0.8, `${viewport.label}/${label}: activity navigation must span the workspace ${JSON.stringify(state)}`);
   assert(!state.ribbon.visible, `${viewport.label}/${label}: retired proof ribbon must stay absent ${JSON.stringify(state)}`);
   assert(
     state.footer.visible && state.footer.height <= 28,
@@ -135,12 +135,12 @@ async function assertShellChrome(page, viewport, label) {
   assert(state.retiredRailCount === 0 && state.retiredToggleCount === 0, `${viewport.label}/${label}: retired rail or dock restore chrome returned ${JSON.stringify(state)}`);
   assert(Math.abs(state.stageNav.top - state.topbar.bottom) <= 2, `${viewport.label}/${label}: stage navigation must begin directly below topbar ${JSON.stringify(state)}`);
   assert(
-    state.shell.top >= state.stageNav.bottom - 10 && state.shell.top <= state.stageNav.bottom + 2,
-    `${viewport.label}/${label}: workbench must meet the stage-navigation edge without a dead chrome band ${JSON.stringify(state)}`
+    Math.abs(state.shell.top - state.topbar.bottom) <= 2,
+    `${viewport.label}/${label}: workbench must meet the command-bar edge without a dead chrome band ${JSON.stringify(state)}`
   );
   assert(Math.abs(state.surfaceColumn.top - state.shell.top) <= 2, `${viewport.label}/${label}: surface column must begin with workbench ${JSON.stringify(state)}`);
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']) && state.importIsUtility,
-    `${viewport.label}/${label}: shell must expose ordered five stages plus top-bar Import utility ${JSON.stringify(state)}`
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board', 'Package', 'Import']) && state.importIsUtility,
+    `${viewport.label}/${label}: shell must expose ordered five stages and a separate Import utility ${JSON.stringify(state)}`
   );
 }

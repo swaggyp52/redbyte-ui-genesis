@@ -262,10 +262,6 @@ All hardware surface classes use the `ide-hw-` prefix. Classes in active use:
 | `ide-hw-cert-row` | Single cert row |
 | `ide-hw-cert-key` | Uppercase key label |
 | `ide-hw-cert-val` | Code value |
-| `ide-hw-proof-verdict` | Big verdict overlay; modifiers: `is-pending`, `is-valid`, `is-invalid` |
-| `ide-hw-proof-verdict-label` | "PROOF VALID" / "PROOF INVALID" / "PROOF PENDING" text |
-| `ide-hw-proof-verdict-meta` | KV rows below verdict label |
-| `ide-hw-proof-verdict-row` | Single meta row in verdict |
 | `ide-hw-event-log` | Signal change feed container |
 | `ide-hw-event-row` | Single change event row |
 | `ide-hw-event-tick` | `t{N}` tick code |

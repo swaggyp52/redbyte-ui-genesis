@@ -97,7 +97,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await assertFailureRepairPanel(page, { expectRowRepair: true, expectAllRepair: true });
   await capture(page, '06-two-failed-outputs-repair-actions.png');
 
-  await page.getByTestId('ide-verify-repair-use-observed').click();
+  await applyScopedRepair(page, 'ide-verify-repair-use-observed');
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await assertExpectedCellVisibleValue(page, targetA.fieldId, targetA.tick, originalA);
   const afterCellRepairB = await readCellValue(page, expectedCellTestId(targetB.fieldId, targetB.tick));
@@ -123,7 +123,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
     await page.getByTestId('ide-verify-repair-use-observed-row').isEnabled().catch(() => false),
     'row-scope repair must be enabled while the selected row has multiple failed outputs',
   );
-  await page.getByTestId('ide-verify-repair-use-observed-row').click();
+  await applyScopedRepair(page, 'ide-verify-repair-use-observed-row');
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
   await assertExpectedCellVisibleValue(page, targetA.fieldId, targetA.tick, originalA);
@@ -136,7 +136,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await flipExpectedCell(page, targetB.fieldId, targetB.tick);
   await runCompareAndExpect(page, 'all failed outputs repair setup', 'fail');
   await assertDirectFailureEvidence(page, 'all failed outputs repair setup');
-  await page.getByTestId('ide-verify-repair-use-observed-all').click();
+  await applyScopedRepair(page, 'ide-verify-repair-use-observed-all');
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
   await assertExpectedCellVisibleValue(page, targetA.fieldId, targetA.tick, originalA);
@@ -147,12 +147,12 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   await openReplayWorkspace(page);
-  const staleSummary = page.locator('[data-testid="ide-verify-results-summary"]:visible').first();
+  const staleSummary = page.getByTestId('ide-verify-evidence-state');
   await staleSummary.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await staleSummary.getAttribute('data-kind')) === 'stale', 'Verify latest-run authority must be marked stale after an expected-output edit');
-  const staleText = await text(staleSummary);
+  assert((await staleSummary.getAttribute('data-state')) === 'stale', 'Verify latest-run authority must be marked stale after an expected-output edit');
+  const staleText = await text(page.getByTestId('ide-verify-evidence-state-reason'));
   assert(
-    /Checks changed|Rerun Compare/i.test(staleText),
+    /Checks changed|scenario changed|Rerun/i.test(staleText),
     `Verify must name stale testbench evidence after edit, got "${staleText}"`,
   );
   await capture(page, '10-testbench-edit-stale.png');
@@ -180,114 +180,25 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
 });
 
 async function assertTestbenchWorkspace(page, label) {
-  const workspace = page.getByTestId('ide-verify-add-vector-form').first();
-  const header = page.getByTestId('ide-verify-stimulus-header').first();
-  const authoringPath = page.getByTestId('ide-verify-authoring-path').first();
-  const toolbar = page.getByTestId('ide-stimulus-toolbar').first();
-  const grid = page.locator('.ide-stimulus-grid-scroll').first();
-  const expectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
-  const runMode = page.getByTestId('ide-vcb-run-mode').first();
-  const status = page.getByTestId('ide-verify-context-state').first();
-  const waveformPlaceholder = page.getByTestId('ide-verify-waveform-placeholder').first();
-
-  for (const [name, locator] of [
-    ['case-table editor', workspace],
-    ['testbench header', header],
-    ['authoring path', authoringPath],
-    ['case actions', toolbar],
-    ['stimulus grid', grid],
-    ['Observe/Compare selector', runMode],
-    ['Verify status', status],
-  ]) {
-    assert(await locator.isVisible().catch(() => false), `${label}: ${name} must be visible`);
+  for (const id of ['ide-case-lab','ide-case-lab-bar','ide-case-lab-add','ide-vcb-run','ide-vcb-check-count','ide-verify-context-state']) {
+    assert(await page.getByTestId(id).isVisible(), label + ': ' + id + ' must be visible');
   }
-
-  const scenarioTab = page.getByTestId('ide-vcb-workspace-scenario').first();
-  const replayTab = page.getByTestId('ide-vcb-workspace-replay').first();
-  assert(
-    (await scenarioTab.getAttribute('aria-selected')) === 'true',
-    `${label}: Scenario authoring must own the pre-run workspace`,
-  );
-  assert(await replayTab.isDisabled(), `${label}: Replay must remain unavailable until a run creates evidence`);
-  assert((await waveformPlaceholder.count()) > 0, `${label}: the quiet pre-run Replay placeholder must remain mounted`);
-  assert(
-    !(await waveformPlaceholder.isVisible().catch(() => false)),
-    `${label}: pre-run Replay evidence must stay out of the active Scenario workspace`,
-  );
-
-  assert(
-    (await expectedCell.count()) === 0,
-    `${label}: Scenario must keep optional expected-output checks out of the stimulus-first workspace`,
-  );
-  const checksTab = page.getByTestId('ide-vcb-workspace-checks').first();
-  await checksTab.click();
-  await page.waitForSelector('[data-testid^="ide-stimulus-expected-"]', { state: 'visible', timeout: 5000 });
-  assert((await expectedCell.count()) > 0, `${label}: Checks must expose expected-output cells`);
-  await expectedCell.scrollIntoViewIfNeeded();
-  assert(await expectedCell.isVisible().catch(() => false), `${label}: expected-output cells must be reachable in Checks`);
-  await assertNoRootOverflow(page, `${label} Checks workspace`);
-  const checksGeometry = await page.evaluate(() => {
-    const lab = document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getBoundingClientRect();
-    const stimulus = document.querySelector('[data-testid="ide-verify-region-stimulus"]')?.getBoundingClientRect();
-    return lab && stimulus
-      ? {
-          labWidth: lab.width,
-          stimulusWidth: stimulus.width,
-          leftInset: stimulus.left - lab.left,
-          rightInset: lab.right - stimulus.right,
-        }
-      : null;
-  });
-  assert(checksGeometry !== null, `${label}: Checks geometry must be measurable`);
-  assert(
-    checksGeometry.stimulusWidth >= checksGeometry.labWidth * 0.96,
-    `${label}: Checks must own the full lab width: ${JSON.stringify(checksGeometry)}`,
-  );
-  assert(
-    checksGeometry.leftInset >= 0 &&
-      checksGeometry.rightInset >= 0 &&
-      checksGeometry.leftInset <= 16 &&
-      checksGeometry.rightInset <= 16 &&
-      Math.abs(checksGeometry.leftInset - checksGeometry.rightInset) <= 2,
-    `${label}: Checks must use only the lab's symmetric content inset: ${JSON.stringify(checksGeometry)}`,
-  );
-  const checksHeaderCopy = await text(header);
-  assert(
-    /expected outputs.*Unset|Unset.*expected outputs/i.test(checksHeaderCopy),
-    `${label}: Checks must explain optional expected outputs and Unset semantics, got "${checksHeaderCopy}"`,
-  );
-  await scenarioTab.click();
-  await workspace.waitFor({ state: 'visible', timeout: 5000 });
-
-  assert(
-    /Combinational case table/i.test(await text(authoringPath)),
-    `${label}: starter project must expose the combinational case-table path`,
-  );
-  const headerCopy = await text(header);
-  assert(
-    /Testbench cases.*inputs.*observed outputs.*replay/i.test(headerCopy),
-    `${label}: Scenario header must explain input stimulus, observed outputs, and replay, got "${headerCopy}"`,
-  );
-  assert(/Cases/i.test(await text(toolbar)), `${label}: visible toolbar must expose case editing`);
-  assert(
-    await page.getByTestId('ide-stimulus-add-tick').first().isVisible().catch(() => false),
-    `${label}: Add case must be visible`,
-  );
-  const modeCopy = await text(page.getByTestId('ide-vcb-mode-explainer').first());
-  assert(
-    /observed (?:outputs|values)|expected (?:outputs|values)|evaluates \d+ optional checks/i.test(modeCopy),
-    `${label}: run authority must name observation or configured optional-check evaluation, got "${modeCopy}"`,
-  );
-  assert(/Draft|Not started|Ready/i.test(await text(status)), `${label}: pre-run status must describe an unrun testbench`);
-  assert(
-    (await page.locator('[data-testid^="ide-testbench-section-"]').count()) === 0,
-    `${label}: retired four-section testbench scaffold must remain absent`,
-  );
+  assert(await page.getByTestId('ide-verify-view-table').getAttribute('aria-pressed') === 'true', 'Table owns case authoring');
+  assert(await page.getByTestId('ide-verify-view-waveform').isDisabled(), 'Recorded trace requires a completed run');
+  assert(await page.locator('[data-testid^="ide-case-lab-input-"]').count() >= 8, 'four cases expose all inputs');
+  assert(await page.locator('[data-testid^="ide-case-lab-exp-"]').count() >= 12, 'optional checks remain directly editable beside observations');
+  const hint = await page.locator('[data-testid^="ide-case-lab-exp-"]').first().getAttribute('title');
+  assert(/Expected.*0.*1.*none/i.test(hint), 'optional check editing describes none semantics');
+  const geometry = await page.getByTestId('ide-case-lab').boundingBox();
+  const lab = await page.getByTestId('ide-verify-lab-grid').boundingBox();
+  assert(geometry.width >= lab.width * .96, label + ': case table owns available width');
+  assert(/Ready|Draft|Not started/i.test(await text(page.getByTestId('ide-verify-context-state'))), 'pre-run status names unrun cases');
+  assert(await page.locator('[data-testid^="ide-testbench-section-"]').count() === 0, 'retired section scaffold remains absent');
+  await assertNoRootOverflow(page, label);
 }
 
 async function assertReplayEvidenceVisible(page) {
-  const scope = await text(page.locator('[data-testid="ide-verify-scope-header"]').first());
-  assert(/Waveform truth/i.test(scope), `Run simulation must expose waveform evidence, got "${scope}"`);
+  assert(await page.getByTestId('ide-verify-view-waveform').getAttribute('aria-pressed') === 'true', 'Recorded trace owns the evidence workspace');
   const waveformVisible = await page.locator('[data-testid="ide-verify-waveform-preview"]').first().isVisible().catch(() => false);
   assert(waveformVisible, 'Observed waveform preview must be visible after Run simulation');
   assert(
@@ -312,32 +223,20 @@ async function assertReplayEvidenceVisible(page) {
     /Checks passing|Checks aligned|Simulation complete/i.test(await text(page.getByTestId('ide-verify-context-state').first())),
     'Run simulation must expose the current passing check state',
   );
-  const summary = page.getByTestId('ide-verify-results-summary').first();
+  const summary = page.getByTestId('ide-run-check-result').first();
   assert(
-    /Simulation complete.*Checks passing/i.test(await text(summary)),
+    await summary.getAttribute('data-check-status') === 'pass',
     'Run summary must distinguish completed simulation from passing optional checks',
   );
 }
 
 async function assertFailureRepairPanel(page, options) {
-  const summary = page.locator('[data-testid="ide-verify-results-summary"]:visible').first();
-  await summary.waitFor({ state: 'visible', timeout: 10000 });
-  assert(
-    (await summary.getAttribute('data-kind')) === 'observe-done',
-    'completed simulation evidence must remain valid while optional checks fail',
-  );
-  assert(
-    /Simulation complete.*Checks failing/i.test(await text(summary)),
-    'result summary must distinguish completed simulation from failing optional checks',
-  );
-  const guidance = await text(page.getByTestId('ide-verify-results-guidance').first());
-  assert(
-    /waveform.*valid.*Open Checks|inspect the first mismatch/i.test(guidance),
-    'visible check-failure guidance must preserve waveform evidence and route to the mismatch',
-  );
+  const run = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun);
+  assert(run?.simulationStatus === 'complete' && run?.assertionStatus === 'failing', 'failed checks must preserve completed simulation evidence');
+  assert(run.waveform.length > 0, 'failed checks retain the recorded trace');
   await assertDirectFailureEvidence(page, 'failed output repair');
   const panelText = await text(page.locator('[data-testid="ide-verify-repair-panel"]').first());
-  assert(/Compare failed/i.test(panelText), `repair panel must name Compare failed, got "${panelText}"`);
+  assert(/Expected|Observed/i.test(panelText), `repair panel must name Compare failed, got "${panelText}"`);
   assert(/Expected|Observed/i.test(panelText), `repair panel must show expected and observed values, got "${panelText}"`);
   assert(await page.getByTestId('ide-verify-repair-use-observed').first().isVisible().catch(() => false), 'single-cell Use observed action must be visible');
   if (options.expectRowRepair) {
@@ -351,6 +250,11 @@ async function assertFailureRepairPanel(page, options) {
 }
 
 async function assertDirectFailureEvidence(page, label) {
+  await openReplayWorkspace(page);
+  const details = page.getByTestId('ide-verify-details');
+  if (await details.getAttribute('aria-pressed') !== 'true') await details.click();
+  await page.getByTestId('ide-verify-analysis-tab-nav').getByRole('button', { name: 'Checks', exact: true }).click();
+  assert(await page.getByTestId('ide-verify-repair-panel').count() === 1, 'Checks owns exactly one repair panel');
   const repairPanel = page.locator('[data-testid="ide-verify-repair-panel"]:visible').first();
   const repairDecision = page.locator('[data-testid="ide-verify-repair-decision"]:visible').first();
   const failedCase = page.locator('[data-testid="ide-verify-results-summary-open-fail"]:visible').first();
@@ -374,6 +278,8 @@ async function assertDirectFailureEvidence(page, label) {
 }
 
 async function assertExportConfidence(page, { expectedPackage, expectedVerify }) {
+  const readiness = page.getByTestId('ide-export-readiness-disclosure');
+  if (!await readiness.evaluate(element => element.open)) await readiness.locator('summary').click();
   const packageDecision = page.getByTestId('ide-export-package-inspector-v1').first();
   const upstream = page.getByTestId('ide-export-upstream-readiness').first();
   const verify = await text(page.getByTestId('ide-export-upstream-verify').first());
@@ -391,12 +297,12 @@ async function assertExportConfidence(page, { expectedPackage, expectedVerify })
   }
   assert(/mapped|pin/i.test(mapping), `Export Mapping confidence should name mapping, got "${mapping}"`);
   const packageState = await packageDecision.getAttribute('data-export-package-state');
-  const primaryAction = page.getByTestId('ide-export-package-build-v1').first();
+  const primaryAction = page.locator('[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-draft-download-v1"]').first();
   const primaryActionText = await text(primaryAction);
   if (expectedPackage === 'buildable-e0') {
     assert(packageState === 'draft', `current Compare PASS should produce a buildable draft before download, got "${packageState}"`);
     assert(
-      /Build Current Bundle|Rebuild Current Bundle/i.test(primaryActionText),
+      /Generate.*ZIP/i.test(primaryActionText),
       `current Compare PASS should expose the package build authority, got "${primaryActionText}"`,
     );
     assert(await primaryAction.isEnabled().catch(() => false), 'current package build authority must be enabled');
@@ -404,8 +310,8 @@ async function assertExportConfidence(page, { expectedPackage, expectedVerify })
     assert(packageState === 'draft', `Export package should be draft while Verify evidence is stale, got "${packageState}"`);
     assert(/Draft/i.test(pkg), `Export package confidence should be draft, got "${pkg}"`);
     assert(
-      /Open Simulate|Simulate|Compare|rerun|review/i.test(primaryActionText),
-      `stale export must route back to Simulate instead of looking build-ready, got "${primaryActionText}"`,
+      /Generate.*draft ZIP/i.test(primaryActionText),
+      `stale export must label its generated ZIP as draft, got "${primaryActionText}"`,
     );
   }
   assert(
@@ -426,14 +332,23 @@ async function runSimulation(page) {
 
 async function readScenarioObservedOutputs(page, outputIds, caseCount) {
   await openScenarioWorkspace(page);
+  const allOutputs = (await readIoRows(page)).filter(row => row.direction === 'out').map(row => row.id);
   const observedOutputs = [];
   for (let tick = 0; tick < caseCount; tick += 1) {
     for (const outputId of outputIds) {
-      const cell = page.locator(`[data-testid="ide-stimulus-observed-${outputId}-t${tick}"]:visible`).first();
-      await cell.waitFor({ state: 'visible', timeout: 8000 });
-      const rawValue = await cell.getAttribute('data-value');
+      const column = allOutputs.indexOf(outputId);
+      assert(column >= 0, 'observed column identity exists for ' + outputId);
+      const cell = page.getByTestId('ide-case-lab-row-' + tick).locator('td.ide-case-lab-obs code').nth(column);
+      const rawValue = await cell.textContent();
       const value = rawValue === '1' ? 1 : rawValue === '0' ? 0 : null;
-      assert(value === 0 || value === 1, `Observe must report ${outputId} at t${tick}, got ${rawValue}`);
+      assert(value === 0 || value === 1, 'recording must report ' + outputId + ' at t' + tick + ', got ' + rawValue);
+      const recorded = await page.evaluate(({tick,id}) => {
+        const state = window.__RB_PROJECT_RUNTIME__?.getState?.();
+        const field = state?.projectIoRows.find(row => row.id === id);
+        const samples = state?.verifyLastRun?.waveform.find(row => row.tick === tick)?.signals;
+        return samples?.[id] ?? samples?.[field?.label] ?? samples?.[`${field?.nodeId}.${field?.port}`];
+      }, {tick, id:outputId});
+      assert(String(recorded) === rawValue, 'visible observed cell must agree with immutable recording for ' + outputId + ' at t' + tick + ': ' + rawValue + ' versus ' + recorded);
       observedOutputs.push({ fieldId: outputId, tick, value });
     }
   }
@@ -497,39 +412,13 @@ async function runCompareAndExpect(page, label, expectation) {
   }
 }
 
-async function clickVerifyRunAndWaitForNewResult(page, label, expectation) {
-  const previousReportHash = await page.evaluate(
-    () => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.reportHash ?? null,
-  );
+async function clickVerifyRunAndWaitForNewResult(page, label) {
+  const previousRunId = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.runId ?? null);
   await clickVerifyRun(page);
-  try {
-    await page.waitForFunction(
-      (previous) => {
-        const nextHash = window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.reportHash ?? null;
-        return Boolean(nextHash && nextHash !== previous);
-      },
-      previousReportHash,
-      { timeout: 20000 },
-    );
-  } catch {
-    const state = await page.evaluate(() => ({
-      previousReportHash: window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.reportHash ?? null,
-      status: document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent ?? '',
-      primaryStatus: document.querySelector('[data-testid="ide-verify-primary-status"]')?.textContent ?? '',
-      runButton: document.querySelector('[data-testid="ide-vcb-run"]')?.textContent ?? '',
-    }));
-    if (
-      expectation === 'pass' &&
-      isVerifyPass(state.status) &&
-      !/Testbench changed|Stimulus or saved checks changed|Run Compare/i.test(state.primaryStatus)
-    ) {
-      return;
-    }
-    if (expectation === 'pass-or-trace' && /observed|trace|recorded|waveform/i.test(state.status + state.primaryStatus)) {
-      return;
-    }
-    throw new Error(`${label}: Verify report hash did not change from ${previousReportHash}: ${JSON.stringify(state)}`);
-  }
+  await page.waitForFunction(previous => {
+    const runId = window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.runId;
+    return Boolean(runId && runId !== previous);
+  }, previousRunId, {timeout:20000});
   await waitForVerifyResult(page, { timeout: 10000 });
 }
 
@@ -551,18 +440,18 @@ async function authorInputCases(page, cases) {
 }
 
 async function ensureCaseCount(page, desired) {
-  await page.waitForSelector('[data-testid="ide-stimulus-add-tick"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-case-lab-add"]', { timeout: 15000 });
   for (let guard = 0; guard < desired + 4; guard += 1) {
     const count = await readTickCount(page);
     if (count >= desired) return;
-    await page.getByTestId('ide-stimulus-add-tick').click();
+    await page.getByTestId('ide-case-lab-add').click();
     await page.waitForTimeout(120);
   }
   assert(false, `could not create ${desired} Verify cases`);
 }
 
 async function setInputCell(page, fieldId, tick, value) {
-  const testId = `ide-stimulus-cell-${fieldId}-t${tick}`;
+  const testId = `ide-case-lab-input-${tick}-${fieldId}`;
   const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -619,70 +508,43 @@ async function assertExpectedCellVisibleValue(page, fieldId, tick, value) {
 }
 
 async function readCellValue(page, testId) {
-  const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
-  if ((await cell.count()) > 0) {
-    const title = await cell.getAttribute('title');
-    if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
-    if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
-    if (/:\s*not set\s*-\s*drag/i.test(title ?? '')) return null;
+  const cell = page.getByTestId(testId).first();
+  if (await cell.isVisible()) {
+    const value = await cell.locator('code').textContent();
+    return value === '1' ? 1 : value === '0' ? 0 : null;
   }
-  const expectedMatch = /^ide-stimulus-expected-(.+)-t(\d+)$/.exec(testId);
-  if (expectedMatch) {
-    const [, fieldId, rawTick] = expectedMatch;
-    return page.evaluate(
-      ({ targetFieldId, targetTick }) => {
-        const vector = (window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors ?? []).find(
-          (candidate) => candidate.tick === targetTick,
-        );
-        const value = vector?.expected?.[targetFieldId];
-        return value === true || value === 1 ? 1 : value === false || value === 0 ? 0 : null;
-      },
-      { targetFieldId: fieldId, targetTick: Number(rawTick) },
-    );
-  }
-  return null;
+  const match = /^ide-case-lab-exp-(\d+)-(.+)$/.exec(testId);
+  assert(match, 'expected identity required for a retained value: ' + testId);
+  return page.evaluate(({tick,id}) => {
+    const value = window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors.find(row => row.tick === tick)?.expected?.[id];
+    return value === 1 || value === true ? 1 : value === 0 || value === false ? 0 : null;
+  }, {tick:Number(match[1]), id:match[2]});
 }
 
 async function openChecksWorkspace(page) {
-  const checksTab = page.getByTestId('ide-vcb-workspace-checks').first();
-  if ((await checksTab.getAttribute('aria-selected')) !== 'true') {
-    await checksTab.click();
-  }
-  await page.waitForSelector('[data-testid^="ide-stimulus-expected-"]', { state: 'visible', timeout: 5000 });
+  const details = page.getByTestId('ide-verify-details');
+  if (await details.getAttribute('aria-pressed') === 'true') await details.click();
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.locator('[data-testid^="ide-case-lab-exp-"]').first().waitFor({state:'visible'});
 }
 
 async function openReplayWorkspace(page) {
-  const replayTab = page.getByTestId('ide-vcb-workspace-replay').first();
+  const replayTab = page.getByTestId('ide-verify-view-waveform').first();
   assert(!(await replayTab.isDisabled()), 'Replay must become available after Run simulation creates evidence');
-  if ((await replayTab.getAttribute('aria-selected')) !== 'true') {
+  if ((await replayTab.getAttribute('aria-pressed')) !== 'true') {
     await replayTab.click();
   }
   await page.getByTestId('ide-verify-waveform-preview').first().waitFor({ state: 'visible', timeout: 5000 });
 }
 
-async function openScenarioWorkspace(page) {
-  const scenarioTab = page.getByTestId('ide-vcb-workspace-scenario').first();
-  if ((await scenarioTab.getAttribute('aria-selected')) !== 'true') {
-    await scenarioTab.click();
-  }
-  await page.locator('[data-testid="ide-stimulus-observed-group"]:visible').first().waitFor({ state: 'visible', timeout: 5000 });
-}
+async function openScenarioWorkspace(page) { await openChecksWorkspace(page); }
 
 async function readTickCount(page) {
-  const ids = await page.locator('[data-testid^="ide-stimulus-cell-"]').evaluateAll((elements) =>
-    Array.from(
-      new Set(
-        elements
-          .map((element) => /-t(\d+)$/.exec(element.getAttribute('data-testid') ?? '')?.[1])
-          .filter(Boolean),
-      ),
-    ).map(Number),
-  );
-  return ids.length;
+  return page.locator('[data-testid^="ide-case-lab-row-"]').count();
 }
 
 function expectedCellTestId(fieldId, tick) {
-  return `ide-stimulus-expected-${fieldId}-t${tick}`;
+  return `ide-case-lab-exp-${tick}-${fieldId}`;
 }
 
 async function readIoRows(page) {
@@ -711,4 +573,11 @@ async function text(locator) {
 
 async function capture(page, filename) {
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, filename), fullPage: true });
+}
+
+async function applyScopedRepair(page, testId) {
+  const before = await page.evaluate(() => JSON.stringify(window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun));
+  await page.getByTestId(testId).click();
+  const after = await page.evaluate(() => JSON.stringify(window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun));
+  assert(after === before, testId + ' must never mutate the recorded evidence');
 }

@@ -1,0 +1,75 @@
+import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import fs from 'node:fs';import path from 'node:path';import { createRequire } from 'node:module';import { execFileSync } from 'node:child_process';import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+const require=createRequire(import.meta.url);
+const viteNode=path.join(path.dirname(require.resolve('vite-node/package.json',{paths:[path.dirname(require.resolve('vitest/package.json'))]})),'vite-node.mjs');
+execFileSync(process.execPath,[viteNode,'--config','vitest.config.ts','packages/rb-e2e/fixtures/large-recorded-experiment.ts'],{stdio:'pipe'});
+const out=evidenceDir('large-experiment',process.env.RB_SHOT_LABEL??'current');const browser=await launchChromium();let page;
+try{
+ page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});page.setDefaultTimeout(20000);const tid=id=>page.getByTestId(id);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(BASE_URL,{waitUntil:'networkidle'});await tid('ide-project-file-input').setInputFiles(path.resolve('.redbyte/e2e-evidence/large-experiment/fixture.rbproj'));
+ await tid('mode-button-design').click();await tid('ide-design-test-design').click();
+ const start=Date.now();await tid('ide-vcb-run').click();await tid('ide-run-identity').waitFor();const runMs=Date.now()-start;
+ const run=await page.evaluate(()=>JSON.parse(JSON.stringify(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun)));
+ assert.equal(run.waveform.length,512);assert.equal(run.report.rows.length,2560);assert.equal(run.assertionStatus,'passing');
+ const nativeKeys=run.nativeTrace.signals;assert.ok(nativeKeys.length>=30);
+ const initialDigest=await tid('ide-run-output-digest').getAttribute('data-digest');
+ const selected=()=>page.evaluate(()=>JSON.parse(JSON.stringify(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun)));
+ const archive=()=>page.evaluate(()=>JSON.parse(JSON.stringify(window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive)));
+ const timings=[];
+ const execute=async(reproduce=false)=>{const previous=(await selected()).runId;const start=Date.now();await tid(reproduce?'ide-vcb-reproduce':'ide-vcb-run').click();await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId!==id,previous,{timeout:60000});const next=await selected();assert.equal(next.waveform.length,512);assert.equal(next.report.rows.length,2560);assert.ok(next.circuitSnapshot&&next.executionInput&&next.identity);timings.push({runId:next.runId,reproduce,milliseconds:Date.now()-start});console.log('Recorded '+next.sequence+' in '+(Date.now()-start)+'ms');return next;};
+ const command=async id=>{await tid('ide-topbar-command-palette').waitFor();await tid('ide-topbar-command-palette').click();await tid('ide-command-palette').waitFor();if(!await tid('ide-command-'+id).count())await tid('ide-command-palette-query').fill(id.split('.').pop());await tid('ide-command-'+id).click();};
+ const save=async()=>{await tid('ide-topbar-save-btn').click();await page.locator('[data-testid="ide-save-state"][data-state="saved"]').waitFor({timeout:60000});};
+ await tid('ide-verify-view-waveform').click();await tid('ide-verify-tick-scrubber').fill('511');
+ assert.match(await tid('ide-verify-selected-tick').innerText(),/511/);
+ const inspectionStart=Date.now();await tid('ide-verify-inspect-circuit').click();
+ const options=await page.getByLabel('Recorded circuit signal').locator('option').evaluateAll(nodes=>nodes.map(node=>({value:node.value,label:node.textContent})));
+ fs.writeFileSync(path.join(out,'signal-options.json'),JSON.stringify(options,null,2));
+ const sum=options.find(option=>/^SUM.*2/i.test(option.label));assert.ok(sum,'The mapped top-level SUM bit is offered');
+ await page.getByLabel('Recorded circuit signal').selectOption(sum.value);
+ const inspectionMs=Date.now()-inspectionStart;
+ await page.screenshot({path:path.join(out,'hierarchical-recording-1440x900.png')});
+ assert.match(await tid('ide-recorded-circuit-context').innerText(),/511/);
+ const labels=await page.getByLabel('Recorded circuit signal').locator('option').allTextContents();
+ assert.ok(labels.some(label=>/u_fa0|fulladdercell0/i.test(label)) && labels.some(label=>/u_fa1|fulladdercell1/i.test(label)),'Internal names retain distinct instance identity');
+ await page.getByLabel('Close circuit investigation').click();await tid('ide-vcb-reproduce').click();await page.waitForFunction(()=>document.querySelector('[data-testid="ide-run-repetition"]')?.textContent?.includes('2 runs'));
+ assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'),initialDigest);
+ // Four executions of configuration A, then three each of two authored stimulus edits.
+ for(let i=0;i<2;i++)assert.equal((await execute(true)).outputDigest,initialDigest);
+ const configurations=[run.identity];
+ for(const inputIndex of [0,1]){
+  await tid('ide-verify-view-table').click();await page.locator('[data-testid^="ide-case-lab-input-0-"]').nth(inputIndex).click();
+  const changed=await execute();configurations.push(changed.identity);
+  for(let i=0;i<2;i++){const repeat=await execute(true);assert.deepEqual(repeat.nativeTrace,changed.nativeTrace);assert.equal(repeat.outputDigest,changed.outputDigest);}
+ }
+ console.log('All ten recordings executed; checking save, package and reopen.');
+ const retained=await archive();assert.equal(retained.length,10);assert.equal(new Set(configurations.map(identity=>identity.stimulus)).size,3);
+ const newest=await selected();const projectId=await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().projectId);
+ await save();
+ await tid('mode-button-export').click();await tid('ide-export-package-files').waitFor();
+ const [download]=await Promise.all([page.waitForEvent('download',{timeout:60000}),page.getByRole('button',{name:/^Generate.*ZIP$/}).click()]);
+ const zipPath=path.join(out,'ten-recording-package.zip');await download.saveAs(zipPath);await tid('ide-export-download-success').waitFor();
+ const packageSha256=createHash('sha256').update(fs.readFileSync(zipPath)).digest('hex');assert.equal((await tid('ide-export-package-sha256').innerText()).trim(),packageSha256);
+ const trust=await tid('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust');
+ await save();await command('project.close');
+ await page.waitForFunction(()=>{const s=window.__RB_PROJECT_RUNTIME__?.getState();return s?.projectKind==='home'&&s.circuit.nodes.length===0&&document.querySelector('[data-testid="ide-save-state"]')?.getAttribute('data-state')==='no-project';},{},{timeout:60000});
+ await tid('ide-project-landing').waitFor();await page.reload({waitUntil:'networkidle'});
+ await tid('ide-topbar-command-palette').waitFor();
+ assert.equal(await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().projectKind),'home','Reload must preserve the fully committed closed state');
+ await command('project.open');await tid('ide-load-project-'+projectId).click();await tid('mode-button-verify').click();
+ assert.deepEqual(await archive(),retained,'Close and browser reload preserve every complete record');
+ const picker=page.getByLabel('Recorded run',{exact:true});await picker.selectOption(run.runId);assert.deepEqual(await selected(),run);await picker.selectOption(newest.runId);assert.deepEqual(await selected(),newest);
+ await tid('mode-button-export').click();await tid('ide-export-package-files').waitFor();assert.equal(await tid('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust'),trust);assert.equal((await tid('ide-export-package-sha256').innerText()).trim(),packageSha256);
+ await tid('mode-button-verify').click();await picker.selectOption(run.runId);const oldestRepeat=await execute(true);
+ assert.deepEqual(oldestRepeat.nativeTrace,run.nativeTrace);assert.deepEqual(oldestRepeat.executionInput,run.executionInput);assert.deepEqual(oldestRepeat.circuitSnapshot,run.circuitSnapshot);assert.equal(oldestRepeat.outputDigest,initialDigest);assert.equal((await archive()).length,11);
+ await save();
+ const durableStorage=await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('redbyte-ide-sessions-v1');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const records=await new Promise((resolve,reject)=>{const r=db.transaction('records').objectStore('records').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();return {records:records.map(r=>({key:r.key,chars:r.value?.length??0,revision:r.revision})),estimate:await navigator.storage.estimate()};});
+ fs.writeFileSync(path.join(out,'durable-workload.json'),JSON.stringify({timings,configurations,retained:retained.map(r=>({runId:r.runId,identity:r.identity,outputDigest:r.outputDigest,ticks:r.waveform.length,checks:r.report.rows.length})),oldestRepeat:oldestRepeat.runId,packageSha256,trust,durableStorage},null,2));
+ const saveDiagnostic=await page.evaluate(()=>({state:document.querySelector('[data-testid="ide-save-state"]')?.getAttribute('data-state'),keys:Object.keys(localStorage).map(key=>({key,chars:localStorage.getItem(key)?.length??0})),body:document.body.innerText.slice(0,2200)}));
+ fs.writeFileSync(path.join(out,'save-diagnostic.json'),JSON.stringify(saveDiagnostic,null,2));
+ await page.locator('[data-testid="ide-save-state"][data-state="saved"]').waitFor();
+ await tid('mode-button-project').click();await tid('ide-project-row-doc:sources').click();assert.match(await page.locator('main').innerText(),/FullAdderCell|full_adder_cell/);
+ await page.reload({waitUntil:'networkidle'});await tid('mode-button-verify').click();assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'),initialDigest);
+ assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'result.json'),JSON.stringify({baseUrl:BASE_URL,runMs,inspectionMs,ticks:512,checks:2560,nativeSignalCount:nativeKeys.length,initialDigest,errors},null,2));
+ console.log('PASS ten 512-case recordings, three configurations, exact durable close/reopen, oldest reproduction and ZIP receipt: '+out);
+}catch(error){if(page&&!page.isClosed()){await page.screenshot({path:path.join(out,'failure.png')}).catch(()=>{});fs.writeFileSync(path.join(out,'failure.txt'),String(error)+'\n'+await page.locator('body').innerText().catch(()=>''));}throw error;}finally{await browser.close();}

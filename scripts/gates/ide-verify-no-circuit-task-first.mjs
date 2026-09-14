@@ -8,6 +8,7 @@ import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
   { label: '1440x900', width: 1440, height: 900 },
+  { label: '1280x650', width: 1280, height: 650 },
 ];
 
 const SCREENSHOT_ROOT = process.env.RB_VERIFY_NO_CIRCUIT_SCREENSHOTS_DIR
@@ -48,7 +49,7 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
       `${viewport.label}: no-circuit task panel must fit in the first viewport (bottom=${metrics.taskBox.bottom}, viewport=${viewport.height})`
     );
     assert(
-      metrics.taskText.includes('no circuit') || metrics.taskText.includes('nothing to verify'),
+      metrics.taskText.includes('no circuit') || metrics.taskText.includes('nothing to simulate'),
       `${viewport.label}: task panel must explain that there is no circuit yet (${metrics.taskText})`
     );
     assert(
@@ -68,12 +69,17 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
 
     await openDirectVerify(page, baseUrl, `${viewport.label}-starter-route`);
+    const beforeBrowse = await readProjectIdentity(page);
     await starterButton.click();
-    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+    const picker = page.locator('[data-testid="ide-project-starter-picker-modal"]');
+    await picker.waitFor({ state: 'visible', timeout: 10000 });
     assert(
-      await visible(page.locator('[data-testid="ide-project-command-center"]').first()),
-      `${viewport.label}: Load starter must route to Project command center`
+      await visible(picker.locator('[data-testid="ide-project-examples-browser"]')),
+      `${viewport.label}: Load starter must open the existing starter picker`
     );
+    assert(await readProjectIdentity(page) === beforeBrowse, 'Browsing starters must not replace current work');
+    await page.locator('[data-testid="ide-project-starter-picker-close"]').click();
+    await picker.waitFor({ state: 'hidden' });
 
     await openDirectVerify(page, baseUrl, `${viewport.label}-import-route`);
     await importButton.click();
@@ -99,6 +105,13 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
     `Verify no-circuit task-first gate emitted console/page errors: ${JSON.stringify(findings.slice(0, 8))}`
   );
 });
+
+async function readProjectIdentity(page) {
+  return page.evaluate(() => {
+    const state = window.__RB_PROJECT_RUNTIME__.getState();
+    return JSON.stringify({ projectId: state.projectId, circuit: state.circuit });
+  });
+}
 
 async function openDirectVerify(page, baseUrl, label) {
   await page.goto(`${baseUrl}/?mode=verify&e2e=1&gate=verify-no-circuit-task-first-${label}`, {

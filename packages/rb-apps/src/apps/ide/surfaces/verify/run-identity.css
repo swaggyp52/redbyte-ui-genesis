@@ -1,0 +1,24 @@
+/* Recording context rests below execution. Full identities have one disclosure. */
+.rb-run-identity { min-width: 0; border-top: 1px solid var(--wb-border); color: var(--wb-text); padding: 5px 12px; font-size: var(--wb-text-sm); background: var(--wb-surface-2); }
+.rb-run-identity__status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.rb-run-identity__label { font-weight: 650; }
+.rb-run-identity__status > span { color: var(--wb-text-2); }
+.rb-run-identity__status > [data-check-status='fail'] { color: var(--wb-err); }
+.rb-run-identity__status > [data-check-status='pass'] { color: var(--wb-ok); }
+.rb-run-identity__status label { margin-left: auto; display: inline-flex; align-items: center; justify-content: flex-end; flex: 1 1 12rem; gap: 6px; min-width: 0; }
+.rb-run-identity select { min-width: 0; flex: 0 1 auto; max-width: min(100%, 21rem); color: var(--wb-text); background: var(--wb-surface); border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); padding: 3px; font: inherit; }
+.rb-run-identity__equation { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 10px 0; }
+.rb-run-identity__term { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.rb-run-identity code { overflow-wrap: anywhere; color: inherit; }
+.rb-run-identity__term > span { color: var(--wb-text-2); }
+.rb-run-identity__changes { margin: 5px 0 0; color: var(--wb-warn-text); }
+.rb-run-identity__alarm { margin-top: 6px; border-left: 3px solid var(--wb-err); padding: 6px 10px; color: var(--wb-err); background: var(--wb-err-bg); }
+.rb-run-identity__details { min-width: 0; }
+.rb-run-identity__details[open] { flex-basis: 100%; }
+.rb-run-identity__details summary { cursor: pointer; color: var(--wb-text-2); padding: 3px 0; }
+.rb-run-identity__details summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+.rb-run-identity__details dl { margin: 10px 0; }
+.rb-run-identity__details dl > div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 8px; }
+.rb-run-identity__details dd { margin: 0; }
+.rb-run-identity__details ol { padding-left: 1.5rem; max-height: 12rem; overflow-y: auto; }
+.rb-run-identity__details button, .rb-run-identity__alarm button { border: 0; background: none; padding: 4px; color: var(--wb-accent); text-decoration: underline; font: inherit; cursor: pointer; }

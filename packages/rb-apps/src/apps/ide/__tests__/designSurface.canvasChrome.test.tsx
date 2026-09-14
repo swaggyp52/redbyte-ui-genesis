@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 const BASE_CIRCUIT: Circuit = {
@@ -14,6 +15,7 @@ const BASE_CIRCUIT: Circuit = {
     {
       id: 'sw0_node',
       type: 'INPUT',
+      label: 'SW0',
       position: { x: 0, y: 0 },
       rotation: 0,
       config: {},
@@ -40,6 +42,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 6,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -138,6 +141,7 @@ beforeEach(() => {
     future: [],
   });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -150,15 +154,19 @@ beforeEach(() => {
 });
 
 describe('DesignSurface Unified Workbench v3 chrome', () => {
-  it('keeps the first look to one toolbar row, semantic status, and stable inspector facts', () => {
+  it('keeps the first look to one toolbar row, semantic status, and selection-owned inspector facts', () => {
     const view = renderSurface();
 
     expect(view.queryByText('Circuit Designer')).toBeNull();
     expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Circuit');
-    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Ready for Verify');
-    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Ready for Verify');
-    expect(view.getByTestId('ide-design-inspector-idle-nodes').textContent).toBe('2');
-    expect(view.getByTestId('ide-design-inspector-idle-inputs').textContent).toBe('1');
+    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('0 errors');
+    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Clean');
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
+    expect(view.container.querySelectorAll('[data-node-id]')).toHaveLength(2);
+    act(() => useLogicViewStore.getState().selectNode('sw0_node'));
+    expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toBe('SW0');
+    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Input');
+    expect(view.getByTestId('ide-design-selection-id').textContent).toBe('SW0');
     expect(view.getByTestId('ide-design-canvas-wrap').getAttribute('data-work-object')).toBe('circuit');
     expect(view.queryByTestId('ide-design-canvas-stat-nodes')).toBeNull();
     expect(view.queryByTestId('ide-design-canvas-stat-wires')).toBeNull();
@@ -170,21 +178,22 @@ describe('DesignSurface Unified Workbench v3 chrome', () => {
   it('keeps direct view controls stable without a reveal toggle or disclosure', () => {
     const view = renderSurface();
 
-    const tray = view.getByTestId('ide-design-canvas-view-tools');
+    const tray = view.getByTestId('ide-design-toolbar');
     const toolbar = view.getByTestId('ide-design-toolbar');
     const liveCanvas = view.getByTestId('ide-design-live-canvas');
-    expect(tray.getAttribute('data-open')).toBe('true');
     expect(toolbar.contains(tray)).toBe(true);
     expect(liveCanvas.contains(tray)).toBe(false);
-    expect(tray.contains(view.getByTestId('ide-design-canvas-controls'))).toBe(true);
+    expect(tray.contains(view.getByTestId('ide-design-fit-circuit-canvas'))).toBe(true);
+    expect(tray.contains(view.getByTestId('ide-design-center-selection-canvas'))).toBe(true);
     expect(tray.contains(view.getByTestId('ide-design-zoom-out'))).toBe(true);
     expect(tray.contains(view.getByTestId('ide-design-zoom-in'))).toBe(true);
-    expect(tray.contains(view.getByTestId('ide-design-zoom-reset'))).toBe(true);
-    expect(tray.textContent).toContain('zoom');
+    expect(tray.contains(view.getByTestId('ide-design-zoom-readout'))).toBe(true);
+    expect(view.getByTestId('ide-design-zoom-in').closest('details')).toBeNull();
+    expect(view.getByTestId('ide-design-fit-circuit-canvas').closest('details')).toBeNull();
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.queryByTestId('ide-design-view-tools-toggle')).toBeNull();
     expect(view.queryByTestId('ide-design-fit-circuit-primary')).toBeNull();
-    expect(view.container.querySelector('details')).toBeNull();
+    expect(view.getByTestId('ide-design-toolbar-overflow').textContent).toContain('View');
   });
 
   it('surfaces verify focus inside the simulation strip instead of the toolbar band', () => {

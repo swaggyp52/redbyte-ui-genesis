@@ -120,6 +120,8 @@ export interface ProjectSurfaceProps {
   }>;
   onOpenSavedProjects?: () => void;
   onOpenRecentProject?: (projectId: string) => void;
+  /** Delete one saved project from this browser, offered on Start behind a confirmation. */
+  onRemoveRecentProject?: (projectId: string) => void;
   /** Read-only look at a saved project for the Start Center preview; never loads it. */
   peekRecentProject?: (projectId: string) => StartCenterPeek | null;
   /** Recovery snapshot state for the Start Center's Recover section. */
@@ -127,6 +129,8 @@ export interface ProjectSurfaceProps {
   /** Whether the newest run still describes the present design; the Runs document marks it current or stale. */
   latestRunIsCurrent?: boolean | null;
   runHistory?: VerifyRunLedgerEntry[];
+  availableRunIds?: readonly string[];
+  onOpenRecording?: (run: VerifyRunLedgerEntry) => void;
   /** First-class source/fileset authority (imported HDL, constraints, scripts). */
   sourceModel?: ProjectSourceModel;
   /** Live source ↔ visual cross-probe (derived read-model). */
@@ -186,7 +190,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   latestRunIsCurrent = null,
   onOpenSavedProjects,
   onOpenRecentProject,
+  onRemoveRecentProject,
   runHistory = [],
+  availableRunIds = [], onOpenRecording,
   sourceModel,
   crossProbe,
   fpgaConfig,
@@ -207,6 +213,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 }) => {
 
   const selected = useEngineeringSelection((state) => state.selected);
+  const selectionOrigin = useEngineeringSelection((state) => state.origin);
   const selectRef = useEngineeringSelection((state) => state.select);
   const clearSelection = useEngineeringSelection((state) => state.clear);
 
@@ -417,6 +424,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               onOpenExample={onOpenExample}
               onStartGuidedLab={onStartGuidedLab}
               onOpenRecentProject={onOpenRecentProject}
+              onRemoveRecentProject={onRemoveRecentProject}
               onOpenSavedProjects={onOpenSavedProjects}
               onOpenImport={onOpenImport}
               onStartBlankProject={handleStartBlankProject}
@@ -453,6 +461,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         return (
           <ProjectRunsDocument
             runs={runHistory ?? []}
+            availableRunIds={availableRunIds}
+            onOpenRecording={onOpenRecording}
             problems={problems}
             scenarios={scenarios ?? []}
             activeScenarioId={activeScenarioId ?? null}
@@ -554,7 +564,14 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       onClose={clearSelection}
     />
   );
-  const inspectorHasContent = Boolean(selected) && inspectorSupports(selected);
+  const projectSelection = selectionOrigin != null &&
+    ['explorer', 'project-overview', 'sources', 'source-file', 'architecture', 'runs', 'compile-order'].includes(selectionOrigin);
+  const inspectorHasContent = projectSelection && Boolean(selected) && inspectorSupports(selected) && (
+    document?.kind === 'runs' ? selected?.kind === 'run' :
+    document?.kind === 'sources' || document?.kind === 'compile-order' || document?.kind === 'source-file'
+      ? selected?.kind === 'source-range' || selected?.kind === 'artifact' || selected?.kind === 'module'
+      : selected?.kind !== 'run'
+  );
 
   return (
     <IdeSurfaceLayout

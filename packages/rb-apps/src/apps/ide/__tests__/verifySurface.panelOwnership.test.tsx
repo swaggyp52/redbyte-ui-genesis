@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, fireEvent } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
+import { workspacePreferencesStore } from '../workspacePreferences';
+
+beforeEach(() => workspacePreferencesStore.reset());
 
 const BASE_PROPS = {
   hasVectors: true,
@@ -92,25 +95,28 @@ describe('VerifySurface panel ownership', () => {
     );
 
     expect(queryByTestId('ide-verify-analysis-tab-nav')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     expect(getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
   });
 
-  it('keeps the signal legend visible in the integrated workbench shelf', () => {
+  it('recovers the signal legend explicitly when the effective viewport is narrow', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    fireEvent.click(getByTestId('ide-show-left-dock'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
-  it('does not require a toggle to expose the signal legend', () => {
+  it('keeps the signal legend available after a passing recording', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
 
+    fireEvent.click(getByTestId('ide-show-left-dock'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
@@ -121,6 +127,7 @@ describe('VerifySurface panel ownership', () => {
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
+    fireEvent.click(getByTestId('ide-show-left-dock'));
     const inputSignal = getByTestId('ide-verify-signal-sw0');
 
     expect(inputSignal).toHaveAttribute('aria-pressed', 'false');

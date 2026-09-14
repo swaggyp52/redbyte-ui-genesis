@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { workspacePreferencesStore, type BoardLayerId } from '../workspacePreferences';
+import { createRecordedPortResolver } from './verify/recordedCircuitGeometry';
 import {
   BOARD_CAMERA_ZOOM_STEP,
   boardCameraDensity,
@@ -98,11 +99,6 @@ export const CHROME_CONTRACT = {
   exitPaths: [
     {
       fromMode: 'bringup',
-      label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
-      testId: 'ide-hw-mode-exit-back',
-    },
-    {
-      fromMode: 'proof',
       label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
       testId: 'ide-hw-mode-exit-back',
     },
@@ -434,7 +430,12 @@ interface AssertionEntry {
   hasData: boolean;
 }
 
-type HwMode = 'live' | 'bringup' | 'proof' | 'map';
+/* Pre-flight was a fourth mode: a confidence checklist, an ASSERT / COMPARE / EXPORT / SCENARIO
+   slab and the Vivado program-handoff prose - every line of it Package's trust state and its
+   "Next in Vivado" said again on the Board, in an OS-era stage banner. Board keeps the mapping
+   surface, the bench check (expected switch and LED states per case, for the board in hand) and
+   the recorded projection; the handoff is Package's. */
+type HwMode = 'live' | 'bringup' | 'map';
 
 function resolveInitialHardwareMode(input: {
   mappingRows: HardwareMappingRow[];
@@ -1597,60 +1598,53 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     failureTruth.condition === 'ready'
       ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are not proven in RedByte and must be captured as external E1/E2/E3 evidence.'
       : failureTruthMessage;
-  const mappingReadyFollowUp = useMemo(() => {
+  /* Once every required signal is mapped the next step is Build & Export - but what Build & Export
+     will offer depends on the evidence, and the Board says which rather than sending a reader to
+     find out. "Draft" and "checked" are Package's own words for its two trust states, so the two
+     surfaces describe the same package the same way. */
+  const mappingReadyNext = useMemo<{ headline: string; reason: string | null }>(() => {
     switch (failureTruth.condition) {
-      case 'design-blocked':
+      case 'ready':
+        return { headline: 'Inspect the checked package in Build & Export', reason: null };
+      case 'export-missing':
         return {
-          commandStrip:
-            'Pin mapping is complete, but the circuit still has a Design blocker. Repair Design before relying on Hardware or Export.',
-          headerHint: 'Mapping complete - Design repair required before Export.',
+          headline: 'Generate the checked package in Build & Export',
+          reason: 'The current recording passes its checks.',
+        };
+      case 'export-stale':
+        return {
+          headline: 'Regenerate the package in Build & Export',
+          reason: 'The last generated package predates the current design.',
         };
       case 'verify-not-run':
         return {
-          commandStrip:
-            'Pin mapping is complete. Open Simulate to create current evidence before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — open Simulate to create trusted export evidence.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'No run is recorded for this design yet. Run a scenario in Simulate for a checked package.',
         };
       case 'verify-stale':
         return {
-          commandStrip:
-            'Pin mapping is complete, but Verify evidence is stale. Re-run Verify before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — Verify evidence is stale. Open Simulate to refresh before export.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The recorded run is stale. Rerun it in Simulate for a checked package.',
         };
       case 'trace-only':
         return {
-          commandStrip:
-            'Pin mapping is complete. Run Compare in Verify to create current evidence before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — run Compare checks in Verify for trusted export evidence.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The recording has no checks. Add optional expected values and rerun in Simulate for a checked package.',
         };
       case 'assertions-differ':
         return {
-          commandStrip:
-            'Pin mapping is complete, but the latest Compare run differs. Open Simulate to inspect the mismatch before you rely on Hardware or Export.',
-          headerHint:
-            'Mapping complete — latest Compare run differs. Open Simulate to inspect the mismatch before export.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The current recording has failed checks. Inspect the mismatch in Simulate.',
         };
       case 'mapping-review':
         return {
-          commandStrip:
-            'Pin mapping is complete, but the last passing comparison used incomplete mapping. Re-run Compare in Verify so the evidence matches the current board bindings.',
-          headerHint:
-            'Mapping complete — rerun Compare in Verify so the evidence matches the current mapping.',
-        };
-      case 'ready':
-        return {
-          commandStrip:
-            'E0 only: pin mapping, Verify Compare, and Export are current. RedByte does not prove Vivado build, bitstream programming, or board observation; E1/E2/E3 remain external.',
-          headerHint:
-            'Mapping complete - E0 export package is current; E1/E2/E3 proof stays external.',
+          headline: 'Build & Export offers a draft package',
+          reason: 'The last passing recording used a different mapping. Rerun in Simulate for a checked package.',
         };
       default:
-        return {
-          commandStrip: failureTruthMessage,
-          headerHint: `Mapping complete — ${failureTruthPrimaryCtaLabel.toLowerCase()} to continue.`,
-        };
+        return { headline: 'Inspect the package in Build & Export', reason: null };
     }
-  }, [failureTruth.condition, failureTruthMessage, failureTruthPrimaryCtaLabel]);
+  }, [failureTruth.condition]);
   const dominantPrimaryAction = useMemo(() => {
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
@@ -1666,7 +1660,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'verify':
         return onOpenVerify;
       case 'program-handoff':
-        return () => setHwMode('proof');
+        return onOpenExport;
       default:
         return () => {};
     }
@@ -1806,8 +1800,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         primaryLabel: 'Generate Bring-Up Steps',
         primaryAction: onGenerateBringUpVectors,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: 'Open Pre-flight',
-        secondaryAction: () => setHwMode('proof'),
+        secondaryLabel: OPEN_BUILD_EXPORT_LABEL,
+        secondaryAction: onOpenExport,
       };
     }
 
@@ -1824,10 +1818,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
 
     return {
-      title: 'Follow the board check steps, then review pre-flight',
-      body: 'Once the guided checks match, open Pre-flight for E0 handoff notes and downstream Vivado steps.',
-      primaryLabel: 'Open Pre-flight',
-      primaryAction: () => setHwMode('proof'),
+      title: 'Follow the board check steps, then build the package',
+      body: 'Once the checks match at the board, Build & Export carries the handoff notes and the Vivado steps.',
+      primaryLabel: OPEN_BUILD_EXPORT_LABEL,
+      primaryAction: onOpenExport,
       primaryTestId: 'ide-hardware-next-primary',
       secondaryLabel: 'Simulation',
       secondaryAction: () => setHwMode('live'),
@@ -1858,6 +1852,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     onGoToProject,
   ]);
 
+  const recordedMappingRows = useMemo(() => verifyLastRun?.executionInput?.ioRows.map(row => ({
+    ...row, pin: row.pin ?? '', required: row.required ?? true,
+  })) ?? mappingRows, [verifyLastRun, mappingRows]);
+  const recordedPortSignal = useMemo(() => createRecordedPortResolver(
+    verifyLastRun?.circuitSnapshot, verifyLastRun?.waveform ?? [],
+  ), [verifyLastRun]);
   // ── Bring-Up: group expectedIoRows by tick ──────────────────────────
   const bringupTickGroups = useMemo(() => {
     const map = new Map<number, Array<{ signal: string; expected: string }>>();
@@ -1889,45 +1889,25 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     },
     [ioBus.meta.ldNodeIds, relationshipIndex]
   );
-  const mismatchedLd = useMemo<boolean[]>(() => {
-    if (hwMode !== 'bringup' || bringupTickGroups.length === 0)
-      return Array(16).fill(false);
-    const currentGroup = bringupTickGroups[bringupStepIndex];
-    if (!currentGroup) return Array(16).fill(false);
-    const [, signals] = currentGroup;
-    return Array.from({ length: 16 }, (_, i) => {
-      const sig = signals.find((s) => ledIndexForSignal(s.signal) === i);
-      if (!sig) return false;
-      return sig.expected !== String(ioBus.state.ld[i]);
-    });
-  }, [hwMode, bringupTickGroups, bringupStepIndex, ioBus.state.ld, ledIndexForSignal]);
-
-  const bringupStepPass = useMemo(
-    () => mismatchedLd.every((v) => !v),
-    [mismatchedLd]
-  );
-
-  // ── Bring-Up inspector: actual vs expected rows ─────────────────────
-  const bringupStepRows = useMemo(() => {
+  const bringupObservations = useMemo(() => {
     const group = bringupTickGroups[bringupStepIndex];
     if (!group) return [];
-    const [, signals] = group;
-    return signals.map((s) => {
-      const ldMatch = s.signal.match(/ld\[?(\d+)\]?/i);
-      const rawActual = ldMatch ? String(ioBus.state.ld[Number(ldMatch[1])] ?? '—') : '—';
-      const pass = rawActual === s.expected;
-      const expectedWord = s.expected === '1' ? 'ON' : 'OFF';
-      const actualWord = rawActual === '—' ? '—' : rawActual === '1' ? 'ON' : 'OFF';
-      return [
-        signalHumanLabel(s.signal),
-        expectedWord,
-        actualWord,
-        <IdeStatusPill key={`${s.signal}-pill`} tone={pass ? 'ok' : 'error'}>
-          {pass ? 'MATCH' : 'DIFFER'}
-        </IdeStatusPill>,
-      ];
+    const sample = verifyLastRun?.waveform.find(entry => entry.tick === group[0]);
+    return group[1].map(reference => {
+      const matches = recordedMappingRows.filter(row => [row.id, row.label, row.nodeId ?? '']
+        .some(name => normalizeIoSignalKey(name) === normalizeIoSignalKey(reference.signal)));
+      const row = matches.length === 1 ? matches[0] : undefined;
+      const signal = row?.nodeId ? recordedPortSignal(row.nodeId, row.port || 'in') : null;
+      const actual = sample && signal ? sample.signals[signal] ?? 'unrecorded' : 'unrecorded';
+      return { ...reference, actual, resource: row ? boardResourceForRow(row) : null };
     });
-  }, [bringupTickGroups, bringupStepIndex, ioBus.state.ld]);
+  }, [bringupTickGroups, bringupStepIndex, verifyLastRun, recordedMappingRows, recordedPortSignal]);
+  const mismatchedLd = useMemo(() => Array.from({ length: 16 }, (_, index) => hwMode === 'bringup' &&
+    bringupObservations.some(row => row.resource?.kind === 'ld' && row.resource.index === index && row.actual !== 'unrecorded' && row.actual !== row.expected)), [hwMode, bringupObservations]);
+  const bringupStepHasSamples = bringupObservations.length > 0 && bringupObservations.every(row => row.actual !== 'unrecorded');
+  const bringupStepPass = bringupStepHasSamples && bringupObservations.every(row => row.actual === row.expected);
+  const bringupStepRows = bringupObservations.map(row => [signalHumanLabel(row.signal), row.expected, row.actual,
+    row.actual === 'unrecorded' ? 'Unrecorded' : row.actual === row.expected ? 'Match' : 'Differ']);
 
   // ── Live: signal event log from sim trace ───────────────────────────
   const nodeKeyToMeta = useMemo(() => {
@@ -1991,7 +1971,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     Math.max(0, simulatedBoardTrace.length - 1)
   );
   const selectedSimulatedBoardSample =
-    simulatedBoardTrace[boundedSimulatedBoardTraceIndex] ?? null;
+    (hwMode === 'bringup' ? simulatedBoardTrace.find(sample => sample.tick === bringupTickGroups[bringupStepIndex]?.[0]) :
+      simulatedBoardTrace[boundedSimulatedBoardTraceIndex]) ?? null;
   const selectBoardSample = (index: number) => {
     setSimulatedBoardTraceIndex(index);
     const sample = simulatedBoardTrace[index];
@@ -2008,27 +1989,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ld: Array.from({ length: 16 }, () => null),
       btn: Array.from({ length: 5 }, () => null),
     };
-    if (isRecordedBoardPreview && boardValuesStale) return next;
+
     if (!isRecordedBoardPreview && simulatedBoardTrace.length === 0) return ioBus.state;
     if (!selectedSimulatedBoardSample) return next;
     const signalEntries = Object.entries(selectedSimulatedBoardSample.signals);
-    for (const row of mappingRows) {
-      const lookupKeys = new Set(
-        [
-          ...getIoSignalLookupKeys(row, mappingRows),
-          row.id,
-          row.label,
-          row.nodeId,
-          row.nodeId ? `${row.nodeId}.out` : '',
-          row.nodeId ? `${row.nodeId}.in` : '',
-        ]
-          .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
-          .map(normalizeIoSignalKey)
-      );
-      const matched = signalEntries.find(([key]) => lookupKeys.has(normalizeIoSignalKey(key)));
-      if (!matched) continue;
+    for (const row of isRecordedBoardPreview ? recordedMappingRows : mappingRows) {
+      const key = row.nodeId ? recordedPortSignal(row.nodeId, row.port || (row.direction === 'in' ? 'out' : 'in')) : null;
+      // Legacy recordings without topology can resolve only a unique exact saved field.
+      const matches = !verifyLastRun?.circuitSnapshot ? signalEntries.filter(([name]) =>
+        getIoSignalLookupKeys(row, recordedMappingRows).includes(name)) : [];
+      const value = key ? selectedSimulatedBoardSample.signals[key] : matches.length === 1 ? matches[0][1] : undefined;
       const resource = boardResourceForRow(row);
-      if (resource) next[resource.kind][resource.index] = matched[1];
+      if (resource && value !== undefined) next[resource.kind][resource.index] = value;
     }
     return next;
   }, [
@@ -2039,9 +2011,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     selectedSimulatedBoardSample,
     isRecordedBoardPreview,
     simulatedBoardTrace.length,
-    boardValuesStale,
+    recordedMappingRows,
+    recordedPortSignal,
+    verifyLastRun?.circuitSnapshot,
   ]);
-  const displayedBoardState = hwMode === 'live' ? simulatedBoardState : ioBus.state;
+  const displayedBoardState = hwMode === 'live' || hwMode === 'bringup' ? simulatedBoardState : ioBus.state;
   // The resources the recorded projection covers: exactly the mapping rows that fill it. A
   // covered resource without a value is a missing sample; an uncovered one is simply unused.
   const recordedResources = useMemo(() => {
@@ -2238,10 +2212,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     hwMode === 'map'
       ? 'Board & Constraints'
       : hwMode === 'bringup'
-        ? 'Stage 2 · Board Check'
-        : hwMode === 'proof'
-          ? 'Stage 3 · Pre-flight'
-          : 'Stage 4 · Simulation';
+        ? 'Board Check'
+        : 'Simulated board';
 
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
@@ -2306,7 +2278,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>
         <div className="ide-kv-row">
           <span>{isRecordedBoardPreview ? 'Selected run tick' : 'Exploration tick'}</span>
-          <code data-testid="ide-hw-simulated-board-tick">{selectedBoardTick ?? 'Not recorded'}</code>
+          <code data-testid="ide-hw-simulated-board-tick">{selectedBoardTick ?? 'unrecorded'}</code>
         </div>
         <div className="ide-kv-row">
           <span>Mapped I/O</span>
@@ -2435,20 +2407,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const bringupDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--bringup" testId="ide-hw-bringup-dock">
-      <header className="ide-workbench-placeholder-header">
-        <h3>Board Check</h3>
-        <IdeStatusPill
-          tone={
-            bringupTickGroups.length === 0
-              ? 'warn'
-              : bringupStepPass
-                ? 'ok'
-                : 'error'
-          }
-        >
-          {bringupTickGroups.length === 0 ? 'No vectors' : bringupStepPass ? 'MATCH' : 'DIFFER'}
-        </IdeStatusPill>
-      </header>
+      <p className="rb-board-check-verdict" data-testid="ide-hw-bringup-verdict">
+        {bringupTickGroups.length === 0 ? 'No check steps' : !bringupStepHasSamples ? 'This step is unrecorded' : bringupStepPass ? 'Recorded outputs match this reference step' : 'Recorded outputs differ from this reference step'}
+      </p>
       {hasAssertionData && (
         <div className="ide-hw-assert-summary" data-testid="ide-hw-assert-summary">
           <span className={assertionFailCount > 0 ? 'ide-hw-assert-fail-count' : 'ide-hw-assert-pass-count'}>
@@ -2471,35 +2432,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </IdeCallout>
       ) : (
         <div className="ide-hw-bringup-step" data-testid="ide-hw-bringup-step">
-          <div className="ide-hw-step-header">
-            <span className="ide-hw-step-counter">
-              Step {bringupStepIndex + 1} of {bringupTickGroups.length}
-            </span>
-            {currentTick !== undefined && (
-              <code className="ide-hw-step-tick">t{currentTick}</code>
-            )}
-          </div>
-          {(() => {
-            const swSignals = (bringupTickGroups[bringupStepIndex]?.[1] ?? []).filter(s => /sw/i.test(s.signal));
-            if (swSignals.length === 0) return null;
-            const instructions = swSignals.map(s => {
-              const label = signalHumanLabel(s.signal);
-              return s.expected === '1' ? `turn ${label} ON` : `turn ${label} OFF`;
-            });
-            const text = instructions.length === 1
-              ? instructions[0].charAt(0).toUpperCase() + instructions[0].slice(1)
-              : `${instructions.slice(0, -1).join(', ')}, then ${instructions[instructions.length - 1]}`;
-            return (
-              <p className="ide-hw-step-instruction" data-testid="ide-hw-step-instruction">
-                {text}
-              </p>
-            );
-          })()}
-          <IdeDataTable
-            columns={['Signal', 'Expected']}
-            rows={bringupDockRows}
-            testId="ide-hw-bringup-step-table"
-          />
           <div className="ide-hw-step-nav">
             <IdeButton
               tone="ghost"
@@ -2522,90 +2454,36 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               Next →
             </IdeButton>
           </div>
-        </div>
-      )}
-    </SurfacePanel>
-  );
-
-  const confidencePassCount = confidenceChecks.filter((c) => c.pass).length;
-  const proofDock = (
-    <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--proof" testId="ide-hw-proof-dock">
-      <header className="ide-workbench-placeholder-header">
-        <h3>Pre-flight</h3>
-        <IdeStatusPill tone={confidenceScore === 100 ? 'ok' : confidenceScore >= 60 ? 'warn' : 'error'}>
-          {confidencePassCount}/{confidenceChecks.length}
-        </IdeStatusPill>
-      </header>
-      <div className="ide-hw-confidence-list" data-testid="ide-hw-confidence-list">
-        {confidenceChecks.map((check) => (
-          <div key={check.label} className={`ide-hw-confidence-row ${check.pass ? 'is-pass' : 'is-pending'}`}>
-            <span className="ide-hw-confidence-icon">{check.pass ? '✓' : '○'}</span>
-            <span className="ide-hw-confidence-label">{check.label}</span>
+          <div className="ide-hw-step-header">
+            <span className="ide-hw-step-counter">
+              Step {bringupStepIndex + 1} of {bringupTickGroups.length}
+            </span>
+            {currentTick !== undefined && (
+              <code className="ide-hw-step-tick">t{currentTick}</code>
+            )}
           </div>
-        ))}
-      </div>
-      <div className="ide-hw-cert-slab" data-testid="ide-hw-cert-slab">
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">ASSERT</span>
-          <code className="ide-hw-cert-val">{hasAssertionData ? `${assertionPassCount}P ${assertionFailCount}F` : '—'}</code>
-        </div>
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">COMPARE</span>
-          <code className="ide-hw-cert-val">{verifyStatus}</code>
-        </div>
-        <div className="ide-hw-cert-row">
-          <span className="ide-hw-cert-key">EXPORT</span>
-          <code className="ide-hw-cert-val">{exportStatus}</code>
-        </div>
-        <div className="ide-hw-cert-row" data-testid="ide-hardware-cert-scenario">
-          <span className="ide-hw-cert-key">SCENARIO</span>
-          <code className={`ide-hw-cert-val ${scenarioDrifted ? 'ide-hw-cert-val--warn' : ''}`}>
-            {verifyLastRun?.scenarioName ?? '—'}
-            {scenarioDrifted ? ' [drift]' : ''}
-          </code>
-        </div>
-      </div>
-      <div className="ide-inline-actions">
-        {failureTruth.condition === 'ready' ? (
-          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
-            {OPEN_BUILD_EXPORT_LABEL}
-          </IdeButton>
-        ) : (
-          <IdeButton tone="primary" onClick={dominantPrimaryAction} testId="ide-hardware-build-export">
-            {failureTruthPrimaryCtaLabel}
-          </IdeButton>
-        )}
-      </div>
-      {failureTruth.condition === 'ready' && (
-        <div className="ide-hw-program-handoff" data-testid="ide-hardware-program-handoff-cta">
-          <p className="ide-copy">
-            The RedByte download is a <strong>Vivado project ZIP</strong> — it does <strong>not</strong> include a bitstream.
-            In Vivado, open the project, run <strong>Generate Bitstream</strong>, then open{' '}
-            <strong>Hardware Manager</strong>, add the generated <code>.bit</code> from the run folder, and use{' '}
-            <strong>Program Device</strong> to flash the Basys3.
-          </p>
-          <p
-            className="ide-copy"
-            data-testid="ide-hardware-submission-hint"
-            style={{ marginTop: 'var(--ide-space-2)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)' }}
-          >
-            <strong>Typical lab hand-in</strong> (follow your rubric): the <strong>export ZIP</strong> from RedByte, plus
-            what your course requires — often a <strong>passing Verify</strong> run and a{' '}
-            <strong>working bitstream from Vivado</strong>, not RedByte export alone.
-          </p>
+          {(() => {
+            const inputs = currentTick == null ? undefined : verifyLastRun?.report.inputsAtTick[currentTick];
+            return <div data-testid="ide-hw-step-instruction">
+              <p>Saved browser stimulus at t{currentTick}. Physical board behavior has not been observed.</p>
+              {inputs ? <BoardCheckTable columns={['Input', 'Resource', 'Value']} rows={Object.entries(inputs).map(([key, value]) => {
+                const row = recordedMappingRows.find(row => row.id === key || row.label === key);
+                return [row?.label ?? key, row?.pin ? resolveBoardControlAlias(row.pin) ?? row.pin : 'Unmapped', String(value)];
+              })} testId="ide-hw-bringup-stimulus-table" /> : <p>Stimulus for this step is unrecorded.</p>}
+            </div>;
+          })()}
+          <BoardCheckTable
+            columns={['Signal', 'Expected', 'Recorded']}
+            rows={bringupObservations.map(row => [signalHumanLabel(row.signal), row.expected, row.actual])}
+            testId="ide-hw-bringup-step-table"
+          />
+
         </div>
       )}
     </SurfacePanel>
   );
 
-  const activeDock =
-    hwMode === 'map'
-      ? mapDock
-      : hwMode === 'live'
-        ? liveDock
-        : hwMode === 'bringup'
-          ? bringupDock
-          : proofDock;
+  const activeDock = hwMode === 'map' ? mapDock : hwMode === 'live' ? liveDock : bringupDock;
 
   // ── Inspector nodes ─────────────────────────────────────────────────
   const liveInspector = (
@@ -2891,12 +2769,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       recordedResources.btn.forEach((on, index) => { if (on) covered.add(BOARD_BUTTON_ALIASES[index]); });
       recordedResources.ld.forEach((on, index) => { if (on) covered.add(`LD${index}`); });
       return [
-      ...Array.from({ length: 16 }, (_, index) => [`SW${index}`, String(displayedBoardState.sw[index] ?? 'Not recorded')]),
+      ...Array.from({ length: 16 }, (_, index) => [`SW${index}`, String(displayedBoardState.sw[index] ?? 'unrecorded')]),
       ...Array.from({ length: 5 }, (_, index) => [
         BOARD_BUTTON_ALIASES[index],
-        String(displayedBoardState.btn[index] ?? 'Not recorded'),
+        String(displayedBoardState.btn[index] ?? 'unrecorded'),
       ]),
-      ...Array.from({ length: 16 }, (_, index) => [`LD${index}`, String(displayedBoardState.ld[index] ?? 'Not recorded')]),
+      ...Array.from({ length: 16 }, (_, index) => [`LD${index}`, String(displayedBoardState.ld[index] ?? 'unrecorded')]),
       ].filter(([alias]) => !isRecordedBoardPreview || covered.has(alias));
     },
     [displayedBoardState, recordedResources, isRecordedBoardPreview]
@@ -3085,8 +2963,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="hardware"
       layoutIntent="workbench"
-      leftDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
-      rightDockMode={hwMode === 'map' ? 'hidden' : 'collapsed'}
+      leftDockMode={hwMode === 'live' ? 'collapsed' : 'hidden'}
+      rightDockMode={hwMode === 'live' ? 'collapsed' : 'hidden'}
       rightDockCanCollapse
       // Always present, never conditional: a panel that exists only while a project happens to
       // have problems takes its own strip away with it, and leaves the status bar's problems count
@@ -3114,13 +2992,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             ? failureTruthMessage
             : `${mappingAttentionCount} required mapping issue${mappingAttentionCount === 1 ? '' : 's'} still need attention.`,
       }}
-      dock={hwMode === 'map' ? null : activeDock}
+      dock={hwMode === 'live' ? activeDock : null}
       inspector={
-        hwMode === 'map' ? null : <>
+        hwMode !== 'live' ? null : <>
           {hwMode !== 'map' && (
             <IdeInspectorSection title={hwMode === 'live' ? simulatedBoardSourceLabel : 'Exploration I/O state'} defaultOpen>
               {hwMode === 'live' && <p className="ide-copy" data-testid="ide-hardware-state-source">
-                {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Stale recording; values unavailable for current mapping' : ''}` : 'Browser exploration · no recorded run'}
+                {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Retained recording and saved mappings; current inputs changed' : ''}` : 'Browser exploration · no recorded run'}
               </p>}
               <IdeDataTable
                 columns={['Signal', 'Value']}
@@ -3142,10 +3020,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeStatusPill>
         )}
         testId="ide-hardware-panel"
-        className={hasNoBoundaryRows ? 'ide-hardware-panel--no-signals' : undefined}
+        className={hwMode === 'bringup' ? 'rb-board-check-panel' : hasNoBoundaryRows ? 'ide-hardware-panel--no-signals' : undefined}
       >
         <div className="ide-surface-command-stack">
-          {showHardwareCommandStrip ? (
+          {showHardwareCommandStrip && hwMode !== 'bringup' ? (
             <SurfaceCommandStrip
               className="ide-hardware-command-strip"
               testId="ide-hardware-command-strip"
@@ -3204,9 +3082,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <span className="ide-hw-mode-exit-hint" data-testid="ide-hw-mode-exit-hint">
               {hwMode === 'bringup'
                 ? 'Board Check active — press Esc or click Back to return to Board & Constraints.'
-                : hwMode === 'proof'
-                  ? 'Pre-flight active — press Esc or click Back to return to Board & Constraints.'
-                  : 'Simulation active — press Esc or click Back to return to Board & Constraints.'}
+                : 'Simulation active — press Esc or click Back to return to Board & Constraints.'}
             </span>
           </div>
         ) : null}
@@ -3263,22 +3139,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <button
               type="button"
               role="tab"
-              aria-selected={hwMode === 'proof'}
-              className={`wb-btn${hwMode === 'proof' ? ' is-active' : ''}`}
-              data-testid="ide-hw-mode-btn-proof"
-              onClick={() => {
-                setHwMode('proof');
-                setSelectedMappingRowId(null);
-              }}
-            >
-              <span className="rb-board-mode-title">Pre-flight</span>
-              <span className="rb-board-mode-status" aria-hidden="true">
-                {confidenceScore === 100 ? '✓' : '·'}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
               aria-selected={hwMode === 'live'}
               className={`wb-btn${hwMode === 'live' ? ' is-active' : ''}`}
               data-testid="ide-hw-mode-btn-live"
@@ -3297,7 +3157,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         ) : null}
 
         {/* ── Scenario provenance strip — hidden on map tab ── */}
-        {hwMode !== 'map' && verifyLastRun && (
+        {hwMode === 'live' && verifyLastRun && (
           <details className="ide-hardware-provenance-details" data-testid="ide-hardware-provenance-details">
             <summary className="ide-hardware-provenance-summary">Last Verify evidence</summary>
             <div className="ide-hardware-provenance-strip" data-testid="ide-hardware-provenance-strip">
@@ -3439,22 +3299,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </div>
               </div>
               <div className="rb-board-next" data-testid="ide-hw-mapping-next-action">
-                <span>
-                  {mappingHandoffBlockedByDesign
-                    ? 'Mapping complete · Design blocked'
-                    : mappingReady
-                      ? 'Next'
-                      : 'Next action'}
+                <span className="rb-board-next-text">
+                  <span>
+                    {mappingHandoffBlockedByDesign
+                      ? 'Mapping complete · Design blocked'
+                      : mappingReady
+                        ? 'Next'
+                        : 'Next action'}
+                  </span>
+                  <strong>
+                    {mappingHandoffBlockedByDesign
+                      ? 'Repair the circuit in Design'
+                      : mappingReady
+                      ? mappingReadyNext.headline
+                      : nextMappingIssueRow
+                        ? (conflictingMappingRows.includes(nextMappingIssueRow) ? 'Resolve ' : 'Assign ') + formatProjectSignalName(nextMappingIssueRow)
+                        : 'Review required assignments'}
+                  </strong>
+                  {mappingReady && !mappingHandoffBlockedByDesign && mappingReadyNext.reason ? (
+                    <small data-testid="ide-hw-mapping-next-reason">{mappingReadyNext.reason}</small>
+                  ) : null}
                 </span>
-                <strong>
-                  {mappingHandoffBlockedByDesign
-                    ? 'Repair the circuit in Design'
-                    : mappingReady
-                    ? 'Inspect the package in Build & Export'
-                    : nextMappingIssueRow
-                      ? (conflictingMappingRows.includes(nextMappingIssueRow) ? 'Resolve ' : 'Assign ') + formatProjectSignalName(nextMappingIssueRow)
-                      : 'Review required assignments'}
-                </strong>
                 <div data-testid="ide-hardware-next-primary">
                   <IdeButton
                     tone="primary"
@@ -4015,16 +3880,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </div>
               <div className="rb-board-after-actions" data-testid="ide-hw-mode-toggle">
                 <IdeButton tone="secondary" onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-bringup">Board Check</IdeButton>
-                <IdeButton tone="secondary" onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-proof">Pre-flight</IdeButton>
                 <IdeButton tone="ghost" onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-live">Open simulated board</IdeButton>
               </div>
             </section>
           </section>
         ) : (
-        <div className="ide-hw-board-workspace" data-testid="ide-hw-board-workspace">
+        <div className={hwMode === 'bringup' ? 'ide-hw-board-workspace rb-board-check' : 'ide-hw-board-workspace'} data-testid="ide-hw-board-workspace">
           <header className="ide-hw-board-chrome">
+            {hwMode === 'bringup' && <button type="button" className="wb-btn" data-testid="ide-hw-board-check-exit" onClick={() => setHwMode('map')}>← Board assignments</button>}
             <div className="ide-hw-board-chrome-text">
-              <span className="ide-hw-board-chrome-eyebrow">Board workspace</span>
+<span className="ide-hw-board-chrome-eyebrow">{hwMode === 'bringup' ? 'Browser reference steps · no physical-board observation' : 'Board workspace'}</span>
               <strong className="ide-hw-board-chrome-title" data-testid="ide-hw-board-chrome-stage">
                 {hardwareBoardChromeStage}
               </strong>
@@ -4040,16 +3905,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               </span>
             </div>
           </header>
-          <div className="ide-hw-board-canvas">
-        <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
-          <div className="ide-hw-board-inner">
+          <div className={hwMode === 'bringup' ? 'rb-board-check-canvas' : 'ide-hw-board-canvas'}>
+        <div className={hwMode === 'bringup' ? 'rb-board-check-wrap' : 'ide-hw-board-wrap'}>
+          <div className={hwMode === 'bringup' ? 'rb-board-check-inner' : 'ide-hw-board-inner'}>
             <HardwareBoard2D
               sw={displayedBoardState.sw}
               ld={displayedBoardState.ld}
               btn={displayedBoardState.btn}
               mappedSw={mappedSw}
               mappedLd={mappedLd}
-              recordedResources={hwMode === 'live' && isRecordedBoardPreview ? recordedResources : undefined}
+              recordedResources={(hwMode === 'live' || hwMode === 'bringup') && isRecordedBoardPreview ? recordedResources : undefined}
               mismatchedLd={mismatchedLd}
               highlightedSw={currentStepHighlights.sw}
               highlightedLd={currentStepHighlights.ld}
@@ -4070,33 +3935,25 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
             />
           </div>
-          {hwMode === 'proof' && (
-            <div
-              className={`ide-hw-proof-verdict ${
-                !hasAssertionData
-                  ? 'is-pending'
-                  : assertionFailCount === 0
-                    ? 'is-valid'
-                    : 'is-invalid'
-              }`}
-              data-testid="ide-hw-proof-verdict"
-            >
-              <span className="ide-hw-proof-verdict-label" data-testid="ide-hw-proof-verdict-label">
-                {!hasAssertionData
-                  ? 'PROOF PENDING'
-                  : assertionFailCount === 0
-                    ? 'PROOF VALID'
-                    : 'PROOF INVALID'}
-              </span>
-            </div>
-          )}
         </div>
           </div>
+          {hwMode === 'bringup' && <section className="rb-board-check-steps" aria-label="Board check steps and observations">
+            {bringupDock}
+            <details><summary>Check results and recorded observations</summary>{bringupInspector}</details>
+          </section>}
         </div>
         )}
         {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
-        {hardwareWorkflowRibbon}
+        {hwMode !== 'bringup' ? hardwareWorkflowRibbon : null}
       </IdePanel>
     </IdeSurfaceLayout>
   );
 };
+
+/** Small semantic table inside Board Check; its frame owns the visual treatment. */
+function BoardCheckTable({ columns, rows, testId }: { columns: string[]; rows: React.ReactNode[][]; testId: string }) {
+  return <div className="rb-board-check-table-wrap" data-testid={testId}><table className="rb-board-check-table">
+    <thead><tr>{columns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+    <tbody>{rows.map((row, index) => <tr key={index}>{row.map((value, column) => <td key={column}>{value}</td>)}</tr>)}</tbody>
+  </table></div>;
+}

@@ -130,4 +130,31 @@ describe('complete recorded experiments', () => {
     expect(reloaded.verifyRunArchive.map((entry) => entry.runId)).toEqual([checked.runId, observed.runId]);
     expect(reloaded.projectHealthCore.lastVerify?.runKind).toBe('trace');
   });
+
+  it('keeps every recording, ledger entry and package receipt after the former automatic limits and after reopening', async () => {
+    const ids: string[] = [];
+    for (let index = 0; index < 55; index += 1) {
+      const state = useProjectRuntime.getState();
+      const recorded = state.runVerification({ scenarioId: state.activeScenarioId, scenarioName: 'Retained iteration', rows: [],
+        deterministicHash: 'retained-' + index, ranAtIso: new Date(Date.UTC(2026, 8, 14, 0, 0, index)).toISOString() });
+      ids.push(getRuntimeVerifyRunId(recorded));
+    }
+    for (let index = 0; index < 25; index += 1) {
+      useProjectRuntime.getState().recordExport({ status: 'ok', hash: 'package-' + index, packageHash: index.toString(16).padStart(64, '0') });
+    }
+    const current = useProjectRuntime.getState();
+    expect(current.verifyRunArchive.map(getRuntimeVerifyRunId)).toEqual(ids);
+    expect(current.verifyRunHistory.map(entry => entry.runId)).toEqual(ids);
+    expect(current.exportHistory).toHaveLength(25);
+    await useProjectRuntime.persist.rehydrate();
+    const hydrated = useProjectRuntime.getState();
+    expect(hydrated.verifyRunArchive.map(getRuntimeVerifyRunId)).toEqual(ids);
+    expect(hydrated.verifyRunHistory.map(entry => entry.runId)).toEqual(ids);
+    expect(hydrated.exportHistory).toHaveLength(25);
+    const evidence = { lastRun: hydrated.verifyLastRun, archive: hydrated.verifyRunArchive, history: hydrated.verifyRunHistory, exportHistory: hydrated.exportHistory };
+    hydrated.loadFromProject(fixture(), { scenarios: hydrated.scenarios, activeScenarioId: hydrated.activeScenarioId }, { runEvidence: evidence });
+    expect(useProjectRuntime.getState().verifyRunArchive.map(getRuntimeVerifyRunId)).toEqual(ids);
+    expect(useProjectRuntime.getState().verifyRunHistory.map(entry => entry.runId)).toEqual(ids);
+    expect(useProjectRuntime.getState().exportHistory).toHaveLength(25);
+  });
 });

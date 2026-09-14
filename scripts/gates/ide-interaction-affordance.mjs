@@ -55,10 +55,11 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
     await assertTargetCenterUnobstructed(page, target, 'Project launch action must expose an unobstructed center target');
   }
 
-  const helpButton = page.locator('[data-testid="ide-topbar-help-btn"]').first();
+  const helpButton = page.locator('[data-testid="ide-menu-help"]').first();
   assert(await visible(helpButton), 'top bar must keep one visible Help affordance');
-  assert((await page.locator('[data-testid="ide-topbar-help-btn"]').count()) === 1, 'top bar must not duplicate Help controls');
+  assert((await page.locator('[data-testid="ide-menu-help"]').count()) === 1, 'top bar must not duplicate Help controls');
   await helpButton.click();
+  await page.getByTestId('ide-menu-item-help.open').click();
   const shortcuts = page.locator('[data-testid="ide-shortcuts-modal"]').first();
   await shortcuts.waitFor({ state: 'visible', timeout: 10000 });
   assert(/Keyboard Shortcuts/i.test(await text(shortcuts)), 'Help must open usable keyboard guidance');
@@ -111,8 +112,7 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('[data-testid="mode-button-project"]').first().click();
-  await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
-  await page.waitForSelector('[data-testid="ide-project-entry-paths"]', { timeout: 15000 });
+  await page.getByTestId('ide-project-overview-document').waitFor();
   assert(
     !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),
     'loaded Project must not inherit obsolete workflow-orientation chrome'
@@ -122,10 +122,11 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
     'loaded Project must keep the single Help affordance'
   );
   await helpButton.click();
+  await page.getByTestId('ide-menu-item-help.open').click();
   await shortcuts.waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('[data-testid="ide-shortcuts-close"]').first().click();
   await shortcuts.waitFor({ state: 'hidden', timeout: 10000 });
-  assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'closing Help must restore Project path interaction');
+  assert(await visible(page.locator('[data-testid="ide-project-overview-document"]').first()), 'closing Help must restore Project path interaction');
 
   await assertNoRuntimeErrors(page, errors);
 });

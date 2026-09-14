@@ -599,7 +599,7 @@ export function simulateExpectedIoRowsFromModel(params: {
   for (const entry of cases) {
     for (const row of outputRows) {
       const value = resolveOutputSymbolFromTraceDetailed(entry.sample, row, params.model);
-      if (value.reason !== 'matched') continue;
+      if (value.reason !== 'matched' || (value.symbol !== '0' && value.symbol !== '1')) continue;
       rows.push({
         tick: entry.tick,
         signal: getCanonicalIoSignalKey(row, outputRows),

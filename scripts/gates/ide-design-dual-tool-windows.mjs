@@ -155,6 +155,7 @@ async function readDockState(page) {
       right: rect('[data-testid="ide-right-dock"]'),
       leftToggle: rect('[data-testid="ide-workbench-dock-toggle-left"]'),
       rightToggle: rect('[data-testid="ide-workbench-dock-toggle-right"]'),
+      workspace: rect('[data-testid="ide-mode-body"]'),
       canvas: rect('[data-testid="ide-design-live-canvas"]'),
       canvasPointerEvents: canvasElement ? window.getComputedStyle(canvasElement).pointerEvents : 'missing',
       visibleNodeCount,
@@ -177,7 +178,7 @@ function assertUsableCanvas(state, viewport, label, { inspectorExpected }) {
     `${viewport.label}/${label}: support regions must match the current Design context ${JSON.stringify(state)}`
   );
   assert(state.canvas.visible, `${viewport.label}/${label}: live canvas must remain visible ${JSON.stringify(state)}`);
-  const minimumCanvasWidth = inspectorExpected ? viewport.minSelectedCanvasWidth : viewport.minCanvasWidth;
+  const minimumCanvasWidth = inspectorExpected ? viewport.minSelectedCanvasWidth : Math.max(viewport.width * 0.7, state.workspace.width - 40);
   assert(
     state.canvas.width >= minimumCanvasWidth && state.canvas.height >= viewport.minCanvasHeight,
     `${viewport.label}/${label}: support tools must preserve a usable canvas ${JSON.stringify(state)}`

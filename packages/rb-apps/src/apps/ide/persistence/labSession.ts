@@ -1,3 +1,5 @@
+import { getBrowserSessionStorage, runtimePersistence, runtimeSessionStorage } from '../durableProjectStorage';
+
 const SESSION_META_KEY = 'rb.ide.sessionMeta.v1' as const;
 
 export interface LabSessionMeta {
@@ -14,17 +16,14 @@ export interface LabSessionMeta {
 
 export function saveLabSessionMeta(meta: LabSessionMeta): void {
   try {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(SESSION_META_KEY, JSON.stringify(meta));
-  } catch {
-    // Ignore storage failures silently
-  }
+    runtimeSessionStorage.setItem(SESSION_META_KEY, JSON.stringify(meta));
+  } catch (error) { runtimePersistence.writeFailed(error, SESSION_META_KEY); }
 }
 
 export function loadLabSessionMeta(): LabSessionMeta | null {
   try {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(SESSION_META_KEY);
+    const backend = getBrowserSessionStorage();
+    const raw = backend ? backend.snapshot().get(SESSION_META_KEY) : typeof localStorage === 'undefined' ? null : localStorage.getItem(SESSION_META_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LabSessionMeta>;
     if (!parsed || typeof parsed !== 'object') return null;
@@ -51,9 +50,14 @@ export function loadLabSessionMeta(): LabSessionMeta | null {
 
 export function clearLabSessionMeta(): void {
   try {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(SESSION_META_KEY);
-  } catch {
-    // Ignore
-  }
+    const pending = runtimeSessionStorage.removeItem(SESSION_META_KEY);
+    if (pending) void pending.catch(error => runtimePersistence.writeFailed(error, SESSION_META_KEY));
+  } catch (error) { runtimePersistence.writeFailed(error, SESSION_META_KEY); }
+}
+
+/** Session metadata can lag an interrupted runtime commit. A real hydrated
+ * runtime, including an intentionally closed home, is the working-state authority.
+ * Metadata-only legacy sessions still reopen their saved project. */
+export function shouldKeepHydratedRuntime(meta: LabSessionMeta | null, runtimeProjectId: string, hadStoredRuntime: boolean): boolean {
+  return hadStoredRuntime && (!meta || meta.projectId !== runtimeProjectId);
 }

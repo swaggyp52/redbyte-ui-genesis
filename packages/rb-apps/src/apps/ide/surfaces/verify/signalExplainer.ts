@@ -21,6 +21,7 @@ export interface ExplainerCircuitGraph {
 
 /** Maps boundary signal names to their circuit node IDs and direction. */
 export interface ExplainerSignalMapping {
+  readonly fieldId?: string;
   readonly signalName: string;
   readonly nodeId: string;
   readonly direction: 'in' | 'out';
@@ -46,7 +47,17 @@ export interface ExplanationStep {
   readonly port?: string;
 }
 
+export interface CausalLink {
+  readonly kind: 'driver' | 'capture' | 'stimulus';
+  readonly label: string;
+  readonly signal: string;
+  readonly tick: number;
+  readonly value: string;
+}
+
 export interface SignalExplanation {
+  readonly causalLinks?: readonly CausalLink[];
+  readonly causalStop?: string;
   readonly selectedSignal: string;
   readonly tick: number;
   readonly currentValue: string;
@@ -69,6 +80,7 @@ export interface SignalExplanation {
 }
 
 export interface ExplainerInput {
+  readonly recordedStimulus?: readonly { tick: number; inputs: Readonly<Record<string, number | boolean>> }[];
   readonly selectedSignal: string;
   readonly tick: number;
   readonly waveform: readonly VerifyWaveSample[];
@@ -565,7 +577,7 @@ function buildSequentialExplanation(
  *
  * Pure function — no side effects, no UI dependencies.
  */
-export function explainSignal(input: ExplainerInput): SignalExplanation {
+function explainSignalDetails(input: ExplainerInput): SignalExplanation {
   const { selectedSignal, tick, waveform, signalRoles, signalMappings, circuitGraph } = input;
 
   // Resolve current and previous values
@@ -682,4 +694,54 @@ export function explainSignal(input: ExplainerInput): SignalExplanation {
     };
   }
   return structural;
+}
+
+
+/** The same topology/sample resolver supplies clickable hops. Missing or ambiguous
+ * endpoints stop the walk; no transitive timing story is synthesized here. */
+export function explainSignal(input: ExplainerInput): SignalExplanation {
+  const explanation = explainSignalDetails(input);
+  const graph = input.circuitGraph;
+  const mapping = findSignalMapping(input.selectedSignal, input.signalMappings);
+  const node = graph && mapping ? findNodeById(graph, mapping.nodeId) : undefined;
+  const links: CausalLink[] = [];
+  let stop = 'No unique recorded upstream endpoint is available.';
+  if (signalValueAt(input.waveform, input.selectedSignal, input.tick) == null)
+    return { ...explanation, causalLinks: links, causalStop: 'This sample is unrecorded. The walk stops here.' };
+  if (!graph || !node) return { ...explanation, causalLinks: links, causalStop: stop };
+  if (isInputNode(node.type)) {
+    const names = new Set([input.selectedSignal, mapping?.fieldId ?? '', node.id, node.label ?? ''].map(name => name.toLowerCase()));
+    const event = [...(input.recordedStimulus ?? [])].filter(event => event.tick <= input.tick)
+      .sort((a, b) => b.tick - a.tick).find(event => Object.keys(event.inputs).filter(key => names.has(key.toLowerCase())).length === 1);
+    if (event) {
+      const key = Object.keys(event.inputs).find(key => names.has(key.toLowerCase()))!;
+      links.push({ kind: 'stimulus', label: 'Stimulus event: ' + input.selectedSignal + ' = ' + event.inputs[key] + ' at t' + event.tick,
+        signal: input.selectedSignal, tick: event.tick, value: String(event.inputs[key]) });
+      stop = 'Authored stimulus is the boundary of this walk. No earlier cause is recorded.';
+    } else stop = 'This input has no retained authored event. Generated clock/reset behavior is not an invented stimulus event.';
+  } else {
+    const drivers = findDriverConnections(graph, node.id);
+    if (isOutputNode(node.type) && drivers.length !== 1)
+      return { ...explanation, causalLinks: [], causalStop: 'This boundary has no unique driver. The walk stops at the ambiguous wiring.' };
+    const sequential = SEQUENTIAL_NODE_TYPES.has(node.type);
+    if (sequential && explanation.relevantClockEdge) {
+      const edge = explanation.relevantClockEdge;
+      const value = signalValueAt(input.waveform, edge.clockSignal, edge.edgeTick);
+      if (value != null) links.push({ kind: 'capture', label: 'Capturing edge: ' + edge.clockSignal + ' rises at t' + edge.edgeTick,
+        signal: edge.clockSignal, tick: edge.edgeTick, value });
+      stop = 'Only the recorded clock transition is established. Pre-capture setup history is not recorded.';
+    } else if (sequential) stop = 'No supported capturing edge is established by these samples. You can inspect recorded drivers without inferring a capture.';
+    for (const driver of drivers) {
+      const source = findNodeById(graph, driver.fromNodeId);
+      const signal = findSignalForPort(input, graph, driver.fromNodeId, driver.fromPort);
+      const tick = sequential && driver.toPort.toLowerCase() === 'd' && explanation.relevantClockEdge
+        ? explanation.relevantClockEdge.edgeTick : input.tick;
+      const value = signal ? signalValueAt(input.waveform, signal, tick) : null;
+      if (!source || !signal || value == null) continue;
+      links.push({ kind: 'driver', label: 'Driver: ' + (source.label || source.type) + '.' + driver.fromPort + ' → ' + driver.toPort + ' · ' + value,
+        signal, tick, value });
+    }
+    if (links.length && !sequential) stop = 'Each link follows a real connection at this recorded tick.';
+  }
+  return { ...explanation, causalLinks: links, causalStop: stop };
 }

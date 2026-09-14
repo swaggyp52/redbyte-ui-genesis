@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 //
-// F-H2 / F-H3 trust-clarity tests
+// Board trust clarity.
 //
-// F-H2: When mapping is 100% complete, the 3-step mapping guide should collapse
-//       and not occupy prime space with stale guidance.
+// F-H2: When mapping is complete, the mapping guide collapses rather than occupying prime space
+//       with guidance that no longer applies; an incomplete row is still flagged.
 //
-// F-H3: When mapping is complete but Verify evidence is advisory (NEEDS REVIEW),
-//       the next-action hint must name the specific fix path, not generic copy.
+// F-H3: When mapping is complete, the Board's next step says what Build & Export will offer -
+//       a draft package or a checked one - and, for a draft, the specific reason (no run recorded,
+//       recorded run stale, ...) rather than generic "open Export" copy. These used to read the
+//       hardware command strip, which the mapping workspace no longer draws; the promise moved to
+//       the mapping header's next-action block, which is what a reader sees.
 
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -144,9 +147,11 @@ describe('HardwareSurface trust clarity — F-H2 (guide collapses when complete)
       </BoardSignalProvider>
     );
 
-    // Guide must appear when mapping is incomplete.
+    // The incomplete row is flagged in the table's own vocabulary and marked for styling.
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toContain('1 / 2 REQUIRED MAPPED');
-    expect(getByTestId('ide-hw-map-row-status-ld0').textContent).toContain('Missing');
+    const status = getByTestId('ide-hw-map-row-status-ld0');
+    expect(status.textContent).toContain('Unassigned');
+    expect(status.querySelector('.rb-board-status')?.className).toContain('is-missing');
   });
 });
 
@@ -154,11 +159,10 @@ describe('HardwareSurface trust clarity — F-H2 (guide collapses when complete)
 // F-H3: NEEDS REVIEW hint explains the specific fix path
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path)', () => {
-  it('RED TEST: next-action hint names specific Verify action when mapping is complete but no Verify evidence exists', () => {
-    // Mapping is 100% complete. Verify has never run.
-    // The NEEDS REVIEW chip shows but the hint should not be generic "or open Export".
-    // It should name the specific condition: no trusted export evidence yet.
+describe('HardwareSurface trust clarity — F-H3 (the next step names the package it leads to)', () => {
+  it('names a draft package and the missing run when mapping is complete but nothing has been recorded', () => {
+    // Mapping is 100% complete. Nothing has been run. Build & Export will offer a draft package,
+    // and the Board says so - with the reason - instead of "inspect the package".
     const health = makeHealthVerifyNotRun();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -177,17 +181,15 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
       </BoardSignalProvider>
     );
 
-    // The mapping header hint must mention both Verify AND evidence (specific, not generic).
-    // Current text "Mapping is complete. Run Verify or open Export." does not contain "evidence".
-    const hint = getByTestId('ide-hardware-command-strip');
-    expect(hint.textContent).toMatch(/verify/i);
-    expect(hint.textContent).toMatch(/evidence/i);
+    const next = getByTestId('ide-hw-mapping-next-action');
+    expect(next.textContent).toMatch(/draft package/i);
+    expect(getByTestId('ide-hw-mapping-next-reason').textContent).toMatch(/no run is recorded/i);
+    expect(next.textContent).not.toMatch(/inspect the package/i);
   });
 
-  it('RED TEST: top-level status stays NEEDS REVIEW and the visible hint names Verify evidence', () => {
-    // The current compact workbench can hide the command strip, so the visible
-    // product spine and mapping header together must still explain that Verify
-    // evidence is the missing step rather than repeating pin-binding guidance.
+  it('does not fall back to pin-binding guidance once every required signal is mapped', () => {
+    // With mapping complete the next-action block must not repeat "select a signal" copy, and the
+    // primary control must lead on to Build & Export rather than to another mapping row.
     const health = makeHealthVerifyNotRun();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -206,15 +208,15 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
       </BoardSignalProvider>
     );
 
-    const hint = getByTestId('ide-hardware-command-strip');
-    expect(hint.textContent).toMatch(/verify/i);
-    expect(hint.textContent).toMatch(/evidence/i);
-    expect(hint.textContent).not.toMatch(/select a signal row/i);
+    const next = getByTestId('ide-hw-mapping-next-action');
+    expect(next.textContent).not.toMatch(/select a signal/i);
+    expect(next.textContent).not.toMatch(/assign /i);
+    expect(getByTestId('ide-hw-continue-export').textContent).toMatch(/build & export/i);
   });
 
-  it('RED TEST: next-action hint names specific Verify action when mapping is complete but Verify evidence is stale', () => {
-    // Mapping is 100% complete. Verify ran previously but is now stale.
-    // The hint should name the stale-verify condition specifically, not offer a generic choice.
+  it('names a draft package and the stale run when mapping is complete but the recorded run is stale', () => {
+    // Mapping is 100% complete. A run was recorded and the design changed under it. Build & Export
+    // will offer a draft package; the Board names the stale run as the reason.
     const health = makeHealthVerifyStale();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -233,10 +235,9 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
       </BoardSignalProvider>
     );
 
-    // The mapping header hint must mention Verify AND evidence (condition-specific, not generic).
-    // Current text "Mapping is complete. Run Verify or open Export." does not contain "evidence".
-    const hint = getByTestId('ide-hardware-command-strip');
-    expect(hint.textContent).toMatch(/verify/i);
-    expect(hint.textContent).toMatch(/evidence/i);
+    const next = getByTestId('ide-hw-mapping-next-action');
+    expect(next.textContent).toMatch(/draft package/i);
+    expect(getByTestId('ide-hw-mapping-next-reason').textContent).toMatch(/stale/i);
+    expect(next.textContent).not.toMatch(/inspect the package/i);
   });
 });

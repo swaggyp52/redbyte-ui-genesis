@@ -363,7 +363,7 @@ interface StaleReplayBreadcrumb {
 
 type DesignReplaySession =
   Pick<RuntimeVerifyRun, 'waveform' | 'meta'> &
-  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence'>>;
+  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence' | 'scenarioName' | 'runId'>>;
 
 interface PaletteItem {
   type: string;
@@ -2682,6 +2682,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return readDesignCanvasViewport(canvasHostRef.current.clientWidth, canvasHostRef.current.clientHeight);
   }, []);
 
+  const lastFittedCameraRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const fitToCircuit = useCallback((viewportOverride?: unknown) => {
     const viewport = isDesignCanvasViewport(viewportOverride)
       ? viewportOverride
@@ -2700,6 +2701,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
+    // This fit already consumed the new viewport. A queued ResizeObserver must
+    // not apply the old-to-new translation to this newly fitted camera again.
+    lastMeasuredCanvasViewportRef.current = viewport;
     const FIT_MARGIN = 48;
     const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
     const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
@@ -2710,11 +2714,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const nextZoom = Math.round(Math.max(0.35, Math.min(1.6, Math.min(zoomX, zoomY))) * 100) / 100;
     const centerX = (bounds.minX + bounds.maxX) / 2;
     const centerY = (bounds.minY + bounds.maxY) / 2;
-    setCamera({
+    const fittedCamera = {
       x: viewport.width / 2 - centerX * nextZoom,
       y: viewport.height / 2 - centerY * nextZoom,
       zoom: nextZoom,
-    });
+    };
+    lastFittedCameraRef.current = fittedCamera;
+    setCamera(fittedCamera);
   }, [canvasSize, editorCircuit.nodes, measureCanvasViewport, setCamera]);
 
   const fitToCircuitRef = useRef(fitToCircuit);
@@ -2773,6 +2779,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!previousViewport) return;
 
       const currentCamera = useLogicViewStore.getState().camera;
+      const fittedCamera = lastFittedCameraRef.current;
+      // Fit follows a resized sheet only while the user has left that fitted view untouched.
+      // A deliberate pan or zoom remains owned by the user across Split and dock changes.
+      if (fittedCamera && currentCamera.x === fittedCamera.x &&
+          currentCamera.y === fittedCamera.y && currentCamera.zoom === fittedCamera.zoom) {
+        fitToCircuitRef.current(nextViewport);
+        return;
+      }
       const reconciledCamera = reconcileDesignCanvasCamera(
         currentCamera,
         previousViewport,
@@ -2831,6 +2845,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount only
+
+  // The measured viewport observer owns resize reconciliation; changing representation
+  // does not discard a deliberate pan or zoom. Explicit Fit remains available.
 
   const zoomIn = useCallback(() => {
     zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
@@ -2959,42 +2976,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       hasAutoFitRef.current = false;
     }
   }, [editorCircuit.nodes.length]);
-
-  /**
-   * A dock mounting takes the sheet's width without moving the camera.
-   *
-   * Selecting any symbol mounts the 280px contextual inspector. Measured on the two-bit counter
-   * at 1280x650: the schematic frame goes from 928px to 648px, the drawing re-centres but is not
-   * re-fitted, and `node-OUTPUT-q0_out` ends up 96px past the frame's right edge and 80px under
-   * the dock - 6 of 9 sampled points inside it hit it before, 0 after, with clicks aimed at the
-   * LD1 output pin landing on the inspector's own Delete node button. Selecting an output is how
-   * a student reaches its board mapping, so the Design -> Board loop was broken from the Design
-   * side, and at 1280x650 the Fit control is `display: none` while the dock is open.
-   *
-   * The camera belongs to the reader, so this does not re-fit on every resize - a reader who has
-   * zoomed in has content outside the pane on purpose. It re-fits only when the pane has SHRUNK
-   * and that shrink has put the circuit outside the sheet.
-   */
-  const previousCanvasSizeRef = useRef(canvasSize);
-  useEffect(() => {
-    const previous = previousCanvasSizeRef.current;
-    previousCanvasSizeRef.current = canvasSize;
-    if (editorCircuit.nodes.length === 0) return;
-    if (canvasSize.width <= 0 || canvasSize.height <= 0) return;
-    const shrank = canvasSize.width < previous.width - 1 || canvasSize.height < previous.height - 1;
-    if (!shrank) return;
-    const bounds = unionBounds(buildGeometryIndex(editorCircuit.nodes as Node[]).values());
-    if (!bounds) return;
-    const left = bounds.minX * camera.zoom + camera.x;
-    const right = bounds.maxX * camera.zoom + camera.x;
-    const top = bounds.minY * camera.zoom + camera.y;
-    const bottom = bounds.maxY * camera.zoom + camera.y;
-    const outside = right > canvasSize.width || left < 0 || bottom > canvasSize.height || top < 0;
-    if (!outside) return;
-    fitToCircuitRef.current();
-    // The camera is read to decide, not to trigger: panning must not re-fit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasSize.width, canvasSize.height]);
 
   useEffect(() => {
     if (!viewportSeed) return;
@@ -5301,8 +5282,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {selectionStatusLabel}
               </span>
             </div>
-            <div className="rb-insp-name-control" data-testid="ide-design-inspector-name-control">
-              <span className="rb-insp-group-label">
+            {/* One field row, label beside control: this block was 64px of a 140px identity card
+                for a single Rename button, in a dock that shows 600px of a 1900px inspector. */}
+            <div className="rb-insp-name-control rb-insp-field" data-testid="ide-design-inspector-name-control">
+              <span>
                 {selectedNode.type === 'INPUT' || selectedNode.type === 'OUTPUT' ? 'Signal name' : 'Part label'}
               </span>
               {renderNodeLabelEditor(selectedNode)}
@@ -5707,6 +5690,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
                 Duplicate
               </IdeButton>
+              {/* Delete is an edit like the two beside it, undoable like them, and red says what it
+                  is; a "Danger" group of one button cost a labelled row of its own. */}
+              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                Delete
+              </IdeButton>
             </div>
             {(() => {
               const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
@@ -5858,14 +5846,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
-          <div className="rb-insp-action-group rb-insp-group--danger" data-testid="ide-design-inspector-danger-group">
-            <span className="rb-insp-group-label">Danger</span>
-            <div className="rb-insp-action-grid">
-              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                Delete node
-              </IdeButton>
-            </div>
-          </div>
         </div>
       );
     }
@@ -6444,6 +6424,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     );
   };
 
+  /* Unrecorded is not zero. Without a recording there is no previous sample and no transition,
+     and the value on the row is the live exploration value, not evidence - so the rows say so
+     instead of printing "Previous 0 / stable" derived from the live value alone. */
+  const snapshotRows = (snapshot: DesignSignalSnapshot | null | undefined) => {
+    const recorded = Boolean(snapshot && snapshot.samples > 0);
+    const value = (input: RuntimeLogicValue | null | undefined) => (input === null || input === undefined ? '—' : String(input));
+    return {
+      currentLabel: recorded ? 'Current' : 'Live value',
+      current: value(snapshot?.currentValue),
+      previous: recorded ? value(snapshot?.previousValue) : 'not recorded',
+      transition: recorded ? snapshot!.transition : 'not recorded',
+      lastTransition: recorded && snapshot!.lastTransitionTick !== null ? String(snapshot!.lastTransitionTick) : '—',
+    };
+  };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
       if (selectedSequentialInspector) {
@@ -6499,22 +6493,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span>Timing context</span>
                   <span>{selectedSequentialInspector.timingContext}</span>
                 </div>
-                <div className="rb-insp-row">
-                  <span>Current</span>
-                  <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-                </div>
-                <div className="rb-insp-row">
-                  <span>Previous</span>
-                  <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-                </div>
-                <div className="rb-insp-row">
-                  <span>Transition</span>
-                  <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-                </div>
-                <div className="rb-insp-row">
-                  <span>Last transition</span>
-                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                </div>
+                {(() => {
+                  const rows = snapshotRows(selectedNodeSignalSnapshot);
+                  return (
+                    <>
+                      <div className="rb-insp-row">
+                        <span>{rows.currentLabel}</span>
+                        <code data-testid="ide-design-context-current">{rows.current}</code>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Previous</span>
+                        <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Transition</span>
+                        <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Last transition</span>
+                        <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                      </div>
+                    </>
+                  );
+                })()}
                 {selectedNodeReplayCausation ? (
                   <div className="rb-insp-row">
                     <span>Why now</span>
@@ -6549,22 +6550,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ) : null}
           <div className="rb-insp-live-summary">
             <div className="rb-insp-facts">
-              <div className="rb-insp-row">
-                <span>Current</span>
-                <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-              </div>
-              <div className="rb-insp-row">
-                <span>Previous</span>
-                <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-              </div>
-              <div className="rb-insp-row">
-                <span>Transition</span>
-                <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-              </div>
-              <div className="rb-insp-row">
-                <span>Last transition</span>
-                <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-              </div>
+              {(() => {
+                const rows = snapshotRows(selectedNodeSignalSnapshot);
+                return (
+                  <>
+                    <div className="rb-insp-row">
+                      <span>{rows.currentLabel}</span>
+                      <code data-testid="ide-design-context-current">{rows.current}</code>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Previous</span>
+                      <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Transition</span>
+                      <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Last transition</span>
+                      <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                    </div>
+                  </>
+                );
+              })()}
               <div className="rb-insp-row">
                 <span>Trace state</span>
                 {(() => {
@@ -6595,22 +6603,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Signal</span>
               <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>
             </div>
-            <div className="rb-insp-row">
-              <span>Current</span>
-              <code data-testid="ide-design-context-current">{selectedWireContext.snapshot?.currentValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Previous</span>
-              <code data-testid="ide-design-context-previous">{selectedWireContext.snapshot?.previousValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Transition</span>
-              <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
-            </div>
-            <div className="rb-insp-row">
-              <span>Last transition</span>
-              <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
-            </div>
+            {(() => {
+              const rows = snapshotRows(selectedWireContext.snapshot);
+              return (
+                <>
+                  <div className="rb-insp-row">
+                    <span>{rows.currentLabel}</span>
+                    <code data-testid="ide-design-context-current">{rows.current}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Previous</span>
+                    <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Transition</span>
+                    <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                  </div>
+                </>
+              );
+            })()}
             {selectedWireReplayCausation ? (
               <div className="rb-insp-row">
                 <span>Why now</span>
@@ -6653,22 +6668,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <span>Signal</span>
               <code data-testid="ide-design-signal-selected">{activeInspectorSignalLabel}</code>
             </div>
-            <div className="rb-insp-row">
-              <span>Current</span>
-              <code data-testid="ide-design-signal-current-value">{activeInspectorSignalSnapshot?.currentValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Previous</span>
-              <code>{activeInspectorSignalSnapshot?.previousValue ?? 0}</code>
-            </div>
-            <div className="rb-insp-row">
-              <span>Transition</span>
-              <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
-            </div>
-            <div className="rb-insp-row">
-              <span>Last transition</span>
-              <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-            </div>
+            {(() => {
+              const rows = snapshotRows(activeInspectorSignalSnapshot);
+              return (
+                <>
+                  <div className="rb-insp-row">
+                    <span>{rows.currentLabel}</span>
+                    <code data-testid="ide-design-signal-current-value">{rows.current}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Previous</span>
+                    <code>{rows.previous}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Transition</span>
+                    <span>{rows.transition}</span>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                  </div>
+                </>
+              );
+            })()}
             {activeInspectorReplayCausation ? (
               <div className="rb-insp-row">
                 <span>Why now</span>
@@ -6817,7 +6839,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           >
             {tab === 'problems' ? (
               <>Problems <span className="wb-toolwindow-count">{problemsLedgerCount}</span></>
-            ) : tab === 'simulation' ? 'Simulation' : 'Output'}
+            ) : tab === 'simulation' ? 'Explore' : 'Output'}
           </button>
         ))}
       </div>
@@ -7750,7 +7772,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Clock edge
                       </button>
                       <span className="wb-toolbar-meta" data-testid="ide-design-live-tick">
-                        <code>{runtimeSim.tick} applied</code>
+                        <code>{runtimeSim.tick} clock {runtimeSim.tick === 1 ? 'edge' : 'edges'} applied</code>
                       </span>
                     </>
                   ) : null}
@@ -7767,41 +7789,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : null}
               {!isCodeWorkspace ? (
-                <div className="wb-segment rb-design-mode" role="group" aria-label="Design mode" data-testid="ide-design-learning-mode" data-mode={effectiveLearningMode}>
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    aria-pressed={effectiveLearningMode === 'edit'}
-                    onClick={handleResumeLiveEditing}
-                    data-testid="ide-design-learning-mode-edit"
-                    title="Author circuit structure"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    aria-pressed={effectiveLearningMode === 'live'}
-                    disabled={!hasRunnablePath}
-                    title={hasRunnablePath ? 'Explore current circuit values (exploratory, not saved evidence)' : 'Connect at least one input to one output through supported logic.'}
-                    onClick={() => {
-                      onClearExternalDebug?.();
-                      setDesignLearningMode('live');
-                    }}
-                    data-testid="ide-design-learning-mode-live"
-                  >
-                    Live
-                  </button>
-                  <button
-                    type="button"
-                    className="wb-btn"
-                    aria-pressed={effectiveLearningMode === 'replay'}
-                    disabled={!replaySession || replayTrace.length === 0}
-                    title={replaySession && replayTrace.length > 0 ? 'Inspect the recorded run (read-only evidence)' : 'Run a scenario in Simulate to create a replay.'}
-                    onClick={() => onSelectDebugTickIndex?.(0)}
-                    data-testid="ide-design-learning-mode-replay"
-                  >
-                    Replay
+                <div className="wb-toolbar-group rb-design-mode" aria-label="Design actions" data-testid="ide-design-learning-mode" data-mode={effectiveLearningMode}>
+                  {isReplayMode ? (
+                    <>
+                      <span className="wb-toolbar-meta">Recorded view · {replaySession?.scenarioName ?? 'Scenario'} · t{effectiveExternalDebugTick}</span>
+                      <button type="button" className="wb-btn wb-btn--ghost" onClick={handleResumeLiveEditing} data-testid="ide-design-current-design">
+                        Return to current design
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wb-btn wb-btn--ghost"
+                      aria-pressed={effectiveLearningMode === 'live'}
+                      disabled={!hasRunnablePath}
+                      title="Drive inputs and inspect exploratory values. Nothing is recorded or checked."
+                      onClick={() => {
+                        if (effectiveLearningMode === 'live') handleResumeLiveEditing();
+                        else { onClearExternalDebug?.(); setDesignLearningMode('live'); }
+                      }}
+                      data-testid="ide-design-explore"
+                    >
+                      {effectiveLearningMode === 'live' ? 'Finish exploring' : 'Explore'}
+                    </button>
+                  )}
+                  <button type="button" className="wb-btn wb-btn--primary" onClick={onGoToVerify} data-testid="ide-design-test-design">
+                    {isReplayMode ? 'Return to experiment' : 'Test this design'}
                   </button>
                 </div>
               ) : null}
@@ -9297,9 +9310,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {liveHdlResult.error}
                     </IdeCallout>
                   )}
-                  <IdeCallout tone="info" title="Generated from the circuit" testId="ide-design-generated-code-note">
-                    This code is read-only in Design. Edit the canvas to regenerate it, or use Import to bring HDL into RedByte.
-                  </IdeCallout>
+                  <p className="rb-design-generated-note" data-testid="ide-design-generated-code-note">
+                    Generated · read-only · updates when you edit the circuit
+                  </p>
                   <div className="ide-design-hdl-primary-pane" data-testid="ide-design-primary-artifact-pane">
                     <textarea
                       className={`ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--primary${primaryArtifactIsEditable ? '' : ' is-readonly'}`}

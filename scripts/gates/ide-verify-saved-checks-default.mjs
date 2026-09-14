@@ -20,25 +20,28 @@ const SCREENSHOT_ROOT = process.env.RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR)
   : '';
 
-await runIdeGate('IDE Verify saved checks remain active in unified simulation satisfied', async ({ page, baseUrl }) => {
+await runIdeGate('IDE Verify saved checks remain active in unified simulation satisfied', async ({ page: seedPage, baseUrl }) => {
   const consoleFindings = [];
-  page.on('console', (message) => {
-    const text = message.text();
-    if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
-      consoleFindings.push({ type: message.type(), text, location: message.location() });
-    }
-  });
-  page.on('pageerror', (error) => {
-    consoleFindings.push({ type: 'pageerror', text: error.message });
-  });
-
-  await page.addInitScript(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('rb-onboarding-v1-seen', '1');
-  });
-
   for (const viewport of VIEWPORTS) {
+    // Each first-run viewport starts with its own durable-storage profile.
+    const context = await seedPage.context().browser().newContext({ viewport });
+    const page = await context.newPage();
+    page.on('console', (message) => {
+      const text = message.text();
+      if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
+        consoleFindings.push({ type: message.type(), text, location: message.location() });
+      }
+    });
+    page.on('pageerror', (error) => {
+      consoleFindings.push({ type: 'pageerror', text: error.message });
+    });
+
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('rb-onboarding-v1-seen', '1');
+    });
+
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openLogicGatesVerify(page, baseUrl, viewport.label);
     await ensureVerifyVectorsReady(page);
@@ -54,11 +57,11 @@ await runIdeGate('IDE Verify saved checks remain active in unified simulation sa
       `${viewport.label}: first-run authoring must remain in Scenario, got ${JSON.stringify(before)}`
     );
     assert(
-      /run simulation/i.test(before.runLabel),
+      /^Run|Rerun/i.test(before.runLabel),
       `${viewport.label}: the single Run action must remain simulation-oriented, got "${before.runLabel}"`
     );
     assert(
-      /evaluates\s+[1-9]\d*\s+optional check/i.test(before.modeExplainer),
+      /[1-9]\d*\s+saved checks.*evaluated/i.test(before.modeExplainer),
       `${viewport.label}: run explainer must disclose automatic saved-check evaluation, got "${before.modeExplainer}"`
     );
 
@@ -69,32 +72,39 @@ await runIdeGate('IDE Verify saved checks remain active in unified simulation sa
     await capture(page, viewport, '02-after-compare-pass');
 
     const after = await readRunModeState(page);
+    assert(JSON.stringify(after.expectedValues) === JSON.stringify(before.expectedValues),
+      `${viewport.label}: Run must preserve every authored expected value`);
     assert(
       after.checkCount === before.checkCount,
       `${viewport.label}: saved checks must remain intact after PASS, got ${JSON.stringify(after)}`
     );
     assert(
-      /run simulation/i.test(after.runLabel),
+      /^Run|Rerun/i.test(after.runLabel),
       `${viewport.label}: Run must remain a single simulation action after PASS, got "${after.runLabel}"`
     );
 
-    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().click();
+    await page.locator('[data-testid="ide-verify-view-table"]').first().click();
     const checks = await readRunModeState(page);
     assert(
       checks.checksSelected,
       `${viewport.label}: students must be able to open saved checks, got ${JSON.stringify(checks)}`
     );
     assert(
-      await page.locator('[data-testid^="ide-stimulus-expected-"]').first().isVisible().catch(() => false),
+      await page.locator('[data-testid^="ide-case-lab-exp-"]').first().isVisible().catch(() => false),
       `${viewport.label}: Checks workspace must expose expected-output cells`
     );
 
-    await page.locator('[data-testid="ide-vcb-workspace-scenario"]').first().click();
+    await page.getByTestId('ide-verify-view-waveform').click();
+    await page.getByTestId('ide-verify-workspace-waveform').waitFor();
+    await page.getByTestId('ide-verify-view-table').click();
     const restored = await readRunModeState(page);
     assert(
       restored.scenarioSelected && restored.checkCount === before.checkCount,
       `${viewport.label}: returning to Scenario must preserve saved checks, got ${JSON.stringify(restored)}`
     );
+    assert(JSON.stringify(restored.expectedValues) === JSON.stringify(before.expectedValues),
+      `${viewport.label}: changing representation must preserve every saved check`);
+    await context.close();
   }
 
   assert(
@@ -116,19 +126,20 @@ async function openLogicGatesVerify(page, baseUrl, viewportLabel) {
 
 async function readRunModeState(page) {
   return page.evaluate(() => {
-    const scenario = document.querySelector('[data-testid="ide-vcb-workspace-scenario"]');
-    const checks = document.querySelector('[data-testid="ide-vcb-workspace-checks"]');
+    const table = document.querySelector('[data-testid="ide-case-lab"]');
     const run = document.querySelector('[data-testid="ide-vcb-run"]');
     const explainer = document.querySelector('[data-testid="ide-vcb-mode-explainer"]');
-    const checksText = (checks?.textContent ?? '').replace(/\s+/g, ' ').trim();
-    const checkCount = Number.parseInt(checksText.match(/\b(\d+)\b/)?.[1] ?? '0', 10);
+    const expected = [...document.querySelectorAll('[data-testid^="ide-case-lab-exp-"]')];
+    const countText = document.querySelector('[data-testid="ide-vcb-check-count"]')?.textContent ?? '';
+    const checkCount = Number(countText.match(/\d+/)?.[0] ?? 0);
     return {
-      scenarioSelected: scenario?.getAttribute('aria-selected') === 'true',
-      checksSelected: checks?.getAttribute('aria-selected') === 'true',
-      checksAvailable: Boolean(checks) && !(checks instanceof HTMLButtonElement && checks.disabled),
-      checkCount: Number.isFinite(checkCount) ? checkCount : 0,
-      runLabel: (run?.textContent ?? '').replace(/\s+/g, ' ').trim(),
-      modeExplainer: (explainer?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      scenarioSelected: Boolean(table && table.getBoundingClientRect().height > 0),
+      checksSelected: expected.some(cell => cell.getBoundingClientRect().height > 0),
+      checksAvailable: expected.length > 0,
+      expectedValues: expected.map(cell => ({ id: cell.getAttribute('data-testid'), value: cell.textContent?.trim() })),
+      checkCount,
+      runLabel: run?.textContent?.trim() ?? '',
+      modeExplainer: explainer?.textContent?.trim() ?? '',
     };
   });
 }

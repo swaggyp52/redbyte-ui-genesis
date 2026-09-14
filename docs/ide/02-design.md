@@ -11,6 +11,20 @@ role: Design surface spec
 Status: Unified Workbench v3 RC source; final exact-SHA certification pending
 Mode ID: `design`
 
+
+## Current P2.6B authoring and handoff (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+Review refinement: Fit consumes the currently measured viewport once, preventing ResizeObserver from translating the camera a second time after Split opens. The Split HDL header wraps its actions; the entire Import button stays inside the source pane. Browser proof asserts all 13 counter components remain inside the schematic viewport.
+
+Explore replaces the Live label and is explicitly unrecorded. Clock edge and Reset values
+operate only this exploratory state. There is no Edit/Live/Replay peer switch. A recording
+may open a read-only Design view with a visible return to authoring. Test this design opens
+the owning scenario with the selected signal and does not run it. Simulate owns recordings.
+Split defaults to the circuit/source pair with support panels revealed on request. Sources
+and Board I/O share a second library tab row so both stay reachable in the narrow dock.
+
 ## Design explores; Simulate records (2026-09-07)
 
 Design has no clock of its own. `Live` is exploration:

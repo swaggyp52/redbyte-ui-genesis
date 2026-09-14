@@ -142,8 +142,13 @@ describe('IDE synth subset contract', () => {
     expect(exportResult.warnings).toEqual([]);
     expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN V17');
     expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN U16');
-    expect(exportResult.bundle?.readme).toContain('| sw0 | SW0 | V17 | input |');
-    expect(exportResult.bundle?.readme).toContain('| ld0 | LD0 | U16 | output |');
+    // The README pin map names the logical signal, the artifact port it became, the board
+    // resource in the reader's words, the package pin and the direction - one row per mapping.
+    expect(exportResult.bundle?.readme).toContain(
+      '| Logical signal | Artifact port | Board resource | Package Pin | Direction |'
+    );
+    expect(exportResult.bundle?.readme).toContain('| sw0 | sw0 | Slide switch SW0 | V17 | input |');
+    expect(exportResult.bundle?.readme).toContain('| ld0 | ld0 | LED LD0 | U16 | output |');
 
     const viewModel = buildExportViewModel(project);
     expect(viewModel.status).toBe('ok');

@@ -97,6 +97,25 @@ describe('WaveformViewer signal-group visual differentiation', () => {
     expect(getByTestId('ide-verify-waveform-group-outputs')).toBeTruthy();
   });
 
+  it('keeps every lane and group segment when failure priority splits an output group', () => {
+    const errors = vi.spyOn(console, 'error');
+    try {
+      const view = render(<WaveformViewer {...BASE_PROPS} signals={signals} signalGroups={signalGroups} />);
+      const reordered = [signals[2], signals[0], signals[1], signals[3]];
+      view.rerender(<WaveformViewer {...BASE_PROPS} signals={reordered} signalGroups={signalGroups} />);
+      expect(view.getAllByTestId('ide-verify-waveform-group-outputs')).toHaveLength(2);
+      const rows = Array.from(view.container.querySelectorAll('[data-testid^="ide-verify-waveform-row-"]'));
+      expect(rows.map(row => row.getAttribute('data-testid'))).toEqual(
+        reordered.map(row => `ide-verify-waveform-row-${row.signal}`),
+      );
+      view.rerender(<WaveformViewer {...BASE_PROPS} signals={signals} signalGroups={signalGroups} />);
+      expect(view.getAllByTestId('ide-verify-waveform-group-outputs')).toHaveLength(1);
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
   it('renders an unknown value as a labeled dashed center rail instead of LOW', () => {
     const unknownSignals = [
       makeSignalRow('ld0', [{ tick: 0, value: 'X' }]),

@@ -11,6 +11,23 @@ role: Project surface spec
 Status: Unified Workbench v3 RC source contract - project overview and workflow authority
 Mode ID: `project`
 
+
+## Current P2.6B document and ledger ownership (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+The shared bounded starter picker is also reachable directly from an empty Simulate workspace; browsing it does not replace the current project. Earlier command-center and Change Project labels below are historical where they conflict with this current owner.
+
+Overview shows one blocker and an Open Problems action; the complete list lives in the canonical dock. The explorer retains its summary/count. Single-run groups say no repeat yet.
+
+The explorer owns Overview, Sources, Architecture, Runs and Compile Order. Visiting those
+roots creates no tabs; source previews remain genuine secondary documents. Inspectors follow
+Project selections and the active document, including deliberate module/source cross-probes.
+Runs groups the full retained configuration triple and displays output digests, counts and
+an exact-recording Inspect action. The newest entry's currentness uses workflow authority,
+independent of whichever historical recording is selected for investigation. Problems start
+as an explorer count/disclosure; the bottom Problems ledger remains canonical.
+
 ## Purpose
 
 Provide an action-first entry plus a useful engineering overview of the loaded student project. The surface must name project identity and goal, recommend one next action, and show current Design, Simulate, Board & Constraints, and Build & Export truth without becoming a second editor for those stages.

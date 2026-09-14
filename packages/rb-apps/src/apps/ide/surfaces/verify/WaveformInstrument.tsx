@@ -109,7 +109,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
   const [viewportTrackWidth, setViewportTrackWidth] = useState(0);
 
   type LayoutRow =
-    | { kind: 'header'; group: SignalLaneGroup; y: number }
+    | { kind: 'header'; group: SignalLaneGroup; firstSignal: string; y: number }
     | { kind: 'signal'; signalRow: WaveformSignalRow; stripeIndex: number; y: number };
 
   const { layoutRows, totalHeight } = (() => {
@@ -120,7 +120,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
     for (const signalRow of signals) {
       const group = signalGroups?.get(signalRow.signal) ?? 'Internal';
       if (group !== lastGroup && signalGroups) {
-        rows.push({ kind: 'header', group, y });
+        rows.push({ kind: 'header', group, firstSignal: signalRow.signal, y });
         y += GROUP_HEADER_H;
         lastGroup = group;
       }
@@ -382,9 +382,9 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       {/* Signal rows with group headers */}
       {layoutRows.map((layoutRow) => {
         if (layoutRow.kind === 'header') {
-          const { group, y } = layoutRow;
+          const { group, firstSignal, y } = layoutRow;
           return (
-            <g key={`group-header-${group}`} data-testid={`ide-verify-waveform-group-${group.toLowerCase()}`}>
+            <g key={`group-header-${group}-${firstSignal}`} data-testid={`ide-verify-waveform-group-${group.toLowerCase()}`}>
               <rect x={0} y={y} width={width} height={GROUP_HEADER_H}
                 fill={group === 'Outputs' ? 'var(--rb-wave-out-soft)' : 'var(--rb-wave-in-soft)'} />
               <line x1={0} y1={y} x2={width} y2={y}

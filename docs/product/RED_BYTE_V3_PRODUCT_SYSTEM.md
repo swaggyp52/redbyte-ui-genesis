@@ -35,22 +35,21 @@ The compatible internal route IDs remain `project`, `design`, `verify`, `hardwar
 
 ## Project lifecycle and persistence
 
-Current source stores versioned `RBProject` snapshots plus named Verify scenarios in browser storage, keeps session metadata separately, and deliberately stales restored run evidence. Milestone A formalizes access through `ProjectRepository`; direct storage access is legacy-compatible implementation detail, not a new call-site pattern.
+P2.6C keeps ProjectRepository and the existing project runtime as the persistence authorities. Complete project snapshots, named scenarios, retained recordings, package receipts, imported VCD evidence and working-session metadata use transactional IndexedDB records. The portable RBProject design remains format 1. Preferences remain separate from project semantics.
 
 Storage policy:
 
-- Durable project snapshots: versioned repository records. Milestone A may use the existing local browser backing through the repository facade; IndexedDB migration remains a later, separately tested schema migration.
-- Small preferences: localStorage through one versioned preferences service.
-- Transient simulator/run state: memory or session state. Restored evidence must remain stale until rerun.
+- Durable project snapshots: the existing versioned repository records in IndexedDB. Snapshot and index changes commit together; revision checks reject a stale tab instead of overwriting a newer save.
+- Legacy migration: copy recognized localStorage records, commit, and verify exact readback. Original bytes remain intact, including malformed records. Tombstones prevent a deleted migrated project from resurfacing.
+- Small preferences: localStorage through the existing versioned preferences service.
+- Recorded evidence: complete immutable runs retain design, authored input, schedule, topology, native samples, configuration/output identities and verdict. Reopening does not execute a run or change its provenance. Currentness is derived against the current project; missing evidence remains unrecorded.
+- Working-session recovery: deferred serialization coalesces successive complete snapshots behind an active write. It does not merge executions or prune retained recordings. Save waits for serialization and durable transaction completion.
 - Recovery: repository-created snapshot before replacement, plus explicit confirmation before restore.
-- External backup: RedByte project/package archive.
+- External backup: the Download session backup action produces a complete .rb-session.json envelope containing format-1 project data, scenarios, recordings and receipts. Ordinary .rbproj export remains compatible and distinct from the complete session backup.
 
 The UI states are `Autosaving`, `Saving`, `Saved`, `Save failed`, and `Recovery available`, with a real last-saved time and storage location. Save As creates a new project identity; Duplicate copies the durable project and local authored scenario state without inventing fresh proof.
 
-Corrupt repository indexes are reconstructed from valid durable snapshots and
-covered by bounded rollback tests. Recovery-candidate/session signaling and
-complete portable backup of workspace-local multi-scenario documents remain
-future hardening work.
+Corrupt repository indexes are reconstructed from valid durable snapshots. A failed transaction preserves the previous committed save and the open in-memory work, and exposes the session backup action. Browser storage is device/profile-local and subject to browser capacity and eviction policy; durable completion is not a remote backup or an unlimited retention promise. Validation and measured workload results belong to the current delivery record in ACTIVE_WORK.
 
 Reload must preserve the active project, active surface, theme, layout preset and dimensions, panel visibility, toolbar preference, scenarios, probes, checks, and mapping. It must not promote stale or transient simulation evidence.
 
@@ -99,7 +98,7 @@ Official-source baseline retrieved 2026-08-01:
 
 ## Simulation and handoff models
 
-Simulation keeps the current `Scenario -> Run simulation -> Inspect Replay -> Optional Checks` contract. Layout/persistence work must not merge simulation completion with assertion status or persist a trace as current proof.
+Simulate owns an authored scenario with stimulus and optional checks, one Run action, and retained recording inspection. Reproduce executes the selected recording's retained configuration. Simulation completion, recorded-output identity and assertion verdict remain separate: zero configured checks never imply PASS. A restored recording retains its identity; currentness and package trust are recomputed by their existing authorities.
 
 Build & Export presents design sources, simulation sources, constraints, top module, generated files, compatibility findings, Vivado 2024.2 target, Tcl handoff, and package validation using current artifacts only. Browser E0 can prove RedByte state and package bytes; it cannot prove Vivado execution or hardware.
 

@@ -51,7 +51,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   activeDocumentKey = null,
 }) => {
   const [query, setQuery] = useState('');
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ generated: true, runs: true });
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ generated: true, runs: true, problems: true });
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const visibleGroups = useMemo(() => filterExplorer(groups, query), [groups, query]);

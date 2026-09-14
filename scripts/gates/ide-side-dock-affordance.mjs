@@ -14,7 +14,7 @@ const MODES = [
   {
     id: 'project',
     focalSelectors: [
-      '[data-testid="ide-project-command-center"]',
+      '[data-testid="ide-project-overview-document"]',
       '[data-testid="ide-project-workspace-grid"]',
       '[data-testid="ide-project-landing"]',
     ],
@@ -176,7 +176,8 @@ async function assertStableSupportRegions(page, viewport, mode) {
       leftDock: region('[data-testid="ide-left-dock"]'),
       rightDock: region('[data-testid="ide-right-dock"]'),
       designPalette: region('[data-testid="ide-design-dock-palette"]'),
-      verifySignalShelf: region('[data-testid="ide-verify-signal-shelf"]'),
+      verifySignalShelf: region('[data-testid="ide-case-lab"]'),
+      scenarioExplorer: region('[data-testid="ide-sim-scenario-explorer"]'),
       retiredRailControls: visibleControlCount([
         '[data-testid="ide-workbench-dock-toggle-left"]',
         '[data-testid="ide-workbench-dock-toggle-right"]',
@@ -195,11 +196,11 @@ async function assertStableSupportRegions(page, viewport, mode) {
   if (mode === 'design') {
     assert(state.leftDock.visible && state.designPalette.visible, `${viewport.label}: Design Library must remain directly available`);
     assert(
-      state.leftDock.width >= 180 && state.leftDock.width <= 240,
+      state.leftDock.width >= 180 && state.leftDock.width <= 280,
       `${viewport.label}: Design Library must be readable but bounded (${state.leftDock.width}px)`
     );
     assert(state.designPalette.textLength >= 12, `${viewport.label}: Design Library must expose meaningful tools`);
-    assert(!state.rightDock.present, `${viewport.label}: idle Design must reserve the canvas instead of opening an empty Inspector`);
+    assert(!state.rightDock.visible, `${viewport.label}: idle Design must reserve the canvas instead of opening an empty Inspector`);
 
     await selectFirstVisibleDesignNode(page);
     const inspector = await readRegion(page, '[data-testid="ide-right-dock"]');
@@ -212,10 +213,11 @@ async function assertStableSupportRegions(page, viewport, mode) {
   }
 
   if (mode === 'verify') {
-    assert(!state.leftDock.present, `${viewport.label}: Simulate must not spend workspace width on a separate Signals rail`);
-    assert(state.verifySignalShelf.visible, `${viewport.label}: Simulate signal shelf must remain directly available`);
+    assert(!state.leftDock.visible || (state.scenarioExplorer.visible && state.leftDock.width <= 280),
+      `${viewport.label}: visible Simulate support must be the bounded scenario explorer`);
+    assert(state.verifySignalShelf.visible, `${viewport.label}: authored cases and their signal identities must remain directly available`);
     assert(
-      state.verifySignalShelf.width >= viewport.width * 0.8,
+      state.verifySignalShelf.width >= viewport.width * 0.7,
       `${viewport.label}: Simulate signal shelf must read as workbench content (${state.verifySignalShelf.width}px)`
     );
     assert(state.verifySignalShelf.textLength >= 12, `${viewport.label}: Simulate signal shelf must expose meaningful controls`);

@@ -73,6 +73,7 @@ async function run(width, height) {
   await page.waitForTimeout(500);
 
   await loadProjectAndGoToSimulate(page);
+  await page.getByTestId('ide-sim-imported-evidence').locator('summary').click();
 
   // ① The Analyzer is mounted in Simulate, empty, with honest provider identity.
   const analyzer = page.getByTestId('ide-vcd-analyzer');
@@ -142,6 +143,7 @@ async function run(width, height) {
   await page.waitForTimeout(500);
   await page.getByTestId('mode-button-verify').click();
   await page.waitForTimeout(400);
+  await page.getByTestId('ide-sim-imported-evidence').locator('summary').click();
   const countAfter = (await page.getByTestId('ide-vcd-analyzer-signal-count').textContent())?.trim();
   if (countAfter !== '3') fail(`waveform not preserved across reload: count=${countAfter}`);
   const dataAfter = (await page.getByTestId('ide-vcd-analyzer-measure-value-B').textContent())?.trim();

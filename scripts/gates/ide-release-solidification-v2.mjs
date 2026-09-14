@@ -28,12 +28,18 @@ await runIdeGate('IDE release solidification v2 satisfied', async ({ page, baseU
   const failures = [];
 
   for (const viewport of CLASSROOM_VIEWPORTS) {
+    // A first-launch proof needs a fresh storage partition, including IndexedDB.
+    const context = await page.context().browser().newContext({ viewport: { width: viewport.width, height: viewport.height } });
+    const freshPage = await context.newPage();
+    const viewportProblems = captureBrowserProblems(freshPage);
     try {
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await assertProjectFirstLaunchOrientation(page, baseUrl, viewport);
-      await assertVerifyResultActions(page, baseUrl, viewport);
+      await assertProjectFirstLaunchOrientation(freshPage, baseUrl, viewport);
+      await assertVerifyResultActions(freshPage, baseUrl, viewport);
     } catch (error) {
       failures.push(`${viewport.label}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      browserProblems.push(...viewportProblems);
+      await context.close();
     }
   }
 
@@ -82,18 +88,18 @@ async function assertProjectFirstLaunchOrientation(page, baseUrl, viewport) {
     }
 
     const primaryActions = Array.from(
-      document.querySelectorAll('[data-testid="ide-project-primary-actions"] [data-product-priority="primary"]')
+      document.querySelectorAll('[data-testid="ide-project-landing"] [data-product-priority="primary"]')
     ).filter((element) => {
       const rect = element.getBoundingClientRect();
       return rect.width > 1 && rect.height > 1;
     });
 
     return {
-      startHub: box('[data-testid="ide-project-start-hub"]'),
+      startHub: box('[data-testid="ide-project-landing"]'),
       startPrimary: box('[data-testid="ide-project-start-a-lab-primary"]'),
-      starterCatalogCount: document.querySelectorAll('[data-testid="ide-project-starter-catalog"]').length,
+      starterCatalogCount: document.querySelectorAll('[data-testid="ide-project-open-starter-primary"]').length,
       orientationCount: document.querySelectorAll('[data-testid="ide-onboarding-overlay"]').length,
-      primaryActionLabels: primaryActions.map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
+      primaryActionLabels: primaryActions.map((element) => element.querySelector('span')?.textContent?.trim() ?? ''),
       productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter((element) => {
         const rect = element.getBoundingClientRect();
         return rect.width > 1 && rect.height > 1;
@@ -103,13 +109,19 @@ async function assertProjectFirstLaunchOrientation(page, baseUrl, viewport) {
   });
 
   assert(metrics.startHub?.visibleHeight >= 140, `${viewport.label}: current Project start surface must remain visible ${JSON.stringify(metrics.startHub)}`);
-  assert(metrics.startPrimary?.visibleHeight >= 36, `${viewport.label}: Start a Lab must remain a usable primary action ${JSON.stringify(metrics.startPrimary)}`);
+  // Course labs is the 28px section-navigation command; the selected lab has
+  // its own launch action in the adjacent preview.
+  assert(metrics.startPrimary?.visibleHeight >= 28, `${viewport.label}: Course labs must remain a usable section command ${JSON.stringify(metrics.startPrimary)}`);
+  const launch = page.locator('.rb-start-preview .rb-start-primary');
+  assert(await visible(launch), `${viewport.label}: selected lab must expose its launch action`);
+  const launchBounds = await launch.boundingBox();
+  assert(launchBounds?.height >= 24 && launchBounds.y + launchBounds.height < viewport.height - 8, `${viewport.label}: selected lab launch must meet the desktop command floor and fit the first viewport ${JSON.stringify(launchBounds)}`);
   assert(metrics.startPrimary.bottom <= viewport.height - 8, `${viewport.label}: Start a Lab falls below the first viewport ${JSON.stringify(metrics.startPrimary)}`);
   assert(metrics.starterCatalogCount === 1, `${viewport.label}: starter catalog section must remain available`);
   assert(metrics.orientationCount === 0, `${viewport.label}: obsolete workflow-orientation card returned`);
   assert(
-    JSON.stringify(metrics.primaryActionLabels) === JSON.stringify(['Start a Lab']),
-    `${viewport.label}: Project must expose exactly one current primary launch action, got ${JSON.stringify(metrics.primaryActionLabels)}`
+    metrics.primaryActionLabels.length === 1 && /^Course labs\b/i.test(metrics.primaryActionLabels[0]),
+    `${viewport.label}: Project must expose one primary Course labs section, got ${JSON.stringify(metrics.primaryActionLabels)}`
   );
   assert(metrics.productSpineCount === 0, `${viewport.label}: Project must not restore a duplicate product-spine header`);
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Project first launch created root overflow ${metrics.rootOverflowX}px`);
@@ -145,6 +157,11 @@ async function assertVerifyResultActions(page, baseUrl, viewport) {
 
 async function assertVerifyActionBand(page, viewport, label) {
   await selectVerifyWorkspace(page, 'replay');
+  if (label === 'FAIL') {
+    await page.getByTestId('ide-verify-details').click();
+    await page.getByTestId('ide-verify-analysis-tab-nav').getByRole('button', { name: 'Checks', exact: true }).click();
+    await page.getByTestId('ide-verify-repair-decision').scrollIntoViewIfNeeded();
+  }
   await assertBuildHash(page, `${viewport.label}/Verify ${label}`);
   const metrics = await page.evaluate(() => {
     function box(selector) {
@@ -173,7 +190,9 @@ async function assertVerifyActionBand(page, viewport, label) {
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
       studioMode: labGrid?.getAttribute('data-studio-mode') ?? '',
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
-      result: box('[data-testid="ide-verify-results-summary"]'),
+      result: box('[data-testid="ide-verify-region-header"]'),
+      record: box('[data-testid="ide-run-identity"]'),
+      workArea: box('[data-testid="ide-mode-body"]'),
       stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
       failureDetails: box('[data-testid="ide-verify-repair-decision"]'),
@@ -188,8 +207,9 @@ async function assertVerifyActionBand(page, viewport, label) {
   assert(metrics.workspaceMode === 'split', `${viewport.label}/${label}: Verify should remain split, got "${metrics.workspaceMode}"`);
   assert(metrics.studioMode === 'replay', `${viewport.label}/${label}: Verify evidence should be shown in Replay, got "${metrics.studioMode}"`);
   assert(metrics.result?.visibleHeight >= 44, `${viewport.label}/${label}: Verify result summary is clipped ${JSON.stringify(metrics.result)}`);
+  assert(metrics.record?.visibleHeight >= 24, `${viewport.label}/${label}: recorded run identity must remain directly readable ${JSON.stringify(metrics.record)}`);
   assert(metrics.result.bottom <= viewport.height - 8, `${viewport.label}/${label}: Verify result summary falls below viewport ${JSON.stringify(metrics.result)}`);
-  assert(metrics.stimulus?.visibleWidth === 0, `${viewport.label}/${label}: inactive Scenario workspace should not compete with Replay ${JSON.stringify(metrics.stimulus)}`);
+  assert(!metrics.stimulus || metrics.stimulus.visibleWidth === 0, `${viewport.label}/${label}: inactive case table should not compete with recorded trace ${JSON.stringify(metrics.stimulus)}`);
   assert(metrics.waveform?.visibleWidth >= 500, `${viewport.label}/${label}: Replay evidence lane became too narrow ${JSON.stringify(metrics.waveform)}`);
   assert(metrics.labGrid?.extraX <= 8, `${viewport.label}/${label}: Verify lab grid created a horizontal mini-scroll trap ${JSON.stringify(metrics.labGrid)}`);
   assert(metrics.documentOverflowX <= 1, `${viewport.label}/${label}: Verify created root overflow ${metrics.documentOverflowX}px`);
@@ -201,22 +221,25 @@ async function assertVerifyActionBand(page, viewport, label) {
     assert(metrics.repairPathCount === 2, `${viewport.label}/${label}: direct failure guidance must expose both repair paths`);
     assert(metrics.retiredFailureSummaryCount === 0, `${viewport.label}/${label}: retired Failure details disclosure must stay removed`);
     assert(
-      metrics.labGrid?.bottom >= viewport.height - MAX_FAIL_EVIDENCE_BOTTOM_GAP,
+      metrics.labGrid?.bottom >= metrics.workArea.bottom - MAX_FAIL_EVIDENCE_BOTTOM_GAP,
       `${viewport.label}/${label}: fail evidence workspace left too much unused lower viewport ${JSON.stringify(metrics.labGrid)}`
     );
     const firstFail = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();
     await firstFail.scrollIntoViewIfNeeded();
     assert(await visible(firstFail), `${viewport.label}/${label}: direct repair panel must expose the first failing check`);
+    await firstFail.click();
+    assert(await visible(page.getByTestId('ide-verify-fail-nav-summary')), `${viewport.label}/${label}: selected failure must remain visible`);
+    await page.getByTestId('ide-verify-details').click();
   }
 }
 
 async function selectVerifyWorkspace(page, mode) {
-  const control = page.locator(`[data-testid="ide-vcb-workspace-${mode}"]`).first();
+  const control = page.getByTestId(mode === 'replay' ? 'ide-verify-view-waveform' : 'ide-verify-view-table');
   assert(await visible(control), `Verify ${mode} workspace control must be visible`);
   await control.click();
   await page.waitForFunction(
     (expectedMode) =>
-      document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === expectedMode,
+      (document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'replay') === (expectedMode === 'replay'),
     mode,
     { timeout: 5000 }
   );
@@ -240,16 +263,16 @@ async function clickRunAndWaitForNewResult(page) {
 }
 
 async function pickRenderedExpectedTarget(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  const cells = await page.locator('[data-testid^="ide-case-lab-exp-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') || '';
-      const match = /^ide-stimulus-expected-(.+)-t(\d+)$/.exec(testId);
-      const parsedTitle = /:\s*(0|1|not set)\s*-\s*drag/i.exec(element.getAttribute('title') || '');
+      const match = /^ide-case-lab-exp-(\d+)-(.+)$/.exec(testId);
+      const value = element.textContent?.trim();
       return {
         testId,
-        signal: match?.[1] ?? '',
-        tick: match?.[2] ? Number(match[2]) : -1,
-        value: parsedTitle?.[1] === '1' ? 1 : parsedTitle?.[1] === '0' ? 0 : null,
+        signal: match?.[2] ?? '',
+        tick: match?.[1] ? Number(match[1]) : -1,
+        value: value === '1' ? 1 : value === '0' ? 0 : null,
       };
     })
   );
@@ -262,13 +285,13 @@ async function clickExpectedCellToValue(page, target, expectedValue) {
   const cell = page.getByTestId(target.testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const title = await cell.getAttribute('title');
-    const current = /:\s*1\s*-\s*drag/i.test(title || '') ? 1 : /:\s*0\s*-\s*drag/i.test(title || '') ? 0 : null;
+    const text = (await cell.textContent())?.trim();
+    const current = text === '1' ? 1 : text === '0' ? 0 : null;
     if (current === expectedValue) return;
     await cell.click();
     await page.waitForTimeout(150);
   }
-  const title = await cell.getAttribute('title');
-  const current = /:\s*1\s*-\s*drag/i.test(title || '') ? 1 : /:\s*0\s*-\s*drag/i.test(title || '') ? 0 : null;
+  const text = (await cell.textContent())?.trim();
+  const current = text === '1' ? 1 : text === '0' ? 0 : null;
   assert(current === expectedValue, `expected ${target.testId} to become ${expectedValue}, got ${current}`);
 }

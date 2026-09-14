@@ -76,6 +76,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 }) => {
   const shellRef = useRef<HTMLElement | null>(null);
   const [layoutMode, setLayoutMode] = useState<WorkbenchLayoutMode>(() => detectLayoutMode());
+  const [narrowViewport, setNarrowViewport] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900);
   const preferences = useSyncExternalStore(
     workspacePreferencesStore.subscribe,
     workspacePreferencesStore.getSnapshot,
@@ -91,17 +92,33 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     }
     const observer = new ResizeObserver((entries) => {
       setLayoutMode(detectLayoutMode(entries[0]?.contentRect.width ?? shell.clientWidth));
+      setNarrowViewport(window.innerWidth < 900);
     });
     observer.observe(shell);
     setLayoutMode(detectLayoutMode(shell.clientWidth));
-    return () => observer.disconnect();
+    const rootStyleObserver = new MutationObserver(() => setLayoutMode(detectLayoutMode(shell.clientWidth)));
+    rootStyleObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    return () => { observer.disconnect(); rootStyleObserver.disconnect(); };
   }, []);
 
   const leftDockAllowed = Boolean(leftDock) && leftDockMode !== 'hidden';
   const rightDockAllowed = Boolean(rightDock) && !hideRightDock && rightDockMode !== 'hidden';
-  const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible;
-  const showRightDock =
-    rightDockAllowed && surfacePreferences.docks.right.visible;
+  const splitDesign = mode === 'design' && preferences.design.view === 'split';
+  const narrowProject = mode === 'project' && narrowViewport;
+  const rightRequested = rightDockAllowed && surfacePreferences.docks.right.visible &&
+    (!splitDesign || surfacePreferences.docks.right.explicitlyToggled === true);
+  const showRightDock = rightRequested && (!narrowProject || surfacePreferences.docks.right.explicitlyToggled === true);
+  const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible &&
+    (!(splitDesign || (mode === 'verify' && layoutMode === 'compact')) || surfacePreferences.docks.left.explicitlyToggled === true) &&
+    (!narrowProject || surfacePreferences.docks.left.explicitlyToggled === true) &&
+    !(layoutMode === 'compact' && showRightDock);
+
+  useEffect(() => {
+    if (!narrowProject || (!showLeftDock && !showRightDock)) return;
+    const side = showLeftDock ? 'left' : 'right';
+    const dock = shellRef.current?.querySelector<HTMLElement>(`[data-testid="ide-${side}-dock"]`);
+    (dock?.querySelector<HTMLElement>('[role="treeitem"]') ?? dock?.querySelector<HTMLElement>('button'))?.focus();
+  }, [narrowProject, showLeftDock, showRightDock]);
   // A blocking diagnostic earns the full panel. Anything advisory earns a strip the student
   // can open. `expanded` mode is an explicit request from the surface and is honoured.
   const consoleExpanded = surfacePreferences.docks.bottom.expanded;
@@ -146,7 +163,20 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   }, [mode]);
 
   const setDockVisible = (dockId: WorkspaceDockId, visible: boolean) => {
+    if (visible && dockId !== 'bottom' && (layoutMode === 'compact' || splitDesign)) {
+      workspacePreferencesStore.setDock(mode, dockId === 'left' ? 'right' : 'left', { visible: false });
+    }
     workspacePreferencesStore.setDock(mode, dockId, { visible });
+    if (narrowProject && !visible && dockId !== 'bottom') {
+      requestAnimationFrame(() => shellRef.current?.querySelector<HTMLElement>(`[data-testid="ide-show-${dockId}-dock"]`)?.focus());
+    }
+  };
+
+  const closeNarrowProjectPanel = (dockId: 'left' | 'right', event: React.KeyboardEvent) => {
+    if (!narrowProject || event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDockVisible(dockId, false);
   };
 
   const resizeDock = (dockId: WorkspaceDockId, sizePx: number) => {
@@ -194,6 +224,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-testid={`ide-mode-${mode}`}
       data-ide-mode-marker={mode}
       data-layout-mode={layoutMode}
+      data-narrow-project={narrowProject ? 'true' : undefined}
       data-left-dock-state={showLeftDock ? 'visible' : 'hidden'}
       data-right-dock-state={showRightDock ? 'visible' : 'hidden'}
       /* One fact, one answer. The section below publishes collapsed / expanded / blocking
@@ -236,7 +267,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         data-layout-mode={layoutMode}
       >
         {showLeftDock ? (
-          <aside className="ide-workbench-dock ide-workbench-dock-left" data-testid="ide-left-dock">
+          <aside className="ide-workbench-dock ide-workbench-dock-left" data-testid="ide-left-dock" onKeyDown={(event) => closeNarrowProjectPanel('left', event)}>
             <button
               type="button"
               className="ide-workbench-dock-collapse ide-workbench-dock-collapse--left"
@@ -272,7 +303,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         </main>
 
         {showRightDock ? (
-          <aside className="ide-workbench-dock ide-workbench-dock-right" data-testid="ide-right-dock">
+          <aside className="ide-workbench-dock ide-workbench-dock-right" data-testid="ide-right-dock" onKeyDown={(event) => closeNarrowProjectPanel('right', event)}>
             <button
               type="button"
               className="ide-workbench-dock-collapse ide-workbench-dock-collapse--right"
@@ -371,12 +402,14 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
 function detectLayoutMode(width?: number): WorkbenchLayoutMode {
   const effectiveWidth =
-    typeof width === 'number' && Number.isFinite(width)
+    typeof width === 'number' && Number.isFinite(width) && width > 0
       ? width
       : typeof window !== 'undefined'
         ? window.innerWidth
         : 1366;
-  if (effectiveWidth >= 1600) return 'wide';
-  if (effectiveWidth >= 1180) return 'standard';
+  const textScale = typeof document !== 'undefined'
+    ? (Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16 : 1;
+  if (effectiveWidth / textScale >= 1600) return 'wide';
+  if (effectiveWidth / textScale >= 1280) return 'standard';
   return 'compact';
 }

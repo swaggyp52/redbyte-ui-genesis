@@ -52,13 +52,8 @@ Milestone A does not run the full release aggregate and does not merge to `main`
 
 ### Carried debt
 
-- The repository facade retains the existing versioned browser-storage backing;
-  IndexedDB migration is deferred.
-- Recovery snapshots are durable, and corrupt repository indexes rebuild through
-  bounded reconstruction/rollback coverage. Recovery-candidate/session signaling
-  still needs further hardening.
-- Portable project backup does not yet carry every workspace-local,
-  multi-scenario authoring document.
+- P2.6C supersedes the Milestone A storage deferral: ProjectRepository and the existing runtime now use transactional IndexedDB with non-destructive legacy migration. Complete session backups include scenarios, recordings, receipts and external VCD evidence. See ACTIVE_WORK for measured acceptance and delivery status; this historical Milestone A record is not the P2.6C validation result.
+- Browser storage remains local to a device/profile and subject to capacity or eviction. A downloaded session backup remains the explicit external recovery copy.
 - Hierarchy and sources are inspect-oriented. Nested module editing, buses,
   named nets, code-backed modules, parameters/generics, and top selection remain
   future work.

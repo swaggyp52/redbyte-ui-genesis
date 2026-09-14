@@ -25,17 +25,17 @@ await runIdeGate('IDE Simulate signal shelf is readable and not clipped', async 
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openVerify(page, baseUrl, viewport.label);
       await ensureVerifyVectorsReady(page);
-      await page.waitForSelector('[data-testid="ide-verify-signal-shelf"]', { state: 'visible', timeout: 5000 });
+      await page.waitForSelector('[data-testid="ide-sim-scenario-explorer"]', { state: 'visible', timeout: 5000 });
       const metrics = await readShelfMetrics(page);
 
       assert(metrics.rootOverflowX <= 1, `${viewport.label}: Simulate signal shelf must not create root overflow ${metrics.rootOverflowX}px`);
-      assert(metrics.genericLeftDockCount === 0, `${viewport.label}: Simulate must not recreate a separate Signals rail`);
+      assert(metrics.genericLeftDockCount === 1 && metrics.explorerOwnsSignals, `${viewport.label}: one scenario explorer must own the signal controls without a duplicate rail`);
       assert(metrics.shelf.visible, `${viewport.label}: Simulate signal shelf must be visible`);
       assert(
-        metrics.shelf.width >= viewport.width * 0.8,
-        `${viewport.label}: Simulate signal shelf must read as full-width workbench content (${metrics.shelf.width}px)`
+        metrics.shelf.width >= 180 && metrics.shelf.width <= viewport.width * 0.3,
+        `${viewport.label}: Scenario explorer must give its signal controls a readable, bounded column (${metrics.shelf.width}px)`
       );
-      assert(metrics.workspace.width >= viewport.width * 0.92, `${viewport.label}: Simulate workspace is unexpectedly narrow (${metrics.workspace.width}px)`);
+      assert(metrics.workspace.width >= viewport.width * 0.7 && metrics.workspace.right >= viewport.width - 16 && metrics.workspace.left >= metrics.shelf.right, `${viewport.label}: the work object must fill the remaining space beside the explorer (${JSON.stringify(metrics.workspace)})`);
       assert(!metrics.header.clippedX, `${viewport.label}: Signals shelf header is horizontally clipped ${JSON.stringify(metrics.header)}`);
       assert(metrics.titleText === 'Signals', `${viewport.label}: Signals shelf title is missing (${JSON.stringify(metrics.titleText)})`);
       assert(
@@ -72,7 +72,7 @@ async function openVerify(page, baseUrl, viewportLabel) {
 }
 
 async function assertSignalSelection(page, label) {
-  const signals = page.locator('[data-testid^="ide-verify-shelf-signal-"]');
+  const signals = page.locator('.rb-sig-row[data-testid^="ide-verify-signal-"]');
   const signalCount = await signals.count();
   assert(signalCount > 1, `${label}: signal shelf must expose more than one selectable circuit lane`);
   const firstSignal = signals.first();
@@ -94,7 +94,7 @@ async function assertSignalSelection(page, label) {
     `${label}: selecting the last signal must clear the previous semantic active state`
   );
   const [shelfBox, lastSignalBox] = await Promise.all([
-    page.locator('[data-testid="ide-verify-signal-shelf"]').boundingBox(),
+    page.locator('[data-testid="ide-sim-scenario-explorer"]').boundingBox(),
     lastSignal.boundingBox(),
   ]);
   assert(shelfBox && lastSignalBox, `${label}: selected last signal must have visible shelf geometry`);
@@ -135,17 +135,18 @@ async function readShelfMetrics(page) {
       };
     }
 
-    const shelf = rect('[data-testid="ide-verify-signal-shelf"]');
-    const signalList = rect('[data-testid="ide-verify-signal-shelf-list"]');
+    const shelf = rect('[data-testid="ide-sim-scenario-explorer"]');
+    const signalList = rect('[data-testid="ide-verify-signal-list"]');
 
     return {
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       genericLeftDockCount: document.querySelectorAll('[data-testid="ide-left-dock"]').length,
+      explorerOwnsSignals: Boolean(document.querySelector('[data-testid="ide-left-dock"] [data-testid="ide-sim-scenario-explorer"] [data-testid="ide-verify-signal-list"]')),
       shelf,
       workspace: rect('[data-testid="ide-mode-body"]'),
-      header: rect('[data-testid="ide-verify-signal-shelf"] > header'),
-      titleText: document.querySelector('[data-testid="ide-verify-signal-shelf"] > header span')?.textContent?.trim() ?? '',
-      countText: document.querySelector('[data-testid="ide-verify-signal-shelf"] > header strong')?.textContent?.trim() ?? '',
+      header: rect('[data-testid="ide-verify-signal-rail-header"]'),
+      titleText: document.querySelector('[data-testid="ide-verify-signal-rail-header"] h3')?.textContent?.trim() ?? '',
+      countText: document.querySelector('[data-testid="ide-verify-signal-filter-state"]')?.textContent?.trim() ?? '',
       retiredCollapseControlCount: document.querySelectorAll(
         '[data-testid="ide-workbench-dock-collapse-left"], [data-testid="ide-verify-signal-rail-toggle"]'
       ).length,
@@ -153,8 +154,8 @@ async function readShelfMetrics(page) {
       signalList,
       signalListWithinShelfX:
         shelf.visible && signalList.visible && signalList.left >= shelf.left - 1 && signalList.right <= shelf.right + 1,
-      signalRowCount: document.querySelectorAll('[data-testid^="ide-verify-shelf-signal-"]').length,
-      firstSignalRow: rect('[data-testid^="ide-verify-shelf-signal-"]'),
+      signalRowCount: document.querySelectorAll('.rb-sig-row[data-testid^="ide-verify-signal-"]').length,
+      firstSignalRow: rect('.rb-sig-row[data-testid^="ide-verify-signal-"]'),
     };
   });
 }

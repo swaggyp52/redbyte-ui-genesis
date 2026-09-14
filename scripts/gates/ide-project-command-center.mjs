@@ -1,188 +1,67 @@
 #!/usr/bin/env node
 
 import { assert, assertBuildFreshReplacementModal, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assertBuildHash, assertNoRootOverflow, assertVisibleRect, captureBrowserProblems } from './_workbenchReconstructionHarness.mjs';
 
-async function text(locator) {
-  return (await locator.first().textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
-}
-
-async function dismissOnboardingIfPresent(page) {
-  const skipButton = page.locator('[data-testid="ide-onboarding-skip"]').first();
-  const overlay = page.locator('[data-testid="ide-onboarding-overlay"]').first();
-  if (!(await skipButton.isVisible().catch(() => false))) return;
-  await skipButton.click();
-  await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
-}
-
-async function dismissWorkflowOrientationIfPresent(page) {
-  const dismissButton = page.getByRole('button', { name: /^dismiss$/i }).first();
-  if (!(await dismissButton.isVisible().catch(() => false))) return;
-  await dismissButton.click();
-  await dismissButton.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
-}
-
-async function assertNoPrematureDownstreamWarnings(locator, label) {
-  const content = (await text(locator)).toLowerCase();
-  const forbidden = [
-    'other starts are secondary',
-    'certified course path',
-    'start here for the ece141',
-    'mapping 0 missing',
-    'required basys3 i/o mappings are missing',
-    'export stays blocked',
-    'before circuit',
-  ];
-  const hit = forbidden.find((phrase) => content.includes(phrase));
-  assert(!hit, `${label} must not show premature or course-first copy: "${hit}"`);
-}
-
-async function assertFitsViewport(page, locator, label) {
-  const box = await locator.first().boundingBox();
-  assert(box, `${label} must have a measurable layout box`);
-  const viewport = page.viewportSize();
-  assert(viewport, `${label} gate requires a viewport`);
-  assert(box.x >= -1, `${label} must not overflow left edge: x=${box.x}`);
-  assert(box.x + box.width <= viewport.width + 1, `${label} must not overflow right edge`);
-  assert(box.y + box.height <= viewport.height + 12, `${label} must fit in the first viewport`);
-}
-
-async function assertLaunchStarterDensity(page, label) {
-  const gallery = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-  assert(await visible(gallery), `${label} must expose the starter catalog after the student requests it`);
-  assert((await gallery.getAttribute('data-expanded')) === 'true', `${label} starter catalog must report its open state`);
-  assert(
-    (await gallery.locator('details, summary').count()) === 0,
-    `${label} starter catalog must use direct workspace controls instead of disclosure chrome`,
-  );
-
-  const visibleCards = page.locator('[data-testid^="ide-project-lab-card-"]:visible');
-  const visibleCardCount = await visibleCards.count();
-  assert(
-    visibleCardCount >= 4,
-    `${label} must show several all-lab starter choices, saw ${visibleCardCount}`
-  );
-
-  const box = await gallery.boundingBox();
-  assert(box && box.width >= 320, `${label} starter grid must have a readable layout box`);
-}
-
+// Entry, continuation and replacement now belong to Start, Overview and File.
 await runIdeGate('IDE project command center contract satisfied', async ({ page, baseUrl }) => {
-  await page.addInitScript(() => {
-    localStorage.clear();
-    localStorage.setItem('rb-onboarding-v1-seen', '1');
-  });
-
-  const launchViewports = [
-    { label: '1366x768', width: 1366, height: 768 },
-    { label: '1440x900', width: 1440, height: 900 },
-    { label: '1920x1080', width: 1920, height: 1080 },
-  ];
-
-  for (const viewport of launchViewports) {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=project-command-center-${viewport.label}`, {
-      waitUntil: 'domcontentloaded',
-    });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-    await dismissOnboardingIfPresent(page);
-    await dismissWorkflowOrientationIfPresent(page);
-
-    const launchCenter = page.locator('[data-testid="ide-project-command-center"]').first();
-    const launchLabel = `Project first-launch command center ${viewport.label}`;
-    assert(await visible(launchCenter), 'Project first launch must render one command center');
-    await assertFitsViewport(page, launchCenter, launchLabel);
-    await assertNoPrematureDownstreamWarnings(launchCenter, launchLabel);
-
-    const launchHub = page.locator('[data-testid="ide-project-start-hub"]').first();
-    const launchTitle = page.locator('[data-testid="ide-project-launch-title"]').first();
-    assert(await visible(launchHub), 'Project first launch must expose the start workspace');
-    assert(
-      /^Start your digital-logic project$/i.test(await text(launchTitle)),
-      `Project launch title must name the starting task, got "${await text(launchTitle)}"`,
-    );
-    const launchText = await text(launchHub);
-    assert(/build fresh/i.test(launchText), 'Project command center must expose Build Fresh');
-    assert(/course starter|starter/i.test(launchText), 'Project command center must expose a starter path');
-    assert(/import|recover/i.test(launchText), 'Project command center must expose import/recovery');
-    assert(/open saved|recent|continue/i.test(launchText), 'Project command center must expose saved/recent work');
-
-    assert(
-      await visible(page.locator('[data-testid="ide-project-build-fresh-primary"]').first()),
-      'Project command center must keep Build Fresh as a first-class action'
-    );
-    assert(
-      await visible(page.locator('[data-testid="ide-project-import-primary"]').first()),
-      'Project command center must keep Import / recovery as a first-class action'
-    );
-    const starterCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-    assert(!(await visible(starterCatalog)), 'Project starter catalog must stay out of the first viewport until requested');
-    assert((await starterCatalog.getAttribute('data-expanded')) === 'false', 'Project starter catalog must report its closed state');
-    await page.locator('[data-testid="ide-project-open-starter-primary"]').first().click();
-    assert(await visible(starterCatalog), 'Open Starter must reveal the starter catalog');
-    assert((await starterCatalog.getAttribute('data-expanded')) === 'true', 'Open Starter must update catalog state');
-    assert(
-      await visible(page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first()),
-      'Open Starter must reveal the Logic Gates starter'
-    );
-    await assertLaunchStarterDensity(page, launchLabel);
+  const problems = captureBrowserProblems(page);
+  await page.addInitScript(() => localStorage.setItem('rb-onboarding-v1-seen', '1'));
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }, { width: 1920, height: 1080 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto(baseUrl + '/?mode=project&e2e=1&gate=project-command-center');
+    if (!(await visible(page.getByTestId('ide-project-landing')))) {
+      await page.getByTestId('ide-menu-file').click();
+      await page.getByTestId('ide-menu-item-project.close').click();
+    }
+    await page.getByTestId('ide-project-landing').waitFor();
+    await assertBuildHash(page, 'Project Start');
+    for (const id of ['ide-project-build-fresh-primary', 'ide-project-import-primary', 'ide-project-open-existing-primary', 'ide-project-open-starter-primary']) {
+      const action = page.getByTestId(id);
+      await assertVisibleRect(page, ['[data-testid="' + id + '"]'], 'Start action ' + id, { minWidth: 80, minHeight: 24 });
+      await action.click({ trial: true });
+    }
+    const startText = await page.getByTestId('ide-project-landing').innerText();
+    assert(!/required basys3 i\/o mappings are missing|export stays blocked/i.test(startText), 'Start must not blame downstream mapping or package setup');
+    await page.getByTestId('ide-project-open-starter-primary').click();
+    const starters = page.getByTestId('ide-project-start-list-starters');
+    await starters.waitFor();
+    assert(await starters.getByRole('option').count() >= 4, 'Starters must provide several direct choices');
+    await page.getByTestId('ide-project-landing-example-half-adder').click();
+    assert(await visible(page.getByTestId('ide-project-start-preview')), 'Selecting a starter must expose its preview');
+    assert(!(await visible(page.getByTestId('ide-mode-design'))), 'Browsing must not replace the project');
+    await loadStarterProject(page, { exactExampleId: 'logic-gates' });
+    await page.getByTestId('mode-button-project').click();
+    await page.getByTestId('ide-project-overview-document').waitFor();
+    assert((await page.getByTestId('ide-project-overview-title').innerText()).includes('Logic Gates'), 'Overview must identify the loaded project');
+    await assertVisibleRect(page, ['[data-testid="ide-project-circuit-preview"]'], 'Loaded project circuit', { minWidth: 320, minHeight: 140 });
+    const continuation = page.getByTestId('ide-project-continue');
+    assert(await visible(continuation), 'Loaded Overview must keep one direct continuation');
+    assert(await continuation.count() === 1, 'Loaded Overview must expose exactly one continuation authority');
+    const continuationText = await continuation.innerText();
+    await continuation.click();
+    const target = /simulate/i.test(continuationText) ? 'verify' : /board/i.test(continuationText) ? 'hardware' : /package/i.test(continuationText) ? 'export' : 'design';
+    await page.getByTestId('ide-mode-' + target).waitFor();
+    await page.getByTestId('mode-button-project').click();
+    const titleBefore = await page.getByTestId('ide-project-overview-title').innerText();
+    const projectBefore = await readWorkingProject(page);
+    await page.getByTestId('ide-menu-file').click();
+    for (const command of ['project.build-fresh', 'project.open-starter', 'surface.import-recover.open', 'project.open']) {
+      assert(await visible(page.getByTestId('ide-menu-item-' + command)), 'File must retain ' + command);
+    }
+    await page.getByTestId('ide-menu-item-project.build-fresh').click();
+    await assertBuildFreshReplacementModal(page, 'Loaded Project blank replacement');
+    assert(await page.getByTestId('ide-project-overview-title').innerText() === titleBefore, 'Cancel replacement must preserve loaded project identity');
+    assert(await readWorkingProject(page) === projectBefore, 'Cancel replacement must preserve the project, circuit and mapping');
+    await assertNoRootOverflow(page, 'Project');
   }
-
-  await loadStarterProject(page, { exactExampleId: 'logic-gates' });
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-
-  const loadedCenter = page.locator('[data-testid="ide-project-command-center"]').first();
-  assert(await visible(loadedCenter), 'Loaded Project must keep the command center visible');
-  await assertNoPrematureDownstreamWarnings(loadedCenter, 'Loaded Project command center');
-
-  assert(
-    await visible(page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first()),
-    'Loaded Project command center must show one primary next action'
-  );
-  assert(
-    !(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first())),
-    'Loaded Project must keep change-project paths collapsed until requested'
-  );
-
-  const continueAction = page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first();
-  assert(/simulate/i.test(await text(continueAction)), 'Loaded Logic Gates primary must continue to the next incomplete stage, Simulate');
-  assert(
-    await visible(page.locator('[data-testid="ide-project-command-action-verify"]').first()),
-    'Loaded Logic Gates primary must expose Simulate routing truth'
-  );
-  await continueAction.click();
-  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
-  assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'Change Project must reveal peer entry paths');
-
-  const requiredPaths = [
-    ['ide-project-path-build-fresh', 'build fresh'],
-    ['ide-project-path-course-starter', 'starter'],
-    ['ide-project-path-import-recover', 'import'],
-    ['ide-project-path-open-existing', 'open'],
-  ];
-  for (const [testId, expectedText] of requiredPaths) {
-    const path = page.locator(`[data-testid="${testId}"]`).first();
-    assert(await visible(path), `Loaded Project command center must expose ${testId}`);
-    assert(
-      (await text(path)).toLowerCase().includes(expectedText),
-      `${testId} must read as "${expectedText}"`
-    );
-  }
-
-  const starterBrowser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
-  if (await starterBrowser.isVisible().catch(() => false)) {
-    const expanded = await starterBrowser.getAttribute('data-expanded');
-    assert(expanded === 'false', 'Loaded Project must keep the starter browser collapsed by default');
-  }
-
-  await page.locator('[data-testid="ide-project-path-build-fresh"]').first().click();
-  await assertBuildFreshReplacementModal(page, 'Loaded Project Build Fresh');
-  assert(
-    await visible(page.locator('[data-testid="ide-mode-project"]').first()),
-    'Dismissing the Build Fresh guard must leave the student on Project'
-  );
+  assert(problems.length === 0, 'Project browser errors: ' + JSON.stringify(problems));
 });
+
+async function readWorkingProject(page) {
+  return page.evaluate(() => {
+    const state = window.__RB_PROJECT_RUNTIME__?.getState?.();
+    if (!state?.projectId || !state.circuit) throw new Error('Project authority is unavailable');
+    return JSON.stringify({ id: state.projectId, circuit: state.circuit, mapping: state.ioMapping });
+  });
+}

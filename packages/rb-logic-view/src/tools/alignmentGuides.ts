@@ -42,5 +42,5 @@ export function computeAlignmentGuides(
     }
   }
 
-  return { verticals, horizontals };
+  return { verticals: [...new Set(verticals)], horizontals: [...new Set(horizontals)] };
 }

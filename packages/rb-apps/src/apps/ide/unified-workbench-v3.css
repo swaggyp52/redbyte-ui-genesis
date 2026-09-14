@@ -76,8 +76,17 @@
 .ide-root .ide-workbench-resize-handle--right::after { top: 0; bottom: 0; left: 4px; width: 1px; }
 .ide-root .ide-workbench-resize-handle--bottom { top: -5px; right: 0; left: 0; height: 9px; cursor: row-resize; }
 .ide-root .ide-workbench-resize-handle--bottom::after { top: 4px; right: 0; left: 0; height: 1px; }
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 244px), 300px); --ide-workbench-right-width: clamp(280px, var(--rb-workbench-pref-right-width, 304px), 360px); }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] { --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 220px); --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 236px); }
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 240px), 300px); --ide-workbench-right-width: clamp(260px, var(--rb-workbench-pref-right-width, 296px), 340px); }
+
+/* Ordinary desktop widths come from the saved preference. Text-responsive chrome
+   may grow a dock with its text, capped so the document keeps useful width. Keeping
+   this policy here avoids the old unconditional 15rem/16rem minimums overriding
+   fresh 220px/236px Design preferences with 240px/256px tracks. */
+:root[data-rb-chrome='compact'] .ide-root .ide-workbench-shell {
+  --ide-workbench-left-width: min(max(var(--rb-workbench-pref-left-width, 236px), 15rem), 21vw);
+  --ide-workbench-right-width: min(max(var(--rb-workbench-pref-right-width, 300px), 16rem), 19vw);
+}
 
 .ide-root:is([data-ide-stage='project'], [data-ide-stage='verify'], [data-ide-stage='hardware'], [data-ide-stage='export']) .ide-main-area {
   width: 100%;
@@ -125,4 +134,21 @@
   .ide-root .ide-workbench-main .ide-workbench-workspace { grid-column: 1; }
   .ide-root .ide-workbench-main .ide-workbench-dock-left,
   .ide-root .ide-workbench-main .ide-workbench-dock-right { display: none; }
+  /* Project's existing explorer and inspector can be explicitly restored over
+     the document. Their React visibility owns both the panel and its restore
+     control; CSS must not silently hide a panel the shell considers open. */
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock {
+    display: block;
+    position: absolute;
+    z-index: 40;
+    top: 0;
+    bottom: 0;
+    width: min(320px, 100%);
+    max-height: none;
+    box-shadow: 4px 0 16px rgb(15 23 42 / 18%);
+  }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock-left { left: 0; }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock-right { right: 0; }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock-collapse { display: grid; }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .wb-toolwindow-header { padding-right: 40px; }
 }

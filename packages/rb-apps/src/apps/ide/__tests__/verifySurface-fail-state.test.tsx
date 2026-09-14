@@ -23,12 +23,19 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'test',
+      scenarioName: 'Test Vectors',
+      status: 'fail',
+      deterministicHash: 'abc123',
+      generatedAtIso: new Date().toISOString(),
+      reportHash: 'rep456',
       vectors: [{ id: 'vec-01', tick: 0, inputs: {}, expected: { out_led: 1 }, caseIndex: 0 }],
       inputsAtTick: { 0: {} },
       inputsByVectorId: { 'vec-01': {} },
       signalRoles: { out_led: 'output' },
       rows: [{ tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01', caseIndex: 0 }],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [],
   };
 }
@@ -50,9 +57,11 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    const failure = getByTestId('ide-verify-fail-nav-summary');
+    expect(failure.textContent).toContain('out_led');
+    expect(failure.textContent).toContain('Case 0');
+    expect(failure.closest('details')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -72,7 +81,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getAllByTestId('ide-verify-fail-nav-first').length).toBeGreaterThan(0);
-    expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-pressed')).toBe('false');
+    expect(getAllByTestId('ide-verify-details')[0]?.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
     // This used to assert that the surface contained no <details> at all - a tag-name proxy for
