@@ -20,6 +20,7 @@
 // drawn, not what it promised; the promise is the list above.
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
+import { readDurableRecord } from './_durableStorage.mjs';
 
 const tid = (id) => `[data-testid="${id}"]`;
 
@@ -38,15 +39,10 @@ async function runtimeState(page) {
 }
 
 async function savedProjectIds(page) {
-  return page.evaluate(() => {
-    try {
-      const raw = localStorage.getItem('rb.ide.projects.v1.index');
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list.map((entry) => entry.projectId) : [];
-    } catch {
-      return [];
-    }
-  });
+  const raw = await readDurableRecord(page, 'rb.ide.projects.v1.index');
+  const list = raw ? JSON.parse(raw) : [];
+  assert(Array.isArray(list), 'committed saved-project index must be an array');
+  return list.map((entry) => entry.projectId);
 }
 
 async function openProjectOverview(page) {

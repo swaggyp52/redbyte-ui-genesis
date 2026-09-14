@@ -10,6 +10,7 @@
 // Runs at 1440x900 and at a deliberately short 1280x650, because a short window is where a
 // composed page is most likely to be wrong.
 import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
+import { readDurableRecord } from '../../scripts/gates/_durableStorage.mjs';
 
 const OUT = evidenceDir('project-experience', process.env.RB_SHOT_LABEL ?? 'current');
 const tid = (t) => `[data-testid="${t}"]`;
@@ -40,13 +41,12 @@ async function run(width, height) {
     start: Boolean(document.querySelector('[data-testid="ide-project-landing"]')),
     overview: Boolean(document.querySelector('[data-testid="ide-project-overview-document"]')),
   }));
-  const savedIndex = () => page.evaluate(() => {
-    try {
-      const raw = localStorage.getItem('rb.ide.projects.v1.index');
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list.map((e) => `${e.projectName}|${e.projectId}`) : ['<not an array>'];
-    } catch { return ['<unreadable>']; }
-  });
+  const savedIndex = async () => {
+    const raw = await readDurableRecord(page, 'rb.ide.projects.v1.index');
+    const list = raw ? JSON.parse(raw) : [];
+    assert(Array.isArray(list), 'committed saved-project index must be an array');
+    return list.map((entry) => `${entry.projectName}|${entry.projectId}`);
+  };
   const runCommand = async (id) => {
     await page.keyboard.press('Control+k');
     await page.waitForSelector(tid('ide-command-palette'), { state: 'visible', timeout: 8000 });

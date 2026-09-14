@@ -443,7 +443,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId } = view;
     expect(view.queryByTestId('ide-verify-repair-panel')).toBeNull();
     openVerifyUtilities(getByTestId);
-    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks', exact: true }));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks' }));
     expect(getByTestId('ide-verify-repair-title').textContent).toContain('Compare failed');
     expect(getByTestId('ide-run-check-result').textContent).toContain('1 of 2 checks failed');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 1');
@@ -1391,7 +1391,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     openVerifyUtilities(view.getByTestId);
-    fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks', exact: true }));
+    fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks' }));
     fireEvent.click(view.getByTestId('ide-verify-repair-use-observed'));
     expect(onVectorsChange).toHaveBeenCalledWith([
       { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },

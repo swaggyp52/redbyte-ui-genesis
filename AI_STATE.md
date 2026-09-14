@@ -1,5 +1,19 @@
 # AI State
 
+## P2.6C validation consumer follow-up - 2026-09-14
+
+Committed candidate b619d1dfd passed the canonical build and verify:gates, including
+protected export goldens. Its classroom chain stopped at a legacy localStorage
+index reader; that reader and the complete Project journey now inspect committed
+IndexedDB bytes. Project health now checks the current Overview, a passing run,
+stale state after a real Design edit, and exact retained archive contents.
+The two new Testing Library typing errors are removed: raw rb-apps diagnostics
+return from 572 to the existing 570 baseline; all 53 workstation tests pass.
+Repository-status still contains additional retired-interface consumers; the
+bounded sweep records every result under p2-6c/repo-consumer-sweep. Those failures
+are not passing gates. Final candidate build, classroom, browser campaign and
+feature-branch preview delivery remain pending.
+
 ## P2.6C implementation checkpoint - 2026-09-14
 
 The authorized candidate remains on claude/redbyte-studio-completion-p2-6-q7m3v8,
