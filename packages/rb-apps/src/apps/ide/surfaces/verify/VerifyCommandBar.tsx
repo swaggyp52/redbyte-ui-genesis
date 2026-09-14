@@ -205,8 +205,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      <strong className="wb-toolbar-fact">{experimentScenarioName || 'Current scenario'}</strong>
-      <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count">{configuredCheckCount} optional checks</span>
+      <strong className="rb-sim-scenario-name">{experimentScenarioName || 'Current scenario'}</strong>
+      <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title={explainerText}>{configuredCheckCount} optional checks</span>
       <span className="wb-toolbar-spacer" />
       <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
         <IdeButton
@@ -223,7 +223,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         {onReproduce && <IdeButton tone="secondary" className="wb-btn" onClick={onReproduce} disabled={Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
           title={reproduceDisabledReason || 'Run the retained design and stimulus again with the same engine.'}>Reproduce</IdeButton>}
       </div>
-      <span className={`wb-toolbar-meta rb-sim-explainer${runBlockedReason ? ' is-blocked-reason' : ''}`} title={explainerText} data-testid="ide-vcb-mode-explainer">{explainerText}</span>
+      <span className={`wb-toolbar-meta rb-sim-explainer${runBlockedReason ? ' is-blocked-reason' : ''}`} hidden={!runBlockedReason} title={explainerText} data-testid="ide-vcb-mode-explainer">{explainerText}</span>
       {reproduceDisabledReason && <span className="wb-toolbar-meta">{reproduceDisabledReason}</span>}
     </div>
   );

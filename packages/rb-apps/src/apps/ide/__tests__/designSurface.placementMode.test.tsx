@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 const EMPTY_CIRCUIT: Circuit = {
@@ -18,6 +19,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -99,6 +101,7 @@ beforeEach(() => {
     future: [],
   });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -229,6 +232,10 @@ describe('DesignSurface placement mode', () => {
     await openDesignLibrary(view);
 
     fireEvent.click(view.getByTestId('ide-design-palette-and'));
+    // Entering authoring already leaves the frozen external debug view. The placement
+    // itself must still report its circuit mutation once.
+    expect(onClearExternalDebug).toHaveBeenCalledTimes(1);
+    onClearExternalDebug.mockClear();
     fireEvent.click(view.getByTestId('ide-design-live-canvas'), { clientX: 480, clientY: 280 });
 
     await waitFor(() => {

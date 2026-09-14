@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 2,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -122,6 +124,7 @@ beforeEach(() => {
     future: [],
   });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -222,18 +225,18 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+      expect(view.getByTestId('ide-design-context-focus-path')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-trace'));
+      fireEvent.click(view.getByTestId('ide-design-context-focus-path'));
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What feeds LD0');
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Focused path · LD0');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
       expect(traceLabel.textContent).toBe('Active');
-      expect(traceLabel.getAttribute('title')).toContain('What feeds LD0');
+      expect(traceLabel.getAttribute('title')).toContain('Focused path · LD0');
     });
 
     // Now clear and activate fan-out trace on sw0_node
@@ -291,7 +294,7 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
   });
 
-  it('does not show a redundant action toast when Trace net is clicked (label + highlight are enough)', async () => {
+  it('selects a wire as one net without redundant action feedback, and can focus its driver path', async () => {
     const view = renderSurface();
     const wireId = 'sw0_node.out-ld0_node.in';
 
@@ -300,18 +303,17 @@ describe('DesignSurface fan-out — trace activation', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+      expect(view.getByTestId('ide-design-context-focus-path')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-trace'));
+      fireEvent.click(view.getByTestId('ide-design-context-focus-path'));
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-active-trace').textContent).toMatch(/One net/);
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Focused path · LD0');
     });
-
-    expect(view.queryByTestId('ide-design-action-toast')).toBeNull();
+    expect(view.getByTestId('ide-design-action-toast').textContent).toContain('Unrelated logic is dimmed');
   });
 
   it('auto-applies driver net trace when a single wire is selected (no Trace net click)', async () => {
@@ -345,18 +347,18 @@ describe('DesignSurface fan-out — upstream trace regression', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+      expect(view.getByTestId('ide-design-context-focus-path')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-trace'));
+      fireEvent.click(view.getByTestId('ide-design-context-focus-path'));
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What feeds LD0');
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Focused path · LD0');
       const traceLabel = view.getByTestId('ide-design-context-trace-state');
       expect(traceLabel.textContent).toBe('Active');
-      expect(traceLabel.getAttribute('title')).toContain('What feeds LD0');
+      expect(traceLabel.getAttribute('title')).toContain('Focused path · LD0');
     });
   });
 
@@ -371,7 +373,7 @@ describe('DesignSurface fan-out — upstream trace regression', () => {
       expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+    expect(view.getByTestId('ide-design-context-focus-path')).toBeTruthy();
     expect(view.getByTestId('ide-design-context-trace-fanout')).toBeTruthy();
   });
 });

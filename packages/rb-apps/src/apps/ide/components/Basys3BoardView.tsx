@@ -163,11 +163,11 @@ function labelFill(
   conflictAliases?: Set<string>
 ): string {
   const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
-  if (state === 'unavailable') return '#64748b';
+  if (state === 'unavailable') return '#aabbd0';
   if (state === 'selected') return '#fff7d6';
   if (state === 'conflict') return '#fecaca';
   if (state === 'mapped') return '#bbf7d0';
-  if (state === 'mapped-unavailable') return 'rgba(187,247,208,0.7)';
+  if (state === 'mapped-unavailable') return '#bbd0c8';
   if (state === 'available') return '#e0f2fe';
   return '#cbd5e1';
 }

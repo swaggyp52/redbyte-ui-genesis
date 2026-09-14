@@ -2,7 +2,7 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import {

@@ -115,7 +115,8 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    fireEvent.click(compareView.getByTestId('ide-verify-details'));
+    const details = compareView.getByTestId('ide-verify-details');
+    if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
     const compareTabs = compareView.getByTestId('ide-verify-analysis-tab-nav');
     expect(within(compareTabs).getByText('Checks')).toBeTruthy();
   });
@@ -131,7 +132,8 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    expect(getAllByTestId('ide-verify-primary-status').length).toBe(1);
+    expect(getAllByTestId('ide-verify-context-state').length).toBe(1);
+    expect(getAllByTestId('ide-verify-context-state')[0].textContent).toContain('stale');
     expect(queryByTestId('ide-verify-incomplete-mapping-banner')).toBeNull();
     expect(queryByTestId('ide-verify-scenario-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-wrong-scenario-banner')).toBeNull();
@@ -175,7 +177,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(queryByTestId('ide-verify-three-panel-left')).toBeNull();
     expect(queryByTestId('ide-verify-three-panel-right')).toBeNull();
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
-    expect(getByTestId('ide-verify-details').getAttribute('aria-expanded')).toBe('false');
+    expect(getByTestId('ide-verify-details').getAttribute('aria-pressed')).toBe('false');
   });
 
   it('keeps the stimulus workbench header compact instead of repeating waveform guidance in the header copy', () => {

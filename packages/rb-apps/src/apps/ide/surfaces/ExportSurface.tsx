@@ -1765,26 +1765,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               {downloadError}
             </IdeCallout>
           ) : null}
-          <div className="rb-pkg-obtain" data-testid="ide-export-obtain-summary">
-            <p data-testid={downloadDone ? 'ide-export-download-success' : 'ide-export-download-record'}>
-              {downloadDone
-                ? `Current ${currentDownloadEvidence?.verificationTrust === 'trusted' ? 'checked' : 'draft'} ZIP generated; browser download requested.`
-                : previousDownloadIsStale
-                  ? 'Previous ZIP is out of date. Generate again for the current design, mapping and stimulus.'
-                  : 'Generation creates the ZIP and requests a browser download.'}
-              <span> A download record does not confirm a file was saved to disk.</span>
-            </p>
-            {downloadDone && currentDownloadEvidence?.packageHash ? <p className="rb-pkg-download-digest">
-              ZIP SHA-256 <code data-testid="ide-export-package-sha256">{currentDownloadEvidence.packageHash}</code>
-            </p> : null}
-            <p className="rb-pkg-vivado-next" data-testid="ide-export-vivado-next-step">
-              <strong>Next in Vivado</strong> Unzip the project ZIP and open its <code>.xpr</code> project.
-              Review synthesis and implementation before generating a bitstream.
-              <span> Vivado and physical board validation are external.</span>
-            </p>
-          </div>
-
-
           <section
             className="rb-pkg-files"
             data-testid="ide-export-package-contents"
@@ -1936,6 +1916,26 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </div>
             )}
           </section>
+
+          <details className="rb-pkg-obtain" data-testid="ide-export-obtain-summary" open={downloadDone || previousDownloadIsStale || undefined}>
+            <summary>Download receipt and Vivado handoff</summary>
+            <p data-testid={downloadDone ? 'ide-export-download-success' : 'ide-export-download-record'}>
+              {downloadDone
+                ? `Current ${currentDownloadEvidence?.verificationTrust === 'trusted' ? 'checked' : 'draft'} ZIP generated; browser download requested.`
+                : previousDownloadIsStale
+                  ? 'Previous ZIP is out of date. Generate again for the current design, mapping and stimulus.'
+                  : 'Generation creates the ZIP and requests a browser download.'}
+              <span> A download record does not confirm a file was saved to disk.</span>
+            </p>
+            {downloadDone && currentDownloadEvidence?.packageHash ? <p className="rb-pkg-download-digest">
+              ZIP SHA-256 <code data-testid="ide-export-package-sha256">{currentDownloadEvidence.packageHash}</code>
+            </p> : null}
+            <p className="rb-pkg-vivado-next" data-testid="ide-export-vivado-next-step">
+              <strong>Next in Vivado</strong> Unzip the project ZIP and open its <code>.xpr</code> project.
+              Review synthesis and implementation before generating a bitstream.
+              <span> Vivado and physical board validation are external.</span>
+            </p>
+          </details>
 
           <details className="rb-pkg-provenance-map" data-testid="ide-export-provenance-section" aria-label="Package provenance">
             <summary className="rb-pkg-section-header rb-pkg-provenance-summary">

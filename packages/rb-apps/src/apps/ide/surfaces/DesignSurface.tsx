@@ -2682,6 +2682,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return readDesignCanvasViewport(canvasHostRef.current.clientWidth, canvasHostRef.current.clientHeight);
   }, []);
 
+  const lastFittedCameraRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const fitToCircuit = useCallback((viewportOverride?: unknown) => {
     const viewport = isDesignCanvasViewport(viewportOverride)
       ? viewportOverride
@@ -2713,11 +2714,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const nextZoom = Math.round(Math.max(0.35, Math.min(1.6, Math.min(zoomX, zoomY))) * 100) / 100;
     const centerX = (bounds.minX + bounds.maxX) / 2;
     const centerY = (bounds.minY + bounds.maxY) / 2;
-    setCamera({
+    const fittedCamera = {
       x: viewport.width / 2 - centerX * nextZoom,
       y: viewport.height / 2 - centerY * nextZoom,
       zoom: nextZoom,
-    });
+    };
+    lastFittedCameraRef.current = fittedCamera;
+    setCamera(fittedCamera);
   }, [canvasSize, editorCircuit.nodes, measureCanvasViewport, setCamera]);
 
   const fitToCircuitRef = useRef(fitToCircuit);
@@ -2776,6 +2779,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!previousViewport) return;
 
       const currentCamera = useLogicViewStore.getState().camera;
+      const fittedCamera = lastFittedCameraRef.current;
+      // Fit follows a resized sheet only while the user has left that fitted view untouched.
+      // A deliberate pan or zoom remains owned by the user across Split and dock changes.
+      if (fittedCamera && currentCamera.x === fittedCamera.x &&
+          currentCamera.y === fittedCamera.y && currentCamera.zoom === fittedCamera.zoom) {
+        fitToCircuitRef.current(nextViewport);
+        return;
+      }
       const reconciledCamera = reconcileDesignCanvasCamera(
         currentCamera,
         previousViewport,
@@ -2835,15 +2846,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount only
 
-  // A representation change is an explicit request for a new composition. Fit after
-  // its two primary tracks have settled, not against the previous canvas width.
-  useEffect(() => {
-    let inner: number | undefined;
-    const outer = window.requestAnimationFrame(() => {
-      inner = window.requestAnimationFrame(() => { if (editorCircuit.nodes.length) fitToCircuitRef.current(); });
-    });
-    return () => { window.cancelAnimationFrame(outer); if (inner !== undefined) window.cancelAnimationFrame(inner); };
-  }, [designView]);
+  // The measured viewport observer owns resize reconciliation; changing representation
+  // does not discard a deliberate pan or zoom. Explicit Fit remains available.
 
   const zoomIn = useCallback(() => {
     zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
@@ -2972,42 +2976,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       hasAutoFitRef.current = false;
     }
   }, [editorCircuit.nodes.length]);
-
-  /**
-   * A dock mounting takes the sheet's width without moving the camera.
-   *
-   * Selecting any symbol mounts the 280px contextual inspector. Measured on the two-bit counter
-   * at 1280x650: the schematic frame goes from 928px to 648px, the drawing re-centres but is not
-   * re-fitted, and `node-OUTPUT-q0_out` ends up 96px past the frame's right edge and 80px under
-   * the dock - 6 of 9 sampled points inside it hit it before, 0 after, with clicks aimed at the
-   * LD1 output pin landing on the inspector's own Delete node button. Selecting an output is how
-   * a student reaches its board mapping, so the Design -> Board loop was broken from the Design
-   * side, and at 1280x650 the Fit control is `display: none` while the dock is open.
-   *
-   * The camera belongs to the reader, so this does not re-fit on every resize - a reader who has
-   * zoomed in has content outside the pane on purpose. It re-fits only when the pane has SHRUNK
-   * and that shrink has put the circuit outside the sheet.
-   */
-  const previousCanvasSizeRef = useRef(canvasSize);
-  useEffect(() => {
-    const previous = previousCanvasSizeRef.current;
-    previousCanvasSizeRef.current = canvasSize;
-    if (editorCircuit.nodes.length === 0) return;
-    if (canvasSize.width <= 0 || canvasSize.height <= 0) return;
-    const shrank = canvasSize.width < previous.width - 1 || canvasSize.height < previous.height - 1;
-    if (!shrank) return;
-    const bounds = unionBounds(buildGeometryIndex(editorCircuit.nodes as Node[]).values());
-    if (!bounds) return;
-    const left = bounds.minX * camera.zoom + camera.x;
-    const right = bounds.maxX * camera.zoom + camera.x;
-    const top = bounds.minY * camera.zoom + camera.y;
-    const bottom = bounds.maxY * camera.zoom + camera.y;
-    const outside = right > canvasSize.width || left < 0 || bottom > canvasSize.height || top < 0;
-    if (!outside) return;
-    fitToCircuitRef.current();
-    // The camera is read to decide, not to trigger: panning must not re-fit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasSize.width, canvasSize.height]);
 
   useEffect(() => {
     if (!viewportSeed) return;

@@ -25,7 +25,7 @@
   --rb-text-strong: #101828;
   --rb-text-primary: #152033;
   --rb-text-secondary: #4d5a6b;
-  --rb-text-muted: #667386;
+  --rb-text-muted: #536174;
   --rb-action: #2563eb;
   --rb-accent: #2563eb;
   --rb-action-hover: #1d4ed8;
@@ -38,10 +38,10 @@
   --rb-map-pins: #b7791f;
   --rb-export: #07866f;
   --rb-import: #36688f;
-  --rb-state-success: #07866f;
+  --rb-state-success: #066450;
   --rb-state-warning: #c87917;
   --rb-warning-text: #8a4f09;
-  --rb-state-danger: #d13f4a;
+  --rb-state-danger: #ab2533;
   --rb-state-info: #2563eb;
   --rb-success: var(--rb-state-success);
   --rb-warning: var(--rb-state-warning);
@@ -129,10 +129,10 @@
   --rb-text-primary: #f2f5f8;
   --rb-text-secondary: #b5bfcc;
   --rb-text-muted: #8f9aaa;
-  --rb-action: #4f7df3;
-  --rb-accent: #6d8ff5;
-  --rb-action-hover: #7196ff;
-  --rb-action-pressed: #365fca;
+  --rb-action: #2e5fd0;
+  --rb-accent: #8aabff;
+  --rb-action-hover: #2453bc;
+  --rb-action-pressed: #1e449c;
   --rb-focus: #79a0ff;
   --rb-brand-red: #ef7a68;
   --rb-project: #ef8272;
@@ -214,35 +214,10 @@
 }
 
 .ide-root .ide-workbench-shell {
-  /* A dock is as wide as the reader asked for, or as wide as its own words need - whichever
-     is greater. The stored preference is in pixels and governs an ordinary desktop, where it
-     always exceeds the floors below. The floors are in the reader's text size, so a dock that
-     would otherwise hold its pixel width while its contents doubled grows with them instead:
-     measured at 200% text before this, the Design library clipped "AND Gate" by 121px and
-     "D, CLK -> Q, Q_inv" by 172px inside a 264px pane, and the Simulate inspector clipped
-     "None at this event" by 90px inside 240px. */
-  /* ...but never so wide that the thing being supported has nowhere left to be. Measured at
-     200% text on a 1366px window before the cap: left 480px + right 512px + rail 112px left the
-     schematic 262px, and the Design toolbar folded into five rows inside it. Support yields
-     before the primary instrument does, so each dock is floored by its own words and capped by
-     the window. At an ordinary desktop size the stored preference is smaller than both and
-     governs alone. */
-  --ide-workbench-left-width: min(max(var(--rb-workbench-pref-left-width, 216px), 15rem), 26vw) !important;
-  --ide-workbench-right-width: min(max(var(--rb-workbench-pref-right-width, 252px), 16rem), 24vw) !important;
   --ide-workbench-console-height: var(--rb-workbench-pref-bottom-height, 220px) !important;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-}
-
-/* When the window is narrow measured in the reader's own text size - the same threshold the
-   application bar composes against - the caps tighten again. Measured at 200% text on a 1366px
-   window: 26vw/24vw left the schematic column 539px and its toolbar three rows; 21vw/19vw
-   leaves it 685px. The docks are still floored by their own words, so nothing inside them
-   clips; they simply stop taking room from the drawing before the drawing has any. */
-:root[data-rb-chrome='compact'] .ide-root .ide-workbench-shell {
-  --ide-workbench-left-width: min(max(var(--rb-workbench-pref-left-width, 216px), 15rem), 21vw) !important;
-  --ide-workbench-right-width: min(max(var(--rb-workbench-pref-right-width, 252px), 16rem), 19vw) !important;
 }
 
 /* The persisted bottom-dock height owns the complete grid track. Legacy chrome
@@ -1216,8 +1191,8 @@
 
 .ide-root .ide-projectx-tag.is-active {
   background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
-  border-color: var(--rb-action);
-  color: var(--rb-action);
+  border-color: var(--rb-accent);
+  color: var(--rb-accent);
 }
 
 .ide-root .ide-projectx-example-card {
@@ -1231,7 +1206,7 @@
 }
 
 .ide-root .ide-projectx-example-card.is-active {
-  border-color: var(--rb-action);
+  border-color: var(--rb-accent);
   box-shadow: 0 0 0 1px var(--rb-action);
 }
 
@@ -1261,7 +1236,7 @@
   border: 1px solid color-mix(in srgb, var(--rb-action) 45%, transparent);
   border-radius: 999px;
   background: color-mix(in srgb, var(--rb-action) 10%, transparent);
-  color: var(--rb-action);
+  color: var(--rb-accent);
   padding: 2px 8px;
   font-size: var(--rb-text-micro);
   font-weight: 700;
@@ -1327,7 +1302,7 @@
   height: 18px;
   border-radius: 50%;
   background: color-mix(in srgb, var(--rb-action) 14%, var(--rb-surface-1));
-  color: var(--rb-action);
+  color: var(--rb-accent);
   font-size: var(--rb-text-meta);
   font-weight: 700;
 }

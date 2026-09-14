@@ -3,7 +3,8 @@
    owns only what is specific to Simulate. No !important. */
 
 /* Toolbar: instrument segment · run intent · explainer · Run. */
-.ide-root .rb-sim-toolbar { padding-left: var(--wb-space-3); }
+.ide-root .rb-sim-toolbar { padding: 6px var(--wb-space-3); gap: 6px 12px; background: var(--wb-surface); }
+.ide-root .rb-sim-scenario-name { font: 650 var(--wb-text-lg) / 1.3 var(--wb-font-ui); color: var(--wb-text); min-width: 0; overflow-wrap: anywhere; }
 .ide-root .rb-sim-seg .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
 .ide-root .rb-sim-seg .wb-btn.is-blocked { color: var(--wb-text-3); }
 .ide-root .rb-sim-run .ide-button {
@@ -21,11 +22,11 @@
 }
 .ide-root .rb-sim-run .ide-button.wb-btn--primary {
   color: var(--wb-accent-text);
-  background: var(--wb-accent);
-  border-color: var(--wb-accent);
+  background: var(--rb-action);
+  border-color: var(--rb-action);
 }
 .ide-root .rb-sim-run .ide-button:disabled { opacity: 0.45; }
-.ide-root .rb-sim-run .ide-button.is-pulsing { box-shadow: 0 0 0 3px var(--wb-accent-bg-strong); }
+.ide-root .rb-sim-run .ide-button.is-pulsing { border-color: var(--wb-accent); }
 
 /* Left dock: scenarios above the signal rail. */
 .ide-root .rb-sim-dock { display: flex; flex-direction: column; min-height: 0; height: 100%; }
@@ -148,7 +149,7 @@
 }
 .ide-root .ide-case-lab-bar .ide-button:hover,
 .ide-root .ide-case-lab-filter:hover { background: var(--wb-hover-bg); }
-.ide-root .ide-case-lab-bar .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .ide-case-lab-bar .ide-button-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
 .ide-root .ide-case-lab-filter.is-active { border-color: var(--wb-accent); color: var(--wb-accent); background: var(--wb-accent-bg); }
 .ide-root .ide-case-lab-filter:disabled,
 .ide-root .ide-case-lab-bar .ide-button:disabled { opacity: 0.45; cursor: default; }
@@ -320,7 +321,15 @@
 .ide-root .rb-sim-imported-details { flex: none; border-top: 1px solid var(--wb-border); color: var(--wb-text-2); background: var(--wb-surface); font-size: var(--wb-text-sm); }
 .ide-root .rb-sim-imported-details > summary { padding: 5px 12px; cursor: pointer; }
 .ide-root .rb-sim-imported-details[open] { max-height: 65vh; overflow: auto; }
-.ide-root .rb-tl-context { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 3px 8px; font-size: var(--wb-text-sm); border-bottom: 1px solid var(--wb-border); flex: none; }
+.ide-root .rb-tl-context { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 4px 8px; font-size: var(--wb-text-sm); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); flex: none; }
+.ide-root .rb-time-measure { position: relative; }
+.ide-root .rb-time-measure > summary { cursor: pointer; color: var(--wb-text-2); padding: 3px 5px; }
+.ide-root .rb-time-measure-body { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border: 1px solid var(--wb-border-strong); background: var(--wb-surface); }
+.ide-root .rb-time-measure[open] { flex-basis: 100%; }
+.ide-root .rb-timing-settings { min-width: 0; }
+.ide-root .rb-timing-settings > summary { cursor: pointer; color: var(--wb-text-2); font: 500 var(--wb-text-sm) / 1.4 var(--wb-font-ui); padding: 3px 0; }
+.ide-root .rb-timing-settings[open] { flex-basis: 100%; }
+.ide-root .rb-timing-settings-body { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 0; }
 .ide-root .rb-tl-lane[data-selected='true'] > .rb-tl-label { fill: var(--wb-accent, #245dc0); font-weight: 700; }
 .ide-root .rb-tl-label { cursor: pointer; }
 
@@ -342,7 +351,7 @@
    rem: at a 32px root the words were drawn 19px below their own buttons, so the lower half of
    each one belonged to the toolbar underneath and a click on "Waveform" pressed what was behind
    it. */
-.ide-root .rb-sim-representation__choice { min-height: 1.1875rem; padding: 1px 8px; border: 1px solid transparent; border-radius: var(--wb-radius); background: transparent; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); line-height: 1.2; white-space: nowrap; cursor: pointer; }
+.ide-root .rb-sim-representation__choice { min-height: var(--wb-control-h); padding: 1px 8px; border: 1px solid transparent; border-radius: var(--wb-radius); background: transparent; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); line-height: 1.2; white-space: nowrap; cursor: pointer; }
 .ide-root .rb-sim-representation__choice:hover:not(:disabled) { color: var(--wb-text); border-color: var(--wb-border); }
 .ide-root .rb-sim-representation__choice:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
 .ide-root .rb-sim-representation__choice.is-active { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-surface); font-weight: 500; }
@@ -465,6 +474,9 @@
    inside a 30px bar at 1280px, which read as a stray word under the label. */
 .ide-root .rb-timing-count { flex: none; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
 .ide-root .rb-timing-spacer { flex: 1 1 auto; }
+/* Navigation and event commands share one wrapping instrument toolbar. */
+.ide-root .rb-timing-bar .rb-sim-representation { display: contents; }
+.ide-root .rb-timing-bar .rb-sim-representation__label { display: none; }
 .ide-root .rb-timing-danger { color: var(--wb-err); }
 .ide-root .rb-timing-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .ide-root .rb-timing-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
@@ -873,13 +885,16 @@
 .ide-root .rb-tl-observed-label { fill: var(--wb-text); font: .6875rem var(--wb-font-mono); pointer-events: none; }
 .ide-root .rb-tl-context .rb-wave-play-disclosure { position: relative; }
 .ide-root .rb-tl-context .rb-wave-play-disclosure[open] .rb-wave-play { position: absolute; top: 100%; left: 0; z-index: 5; padding: 8px; min-width: 15rem; flex-wrap: wrap; background: var(--wb-surface); border: 1px solid var(--wb-border); }
-.ide-root .rb-recorded-navigation { display: flex; gap: .375rem; align-items: center; flex-wrap: wrap; }
+.ide-root .rb-recorded-navigation { display: contents; }
+.ide-root .rb-tl-context .rb-fail-focus:not(:empty) { order: 10; flex: 1 0 100%; padding: 4px 0; border-top: 1px solid var(--wb-border); }
+.ide-root .rb-tl-context .rb-fail-focus-nav { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.ide-root .rb-tl-context .rb-fail-focus .ide-button { min-height: var(--wb-control-h); height: auto; padding: 4px 8px; font: 500 var(--wb-text-sm) / 1.2 var(--wb-font-ui); box-shadow: none; }
 .ide-root .rb-tl-context .rb-wave-group { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
 .ide-root .rb-tl-context .rb-wave-group--tail { margin-left: auto; }
 
 /* Keep the existing investigation exit available while either instrument scrolls. */
 .ide-root .rb-sim-representation { position: sticky; top: 0; z-index: 4; }
-.ide-root .rb-tl-context .ide-verify-fail-nav-summary { background: var(--wb-surface); color: var(--wb-text); border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); }
+.ide-root .rb-tl-context .ide-verify-fail-nav-summary { background: transparent; color: var(--wb-text); border: 0; padding: 0; }
 .ide-root .rb-tl-context .ide-verify-fail-nav-summary * { color: inherit; }
 .ide-root .rb-tl:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
 

@@ -20,7 +20,7 @@
 .ide-root .rb-design-breadcrumb .wb-sep { color: var(--wb-text-3); }
 .ide-root .rb-design-breadcrumb .ide-design-breadcrumb-of { color: var(--wb-text-3); font-weight: 500; }
 .ide-root .rb-design-wirecue { display: inline-flex; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
-.ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--wb-accent); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--rb-action); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
 .ide-root .rb-design-wirecue-msg code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .rb-design-wirecue-msg.is-error { color: var(--wb-err); }
 .ide-root .rb-design-mode .wb-btn { min-width: 52px; }
@@ -458,7 +458,7 @@
   text-transform: none;
 }
 .ide-root .rb-insp-action-grid .ide-button:hover { background: var(--wb-hover-bg); }
-.ide-root .rb-insp-action-grid .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-insp-action-grid .ide-button-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
 .ide-root .rb-insp-action-grid .ide-button:disabled { opacity: 0.45; }
 .ide-root .rb-insp-group--danger .ide-button { color: var(--wb-err); }
 .ide-root .rb-insp-sel-pins { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }

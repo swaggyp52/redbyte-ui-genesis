@@ -90,10 +90,16 @@
    as a specification sheet - correct in every particular, no help in deciding what to do. */
 .ide-root .rb-project-identity {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--wb-space-2);
+  gap: 8px 16px;
+  padding: 18px 20px;
+  min-height: 76px;
+  background: var(--wb-surface);
   flex: none;
 }
+.ide-root .rb-project-identity .rb-doc-title { font: 650 var(--wb-text-title) / 1.25 var(--wb-font-ui); }
+.ide-root .rb-project-identity .rb-project-continue { min-height: var(--wb-control-h-lg); padding-inline: 12px; }
 .ide-root .rb-project-saved {
   color: var(--wb-text-3);
   font: var(--wb-text-sm) var(--wb-font-ui);
@@ -109,7 +115,7 @@
 }
 .ide-root .rb-project-stage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 30%);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 28%);
   align-items: stretch;
   flex: none;
   min-height: 0;
@@ -140,7 +146,7 @@
    as tall as its drawing needs, capped so a deep hierarchy scrolls instead of pushing the
    project's state off the screen. */
 .ide-root .rb-project-canvas .rb-arch svg { width: 100%; height: auto; max-height: 52vh; }
-.ide-root .rb-project-canvas .rb-arch { min-height: min(12rem, 30vh); }
+.ide-root .rb-project-canvas .rb-arch { min-height: min(18rem, 38vh); background: var(--wb-surface); align-items: center; }
 .ide-root .rb-project-canvas-empty {
   display: flex;
   flex: 1 1 auto;
@@ -169,14 +175,15 @@
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  background: var(--wb-surface-2);
 }
 .ide-root .rb-project-status { display: block; margin: 0; padding: 0; flex: none; }
 .ide-root .rb-project-status-row {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--wb-space-2);
-  padding: var(--wb-space-2) var(--wb-space-3);
-  border-bottom: 1px solid var(--wb-border);
+  padding: 12px 16px;
 }
 .ide-root .rb-project-status-row dt {
   flex: none;
@@ -309,7 +316,7 @@
 /* Project presents its side docks without their floating collapse corners. That is about the
    left and right docks; the bottom panel's own hide control lives in the console bar and is
    the only way to put the panel away from the pointer, so it must not be caught here. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-dock-collapse:not(.ide-workbench-dock-collapse--bottom) { display: none; }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='project']:not([data-narrow-project='true']) .ide-workbench-dock-collapse:not(.ide-workbench-dock-collapse--bottom) { display: none; }
 .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 248px), 360px); --ide-workbench-right-width: clamp(240px, var(--rb-workbench-pref-right-width, 288px), 400px); }
 
 @media (max-width: 1280px) {

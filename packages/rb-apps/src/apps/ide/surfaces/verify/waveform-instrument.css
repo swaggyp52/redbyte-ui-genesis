@@ -195,11 +195,11 @@
 .ide-root .rb-wave-play-disclosure[open] > summary { color: var(--wb-text); border-color: var(--wb-accent); }
 .ide-root .rb-wave-play-disclosure .rb-wave-play { margin-top: 4px; }
 .ide-root .rb-wave-results-summary-action { height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; }
-.ide-root .rb-wave-results-summary-action.is-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-wave-results-summary-action.is-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
 .ide-root .rb-wave-results-summary-action:disabled { opacity: 0.45; }
 .ide-root .rb-wave-actions { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
 .ide-root .rb-wave-actions .ide-button { height: var(--wb-control-h); min-height: 0; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); box-shadow: none; font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
-.ide-root .rb-wave-actions .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .rb-wave-actions .ide-button-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
 
 /* Bus words: one 26px row per declared bus — id · hex · binary/decimal · per-tick strip. */
 .ide-root .rb-wave-bus-words { display: block; margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--wb-border); border-radius: 0; background: var(--wb-surface); }
@@ -256,7 +256,7 @@
 .ide-root .ide-vwp-empty-hero-actions .ide-button,
 .ide-root .ide-vwp-ready-hero-run .ide-button { height: var(--wb-control-h); min-height: 0; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface); box-shadow: none; font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .ide-vwp-empty-hero-actions .ide-button-primary,
-.ide-root .ide-vwp-ready-hero-run .ide-button-primary { border-color: var(--wb-accent); color: var(--wb-accent-text); background: var(--wb-accent); }
+.ide-root .ide-vwp-ready-hero-run .ide-button-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
 .ide-root .ide-vwp-lanes { display: block; margin: 0; padding: 0; background: var(--rb-wave-bg); }
 .ide-root .ide-vwp-lane { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; height: 28px; border-bottom: 1px solid var(--rb-wave-row-line); }
 .ide-root .ide-vwp-lane-label { padding: 0 8px; color: var(--rb-wave-text-2); font: var(--wb-text-xs) var(--wb-font-mono); text-align: right; background: var(--rb-wave-gutter-bg); height: 100%; display: flex; align-items: center; justify-content: flex-end; }

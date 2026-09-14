@@ -2501,7 +2501,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ) : null}
       {lastRun && <button type="button" className="rb-sim-representation__choice" aria-pressed={inspectCircuit}
         onClick={inspectCircuit ? () => setInspectCircuit(false) : openCircuitInvestigation}
-        data-testid="ide-verify-inspect-circuit">{inspectCircuit ? 'Close circuit' : 'Inspect with circuit'}</button>}
+        data-testid="ide-verify-inspect-circuit" aria-label={inspectCircuit ? 'Close circuit' : 'Inspect with circuit'}>{inspectCircuit ? 'Close circuit' : 'Inspect'}</button>}
+      {lastRun && (onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) &&
+        <button type="button" className="rb-sim-representation__choice"
+          onClick={() => handleGoToDesignFromVerify()} data-testid="ide-verify-open-in-design"
+          aria-label="Open in Design" title="Open Design with the selected recording and tick context">Design</button>}
       {inspectCircuit && <div role="group" aria-label="Investigation focus" className="rb-investigation-focus">
         {(['both', 'timeline', 'circuit'] as const).map((focus) => <button key={focus} type="button"
           className="rb-sim-representation__choice" aria-pressed={investigationFocus === focus}
@@ -4938,7 +4942,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return {
         kind: 'stale',
         label: 'STALE',
-        detail: runStaleDetail ?? 'The design, stimulus or mapping changed after this run.',
+        detail: runStaleDetail ?? (forceRunStale
+          ? 'Browser reloaded — run again before trusting this recording as current evidence.'
+          : isRunStale
+            ? 'Design changed — run again to record the current circuit.'
+            : isTestbenchStale
+              ? 'Checks changed — run again before trusting the previous verdict.'
+              : 'The design, stimulus or mapping changed after this run.'),
       };
     }
     if (lastRun) {
@@ -4949,7 +4959,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       };
     }
     return { kind: 'none', label: 'NOT RUN', detail: null };
-  }, [isPlaying, lastRun, runProofIsStale, runStaleDetail, runState]);
+  }, [isPlaying, lastRun, runProofIsStale, runStaleDetail, runState, forceRunStale, isRunStale, isTestbenchStale]);
   const simulationEvidenceSummary = useMemo(
     () => lastRun ? buildSimulationEvidenceSummary(lastRun, runProofIsStale) : null,
     [lastRun, runProofIsStale]
@@ -5367,6 +5377,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [selectedSignal]);
   useEffect(() => {
     continuityMountedRef.current = true;
+    // A local selection may have published earlier in this effect flush. Do not
+    // replay the previous representation's captured selection over that newer choice.
+    const latestSelection = useEngineeringSelection.getState();
+    if (latestSelection.selected !== globalSelected || latestSelection.origin !== globalOrigin) return;
     if (!globalSelected || globalOrigin === continuityOrigin) return;
     if (globalSelected.kind === 'case-tick' && globalSelected.scenarioId === activeScenarioId && globalSelected.tick !== selectedTick) {
       setSelectedTick(globalSelected.tick);
@@ -6091,12 +6105,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {selectedFailureCase && (
                         <span className="ide-verify-fail-nav-summary" data-testid="ide-verify-fail-nav-summary">
                           <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
-                          {selectedFailureRepairCaseLabel && (
+                          {selectedFailureRepairCaseLabel && !isSequentialRun && (
                             <span className="ide-verify-fail-nav-summary__case" data-testid="ide-verify-fail-focus-case">
                               {selectedFailureRepairCaseLabel}
                             </span>
                           )}
-                          <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
+                          {(isSequentialRun || !selectedFailureRepairCaseLabel) && <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>}
                           <span className="ide-verify-fail-nav-summary__values ide-copy">
                             expected <code>{selectedFailureCase.expected}</code> · got <code>{selectedFailureCase.actual}</code>
                           </span>
@@ -6222,6 +6236,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               )}
               {verifyTab === 'mismatches' && (
                 <section className="ide-verify-mismatch-panel" data-testid="ide-verify-mismatch-table">
+                  {repairPanel}
                   {/* Mismatch guidance — top-level orientation before the detail */}
                   {hasSessionFailureEvidence && (
                     <div className="ide-verify-mismatch-guidance" data-testid="ide-verify-mismatch-guidance">
@@ -7413,7 +7428,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {inspectCircuit || studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
+        {inspectCircuit || representation === 'timeline' || studioMode === 'bench' || studioMode === 'testbench' ? null : representationSwitch}
         {studioMode === 'bench' ? (
           <ManualBench
             onOpenVirtualBoard={onGoToHardware}
@@ -7427,6 +7442,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         ) : representation === 'timeline' ? (
           <TimingLab
+            navigationControls={!inspectCircuit ? representationSwitch : undefined}
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             vectors={authoredVectors}
             inputFields={stimulusPanelInputFields}
@@ -7595,10 +7611,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               centerPanel={(
             <div className="rb-wave-frame">
             <div className="rb-wave-deck">
-            {structuralRecoveryPanel || repairPanel ? (
+            {structuralRecoveryPanel ? (
               <section className="ide-verify-advanced-failure" data-testid="ide-verify-advanced-failure" aria-label="Failure repair">
                 {structuralRecoveryPanel}
-                {repairPanel}
               </section>
             ) : null}
             <section className="rb-wave-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>

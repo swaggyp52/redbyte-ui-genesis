@@ -2,11 +2,16 @@
 // authored edit, selected tick and viewport are used on both source revisions.
 import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
 const label=process.env.RB_SHOT_LABEL??'after';const out=evidenceDir('studio-matched',label);
-const browser=await launchChromium();const captures=[];
+const zoom=Number(process.env.RB_BROWSER_ZOOM??1);
+let browser;
+if(zoom!==1){const profile=fs.mkdtempSync(path.join(out,'zoom-profile-'));fs.mkdirSync(path.join(profile,'Default'));fs.writeFileSync(path.join(profile,'Default','Preferences'),JSON.stringify({partition:{default_zoom_level:{x:Math.log(zoom)/Math.log(1.2)}}}));browser=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:true,viewport:null,reducedMotion:'reduce',args:['--window-size=1440,900']});}
+else browser=await launchChromium();
+const captures=[];
 try {
- const page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});const tid=id=>page.getByTestId(id);page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
- async function shot(name){await page.waitForFunction(()=>!/Loading (Design|Simulate|Board|Project|Package) workspace/.test(document.body.innerText));await page.waitForTimeout(650);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(out,name+'.png')});captures.push({name,viewport:page.viewportSize(),state:await page.evaluate(()=>{const s=window.__RB_PROJECT_RUNTIME__.getState();return{project:s.projectId,example:s.activeExampleId,nodes:s.circuit.nodes.length,run:s.verifyLastRun?.runId,checks:s.verifyLastRun?.assertionStatus,rootPx:getComputedStyle(document.documentElement).fontSize,bodyWidth:document.body.scrollWidth};})});}
+ const page=zoom===1?await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'}):browser.pages()[0];const tid=id=>page.getByTestId(id);page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ async function shot(name){await page.waitForFunction(()=>!/Loading (Design|Simulate|Board|Project|Package) workspace/.test(document.body.innerText));await page.waitForTimeout(650);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(out,name+'.png')});captures.push({name,viewport:page.viewportSize(),state:await page.evaluate(()=>{const s=window.__RB_PROJECT_RUNTIME__.getState();return{project:s.projectId,example:s.activeExampleId,nodes:s.circuit.nodes.length,run:s.verifyLastRun?.runId,checks:s.verifyLastRun?.assertionStatus,rootPx:getComputedStyle(document.documentElement).fontSize,bodyWidth:document.body.scrollWidth,layoutWidth:innerWidth,layoutHeight:innerHeight,dpr:devicePixelRatio,outerWidth,outerHeight};})});}
  async function timeView(){if(await tid('ide-verify-view-timeline').count())await tid('ide-verify-view-timeline').click();}
  async function run(){await tid('ide-vcb-run').click();await page.waitForFunction(()=>!!window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun);await timeView();}
  await page.goto(BASE_URL,{waitUntil:'networkidle',timeout:60000});
@@ -28,13 +33,13 @@ try {
  } else await tid('ide-verify-tick-scrubber').fill('2');
  await shot('06-linked-investigation-1440x900');
  await page.getByLabel('Close circuit investigation').click();
- await tid('mode-button-project').click();await tid('ide-project-row-doc:overview').click();await shot('07-project-overview-1440x900');
+ await tid('mode-button-project').click();if(!await tid('ide-project-row-doc:overview').isVisible())await page.getByRole('button',{name:'Show left panel',exact:true}).click();await tid('ide-project-row-doc:overview').click();await shot('07-project-overview-1440x900');
  await tid('ide-project-row-doc:runs').click();await shot('08-project-runs-1440x900');
  await tid('mode-button-hardware').click();await shot('09-board-1440x900');
  await tid('ide-hw-mode-btn-bringup').click();await shot('10-board-check-1440x900');
  await tid('mode-button-export').click();await tid('ide-export-package-files').waitFor();await shot('11-package-1440x900');
- await page.setViewportSize({width:1280,height:650});await tid('mode-button-verify').click();await timeView();await shot('12-stress-1280x650');
- await page.evaluate(()=>document.documentElement.style.fontSize='32px');await shot('13-text200-1280x650');
+ if(zoom===1){await page.setViewportSize({width:1280,height:650});await tid('mode-button-verify').click();await timeView();await shot('12-stress-1280x650');
+ await page.evaluate(()=>document.documentElement.style.fontSize='32px');await shot('13-text200-1280x650');}
  fs.writeFileSync(path.join(out,'manifest.json'),JSON.stringify({label,baseUrl:BASE_URL,captures,errors},null,2));
  console.log('Captured '+captures.length+' matched states: '+out);
 }finally{await browser.close();}

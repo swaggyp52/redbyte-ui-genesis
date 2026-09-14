@@ -1957,7 +1957,7 @@
   --rb-text: #152033;
   --rb-text-primary: #152033;
   --rb-text-secondary: #4d5a6b;
-  --rb-text-muted: #667386;
+  /* Muted text follows the shared palette. */
   --ide-surface-1: #ffffff;
   --ide-surface-2: #f8fafc;
   --ide-surface-3: #eef2f7;

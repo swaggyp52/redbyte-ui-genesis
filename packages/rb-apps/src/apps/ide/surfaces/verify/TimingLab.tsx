@@ -1,3 +1,4 @@
+import { WorkbenchDisclosure } from '../../components/WorkbenchDisclosure';
 import React, { useMemo, useState } from 'react';
 import type {
   VerifyAuthorVector,
@@ -20,6 +21,7 @@ export interface TimingLabProps {
   readonly outputFields: readonly VerifyVectorDraftInput[];
   readonly extraObservedFields?: readonly VerifyVectorDraftInput[];
   readonly playbackControls?: React.ReactNode;
+  readonly navigationControls?: React.ReactNode;
   readonly formatObservedValue?: (value: string) => string;
   readonly showExpectedOverlay?: boolean;
   readonly selectedTick: number | null;
@@ -84,7 +86,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   extraObservedFields = [],
   selectedTick,
   selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
-  playbackControls, formatObservedValue = value => value, showExpectedOverlay = true,
+  playbackControls, navigationControls, formatObservedValue = value => value, showExpectedOverlay = true,
   lens,
   onSelectTick,
   onVectorsChange,
@@ -239,6 +241,10 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       aria-label={`Timing Lab — ${scenarioName}`}
     >
       <header className="rb-timing-bar" data-testid="ide-timing-lab-bar">
+        {navigationControls}
+        <WorkbenchDisclosure className="rb-timing-settings" data-testid="ide-timing-settings"
+          summary={<>{orderedVectors.length} events{typeof runCycles === 'number' ? ' · ' + runCycles + ' cycles' : ''}</>}>
+          <div className="rb-timing-settings-body">
         <span className="rb-timing-count" data-testid="ide-timing-lab-count">
           {orderedVectors.length} event{orderedVectors.length === 1 ? '' : 's'} · {checkTotal} check{checkTotal === 1 ? '' : 's'}
         </span>
@@ -263,6 +269,9 @@ export const TimingLab: React.FC<TimingLabProps> = ({
             clock + reset generated
           </span>
         ) : null}
+
+          </div>
+        </WorkbenchDisclosure>
         <span className="rb-timing-spacer" />
         <button
           type="button"
@@ -270,9 +279,10 @@ export const TimingLab: React.FC<TimingLabProps> = ({
           onClick={addEvent}
           disabled={!editable}
           data-testid="ide-scenario-composer-add-event"
+          aria-label="Add event"
           title="Add an event one tick after the last one, carrying the current stimulus forward"
         >
-          + Add event
+          + Event
         </button>
         <button
           type="button"

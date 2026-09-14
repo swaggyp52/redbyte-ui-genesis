@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import React from 'react';
+import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface, updateExpectedCellInVectorSets } from '../surfaces/VerifySurface';
 import { deriveTimingGuidance } from '../timingGuidance';
 import { computeScenarioContentHash, computeScenarioStimulusHash } from '../verifyScenario';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 
 if (!HTMLElement.prototype.scrollIntoView) {
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -15,7 +17,18 @@ if (!HTMLElement.prototype.scrollIntoView) {
 }
 
 function openVerifyUtilities(getByTestId: (testId: string) => HTMLElement) {
-  expect(getByTestId('ide-vcb-utilities-panel')).toBeTruthy();
+  const details = getByTestId('ide-verify-details');
+  if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
+}
+
+function selectRecordedSignal(getByTestId: (testId: string) => HTMLElement, signal: string) {
+  fireEvent.click(getByTestId('ide-verify-view-waveform'));
+  const lane = getByTestId('ide-verify-waveform-row-' + signal);
+  const label = lane.querySelector('title')?.parentElement;
+  expect(label).not.toBeNull();
+  fireEvent.click(label!);
+  const details = getByTestId('ide-verify-details');
+  if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
 }
 
 function expandVerifyWorkbenchDocks(view: {
@@ -44,6 +57,13 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'pass-scenario',
+      scenarioName: 'Pass Scenario',
+      status: 'pass',
+      deterministicHash: 'abc123',
+      generatedAtIso: '2026-02-27T00:00:00.000Z',
+      reportHash: 'rep-pass',
       vectors: [
         { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
         { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
@@ -61,7 +81,7 @@ function makePassRun(): RuntimeVerifyRun {
         { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 },
         { tick: 1, signal: 'ld0', expected: '1', actual: '1', status: 'pass', vectorId: 'vec-02', caseIndex: 1 },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '1' }, mismatches: [] },
@@ -87,6 +107,13 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'fail-scenario',
+      scenarioName: 'Fail Scenario',
+      status: 'fail',
+      deterministicHash: 'abc123',
+      generatedAtIso: '2026-02-27T00:00:00.000Z',
+      reportHash: 'rep-fail',
       vectors: [
         { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
         { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 1 },
@@ -104,7 +131,7 @@ function makeFailRun(): RuntimeVerifyRun {
         { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 },
         { tick: 1, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-02', caseIndex: 1 },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] },
@@ -152,7 +179,7 @@ function makeAliasedFailRun(): RuntimeVerifyRun {
       rows: base.report.rows.map((row) =>
         row.signal === 'ld0' ? { ...row, signal: 'carry' } : row
       ),
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: base.waveform.map((sample) => ({
       ...sample,
       signals: {
@@ -198,6 +225,13 @@ function makeDisconnectedOutputFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'disconnected-output',
+      scenarioName: 'Disconnected Output',
+      status: 'fail',
+      deterministicHash: 'abc123',
+      generatedAtIso: '2026-07-06T00:00:00.000Z',
+      reportHash: 'rep-disconnected',
       vectors: [
         { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { out: 0 }, caseIndex: 0 },
         { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { out: 1 }, caseIndex: 1 },
@@ -212,7 +246,7 @@ function makeDisconnectedOutputFailRun(): RuntimeVerifyRun {
       },
       signalRoles: { sw0: 'input', out: 'output' },
       rows: [],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [],
     evidence: {
       circuitHash: 'circuit-hash',
@@ -264,6 +298,13 @@ function makeWaveformOnlyRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'waveform-only-run',
+      scenarioName: 'Waveform Only Run',
+      status: 'pass',
+      deterministicHash: 'abc123',
+      generatedAtIso: '2026-04-10T00:00:00.000Z',
+      reportHash: 'rep-waveform-only',
       vectors: [
         { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 },
         { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: {}, caseIndex: 1 },
@@ -281,7 +322,7 @@ function makeWaveformOnlyRun(): RuntimeVerifyRun {
       },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '0' }, mismatches: [] },
@@ -307,6 +348,13 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
       clockSignalName: 'phase_driver',
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'sparse-sequential-run',
+      scenarioName: 'Sparse Sequential Run',
+      status: 'pass',
+      deterministicHash: 'seq123',
+      generatedAtIso: '2026-04-11T00:00:00.000Z',
+      reportHash: 'rep-sparse-sequential',
       vectors: [
         { id: 'vec-01', tick: 1, inputs: { sw0: 0, phase_driver: 0 }, expected: {}, caseIndex: 0 },
         { id: 'vec-02', tick: 3, inputs: { sw0: 1, phase_driver: 1 }, expected: {}, caseIndex: 1 },
@@ -324,7 +372,7 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
       },
       signalRoles: { sw0: 'input', phase_driver: 'clock', ld0: 'output' },
       rows: [],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 1, signals: { sw0: '0', phase_driver: '0', ld0: '0' }, mismatches: [] },
       { tick: 3, signals: { sw0: '1', phase_driver: '1', ld0: '1' }, mismatches: [] },
@@ -336,7 +384,7 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
 /** Open the run inspector whatever it was left in; these tests care about its contents. */
 function openRunInspector(view: { getByTestId: (id: string) => HTMLElement }): void {
   const toggle = view.getByTestId('ide-verify-details');
-  if (toggle.getAttribute('aria-expanded') === 'true') return;
+  if (toggle.getAttribute('aria-pressed') === 'true') return;
   fireEvent.click(toggle);
 }
 /**
@@ -393,14 +441,13 @@ describe('VerifySurface workstation controls', () => {
     );
 
     const { getByTestId } = view;
+    expect(view.queryByTestId('ide-verify-repair-panel')).toBeNull();
+    openVerifyUtilities(getByTestId);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks', exact: true }));
     expect(getByTestId('ide-verify-repair-title').textContent).toContain('Compare failed');
-    expect(getByTestId('ide-verify-results-guidance').textContent).toContain(
-      'waveform is still valid simulation evidence'
-    );
-    expect(getByTestId('ide-verify-results-guidance').textContent).toContain(
-      'inspect the first mismatch'
-    );
-    expect(getByTestId('ide-verify-repair-case').textContent).toContain('Case 2');
+    expect(getByTestId('ide-run-check-result').textContent).toContain('1 of 2 checks failed');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 1');
+    expect(getByTestId('ide-verify-repair-case').textContent).toContain('Case 1');
     expect(getByTestId('ide-verify-repair-signal').textContent).toContain('LD0');
     expect(getByTestId('ide-verify-repair-expected').textContent).toContain('1');
     expect(getByTestId('ide-verify-repair-observed').textContent).toContain('0');
@@ -456,10 +503,8 @@ describe('VerifySurface workstation controls', () => {
     expect(view.queryByTestId('ide-verify-session-guidance')).toBeNull();
     // A passing compare run now shows the real verdict (not the old observe-only
     // "Simulation complete"); the point of this test is that it is NOT stale.
-    expect(view.getByTestId('ide-verify-results-summary').textContent).toContain(
-      'Compare passed'
-    );
-    expect(view.getByTestId('ide-verify-results-summary').textContent).not.toContain('stale');
+    expect(view.getByTestId('ide-run-check-result').textContent).toBe('2 checks passed');
+    expect(view.getByTestId('ide-verify-context-state').textContent).not.toContain('stale');
     expect(view.getByTestId('ide-verify-summary-status').textContent).toContain(
       'Checks passing'
     );
@@ -484,7 +529,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId, queryByText } = view;
 
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
-    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('Check filled expected outputs');
+    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('saved checks are evaluated automatically');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
@@ -496,7 +541,8 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-case-lab')).toBeTruthy();
 
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
   });
@@ -544,15 +590,15 @@ describe('VerifySurface workstation controls', () => {
     );
     const { getByTestId, queryByTestId } = view;
 
-    expect(queryByTestId('ide-vcb-check-count')).toBeNull();
-    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('No checks are required');
+    expect(getByTestId('ide-vcb-check-count').textContent).toContain('0 optional checks');
+    expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain('No checks configured');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Scenario ready');
-    expect(getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
+    expect(getByTestId('ide-vcb-run').textContent).toMatch(/^(?:Run|Rerun)$/);
     expect(
       Array.from(getByTestId('ide-vcb-run-authority').querySelectorAll('button')).map(
         (button) => button.textContent?.trim()
       )
-    ).toEqual(['Run simulation']);
+    ).toEqual(['Run']);
 
     // Expected cells are inline in the Cases document; no Checks tab to open.
     await waitFor(() => {
@@ -563,7 +609,8 @@ describe('VerifySurface workstation controls', () => {
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
   });
 
@@ -647,7 +694,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
   it('uses the active schedule contract clock name and absolute tick parity for helper clock insertion', () => {
-    const liveContract = {
+    const liveContract: VerifyScheduleContract = {
       schedule: 'clocked_macro',
       reason: 'circuit-sequential',
       analysis: {
@@ -663,7 +710,7 @@ describe('VerifySurface workstation controls', () => {
       tick0Meaning: 'initial-state',
       hasUnsupportedTemporal: false,
       temporalIssues: [],
-    } as const;
+    };
     const onVectorsChange = vi.fn();
 
     const { getByTestId } = render(
@@ -709,7 +756,7 @@ describe('VerifySurface workstation controls', () => {
   });
 
     it('does not warn about missing clock activity when mixed project and custom vectors already drive the live clock', () => {
-      const liveContract = {
+      const liveContract: VerifyScheduleContract = {
         schedule: 'clocked_macro',
         reason: 'circuit-sequential',
         analysis: {
@@ -757,7 +804,7 @@ describe('VerifySurface workstation controls', () => {
     });
 
     it('matches normalized clock ids before warning about missing activity', () => {
-      const liveContract = {
+      const liveContract: VerifyScheduleContract = {
         schedule: 'clocked_macro',
         reason: 'circuit-sequential',
         analysis: {
@@ -879,7 +926,8 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-case-lab-table')).toBeTruthy();
 
     openVerifyUtilities(getByTestId);
-    fireEvent.click(getByTestId('ide-verify-run-proof-edit-vectors'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', {name: 'Checks'}));
+    fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
     expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
     expect(getByTestId('ide-case-lab-table')).toBeTruthy();
@@ -890,6 +938,7 @@ describe('VerifySurface workstation controls', () => {
     expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
     openRunInspector({ getByTestId });
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', {name: 'Checks'}));
     fireEvent.click(getByTestId('ide-verify-mismatch-edit-vectors'));
 
     expect(workbench?.getAttribute('data-panel-state')).toBe('stable');
@@ -916,6 +965,13 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-run',
+        scenarioName: 'Trace Run',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-23T00:00:00.000Z',
+        reportHash: 'rep-trace',
         vectors: [
           { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 },
         ],
@@ -923,7 +979,7 @@ describe('VerifySurface workstation controls', () => {
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
     };
 
@@ -952,14 +1008,14 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
     expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
-    expect(getByTestId('ide-verify-results-summary-headline').textContent).toContain(
-      'Simulation complete'
-    );
+    expect(getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-configured');
+    expect(getByTestId('ide-run-check-result').textContent).toContain('No checks');
     expect(getByTestId('ide-verify-details')).toBeTruthy();
     openVerifyUtilities(getByTestId);
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(queryByTestId('ide-vcb-evidence')).toBeNull();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
 
     expect(queryByTestId('ide-case-lab-bar')).toBeTruthy();
@@ -984,11 +1040,13 @@ describe('VerifySurface workstation controls', () => {
     );
 
     showWaveformRepresentation({ queryByTestId });
-    expect(getByTestId('ide-verify-run-state').textContent).toContain('2 signals · 3 ticks · COMPLETE');
+    expect(getByTestId('ide-verify-workbench').getAttribute('data-trace-signals')).toBe('2');
+    expect(getByTestId('ide-verify-workbench').getAttribute('data-trace-ticks')).toBe('3');
+    expect(getByTestId('ide-verify-evidence-state').getAttribute('data-state')).toBe('recorded');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
-    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
+    selectRecordedSignal(getByTestId, 'sw0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
 
     const waveformViewport = getByTestId('ide-verify-waveform-scroll');
@@ -996,17 +1054,17 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.keyDown(waveformViewport, { key: 'ArrowRight' });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
+    selectRecordedSignal(getByTestId, 'sw0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
 
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
 
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
-    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
+    selectRecordedSignal(getByTestId, 'sw0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
   });
 
@@ -1039,9 +1097,9 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getByTestId('ide-case-lab-row-2'));
 
     expect(getByTestId('ide-case-lab-row-2').getAttribute('aria-selected')).toBe('true');
-    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
+    selectRecordedSignal(getByTestId, 'sw0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
     showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
@@ -1050,9 +1108,9 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(getByTestId('ide-case-lab-row-1'));
 
     expect(getByTestId('ide-case-lab-row-1').getAttribute('aria-selected')).toBe('true');
-    fireEvent.click(getByTestId('ide-verify-signal-sw0'));
+    selectRecordedSignal(getByTestId, 'sw0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value1');
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
     showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
@@ -1108,20 +1166,15 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    showWaveformRepresentation({ queryByTestId });
-    const scrubber = getByTestId('ide-verify-tick-scrubber') as HTMLInputElement;
-    expect(scrubber.min).toBe('0');
-    expect(scrubber.max).toBe('2');
-    expect(scrubber.value).toBe('0');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('Case 1');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
-
-    fireEvent.change(scrubber, { target: { value: '1' } });
-
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('Case 2');
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t3');
-    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    const time = getByTestId('ide-timing-lanes');
+    fireEvent.click(getByTestId('ide-timing-lanes-tick-1'));
+    expect(getByTestId('ide-time-selection').textContent).toContain('t1');
+    fireEvent.keyDown(time, {key: 'ArrowRight'});
+    expect(getByTestId('ide-time-selection').textContent).toContain('t2');
+    // The interval between sparse recorded samples is not silently filled.
+    expect(getByTestId('ide-time-selected-value').textContent).toBe('unrecorded');
+    fireEvent.keyDown(time, {key: 'ArrowRight'});
+    expect(getByTestId('ide-time-selection').textContent).toContain('t3');
   });
 
   it('arms assertion checking immediately after capturing outputs as expected', () => {
@@ -1152,12 +1205,19 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-run',
+        scenarioName: 'Trace Run',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-23T00:00:00.000Z',
+        reportHash: 'rep-trace',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '1' }, mismatches: [] }],
     };
 
@@ -1181,7 +1241,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     expect(getByTestId('ide-verify-create-check-preview').textContent).toContain('ld0');
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
@@ -1256,8 +1316,10 @@ describe('VerifySurface workstation controls', () => {
     });
   });
 
-  it('revokes a prior Compare FAIL while Design is structurally blocked and keeps Observe ungraded', () => {
+  it('keeps the one Run blocked after a prior failure and preserves the retained recording', () => {
     const onRunVerification = vi.fn();
+    const retainedRun = makeFailRun();
+    const before = structuredClone(retainedRun);
     const onGoToDesign = vi.fn();
     const view = render(
       <VerifySurface
@@ -1272,7 +1334,7 @@ describe('VerifySurface workstation controls', () => {
           { id: 'sw0', label: 'SW0', direction: 'in' },
           { id: 'ld0', label: 'LD0', direction: 'out' },
         ]}
-        lastRun={makeFailRun()}
+        lastRun={retainedRun}
         designBlockingIssue={{
           title: 'Output LD2 is not driven',
           message: 'Connect a Design driver to LD2 before checking behavior.',
@@ -1289,25 +1351,19 @@ describe('VerifySurface workstation controls', () => {
     expect(view.getByTestId('ide-verify-session-guidance').textContent).toContain(
       'Checked PASS/FAIL evidence is inconclusive'
     );
-    // The structural block must NOT silently downgrade the Compare intent to
-    // Observe. Compare stays selected but marked blocked, and the Run action is
-    // disabled — the student runs Observe only by choosing it explicitly.
-    expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
-    expect((view.getByTestId('ide-vcb-use-saved-checks') as HTMLButtonElement).disabled).toBe(true);
-    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Compare blocked');
+    // A structural block cannot downgrade the one experiment Run into an
+    // ungraded substitute or mutate the retained recording.
+    expect(view.queryByTestId('ide-vcb-use-saved-checks')).toBeNull();
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('2 optional checks');
     expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(true);
     expect(view.queryByTestId('ide-verify-repair-panel')).toBeNull();
     expect(view.queryByTestId('ide-verify-results-guidance')).toBeNull();
 
-    // Explicitly switching to Observe re-enables Run as an ungraded trace run.
-    fireEvent.click(view.getByTestId('ide-vcb-observe-only'));
+    expect(view.queryByTestId('ide-vcb-observe-only')).toBeNull();
     fireEvent.click(view.getByTestId('ide-vcb-run'));
-    expect(onRunVerification).toHaveBeenCalledWith(
-      expect.objectContaining({ assertionMode: false, runKind: 'trace' })
-    );
-    expect(onRunVerification).not.toHaveBeenCalledWith(
-      expect.objectContaining({ assertionMode: true })
-    );
+    expect(onRunVerification).not.toHaveBeenCalled();
+    expect(retainedRun).toEqual(before);
+    expect(view.getByTestId('ide-verify-context-state').textContent).toContain('Design blocked');
 
     fireEvent.click(view.getByTestId('ide-verify-design-blocked-open-design'));
     expect(onGoToDesign).toHaveBeenCalledTimes(1);
@@ -1334,6 +1390,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    openVerifyUtilities(view.getByTestId);
+    fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks', exact: true }));
     fireEvent.click(view.getByTestId('ide-verify-repair-use-observed'));
     expect(onVectorsChange).toHaveBeenCalledWith([
       { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
@@ -1361,7 +1419,7 @@ describe('VerifySurface workstation controls', () => {
     // The last run was a failing compare, so the summary now reflects that
     // verdict rather than masking it as an observe-only run; the repair panel
     // stays available to fix it.
-    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('fail');
+    expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('fail');
     expect(view.getByTestId('ide-verify-repair-panel')).toBeTruthy();
     expect(view.queryByTestId('ide-vcb-save-expected')).toBeNull();
   });
@@ -1421,7 +1479,7 @@ describe('VerifySurface workstation controls', () => {
     expect(view.getByTestId('ide-verify-primary-status').textContent).toContain(
       'Results belong to another scenario'
     );
-    expect(view.getByTestId('ide-verify-results-summary')).toHaveAttribute('data-kind', 'stale');
+    expect(view.getByTestId('ide-verify-context-state').textContent).toContain('stale');
     expect(view.getByTestId('ide-verify-workspace-waveform')).toHaveAttribute('data-state', 'stale');
     expect(view.queryByTestId('ide-verify-repair-panel')).toBeNull();
     expect(view.queryByTestId('ide-verify-repair-use-observed')).toBeNull();
@@ -1465,9 +1523,9 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toContain(
-      'Check filled expected outputs'
+      'saved checks are evaluated automatically'
     );
-    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
+    expect(view.getByTestId('ide-vcb-run').textContent).toMatch(/^(?:Run|Rerun)$/);
 
     fireEvent.click(view.getByTestId('ide-vcb-run'));
 
@@ -1501,13 +1559,13 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(view.getByTestId('ide-verify-run-state').textContent).toContain('COMPLETE');
+    expect(view.getByTestId('ide-verify-context-state').textContent).toContain('Checks passing');
 
     fireEvent.click(view.getByTestId('ide-vcb-run'));
 
     await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
     expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(true);
-    expect(view.getByTestId('ide-verify-run-state').textContent).toContain('RUNNING');
+    expect(view.getByTestId('ide-verify-context-state').textContent).toContain('Running');
 
     view.rerender(
       <VerifySurface
@@ -1526,14 +1584,14 @@ describe('VerifySurface workstation controls', () => {
     );
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-verify-run-state').textContent).toContain('COMPLETE');
-      expect(view.getByTestId('ide-verify-run-state').textContent).not.toContain('RUNNING');
+      expect(view.getByTestId('ide-verify-context-state').textContent).toContain('Checks passing');
+      expect(view.getByTestId('ide-verify-context-state').textContent).not.toContain('Running');
       expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
     });
   });
 
   it('keeps check evaluation semantics independent of the selected workspace lens', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
         hasVectors={true}
@@ -1554,9 +1612,9 @@ describe('VerifySurface workstation controls', () => {
     // The workbench document tabs own Cases / Waveform; the bar carries no instrument selector.
     expect(queryByTestId('ide-vcb-run-mode')).toBeNull();
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toContain(
-      'Check filled expected outputs'
+      'saved checks are evaluated automatically'
     );
-    expect(getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
+    expect(getByTestId('ide-vcb-run').textContent).toMatch(/^(?:Run|Rerun)$/);
   });
 
   it('preserves blank assertions when capture updates an existing assertion mask', () => {
@@ -1576,12 +1634,19 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-run',
+        scenarioName: 'Trace Run',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-23T00:00:00.000Z',
+        reportHash: 'rep-trace-mask',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output', ld1: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0', ld1: '1' }, mismatches: [] }],
       evidence: {
         circuitHash: 'circuit-hash',
@@ -1620,7 +1685,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    selectRecordedSignal(getByTestId, 'ld0');
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
 
@@ -1671,12 +1736,19 @@ describe('VerifySurface workstation controls', () => {
       deterministicHash: 'old-hash',
       reportHash: 'stale-authored-report',
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: makePassRun().scenarioId,
+        scenarioName: makePassRun().scenarioName,
+        status: makePassRun().status,
+        deterministicHash: 'old-hash',
+        generatedAtIso: makePassRun().generatedAtIso,
+        reportHash: 'stale-authored-report',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '1', status: 'pass', vectorId: 'vec-01', caseIndex: 0 }],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '1' }, mismatches: [] }],
     };
 
@@ -1703,28 +1775,31 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId } = view;
 
     await waitFor(() => {
-      expect(getByTestId('ide-verify-primary-status').textContent).toContain('Checks changed - rerun Compare');
+      expect(getByTestId('ide-verify-evidence-state-reason').textContent).toContain('Design changed');
     });
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Simulation stale');
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
-    expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stays in Observe until you choose Compare');
+    expect(getByTestId('ide-vcb-check-count').textContent).toContain('1 optional checks');
+    expect(onVectorsChange).not.toHaveBeenCalled();
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByTestId('ide-verify-assertion-mode-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-advanced-debug')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof-design')).toBeNull();
     expect(queryByTestId('ide-verify-mismatch-goto-design')).toBeNull();
 
-    fireEvent.click(getByTestId('ide-verify-stale-keep-reference'));
+    fireEvent.click(getByTestId('ide-vcb-run'));
     await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
     expect(onRunVerification.mock.calls[0]?.[0]).toMatchObject({
       assertionMode: true,
       runKind: 'verify',
     });
 
-    fireEvent.click(getByTestId('ide-verify-stale-reset-stimulus'));
+    openRunInspector({getByTestId});
+    fireEvent.click(getByTestId('ide-sim-clear-checks'));
     expect(onVectorsChange).toHaveBeenCalledWith([
       { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {} },
     ]);
@@ -1739,12 +1814,19 @@ describe('VerifySurface workstation controls', () => {
       reportHash: 'stale-report',
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '1' }, mismatches: [] }],
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: makePassRun().scenarioId,
+        scenarioName: makePassRun().scenarioName,
+        status: makePassRun().status,
+        deterministicHash: 'old-hash',
+        generatedAtIso: makePassRun().generatedAtIso,
+        reportHash: 'stale-report',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '1', status: 'pass', vectorId: 'vec-01', caseIndex: 0 }],
-      } as RuntimeVerifyRun['report'],
+      },
       evidence: {
         circuitHash: 'old-hash',
         ioRows: [
@@ -1766,12 +1848,19 @@ describe('VerifySurface workstation controls', () => {
       reportHash: 'current-report',
       waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: staleRun.scenarioId,
+        scenarioName: staleRun.scenarioName,
+        status: staleRun.status,
+        deterministicHash: 'new-hash',
+        generatedAtIso: staleRun.generatedAtIso,
+        reportHash: 'current-report',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       evidence: {
         circuitHash: 'new-hash',
         ioRows: [
@@ -1805,8 +1894,10 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-stale-recapture-reauthor'));
-    expect(onRunVerification.mock.calls[0]?.[0]?.assertionMode).toBe(false);
+    const retained = structuredClone(staleRun);
+    fireEvent.click(getByTestId('ide-vcb-run'));
+    expect(onRunVerification.mock.calls[0]?.[0]?.assertionMode).toBe(true);
+    expect(onVectorsChange).not.toHaveBeenCalled();
 
     rerender(
       <VerifySurface
@@ -1825,6 +1916,11 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    expect(onVectorsChange).not.toHaveBeenCalled();
+    selectRecordedSignal(getByTestId, 'ld0');
+    fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
+    fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
+    expect(staleRun).toEqual(retained);
     await waitFor(() => {
       expect(onVectorsChange).toHaveBeenCalledWith([
         { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
@@ -1849,6 +1945,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-vcb-run'));
     await waitFor(() => {
       expect(onRunVerification).toHaveBeenCalledTimes(2);
     });
@@ -1879,14 +1976,10 @@ describe('VerifySurface workstation controls', () => {
     // headline sentence, and a subline opening with 'Checks passing'. The subline now
     // carries what the headline cannot (which scenario ran), so the outcome is asserted
     // where it is actually stated.
-    const summaryText = getByTestId('ide-verify-results-summary').textContent ?? '';
-    expect(summaryText).toContain('Compare passed');
-    expect(getByTestId('ide-verify-results-summary-state').textContent).toBe('Pass');
-    expect(getByTestId('ide-verify-results-summary-metric-cases').textContent).toContain('Run cases2');
-    expect(getByTestId('ide-verify-results-summary-metric-passed').textContent).toContain('Checks passed2');
-    expect(getByTestId('ide-verify-results-summary-metric-failed').textContent).toContain('Checks failed0');
-    expect(getByTestId('ide-verify-results-summary-metric-ticks').textContent).toContain('Run ticks2');
-    expect(getByTestId('ide-verify-results-summary-metric-wave-samples').textContent).toContain('Wave samples2');
+    expect(getByTestId('ide-run-check-result').textContent).toBe('2 checks passed');
+    expect(getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
+    expect(getByTestId('ide-case-lab-count').textContent).toBe('2');
+    expect(getByTestId('ide-verify-workbench').getAttribute('data-trace-ticks')).toBe('2');
     openRunInspector({ getByTestId });
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
@@ -1965,11 +2058,10 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('expected');
-    expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('observed');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 1');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('expected 1');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('got 0');
+    showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-waveform-tools-panel')).toBeTruthy();
     expect(getByTestId('ide-verify-zoom-out').getAttribute('aria-label')).toBe('Zoom out waveform');
     expect(getByTestId('ide-verify-zoom-in').getAttribute('aria-label')).toBe('Zoom in waveform');
@@ -2001,7 +2093,7 @@ describe('VerifySurface workstation controls', () => {
     onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
-    expect(getByTestId('ide-mode-verify').getAttribute('data-left-dock-state')).toBe('visible');
+    expect(getByTestId('ide-verify-waveform-row-ld0').getAttribute('data-selected')).toBe('true');
   });
 
   it('folds workbench actions and signal-rail controls into their header rows', () => {
@@ -2011,9 +2103,8 @@ describe('VerifySurface workstation controls', () => {
         ...makePassRun().report,
         signalRoles: {
           ...makePassRun().report.signalRoles,
-          tap: 'internal',
         },
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: makePassRun().waveform.map((sample) => ({
         ...sample,
         signals: {
@@ -2045,11 +2136,11 @@ describe('VerifySurface workstation controls', () => {
     expect(workbenchHeader.textContent).not.toContain('Show checks');
     expect(view.queryByTestId('ide-stimulus-advanced-tools-toggle')).toBeNull();
 
-    const signalShelf = getByTestId('ide-verify-left-dock');
-    expect(within(signalShelf).getByText('Signals')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
-    expect(getByTestId('ide-verify-show-all-signals')).toBeTruthy();
-    expect(within(signalShelf).queryByTestId('ide-verify-fit-waveform')).toBeNull();
+    expect(view.queryByTestId('ide-verify-left-dock')).toBeNull();
+    showWaveformRepresentation(view);
+    expect(getByTestId('ide-verify-waveform-row-sw0')).toBeTruthy();
+    expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
+    expect(getByTestId('ide-verify-waveform-tools-panel')).toBeTruthy();
   });
 
   it('keeps the post-run workbench expanded instead of collapsing into a secondary strip', () => {
@@ -2196,7 +2287,7 @@ describe('VerifySurface workstation controls', () => {
             caseIndex: 1,
           },
         ],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [
         { tick: 0, signals: { sw0_node: '0', ld0_node_in: '0' }, mismatches: [] },
         { tick: 1, signals: { sw0_node: '1', ld0_node_in: '1' }, mismatches: [] },
@@ -2224,9 +2315,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(
-      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
-    );
+    selectRecordedSignal(getByTestId, 'ld0_node_in');
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
 
@@ -2263,12 +2352,19 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-normalized',
+        scenarioName: 'Trace Normalized',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-23T00:00:00.000Z',
+        reportHash: 'rep-trace-normalized',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { sw0: '0', ld0_node_in: '1' }, mismatches: [] }],
       evidence: {
         circuitHash: 'circuit-hash',
@@ -2302,9 +2398,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(
-      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
-    );
+    selectRecordedSignal(getByTestId, 'ld0');
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
 
@@ -2333,12 +2427,19 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-iorow-fallback',
+        scenarioName: 'Trace IO Row Fallback',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-23T00:00:00.000Z',
+        reportHash: 'rep-trace-iorow-fallback',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { sw0: '0', ld0_node_in: '1' }, mismatches: [] }],
       evidence: {
         circuitHash: 'circuit-hash',
@@ -2369,9 +2470,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(
-      within(getByTestId('ide-verify-left-dock')).getByRole('button', { name: /LD0/i })
-    );
+    selectRecordedSignal(getByTestId, 'ld0');
     fireEvent.click(getByTestId('ide-sim-inspector-create-check'));
     fireEvent.click(getByTestId('ide-verify-create-check-confirm'));
 
@@ -2399,12 +2498,19 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-visible-lanes',
+        scenarioName: 'Trace Visible Lanes',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-24T00:00:00.000Z',
+        reportHash: 'rep-trace-visible-lanes',
         vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: {}, caseIndex: 0 }],
         inputsAtTick: { 0: { sw0: 0 } },
         inputsByVectorId: { 'vec-01': { sw0: 0 } },
         signalRoles: { sw0: 'input', ld0: 'output' },
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{
         tick: 0,
         signals: {
@@ -2445,9 +2551,10 @@ describe('VerifySurface workstation controls', () => {
         onOpenProjectVectors={vi.fn()}
       />
     );
-    const { getByTestId, queryByText } = view;
+    const { getByTestId, queryByText, queryByTestId } = view;
 
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     showWaveformRepresentation(view);
     expect(getByTestId('ide-verify-waveform-row-ld0')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-row-sw0')).toBeTruthy();
@@ -2475,11 +2582,18 @@ describe('VerifySurface workstation controls', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trace-internal-only',
+        scenarioName: 'Trace Internal Only',
+        status: 'pass',
+        deterministicHash: 'abc123',
+        generatedAtIso: '2026-03-24T00:00:00.000Z',
+        reportHash: 'rep-trace-internal-only',
         vectors: [],
         inputsAtTick: {},
         signalRoles: {},
         rows: [],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { ld0_node_in: '1', tap_probe: '0' }, mismatches: [] }],
       evidence: {
         circuitHash: 'circuit-hash',
@@ -2501,9 +2615,10 @@ describe('VerifySurface workstation controls', () => {
         onOpenProjectVectors={vi.fn()}
       />
     );
-    const { getByTestId, queryByText } = view;
+    const { getByTestId, queryByText, queryByTestId } = view;
 
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     showWaveformRepresentation(view);
     expect(getByTestId('ide-verify-waveform-row-ld0_node_in')).toBeTruthy();
     expect(queryByText(/No signal data in the last run/i)).toBeNull();
@@ -2665,7 +2780,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-results-summary').textContent).toContain('100% coverage');
+    expect(getByTestId('ide-run-check-result').textContent).toBe('2 checks passed');
+    expect(getByTestId('ide-run-details').textContent).toContain('no physical hardware evidence');
   });
 
   it('does NOT show incomplete-mapping preflight or notice on a normal PASS with mappingComplete true', () => {
@@ -2717,8 +2833,10 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('Checks passing');
+    openRunInspector({ getByTestId });
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Pass Scenario');
-    expect(getByTestId('ide-verify-results-summary').textContent).toContain('100% coverage');
+    expect(getByTestId('ide-run-check-result').textContent).toBe('2 checks passed');
+    expect(getByTestId('ide-run-details').textContent).toContain('no physical hardware evidence');
   });
 
   it('shows PASS incomplete milestone copy when qualification is incomplete', () => {
@@ -2749,7 +2867,8 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('Checks passing');
-    expect(getByTestId('ide-verify-results-summary').textContent).toContain('100% coverage');
+    expect(getByTestId('ide-run-check-result').textContent).toBe('2 checks passed');
+    expect(getByTestId('ide-run-details').textContent).toContain('no physical hardware evidence');
   });
 
   it('uses one authoring header instead of a duplicate testbench summary strip', () => {
@@ -2812,8 +2931,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(staleTestbench.getByTestId('ide-verify-primary-status').textContent).toContain(
-      'Checks changed - rerun Compare'
+    expect(staleTestbench.getByTestId('ide-verify-evidence-state-reason').textContent).toContain(
+      'Checks changed'
     );
     staleTestbench.unmount();
 
@@ -2840,8 +2959,8 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(staleDesign.getByTestId('ide-verify-primary-status').textContent).toContain(
-      'Design changed - rerun Compare'
+    expect(staleDesign.getByTestId('ide-verify-evidence-state-reason').textContent).toContain(
+      'Design changed'
     );
   });
 
@@ -2877,14 +2996,14 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(view.getByTestId('ide-verify-primary-status').textContent).toContain(
-      'Browser reloaded — rerun simulation'
+    expect(view.getByTestId('ide-verify-evidence-state-reason').textContent).toContain(
+      'Browser reloaded'
     );
     expect(view.getByTestId('ide-verify-workspace-waveform')).toHaveAttribute(
       'data-state',
       'stale'
     );
-    fireEvent.click(view.getByRole('button', { name: 'Rerun simulation' }));
+    fireEvent.click(view.getByTestId('ide-vcb-run'));
     expect(rerun).toHaveBeenCalledTimes(1);
   });
 

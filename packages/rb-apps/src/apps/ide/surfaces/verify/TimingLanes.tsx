@@ -1,3 +1,4 @@
+import { WorkbenchDisclosure } from '../../components/WorkbenchDisclosure';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../ScenarioBuilderPanel';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
@@ -294,10 +295,14 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
           const field = inputFields.concat(outputFields).find(field => field.label === selectedSignal);
           return field && selectedTick != null ? observedValuesByTick?.[selectedTick]?.[field.id] ?? 'unrecorded' : 'unrecorded';
         })()}</code>
-        <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorA?.(selectedTick)}>Set A</button>
-        <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorB?.(selectedTick)}>Set B</button>
+        <WorkbenchDisclosure className="rb-time-measure" data-testid="ide-time-measure" summary="Measure A–B">
+          <div className="rb-time-measure-body">
+            <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorA?.(selectedTick)}>Set A</button>
+            <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorB?.(selectedTick)}>Set B</button>
+            <span>A {cursorA == null ? '—' : 't' + cursorA} · B {cursorB == null ? '—' : 't' + cursorB}{cursorA != null && cursorB != null ? ' · Δ ' + Math.abs(cursorB - cursorA) + ' ticks' : ''}</span>
+          </div>
+        </WorkbenchDisclosure>
         {playbackControls}
-        <span>A {cursorA == null ? '—' : 't' + cursorA} · B {cursorB == null ? '—' : 't' + cursorB}{cursorA != null && cursorB != null ? ' · Δ ' + Math.abs(cursorB - cursorA) + ' ticks' : ''}</span>
       </div>
       <div className="rb-tl-scroll" ref={boxRef}>
         <svg className="rb-tl-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="presentation">

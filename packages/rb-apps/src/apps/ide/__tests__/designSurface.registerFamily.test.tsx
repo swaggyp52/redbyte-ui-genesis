@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 const REGISTER_CIRCUIT: Circuit = {
@@ -123,6 +124,7 @@ beforeEach(() => {
     future: [],
   });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -151,11 +153,12 @@ describe('DesignSurface register family', () => {
     expect(view.getByTestId('ide-design-sequential-role').textContent).toContain('Bus register');
   });
 
-  it('exposes register semantics controls in the inspector', async () => {
+  it('exposes register semantics controls in Properties', async () => {
     const view = renderSurface();
     act(() => {
       useLogicViewStore.getState().selectNode('reg0_node');
     });
+    fireEvent.click(view.getByTestId('ide-design-right-tab-properties'));
     await waitFor(() => {
       expect(view.getByTestId('ide-design-register-config')).toBeTruthy();
     });

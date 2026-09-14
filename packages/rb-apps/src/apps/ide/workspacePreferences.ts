@@ -185,11 +185,11 @@ const AUTHORING_SURFACES = createSurfacePreferences({
     right: { visible: true, sizePx: 288, expanded: false },
   },
   design: {
-    // 220px gave the component library 177px of usable width once dock chrome was taken out,
-    // and one library row needs a 34px kind badge, a part name and a port signature such as
-    // "a, b to out". The rail was rendering a 276px row into a 175px box with hidden overflow.
-    left: { visible: true, sizePx: 264, expanded: false },
-    right: { visible: true, sizePx: 280, expanded: false },
+    // The library's narrow composition puts the interface below the part name.
+    // Keep both supports usable while leaving the circuit most of a laptop workspace.
+    // Existing user-resized docks retain their saved dimensions.
+    left: { visible: true, sizePx: 220, expanded: false },
+    right: { visible: true, sizePx: 236, expanded: false },
   },
   verify: {
     left: { visible: true, sizePx: 240, expanded: false },

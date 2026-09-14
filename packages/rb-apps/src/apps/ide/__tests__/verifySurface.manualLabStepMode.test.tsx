@@ -3,7 +3,7 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 const manualLabContract: VerifyScheduleContract = {
@@ -57,6 +57,13 @@ function makeTwoTickManualLabRun(): RuntimeVerifyRun {
       clockSignalName: '__sim_clk__',
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'lab-step',
+      scenarioName: 'Lab Step',
+      status: 'pass',
+      deterministicHash: 'det_manual_lab_step',
+      generatedAtIso: '2026-04-15T12:00:00.000Z',
+      reportHash: 'rep_manual_lab_step',
       vectors: cases.map((c) => ({
         id: `vec-${c.tick}`,
         tick: c.tick,
@@ -74,7 +81,7 @@ function makeTwoTickManualLabRun(): RuntimeVerifyRun {
           status: 'pass' as const,
         },
       ]),
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: cases.map((c) => ({
       tick: c.tick,
       signals: {
@@ -141,12 +148,14 @@ describe('VerifySurface manual lab step workflow', () => {
 
     // Case stepping walks the recorded trace, so it is a tool of the trace representation.
     showWaveformRepresentation(screen);
-    expect(screen.getByTestId('ide-verify-step-controls')).toBeTruthy();
-    expect(screen.getByTestId('ide-verify-step-bar')).toBeTruthy();
-    expect(screen.getByTestId('ide-verify-step-mode-toggle').textContent).toMatch(/step cases on/i);
+    const time = screen.getByTestId('ide-timing-lanes');
+    fireEvent.keyDown(time, {key: 'Home'});
+    expect(screen.getByTestId('ide-time-selection').textContent).toContain('t0');
+    fireEvent.keyDown(time, {key: 'ArrowRight'});
+    expect(screen.getByTestId('ide-time-selection').textContent).toContain('t1');
   });
 
-  it('hides Prev/Next bar when step mode is toggled off but keeps the toggle', () => {
+  it('keeps sequential tick navigation available while the advanced manual editor is closed', () => {
     // See above: the step controls are drawn with the trace they step through.
     const run = makeTwoTickManualLabRun();
     render(
@@ -166,9 +175,14 @@ describe('VerifySurface manual lab step workflow', () => {
     );
 
     showWaveformRepresentation(screen);
-    fireEvent.click(screen.getByTestId('ide-verify-step-mode-toggle'));
-    expect(screen.queryByTestId('ide-verify-step-bar')).toBeNull();
-    expect(screen.getByTestId('ide-verify-step-mode-toggle').textContent?.trim()).toBe('Step cases');
+    expect(screen.getByTestId('ide-manual-sequence-details').hasAttribute('open')).toBe(false);
+    const before = structuredClone(run);
+    const time = screen.getByTestId('ide-timing-lanes');
+    fireEvent.keyDown(time, {key: 'End'});
+    expect(screen.getByTestId('ide-time-selection').textContent).toContain('t1');
+    fireEvent.keyDown(time, {key: 'ArrowLeft'});
+    expect(screen.getByTestId('ide-time-selection').textContent).toContain('t0');
+    expect(run).toEqual(before);
   });
 
   it('uses explicit scenario steps over derived vectors and renders state detail cards', () => {

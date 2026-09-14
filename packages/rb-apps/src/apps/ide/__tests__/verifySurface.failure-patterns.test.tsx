@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -18,7 +18,9 @@ function renderVerify(run: RuntimeVerifyRun) {
   );
   // The failure explainer lives inside the analysis drawer (mismatches tab).
   // For fail+verify runs the tab auto-switches to 'mismatches'; open the drawer to render it.
-  fireEvent.click(result.getByTestId('ide-verify-details'));
+  const details = result.getByTestId('ide-verify-details');
+  if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
+  fireEvent.click(within(result.getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks' }));
   return result;
 }
 
@@ -40,6 +42,13 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'repeat-pattern',
+      scenarioName: 'Repeated output failure',
+      status: 'fail',
+      deterministicHash: 'det_repeat_pattern',
+      generatedAtIso: '2026-03-08T18:00:00.000Z',
+      reportHash: 'rep_repeat_pattern',
       vectors: [
         { id: 'vec-00', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
         { id: 'vec-02', tick: 2, inputs: { sw0: 1 }, expected: { ld0: 1 } },
@@ -59,7 +68,7 @@ function makeRepeatedFailureRun(): RuntimeVerifyRun {
         { tick: 2, signal: 'ld0', expected: '1', actual: '0', status: 'fail' },
         { tick: 4, signal: 'ld0', expected: '1', actual: '0', status: 'fail' },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 2, signals: { sw0: '1', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] },
@@ -86,6 +95,13 @@ function makeGroupedFailureRun(): RuntimeVerifyRun {
       clockSignalName: 'clk',
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'group-pattern',
+      scenarioName: 'Grouped peer failure',
+      status: 'fail',
+      deterministicHash: 'det_group_pattern',
+      generatedAtIso: '2026-03-08T18:01:00.000Z',
+      reportHash: 'rep_group_pattern',
       vectors: [
         { id: 'vec-00', tick: 0, inputs: { clk: 0, en: 0 }, expected: { ld0: 0, ld1: 0 } },
         { id: 'vec-03', tick: 3, inputs: { clk: 1, en: 1 }, expected: { ld0: 1, ld1: 0 } },
@@ -106,7 +122,7 @@ function makeGroupedFailureRun(): RuntimeVerifyRun {
         { tick: 3, signal: 'ld0', expected: '1', actual: '0', status: 'fail' },
         { tick: 3, signal: 'ld1', expected: '0', actual: '1', status: 'fail' },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { clk: '0', en: '0', ld0: '0', ld1: '0' }, mismatches: [] },
       {
@@ -139,6 +155,13 @@ function makeDelayedFailureRun(): RuntimeVerifyRun {
       clockSignalName: 'clk',
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'delayed-pattern',
+      scenarioName: 'Delayed divergence',
+      status: 'fail',
+      deterministicHash: 'det_delayed_pattern',
+      generatedAtIso: '2026-03-08T18:02:00.000Z',
+      reportHash: 'rep_delayed_pattern',
       vectors: [
         { id: 'vec-00', tick: 0, inputs: { clk: 0, en: 0 }, expected: { ld0: 0 } },
         { id: 'vec-02', tick: 2, inputs: { clk: 1, en: 1 }, expected: { ld0: 1 } },
@@ -159,7 +182,7 @@ function makeDelayedFailureRun(): RuntimeVerifyRun {
         { tick: 2, signal: 'ld0', expected: '1', actual: '1', status: 'pass' },
         { tick: 5, signal: 'ld0', expected: '0', actual: '1', status: 'fail' },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { clk: '0', en: '0', ld0: '0' }, mismatches: [] },
       { tick: 2, signals: { clk: '1', en: '1', ld0: '1' }, mismatches: [] },
@@ -186,6 +209,13 @@ function makeStartupFailureRun(): RuntimeVerifyRun {
       clockSignalName: 'clk',
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'startup-pattern',
+      scenarioName: 'Startup failure',
+      status: 'fail',
+      deterministicHash: 'det_startup_pattern',
+      generatedAtIso: '2026-03-08T18:03:00.000Z',
+      reportHash: 'rep_startup_pattern',
       vectors: [
         { id: 'vec-00', tick: 0, inputs: { clk: 0, rst: 1 }, expected: { ld0: 0 } },
         { id: 'vec-01', tick: 1, inputs: { clk: 1, rst: 0 }, expected: { ld0: 1 } },
@@ -203,7 +233,7 @@ function makeStartupFailureRun(): RuntimeVerifyRun {
         { tick: 0, signal: 'ld0', expected: '0', actual: '1', status: 'fail' },
         { tick: 1, signal: 'ld0', expected: '1', actual: '1', status: 'pass' },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { clk: '0', rst: '1', ld0: '1' }, mismatches: [{ signal: 'ld0', expected: '0', actual: '1' }] },
       { tick: 1, signals: { clk: '1', rst: '0', ld0: '1' }, mismatches: [] },
@@ -228,11 +258,18 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'pass-pattern',
+      scenarioName: 'Pass run',
+      status: 'pass',
+      deterministicHash: 'det_pass_pattern',
+      generatedAtIso: '2026-03-08T18:04:00.000Z',
+      reportHash: 'rep_pass_pattern',
       vectors: [{ id: 'vec-00', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }],
       inputsAtTick: { 0: { sw0: 0 } },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' }],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
   };
 }

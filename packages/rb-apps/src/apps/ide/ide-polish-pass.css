@@ -2542,9 +2542,9 @@
     min-width: 0;
   }
 
-  .ide-root .ide-workbench-dock-left,
-.ide-root .ide-workbench-dock-right,
-.ide-root .ide-inspector {
+  .ide-root .ide-workbench-shell:not([data-narrow-project='true']) .ide-workbench-dock-left,
+  .ide-root .ide-workbench-shell:not([data-narrow-project='true']) .ide-workbench-dock-right,
+  .ide-root .ide-workbench-shell:not([data-narrow-project='true']) .ide-inspector {
     display: none !important;
   }
 

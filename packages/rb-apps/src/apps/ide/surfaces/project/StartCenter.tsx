@@ -486,7 +486,15 @@ const Preview: React.FC<{
   const recentId = item.kind === 'recent' ? item.project.projectId : null;
   // Deleting is two deliberate presses on the item's own preview, and the second names what goes.
   const [confirmingRemove, setConfirmingRemove] = useState(false);
-  const peek = useMemo(() => (recentId && peekRecentProject ? peekRecentProject(recentId) : null), [peekRecentProject, recentId]);
+  const [recentPreview, setRecentPreview] = useState<{ projectId: string; value: StartCenterPeek | null } | null>(null);
+  // Repository reads publish storage health. Perform that read after rendering,
+  // and never show a previous project's preview while the next one is opening.
+  useEffect(() => {
+    setRecentPreview(recentId && peekRecentProject
+      ? { projectId: recentId, value: peekRecentProject(recentId) }
+      : null);
+  }, [peekRecentProject, recentId]);
+  const peek = recentPreview?.projectId === recentId ? recentPreview.value : null;
   const example = item.kind === 'lab' ? item.example : item.kind === 'starter' ? item.example : null;
   const circuit = example?.circuit ?? peek?.circuit ?? null;
   const hierarchy = example?.hierarchy ?? peek?.hierarchy ?? null;

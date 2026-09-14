@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import { useEngineeringSelection } from '../engineeringSelection';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 function makeFailRun(): RuntimeVerifyRun {
@@ -66,6 +67,10 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
+beforeEach(() => {
+  useEngineeringSelection.getState().clear();
+});
+
 afterEach(() => {
   cleanup();
 });
@@ -83,10 +88,12 @@ function showWaveformRepresentation(view: { queryByTestId: (id: string) => HTMLE
 }
 
 describe('VerifySurface three-panel workstation', () => {
-  it('uses the lower analysis drawer for failure review and keeps waveform selection in sync with mismatch rows', () => {
+  it('uses the lower analysis drawer for failure review and keeps waveform selection in sync with mismatch rows', async () => {
     const run = makeFailRun();
+    const signalChanges = vi.fn();
     const view = render(
       <VerifySurface
+        onSignalSelected={signalChanges}
         deterministicHash="three-panel-hash"
         hasVectors={true}
         lastRun={run}
@@ -103,21 +110,26 @@ describe('VerifySurface three-panel workstation', () => {
     );
 
     expect(view.queryByTestId('ide-verify-three-panel')).toBeNull();
-    fireEvent.click(view.getByTestId('ide-verify-details'));
+    showWaveformRepresentation(view);
+    const details = view.getByTestId('ide-verify-details');
+    if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     expect(view.getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
     expect(view.getByTestId('ide-verify-region-inspector')).toBeTruthy();
     expect(view.getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t1');
-    expect(view.getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld0');
+    expect(view.getByTestId('ide-verify-waveform-row-ld0').getAttribute('data-selected')).toBe('true');
 
     fireEvent.keyDown(window, { key: 'J' });
     expect(view.getByTestId('ide-verify-selected-tick').textContent).toContain('t5');
 
     fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));
     expect(view.getByTestId('ide-verify-mismatch-row-ld1_5').className).toContain('is-selected');
-    expect(view.getByTestId('ide-verify-signal-rail-summary').textContent?.toLowerCase()).toContain('ld1');
+    expect(signalChanges).toHaveBeenLastCalledWith('LD1');
+    await waitFor(() => {
+      expect(view.getByTestId('ide-verify-waveform-row-ld1').getAttribute('data-selected')).toBe('true');
+    });
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld1');
     expect(view.getByTestId('ide-verify-explainer-first-tick').textContent).toContain('t5');
   });
@@ -141,7 +153,9 @@ describe('VerifySurface three-panel workstation', () => {
       />
     );
 
-    fireEvent.click(view.getByTestId('ide-verify-details'));
+    showWaveformRepresentation(view);
+    const details = view.getByTestId('ide-verify-details');
+    if (details.getAttribute('aria-pressed') !== 'true') fireEvent.click(details);
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     fireEvent.keyDown(window, { key: 'J' });
     fireEvent.click(view.getByTestId('ide-verify-related-failure-ld1_5'));

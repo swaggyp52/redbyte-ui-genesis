@@ -6,10 +6,11 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { IdeDiagnostic } from '../diagnostics';
 import type { RuntimeSimState } from '../projectRuntime';
-import type { MacroDefinition } from '../macros/MacroLibrary';
+import { instantiateMacroIntoCircuit, type MacroDefinition } from '../macros/MacroLibrary';
 import { deriveTimingGuidance } from '../timingGuidance';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 const BASE_CIRCUIT: Circuit = {
@@ -46,6 +47,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 6,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -134,6 +136,8 @@ function renderSurface(
 }
 
 async function openDesignLibrary(view: ReturnType<typeof renderSurface>) {
+  const reveal = view.queryByTestId('ide-show-left-dock');
+  if (reveal) fireEvent.click(reveal);
   await waitFor(() => {
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
   });
@@ -149,6 +153,8 @@ const FIXTURE_MACRO: MacroDefinition = {
   ],
   outputs: [{ id: 'output:node-v2-1.out', label: 'Q', nodeId: 'node-v2-1', portName: 'out' }],
   cluster: {
+    originX: 0,
+    originY: 0,
     nodes: [
       {
         originalId: 'node-v2-1',
@@ -213,6 +219,7 @@ beforeEach(() => {
     future: [],
   });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -233,10 +240,10 @@ describe('DesignSurface workstation redesign', () => {
   it('keeps one stable workspace header without redundant dock or workflow controls', () => {
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Design');
-    expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Circuit canvas');
-    expect(view.getByTestId('ide-design-authoring-summary').getAttribute('data-ready')).toBe('true');
-    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Ready for Verify');
+    expect(view.getByTestId('ide-design-module-breadcrumb').textContent).toContain('top');
+    expect(view.getByTestId('ide-design-canvas-wrap').getAttribute('data-work-object')).toBe('circuit');
+    expect(view.getByTestId('ide-design-authoring-summary-counts').textContent).toContain('0E 0W');
+    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Clean');
     expect(view.queryByTestId('ide-design-library-workspace-toggle')).toBeNull();
     expect(view.queryByTestId('ide-design-command-strip-primary-cta')).toBeNull();
     expect(view.queryByTestId('ide-design-command-strip-secondary-cta')).toBeNull();
@@ -287,7 +294,8 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
-    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.getByTestId('ide-show-left-dock')).toBeTruthy();
     expect(view.getByTestId('ide-right-dock')).toBeTruthy();
     expect(view.queryByTestId('ide-design-library-workspace-toggle')).toBeNull();
     expect(view.queryByTestId('ide-design-library-collapse')).toBeNull();
@@ -327,18 +335,19 @@ describe('DesignSurface workstation redesign', () => {
     // Board mapping follows primary edit actions in Selection details, not Signal/State.
     expect(view.getByTestId('ide-design-inspector-selection-details').textContent).toContain('LD0 -> U16');
     const controlBar = view.getByTestId('ide-design-control-bar');
-    expect(controlBar.contains(view.getByTestId('ide-design-authoring-issues'))).toBe(true);
-    expect(controlBar.contains(view.getByTestId('ide-design-sim-story-strip'))).toBe(true);
+    expect(controlBar.contains(view.getByTestId('ide-design-authoring-summary'))).toBe(true);
+    expect(view.getByTestId('ide-design-workspace-status-bar').contains(view.getByTestId('ide-design-authoring-issues'))).toBe(true);
+    expect(view.getByTestId('ide-design-workspace-status-bar').contains(view.getByTestId('ide-design-sim-story-strip'))).toBe(true);
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Tick 6');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('SW0');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('LD0');
     expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
 
-    fireEvent.click(view.getByTestId('ide-design-context-trace'));
+    fireEvent.click(view.getByTestId('ide-design-context-focus-path'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('What feeds LD0 · in');
+      expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Focused path · LD0');
     });
   });
 
@@ -428,8 +437,8 @@ describe('DesignSurface workstation redesign', () => {
 
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus');
     expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('LD0');
-    expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('Input');
-    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-inspector-focus-node').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-inspector-focus-node').textContent).toContain('Inspect LD0');
 
     fireEvent.click(view.getByTestId('ide-design-inspector-focus-node'));
 
@@ -437,7 +446,7 @@ describe('DesignSurface workstation redesign', () => {
       expect(Array.from(useLogicViewStore.getState().selection.nodes)).toEqual(['ld0_node']);
     });
 
-    expect(view.getByTestId('ide-design-context-trace')).toBeTruthy();
+    expect(view.getByTestId('ide-design-context-focus-path')).toBeTruthy();
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify: what drives LD0 · in');
   });
 
@@ -498,8 +507,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify: what drives LD1 · in');
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus q1');
     expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('LD1');
-    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('q1');
-    expect(view.getByTestId('ide-design-inspector-next-step').textContent).toContain('LD1');
+    expect(view.getByTestId('ide-design-inspector-focus-node').textContent).toContain('LD1');
 
     fireEvent.click(view.getByTestId('ide-design-inspector-focus-node'));
 
@@ -593,7 +601,8 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-failure-brief-next').textContent).toContain('Inspect the wire between SW0 and LD0.');
     expect(view.getByTestId('ide-design-failure-brief-pattern').textContent).toContain('Output stayed low while the selected input was high.');
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Debug: what drives LD0 · in');
-    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Debug focus');
+    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Output');
+    expect(view.getByTestId('ide-design-debug-banner').textContent).toContain('t6');
     expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify failed on LD0: expected 1, observed 0 at tick 6.');
   });
 
@@ -679,7 +688,7 @@ describe('DesignSurface workstation redesign', () => {
     });
     expect(modeRoot.getAttribute('data-shell-density')).toBe('immersive');
     expect(modeRoot.getAttribute('data-surface-frame')).toBe('edge-to-edge');
-    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
@@ -695,11 +704,12 @@ describe('DesignSurface workstation redesign', () => {
     await waitFor(() => {
       expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
     });
+    await openDesignLibrary(view);
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
   });
 
   it('opens warnings in a dedicated diagnostics dialog without a permanent console', async () => {
@@ -713,7 +723,7 @@ describe('DesignSurface workstation redesign', () => {
       },
     });
 
-    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
     fireEvent.click(view.getByTestId('ide-design-open-diagnostics'));
     await waitFor(() => {
       expect(view.getByTestId('ide-design-diagnostics-dialog')).toBeTruthy();
@@ -732,8 +742,8 @@ describe('DesignSurface workstation redesign', () => {
       },
     });
 
-    expect(view.queryByTestId('ide-workbench-console')).toBeNull();
-    expect(view.getByTestId('ide-mode-design').getAttribute('data-console-state')).toBe('hidden');
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('blocking');
+    expect(view.getByTestId('ide-mode-design').getAttribute('data-console-state')).toBe('blocking');
     fireEvent.click(view.getByTestId('ide-design-open-diagnostics'));
     await waitFor(() => {
       expect(view.getByTestId('ide-design-diagnostics-dialog')).toBeTruthy();
@@ -838,10 +848,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('enters macro insertion mode from the library and instantiates on canvas click target', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -862,10 +871,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('keeps overlay click path working for macro placement', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -882,10 +890,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('supports keyboard placement from the insertion overlay', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -908,10 +915,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('supports Space key placement from the insertion overlay', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -931,10 +937,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('does not place when clicking placement overlay card UI', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -950,10 +955,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('exits placement mode via cancel button without mutating the graph', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
@@ -973,10 +977,9 @@ describe('DesignSurface workstation redesign', () => {
   });
 
   it('exits placement mode via Escape without mutating the graph', async () => {
-    const onInstantiateMacro = vi.fn(() => ({
-      instanceLabel: 'AND_Gate_1',
-      insertedNodeIds: ['node-v2-5'],
-    }));
+    const onInstantiateMacro = vi.fn((macroId: string, position: { x: number; y: number }) =>
+      instantiateMacroIntoCircuit([FIXTURE_MACRO], macroId, useCircuitStore.getState().circuit, position)
+    );
 
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
