@@ -18,6 +18,21 @@ const tid = (id) => `[data-testid="${id}"]`;
 
 const browser = await launchChromium();
 const context = await browser.newContext({ viewport: VIEWPORT });
+// Test-only read helper: inspect the committed records, never the runtime cache.
+await context.addInitScript(() => {
+  window.__RB_READ_SESSION_RECORD__ = key => new Promise((resolve, reject) => {
+    const request = indexedDB.open('redbyte-ide-sessions-v1', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains('records')) { database.close(); resolve(null); return; }
+      const transaction = database.transaction('records', 'readonly');
+      const record = transaction.objectStore('records').get(key);
+      transaction.oncomplete = () => { database.close(); resolve(record.result?.value ?? null); };
+      transaction.onabort = () => { database.close(); reject(transaction.error); };
+    };
+  });
+});
 const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
@@ -120,8 +135,8 @@ const runAndSettle = async (label) => {
 };
 
 /** Read one SAVED SNAPSHOT's stored run evidence straight out of browser storage. */
-const storedEvidence = (projectId) => page.evaluate((id) => {
-  const raw = localStorage.getItem(`rb.ide.project.v1:${id}`);
+const storedEvidence = (projectId) => page.evaluate(async (id) => {
+  const raw = await window.__RB_READ_SESSION_RECORD__(`rb.ide.project.v1:${id}`);
   if (!raw) return { present: false, savedAtIso: null, hasEvidence: false, historyIds: [], rows: 0 };
   const snapshot = JSON.parse(raw);
   return {
@@ -134,14 +149,14 @@ const storedEvidence = (projectId) => page.evaluate((id) => {
 }, projectId);
 
 /** Every saved snapshot, with what its stored bytes actually contain. */
-const savedSnapshots = () => page.evaluate(() => {
+const savedSnapshots = () => page.evaluate(async () => {
   let index = [];
-  try { index = JSON.parse(localStorage.getItem('rb.ide.projects.v1.index') ?? '[]'); } catch { index = []; }
+  try { index = JSON.parse(await window.__RB_READ_SESSION_RECORD__('rb.ide.projects.v1.index') ?? '[]'); } catch { index = []; }
   const ids = (Array.isArray(index) ? index : index.projects ?? [])
     .map((entry) => (typeof entry === 'string' ? entry : entry.projectId))
     .filter(Boolean);
-  return ids.map((id) => {
-    const raw = localStorage.getItem(`rb.ide.project.v1:${id}`);
+  return Promise.all(ids.map(async (id) => {
+    const raw = await window.__RB_READ_SESSION_RECORD__(`rb.ide.project.v1:${id}`);
     if (!raw) return { projectId: id, present: false };
     const snapshot = JSON.parse(raw);
     let nodes = -1;
@@ -163,7 +178,7 @@ const savedSnapshots = () => page.evaluate(() => {
       expectations,
       hasEvidence: Boolean(snapshot.runEvidence),
     };
-  });
+  }));
 });
 
 /**
@@ -172,8 +187,8 @@ const savedSnapshots = () => page.evaluate(() => {
  * rather than one already in flight. Bounded, and it waits on real storage state.
  */
 const waitForSaveQuiet = (projectId, quietMs = 1500) => page.waitForFunction(
-  ({ id, quiet }) => {
-    const raw = localStorage.getItem(`rb.ide.project.v1:${id}`);
+  async ({ id, quiet }) => {
+    const raw = await window.__RB_READ_SESSION_RECORD__(`rb.ide.project.v1:${id}`);
     if (!raw) return false;
     const savedAt = Date.parse(JSON.parse(raw).savedAtIso ?? '');
     return Number.isFinite(savedAt) && Date.now() - savedAt >= quiet;
@@ -189,8 +204,8 @@ const waitForSaveQuiet = (projectId, quietMs = 1500) => page.waitForFunction(
  * the product shows a student before they close a tab, so the journey waits for it too.
  */
 /** The symbol count a saved record holds on disk, independent of what the workspace shows. */
-const storedSnapshotNodes = (projectId) => page.evaluate((id) => {
-  const raw = localStorage.getItem(`rb.ide.project.v1:${id}`);
+const storedSnapshotNodes = (projectId) => page.evaluate(async (id) => {
+  const raw = await window.__RB_READ_SESSION_RECORD__(`rb.ide.project.v1:${id}`);
   if (!raw) return -1;
   const snapshot = JSON.parse(raw);
   // The record stores the portable project as a JSON string, not a nested object.
@@ -205,25 +220,20 @@ const waitForWorkspaceSaved = async (projectId) => {
 };
 
 /**
- * The close-save: the write the product performs when the tab goes away. Dispatching
- * `beforeunload` is the only way to reach it without ending the session, and it is a
- * real window event, not a store write — the handler decides what to persist.
+ * A deliberate Save completes before the tab can leave. Async browser storage
+ * cannot promise a new write during unload; completed evidence must stay intact.
  */
 const closeSave = async (projectId) => {
+  await runCommand('project.save');
+  await waitForWorkspaceSaved(projectId);
   const before = await storedEvidence(projectId);
   await page.evaluate(() => {
     window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
   });
-  await page.waitForFunction(
-    ({ id, previous }) => {
-      const raw = localStorage.getItem(`rb.ide.project.v1:${id}`);
-      if (!raw) return false;
-      return (JSON.parse(raw).savedAtIso ?? null) !== previous;
-    },
-    { id: projectId, previous: before.savedAtIso },
-    { timeout: 8000 }
-  );
-  return storedEvidence(projectId);
+  const after = await storedEvidence(projectId);
+  assert(JSON.stringify(after.historyIds) === JSON.stringify(before.historyIds) && after.rows === before.rows,
+    'leaving after a durable Save must preserve the complete retained evidence');
+  return after;
 };
 
 /** Open a starter the way the palette offers one, replacement prompt included. */
@@ -490,16 +500,27 @@ try {
   assert(aged,
     'no saved snapshot carries both this design and stored run evidence, so an older save ' +
     `cannot be simulated; saved snapshots: ${stored.map((e) => `${e.projectId}(evidence=${e.hasEvidence},nodes=${e.nodes})`).join(', ')}`);
-  const surgery = await page.evaluate((id) => {
-    const key = `rb.ide.project.v1:${id}`;
-    const raw = localStorage.getItem(key);
-    if (!raw) return 'missing';
-    const snapshot = JSON.parse(raw);
-    if (!snapshot.runEvidence) return 'already-absent';
-    delete snapshot.runEvidence;
-    localStorage.setItem(key, JSON.stringify(snapshot));
-    return 'removed';
-  }, aged.projectId);
+  const surgery = await page.evaluate((id) => new Promise((resolve, reject) => {
+    const request = indexedDB.open('redbyte-ide-sessions-v1', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      const transaction = database.transaction('records', 'readwrite');
+      const store = transaction.objectStore('records');
+      const record = store.get(`rb.ide.project.v1:${id}`);
+      let result = 'missing';
+      record.onsuccess = () => {
+        if (!record.result?.value) return;
+        const snapshot = JSON.parse(record.result.value);
+        if (!snapshot.runEvidence) { result = 'already-absent'; return; }
+        delete snapshot.runEvidence;
+        store.put({ ...record.result, value: JSON.stringify(snapshot), revision: record.result.revision + 1 });
+        result = 'removed';
+      };
+      transaction.oncomplete = () => { database.close(); resolve(result); };
+      transaction.onabort = () => { database.close(); reject(transaction.error); };
+    };
+  }), aged.projectId);
   assert(surgery === 'removed',
     `could not age the snapshot for ${aged.projectId}: ${surgery}`);
   const agedAfter = await storedEvidence(aged.projectId);
@@ -509,6 +530,8 @@ try {
     `(design ${aged.nodes} nodes, ${aged.vectors} vectors, ${aged.expectations} expectations still in its bytes)`);
 
   const errorsBeforeAged = pageErrors.length;
+  // Refresh the repository's committed view after the explicitly synthetic old-save fixture.
+  await page.reload({ waitUntil: 'networkidle' });
   await openSavedProject(aged.projectId);
   const openedAged = await state();
   assert(openedAged.projectId === aged.projectId,
@@ -709,10 +732,11 @@ try {
     page.waitForEvent('download', { timeout: 20000 }),
     runCommand('project.export-backup'),
   ]);
-  const backupPath = `${OUT}/imported-backup.rbproj.json`;
+  const backupPath = `${OUT}/imported-backup.rb-session.json`;
   await backupDownload.saveAs(backupPath);
   const backupText = fs.readFileSync(backupPath, 'utf8');
-  const backupProjectId = (JSON.parse(backupText).meta ?? {}).projectId ?? null;
+  const backupSession = JSON.parse(backupText);
+  const backupProjectId = backupSession.snapshot?.projectId ?? null;
   assert(backupProjectId === originalId,
     `the exported backup carries project id ${backupProjectId}, expected the project's own ${originalId}` +
     ' - without that collision this section proves nothing');

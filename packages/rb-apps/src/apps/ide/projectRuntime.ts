@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { recordingStorageReplacer, recordingStorageReviver } from './recordingStorage';
+import { runtimePersistence, createRuntimeJsonStorage } from './durableProjectStorage';
 import type { Circuit, CompositeNodeDef, Node, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
 import { BusValidationError, createBusBoundary } from '@redbyte/rb-logic-core';
@@ -19,7 +20,7 @@ import {
 } from './verifyProjectHash';
 import { restampRunEvidenceProject, scopeRunEvidenceToProject } from './runScope';
 import { BROWSER_ENGINE_VERSION, buildRunIdentity, configurationDigest, outputDigest, compactNativeTrace, type NativeRecordingTrace, type RunIdentity, type RecordedExecutionInput } from './runDeterminism';
-import { appendRecordedRun, findVerifyRunLedgerEntry, getRuntimeVerifyRunId, latestRecordedScenarioRun, MAX_RECORDED_RUNS } from './runArchive';
+import { appendRecordedRun, findVerifyRunLedgerEntry, getRuntimeVerifyRunId, latestRecordedScenarioRun } from './runArchive';
 import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import {
   createEmptyProjectSourceModel,
@@ -286,6 +287,9 @@ export interface ProjectWorkspaceSnapshot {
     lastRun?: RuntimeVerifyRun;
     history?: readonly VerifyRunLedgerEntry[];
     archive?: readonly RuntimeVerifyRun[];
+    exportHistory?: readonly ProjectHealthExportResult[];
+    importedWaveform?: ProviderWaveform | null;
+    vcdAnalyzer?: VcdAnalyzerConfig;
   };
 }
 
@@ -1043,10 +1047,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // promotes them into the first-class source authority. Native/example
           // projects with no sources yield an empty model.
           sourceModel: deriveSourceModel(project),
-          // Imported waveform evidence is tied to the previous context — a new
-          // project load starts the Analyzer empty.
-          importedWaveform: null,
-          vcdAnalyzer: DEFAULT_VCD_ANALYZER_CONFIG,
+          // Only this project's saved external evidence reopens with it. Plain
+          // portable imports still start without external observations.
+          importedWaveform: workspace?.runEvidence?.importedWaveform ? structuredClone(workspace.runEvidence.importedWaveform) : null,
+          vcdAnalyzer: normalizeVcdAnalyzerConfig(workspace?.runEvidence?.vcdAnalyzer),
           // Imported XDC constraint files seed the project's constraint sets.
           constraintSets: buildConstraintSetsFromSources(deriveSourceModel(project)),
           designPast: [],
@@ -1058,7 +1062,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           verifyLastRun: restoredRunEvidence.run,
           verifyRunHistory: restoredRunEvidence.history,
           verifyRunArchive: restoredRunArchive,
-          exportHistory: [],
+          exportHistory: workspace?.runEvidence?.exportHistory ? structuredClone([...workspace.runEvidence.exportHistory]) : [],
           sim: initializeSimulationStateForCircuit(
             elaborateProjectHierarchy(circuit, hierarchy),
             projectIoRows,
@@ -1084,7 +1088,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 }
               : undefined,
             dirtySinceVerify: !restoredRunEvidence.run,
-            dirtySinceExport: true,
+            lastExport: workspace?.runEvidence?.exportHistory?.length
+              ? structuredClone(workspace.runEvidence.exportHistory[workspace.runEvidence.exportHistory.length - 1])
+              : undefined,
+            dirtySinceExport: !workspace?.runEvidence?.exportHistory?.length,
           },
           macros: project.macros ?? [],
           macroInsertionCounts: {},
@@ -2114,7 +2121,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             didVectorsChangeSinceLast: prevEntry ? prevEntry.vectorsHash !== vectorsHash : false,
             didMappingChangeSinceLast: prevEntry ? prevEntry.mappingHash !== mappingHash : false,
           };
-          const nextHistory = [...state.verifyRunHistory, ledgerEntry].slice(-50);
+          const nextHistory = [...state.verifyRunHistory, ledgerEntry];
 
           return {
             verifyLastRun: runtimeRun,
@@ -2250,7 +2257,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // Append every generation/download event to the bounded history so
           // the package workspace can compare successive packages and show
           // provenance. lastExport stays the single "current" pointer.
-          exportHistory: [...state.exportHistory, result].slice(-20),
+          exportHistory: [...state.exportHistory, result],
         }));
       },
       selectRecordedRun: (runId) => {
@@ -2845,7 +2852,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage, { replacer: recordingStorageReplacer, reviver: recordingStorageReviver }),
+      storage: createRuntimeJsonStorage<PersistedRuntimeState>({ replacer: recordingStorageReplacer, reviver: recordingStorageReviver }),
+      onRehydrateStorage: () => (_state, error) => { if (error) runtimePersistence.hydrationFailed(error); },
       // Keep the existing persistence envelope version: hierarchy is an additive,
       // optional field normalized by mergePersistedRuntimeState for legacy saves.
       version: 5,
@@ -2882,14 +2890,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         designFuture: cloneDesignHistoryFuture(state.designFuture, state.maxDesignHistory),
         maxDesignHistory: state.maxDesignHistory,
         designRevision: state.designRevision,
-        verifyLastRun: state.verifyLastRun
-          ? cloneVerifyRun(state.verifyLastRun)
-          : undefined,
-        verifyRunHistory: state.verifyRunHistory.slice(-50),
-        verifyRunArchive: state.verifyRunArchive.slice(-MAX_RECORDED_RUNS).map(cloneVerifyRun),
-        exportHistory: state.exportHistory.slice(-20),
+        verifyLastRun: state.verifyLastRun,
+        verifyRunHistory: state.verifyRunHistory,
+        verifyRunArchive: state.verifyRunArchive,
+        exportHistory: state.exportHistory,
         sim: cloneSimState(state.sim),
-        importedWaveform: state.importedWaveform ? structuredClone(state.importedWaveform) : null,
+        importedWaveform: state.importedWaveform,
         vcdAnalyzer: normalizeVcdAnalyzerConfig(state.vcdAnalyzer),
         constraintSets: normalizeConstraintSets(state.constraintSets),
         projectHealthCore: {
@@ -3214,7 +3220,7 @@ export function mergePersistedRuntimeState(
     verifyRunHistory: detachedVerifyRunHistory,
     verifyRunArchive: shouldResetDetachedStarterCompareState ? [] : verifyRunArchive,
     exportHistory: Array.isArray(candidate.exportHistory)
-      ? (candidate.exportHistory as ProjectHealthExportResult[]).slice(-20)
+      ? structuredClone(candidate.exportHistory as ProjectHealthExportResult[])
       : [],
     sim: {
       ...sim,
@@ -3584,7 +3590,7 @@ function normalizeRecordedRunArchive(
   restamp = false,
 ): RuntimeVerifyRun[] {
   let runs: RuntimeVerifyRun[] = [];
-  for (const candidate of Array.isArray(value) ? value.slice(-MAX_RECORDED_RUNS) : []) {
+  for (const candidate of Array.isArray(value) ? value : []) {
     const run = tryCloneVerifyRun(candidate);
     if (!run || (!restamp && run.projectId && run.projectId !== projectId)) continue;
     runs = appendRecordedRun(runs, { ...run, projectId });
@@ -5266,8 +5272,7 @@ function normalizeVerifyRunHistory(value: unknown): VerifyRunLedgerEntry[] {
   if (!Array.isArray(value)) return [];
   return value
     .map((entry) => normalizeVerifyRunLedgerEntry(entry))
-    .filter((entry): entry is VerifyRunLedgerEntry => entry !== null)
-    .slice(-50);
+    .filter((entry): entry is VerifyRunLedgerEntry => entry !== null);
 }
 
 function normalizeVerifyRunLedgerEntry(value: unknown): VerifyRunLedgerEntry | null {

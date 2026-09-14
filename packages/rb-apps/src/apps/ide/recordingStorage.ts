@@ -47,7 +47,7 @@ export function recordingStorageReviver(_key: string, value: unknown): unknown {
   }
   if (value && typeof value === 'object' && '$rbRows' in value) {
     const packed = value as { $rbRows: number; columns: string[]; cells: unknown[][] };
-    if (packed.$rbRows !== 1 || !Array.isArray(packed.columns) || !packed.columns.every(column => typeof column === 'string') ||
+    if (packed.$rbRows !== 1 || !Array.isArray(packed.columns) || !packed.columns.every(column => typeof column === 'string') || new Set(packed.columns).size !== packed.columns.length ||
       !Array.isArray(packed.cells) || !packed.cells.every(row => Array.isArray(row) && row.length === packed.columns.length &&
         row.every(cell => cell === null || ['string', 'number', 'boolean'].includes(typeof cell) || (Array.isArray(cell) && cell.length === 0)))) throw new Error('Invalid retained check rows');
     return packed.cells.map(row => Object.fromEntries(packed.columns.flatMap((column, index) => Array.isArray(row[index]) ? [] : [[column, row[index]]])));
@@ -55,13 +55,13 @@ export function recordingStorageReviver(_key: string, value: unknown): unknown {
   if (!value || typeof value !== 'object' || !('$rbWaveform' in value)) return value;
   const packed = value as PackedWaveform;
   if (packed.$rbWaveform !== 1 || !Array.isArray(packed.signals) ||
-    !packed.signals.every(signal => typeof signal === 'string') || !Array.isArray(packed.frames)) {
+    !packed.signals.every(signal => typeof signal === 'string') || new Set(packed.signals).size !== packed.signals.length || !Array.isArray(packed.frames)) {
     throw new Error('Invalid retained waveform encoding');
   }
   return packed.frames.map(frame => {
-    if (!Array.isArray(frame) || typeof frame[0] !== 'number' || !Array.isArray(frame[1]) ||
+    if (!Array.isArray(frame) || frame.length !== 4 || typeof frame[0] !== 'number' || !Array.isArray(frame[1]) ||
       frame[1].length !== packed.signals.length || !frame[1].every(item => item === null || typeof item === 'string') ||
-      !Array.isArray(frame[2]) || !frame[3] || typeof frame[3] !== 'object') {
+      !Array.isArray(frame[2]) || !frame[3] || typeof frame[3] !== 'object' || Array.isArray(frame[3])) {
       throw new Error('Invalid retained waveform frame');
     }
     return { ...frame[3], tick: frame[0],

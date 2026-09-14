@@ -1,4 +1,5 @@
 import { recordingStorageReplacer, recordingStorageReviver } from './recordingStorage';
+import { getBrowserSessionStorage, SessionStorageConflict, type SessionStorageBackend } from './durableProjectStorage';
 import type { RBProject } from '../../export/projectFormat';
 import { encodeRBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
@@ -29,7 +30,7 @@ export const PROJECT_REPOSITORY_VERSION = 1 as const;
 export const PROJECT_REPOSITORY_STORAGE_LOCATION = {
   kind: 'browser-local',
   label: 'This browser on this device',
-  backing: 'localStorage',
+  backing: 'IndexedDB',
 } as const;
 
 export type ProjectRepositoryOperation =
@@ -53,6 +54,7 @@ export type ProjectRepositoryErrorCode =
   | 'decode-failed'
   | 'quota-exceeded'
   | 'write-failed'
+  | 'write-conflict'
   | 'recovery-superseded';
 
 export interface ProjectRepositoryError {
@@ -981,4 +983,152 @@ function createError(
   };
 }
 
-export const projectRepository = createProjectRepository();
+export interface DurableProjectRepository extends Omit<ProjectRepository, 'save' | 'autosave' | 'checkpoint' | 'remove'> {
+  ready(): Promise<void>;
+  flush(): Promise<void>;
+  save(input: ProjectRepositorySaveInput): Promise<ProjectRepositoryResult<ProjectRepositorySaveValue>>;
+  autosave(input: ProjectRepositorySaveInput): Promise<ProjectRepositoryResult<ProjectRepositorySaveValue>>;
+  checkpoint(input: ProjectRepositorySaveInput, reason?: string): Promise<ProjectRepositoryResult<ProjectRecoveryCheckpoint>>;
+  remove(projectId: string): Promise<ProjectRepositoryResult<ProjectRepositoryRemoveValue>>;
+}
+
+function mapStorage(values: Map<string, string>): ProjectRepositoryStorage {
+  return {
+    get length() { return values.size; },
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => { values.set(key, value); },
+    removeItem: key => { values.delete(key); },
+    key: index => [...values.keys()][index] ?? null,
+  };
+}
+
+/** Keeps all snapshot validation and serialization in the existing repository.
+ * A mutation runs against a private draft, then publishes only after the snapshot
+ * and index commit together. Failed drafts never replace the last readable save.
+ */
+export function createDurableProjectRepository(backend: SessionStorageBackend | null = getBrowserSessionStorage()): DurableProjectRepository {
+  const committed = new Map<string, string>();
+  const legacy = backend ? null : createProjectRepository();
+  const reader = legacy ?? createProjectRepository({ storage: mapStorage(committed) });
+  let state = reader.getState();
+  let initialized = !backend;
+  let queue: Promise<unknown> = Promise.resolve();
+  let initialization: Promise<void> | undefined;
+  const listeners = new Set<(state: ProjectRepositoryState) => void>();
+  const publish = (next: Partial<ProjectRepositoryState>) => {
+    state = { ...state, ...next };
+    for (const listener of listeners) listener({ ...state });
+  };
+  reader.subscribe(next => publish({ availability: next.availability, lastError: next.lastError }));
+  const refreshCommitted = () => {
+    if (!backend) return;
+    committed.clear();
+    for (const [key, value] of backend.snapshot()) committed.set(key, value);
+  };
+  const ready = () => initialization ??= (async () => {
+    if (!backend) return;
+    try { await backend.ready(); refreshCommitted(); initialized = true; }
+    catch (error) {
+      const failure = classifyStorageError(error, 'open');
+      publish({ availability: 'unavailable', saveState: 'save-failed', lastError: failure });
+      throw error;
+    }
+  })();
+  const read = <T,>(operation: ProjectRepositoryOperation, action: () => ProjectRepositoryResult<T>): ProjectRepositoryResult<T> => {
+    if (initialized) return action();
+    return { ok: false, error: createError(operation, 'storage-unavailable', 'Saved sessions are still opening. Please wait before choosing a project.', true) };
+  };
+  const mutate = <T,>(operation: 'save' | 'autosave' | 'checkpoint' | 'remove', projectId: string,
+    action: (repository: ProjectRepository) => ProjectRepositoryResult<T>): Promise<ProjectRepositoryResult<T>> => {
+    const pending = queue.then(async (): Promise<ProjectRepositoryResult<T>> => {
+      publish({ saveState: operation === 'autosave' ? 'autosaving' : 'saving', lastError: null });
+      try {
+        await ready();
+        const before = backend ? backend.snapshot() : new Map<string, string>();
+        const draft = new Map(before);
+        const writer = legacy ?? createProjectRepository({ storage: mapStorage(draft) });
+        const result = action(writer);
+        if (!result.ok) { publish({ ...writer.getState(), saveState: 'save-failed' }); return result; }
+        if (backend) {
+          const changes = new Map<string, string | null>();
+          for (const key of new Set([...before.keys(), ...draft.keys()])) {
+            if (before.get(key) !== draft.get(key)) changes.set(key, draft.get(key) ?? null);
+          }
+          await backend.commit(changes);
+          refreshCommitted();
+        }
+        const next = writer.getState();
+        const priorCheckpoint = state.recoveryCheckpoint;
+        const supersedes = priorCheckpoint?.projectId === projectId && operation !== 'checkpoint';
+        publish({ ...next, saveState: operation === 'remove' ? 'idle' : 'saved',
+          recoveryCheckpoint: operation === 'checkpoint' ? next.recoveryCheckpoint : supersedes ? null : priorCheckpoint,
+          recoveryAvailable: operation === 'checkpoint' ? next.recoveryAvailable : supersedes ? false : state.recoveryAvailable });
+        return result;
+      } catch (error) {
+        const failure = error instanceof SessionStorageConflict
+          ? createError(operation, 'write-conflict', error.message, true, projectId)
+          : classifyStorageError(error, operation, projectId);
+        publish({ availability: 'degraded', saveState: 'save-failed', lastError: failure });
+        return { ok: false, error: failure };
+      }
+    });
+    queue = pending;
+    return pending;
+  };
+  const save = (input: ProjectRepositorySaveInput, operation: 'save' | 'autosave') => {
+    // Capture before queuing: later input edits must not change an accepted save.
+    let captured: ProjectRepositorySaveInput;
+    try { captured = structuredClone(input); }
+    catch {
+      const error = createError(operation, 'invalid-project-payload', 'This session could not be copied for saving. Your open work and previous save are unchanged.', true, input.projectId);
+      publish({ availability: 'degraded', saveState: 'save-failed', lastError: error });
+      return Promise.resolve<ProjectRepositoryResult<ProjectRepositorySaveValue>>({ ok: false, error });
+    }
+    return mutate(operation, input.projectId, writer => writer[operation](captured));
+  };
+  return {
+    version: PROJECT_REPOSITORY_VERSION,
+    storageLocation: PROJECT_REPOSITORY_STORAGE_LOCATION,
+    ready,
+    async flush() { await queue; },
+    getState: () => ({ ...state }),
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    list: () => read('list', () => reader.list()),
+    open: id => read('open', () => reader.open(id)),
+    recover: checkpoint => read('recover', () => reader.recover(checkpoint)),
+    save: input => save(input, 'save'),
+    autosave: input => save(input, 'autosave'),
+    checkpoint(input, reason) {
+      try {
+        const captured = structuredClone(input);
+        return mutate('checkpoint', input.projectId, writer => writer.checkpoint(captured, reason));
+      } catch {
+        const error = createError('checkpoint', 'invalid-project-payload', 'A recovery checkpoint could not be copied. Your current work was kept open.', true, input.projectId);
+        publish({ availability: 'degraded', saveState: 'save-failed', lastError: error });
+        return Promise.resolve({ ok: false as const, error });
+      }
+    },
+    remove: id => mutate('remove', id, writer => writer.remove(id)),
+  };
+}
+
+export const projectRepository = createDurableProjectRepository();
+
+/** A recovery download contains the complete local session; .rbproj remains the
+ * established portable design format. Neither path requires a successful write. */
+export function encodeIdeSessionBackup(input: ProjectRepositorySaveInput): string {
+  const repository = createProjectRepository({ storage: mapStorage(new Map()) });
+  const result = repository.save(input);
+  if (!result.ok) throw new Error(result.error.message);
+  return JSON.stringify({ kind: 'rb-ide-session', version: 1, snapshot: result.value.snapshot }, null, 2);
+}
+
+export function decodeIdeSessionBackup(value: unknown): ProjectRepositoryOpenValue {
+  if (!value || typeof value !== 'object' || !('kind' in value) || value.kind !== 'rb-ide-session' ||
+    !('version' in value) || value.version !== 1 || !('snapshot' in value)) throw new Error('This session backup has an unsupported format.');
+  const snapshot = parsePersistedIdeProjectSnapshot(value.snapshot);
+  if (!snapshot) throw new Error('This session backup has damaged project or recording metadata.');
+  const project = decodePersistedIdeProject(snapshot);
+  if (!project) throw new Error('This session backup contains a project that cannot be decoded.');
+  return { version: PROJECT_REPOSITORY_VERSION, snapshot, project, storageLocation: PROJECT_REPOSITORY_STORAGE_LOCATION };
+}

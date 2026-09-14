@@ -1,9 +1,12 @@
 import type { RuntimeVerifyRun, VerifyRunLedgerEntry } from './projectRuntime';
 
-export const MAX_RECORDED_RUNS = 50;
-
 export function getRuntimeVerifyRunId(run: RuntimeVerifyRun): string {
-  return run.runId ?? `run-${run.generatedAtIso}-${run.reportHash.slice(0, 8)}`;
+  if (run.runId) return run.runId;
+  if (run.reportHash && run.generatedAtIso) return `run-${run.generatedAtIso}-${run.reportHash.slice(0, 8)}`;
+  // Pre-archive local saves may have only the earlier timestamp and deterministic
+  // hash. This is an archive key, never a reconstructed execution identity.
+  const legacyTime = 'ranAtIso' in run && typeof run.ranAtIso === 'string' ? run.ranAtIso : 'undated';
+  return `legacy-run-${run.generatedAtIso ?? legacyTime}-${run.scenarioId}-${run.deterministicHash}`;
 }
 
 export function findVerifyRunLedgerEntry(
@@ -17,7 +20,7 @@ export function appendRecordedRun(
   archive: readonly RuntimeVerifyRun[], run: RuntimeVerifyRun,
 ): RuntimeVerifyRun[] {
   const id = getRuntimeVerifyRunId(run);
-  return [...archive.filter((entry) => getRuntimeVerifyRunId(entry) !== id), run].slice(-MAX_RECORDED_RUNS);
+  return [...archive.filter((entry) => getRuntimeVerifyRunId(entry) !== id), run];
 }
 
 export function latestRecordedScenarioRun(
