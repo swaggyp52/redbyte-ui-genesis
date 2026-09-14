@@ -5,6 +5,29 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## P2.6C committed aggregate results (2026-09-14)
+
+Against application build 6206d3fbb4a9f5ff5b49dab54faa20bbadeed3be, the canonical
+classroom chain passes 72/72 stages and the complete built browser campaign passes
+15/15. The final proof/documentation commit retains the fresh-profile saved-checks
+fixture used by the passing classroom run; application code is unchanged.
+This replaces the historical 19-pass/52-fail classroom census as the current
+aggregate result. Consumer repairs preserve current product semantics, exact
+recorded values, real clicks, repair behavior and artifact assertions.
+
+The canonical repository-status command remains red: Project Continue CTA expects
+Build Fresh while the current Start action is Blank project. Its separate census
+records 14 passing entries, 19 failing consumers and a missing shell-chrome script.
+Several entries demand retired controls; others still require semantic review.
+They remain present and failing, not deleted, skipped or counted as passed.
+Detailed commands and first errors: ignored p2-6c/repository-status-debt.md.
+
+Canonical build and verify:gates pass at 6206d3fbb. Protected goldens and the
+regression baseline are unchanged. Raw TypeScript remains at 570 diagnostics.
+Existing retired-shell no-op gates are not
+new evidence. Screenshot-strict is not enabled in repo-status; the matched visual
+review and browser geometry/keyboard checks are separate evidence.
+
 ## P2.6C implementation results (2026-09-14)
 
 The final local surface batch passes 468/468 with zero skipped or pending tests:

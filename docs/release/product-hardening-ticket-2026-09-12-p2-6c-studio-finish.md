@@ -49,4 +49,11 @@ and `docs/validation/test-debt.md` are the prior measured evidence, not new resu
 
 Review/update current surface specs, persistence documentation, validation debt,
 AI_STATE and ACTIVE_WORK with measured outcomes. Detailed proof stays in the
-established ignored `p2-6c` evidence directory. Status: implementation in progress.
+established ignored `p2-6c` evidence directory. Status: validated feature candidate with explicit remaining debt.
+
+Application candidate 6206d3fbb passes all 72 classroom stages with the final
+fresh-profile test fixture, and all 15 built journeys.
+Storage workload and failure recovery pass. Repository-status remains red and
+raw typecheck has 570 existing diagnostics. Enlarged-text/zoom composition and
+owner visual/extended-session acceptance remain open. ACTIVE_WORK and the local
+p2-6c final report contain the delivery/evidence boundaries.

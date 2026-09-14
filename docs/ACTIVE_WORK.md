@@ -1,12 +1,55 @@
 ---
 doc_status: current
-last_validated: 2026-08-31
+last_validated: 2026-09-14
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
 ---
 
 # RedByte - Active Work Cockpit
+
+## P2.6C validation closeout - 2026-09-14
+
+Application candidate: 6206d3fbb4a9f5ff5b49dab54faa20bbadeed3be. The canonical
+classroom chain passes all 72 stages (build plus 71 commands), and all 15 existing
+browser journeys pass against that exact build at http://[::1]:5178/os/.
+The final proof/documentation commit includes the fresh-profile saved-checks
+fixture used by the passing classroom run; it does not change application code.
+The former 52-failure classroom census is historical; the current canonical chain
+is green. Design/Verify owner tests pass 468/468, storage tests 89/89, and the
+viewport/alignment regressions 15/15. No golden or typecheck baseline was changed.
+
+The canonical build and verify:gates pass at the same 6206d3fbb candidate.
+Raw rb-apps typecheck remains 570 diagnostics (P2.6B: 768), not a clean typecheck.
+Repository-status remains red at Project Continue CTA's retired Build Fresh label.
+Its separate 34-entry census has 14 passes, 19 failing consumers and one missing
+package script. That census does not replace the canonical command or prove the
+unreached semantic assertions. See docs/validation/test-debt.md.
+
+Ten complete 512-case recordings across three configurations survive Save, Close,
+reload and reopen; reproducing the oldest adds an eleventh with equal retained
+inputs, topology, native samples and output digest. Each run holds 2,560 check
+rows and 39 native signals. The final bundle also passes controlled write failure,
+complete backup, exact last-good preservation and successful retry/reload.
+Native IndexedDB proof covers non-destructive migration, abort, conflicts,
+malformed data, tombstones and retry generations. Browser quota and eviction
+remain environmental limits; complete portable session backups are available.
+
+Matched normal/text and actual browser-zoom captures are reviewed. Remaining
+medium visual debt: enlarged-text header context crowding, Package generated-file
+metadata overlap at actual 200% zoom, and little first-viewport space in stacked
+views. Passing keyboard/hit-target checks is not complete visual acceptance.
+The screenshot helper now captures actual zoom without the CSS-clip crop.
+
+Local detailed proof: .redbyte/product-immersion/p2-6-studio-completion/p2-6c/.
+Read final-report.md, visual-review-built.md, repository-status-debt.md and the
+machine-readable results. Delivery remains the authorized feature branch and
+draft PR #86 on its existing base; the final remote receipt is recorded separately.
+No merge, main/production deployment, Vivado, programming or physical-board proof
+is claimed. Owner visual and extended-session acceptance remains outstanding.
+
+Next bounded work: repair/reconcile the remaining repository-status consumers
+without restoring retired product behavior, then finish the measured zoom defects.
 
 ## P2.6C implementation checkpoint - 2026-09-14
 
