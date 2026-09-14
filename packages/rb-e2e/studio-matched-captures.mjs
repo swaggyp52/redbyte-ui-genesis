@@ -9,9 +9,19 @@ let browser;
 if(zoom!==1){const profile=fs.mkdtempSync(path.join(out,'zoom-profile-'));fs.mkdirSync(path.join(profile,'Default'));fs.writeFileSync(path.join(profile,'Default','Preferences'),JSON.stringify({partition:{default_zoom_level:{x:Math.log(zoom)/Math.log(1.2)}}}));browser=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:true,viewport:null,reducedMotion:'reduce',args:['--window-size=1440,900']});}
 else browser=await launchChromium();
 const captures=[];
+// Playwright's CSS-sized viewport clip crops native browser zoom. Capture the
+// complete physical viewport through Chromium when the profile applies zoom.
+async function captureViewport(page, file) {
+ if(zoom===1){await page.screenshot({path:file});return;}
+ const cdp=await page.context().newCDPSession(page);
+ try {
+  const pixels=await cdp.send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});
+  fs.writeFileSync(file,Buffer.from(pixels.data,'base64'));
+ }finally{await cdp.detach();}
+}
 try {
  const page=zoom===1?await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'}):browser.pages()[0];const tid=id=>page.getByTestId(id);page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
- async function shot(name){await page.waitForFunction(()=>!/Loading (Design|Simulate|Board|Project|Package) workspace/.test(document.body.innerText));await page.waitForTimeout(650);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(out,name+'.png')});captures.push({name,viewport:page.viewportSize(),state:await page.evaluate(()=>{const s=window.__RB_PROJECT_RUNTIME__.getState();return{project:s.projectId,example:s.activeExampleId,nodes:s.circuit.nodes.length,run:s.verifyLastRun?.runId,checks:s.verifyLastRun?.assertionStatus,rootPx:getComputedStyle(document.documentElement).fontSize,bodyWidth:document.body.scrollWidth,layoutWidth:innerWidth,layoutHeight:innerHeight,dpr:devicePixelRatio,outerWidth,outerHeight};})});}
+ async function shot(name){await page.waitForFunction(()=>!/Loading (Design|Simulate|Board|Project|Package) workspace/.test(document.body.innerText));await page.waitForTimeout(650);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await captureViewport(page,path.join(out,name+'.png'));captures.push({name,viewport:page.viewportSize(),state:await page.evaluate(()=>{const s=window.__RB_PROJECT_RUNTIME__.getState();return{project:s.projectId,example:s.activeExampleId,nodes:s.circuit.nodes.length,run:s.verifyLastRun?.runId,checks:s.verifyLastRun?.assertionStatus,rootPx:getComputedStyle(document.documentElement).fontSize,bodyWidth:document.body.scrollWidth,layoutWidth:innerWidth,layoutHeight:innerHeight,dpr:devicePixelRatio,outerWidth,outerHeight};})});}
  async function timeView(){if(await tid('ide-verify-view-timeline').count())await tid('ide-verify-view-timeline').click();}
  async function run(){await tid('ide-vcb-run').click();await page.waitForFunction(()=>!!window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun);await timeView();}
  await page.goto(BASE_URL,{waitUntil:'networkidle',timeout:60000});
