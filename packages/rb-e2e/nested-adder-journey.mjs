@@ -195,7 +195,9 @@ await createBus('A', 'input', 4);
 await createBus('B', 'input', 4);
 await createBus('SUM', 'output', 4);
 // CARRY: a scalar output boundary, labeled CARRY.
-await placeVia('ide-design-palette-output', 880, 90);
+// Keep the temporary boundary below the empty-canvas quick actions until the
+// complete top-level arrangement is placed and fitted later in this journey.
+await placeVia('ide-design-palette-output', 880, 180);
 const carryId = await newestNodeId('OUTPUT', seen); seen.add(carryId);
 const carryMap = { CARRY: carryId };
 await renameNode(carryMap, 'CARRY', 'CARRY');

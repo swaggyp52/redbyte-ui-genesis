@@ -65,6 +65,10 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
   await page.getByTestId('ide-project-sources-document').waitFor();
   await page.keyboard.press('Escape');
   await page.getByTestId('ide-left-dock').waitFor({ state: 'hidden' });
+  // Closing the panel restores focus on the next animation frame, after React
+  // mounts the restore control. Assert completion, not the intermediate frame.
+  await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'ide-show-left-dock',
+    undefined, { timeout: 3000 });
   assert(await restoreExplorer.evaluate((element) => element === document.activeElement),
     'Escape from the narrow Project explorer must return focus to its existing restore control');
   await restoreExplorer.click();

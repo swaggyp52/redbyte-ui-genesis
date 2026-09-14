@@ -20,9 +20,10 @@ try {
   return {button:r.toJSON(),board:board.toJSON(),receivesClick:button===hit||button.contains(hit),height:innerHeight};
  });
  assert.ok(geometry.receivesClick && geometry.button.bottom<geometry.height-28,'Next is directly reachable before scrolling');
- assert.ok(geometry.button.top>=geometry.board.bottom,'Step controls belong below the board');
+ assert.ok(geometry.button.left>=geometry.board.right-1,'Step controls belong beside the board in the parallel reference pane');
+ assert.ok(geometry.board.width>=300 && geometry.board.height>=180,'The board remains a readable primary object beside the steps');
  await page.screenshot({path:path.join(out,'board-check-1280x650.png')});
- assert.equal(await tid('ide-mode-body').getByTestId('ide-hw-bringup-step').count(),1,'Actual check steps belong under the board in the main workspace');
+ assert.equal(await tid('ide-mode-body').getByTestId('ide-hw-bringup-step').count(),1,'Actual check steps have one owner beside the board in the main workspace');
  const first=await tid('ide-hw-bringup-step').innerText();
  await tid('ide-hw-bringup-next').click();
  assert.notEqual(await tid('ide-hw-bringup-step').innerText(),first,'Next shows the next actual check step');

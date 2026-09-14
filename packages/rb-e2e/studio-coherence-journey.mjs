@@ -63,8 +63,10 @@ try {
     assert.equal(await tid('ide-mode-design').getAttribute('data-right-dock-state'), 'hidden', 'Split keeps optional detail recoverable');
     await tid('mode-button-verify').click();
     await tid('ide-vcb-run').click();
+    await tid('ide-run-details').locator('summary').click();
     await tid('ide-run-repetition').waitFor();
     assert.equal(await tid('ide-run-repetition').innerText(), '1 run · no repeat yet');
+    await tid('ide-run-details').locator('summary').press('Escape');
     await page.getByRole('gridcell', { name: /^EN at t2:/ }).click();
     await tid('ide-vcb-run').click();
     await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.status === 'fail');
