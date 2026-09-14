@@ -183,8 +183,8 @@
 .ide-root .ide-case-lab-row.is-selected td { border-bottom-color: var(--wb-accent); }
 .ide-root .ide-case-lab-obs.is-fail code { color: var(--wb-err); font-weight: 700; }
 .ide-root .ide-case-lab-exp-btn {
-  min-width: 22px;
-  height: 20px;
+  min-width: var(--wb-control-h);
+  height: var(--wb-control-h);
   padding: 0 4px;
   border: 1px solid transparent;
   border-radius: var(--wb-radius);
@@ -314,9 +314,13 @@
 }
 .ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) { min-height: min-content; }
 .ide-root .rb-sim-lab-grid[data-details-open='true']:not([data-investigation]) { grid-template-columns: minmax(0, 1fr) minmax(250px, 32%); }
-.ide-root .rb-sim-inspector .ide-verify-supporting-strip { min-height: 0; max-height: none; margin: 0; border: 0; background: var(--wb-surface); color: var(--wb-text); }
-.ide-root .rb-sim-inspector .ide-verify-drawer-body, .ide-root .rb-sim-inspector .ide-verify-tab-panel { background: var(--wb-surface); color: var(--wb-text); overflow: visible; }
+.ide-root .rb-sim-inspector .ide-verify-supporting-strip { flex: none; min-height: 0; max-height: none; overflow: visible; margin: 0; border: 0; background: var(--wb-surface); color: var(--wb-text); }
+/* Details owns scrolling for the complete analysis, including repair actions. */
+.ide-root .rb-sim-inspector .ide-verify-drawer-body, .ide-root .rb-sim-inspector .ide-verify-tab-panel { flex: none; min-height: 0; max-height: none; background: var(--wb-surface); color: var(--wb-text); overflow: visible; }
 .ide-root .rb-sim-inspector .ide-verify-analysis-tab-nav { position: static; flex-wrap: wrap; background: var(--wb-surface-2); color: var(--wb-text); }
+.ide-root .rb-sim-inspector .ide-verify-repair-panel__actions { grid-template-columns: minmax(0, 1fr); }
+.ide-root .rb-sim-inspector .ide-verify-repair-panel__path-actions { flex-direction: column; align-items: stretch; }
+.ide-root .rb-sim-inspector .ide-verify-repair-panel__path-actions .ide-button { width: 100%; min-height: var(--wb-control-h); height: auto; padding: 4px 8px; }
 .ide-root .rb-sim-inspector > header { height: auto; min-height: var(--wb-toolwindow-header-h); flex-wrap: wrap; }
 .ide-root .rb-sim-imported-details { flex: none; border-top: 1px solid var(--wb-border); color: var(--wb-text-2); background: var(--wb-surface); font-size: var(--wb-text-sm); }
 .ide-root .rb-sim-imported-details > summary { padding: 5px 12px; cursor: pointer; }
@@ -689,12 +693,6 @@
 .ide-root .rb-timing-generated { display: inline-block; flex: 0 1 auto; height: 18px; padding: 0 6px; border: 1px dashed var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); line-height: 16px; white-space: nowrap; min-width: 0; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
 .ide-root .rb-tl-cell.is-generated { cursor: default; }
-
-/* The ordinary inspector shares the workbench with its waveform. Legacy 320px
-   minimums overruled the drawer's smaller viewport cap and squeezed its own Close
-   action out of the waveform. The strip gets a bounded share and its body scrolls. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open { display: flex; flex: 0 1 34%; min-height: 0; }
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { flex: 1 1 auto; min-height: 0; max-height: min(34vh, 320px); overflow: auto; }
 
 /* One failure, one focus. The investigation hint, the starter-vector note and the export
    note are true but secondary; at full width, stacked, they buried the case table under a

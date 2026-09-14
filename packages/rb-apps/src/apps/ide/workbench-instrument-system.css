@@ -197,6 +197,7 @@
 }
 .ide-root .wb-cmdbar-brand {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   min-width: 0;
@@ -307,9 +308,9 @@
 .ide-root .wb-cmdbar-search-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ide-root .wb-cmdbar-search kbd { flex: none; }
 .ide-root .wb-cmdbar-object code { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-frame-text); }
-.ide-root .wb-cmdbar-object-kind { flex: none; color: var(--wb-frame-text-3); font-size: var(--wb-text-xs); letter-spacing: 0.04em; text-transform: uppercase; }
+.ide-root .wb-cmdbar-object-kind { flex: none; color: var(--wb-frame-text-2); font-size: var(--wb-text-xs); letter-spacing: 0.04em; text-transform: uppercase; }
 .ide-root .wb-cmdbar-search kbd,
-.ide-root .wb-cmdbar-right kbd { padding: 1px 4px; border: 1px solid var(--wb-frame-border); border-radius: 2px; color: var(--wb-frame-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .wb-cmdbar-right kbd { padding: 1px 4px; border: 1px solid var(--wb-frame-border); border-radius: 2px; color: var(--wb-frame-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .wb-cmdbar-right > .wb-btn { border-color: var(--wb-frame-border); color: var(--wb-frame-text-2); background: transparent; }
 .ide-root .wb-cmdbar-right > .wb-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
 .ide-root .wb-cmdbar-right > .wb-btn--primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }

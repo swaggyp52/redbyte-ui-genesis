@@ -81,9 +81,9 @@
 }
 .ide-root .rb-pkg-file-group button:hover { background: var(--wb-hover-bg); }
 .ide-root .rb-pkg-file-group button.is-selected { border-left-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
-.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-mono); }
+.ide-root .rb-pkg-file-icon { display: inline-grid; place-items: center; height: 16px; padding: 0 3px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: 600 var(--rb-text-micro) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--wb-font-mono); }
-.ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-pkg-file-availability { display: inline-flex; align-items: center; gap: 3px; color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-pkg-file-availability.is-ready { color: var(--wb-ok); }
 .ide-root .rb-pkg-file-availability-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .ide-root .rb-pkg-file-role-empty { margin: 0; padding: 2px var(--wb-space-3) 4px 14px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
@@ -105,7 +105,7 @@
 .ide-root .rb-pkg-preview header > div.rb-pkg-preview-actions { display: inline-flex; gap: 4px; flex: none; margin-left: auto; }
 .ide-root .rb-pkg-preview pre { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px 0; overflow: auto; background: var(--wb-code-bg, #0f151e); color: var(--wb-code-text, #e6ecf5); font: var(--wb-text-sm) / 18px var(--wb-font-mono); }
 .ide-root .rb-pkg-code-line { display: grid; grid-template-columns: 48px minmax(0, 1fr); }
-.ide-root .rb-pkg-line-number { padding-right: 12px; color: var(--wb-code-gutter, #6b7a90); text-align: right; user-select: none; }
+.ide-root .rb-pkg-line-number { padding-right: 12px; color: var(--wb-plane-text-2); text-align: right; user-select: none; }
 .ide-root .rb-pkg-preview > p { margin: 0; padding: 12px var(--wb-space-3); color: var(--wb-text-3); font-size: var(--wb-text-sm); }
 
 /* Upstream readiness rows · submission roles · lab · boundary · technical entry. */

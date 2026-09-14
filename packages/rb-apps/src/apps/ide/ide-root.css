@@ -14760,16 +14760,6 @@ details[open].ide-export-evidence-details > summary::before {
   min-height: 44px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-supporting-strip.is-open {
-  max-height: min(44vh, 420px) !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body {
-  min-height: 220px;
-  max-height: min(36vh, 360px);
-  overflow: auto;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tab-panel,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-truth-table-pane {
   min-height: 220px;
@@ -17180,11 +17170,6 @@ button:disabled,
   flex: 0 0 auto !important;
   min-height: 0 !important;
 }
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-tab-panel {
-  max-height: 220px !important;
-  overflow: auto !important;
-}
-
 /* Palette items: tighter rows, cleaner typography */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-item {
   padding: 5px 8px !important;
