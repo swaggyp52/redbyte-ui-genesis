@@ -76,11 +76,14 @@ Baseline re-verified at ed2e342 (`pnpm verify`: 95 tests) before any edit. Envir
 - [x] 23 Playwright journeys on Chromium (10 original + 9 catalog + 4 lived-in), axe WCAG 2.2 AA on every screen.
 - [ ] **BLOCKED** iOS keyboard/safe-area behaviour and VoiceOver on a physical iPhone.
 
-### Gate C — Cloud release evidence — PARTIAL (workflow committed; first run happens on the PR)
+### Gate C — Cloud release evidence — PARTIAL (first runs recorded; two job fixes pushed, re-run pending)
 - [x] `.github/workflows/daily-plate-cloud.yml`: path-filtered, `contents: read`, bounded timeouts and concurrency, no `pull_request_target`, no secrets. Jobs: verify (frozen install, `pnpm verify`, `pnpm audit --prod`, source archive artifact), journeys (Chromium and WebKit), container smoke (x64 and `ubuntu-24.04-arm`), Windows source smoke.
 - [x] `ops/ci/container-smoke.sh`: non-root read-only boot, healthcheck, SQLite engine gate, create → restart → recover, backup + scratch restore, anonymous 401.
-- [ ] **PENDING** Results of the workflow on this PR (recorded in `TEST_EVIDENCE.md` when available). If the ARM runner label is unavailable to the account, that job stays queued/failed and the Pi build remains the ARM proof.
-- [ ] **BLOCKED** WebKit and Docker locally (not installed in the sandbox).
+- [x] Run 35389344505 at 70c0393: verify PASS, Container x64 PASS, Container arm64 (native) PASS, Journeys Chromium PASS (23/23). Details in `TEST_EVIDENCE.md` "Workflow results".
+- [x] Windows source smoke failed on `pnpm install` (node-gyp compile of better-sqlite3 with no usable Visual Studio). Fixed by loading better-sqlite3's shipped prebuilt Node-API binary (`ignoredBuiltDependencies`); lockfile unchanged.
+- [x] WebKit journeys failed on the offline close-and-reopen step (Playwright WebKit does not serve the service-worker shell under `setOffline`). Journey made engine-aware: Chromium asserts the offline shell, WebKit asserts survive-and-reconcile-once.
+- [ ] **PENDING** Results of the re-run on the fixing commit (recorded in `TEST_EVIDENCE.md` when available).
+- [ ] **BLOCKED** WebKit and Docker locally (not installed in the sandbox); both are exercised by the workflow.
 
 ### Gate D — Portable handoff — PASS
 - [x] `ops/export-source.sh`: `git archive` of the subtree at HEAD (dotfiles, lockfile, workspace files, docs, scripts, icons; no node_modules/dist/data/.env), sha256 + MANIFEST.

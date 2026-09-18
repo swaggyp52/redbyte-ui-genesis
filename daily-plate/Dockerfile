@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.7
 # Daily Plate application image. Build for the Pi's verified architecture, e.g.
 #   docker buildx build --platform linux/arm64 -t daily-plate:<version> .
-# Native modules (better-sqlite3) are compiled inside the image for that platform;
-# never copy x86 node_modules into an ARM64 image.
+# better-sqlite3 loads its prebuilt Node-API binary for the image platform
+# (pnpm-workspace.yaml keeps pnpm from compiling it); node_modules are installed
+# inside the image for that platform, never copied from an x86 host into an ARM64 image.
 
 FROM node:24.21.0-bookworm-slim AS build
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 CI=1

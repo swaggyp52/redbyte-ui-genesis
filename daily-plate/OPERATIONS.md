@@ -74,7 +74,7 @@ Only after §3 passes and the owner approves exposing **this node alone**: set `
 ops/export-source.sh <out-dir>          # git archive of daily-plate/ at HEAD + sha256 + MANIFEST (no secrets, data, node_modules, dist)
 ops/cleanroom-test.sh <archive.tar.gz>  # extracts into a temp dir, frozen install, verify, build, real server smoke
 ```
-The archive is what to move to the desktop project folder or a fresh repository. Native modules are compiled on install; never copy an x86 `node_modules` to the Pi.
+The archive is what to move to the desktop project folder or a fresh repository. better-sqlite3 loads the prebuilt Node-API binary for the machine it is installed on (no C++ toolchain needed; `pnpm-workspace.yaml` keeps pnpm from compiling it); still, never copy an x86 `node_modules` to the Pi, install there.
 
 ## 7. Operator CLI (inside the container)
 ```

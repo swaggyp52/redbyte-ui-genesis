@@ -49,3 +49,7 @@ Only decisions that shaped the code. Dates are 2026-09-18 unless noted.
 **D-23 Test-only provider stub and seed.** `DP_PROVIDER_STUB_DIR` answers USDA/OFF from fixtures and `dev/seed.js` builds synthetic accounts; both throw under `NODE_ENV=production`, which the image sets.
 
 **D-24 No commercial provider yet.** See DATA_SOURCES "Adding another provider". `FoodCandidate` is the extension point; nothing speculative is wired.
+
+**D-25 Prebuilt SQLite binding.** better-sqlite3 13 ships prebuilt Node-API binaries for linux/darwin/win32 on x64 and arm64 and marks itself `gypfile: false`; pnpm is told not to compile it (`ignoredBuiltDependencies`). A fresh Windows desktop or runner needs no C++ toolchain, the Pi image loads the `linux-arm64` prebuild, and the SQLite engine gate at boot still decides whether the binary is acceptable.
+
+**D-26 Offline shell is a Chromium-proven claim.** Playwright's WebKit build does not serve the service-worker app shell under `setOffline`, so the O01 journey asserts the offline open only in Chromium. WebKit proves the pending entry survives close/reopen and reconciles exactly once. Safari on a physical iPhone remains a home check.

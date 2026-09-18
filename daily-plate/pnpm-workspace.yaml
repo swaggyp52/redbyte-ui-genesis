@@ -2,6 +2,12 @@ packages:
   - apps/*
   - packages/*
 
-onlyBuiltDependencies:
+# better-sqlite3 13 ships prebuilt Node-API binaries for linux/darwin/win32 on
+# x64 and arm64 (its package.json sets gypfile: false). Compiling it from source
+# needs a C++ toolchain that Windows runners and a fresh desktop do not have, so
+# pnpm is told not to run its build script; the shipped prebuild is loaded instead.
+ignoredBuiltDependencies:
   - better-sqlite3
+
+onlyBuiltDependencies:
   - esbuild
