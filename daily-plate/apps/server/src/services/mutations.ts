@@ -16,7 +16,7 @@ import {
 } from '@daily-plate/contracts';
 import { calculateRecipe, resolveQuantity, type NutrientSet } from '@daily-plate/domain';
 import type { Store } from '../db/store.js';
-import { canonicalDigest, newId, nowIso } from '../ids.js';
+import { canonicalDigest, nowIso } from '../ids.js';
 
 export class MutationError extends Error {
   constructor(
@@ -232,7 +232,8 @@ function foodUpsert(store: Store, userId: string, p: Extract<MutationPayload, { 
   if (!existing && store.db.prepare('select 1 from foods where id = ?').get(p.food.id)) throw new MutationError('forbidden', 'Food id is not available.');
   if (existing && p.baseRevision !== undefined && existing.revision !== p.baseRevision) throw new ConflictError(existing);
   const versionNumber = store.nextFoodVersionNumber(p.food.id);
-  const version: FoodVersion = { ...p.version, id: newId(), foodId: p.food.id, version: versionNumber, createdAt: now };
+  if (store.db.prepare('select 1 from food_versions where id = ?').get(p.version.id)) throw new MutationError('forbidden', 'Food version id is not available.');
+  const version: FoodVersion = { ...p.version, foodId: p.food.id, version: versionNumber, createdAt: now };
   // A version's quantity must be resolvable at its default so logging never fails later.
   if (version.defaultQuantity) {
     const r = resolveQuantity({ basis: version.basis, portions: version.portions }, version.defaultQuantity);
@@ -316,9 +317,12 @@ function recipeUpsert(store: Store, userId: string, p: Extract<MutationPayload, 
     p.yieldServings,
   );
 
-  const foodId = existing?.foodId ?? newId();
+  const foodId = existing?.foodId ?? p.foodId;
+  if (!existing && store.db.prepare('select 1 from foods where id = ?').get(foodId)) throw new MutationError('forbidden', 'Food id is not available.');
+  if (store.db.prepare('select 1 from food_versions where id = ?').get(p.foodVersionId)) throw new MutationError('forbidden', 'Food version id is not available.');
+  if (store.db.prepare('select 1 from recipe_versions where id = ?').get(p.recipeVersionId)) throw new MutationError('forbidden', 'Recipe version id is not available.');
   const foodVersion: FoodVersion = {
-    id: newId(),
+    id: p.foodVersionId,
     foodId,
     version: store.nextFoodVersionNumber(foodId),
     name: p.name,
@@ -331,7 +335,7 @@ function recipeUpsert(store: Store, userId: string, p: Extract<MutationPayload, 
     createdAt: now,
   };
   const recipeVersion: RecipeVersion = {
-    id: newId(),
+    id: p.recipeVersionId,
     recipeId: p.recipeId,
     version: store.nextRecipeVersionNumber(p.recipeId),
     name: p.name,

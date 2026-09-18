@@ -29,5 +29,10 @@
     "tsx": "4.23.13",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
-  }
+  },
+  "exports": {
+    "./app": "./dist/app.js",
+    "./config": "./dist/config.js"
+  },
+  "types": "./dist/app.d.ts"
 }

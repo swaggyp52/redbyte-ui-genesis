@@ -126,7 +126,7 @@ describe('Gate 1: smallest real path', () => {
   it('N08 a new label version does not rewrite a past entry', async () => {
     const { food, version } = await addShake(me);
     await me.mutate([{ type: 'diary.add', entry: entryFor('entry-0020', version.id, '1') }]);
-    const corrected = { ...SHAKE_FOOD, version: { ...SHAKE_FOOD.version, nutrients: { ...SHAKE_FOOD.version.nutrients, fat: { status: 'reported' as const, amount: '3' } } }, baseRevision: food.revision + 1 };
+    const corrected = { ...SHAKE_FOOD, version: { ...SHAKE_FOOD.version, id: 'food-shake-0001-v2', nutrients: { ...SHAKE_FOOD.version.nutrients, fat: { status: 'reported' as const, amount: '3' } } }, baseRevision: food.revision + 1 };
     // food revision was bumped by lastQuantity tracking on add; read current
     const boot = (await me.get('/api/v1/bootstrap')).json() as Bootstrap;
     const current = boot.foods.find((f) => f.id === food.id)!;
@@ -260,6 +260,7 @@ describe('Gate 1: smallest real path', () => {
         type: 'food.upsert',
         food: { id: 'food-eggs-0001', name: 'Egg, large', aliases: ['eggs'], pin: null, suggestEligible: true, tags: [], hidden: false },
         version: {
+          id: 'food-eggs-0001-v1',
           name: 'Egg, large',
           preparation: 'cooked',
           basis: { kind: 'serving', servingText: '1 egg (50 g)', servingGrams: '50' },
@@ -285,7 +286,7 @@ describe('Gate 1: smallest real path', () => {
     expect(day.entries.every((e) => e.groupId === groupId)).toBe(true);
     expect(day.entries.find((e) => e.id === 'entry-0101')?.snapshot?.nutrients.protein).toEqual({ status: 'reported', amount: '12' });
 
-    const recipe = await me.mutate([{ type: 'recipe.upsert', recipeId: 'recipe-0001', name: 'Egg bake', ingredients: [{ foodId: eggFood.id, foodVersionId: eggFood.currentVersionId, quantity: { amount: '6', unit: { kind: 'portion', portionId: 'egg' } } }], yieldServings: '4', servingName: 'slice' }]);
+    const recipe = await me.mutate([{ type: 'recipe.upsert', recipeId: 'recipe-0001', recipeVersionId: 'recipe-0001-rv1', foodId: 'recipe-0001-food', foodVersionId: 'recipe-0001-fv1', name: 'Egg bake', ingredients: [{ foodId: eggFood.id, foodVersionId: eggFood.currentVersionId, quantity: { amount: '6', unit: { kind: 'portion', portionId: 'egg' } } }], yieldServings: '4', servingName: 'slice' }]);
     expect(recipe.results[0]?.status).toBe('committed');
     const after = (await me.get('/api/v1/bootstrap')).json() as Bootstrap;
     const rv = after.recipeVersions.find((v) => v.recipeId === 'recipe-0001')!;
@@ -298,7 +299,7 @@ describe('Gate 1: smallest real path', () => {
     expect(slice.results[0]?.status).toBe('committed');
 
     // N09: editing the recipe creates a new version; the earlier slice keeps the old one.
-    const edit = await me.mutate([{ type: 'recipe.upsert', recipeId: 'recipe-0001', name: 'Egg bake', ingredients: [{ foodId: eggFood.id, foodVersionId: eggFood.currentVersionId, quantity: { amount: '6', unit: { kind: 'portion', portionId: 'egg' } } }], yieldServings: '6', servingName: 'slice', baseRevision: 1 }]);
+    const edit = await me.mutate([{ type: 'recipe.upsert', recipeId: 'recipe-0001', recipeVersionId: 'recipe-0001-rv2', foodId: 'recipe-0001-food', foodVersionId: 'recipe-0001-fv2', name: 'Egg bake', ingredients: [{ foodId: eggFood.id, foodVersionId: eggFood.currentVersionId, quantity: { amount: '6', unit: { kind: 'portion', portionId: 'egg' } } }], yieldServings: '6', servingName: 'slice', baseRevision: 1 }]);
     expect(edit.results[0]?.status).toBe('committed');
     const final = (await me.get('/api/v1/bootstrap')).json() as Bootstrap;
     expect(final.recipeVersions).toHaveLength(2);

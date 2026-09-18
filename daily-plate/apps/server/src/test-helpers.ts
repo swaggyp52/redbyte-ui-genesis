@@ -90,6 +90,7 @@ export function mutation(payload: MutationPayload, mutationId = randomUUID()): M
 export const SHAKE_FOOD = {
   food: { id: 'food-shake-0001', name: 'My shake', aliases: ['shake', 'my shake'], pin: null, suggestEligible: true, tags: ['drink' as const], hidden: false },
   version: {
+    id: 'food-shake-0001-v1',
     name: 'My shake',
     preparation: 'as-sold' as const,
     basis: { kind: 'serving' as const, servingText: '1 bottle' },

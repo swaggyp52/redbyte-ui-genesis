@@ -234,7 +234,8 @@ export const DismissalSchema = z.object({ key: z.string().min(1).max(400), kind:
 
 const NewEntry = DiaryEntrySchema.omit({ revision: true, deleted: true, createdAt: true, updatedAt: true });
 const NewFood = FoodSchema.omit({ revision: true, updatedAt: true, currentVersionId: true });
-const NewFoodVersion = FoodVersionSchema.omit({ id: true, foodId: true, version: true, createdAt: true });
+/** The client generates the version id so offline entries can reference it before the server sees it. */
+const NewFoodVersion = FoodVersionSchema.omit({ foodId: true, version: true, createdAt: true });
 
 export const MutationPayloadSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('diary.add'), entry: NewEntry }),
@@ -261,6 +262,10 @@ export const MutationPayloadSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('recipe.upsert'),
     recipeId: IdSchema,
+    /** Client-generated ids for the derived records so offline use can reference them. */
+    recipeVersionId: IdSchema,
+    foodId: IdSchema,
+    foodVersionId: IdSchema,
     name: ShortTextSchema,
     ingredients: z.array(z.object({ foodId: IdSchema, foodVersionId: IdSchema, quantity: QuantitySchema })).min(1).max(40),
     yieldServings: PositiveDecimalSchema,
