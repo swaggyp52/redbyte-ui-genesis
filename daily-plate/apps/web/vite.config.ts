@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(process.env.DP_VERSION ?? '0.1.0-dev') },
+  // Plain CSS, no PostCSS plugins. The inline config also stops Vite searching parent
+  // directories for a postcss.config.* (on Windows the search runs past the workspace root).
+  css: { postcss: { plugins: [] } },
   plugins: [
     react(),
     VitePWA({
