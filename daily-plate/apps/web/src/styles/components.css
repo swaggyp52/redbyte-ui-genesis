@@ -293,14 +293,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-}
-.shortcut > .grow {
-  flex: 1 1 110px;
-  min-width: 110px;
   padding: 10px 10px 10px 16px;
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+.shortcut > .grow {
+  flex: 1 1 110px;
+  min-width: 110px;
 }
 .shortcut .name {
   font-weight: 650;
