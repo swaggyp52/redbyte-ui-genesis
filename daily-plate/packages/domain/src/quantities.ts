@@ -7,7 +7,7 @@ import { div, mul, type Decimal } from './decimal.js';
  * - per100ml: per 100 millilitres (beverages)
  */
 export type NutrientBasis =
-  | { kind: 'serving'; servingText: string; servingGrams?: Decimal; servingMl?: Decimal }
+  | { kind: 'serving'; servingText: string; servingGrams?: Decimal | undefined; servingMl?: Decimal | undefined }
   | { kind: 'per100g' }
   | { kind: 'per100ml' };
 
@@ -32,9 +32,9 @@ export interface Portion {
   id: string;
   name: string;
   /** Multiple of the serving basis (serving basis only). */
-  servings?: Decimal;
-  grams?: Decimal;
-  ml?: Decimal;
+  servings?: Decimal | undefined;
+  grams?: Decimal | undefined;
+  ml?: Decimal | undefined;
 }
 
 export type QuantityUnit =

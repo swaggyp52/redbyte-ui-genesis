@@ -1,0 +1,27 @@
+{
+  "_fixtureNote": "Shaped after the documented Open Food Facts v3 product read with per-serving data and an explicit carbohydrates-total field. Illustrative values; not a live capture.",
+  "status": "success",
+  "result": { "id": "product_found", "name": "Product found" },
+  "code": "4000000000012",
+  "product": {
+    "code": "4000000000012",
+    "product_name_en": "Example Greek Yogurt",
+    "brands": "Example Dairy",
+    "quantity": "500 g",
+    "product_quantity": "500",
+    "product_quantity_unit": "g",
+    "serving_size": "170 g",
+    "serving_quantity": 170,
+    "serving_quantity_unit": "g",
+    "nutrition_data_per": "serving",
+    "nutriments": {
+      "proteins_serving": 17,
+      "carbohydrates-total_serving": 6,
+      "carbohydrates_serving": 6,
+      "fat_serving": 0,
+      "sugars_serving": 5,
+      "sugars_modifier": "~",
+      "energy-kcal_serving": 100
+    }
+  }
+}

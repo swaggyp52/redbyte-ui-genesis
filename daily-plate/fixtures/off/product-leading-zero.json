@@ -1,0 +1,26 @@
+{
+  "_fixtureNote": "Shaped after the documented Open Food Facts v3 product read. Illustrative values; not a live capture.",
+  "status": "success",
+  "result": { "id": "product_found", "name": "Product found" },
+  "code": "0012345678905",
+  "product": {
+    "code": "0012345678905",
+    "product_name": "Example Oat Crunch Cereal",
+    "brands": "Example Mills, Example Group",
+    "quantity": "400 g",
+    "product_quantity": "400",
+    "product_quantity_unit": "g",
+    "serving_size": "40 g (about 3/4 cup)",
+    "serving_quantity": 40,
+    "serving_quantity_unit": "g",
+    "nutrition_data_per": "100g",
+    "nutriments": {
+      "proteins_100g": 10,
+      "carbohydrates_100g": 68,
+      "fat_100g": 6.5,
+      "fiber_100g": 1,
+      "fiber_modifier": "<",
+      "energy-kcal_100g": 380
+    }
+  }
+}

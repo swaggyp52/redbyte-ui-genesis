@@ -1,0 +1,17 @@
+{
+  "_fixtureNote": "SYNTHETIC beverage record for arithmetic tests only. NOT Samuel Adams nutritional data. Verify the real product and container from its label before trusting any numbers.",
+  "name": "Synthetic Märzen-style beer (TEST DATA)",
+  "basis": { "kind": "per100ml" },
+  "nutrients": {
+    "protein": { "status": "reported", "amount": "0.5" },
+    "carbs": { "status": "reported", "amount": "4.2" },
+    "fat": { "status": "reported", "amount": "0" },
+    "fiber": { "status": "reported", "amount": "0" },
+    "sugar": { "status": "unknown" },
+    "calories": { "status": "reported", "amount": "53" }
+  },
+  "portions": [
+    { "id": "bottle12", "name": "12 fl oz bottle", "ml": "354.882" },
+    { "id": "can16", "name": "16 fl oz can", "ml": "473.176" }
+  ]
+}

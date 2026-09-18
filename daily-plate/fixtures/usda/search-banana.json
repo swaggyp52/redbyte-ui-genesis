@@ -1,0 +1,31 @@
+{
+  "_fixtureNote": "Shaped after the documented FoodData Central search response. Illustrative values; not a live capture.",
+  "totalHits": 2,
+  "currentPage": 1,
+  "totalPages": 1,
+  "foods": [
+    {
+      "fdcId": 1000001,
+      "description": "Bananas, raw",
+      "dataType": "SR Legacy",
+      "foodNutrients": [
+        { "nutrientId": 1003, "nutrientName": "Protein", "nutrientNumber": "203", "unitName": "G", "value": 1.09 },
+        { "nutrientId": 1004, "nutrientName": "Total lipid (fat)", "nutrientNumber": "204", "unitName": "G", "value": 0.33 },
+        { "nutrientId": 1005, "nutrientName": "Carbohydrate, by difference", "nutrientNumber": "205", "unitName": "G", "value": 22.84 },
+        { "nutrientId": 1008, "nutrientName": "Energy", "nutrientNumber": "208", "unitName": "KCAL", "value": 89 },
+        { "nutrientId": 1063, "nutrientName": "Sugars, total including NLEA", "nutrientNumber": "269", "unitName": "G", "value": 12.23 },
+        { "nutrientId": 1079, "nutrientName": "Fiber, total dietary", "nutrientNumber": "291", "unitName": "G", "value": 2.6 }
+      ]
+    },
+    {
+      "fdcId": 1000002,
+      "description": "Bananas, dehydrated, or banana powder",
+      "dataType": "SR Legacy",
+      "foodNutrients": [
+        { "nutrientId": 1003, "nutrientName": "Protein", "nutrientNumber": "203", "unitName": "G", "value": 3.89 },
+        { "nutrientId": 1005, "nutrientName": "Carbohydrate, by difference", "nutrientNumber": "205", "unitName": "G", "value": 88.28 },
+        { "nutrientId": 1008, "nutrientName": "Energy", "nutrientNumber": "208", "unitName": "KCAL", "value": 346 }
+      ]
+    }
+  ]
+}
