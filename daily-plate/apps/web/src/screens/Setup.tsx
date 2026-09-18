@@ -72,7 +72,7 @@ export function Setup() {
         {step === 'targets' && (
           <>
             <div className="card stack">
-              <h2>Your daily targets</h2>
+              <h2>Your daily goals</h2>
               <p className="muted small">These are the numbers you gave. Change anything that's off. The 165 g on training days is taken as carbohydrates.</p>
               <h3>Rest day</h3>
               <div className="row">

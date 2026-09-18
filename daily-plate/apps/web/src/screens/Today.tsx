@@ -5,12 +5,11 @@ import { useApp } from '../lib/store.js';
 import { buildDayView, ideasFromMyFoods, mealOffers, shortcuts, type EntryView, type IdeaView, type Shortcut } from '../lib/selectors.js';
 import { addFoodEntry, deleteEntry, dismiss, logMeal, saveMeal, setDayType, updateEntry, withdrawIfUnsent } from '../lib/actions.js';
 import { dayTitle, longDate, macroLine, quantityLabel } from '../lib/format.js';
-import { MacroRows, SecondaryTotals } from '../components/MacroRows.js';
+import { MacroBoard, SecondaryLine } from '../components/MacroRows.js';
 import { PortionSheet } from '../components/PortionSheet.js';
-import { DayPicker } from '../components/DayPicker.js';
+import { WeekStrip } from '../components/WeekStrip.js';
 import { IdeasSheet } from '../components/IdeasSheet.js';
 import { Sheet } from '../components/Sheet.js';
-import { PlateMark } from '../components/PlateMark.js';
 import { SyncLine } from '../components/SyncLine.js';
 import { MealLogSheet, type MealLike } from '../components/MealLogSheet.js';
 
@@ -22,7 +21,6 @@ type SheetState =
   | { kind: 'shortcut'; shortcut: Shortcut }
   | { kind: 'meal'; meal: SavedMeal }
   | { kind: 'copy'; meal: MealLike; slot: MealSlot }
-  | { kind: 'day' }
   | { kind: 'ideas' }
   | { kind: 'idea'; idea: IdeaView };
 
@@ -131,35 +129,35 @@ export function Today() {
 
   return (
     <main className="screen" aria-labelledby="today-title">
-      <header className="screen-head">
-        <div className="hero">
-          <PlateMark size={48} />
-          <div>
-            <h1 id="today-title">{dayTitle(viewDate, today)}</h1>
-            <button type="button" className="btn btn-quiet" style={{ minHeight: 40, padding: '0 4px', marginLeft: -4 }} onClick={() => setSheet({ kind: 'day' })} aria-label={`Showing ${longDate(viewDate)}. Change day`}>
-              {longDate(viewDate)} ▾
-            </button>
-          </div>
+      <header className="screen-head today-head">
+        <div className="grow">
+          <h1 id="today-title">{dayTitle(viewDate, today)}</h1>
+          <p className="today-date">{longDate(viewDate)}</p>
         </div>
+        {viewDate !== today ? (
+          <button type="button" className="btn btn-secondary" style={{ minHeight: 44 }} onClick={() => setViewDate(today)}>
+            Back to today
+          </button>
+        ) : (
+          <SyncLine />
+        )}
       </header>
 
       <div className="stack">
-        <div className="row-between">
-          <div className="segmented" role="group" aria-label="Day type">
-            {(['rest', 'training'] as DayType[]).map((t) => (
-              <button key={t} type="button" aria-pressed={day.dayType === t} onClick={() => void changeDayType(t)}>
-                {DAY_TYPE_LABELS[t].replace(' day', '')}
-              </button>
-            ))}
-          </div>
-          <SyncLine />
+        <WeekStrip selected={viewDate} today={today} datesWithEntries={datesWithEntries} onSelect={setViewDate} />
+
+        <div className="segmented daytype" role="group" aria-label="Day type">
+          {(['rest', 'training'] as DayType[]).map((t) => (
+            <button key={t} type="button" aria-pressed={day.dayType === t} onClick={() => void changeDayType(t)}>
+              {DAY_TYPE_LABELS[t]}
+            </button>
+          ))}
         </div>
 
-        <section className="card" aria-label="Targets">
-          <MacroRows view={view} />
-          <div style={{ height: 14 }} />
-          <SecondaryTotals view={view} />
-          {view.provisional && <p className="small muted" style={{ marginTop: 10 }}>Remaining numbers are provisional until every item has its nutrients.</p>}
+        <section className="card goals" aria-label="Today's goals">
+          <MacroBoard view={view} />
+          <SecondaryLine view={view} />
+          {view.provisional && <p className="small muted">Some foods are missing numbers, so "left" is provisional.</p>}
         </section>
 
         {pinned.length > 0 && (
@@ -168,65 +166,24 @@ export function Today() {
             <div className="stack-sm">
               {pinned.map((s) => (
                 <div className="shortcut" key={`${s.kind}:${s.id}`}>
-                  <div className="grow">
-                    <div className="name wrap">{s.name}</div>
-                    <div className="detail">{s.detail}</div>
-                  </div>
-                  <div className="shortcut-actions">
-                    <button type="button" className="btn btn-secondary" aria-label={`Change amount for ${s.name}`} onClick={() => setSheet(s.kind === 'meal' && s.meal ? { kind: 'meal', meal: s.meal } : { kind: 'shortcut', shortcut: s })}>
-                      Amount
-                    </button>
-                    <button type="button" className="btn btn-primary" onClick={() => void quickAdd(s)} aria-label={`Add ${s.name}, ${s.detail}`}>
-                      Add
-                    </button>
-                  </div>
+                  <button type="button" className="shortcut-main" aria-label={`Change amount for ${s.name}`} onClick={() => setSheet(s.kind === 'meal' && s.meal ? { kind: 'meal', meal: s.meal } : { kind: 'shortcut', shortcut: s })}>
+                    <span className="name wrap">{s.name}</span>
+                    <span className="detail">{s.detail}</span>
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={() => void quickAdd(s)} aria-label={`Add ${s.name}, ${s.detail}`}>
+                    Add
+                  </button>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {offers[0] && (
-          <div className="banner banner-teal" role="status">
-            <div className="grow">
-              You've had {offers[0].names.join(' + ')} together on {offers[0].days} days. Save it as a meal?
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ minHeight: 44 }}
-              onClick={() => {
-                const o = offers[0]!;
-                const items = o.foodIds
-                  .map((id) => foodMap.get(id))
-                  .filter((f): f is NonNullable<typeof f> => Boolean(f))
-                  .map((f) => ({ foodId: f.id, foodVersionId: f.currentVersionId, quantity: f.lastQuantity ?? f.pin?.quantity ?? versions.get(f.currentVersionId)?.defaultQuantity ?? { amount: '1', unit: { kind: 'serving' as const } } }));
-                void saveMeal(db, { id: crypto.randomUUID(), name: `Usual ${o.mealSlot === 'unassigned' ? 'meal' : o.mealSlot}`, items, pin: null, suggestEligible: true }).then(() => {
-                  toast('Saved. Rename it under My Foods.');
-                  void engine.notifyLocalChange();
-                });
-              }}
-            >
-              Save
-            </button>
-            <button type="button" className="btn btn-quiet" style={{ minHeight: 44 }} onClick={() => void dismiss(db, offers[0]!.key, 'meal-combo').then(() => engine.notifyLocalChange())}>
-              No
-            </button>
-          </div>
-        )}
-
         <section aria-label="Entries">
-          <div className="row-between">
-            <h2 className="section-title">{view.entryCount === 0 ? 'Nothing logged yet' : 'Logged'}</h2>
-            {view.entryCount > 0 && (
-              <button type="button" className="btn btn-quiet" onClick={() => setSheet({ kind: 'ideas' })}>
-                Ideas from my foods
-              </button>
-            )}
-          </div>
+          <h2 className="section-title">{view.entryCount === 0 ? 'Nothing logged yet' : 'Logged'}</h2>
           {view.entryCount === 0 && (
             <div className="empty stack-sm">
-              <p>{viewDate === today ? 'Log what you had, when you have it.' : 'Nothing was recorded for this day.'}</p>
+              <p>{viewDate === today ? 'Add what you have, when you have it.' : 'Nothing was recorded for this day.'}</p>
               <button type="button" className="btn btn-primary" onClick={() => navigate('add')}>
                 Add food
               </button>
@@ -265,21 +222,43 @@ export function Today() {
               </div>
             ))}
           </div>
+          {view.entryCount > 0 && (
+            <button type="button" className="btn btn-quiet" style={{ marginTop: 8 }} onClick={() => setSheet({ kind: 'ideas' })}>
+              Ideas from my foods
+            </button>
+          )}
         </section>
-      </div>
 
-      {sheet.kind === 'day' && (
-        <DayPicker
-          selected={viewDate}
-          today={today}
-          datesWithEntries={datesWithEntries}
-          onSelect={(d) => {
-            setViewDate(d);
-            if (d === today || d === previousDay(today)) setSheet({ kind: 'none' });
-          }}
-          onClose={() => setSheet({ kind: 'none' })}
-        />
-      )}
+        {offers[0] && (
+          <div className="banner banner-teal" role="status">
+            <div className="grow">
+              You've had {offers[0].names.join(' + ')} together on {offers[0].days} days. Save it as a meal?
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ minHeight: 44 }}
+              onClick={() => {
+                const o = offers[0]!;
+                const items = o.foodIds
+                  .map((id) => foodMap.get(id))
+                  .filter((f): f is NonNullable<typeof f> => Boolean(f))
+                  .map((f) => ({ foodId: f.id, foodVersionId: f.currentVersionId, quantity: f.lastQuantity ?? f.pin?.quantity ?? versions.get(f.currentVersionId)?.defaultQuantity ?? { amount: '1', unit: { kind: 'serving' as const } } }));
+                void saveMeal(db, { id: crypto.randomUUID(), name: `Usual ${o.mealSlot === 'unassigned' ? 'meal' : o.mealSlot}`, items, pin: null, suggestEligible: true }).then(() => {
+                  toast('Saved. Rename it under My Foods.');
+                  void engine.notifyLocalChange();
+                });
+              }}
+            >
+              Save
+            </button>
+            <button type="button" className="btn btn-quiet" style={{ minHeight: 44 }} onClick={() => void dismiss(db, offers[0]!.key, 'meal-combo').then(() => engine.notifyLocalChange())}>
+              No
+            </button>
+          </div>
+        )}
+
+      </div>
 
       {sheet.kind === 'entry' && sheet.entry.foodVersionId && versions.get(sheet.entry.foodVersionId) && (
         <PortionSheet
@@ -422,15 +401,13 @@ export function Today() {
 function EntryRow({ ev, onOpen }: { ev: EntryView; onOpen: () => void }) {
   const { entry } = ev;
   const cls = ['entry', ev.saveState === 'pending' ? 'pending' : '', ev.saveState === 'attention' ? 'attention' : '', entry.kind === 'draft' ? 'draft' : ''].filter(Boolean).join(' ');
-  const state = ev.saveState === 'pending' ? 'On this phone — waiting to save' : ev.saveState === 'attention' ? `Needs attention: ${ev.attentionMessage ?? 'something changed elsewhere'}` : null;
+  const state = ev.saveState === 'pending' ? 'Waiting to save' : ev.saveState === 'attention' ? `Needs a decision: ${ev.attentionMessage ?? 'it was changed elsewhere'}` : null;
   return (
     <button type="button" className={cls} onClick={onOpen} aria-label={`${entry.snapshot?.name ?? entry.draft?.text ?? 'Entry'}${entry.snapshot ? `, ${entry.snapshot.quantityLabel}` : ', not finished'}${state ? `. ${state}` : ''}`}>
       <span className="name wrap">{entry.snapshot?.name ?? entry.draft?.text}</span>
-      <span className="qty">{entry.snapshot ? entry.snapshot.quantityLabel : 'Not finished — tap to find this food'}</span>
+      <span className="qty">{entry.snapshot ? entry.snapshot.quantityLabel : 'Not finished · tap to find this food'}</span>
       {entry.snapshot && (
-        <span className="macros">
-          <b className="num">{macroLine(entry.snapshot.nutrients)}</b>
-        </span>
+        <span className="macros num">{macroLine(entry.snapshot.nutrients)}</span>
       )}
       {state && <span className={`state-line${ev.saveState === 'attention' ? ' attention' : ''}`}>{state}</span>}
     </button>

@@ -19,12 +19,12 @@ export function valueShort(key: NutrientKey, v: NutrientValue): string {
   }
 }
 
-/** "P 45 · C 22.5 · F ?" */
+/** "45 protein · 22.5 carbs · fat ?" — words she uses, not letters. */
 export function macroLine(n: NutrientSet): string {
-  const letters: Record<MacroKey, string> = { protein: 'P', carbs: 'C', fat: 'F' };
+  const words: Record<MacroKey, string> = { protein: 'protein', carbs: 'carbs', fat: 'fat' };
   return MACRO_KEYS.map((k) => {
     const v = n[k];
-    return `${letters[k]} ${v.status === 'unknown' ? '?' : formatDisplay(v.amount, 1)}`;
+    return v.status === 'unknown' ? `${words[k]} ?` : `${v.status === 'estimated' ? '~' : ''}${formatDisplay(v.amount, 1)} ${words[k]}`;
   }).join(' · ');
 }
 

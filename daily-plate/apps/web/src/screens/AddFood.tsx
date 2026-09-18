@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Food, FoodCandidate, FoodVersion, MealSlot, Quantity, SavedMeal } from '@daily-plate/contracts';
-import { defaultMealSlot, parsePhrase, rankLocalFoods, type ParsedPhrase } from '@daily-plate/domain';
+import { buildDiarySnapshot, type Food, type FoodCandidate, type FoodVersion, type MealSlot, type Quantity, type SavedMeal } from '@daily-plate/contracts';
+import { defaultMealSlot, parsePhrase, rankLocalFoods, type NutrientSet, type ParsedPhrase } from '@daily-plate/domain';
 import { useApp } from '../lib/store.js';
 import { addDraftEntry, addFoodEntry, candidateToFoodInput, deleteEntry, updateEntry, upsertFood, withdrawIfUnsent, type UpsertFoodInput } from '../lib/actions.js';
 import { buildDayView, recentFoods, suggestionsAroundNow } from '../lib/selectors.js';
-import { basisLabel, dayTitle } from '../lib/format.js';
+import { basisLabel, dayTitle, macroLine, quantityLabel } from '../lib/format.js';
 import { OfflineError } from '../lib/api.js';
 import { quantityForPhrase } from '../lib/quantities.js';
 import { PortionSheet } from '../components/PortionSheet.js';
@@ -73,8 +73,13 @@ export function AddFood() {
     return meals.filter((m) => !m.deleted && m.name.toLowerCase().includes(q)).slice(0, 3);
   }, [parsed.query, meals]);
 
-  const recents = useMemo(() => recentFoods(entries, foodMap, 6), [entries, foodMap]);
-  const aroundNow = useMemo(() => suggestionsAroundNow(entries, foodMap, new Date(), slotNow, dismissals, foods.filter((f) => f.pin).map((f) => f.pin && f.id).filter((x): x is string => Boolean(x))), [entries, foodMap, slotNow, dismissals, foods]);
+  // One familiar list: what she usually has around this time of day, then everything recent. No sections to decode.
+  const familiar = useMemo(() => {
+    const aroundNow = suggestionsAroundNow(entries, foodMap, new Date(), slotNow, dismissals, []);
+    const out: Food[] = [...aroundNow];
+    for (const f of recentFoods(entries, foodMap, 10)) if (!out.some((x) => x.id === f.id)) out.push(f);
+    return out.slice(0, 8);
+  }, [entries, foodMap, slotNow, dismissals]);
 
   const quantityFromPhrase = (version: FoodVersion, food?: Food) => quantityForPhrase(parsed, version, food);
 
@@ -256,7 +261,7 @@ export function AddFood() {
             id="food-search"
             ref={inputRef}
             className="input input-lg"
-            placeholder="What did you have? e.g. 2 eggs"
+            placeholder="What did you have?"
             value={text}
             onChange={(e) => setText(e.target.value)}
             autoComplete="off"
@@ -297,27 +302,17 @@ export function AddFood() {
 
         {showStart && (
           <>
-            {aroundNow.length > 0 && (
-              <section aria-label="Often around now">
-                <h2 className="section-title">Often around now</h2>
-                <div className="list">
-                  {aroundNow.map((f) => (
-                    <FoodRow key={f.id} food={f} version={versions.get(f.currentVersionId)} onOpen={() => openLocal(f)} />
-                  ))}
-                </div>
-              </section>
-            )}
-            {recents.length > 0 && (
+            {familiar.length > 0 && (
               <section aria-label="Recent foods">
                 <h2 className="section-title">Recent</h2>
                 <div className="list">
-                  {recents.map((f) => (
+                  {familiar.map((f) => (
                     <FoodRow key={f.id} food={f} version={versions.get(f.currentVersionId)} onOpen={() => openLocal(f)} />
                   ))}
                 </div>
               </section>
             )}
-            {recents.length === 0 && foods.length === 0 && <div className="empty">Type a food above, scan a barcode, or add one from its label. Everything you add becomes a one-tap food next time.</div>}
+            {familiar.length === 0 && foods.length === 0 && <div className="empty">Type a food above, scan a barcode, or add one from its label. Everything you add becomes a one-tap food next time.</div>}
           </>
         )}
 
@@ -368,12 +363,11 @@ export function AddFood() {
                       <button key={`${c.provider}:${c.providerId}`} type="button" className="result" onClick={() => void openCandidate(c)}>
                         <span className="name wrap">{c.name}</span>
                         <span className="meta wrap">
-                          {c.brand ? `${c.brand} · ` : ''}
-                          {c.preparation !== 'unspecified' ? `${c.preparation} · ` : ''}
-                          {c.basis.kind === 'per100g' ? 'per 100 g' : c.basis.kind === 'per100ml' ? 'per 100 ml' : `per ${c.basis.servingText}`}
-                          {c.portions[0] ? ` · ${c.portions[0].name}` : ''}
+                          {[c.brand, c.preparation !== 'unspecified' && c.preparation !== 'as-sold' ? c.preparation : null, c.portions[0]?.name].filter(Boolean).join(' · ')}
                         </span>
-                        <span className="badge">{c.provider === 'usda' ? 'USDA' : 'Product'}</span>
+                        <span className="meta wrap num">
+                          {macroLine(c.nutrients as NutrientSet)} · {c.basis.kind === 'per100g' ? 'per 100 g' : c.basis.kind === 'per100ml' ? 'per 100 ml' : `per ${c.basis.servingText}`}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -487,16 +481,18 @@ export function AddFood() {
 }
 
 function FoodRow({ food, version, onOpen }: { food: Food; version: FoodVersion | undefined; onOpen: () => void }) {
-  const badge = version?.provenance.provider === 'usda' ? 'USDA' : version?.provenance.provider === 'off' ? 'Product' : version?.provenance.provider === 'recipe' ? 'Recipe' : 'Label';
+  // The amount she used last (or pinned), and what it adds: the row answers "is this the one?" on its own.
+  const q = food.lastQuantity ?? food.pin?.quantity ?? version?.defaultQuantity;
+  const built = version && q ? buildDiarySnapshot(version, q) : null;
+  const amount = version && q ? quantityLabel(q, version) : null;
   return (
     <button type="button" className="result" onClick={onOpen}>
       <span className="name wrap">{food.name}</span>
-      <span className="meta wrap">
-        {version?.brand ? `${version.brand} · ` : ''}
-        {version ? basisLabel(version) : ''}
-        {food.pin ? ' · pinned' : ''}
+      {version?.brand && <span className="meta wrap">{version.brand}</span>}
+      <span className="meta wrap num">
+        {amount ?? (version ? basisLabel(version) : '')}
+        {built?.ok ? ` · ${macroLine(built.snapshot.nutrients as NutrientSet)}` : ''}
       </span>
-      <span className="badge">{badge}</span>
     </button>
   );
 }

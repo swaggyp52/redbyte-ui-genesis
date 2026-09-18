@@ -56,7 +56,7 @@ export function MyFoods() {
                         {f.aliases.length > 0 ? ` · also "${f.aliases[0]}"` : ''}
                       </span>
                     </span>
-                    {f.pin ? <span className="badge badge-teal">Pinned</span> : <span className="badge">{v?.provenance.provider === 'usda' ? 'USDA' : v?.provenance.provider === 'off' ? 'Product' : 'Label'}</span>}
+                    {f.pin && <span className="badge badge-teal">Pinned</span>}
                   </button>
                 );
               })}
@@ -105,7 +105,7 @@ export function MyFoods() {
                         <br />
                         <span className="sub">{rv ? `${rv.yieldServings} ${rv.servingName}s · ${rv.ingredients.length} ingredients` : ''}</span>
                       </span>
-                      <span className="badge">Recipe</span>
+                      
                     </button>
                   );
                 })}

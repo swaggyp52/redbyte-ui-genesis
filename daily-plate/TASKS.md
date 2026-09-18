@@ -76,13 +76,10 @@ Baseline re-verified at ed2e342 (`pnpm verify`: 95 tests) before any edit. Envir
 - [x] 23 Playwright journeys on Chromium (10 original + 9 catalog + 4 lived-in), axe WCAG 2.2 AA on every screen.
 - [ ] **BLOCKED** iOS keyboard/safe-area behaviour and VoiceOver on a physical iPhone.
 
-### Gate C — Cloud release evidence — PARTIAL (first runs recorded; two job fixes pushed, re-run pending)
+### Gate C — Cloud release evidence — PASS
 - [x] `.github/workflows/daily-plate-cloud.yml`: path-filtered, `contents: read`, bounded timeouts and concurrency, no `pull_request_target`, no secrets. Jobs: verify (frozen install, `pnpm verify`, `pnpm audit --prod`, source archive artifact), journeys (Chromium and WebKit), container smoke (x64 and `ubuntu-24.04-arm`), Windows source smoke.
 - [x] `ops/ci/container-smoke.sh`: non-root read-only boot, healthcheck, SQLite engine gate, create → restart → recover, backup + scratch restore, anonymous 401.
-- [x] Run 35389344505 at 70c0393: verify PASS, Container x64 PASS, Container arm64 (native) PASS, Journeys Chromium PASS (23/23). Details in `TEST_EVIDENCE.md` "Workflow results".
-- [x] Windows source smoke failed on `pnpm install` (node-gyp compile of better-sqlite3 with no usable Visual Studio). Fixed by loading better-sqlite3's shipped prebuilt Node-API binary (`ignoredBuiltDependencies`); lockfile unchanged.
-- [x] WebKit journeys failed on the offline close-and-reopen step (Playwright WebKit does not serve the service-worker shell under `setOffline`). Journey made engine-aware: Chromium asserts the offline shell, WebKit asserts survive-and-reconcile-once.
-- [ ] **PENDING** Results of the re-run on the fixing commit (recorded in `TEST_EVIDENCE.md` when available).
+- [x] Final run 35391414542 at ed8cceb: verify, Chromium journeys, WebKit journeys, Container x64, Container arm64 (native), Windows source smoke — all PASS. Details and the four portability fixes in `TEST_EVIDENCE.md` "Workflow results".
 - [ ] **BLOCKED** WebKit and Docker locally (not installed in the sandbox); both are exercised by the workflow.
 
 ### Gate D — Portable handoff — PASS
@@ -98,3 +95,16 @@ Baseline re-verified at ed2e342 (`pnpm verify`: 95 tests) before any edit. Envir
 3. `pnpm install && pnpm verify` on the desktop, then `docker buildx build --platform linux/arm64`.
 4. Stage privately per `OPERATIONS.md` §3, run `ops/smoke.sh`, take and restore a backup.
 5. Physical iPhone check (Gate 4), then request approval for Funnel, then the acceptance script.
+
+## Gate E — Simplicity convergence — PASS
+- [x] Today is a consumed/remaining macro display first: protein, carbs and fat each show "N g eaten" and "N g left" (or "N g over") with the goal beside the name; text is authoritative, the bar reinforces it.
+- [x] Rest day / Training day is a two-option control that says which is active; switching changes goals and "left" only, eaten values and the page position stay put; stored per date.
+- [x] Fiber and sugar visible in one small line under the goals with honest "N foods unknown"; calories compact and only when a source gave them; no rings or goals invented for them.
+- [x] Week strip always on screen (Sun–Sat, selected day filled, dots for days with entries, arrows for earlier/later weeks, "Back to today"); 5 or 3 days when text is large.
+- [x] Add Food asks one question; recent and around-now foods are one list whose rows carry her last amount and what it adds; result rows show name, brand/portion, protein · carbs · fat; no source names in rows (source stays in the portion sheet and food details).
+- [x] Portion chips read as portions ("½ bottle · 1 bottle · 1½ bottles · 2 bottles"); the unit engine stays underneath.
+- [x] Words: eaten / left / over / daily goal; "Waiting to save"; "Needs a decision"; no P/C/F letters, no provider or sync jargon on normal screens; status line shown only when something is not simply saved.
+- [x] Journeys: `simplicity.spec.ts` (first-viewport acceptance, task lengths A–G, over-goal wording, offline wording, 200%) plus the existing 23 journeys updated; 34/34 in Chromium locally; CI re-run on the pushed head.
+- [x] Fresh screenshot set `docs/screens/40–48` from the seeded account.
+- [ ] **BLOCKED** Her acceptance session, a physical iPhone/Safari, Pi measurements, live provider coverage, production-origin passkey enrollment, Funnel approval: external gates, unchanged.
+

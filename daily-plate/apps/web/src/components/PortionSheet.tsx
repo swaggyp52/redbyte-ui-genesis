@@ -144,7 +144,7 @@ export function PortionSheet(props: PortionSheetProps) {
             <div className="chips" role="group" aria-label="Quick amounts">
               {quick.map((q) => (
                 <button key={q} type="button" className="chip" aria-pressed={amountText === q} onClick={() => setAmountText(q)}>
-                  {q === '0.5' ? '½' : q === '1.5' ? '1½' : q}
+                  {q === '0.5' ? '½' : q === '1.5' ? '1½' : q} {selected ? unitName(selected.unit, version, q === '0.5' ? '1' : q) : ''}
                 </button>
               ))}
             </div>
@@ -179,7 +179,7 @@ export function PortionSheet(props: PortionSheetProps) {
                 return (
                   <div className="cell" key={key}>
                     <b className="num">{after === null ? '?' : formatDisplay(after, 0)}</b>
-                    <span>{NUTRIENT_LABELS[key]} left after</span>
+                    <span>{NUTRIENT_LABELS[key].toLowerCase()} left after</span>
                   </div>
                 );
               })}

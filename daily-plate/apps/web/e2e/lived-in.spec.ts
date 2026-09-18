@@ -40,16 +40,15 @@ test.describe.serial('Lived-in account (about 100 days)', () => {
   });
 
   test('History: a day three weeks back opens with its own goals and entries; long names wrap', async () => {
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: '‹ Earlier week' }).click();
-    await page.getByRole('button', { name: '‹ Earlier week' }).click();
-    await page.getByRole('button', { name: '‹ Earlier week' }).click();
+    // The week strip is always on screen: step back three weeks, tap a day, come back with one button.
+    await page.getByRole('button', { name: 'Earlier week' }).click();
+    await page.getByRole('button', { name: 'Earlier week' }).click();
+    await page.getByRole('button', { name: 'Earlier week' }).click();
     await page.getByRole('group', { name: 'Days this week' }).getByRole('button').first().click();
-    await page.getByRole('button', { name: 'Close' }).click();
     await expect(page.getByRole('button', { name: /^Chicken breast, cooked/ })).toBeVisible();
     await noOverflow();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to today' }).click();
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   });
 
   test('My Foods lists everything, finds by alias, and the recipe is logged like a food', async () => {

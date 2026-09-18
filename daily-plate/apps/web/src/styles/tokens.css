@@ -5,7 +5,7 @@
   --surface-tint: #f4efe3;
   --ink: #24332f;
   --ink-soft: #55625e;
-  --ink-mute: #77837f;
+  --ink-mute: #5f6d69;
   --line: #e3dccc;
   --line-strong: #cfc6b2;
 
@@ -33,7 +33,7 @@
   --text: 1.125rem;
   --text-sm: 1rem;
   --text-lg: 1.375rem;
-  --text-num: 1.875rem;
+  --text-num: 1.75rem;
   --gutter: 18px;
   --shadow: 0 1px 2px rgba(36, 51, 47, 0.06), 0 6px 20px rgba(36, 51, 47, 0.08);
   --shadow-sheet: 0 -8px 40px rgba(36, 51, 47, 0.18);

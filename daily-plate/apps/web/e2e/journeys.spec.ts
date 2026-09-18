@@ -40,7 +40,7 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await shot(page, '01-setup');
     await completeSetup(page);
     await expect(page.getByRole('listitem', { name: /Protein: 0 of 140 grams/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Rest' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Rest day' })).toHaveAttribute('aria-pressed', 'true');
     await expectNoSeriousA11y(page, 'today-empty');
     await shot(page, '02-today-empty');
 
@@ -66,12 +66,12 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await expect(page.getByText(/1 added to Today/)).toBeVisible();
     await page.getByRole('button', { name: 'Done' }).click();
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-    await expect(page.getByRole('listitem', { name: /Protein: 45 of 140 grams. 95 g remaining/ })).toBeVisible();
-    await expect(page.getByRole('listitem', { name: /Carbs: 23 of 130 grams. 108 g remaining/ })).toBeVisible();
-    await expect(page.getByRole('listitem', { name: /Fat: 0 of 45 grams. 45 g remaining · 1 item missing fat/ })).toBeVisible();
-    await expect(page.getByRole('listitem', { name: /Sugar: 0 g. 1 item missing sugar/ })).toBeVisible();
-    await expect(page.getByText('Remaining numbers are provisional')).toBeVisible();
-    await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+    await expect(page.getByRole('listitem', { name: /Protein: 45 of 140 grams. 95 g left/ })).toBeVisible();
+    await expect(page.getByRole('listitem', { name: /Carbs: 23 of 130 grams. 108 g left/ })).toBeVisible();
+    await expect(page.getByRole('listitem', { name: /Fat: 0 of 45 grams. 45 g left. 1 food missing fat/ })).toBeVisible();
+    await expect(page.getByRole('listitem', { name: /Sugar: 0 g known, 1 food unknown/ })).toBeVisible();
+    await expect(page.getByText('Some foods are missing numbers')).toBeVisible();
+    await expect(page.getByRole('button', { name: /waiting to save/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /My shake, 1.5 bottles/ })).toBeVisible();
     await expectNoSeriousA11y(page, 'today-logged');
     await shot(page, '04-today-logged');
@@ -80,15 +80,14 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
   test('U05: change the amount, move to yesterday, remove, undo', async () => {
     await page.goto('/');
     await page.getByRole('button', { name: /My shake, 1.5 bottles/ }).click();
-    await page.getByRole('button', { name: '1', exact: true }).click();
+    await page.getByRole('button', { name: '1 bottle', exact: true }).click();
     await page.getByRole('button', { name: 'Save change' }).click();
     await expect(page.getByRole('listitem', { name: /Protein: 30 of 140 grams/ })).toBeVisible();
     await page.getByRole('button', { name: /^My shake, 1 bottle/ }).click();
     await page.getByRole('button', { name: 'Move to another day' }).click();
-    await page.getByRole('button', { name: 'Yesterday' }).click();
+    await page.getByRole('button', { name: 'Yesterday', exact: true }).click();
     await expect(page.getByText('Nothing logged yet')).toBeVisible();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Yesterday' }).click();
+    await page.getByRole('button', { name: /^Yesterday,/ }).click();
     await expect(page.getByRole('heading', { name: 'Yesterday' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^My shake, 1 bottle/ })).toBeVisible();
     await shot(page, '05-yesterday');
@@ -97,22 +96,19 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await expect(page.getByText('Removed My shake')).toBeVisible();
     await page.getByRole('button', { name: 'Undo' }).click();
     await expect(page.getByRole('button', { name: /^My shake, 1 bottle/ })).toBeVisible();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to today' }).click();
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   });
 
   test('U06: training toggle changes only this day', async () => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Training' }).click();
+    await page.getByRole('button', { name: 'Training day' }).click();
     await expect(page.getByRole('listitem', { name: /Protein: 0 of 145 grams/ })).toBeVisible();
     await expect(page.getByRole('listitem', { name: /Carbs: 0 of 165 grams/ })).toBeVisible();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Yesterday' }).click();
+    await page.getByRole('button', { name: /^Yesterday,/ }).click();
     await expect(page.getByRole('listitem', { name: /Protein: 30 of 140 grams/ })).toBeVisible();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Today', exact: true }).click();
-    await page.getByRole('button', { name: 'Rest' }).click();
+    await page.getByRole('button', { name: 'Back to today' }).click();
+    await page.getByRole('button', { name: 'Rest day' }).click();
     await expect(page.getByRole('listitem', { name: /Protein: 0 of 140 grams/ })).toBeVisible();
   });
 
@@ -183,10 +179,10 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
 
   test('O01: log while offline, close and reopen, reconcile without duplicates', async ({ browserName }) => {
     await page.goto('/');
-    await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /waiting to save/ })).toHaveCount(0);
     await context.setOffline(true);
     await page.getByRole('button', { name: 'Add My shake, 1 bottle' }).click();
-    await expect(page.getByText('On this phone — waiting to save')).toBeVisible();
+    await expect(page.getByText('Waiting to save', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /1 waiting to save/ })).toBeVisible();
     await shot(page, '10-offline-pending');
     await page.close();
@@ -199,7 +195,7 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     // continues with the part that matters most: the pending entry survives the
     // close/reopen on the phone and reconciles exactly once when the network returns.
     const shellOffline = await reopened
-      .getByText('On this phone — waiting to save')
+      .getByText('Waiting to save', { exact: true })
       .waitFor({ timeout: 10_000 })
       .then(() => true, () => false);
     if (browserName === 'chromium') expect(shellOffline, 'offline app-shell open').toBe(true);
@@ -210,12 +206,12 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await context.setOffline(false);
     if (!shellOffline) {
       await reopened.goto('/');
-      await expect(reopened.getByText('On this phone — waiting to save').or(reopened.getByText('Saved', { exact: true })).first()).toBeVisible();
+      await expect(reopened.getByRole('heading', { name: 'Today' })).toBeVisible();
     }
     // The app retries on its own when the connection returns; the badge is also tappable.
     await reopened.getByRole('button', { name: /1 waiting to save/ }).click({ timeout: 2000 }).catch(() => undefined);
-    await expect(reopened.getByText('Saved', { exact: true })).toBeVisible({ timeout: 20_000 });
-    await expect(reopened.getByText('On this phone — waiting to save')).toHaveCount(0);
+    await expect(reopened.getByRole('button', { name: /waiting to save/ })).toHaveCount(0, { timeout: 20_000 });
+    await expect(reopened.getByText('Waiting to save', { exact: true })).toHaveCount(0);
     await reopened.reload();
     await expect(reopened.getByRole('listitem', { name: /Protein: 120 of 140 grams/ })).toBeVisible();
     // Two quick adds + the resolved draft + the offline add: four, never five.
@@ -260,11 +256,11 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await expect(page.getByText('Viewing only')).toBeVisible();
     await page.getByRole('link', { name: 'Today' }).click();
     await page.getByRole('button', { name: 'Add My shake, 1 bottle' }).click();
-    await expect(page.getByText('On this phone — waiting to save')).toBeVisible();
+    await expect(page.getByText('Waiting to save', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Unlock', exact: true }).first().click();
     await page.getByRole('button', { name: 'Unlock', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-    await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /waiting to save/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^My shake, 1 bottle/ })).toHaveCount(5);
   });
 });

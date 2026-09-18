@@ -87,7 +87,7 @@ test.describe.serial('Catalog and repeat-use journeys (week-old account)', () =>
     const sheet = page.getByRole('dialog', { name: 'How much?' });
     await expect(sheet.getByRole('button', { name: 'large', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(sheet.getByRole('textbox', { name: 'Amount' })).toHaveValue('2');
-    await expect(sheet.getByText('2 larges')).toBeVisible();
+    await expect(sheet.locator('#portion-unit-help')).toHaveText('2 larges');
     await expect(sheet.getByText(/Adds 12.5 g protein/)).toBeVisible();
     await sheet.getByRole('button', { name: 'Add to this day' }).click();
     await expect(page.getByText(/2 added to Today/)).toBeVisible();
@@ -161,8 +161,7 @@ test.describe.serial('Catalog and repeat-use journeys (week-old account)', () =>
 
   test("Yesterday's lunch can be added to today after a preview, without changing yesterday", async () => {
     await page.getByRole('link', { name: 'Today' }).click();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Yesterday' }).click();
+    await page.getByRole('button', { name: /^Yesterday,/ }).click();
     const before = await page.getByRole('button', { name: /^Chicken breast, cooked/ }).count();
     await page.getByRole('button', { name: 'Add this to today' }).nth(1).click();
     const sheet = page.getByRole('dialog', { name: /Add lunch from yesterday to today/ });
@@ -170,8 +169,7 @@ test.describe.serial('Catalog and repeat-use journeys (week-old account)', () =>
     await sheet.getByRole('button', { name: 'Add 2 items' }).click();
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Rice, white, cooked, 0.5 cup/ })).toBeVisible();
-    await page.getByRole('button', { name: /Change day/ }).click();
-    await page.getByRole('button', { name: 'Yesterday' }).click();
+    await page.getByRole('button', { name: /^Yesterday,/ }).click();
     await expect(page.getByRole('button', { name: /^Chicken breast, cooked/ })).toHaveCount(before);
     await expect(page.getByRole('button', { name: /^Rice, white, cooked, 1 cup/ })).toBeVisible();
     await shot(page, '24-copy-yesterday');

@@ -24,22 +24,32 @@ Environment for every row: Anthropic cloud sandbox, Linux x86_64, Node v24.21.0,
 | E11 | `node dist/benchmark/run.js --mode replay` | Harness runs all 80 cases through the real search service against fixtures; report states **NOT MEASURED** for live coverage. Replay found plausible results only where fixtures exist (basic 4/15); this is a harness check, not a coverage figure |
 | E12 | `ops/export-source.sh` then `ops/cleanroom-test.sh` (unrelated temp dir) | Archive `daily-plate-src-37f6ba7.tar.gz`, 210 files, sha256 `865f938ca5d7b71d57e8d20217b6ad4b30ad7a374ac24faca7c72f415b6bd630`, no node_modules/dist/db/.env. Clean room: frozen install, `pnpm verify` (113 tests), production build, real server smoke (healthz, shell, anonymous 401) → PASS in 33 s. First attempt found and fixed a real defect (verify typechecked the web app before the server's declaration output existed) |
 | E13 | `ops/preflight-config.sh ops/.env.example` | Read-only; correctly FAILS on placeholder RP ID and auth key, warns on missing paths/USDA key, nothing written |
-| E14 | `.github/workflows/daily-plate-cloud.yml` | Ran on this PR (see "Workflow results"): verify, both containers and Chromium journeys PASS; WebKit journeys and Windows source smoke failed for two concrete causes that are fixed in the follow-up commit and re-run on the PR |
+| E14 | `.github/workflows/daily-plate-cloud.yml` | Ran on this PR; final run at ed8cceb all six jobs PASS (see "Workflow results") |
 | E15 | Live USDA / Open Food Facts calls | **BLOCKED**: egress denied (CONNECT 403) in this environment; no authentic captures exist yet |
 
 ### Workflow results
-Run [35389344505](https://github.com/swaggyp52/redbyte-ui-genesis/actions/runs/35389344505) at 70c0393 (GitHub-hosted runners; the earlier run at 9101a99 gave the same outcomes except that both container jobs then failed only on the record step, fixed in 70c0393):
+Final run of the cloud completion pass: [35391414542](https://github.com/swaggyp52/redbyte-ui-genesis/actions/runs/35391414542) at ed8cceb (GitHub-hosted runners). Every job green.
 
 | Job | Runner | Result |
 |---|---|---|
-| Verify (x64, Node 24) | ubuntu-24.04 | **PASS**: frozen install, `pnpm verify` (113 tests, builds), `pnpm audit --prod`, source archive artifact uploaded |
-| Container (x64) | ubuntu-24.04 | **PASS**: native image build; non-root read-only boot; `sqlite 3.53.4`; invite → entry → restart → entry recovered (45 g protein); backup `ok: true`; scratch restore `ok: true`; anonymous bootstrap 401; image identity recorded (`amd64`) |
-| Container (arm64) | ubuntu-24.04-arm (native ARM64) | **PASS** with the same steps (`arm64`). A hosted ARM runner is not the Pi: no Pi resource figures come from this |
-| Journeys (iphone-chromium) | ubuntu-24.04 | **PASS**: all 23 journeys (10 mother journeys incl. passkey via virtual authenticator, 9 catalog/repeat-use, 4 lived-in incl. 200% text), axe scans included |
-| Journeys (iphone-webkit) | ubuntu-24.04 | **FAIL → fixed in the next commit**: 19 passed, 1 failed, 3 not run. The failure was O01 at the "close and reopen while offline" step: Playwright's WebKit build did not serve the service-worker app shell under `setOffline`, so the reopened page had nothing to show. Everything before it (offline add, pending badge) passed in WebKit. The journey is now engine-aware: Chromium still asserts the offline shell; WebKit records what it rendered, reconnects, and asserts the part that matters most (the pending entry survives close/reopen and reconciles exactly once). WebKit is Playwright's engine, not Safari |
-| Windows source install + unit tests | windows-latest | **FAIL → fixed in the next commit**: `pnpm install --frozen-lockfile` ran `node-gyp rebuild` for better-sqlite3 and node-gyp 11.5 found no usable Visual Studio on the runner. better-sqlite3 13 ships prebuilt Node-API binaries (`gypfile: false`), so `pnpm-workspace.yaml` now lists it under `ignoredBuiltDependencies`; the shipped `win32-x64` / `linux-*` prebuild is loaded instead of a local compile. Verified here: reinstall with the frozen lockfile (lockfile unchanged, no `build/` directory), `sqlite 3.53.4` from the prebuild, server tests 49/49 |
+| Verify (x64, Node 24) | ubuntu-24.04 | **PASS**: frozen install, `pnpm verify` (typecheck, 113 unit/integration tests, builds), `pnpm audit --prod`, source archive + checksums uploaded |
+| Journeys (iphone-chromium) | ubuntu-24.04 | **PASS**: all journeys (mother journeys incl. passkey via virtual authenticator, catalog/repeat-use, lived-in incl. 200% text), axe scans included |
+| Journeys (iphone-webkit) | ubuntu-24.04 | **PASS**: same journeys on Playwright's WebKit (passkey journey skipped by design; offline shell asserted in Chromium only, D-26). WebKit is Playwright's engine, not Safari |
+| Container (x64) | ubuntu-24.04 | **PASS**: native image build; non-root read-only boot; `sqlite 3.53.4`; invite → entry → restart → entry recovered; backup `ok: true`; scratch restore `ok: true`; anonymous bootstrap 401; image identity recorded |
+| Container (arm64) | ubuntu-24.04-arm (native ARM64) | **PASS** with the same steps. A hosted ARM runner is not the Pi: no Pi resource figures come from this |
+| Windows source install + unit tests | windows-latest | **PASS**: frozen install (prebuilt SQLite binding, D-25), package builds, server build, typecheck, domain/contracts/server tests, web build |
 
-The run on the fixing commit is recorded here when it completes.
+Getting there took four fixes, each a real portability defect found by the runners and kept in the code: the SQLite binding was compiled instead of using the shipped prebuild (Windows has no C++ toolchain by default); the Windows job typechecked the web app before the server's declarations existed; a POSIX-only file-mode assertion; and Vite on Windows searching past the workspace root for a PostCSS config and finding the host repository's Tailwind one. Two WebKit-only failures were real product bugs too: the offline app shell (D-26) and two toasts stacked on one spot hiding each other (now a column).
+
+## Third pass (simplicity convergence), head recorded in the final report
+
+| ID | Command / check | Result |
+|---|---|---|
+| E16 | `pnpm --filter @daily-plate/web exec playwright test --project=iphone-chromium e2e/simplicity.spec.ts` | 11/11 on the 100-day seeded account. A: the first screen (iPhone 14 size, no scrolling) contains the day, the date, Rest/Training, protein/carbs/fat each with eaten and left, fiber/sugar, and Add Food; no source names on the home screen. Task lengths measured as deliberate interactions: B pinned food = 1; C recent food ≤ 3; D unfamiliar food ≤ 4 (search, pick, amount, add); E change an amount ≤ 3; F switch Rest/Training = 1 with eaten unchanged and the page not reflowing; G repeat yesterday's meal ≤ 4. Over a goal reads "12 g over" in neutral words. Offline add says "Waiting to save". 200%: no sideways scroll, figures stay on one line, controls reachable |
+| E17 | Full Chromium suite after the redesign | 34/34 (10 mother journeys, 9 catalog, 4 lived-in, 11 simplicity); every axe scan clean after the muted-ink contrast fix (`--ink-mute` 5.4:1 on white) |
+| E18 | `pnpm verify` after the redesign | typecheck, 113 unit/integration tests, builds: PASS |
+
+Fresh evidence screenshots from the actual implementation on seeded synthetic data (`docs/screens/40–48`): 40 Today typical day (viewport and full page), 41 Today at 200%, 42 Today with two goals exceeded, 43 Add Food start, 44 search results, 45 portion sheet, 46 saved-meal preview, 47 offline pending, 48 My Foods.
 
 ## Acceptance matrix
 
@@ -93,8 +103,11 @@ The run on the fixing commit is recorded here when it completes.
 | A-02 | Local barcode independence | PASS | `providers.test.ts` (Pi-local skips providers); catalog spec (phone-local while offline) |
 | A-03 | Catalog coverage measured | NOT MEASURED | E11; live run needs a connected machine |
 | B-01 | Database pick without label detour; meal from search; add-another; copy yesterday | PASS | catalog spec |
-| C-01 | WebKit journeys, containers x64/arm64, Windows smoke | PARTIAL (containers + Chromium PASS; WebKit + Windows fixed, re-run pending) | E14, Workflow results |
+| C-01 | WebKit journeys, containers x64/arm64, Windows smoke | PASS | Workflow results (ed8cceb) |
 | D-01 | Clean-room extraction | PASS | E12 |
+| S-01 | Today answers eaten/left for protein, carbs, fat without scrolling; Rest/Training obvious; Add Food unmistakable | PASS | E16 |
+| S-02 | Familiar foods are dramatically faster than first-time foods (1 tap pinned, ≤3 recent, ≤4 unfamiliar) | PASS | E16 |
+| S-03 | 200% text on Today: no overlap, no sideways scroll, figures readable | PASS | E16, E10 |
 
 ## Honest gaps
 - No Pi, no Docker daemon, no provider egress, no physical iPhone, no WebKit in this environment. WebKit and containers are delegated to the committed workflow; everything else marked BLOCKED needs the desktop or the Pi.

@@ -31,12 +31,12 @@ export function Settings() {
 
   const saveTargets = async (): Promise<void> => {
     setMsg(null);
-    for (const t of [rest, training]) for (const v of Object.values(t)) if (!isDecimal(v) || Number(v) <= 0) return setMsg('Targets must be numbers above zero.');
-    for (const v of [fiber, sugar]) if (v.trim() && (!isDecimal(v.trim()) || Number(v) <= 0)) return setMsg('Fiber and sugar targets must be numbers, or left blank.');
+    for (const t of [rest, training]) for (const v of Object.values(t)) if (!isDecimal(v) || Number(v) <= 0) return setMsg('Goals must be numbers above zero.');
+    for (const v of [fiber, sugar]) if (v.trim() && (!isDecimal(v.trim()) || Number(v) <= 0)) return setMsg('Fiber and sugar goals must be numbers, or left blank.');
     await updateGoals(db, goals, { rest, training, secondary: { ...(fiber.trim() ? { fiber: fiber.trim() } : {}), ...(sugar.trim() ? { sugar: sugar.trim() } : {}) } });
     await updateUser(db, user, { trainingWeekdays: weekdays });
     void engine.notifyLocalChange();
-    toast('Saved. Applies from today onward; past days keep their targets.');
+    toast('Saved. Applies from today onward; past days keep their goals.');
   };
 
   const exportData = async (): Promise<void> => {
@@ -71,7 +71,7 @@ export function Settings() {
       </header>
       <div className="stack">
         <section className="card stack" aria-labelledby="s-targets">
-          <h2 id="s-targets">Targets</h2>
+          <h2 id="s-targets">Daily goals</h2>
           <h3>Rest day</h3>
           <div className="row">
             {numField('Protein g', rest.protein, (v) => setRest({ ...rest, protein: v }), 's-rest-p')}
@@ -105,7 +105,7 @@ export function Settings() {
             </p>
           )}
           <button type="button" className="btn btn-primary" onClick={() => void saveTargets()}>
-            Save targets
+            Save goals
           </button>
         </section>
 

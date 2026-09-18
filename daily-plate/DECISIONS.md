@@ -53,3 +53,9 @@ Only decisions that shaped the code. Dates are 2026-09-18 unless noted.
 **D-25 Prebuilt SQLite binding.** better-sqlite3 13 ships prebuilt Node-API binaries for linux/darwin/win32 on x64 and arm64 and marks itself `gypfile: false`; pnpm is told not to compile it (`ignoredBuiltDependencies`). A fresh Windows desktop or runner needs no C++ toolchain, the Pi image loads the `linux-arm64` prebuild, and the SQLite engine gate at boot still decides whether the binary is acceptable.
 
 **D-26 Offline shell is a Chromium-proven claim.** Playwright's WebKit build does not serve the service-worker app shell under `setOffline`, so the O01 journey asserts the offline open only in Chromium. WebKit proves the pending entry survives close/reopen and reconciles exactly once. Safari on a physical iPhone remains a home check.
+
+**D-27 The home screen is eaten and left, stated.** Her words were "macros consumed/outstanding". Each of protein, carbs and fat shows "N g eaten" and "N g left" (or "N g over", in neutral gold, never a failure colour) with the goal beside the name; she never subtracts. Calories stay secondary and appear only when a source gave them. Cal AI was usability evidence (big numerals, visible progress, obvious date), not a design to copy: no calorie ring, no health score, no streaks, no extra tabs.
+
+**D-28 The week is always on screen.** A seven-day strip replaces the date sheet; the selected day is filled, days with entries carry a dot, arrows step a week, and "Back to today" is one button. Large text narrows the strip to five or three days rather than crushing it.
+
+**D-29 Rows answer "is this the one?"** A familiar-food row carries her last amount and what it adds ("1 bottle · 30 protein · 15 carbs · fat ?"); a search-result row carries name, brand/portion and protein · carbs · fat per basis. Provider names live in the portion sheet note and in food details, never in lists.
