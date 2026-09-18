@@ -139,9 +139,10 @@ jobs:
           node-version-file: daily-plate/.nvmrc
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:packages
+      # The web package's tests import the server's types, so the server is built before the typecheck (same order as `pnpm verify`).
+      - run: pnpm --filter @daily-plate/server build
       - run: pnpm typecheck
       - run: pnpm --filter @daily-plate/domain test
       - run: pnpm --filter @daily-plate/contracts test
       - run: pnpm --filter @daily-plate/server test
-      - run: pnpm --filter @daily-plate/server build
       - run: pnpm --filter @daily-plate/web build
