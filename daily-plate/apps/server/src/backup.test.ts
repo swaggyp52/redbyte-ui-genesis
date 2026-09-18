@@ -26,7 +26,9 @@ describe('D03 backup and isolated restore', () => {
     const backupDir = path.join(t.dataDir, 'backups');
     const result = await backupDatabase(t.app.ctx.db, backupDir, 'daily');
     expect(fs.existsSync(result.file)).toBe(true);
-    expect((fs.statSync(result.file).mode & 0o777).toString(8)).toBe('600');
+    // POSIX mode bits are the private-file guarantee on the Pi. Windows maps chmod to
+    // its read-only flag and reports 666 for any writable file, so only existence is checked there.
+    if (process.platform !== 'win32') expect((fs.statSync(result.file).mode & 0o777).toString(8)).toBe('600');
 
     const verify = verifyBackup(result.file);
     expect(verify.ok).toBe(true);
