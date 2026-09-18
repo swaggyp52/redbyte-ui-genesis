@@ -1,70 +1,41 @@
-import type { BarcodeResponse, Food, FoodCandidate, SearchResponse, SearchResult } from '@daily-plate/contracts';
+import type { BarcodeResponse, Food, FoodCandidate, FoodDetailResponse, SearchResponse, SearchResult } from '@daily-plate/contracts';
+import { rankCandidates, rankLocalFoods as rankLocal, dedupeById } from '@daily-plate/domain';
 import type { Store } from '../db/store.js';
 import { providerFetch, type FetchLike } from '../providers/http.js';
 import { normalizeBarcode, normalizeOffProduct, offProductFound, offProductUrl, paddedBarcode } from '../providers/off.js';
 import { Throttle, offThrottle, usdaThrottle } from '../providers/throttle.js';
-import { normalizeUsdaSearch, usdaSearchUrl } from '../providers/usda.js';
+import { normalizeUsdaDetail, normalizeUsdaSearch, sameGtin, usdaDetailUrl, usdaGtinSearchUrl, usdaSearchUrl, USDA_DATA_TYPES, USDA_NORMALIZATION_VERSION, USDA_PAGE_SIZE } from '../providers/usda.js';
 
 export interface SearchServiceOptions {
   usdaApiKey: string | undefined;
   userAgent: string;
   fetchImpl?: FetchLike;
   timeoutMs?: number;
-  now?: () => number;
 }
 
 const SEARCH_TTL_MS = 7 * 86_400_000;
+const DETAIL_TTL_MS = 30 * 86_400_000;
 const PRODUCT_TTL_MS = 30 * 86_400_000;
 const NOT_FOUND_TTL_MS = 86_400_000;
+const MAX_PAGE = 20;
 
 export interface LocalRankInput {
   foods: Food[];
   query: string;
-  /** Food ids used recently, most recent first. */
   recentFoodIds: string[];
 }
 
-function tokens(text: string): string[] {
-  return text.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 0);
+/** Server-side wrapper over the shared domain ranking so phone and Pi agree. */
+export function rankLocalFoods({ foods, query, recentFoodIds }: LocalRankInput): SearchResult[] {
+  const ranked = rankLocal(
+    foods.map((f) => ({ id: f.id, name: f.name, aliases: f.aliases, pinned: Boolean(f.pin), hidden: f.hidden })),
+    query,
+    recentFoodIds,
+  );
+  return ranked.map((r) => (r.matchedAlias ? { kind: 'local', foodId: r.foodId, matchedAlias: r.matchedAlias } : { kind: 'local', foodId: r.foodId }));
 }
 
-/**
- * Retrieval order: pinned exact matches, then aliases, then recently used
- * exact matches, then other local foods by name match.
- */
-export function rankLocalFoods({ foods, query, recentFoodIds }: LocalRankInput): SearchResult[] {
-  const q = query.trim().toLowerCase();
-  if (q.length === 0) return [];
-  const qTokens = tokens(q);
-  const recentRank = new Map(recentFoodIds.map((id, i) => [id, i]));
-  const scored: Array<{ food: Food; score: number; alias?: string }> = [];
-  for (const food of foods) {
-    if (food.hidden) continue;
-    const name = food.name.toLowerCase();
-    let score = 0;
-    let alias: string | undefined;
-    if (name === q) score = 100;
-    else {
-      const matchedAlias = food.aliases.find((a) => a.toLowerCase() === q);
-      if (matchedAlias) {
-        score = 95;
-        alias = matchedAlias;
-      } else if (name.startsWith(q)) score = 80;
-      else if (qTokens.every((t) => name.includes(t))) score = 60;
-      else if (food.aliases.some((a) => qTokens.every((t) => a.toLowerCase().includes(t)))) {
-        score = 55;
-        alias = food.aliases.find((a) => qTokens.every((t) => a.toLowerCase().includes(t)));
-      } else if (qTokens.some((t) => t.length >= 3 && name.includes(t))) score = 30;
-    }
-    if (score === 0) continue;
-    if (food.pin) score += 20;
-    const r = recentRank.get(food.id);
-    if (r !== undefined) score += Math.max(0, 15 - r);
-    scored.push(alias ? { food, score, alias } : { food, score });
-  }
-  scored.sort((a, b) => b.score - a.score || a.food.name.localeCompare(b.food.name));
-  return scored.map((s) => (s.alias ? { kind: 'local', foodId: s.food.id, matchedAlias: s.alias } : { kind: 'local', foodId: s.food.id }));
-}
+type ProviderStatus = SearchResponse['providerStatus'];
 
 export class SearchService {
   private readonly usda: Throttle;
@@ -85,41 +56,102 @@ export class SearchService {
     return rows.map((r) => r.food_id).filter((id): id is string => Boolean(id));
   }
 
-  async search(userId: string, query: string, mode: 'local' | 'online'): Promise<SearchResponse> {
+  async search(userId: string, query: string, mode: 'local' | 'online', page = 1): Promise<SearchResponse> {
     const foods = this.store.listFoods(userId, false);
-    const local = rankLocalFoods({ foods, query, recentFoodIds: this.recentFoodIds(userId) });
-    if (mode === 'local') return { query, mode, results: local, providerStatus: 'skipped' };
-    const online = await this.usdaSearch(query);
-    return { query, mode, results: [...local, ...online.candidates.map((c): SearchResult => ({ kind: 'candidate', candidate: c }))], providerStatus: online.status };
+    const local = page === 1 ? rankLocalFoods({ foods, query, recentFoodIds: this.recentFoodIds(userId) }) : [];
+    if (mode === 'local') return { query, mode, results: local, providerStatus: 'skipped', page: 1, hasMore: false };
+    const online = await this.usdaSearch(query, Math.min(MAX_PAGE, Math.max(1, page)));
+    const ranked = rankCandidates(
+      query,
+      dedupeById(online.candidates.map((c, i) => ({ id: c.providerId, name: c.name, brand: c.brand, kind: c.kind, providerRank: i, candidate: c }))),
+    ).map((r) => r.candidate);
+    const response: SearchResponse = {
+      query,
+      mode,
+      results: [...local, ...ranked.map((c): SearchResult => ({ kind: 'candidate', candidate: c }))],
+      providerStatus: online.status,
+      page,
+      hasMore: online.hasMore,
+    };
+    if (online.totalHits !== undefined) response.totalHits = online.totalHits;
+    return response;
   }
 
-  private async usdaSearch(query: string): Promise<{ candidates: FoodCandidate[]; status: SearchResponse['providerStatus'] }> {
-    const key = query.trim().toLowerCase().slice(0, 100);
-    if (key.length < 2) return { candidates: [], status: 'skipped' };
-    const cached = this.store.getCache('usda', `search:${key}`);
-    if (cached && cached.status === 'ok') return { candidates: normalizeUsdaSearch(cached.payload), status: 'ok' };
-    if (!this.options.usdaApiKey) return { candidates: [], status: 'not-configured' };
-    if (!this.usda.take()) return { candidates: [], status: 'throttled' };
-    const result = await providerFetch(usdaSearchUrl(key, this.options.usdaApiKey), this.httpOptions());
+  private cacheKey(query: string, page: number): string {
+    return `search:${USDA_NORMALIZATION_VERSION}:${USDA_DATA_TYPES.join('|')}:${USDA_PAGE_SIZE}:p${page}:${query}`;
+  }
+
+  private async usdaSearch(query: string, page: number): Promise<{ candidates: FoodCandidate[]; status: ProviderStatus; hasMore: boolean; totalHits?: number }> {
+    const key = query.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 100);
+    if (key.length < 2) return { candidates: [], status: 'skipped', hasMore: false };
+    const cached = this.store.getCache('usda', this.cacheKey(key, page));
+    if (cached && cached.status === 'ok') {
+      const n = normalizeUsdaSearch(cached.payload);
+      return { candidates: n.candidates, status: 'ok', hasMore: page < n.totalPages, totalHits: n.totalHits };
+    }
+    if (!this.options.usdaApiKey) return { candidates: [], status: 'not-configured', hasMore: false };
+    if (!this.usda.take()) return { candidates: [], status: 'throttled', hasMore: false };
+    const result = await providerFetch(usdaSearchUrl(key, this.options.usdaApiKey, page), this.httpOptions());
     if (result.kind === 'ok') {
-      const candidates = normalizeUsdaSearch(result.body);
-      this.store.putCache('usda', `search:${key}`, 'ok', result.body, SEARCH_TTL_MS);
-      return { candidates, status: 'ok' };
+      const n = normalizeUsdaSearch(result.body);
+      this.store.putCache('usda', this.cacheKey(key, page), 'ok', result.body, SEARCH_TTL_MS);
+      return { candidates: n.candidates, status: 'ok', hasMore: page < n.totalPages, totalHits: n.totalHits };
     }
     if (result.kind === 'throttled') {
       this.usda.hold(result.retryAfterMs ?? 60_000);
-      return { candidates: [], status: 'throttled' };
+      return { candidates: [], status: 'throttled', hasMore: false };
     }
-    return { candidates: [], status: 'unavailable' };
+    return { candidates: [], status: 'unavailable', hasMore: false };
   }
 
-  async barcode(userId: string, raw: string): Promise<BarcodeResponse | { error: 'invalid-barcode' }> {
+  /** Full USDA record: household portions and detail nutrients for a search hit. */
+  async details(provider: 'usda', providerId: string): Promise<FoodDetailResponse> {
+    const id = providerId.replace(/\D/g, '').slice(0, 12);
+    if (id.length === 0) return { provider, providerId, candidate: null, providerStatus: 'not-found' };
+    const cacheKey = `detail:${USDA_NORMALIZATION_VERSION}:${id}`;
+    const cached = this.store.getCache('usda', cacheKey);
+    if (cached) {
+      if (cached.status === 'ok') return { provider, providerId: id, candidate: normalizeUsdaDetail(cached.payload) ?? null, providerStatus: 'ok' };
+      if (cached.status === 'not-found') return { provider, providerId: id, candidate: null, providerStatus: 'not-found' };
+    }
+    if (!this.options.usdaApiKey) return { provider, providerId: id, candidate: null, providerStatus: 'not-configured' };
+    if (!this.usda.take()) return { provider, providerId: id, candidate: null, providerStatus: 'throttled' };
+    const result = await providerFetch(usdaDetailUrl(id, this.options.usdaApiKey), this.httpOptions());
+    if (result.kind === 'ok') {
+      const candidate = normalizeUsdaDetail(result.body);
+      if (!candidate) return { provider, providerId: id, candidate: null, providerStatus: 'unavailable' };
+      this.store.putCache('usda', cacheKey, 'ok', result.body, DETAIL_TTL_MS);
+      return { provider, providerId: id, candidate, providerStatus: 'ok' };
+    }
+    if (result.kind === 'not-found') {
+      this.store.putCache('usda', cacheKey, 'not-found', null, NOT_FOUND_TTL_MS);
+      return { provider, providerId: id, candidate: null, providerStatus: 'not-found' };
+    }
+    if (result.kind === 'throttled') {
+      this.usda.hold(result.retryAfterMs ?? 60_000);
+      return { provider, providerId: id, candidate: null, providerStatus: 'throttled' };
+    }
+    return { provider, providerId: id, candidate: null, providerStatus: 'unavailable' };
+  }
+
+  /**
+   * Barcode: the Pi's own saved foods first. A provider is contacted only
+   * when nothing local matches (or the phone explicitly asks for a remote look).
+   */
+  async barcode(userId: string, raw: string, remote = false): Promise<BarcodeResponse | { error: 'invalid-barcode' }> {
     const barcode = normalizeBarcode(raw);
     if (!barcode) return { error: 'invalid-barcode' };
-    const local = this.store.listFoodVersionsByBarcode(userId, barcode).map((v) => v.foodId);
-    const localUnique = [...new Set(local)].filter((id) => !this.store.getFood(userId, id)?.hidden);
-    const lookup = await this.offLookup(barcode);
-    return { barcode, local: localUnique, candidate: lookup.candidate, providerStatus: lookup.status };
+    const localVersions = this.store.listFoodVersionsByBarcode(userId, barcode);
+    const local = [...new Set(localVersions.map((v) => v.foodId))].filter((id) => !this.store.getFood(userId, id)?.hidden);
+    if (local.length > 0 && !remote) return { barcode, local, candidate: null, providerStatus: 'skipped' };
+    const off = await this.offLookup(barcode);
+    if (off.candidate) return { barcode, local, candidate: off.candidate, providerStatus: 'ok', source: 'off' };
+    if (off.status === 'not-found') {
+      const usda = await this.usdaGtinLookup(barcode);
+      if (usda.candidate) return { barcode, local, candidate: usda.candidate, providerStatus: 'ok', source: 'usda' };
+      return { barcode, local, candidate: null, providerStatus: usda.status === 'not-found' ? 'not-found' : usda.status };
+    }
+    return { barcode, local, candidate: null, providerStatus: off.status };
   }
 
   private async offLookup(barcode: string): Promise<{ candidate: FoodCandidate | null; status: BarcodeResponse['providerStatus'] }> {
@@ -143,10 +175,35 @@ export class SearchService {
         return { candidate: null, status: 'throttled' };
       }
       if (result.kind === 'unavailable') return { candidate: null, status: 'unavailable' };
-      // not-found (or found=false): try the padded form next
     }
     this.store.putCache('off', `product:${barcode}`, 'not-found', null, NOT_FOUND_TTL_MS);
     return { candidate: null, status: 'not-found' };
+  }
+
+  /** Documented fallback: branded search by GTIN, accepted only when the returned gtinUpc is the same code. */
+  private async usdaGtinLookup(barcode: string): Promise<{ candidate: FoodCandidate | null; status: BarcodeResponse['providerStatus'] }> {
+    const cacheKey = `gtin:${USDA_NORMALIZATION_VERSION}:${barcode}`;
+    const cached = this.store.getCache('usda', cacheKey);
+    if (cached) {
+      if (cached.status === 'ok') {
+        const match = normalizeUsdaSearch(cached.payload).candidates.find((c) => c.barcode && sameGtin(c.barcode, barcode));
+        return match ? { candidate: match, status: 'ok' } : { candidate: null, status: 'not-found' };
+      }
+      if (cached.status === 'not-found') return { candidate: null, status: 'not-found' };
+    }
+    if (!this.options.usdaApiKey) return { candidate: null, status: 'not-configured' };
+    if (!this.usda.take()) return { candidate: null, status: 'throttled' };
+    const result = await providerFetch(usdaGtinSearchUrl(barcode, this.options.usdaApiKey), this.httpOptions());
+    if (result.kind === 'ok') {
+      const match = normalizeUsdaSearch(result.body).candidates.find((c) => c.barcode && sameGtin(c.barcode, barcode));
+      this.store.putCache('usda', cacheKey, match ? 'ok' : 'not-found', match ? result.body : null, match ? PRODUCT_TTL_MS : NOT_FOUND_TTL_MS);
+      return match ? { candidate: match, status: 'ok' } : { candidate: null, status: 'not-found' };
+    }
+    if (result.kind === 'throttled') {
+      this.usda.hold(result.retryAfterMs ?? 60_000);
+      return { candidate: null, status: 'throttled' };
+    }
+    return { candidate: null, status: result.kind === 'not-found' ? 'not-found' : 'unavailable' };
   }
 
   private httpOptions() {

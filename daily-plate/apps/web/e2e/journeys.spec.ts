@@ -60,6 +60,9 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await expectNoSeriousA11y(page, 'portion-sheet');
     await shot(page, '03-portion-sheet');
     await page.getByRole('button', { name: 'Add to this day' }).click();
+    // She stays on Add Food to add the next thing; Done takes her to Today.
+    await expect(page.getByText(/1 added to Today/)).toBeVisible();
+    await page.getByRole('button', { name: 'Done' }).click();
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await expect(page.getByRole('listitem', { name: /Protein: 45 of 140 grams. 95 g remaining/ })).toBeVisible();
     await expect(page.getByRole('listitem', { name: /Carbs: 23 of 130 grams. 108 g remaining/ })).toBeVisible();
@@ -154,13 +157,13 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await page.goto('/add');
     await page.getByLabel('What did you have?').fill('half shake');
     await expect(page.getByText('Amount 0.5 · searching "shake"')).toBeVisible();
-    await page.getByRole('button', { name: /My shake/ }).first().click();
+    await page.getByRole('button', { name: /^My shake/ }).first().click();
     await expect(page.getByRole('textbox', { name: 'Amount' })).toHaveValue('0.5');
     await page.getByRole('button', { name: 'Cancel' }).click();
 
     await page.getByLabel('What did you have?').fill('restaurant salmon plate');
-    await page.getByRole('button', { name: /Search online for/ }).click();
-    await expect(page.getByText("Online food search isn't set up on your Pi yet")).toBeVisible();
+    await page.getByLabel('What did you have?').press('Enter'); // Search means search, never "open the first local hit"
+    await expect(page.getByText('No match for "restaurant salmon plate"')).toBeVisible();
     await page.getByRole('button', { name: 'Save to finish later' }).click();
     await page.getByRole('button', { name: 'Save for later' }).click();
     await expect(page.getByRole('button', { name: /restaurant salmon plate, not finished/ })).toBeVisible();
@@ -169,7 +172,7 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await page.getByRole('button', { name: /restaurant salmon plate, not finished/ }).click();
     await page.getByRole('button', { name: 'Find this food' }).click();
     await page.getByLabel('What did you have?').fill('shake');
-    await page.getByRole('button', { name: /My shake/ }).first().click();
+    await page.getByRole('button', { name: /^My shake/ }).first().click();
     await page.getByRole('button', { name: 'Add to this day' }).click();
     await expect(page.getByText('Finished: My shake')).toBeVisible();
     await expect(page.getByRole('button', { name: /not finished/ })).toHaveCount(0);
@@ -221,7 +224,8 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
     await shot(page, '13-add-food');
   });
 
-  test('D07-lite: passkey registration and unlock with a virtual authenticator; pending work survives lock', async () => {
+  test('D07-lite: passkey registration and unlock with a virtual authenticator; pending work survives lock', async ({ browserName }) => {
+    test.skip(browserName !== 'chromium', 'The virtual authenticator is a Chromium CDP feature; WebKit/Safari passkeys are a physical-device check.');
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('WebAuthn.enable');
     await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });

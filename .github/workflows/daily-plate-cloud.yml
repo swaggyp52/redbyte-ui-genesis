@@ -1,0 +1,149 @@
+# Daily Plate cloud verification. This file is the single workflow proposed for
+# .github/workflows/daily-plate-cloud.yml. It runs only Daily Plate scripts,
+# only when daily-plate/ changes, with bounded time and concurrency, and never
+# touches RedByte's own workflows. No pull_request_target, no secrets needed.
+name: Daily Plate cloud checks
+
+on:
+  pull_request:
+    paths:
+      - 'daily-plate/**'
+      - '.github/workflows/daily-plate-cloud.yml'
+  push:
+    branches: ['claude/daily-plate-**']
+    paths:
+      - 'daily-plate/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-plate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: daily-plate
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+  PNPM_VERSION: 10.24.0
+
+jobs:
+  verify:
+    name: Verify (x64, Node 24)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: daily-plate/.nvmrc
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Verify (typecheck, unit + integration tests, builds)
+        run: pnpm verify
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+      - name: Source-only archive + checksums
+        run: ops/export-source.sh ../test-results/handoff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daily-plate-source-${{ github.sha }}
+          path: test-results/handoff/
+          retention-days: 14
+          if-no-files-found: error
+
+  journeys:
+    name: Journeys (${{ matrix.project }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [iphone-chromium, iphone-webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: daily-plate/.nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Playwright browser
+        run: pnpm --filter @daily-plate/web exec playwright install --with-deps ${{ matrix.project == 'iphone-webkit' && 'webkit' || 'chromium' }}
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '0'
+      - name: Run journeys against the real server (fixture-backed providers)
+        run: pnpm --filter @daily-plate/web exec playwright test --project=${{ matrix.project }}
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '0'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journeys-${{ matrix.project }}-${{ github.sha }}
+          path: |
+            daily-plate/apps/web/test-results/screens/
+            daily-plate/apps/web/playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  container:
+    name: Container (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          # Native ARM64 hosted runner (GitHub-documented label). If the account cannot use it, this job
+          # shows as queued/unavailable rather than silently passing; see OPERATIONS.md.
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (native)
+        run: docker build --build-arg DP_VERSION=ci-${{ github.sha }} -t daily-plate:ci .
+      - name: Boot, healthcheck, save/restart/recover, backup + scratch restore
+        run: ops/ci/container-smoke.sh daily-plate:ci
+      - name: Record image identity
+        run: |
+          docker image inspect daily-plate:ci --format '{{.Architecture}} {{.Id}}' | tee ../test-results/container-${{ matrix.arch }}.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: container-${{ matrix.arch }}-${{ github.sha }}
+          path: test-results/container-*.txt
+          retention-days: 14
+          if-no-files-found: ignore
+
+  windows-source-smoke:
+    name: Windows source install + unit tests
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: daily-plate/.nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:packages
+      - run: pnpm typecheck
+      - run: pnpm --filter @daily-plate/domain test
+      - run: pnpm --filter @daily-plate/contracts test
+      - run: pnpm --filter @daily-plate/server test
+      - run: pnpm --filter @daily-plate/server build
+      - run: pnpm --filter @daily-plate/web build

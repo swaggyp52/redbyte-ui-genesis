@@ -264,6 +264,8 @@ function EditLabel({ food, onClose }: { food: Food; onClose: () => void }) {
     normalizationVersion: version.provenance.normalizationVersion,
     needsLabelConfirmation: false,
     warnings: [],
+    kind: 'branded' as const,
+    hasDetails: false,
   };
   const onSave = async (input: UpsertFoodInput): Promise<void> => {
     const fixed: UpsertFoodInput = {

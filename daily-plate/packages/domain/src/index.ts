@@ -8,3 +8,4 @@ export * from './recipes.js';
 export * from './meals.js';
 export * from './suggest.js';
 export * from './display.js';
+export * from './ranking.js';

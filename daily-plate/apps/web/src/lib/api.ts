@@ -1,4 +1,4 @@
-import type { BarcodeResponse, Bootstrap, ChangesResponse, MutationBatchResponse, SearchResponse, SessionInfo } from '@daily-plate/contracts';
+import type { BarcodeResponse, Bootstrap, ChangesResponse, FoodDetailResponse, MutationBatchResponse, SearchResponse, SessionInfo } from '@daily-plate/contracts';
 
 export class ApiError extends Error {
   constructor(
@@ -74,8 +74,9 @@ export class ApiClient {
   bootstrap = (): Promise<Bootstrap> => this.request('GET', '/api/v1/bootstrap', undefined, 30_000);
   changes = (cursor: number): Promise<ChangesResponse> => this.request('GET', `/api/v1/changes?cursor=${cursor}&limit=300`);
   mutations = (mutations: unknown[]): Promise<MutationBatchResponse> => this.request('POST', '/api/v1/mutations', { mutations }, 20_000);
-  search = (q: string, mode: 'local' | 'online'): Promise<SearchResponse> => this.request('GET', `/api/v1/foods/search?q=${encodeURIComponent(q)}&mode=${mode}`, undefined, 8_000);
-  barcode = (code: string): Promise<BarcodeResponse> => this.request('GET', `/api/v1/foods/barcode/${encodeURIComponent(code)}`, undefined, 8_000);
+  search = (q: string, mode: 'local' | 'online', page = 1): Promise<SearchResponse> => this.request('GET', `/api/v1/foods/search?q=${encodeURIComponent(q)}&mode=${mode}&page=${page}`, undefined, 8_000);
+  details = (provider: 'usda', id: string): Promise<FoodDetailResponse> => this.request('GET', `/api/v1/foods/details/${provider}/${encodeURIComponent(id)}`, undefined, 8_000);
+  barcode = (code: string, remote = false): Promise<BarcodeResponse> => this.request('GET', `/api/v1/foods/barcode/${encodeURIComponent(code)}${remote ? '?remote=1' : ''}`, undefined, 8_000);
   registerOptions = (): Promise<{ challengeId: string; options: unknown }> => this.request('POST', '/api/v1/auth/passkey/register/options');
   registerVerify = (challengeId: string, response: unknown, label?: string): Promise<{ ok: true; passkeyCount: number }> =>
     this.request('POST', '/api/v1/auth/passkey/register/verify', { challengeId, response, ...(label ? { label } : {}) });

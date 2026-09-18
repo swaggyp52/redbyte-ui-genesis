@@ -12,6 +12,7 @@ import { IdeasSheet } from '../components/IdeasSheet.js';
 import { Sheet } from '../components/Sheet.js';
 import { PlateMark } from '../components/PlateMark.js';
 import { SyncLine } from '../components/SyncLine.js';
+import { MealLogSheet, type MealLike } from '../components/MealLogSheet.js';
 
 type SheetState =
   | { kind: 'none' }
@@ -20,6 +21,7 @@ type SheetState =
   | { kind: 'draft'; entry: DiaryEntry }
   | { kind: 'shortcut'; shortcut: Shortcut }
   | { kind: 'meal'; meal: SavedMeal }
+  | { kind: 'copy'; meal: MealLike; slot: MealSlot }
   | { kind: 'day' }
   | { kind: 'ideas' }
   | { kind: 'idea'; idea: IdeaView };
@@ -45,6 +47,22 @@ export function Today() {
         if (!withdrawn) {
           const current = await db.entries.get(entry.id);
           if (current) await deleteEntry(db, current);
+        }
+        await engine.notifyLocalChange();
+      },
+    });
+    void engine.notifyLocalChange();
+  };
+
+  const afterGroupAdd = (ids: string[], label: string): void => {
+    toast(`Added ${label}`, {
+      label: 'Undo',
+      run: async () => {
+        for (const id of ids) {
+          if (!(await withdrawIfUnsent(db, id))) {
+            const current = await db.entries.get(id);
+            if (current) await deleteEntry(db, current);
+          }
         }
         await engine.notifyLocalChange();
       },
@@ -217,9 +235,28 @@ export function Today() {
           <div className="stack">
             {view.groups.map((g) => (
               <div key={g.slot}>
-                <h3 className="small muted" style={{ margin: '6px 0 6px 4px' }}>
-                  {g.label}
-                </h3>
+                <div className="row-between" style={{ margin: '6px 0 6px 4px' }}>
+                  <h3 className="small muted">{g.label}</h3>
+                  {viewDate !== today && g.entries.some((ev) => ev.entry.kind === 'food') && (
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      style={{ minHeight: 40 }}
+                      onClick={() =>
+                        setSheet({
+                          kind: 'copy',
+                          slot: g.slot,
+                          meal: {
+                            name: `${g.label.toLowerCase()} from ${dayTitle(viewDate, today).toLowerCase()}`,
+                            items: g.entries.filter((ev) => ev.entry.kind === 'food' && ev.entry.foodId && ev.entry.foodVersionId && ev.entry.quantity).map((ev) => ({ foodId: ev.entry.foodId!, foodVersionId: ev.entry.foodVersionId!, quantity: ev.entry.quantity! })),
+                          },
+                        })
+                      }
+                    >
+                      Add this to today
+                    </button>
+                  )}
+                </div>
                 <div className="stack-sm">
                   {g.entries.map((ev) => (
                     <EntryRow key={ev.entry.id} ev={ev} onOpen={() => setSheet(ev.entry.kind === 'draft' ? { kind: 'draft', entry: ev.entry } : { kind: 'entry', entry: ev.entry })} />
@@ -333,7 +370,21 @@ export function Today() {
         />
       )}
 
-      {sheet.kind === 'meal' && <MealLogSheet meal={sheet.meal} onClose={() => setSheet({ kind: 'none' })} onDone={(n) => { setSheet({ kind: 'none' }); toast(`Added ${sheet.meal.name} (${n} items)`); void engine.notifyLocalChange(); }} slot={slotNow} />}
+      {sheet.kind === 'meal' && <MealLogSheet meal={sheet.meal} localDate={viewDate} onClose={() => setSheet({ kind: 'none' })} onDone={(n, ids) => { setSheet({ kind: 'none' }); afterGroupAdd(ids, `${sheet.meal.name} (${n} items)`); }} slot={slotNow} />}
+      {sheet.kind === 'copy' && (
+        <MealLogSheet
+          meal={sheet.meal}
+          title={`Add ${sheet.meal.name} to today`}
+          localDate={today}
+          slot={sheet.slot}
+          onClose={() => setSheet({ kind: 'none' })}
+          onDone={(n, ids) => {
+            setSheet({ kind: 'none' });
+            setViewDate(today);
+            afterGroupAdd(ids, `${n} item${n === 1 ? '' : 's'} to today`);
+          }}
+        />
+      )}
 
       {sheet.kind === 'ideas' && ideas && (
         <IdeasSheet
@@ -362,7 +413,7 @@ export function Today() {
         />
       )}
       {sheet.kind === 'idea' && sheet.idea.kind === 'meal' && sheet.idea.meal && (
-        <MealLogSheet meal={sheet.idea.meal} onClose={() => setSheet({ kind: 'none' })} onDone={(n) => { setSheet({ kind: 'none' }); toast(`Added ${sheet.idea.name} (${n} items)`); void engine.notifyLocalChange(); }} slot={slotNow} />
+        <MealLogSheet meal={sheet.idea.meal} localDate={viewDate} onClose={() => setSheet({ kind: 'none' })} onDone={(n, ids) => { setSheet({ kind: 'none' }); afterGroupAdd(ids, `${sheet.idea.name} (${n} items)`); }} slot={slotNow} />
       )}
     </main>
   );
@@ -383,53 +434,5 @@ function EntryRow({ ev, onOpen }: { ev: EntryView; onOpen: () => void }) {
       )}
       {state && <span className={`state-line${ev.saveState === 'attention' ? ' attention' : ''}`}>{state}</span>}
     </button>
-  );
-}
-
-function MealLogSheet({ meal, slot, onClose, onDone }: { meal: SavedMeal; slot: MealSlot; onClose: () => void; onDone: (count: number) => void }) {
-  const { db, versions, foodMap, viewDate, timeZone } = useApp();
-  const [skipped, setSkipped] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
-  const toggle = (id: string): void => {
-    const next = new Set(skipped);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSkipped(next);
-  };
-  return (
-    <Sheet title={meal.name} onClose={onClose}>
-      <div className="stack">
-        <p className="muted small">Untick anything you didn't have this time.</p>
-        <div className="list">
-          {meal.items.map((item) => {
-            const v = versions.get(item.foodVersionId);
-            const f = foodMap.get(item.foodId);
-            return (
-              <label key={item.foodId + item.foodVersionId} className="list-row" style={{ cursor: 'pointer' }}>
-                <span>
-                  <span className="name wrap">{f?.name ?? v?.name ?? 'Food'}</span>
-                  <br />
-                  <span className="sub">{v ? quantityLabel(item.quantity, v) : ''}</span>
-                </span>
-                <input type="checkbox" checked={!skipped.has(item.foodId)} onChange={() => toggle(item.foodId)} style={{ width: 28, height: 28 }} aria-label={`Include ${f?.name ?? 'item'}`} />
-              </label>
-            );
-          })}
-        </div>
-        <div className="sheet-actions">
-          <button
-            type="button"
-            className="btn btn-primary btn-lg btn-block"
-            disabled={busy || skipped.size === meal.items.length}
-            onClick={() => {
-              setBusy(true);
-              void logMeal(db, { meal, mealSlot: slot, localDate: viewDate, timeZone, skipFoodIds: [...skipped] }).then((added) => onDone(added.length)).finally(() => setBusy(false));
-            }}
-          >
-            Add {meal.items.length - skipped.size} item{meal.items.length - skipped.size === 1 ? '' : 's'}
-          </button>
-        </div>
-      </div>
-    </Sheet>
   );
 }

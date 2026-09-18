@@ -1,0 +1,19 @@
+{
+  "_fixtureNote": "Shaped after the documented FoodData Central detail response for a Branded liquid: per-100 nutrients under foodNutrients (numbers present), label values per serving under labelNutrients, servingSizeUnit ml. Illustrative values; not a live capture.",
+  "fdcId": 2000001,
+  "description": "PROTEIN SHAKE, VANILLA",
+  "dataType": "Branded",
+  "brandOwner": "Example Foods Inc.",
+  "brandName": "EXAMPLE",
+  "gtinUpc": "0123456789012",
+  "servingSize": 325,
+  "servingSizeUnit": "ml",
+  "householdServingFullText": "1 bottle",
+  "labelNutrients": { "fat": { "value": 3 }, "carbohydrates": { "value": 15 }, "protein": { "value": 30 }, "fiber": { "value": 5 }, "calories": { "value": 160 } },
+  "foodNutrients": [
+    { "nutrient": { "id": 1003, "number": "203", "name": "Protein", "unitName": "g" }, "amount": 9.23 },
+    { "nutrient": { "id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g" }, "amount": 4.62 },
+    { "nutrient": { "id": 1079, "number": "291", "name": "Fiber, total dietary", "unitName": "g" }, "amount": 1.54 },
+    { "nutrient": { "id": 1008, "number": "208", "name": "Energy", "unitName": "kcal" }, "amount": 49 }
+  ]
+}

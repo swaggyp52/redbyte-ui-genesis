@@ -30,10 +30,10 @@
   --radius-lg: 22px;
   --tap: 52px;
   --tap-lg: 56px;
-  --text: 18px;
-  --text-sm: 16px;
-  --text-lg: 22px;
-  --text-num: 30px;
+  --text: 1.125rem;
+  --text-sm: 1rem;
+  --text-lg: 1.375rem;
+  --text-num: 1.875rem;
   --gutter: 18px;
   --shadow: 0 1px 2px rgba(36, 51, 47, 0.06), 0 6px 20px rgba(36, 51, 47, 0.08);
   --shadow-sheet: 0 -8px 40px rgba(36, 51, 47, 0.18);

@@ -1,0 +1,10 @@
+{
+  "_fixtureNote": "Branded search by GTIN, shaped after the documented response. The first hit's gtinUpc matches the query; the second is a similar-name record that must be rejected. Illustrative; not a live capture.",
+  "totalHits": 2,
+  "currentPage": 1,
+  "totalPages": 1,
+  "foods": [
+    { "fdcId": 4000001, "description": "OAT CRUNCH CEREAL", "dataType": "Branded", "brandOwner": "Example Mills", "gtinUpc": "4012345678905", "servingSize": 40, "servingSizeUnit": "g", "householdServingFullText": "3/4 cup", "foodNutrients": [ { "nutrientId": 1003, "nutrientNumber": "203", "unitName": "G", "value": 10 }, { "nutrientId": 1005, "nutrientNumber": "205", "unitName": "G", "value": 68 }, { "nutrientId": 1004, "nutrientNumber": "204", "unitName": "G", "value": 6.5 } ] },
+    { "fdcId": 4000002, "description": "OAT CRUNCH CEREAL FAMILY SIZE", "dataType": "Branded", "brandOwner": "Example Mills", "gtinUpc": "4012345678999", "servingSize": 40, "servingSizeUnit": "g", "foodNutrients": [ { "nutrientId": 1003, "nutrientNumber": "203", "unitName": "G", "value": 10 } ] }
+  ]
+}

@@ -146,6 +146,8 @@ export function normalizeOffProduct(barcode: string, product: OffProduct): FoodC
     normalizationVersion: OFF_NORMALIZATION_VERSION,
     needsLabelConfirmation,
     warnings,
+    kind: 'branded',
+    hasDetails: false,
   };
   const brand = product.brands?.split(',')[0]?.trim();
   if (brand) candidate.brand = brand.slice(0, 120);

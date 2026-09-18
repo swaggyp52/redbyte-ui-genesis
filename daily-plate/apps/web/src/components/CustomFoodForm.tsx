@@ -9,6 +9,8 @@ export interface CustomFoodFormProps {
   initialName?: string | undefined;
   existingFoodId?: string | undefined;
   existingAliases?: string[] | undefined;
+  /** A scanned code that no source knew; kept with the label so the next scan finds it here. */
+  barcode?: string | undefined;
   onSave: (input: UpsertFoodInput, defaultQuantity: Quantity) => Promise<void> | void;
   onCancel: () => void;
 }
@@ -46,7 +48,7 @@ function valueFrom(f: NutrientField): NutrientValue | 'invalid' {
  * Label entry. Every nutrient is either a number, "less than", an estimate,
  * or "not on the label" — a blank never becomes zero.
  */
-export function CustomFoodForm({ candidate, initialName, existingFoodId, existingAliases, onSave, onCancel }: CustomFoodFormProps) {
+export function CustomFoodForm({ candidate, initialName, existingFoodId, existingAliases, barcode, onSave, onCancel }: CustomFoodFormProps) {
   const [name, setName] = useState(candidate?.name ?? initialName ?? '');
   const [brand, setBrand] = useState(candidate?.brand ?? '');
   const [basis, setBasis] = useState<Basis>(candidate?.basis.kind ?? 'serving');
@@ -115,7 +117,7 @@ export function CustomFoodForm({ candidate, initialName, existingFoodId, existin
         id: crypto.randomUUID(),
         name: name.trim(),
         ...(brand.trim() ? { brand: brand.trim() } : {}),
-        ...(candidate?.barcode ? { barcode: candidate.barcode } : {}),
+        ...((candidate?.barcode ?? barcode) ? { barcode: candidate?.barcode ?? barcode } : {}),
         preparation,
         basis: basisObj,
         nutrients,
@@ -152,6 +154,7 @@ export function CustomFoodForm({ candidate, initialName, existingFoodId, existin
       }}
     >
       {candidate?.needsLabelConfirmation && <div className="banner banner-gold">Check total carbohydrate on the label: this source doesn't say whether fiber is included.</div>}
+      {barcode && !candidate && <div className="banner">Barcode {barcode} will be saved with this food, so scanning it next time finds it straight away.</div>}
       {candidate?.warnings.filter((w) => !w.includes('include fiber')).map((w) => (
         <div className="banner" key={w}>
           {w}

@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scaleNutrients, sumNutrients, type NutrientSet } from '@daily-plate/domain';
-import type { BarcodeResponse, SearchResponse } from '@daily-plate/contracts';
-import { normalizeUsdaSearch } from './providers/usda.js';
+import type { BarcodeResponse, FoodDetailResponse, SearchResponse } from '@daily-plate/contracts';
+import { normalizeUsdaDetail, normalizeUsdaSearch, portionFromUsda, sameGtin, usdaSearchUrl } from './providers/usda.js';
 import { normalizeBarcode, normalizeOffProduct, paddedBarcode, type OffResponse } from './providers/off.js';
 import { providerFetch } from './providers/http.js';
 import { Throttle } from './providers/throttle.js';
@@ -17,7 +17,10 @@ const fixture = (rel: string): unknown => JSON.parse(fs.readFileSync(path.join(f
 
 describe('P02 USDA normalization', () => {
   it('maps per-100 g nutrients and leaves missing ones unknown', () => {
-    const [banana, powder] = normalizeUsdaSearch(fixture('usda/search-banana.json'));
+    const { candidates: [banana, powder], totalHits } = normalizeUsdaSearch(fixture('usda/search-banana.json'));
+    expect(totalHits).toBe(2);
+    expect(banana!.kind).toBe('generic');
+    expect(banana!.hasDetails).toBe(true);
     expect(banana).toMatchObject({ provider: 'usda', providerId: '1000001', name: 'Bananas, raw', preparation: 'raw', basis: { kind: 'per100g' } });
     expect(banana!.nutrients.protein).toEqual({ status: 'reported', amount: '1.09' });
     expect(banana!.nutrients.sugar).toEqual({ status: 'reported', amount: '12.23' });
@@ -28,7 +31,8 @@ describe('P02 USDA normalization', () => {
   });
 
   it('treats a branded liquid stated in ml as per 100 ml with a serving portion and a warning', () => {
-    const [shake] = normalizeUsdaSearch(fixture('usda/search-branded-liquid.json'));
+    const { candidates: [shake] } = normalizeUsdaSearch(fixture('usda/search-branded-liquid.json'));
+    expect(shake!.kind).toBe('branded');
     expect(shake).toMatchObject({ basis: { kind: 'per100ml' }, brand: 'Example', barcode: '0123456789012' });
     expect(shake!.portions).toEqual([{ id: 'serving', name: '1 bottle', ml: '325' }]);
     expect(shake!.nutrients.sugar).toEqual({ status: 'unknown' });
@@ -39,8 +43,59 @@ describe('P02 USDA normalization', () => {
   });
 
   it('ignores malformed hits', () => {
-    expect(normalizeUsdaSearch({ foods: [{ description: 'no id' }, null, 5] })).toEqual([]);
-    expect(normalizeUsdaSearch('garbage')).toEqual([]);
+    expect(normalizeUsdaSearch({ foods: [{ description: 'no id' }, null, 5] }).candidates).toEqual([]);
+    expect(normalizeUsdaSearch('garbage').candidates).toEqual([]);
+  });
+
+  it('requests all four documented data types with paging and a modest page size', () => {
+    const u = new URL(usdaSearchUrl('banana', 'k', 2));
+    expect(u.searchParams.get('dataType')).toBe('Foundation,SR Legacy,Survey (FNDDS),Branded');
+    expect(u.searchParams.get('pageNumber')).toBe('2');
+    expect(u.searchParams.get('pageSize')).toBe('10');
+    const page2 = normalizeUsdaSearch(fixture('usda/search-banana-page2.json'));
+    expect(page2).toMatchObject({ currentPage: 2, totalPages: 3, totalHits: 23 });
+    expect(page2.candidates[1]?.portions).toEqual([{ id: 'serving', name: '1/4 cup', grams: '28' }]);
+  });
+
+  it('detail shape: nested nutrient numbers, household portions per single unit, half-cup scaled to a cup', () => {
+    const egg = normalizeUsdaDetail(fixture('usda/detail-egg-foundation.json'))!;
+    expect(egg).toMatchObject({ kind: 'generic', dataType: 'Foundation', preparation: 'raw', basis: { kind: 'per100g' } });
+    expect(egg.nutrients.protein).toEqual({ status: 'reported', amount: '12.4' });
+    expect(egg.nutrients.sugar).toEqual({ status: 'reported', amount: '0.2' }); // nutrient id 2000 fallback
+    expect(egg.nutrients.fiber).toEqual({ status: 'reported', amount: '0' }); // reported zero stays zero, not unknown
+    expect(egg.portions).toEqual([
+      { id: 'usda-90001', name: 'large', grams: '50.3' },
+      { id: 'usda-90002', name: 'medium', grams: '44' },
+      { id: 'usda-90003', name: 'cup', grams: '243' },
+    ]);
+    // "2 eggs" resolves through the named portion, never as 2 g.
+    const two = resolveQuantity({ basis: egg.basis, portions: egg.portions }, { amount: '2', unit: { kind: 'portion', portionId: 'usda-90001' } });
+    expect(two).toMatchObject({ ok: true, factor: '1.006', label: '2 larges' });
+  });
+
+  it('detail shape: FNDDS with nutrient ids only and measure-unit portions', () => {
+    const rice = normalizeUsdaDetail(fixture('usda/detail-fndds-rice.json'))!;
+    expect(rice).toMatchObject({ dataType: 'Survey (FNDDS)', preparation: 'cooked' });
+    expect(rice.nutrients.carbs).toEqual({ status: 'reported', amount: '28.6' });
+    expect(rice.nutrients.calories).toEqual({ status: 'reported', amount: '129' });
+    expect(rice.portions.map((p) => p.name)).toEqual(['cup', 'tablespoon', 'cup, cooked']);
+    expect(portionFromUsda({ id: 1, amount: 1, portionDescription: '1 slice' }, 0)).toBeUndefined(); // no gram weight → no portion
+  });
+
+  it('detail shape: branded liquid uses per-100 ml fields, then label values scaled by serving size for missing ones', () => {
+    const shake = normalizeUsdaDetail(fixture('usda/detail-branded-liquid.json'))!;
+    expect(shake.basis).toEqual({ kind: 'per100ml' });
+    expect(shake.nutrients.protein).toEqual({ status: 'reported', amount: '9.23' }); // per-100 field wins
+    expect(shake.nutrients.fat).toEqual({ status: 'reported', amount: '0.923' }); // 3 g per 325 ml serving → per 100 ml
+    expect(shake.nutrients.sugar).toEqual({ status: 'unknown' }); // absent everywhere stays unknown
+    expect(shake.portions[0]).toEqual({ id: 'serving', name: '1 bottle', ml: '325' });
+    expect(shake.hasDetails).toBe(false);
+  });
+
+  it('GTIN equality ignores leading zeros only', () => {
+    expect(sameGtin('012345678905', '0012345678905')).toBe(true);
+    expect(sameGtin('012345678905', '012345678999')).toBe(false);
+    expect(sameGtin('', '')).toBe(false);
   });
 });
 
@@ -171,6 +226,11 @@ describe('search and barcode routes with injected provider responses', () => {
   const calls: string[] = [];
   const fetchImpl = async (url: string): Promise<Response> => {
     calls.push(url);
+    if (url.includes('api.nal.usda.gov/fdc/v1/food/1100001')) return new Response(JSON.stringify(fixture('usda/detail-egg-foundation.json')), { status: 200 });
+    if (url.includes('api.nal.usda.gov/fdc/v1/food/')) return new Response('', { status: 404 });
+    if (url.includes('api.nal.usda.gov') && url.includes('query=4012345678905')) return new Response(JSON.stringify(fixture('usda/search-gtin.json')), { status: 200 });
+    if (url.includes('api.nal.usda.gov') && url.includes('query=999999999999')) return new Response(JSON.stringify({ totalHits: 0, foods: [] }), { status: 200 });
+    if (url.includes('api.nal.usda.gov') && url.includes('pageNumber=2')) return new Response(JSON.stringify(fixture('usda/search-banana-page2.json')), { status: 200 });
     if (url.includes('api.nal.usda.gov')) return new Response(JSON.stringify(fixture('usda/search-banana.json')), { status: 200, headers: { 'content-type': 'application/json' } });
     if (url.includes('/product/0012345678905')) return new Response(JSON.stringify(fixture('off/product-leading-zero.json')), { status: 200 });
     if (url.includes('/product/')) return new Response(JSON.stringify({ status: 'failure', result: { id: 'product_not_found' } }), { status: 404 });
@@ -196,21 +256,57 @@ describe('search and barcode routes with injected provider responses', () => {
     const online = (await me.get('/api/v1/foods/search?q=banana&mode=online')).json() as SearchResponse;
     expect(online.providerStatus).toBe('ok');
     expect(online.results.filter((r) => r.kind === 'candidate')).toHaveLength(2);
+    expect(online).toMatchObject({ page: 1, hasMore: false, totalHits: 2 });
     expect(calls).toHaveLength(1);
     expect(calls[0]).not.toContain('shake');
     await me.get('/api/v1/foods/search?q=banana&mode=online');
     expect(calls).toHaveLength(1);
+    // Page 2 is a separate cache entry and never repeats local results.
+    const page2 = (await me.get('/api/v1/foods/search?q=banana&mode=online&page=2')).json() as SearchResponse;
+    expect(page2).toMatchObject({ page: 2, hasMore: true, totalHits: 23 });
+    expect(page2.results.every((r) => r.kind === 'candidate')).toBe(true);
+    expect(calls).toHaveLength(2);
+    await me.get('/api/v1/foods/search?q=banana&mode=online&page=2');
+    expect(calls).toHaveLength(2);
   });
 
-  it('barcode lookup pads a 12-digit UPC on a miss and reports the local match', async () => {
+  it('details route returns household portions once and caches; unknown id is not-found', async () => {
+    const d = (await me.get('/api/v1/foods/details/usda/1100001')).json() as FoodDetailResponse;
+    expect(d.providerStatus).toBe('ok');
+    expect(d.candidate?.portions.map((p) => p.name)).toEqual(['large', 'medium', 'cup']);
+    await me.get('/api/v1/foods/details/usda/1100001');
+    expect(calls.filter((c) => c.includes('/food/1100001'))).toHaveLength(1);
+    const missing = (await me.get('/api/v1/foods/details/usda/55')).json() as FoodDetailResponse;
+    expect(missing.providerStatus).toBe('not-found');
+  });
+
+  it('barcode lookup pads a 12-digit UPC on an OFF miss, then tries the verified USDA GTIN fallback', async () => {
     const miss = (await me.get('/api/v1/foods/barcode/999999999999')).json() as BarcodeResponse;
     expect(miss.providerStatus).toBe('not-found');
     expect(calls.filter((c) => c.includes('/product/')).map((c) => c.split('/product/')[1]?.split('?')[0])).toEqual(['999999999999', '0999999999999']);
+    expect(calls.some((c) => c.includes('query=999999999999') && c.includes('dataType=Branded'))).toBe(true);
     const hit = (await me.get('/api/v1/foods/barcode/0012345678905')).json() as BarcodeResponse;
-    expect(hit.providerStatus).toBe('ok');
+    expect(hit).toMatchObject({ providerStatus: 'ok', source: 'off' });
     expect(hit.candidate?.name).toBe('Example Oat Crunch Cereal');
     expect(hit.candidate?.needsLabelConfirmation).toBe(true);
     expect((await me.get('/api/v1/foods/barcode/abc')).status).toBe(400);
+
+    // OFF has nothing for this code; USDA's branded search returns two similar names, only the exact GTIN is accepted.
+    const usda = (await me.get('/api/v1/foods/barcode/4012345678905')).json() as BarcodeResponse;
+    expect(usda).toMatchObject({ providerStatus: 'ok', source: 'usda' });
+    expect(usda.candidate?.providerId).toBe('4000001');
+    expect(usda.candidate?.barcode).toBe('4012345678905');
+  });
+
+  it('a barcode already saved on the Pi resolves locally without contacting any provider', async () => {
+    await me.mutate([{ type: 'food.upsert', food: { ...SHAKE_FOOD.food, id: 'food-bar-0001' }, version: { ...SHAKE_FOOD.version, id: 'food-bar-0001-v1', barcode: '0012345678905' } }]);
+    calls.length = 0;
+    const local = (await me.get('/api/v1/foods/barcode/0012345678905')).json() as BarcodeResponse;
+    expect(local).toMatchObject({ local: ['food-bar-0001'], providerStatus: 'skipped', candidate: null });
+    expect(calls).toHaveLength(0);
+    const remote = (await me.get('/api/v1/foods/barcode/0012345678905?remote=1')).json() as BarcodeResponse;
+    expect(remote.local).toEqual(['food-bar-0001']);
+    expect(remote.candidate?.name).toBe('Example Oat Crunch Cereal');
   });
 
   it('reports not-configured without a USDA key and unavailable on provider failure, while local foods still work', async () => {

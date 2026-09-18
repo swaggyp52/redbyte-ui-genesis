@@ -362,6 +362,11 @@ export const FoodCandidateSchema = z.object({
   /** True when the adapter could not establish carbohydrate/fiber semantics; needs label confirmation. */
   needsLabelConfirmation: z.boolean(),
   warnings: z.array(z.string().max(200)),
+  /** Reference/survey food vs manufacturer label record. */
+  kind: z.enum(['generic', 'branded']),
+  dataType: z.string().max(40).optional(),
+  /** True when a details call can add household portions or fuller nutrition. */
+  hasDetails: z.boolean(),
 });
 
 export const SearchResultSchema = z.discriminatedUnion('kind', [
@@ -374,13 +379,27 @@ export const SearchResponseSchema = z.object({
   mode: z.enum(['local', 'online']),
   results: z.array(SearchResultSchema),
   providerStatus: z.enum(['ok', 'unavailable', 'throttled', 'not-configured', 'skipped']),
+  page: z.number().int().positive(),
+  hasMore: z.boolean(),
+  /** Provider's reported total when known; a hint for "more results", never a coverage claim. */
+  totalHits: z.number().int().min(0).optional(),
+});
+
+export const FoodDetailResponseSchema = z.object({
+  provider: z.enum(['usda']),
+  providerId: z.string(),
+  candidate: FoodCandidateSchema.nullable(),
+  providerStatus: z.enum(['ok', 'not-found', 'unavailable', 'throttled', 'not-configured']),
 });
 
 export const BarcodeResponseSchema = z.object({
   barcode: z.string(),
+  /** Saved foods on the Pi carrying this barcode (food ids); when present no provider was contacted unless remote=1. */
   local: z.array(IdSchema),
   candidate: FoodCandidateSchema.nullable(),
-  providerStatus: z.enum(['ok', 'not-found', 'unavailable', 'throttled', 'not-configured']),
+  providerStatus: z.enum(['ok', 'not-found', 'unavailable', 'throttled', 'not-configured', 'skipped']),
+  /** Which provider produced the candidate. */
+  source: z.enum(['off', 'usda']).optional(),
 });
 
 export const DayResponseSchema = z.object({ day: DaySnapshotSchema.nullable(), entries: z.array(DiaryEntrySchema) });
@@ -434,6 +453,7 @@ export type FoodCandidate = z.infer<typeof FoodCandidateSchema>;
 export type SearchResult = z.infer<typeof SearchResultSchema>;
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 export type BarcodeResponse = z.infer<typeof BarcodeResponseSchema>;
+export type FoodDetailResponse = z.infer<typeof FoodDetailResponseSchema>;
 export type DayResponse = z.infer<typeof DayResponseSchema>;
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
 export type SourceBadge = z.infer<typeof SourceBadgeSchema>;

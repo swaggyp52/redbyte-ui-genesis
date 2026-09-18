@@ -1,0 +1,21 @@
+{
+  "_fixtureNote": "Shaped after the documented FoodData Central food-detail response for a Foundation food (nested nutrient objects, foodPortions). Illustrative values; not a live capture.",
+  "fdcId": 1100001,
+  "description": "Egg, whole, raw, fresh",
+  "dataType": "Foundation",
+  "publicationDate": "2019-04-01",
+  "foodNutrients": [
+    { "nutrient": { "id": 1003, "number": "203", "name": "Protein", "unitName": "g" }, "amount": 12.4 },
+    { "nutrient": { "id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g" }, "amount": 9.96 },
+    { "nutrient": { "id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g" }, "amount": 0.96 },
+    { "nutrient": { "id": 1008, "number": "208", "name": "Energy", "unitName": "kcal" }, "amount": 148 },
+    { "nutrient": { "id": 2000, "number": "269.3", "name": "Sugars, Total", "unitName": "g" }, "amount": 0.2 },
+    { "nutrient": { "id": 1079, "number": "291", "name": "Fiber, total dietary", "unitName": "g" }, "amount": 0 }
+  ],
+  "foodPortions": [
+    { "id": 90001, "amount": 1, "gramWeight": 50.3, "portionDescription": "1 large", "measureUnit": { "id": 9999, "name": "undetermined" }, "sequenceNumber": 1 },
+    { "id": 90002, "amount": 1, "gramWeight": 44.0, "portionDescription": "1 medium", "measureUnit": { "id": 9999, "name": "undetermined" }, "sequenceNumber": 2 },
+    { "id": 90003, "amount": 0.5, "gramWeight": 121.5, "portionDescription": "0.5 cup", "measureUnit": { "id": 9999, "name": "undetermined" }, "sequenceNumber": 3 },
+    { "id": 90004, "amount": 1, "portionDescription": "1 something without weight", "measureUnit": { "id": 9999, "name": "undetermined" } }
+  ]
+}

@@ -62,9 +62,17 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   app.get('/foods/search', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
     const session = requireSession(req, reply);
     if (!session) return undefined;
-    const q = z.object({ q: z.string().trim().min(1).max(100), mode: z.enum(['local', 'online']).default('local') }).safeParse(req.query);
+    const q = z.object({ q: z.string().trim().min(1).max(100), mode: z.enum(['local', 'online']).default('local'), page: z.coerce.number().int().min(1).max(20).default(1) }).safeParse(req.query);
     if (!q.success) return reply.code(400).send({ error: 'invalid' });
-    return ctx.search.search(session.userId, q.data.q, q.data.mode);
+    return ctx.search.search(session.userId, q.data.q, q.data.mode, q.data.page);
+  });
+
+  app.get('/foods/details/:provider/:id', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const session = requireSession(req, reply);
+    if (!session) return undefined;
+    const params = z.object({ provider: z.literal('usda'), id: z.string().min(1).max(20) }).safeParse(req.params);
+    if (!params.success) return reply.code(400).send({ error: 'invalid' });
+    return ctx.search.details(params.data.provider, params.data.id);
   });
 
   app.get('/foods/barcode/:barcode', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
@@ -72,7 +80,8 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     if (!session) return undefined;
     const raw = (req.params as { barcode: string }).barcode;
     if (raw.length > 32) return reply.code(400).send({ error: 'invalid' });
-    const result = await ctx.search.barcode(session.userId, raw);
+    const remote = (req.query as { remote?: string }).remote === '1';
+    const result = await ctx.search.barcode(session.userId, raw, remote);
     if ('error' in result) return reply.code(400).send({ error: result.error });
     return result;
   });

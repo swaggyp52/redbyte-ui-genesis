@@ -26,7 +26,11 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'iphone-chromium', use: { ...devices['iPhone 14'], defaultBrowserType: 'chromium' } }],
+  projects: [
+    { name: 'iphone-chromium', use: { ...devices['iPhone 14'], defaultBrowserType: 'chromium' } },
+    // Playwright WebKit is not branded Safari and not a physical iPhone; it is a second engine, nothing more.
+    { name: 'iphone-webkit', use: { ...devices['iPhone 14'], defaultBrowserType: 'webkit' } },
+  ],
   webServer: {
     command: 'node ../server/dist/main.js',
     url: `${origin}/healthz`,
@@ -42,6 +46,10 @@ export default defineConfig({
       DP_WEB_DIST: path.join(here, 'dist'),
       DP_LOG_LEVEL: 'warn',
       DP_VERSION: 'e2e',
+      // Provider answers come from fixtures (test-only; refused in production). Live USDA/OFF are not exercised here.
+      DP_PROVIDER_STUB_DIR: path.join(here, '../../fixtures'),
+      DP_USDA_API_KEY: 'fixture-stub-key',
+      DP_PROVIDER_CONTACT: 'e2e@example.invalid',
     },
   },
 });

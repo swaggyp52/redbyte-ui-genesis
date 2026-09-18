@@ -1,0 +1,19 @@
+{
+  "_fixtureNote": "Shaped after the documented FoodData Central detail response for a Survey (FNDDS) food (nutrient ids only, foodPortions with measureUnit names). Illustrative values; not a live capture.",
+  "fdcId": 1200001,
+  "description": "Rice, white, cooked, no added fat",
+  "dataType": "Survey (FNDDS)",
+  "foodNutrients": [
+    { "nutrient": { "id": 1003, "name": "Protein", "unitName": "g" }, "amount": 2.36 },
+    { "nutrient": { "id": 1004, "name": "Total lipid (fat)", "unitName": "g" }, "amount": 0.19 },
+    { "nutrient": { "id": 1005, "name": "Carbohydrate, by difference", "unitName": "g" }, "amount": 28.6 },
+    { "nutrient": { "id": 1008, "name": "Energy", "unitName": "kcal" }, "amount": 129 },
+    { "nutrient": { "id": 1079, "name": "Fiber, total dietary", "unitName": "g" }, "amount": 0.4 },
+    { "nutrient": { "id": 1063, "name": "Sugars, total including NLEA", "unitName": "g" }, "amount": 0.05 }
+  ],
+  "foodPortions": [
+    { "id": 91001, "amount": 1, "gramWeight": 158, "portionDescription": "1 cup", "measureUnit": { "id": 1000, "name": "cup" } },
+    { "id": 91002, "amount": 1, "gramWeight": 9.9, "portionDescription": "1 tablespoon", "measureUnit": { "id": 1001, "name": "tablespoon" } },
+    { "id": 91003, "amount": 1, "gramWeight": 158, "portionDescription": "Quantity not specified", "modifier": "cooked", "measureUnit": { "id": 1000, "name": "cup" } }
+  ]
+}

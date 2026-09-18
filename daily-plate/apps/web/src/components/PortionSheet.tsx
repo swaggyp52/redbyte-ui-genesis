@@ -17,6 +17,10 @@ export interface PortionSheetProps {
   onClose: () => void;
   onDelete?: (() => void) | undefined;
   onMove?: (() => void) | undefined;
+  /** Secondary action such as "Check label" for a database result. */
+  secondary?: { label: string; run: () => void } | undefined;
+  /** Short provenance/notes shown under the name (e.g. source, warnings). */
+  notes?: string[] | undefined;
 }
 
 interface UnitOption {
@@ -115,6 +119,11 @@ export function PortionSheet(props: PortionSheetProps) {
             {basisLabel(version)}
             {version.preparation !== 'unspecified' && version.preparation !== 'as-sold' ? ` · ${version.preparation}` : ''}
           </p>
+          {props.notes?.map((n) => (
+            <p key={n} className="small" style={{ marginTop: 6, color: 'var(--gold-ink)' }}>
+              {n}
+            </p>
+          ))}
         </div>
 
         <div className="field">
@@ -206,6 +215,11 @@ export function PortionSheet(props: PortionSheetProps) {
           <button type="button" className="btn btn-primary btn-lg btn-block" disabled={!built || !built.ok || busy} onClick={() => void confirm()}>
             {mode === 'add' ? 'Add to this day' : 'Save change'}
           </button>
+          {props.secondary && (
+            <button type="button" className="btn btn-secondary btn-block" onClick={props.secondary.run}>
+              {props.secondary.label}
+            </button>
+          )}
           {mode === 'edit' && (
             <div className="row">
               {props.onMove && (

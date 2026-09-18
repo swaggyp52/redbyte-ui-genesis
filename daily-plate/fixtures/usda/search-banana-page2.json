@@ -1,0 +1,10 @@
+{
+  "_fixtureNote": "Second page of a banana search, shaped after the documented response with paging fields. Illustrative; not a live capture.",
+  "totalHits": 23,
+  "currentPage": 2,
+  "totalPages": 3,
+  "foods": [
+    { "fdcId": 1000003, "description": "Bananas, ripe and slightly ripe, raw", "dataType": "Foundation", "foodNutrients": [ { "nutrientId": 1003, "nutrientNumber": "203", "unitName": "G", "value": 0.73 }, { "nutrientId": 1005, "nutrientNumber": "205", "unitName": "G", "value": 23 } ] },
+    { "fdcId": 3000001, "description": "BANANA CHIPS", "dataType": "Branded", "brandOwner": "Snack Example LLC", "gtinUpc": "0987654321098", "servingSize": 28, "servingSizeUnit": "g", "householdServingFullText": "1/4 cup", "foodNutrients": [ { "nutrientId": 1003, "nutrientNumber": "203", "unitName": "G", "value": 3.57 }, { "nutrientId": 1005, "nutrientNumber": "205", "unitName": "G", "value": 57.1 }, { "nutrientId": 1004, "nutrientNumber": "204", "unitName": "G", "value": 32.1 }, { "nutrientId": 2000, "nutrientNumber": "2000", "unitName": "G", "value": 35.7 } ] }
+  ]
+}
