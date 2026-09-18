@@ -15,6 +15,21 @@ Environment for every row: Anthropic cloud sandbox, Linux x86_64, Node v24.21.0,
 | E7 | `docker info` | daemon unavailable → image build **BLOCKED** here |
 | E8 | `curl https://api.nal.usda.gov/... ` and `https://world.openfoodfacts.org/...` | egress denied (CONNECT 403) → live provider checks **BLOCKED** here |
 
+## Second pass (cloud completion campaign), commit 37f6ba7 unless noted
+
+| # | Command (from `daily-plate/`) | Result |
+|---|---|---|
+| E9 | `pnpm verify` at 48ac49b and 37f6ba7 | domain 48, contracts 5, server 49, web 11 (113 total); typecheck clean; builds clean; web main chunk 163 KB gzip, scanner chunk lazy |
+| E10 | `pnpm --filter @daily-plate/web exec playwright test --project=iphone-chromium` | 23/23: 10 original journeys (`journeys.spec.ts`), 9 catalog/repeat-use journeys against fixture-backed providers (`catalog.spec.ts`), 4 lived-in journeys on a 100-day seeded account incl. 200% text (`lived-in.spec.ts`); axe WCAG 2.2 AA on every screen; screenshots `docs/screens/20..32` |
+| E11 | `node dist/benchmark/run.js --mode replay` | Harness runs all 80 cases through the real search service against fixtures; report states **NOT MEASURED** for live coverage. Replay found plausible results only where fixtures exist (basic 4/15); this is a harness check, not a coverage figure |
+| E12 | `ops/export-source.sh` then `ops/cleanroom-test.sh` (unrelated temp dir) | Archive `daily-plate-src-37f6ba7.tar.gz`, 210 files, sha256 `865f938ca5d7b71d57e8d20217b6ad4b30ad7a374ac24faca7c72f415b6bd630`, no node_modules/dist/db/.env. Clean room: frozen install, `pnpm verify` (113 tests), production build, real server smoke (healthz, shell, anonymous 401) → PASS in 33 s. First attempt found and fixed a real defect (verify typechecked the web app before the server's declaration output existed) |
+| E13 | `ops/preflight-config.sh ops/.env.example` | Read-only; correctly FAILS on placeholder RP ID and auth key, warns on missing paths/USDA key, nothing written |
+| E14 | `.github/workflows/daily-plate-cloud.yml` | Committed; runs on this PR's next push. Results (Chromium + WebKit journeys, x64 + arm64 container smoke, Windows source smoke) are recorded below when the run completes |
+| E15 | Live USDA / Open Food Facts calls | **BLOCKED**: egress denied (CONNECT 403) in this environment; no authentic captures exist yet |
+
+### Workflow results (fill from the Actions run)
+_pending first run_
+
 ## Acceptance matrix
 
 | ID | Scenario | Status | Where |
@@ -32,11 +47,11 @@ Environment for every row: Anthropic cloud sandbox, Linux x86_64, Node v24.21.0,
 | N11 | Daily totals missing a nutrient are provisional | PASS | `nutrients.test.ts`, `goals.test.ts`, e2e "1 item missing fat" + provisional note |
 | U01 | Pinned favorite: one deliberate add, explicit portion, acknowledgement, Undo | PASS | e2e step 5 |
 | U02 | Accidental double-tap vs real second serving | PASS | e2e step 5 (dblclick adds once; later tap adds again) |
-| U03 | Search ambiguity → choice, not a hidden guess | PASS | e2e step 6 (phrase → amount prefilled, sheet before add); `search.ts` ranking test |
-| U04 | Camera denied / no match | PARTIAL | manual digits path implemented and wired; not-found/unavailable banners tested at the API level; camera denial UI not exercised in e2e |
+| U03 | Search ambiguity → choice, not a hidden guess | PASS | e2e journeys step 6; catalog spec (generic banana over snacks, stale query discarded, database result → amount sheet, multiple barcode matches ask); `ranking.test.ts` (vanilla ≠ chocolate, raw ≠ cooked, zero-sugar) |
+| U04 | Camera denied / no match | PASS (manual path) | catalog spec: manual digits offline → saved food; unknown code → label form with the code kept → local on next scan; camera-permission prompt itself is a physical-device check |
 | U05 | Edit / remove / move / Undo without duplicates | PASS | `core.test.ts` U05, e2e step 3 |
 | U06 | Training override affects the selected day only; default change keeps history | PASS | `core.test.ts` U06, e2e step 4 |
-| U07 | Larger text / narrow width / VoiceOver | PARTIAL | axe WCAG 2.2 AA scans on setup, Today, portion sheet, food detail, My Foods, Settings, Add Food: no serious/critical violations; no horizontal overflow at 390 px; VoiceOver and Dynamic Type **BLOCKED** (physical device) |
+| U07 | Larger text / narrow width / VoiceOver | PARTIAL | type in rem; lived-in spec at 200% root font size: no horizontal overflow on Today/Add Food/sheet, primary actions reachable; axe on every screen; VoiceOver **BLOCKED** (physical device) |
 | U08 | Keyboard and safe areas | PARTIAL | safe-area insets and scrolling sheets implemented; iOS keyboard behaviour **BLOCKED** |
 | U09 | Unknown item captured as a draft and resolved later | PASS | `core.test.ts` U09, e2e step 6 |
 | O01 | Offline add, close, reopen | PASS | `sync.test.ts` O01 (real server via inject), e2e step 7 (context offline → page closed → reopened → reconciled, 4 entries not 5) |
@@ -48,7 +63,7 @@ Environment for every row: Anthropic cloud sandbox, Linux x86_64, Node v24.21.0,
 | O07 | App update with pending queue | PARTIAL | outbox in IndexedDB survives reload (e2e reload step); update banner never forces reload; stale-PWA-vs-new-server **BLOCKED** (needs two builds on a device) |
 | O08 | Storage quota failure | PARTIAL | persistence requested and reported honestly in Settings; a write failure surfaces as an error toast; quota exhaustion not simulated |
 | P01 | Provider timeout / 429 / schema mismatch | PASS | `providers.test.ts` (timeout, 429 Retry-After, malformed hits, ECONNRESET → unavailable, local foods still work) |
-| P02 | Source attribution / normalization fixtures | PARTIAL | adapters tested against documented-shape fixtures; **live capture BLOCKED** |
+| P02 | Source attribution / normalization fixtures | PARTIAL | `usda-2`: search vs detail shapes, numbers vs ids, per 100 g vs per 100 ml, label-per-serving scaling, household portions (0.5 cup → cup), GTIN equality; OFF carbohydrate flag; **authentic captures BLOCKED** |
 | S01 | Unauthenticated requests | PASS | `auth.test.ts` |
 | S02 | Synthetic second user | PASS | `core.test.ts` S02 |
 | S03 | Invite preview / replay / passkey challenges | PASS | `auth.test.ts`, e2e step 1 (peek after redeem invalid) |
@@ -63,7 +78,15 @@ Environment for every row: Anthropic cloud sandbox, Linux x86_64, Node v24.21.0,
 | D07 | Physical iPhone installation | BLOCKED | virtual-authenticator passkey ceremony passed in Chromium (e2e step 10) |
 | D08 | Resource budget | PARTIAL | bundle within budget; Pi memory/CPU **BLOCKED** |
 
+| A-01 | Paging, details, household portions | PASS (fixtures) | `providers.test.ts` paging/details; catalog spec "More results", "2 eggs" → large |
+| A-02 | Local barcode independence | PASS | `providers.test.ts` (Pi-local skips providers); catalog spec (phone-local while offline) |
+| A-03 | Catalog coverage measured | NOT MEASURED | E11; live run needs a connected machine |
+| B-01 | Database pick without label detour; meal from search; add-another; copy yesterday | PASS | catalog spec |
+| C-01 | WebKit journeys, containers x64/arm64, Windows smoke | PENDING | E14 |
+| D-01 | Clean-room extraction | PASS | E12 |
+
 ## Honest gaps
-- No Pi, no Docker daemon, no provider egress, no physical iPhone, no WebKit in this environment. Everything marked BLOCKED needs the desktop or the Pi.
+- No Pi, no Docker daemon, no provider egress, no physical iPhone, no WebKit in this environment. WebKit and containers are delegated to the committed workflow; everything else marked BLOCKED needs the desktop or the Pi.
+- Chromium's virtual authenticator proves the passkey ceremony wiring, not Safari or iOS passkey behaviour; the passkey journey is skipped on WebKit by design and says so.
 - The Samuel Adams Octoberfest product was not verified; the app offers the manual label path.
 - Screenshots are from Chromium emulating an iPhone 14 viewport, not from Safari.
