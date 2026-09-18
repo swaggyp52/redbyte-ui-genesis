@@ -179,7 +179,9 @@ test.describe.serial('Catalog and repeat-use journeys (week-old account)', () =>
 
   test('The lived-in Add Food and Today screens pass the accessibility scan', async () => {
     await page.goto('/add');
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+    // Judge the settled screen: let running CSS animations (toast fade-in, sheet slide) finish first.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
     expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
   });
 });

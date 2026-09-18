@@ -33,7 +33,9 @@ test.describe.serial('Lived-in account (about 100 days)', () => {
     await expect(page.getByRole('button', { name: 'Add Usual breakfast, 3 items' })).toBeVisible();
     await noOverflow();
     await page.screenshot({ path: path.join(shots, '30-lived-in-today.png'), fullPage: true });
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+    // Judge the settled screen: let running CSS animations (toast fade-in, sheet slide) finish first.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
     expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
   });
 
