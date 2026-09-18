@@ -1,0 +1,75 @@
+# Daily Plate on the shared Pi: one application container sharing the network
+# namespace of its own Tailscale sidecar. No host ports, no Docker socket, no
+# host network. Copy ops/.env.example to ops/.env and fill it in.
+#
+#   cd ops && docker compose --env-file .env up -d
+#
+# Staging uses serve.json (tailnet-private). Public exposure is a separate,
+# explicitly approved step that swaps in serve.funnel.json (see OPERATIONS.md).
+
+services:
+  tailscale:
+    # Pin to the exact tag verified on the Pi during staging (docker pull, then record the digest in OPERATIONS.md).
+    image: tailscale/tailscale:${TS_IMAGE_TAG:-stable}
+    container_name: daily-plate-tailscale
+    hostname: ${TS_HOSTNAME:-daily-plate}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?set a one-off, tagged, ephemeral=false auth key for this node only}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_SERVE_CONFIG: /config/${TS_SERVE_FILE:-serve.json}
+      TS_EXTRA_ARGS: ${TS_EXTRA_ARGS:---advertise-tags=tag:daily-plate}
+      TS_ACCEPT_DNS: "false"
+    volumes:
+      - ${DP_TS_STATE_DIR:?path for this node's tailscale state}:/var/lib/tailscale
+      - ./tailscale:/config:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: false
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "tailscale", "status", "--json"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  app:
+    image: daily-plate:${DP_VERSION:?image tag built for the Pi's architecture}
+    container_name: daily-plate-app
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_started
+    environment:
+      DP_DATA_DIR: /data
+      DP_WEB_DIST: /app/web
+      DP_HOST: 127.0.0.1
+      DP_PORT: "8787"
+      DP_RP_ID: ${DP_RP_ID:?the final hostname, e.g. daily-plate.<tailnet>.ts.net; changing it later is a passkey migration}
+      DP_ORIGINS: https://${DP_RP_ID}
+      DP_SECURE_COOKIES: "true"
+      DP_USDA_API_KEY: ${DP_USDA_API_KEY:-}
+      DP_PROVIDER_CONTACT: ${DP_PROVIDER_CONTACT:-unconfigured}
+      DP_LOG_LEVEL: ${DP_LOG_LEVEL:-info}
+      DP_VERSION: ${DP_VERSION}
+    volumes:
+      - ${DP_DATA_DIR:?path for the SQLite database and backups}:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

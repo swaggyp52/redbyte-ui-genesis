@@ -1,0 +1,10 @@
+{
+  "_comment": "Release gate only: apply after private staging passes and the owner approves public exposure of this node alone.",
+  "TCP": { "443": { "HTTPS": true } },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": { "/": { "Proxy": "http://127.0.0.1:8787" } }
+    }
+  },
+  "AllowFunnel": { "${TS_CERT_DOMAIN}:443": true }
+}

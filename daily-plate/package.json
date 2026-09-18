@@ -8,14 +8,15 @@
     "node": ">=24.0.0 <25"
   },
   "scripts": {
-    "build": "pnpm -r --filter ./packages/* run build && pnpm -r --filter ./apps/* run build",
+    "build": "pnpm build:packages && pnpm --filter @daily-plate/server run build && pnpm --filter @daily-plate/web run build",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
     "test:e2e": "pnpm --filter @daily-plate/web run test:e2e",
     "dev": "pnpm --filter @daily-plate/server run dev",
     "dev:web": "pnpm --filter @daily-plate/web run dev",
-    "verify": "pnpm typecheck && pnpm test && pnpm build",
-    "plate": "pnpm --filter @daily-plate/server run cli --"
+    "verify": "pnpm build:packages && pnpm typecheck && pnpm --filter @daily-plate/server run build && pnpm test && pnpm --filter @daily-plate/web run build",
+    "plate": "pnpm --filter @daily-plate/server run cli --",
+    "build:packages": "pnpm --filter @daily-plate/domain run build && pnpm --filter @daily-plate/contracts run build"
   },
   "devDependencies": {
     "typescript": "5.9.3"
