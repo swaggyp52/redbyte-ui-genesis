@@ -179,7 +179,21 @@ test.describe.serial('Mother journey on an iPhone-sized screen', () => {
 
   test('O01: log while offline, close and reopen, reconcile without duplicates', async ({ browserName }) => {
     await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await expect(page.getByRole('button', { name: /waiting to save/ })).toHaveCount(0);
+    // Cut the network only once the app shell is installed and controlling this page; the first
+    // registration of a service worker does not control the page that registered it until the next load.
+    const controlled = async (): Promise<boolean> =>
+      page.evaluate(async () => {
+        if (!('serviceWorker' in navigator)) return false;
+        await navigator.serviceWorker.ready;
+        return navigator.serviceWorker.controller !== null;
+      });
+    if (!(await controlled())) {
+      await page.reload();
+      await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+    }
+    if (browserName === 'chromium') expect(await controlled(), 'service worker controls the page before going offline').toBe(true);
     await context.setOffline(true);
     await page.getByRole('button', { name: 'Add My shake, 1 bottle' }).click();
     await expect(page.getByText('Waiting to save', { exact: true })).toBeVisible();
