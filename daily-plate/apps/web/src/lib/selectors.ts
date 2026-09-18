@@ -6,6 +6,7 @@ import {
   findRepeatedCombinations,
   macroFitIdeas,
   macroProgress,
+  pluralPortion,
   sumNutrients,
   type Idea,
   type MacroKey,
@@ -98,7 +99,8 @@ export function shortcuts(foods: Food[], versions: Map<string, FoodVersion>, mea
     const version = versions.get(food.currentVersionId);
     if (!version) continue;
     const q = food.pin.quantity;
-    const unitName = q.unit.kind === 'portion' ? version.portions.find((p) => p.id === q.unit.portionId)?.name ?? 'portion' : q.unit.kind === 'serving' ? 'serving' : q.unit.kind === 'mass' ? q.unit.unit : q.unit.unit === 'floz' ? 'fl oz' : 'ml';
+    const u = q.unit;
+    const unitName = u.kind === 'portion' ? pluralPortion(version.portions.find((p) => p.id === u.portionId)?.name ?? 'portion', q.amount) : u.kind === 'serving' ? pluralPortion('serving', q.amount) : u.kind === 'mass' ? u.unit : u.unit === 'floz' ? 'fl oz' : 'ml';
     out.push({ kind: 'food', id: food.id, name: food.name, detail: `${q.amount} ${unitName}`, order: food.pin.order, food, version });
   }
   for (const meal of meals) {

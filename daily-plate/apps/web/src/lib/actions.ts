@@ -288,10 +288,10 @@ export async function updateFood(db: DailyPlateDb, food: Food, changes: Extract<
   return next;
 }
 
-function stripUndefined<T extends object>(obj: T): Partial<T> {
+function stripUndefined<T extends object>(obj: T): { [K in keyof T]-?: Exclude<T[K], undefined> } {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) if (v !== undefined) out[k] = v;
-  return out as Partial<T>;
+  return out as { [K in keyof T]-?: Exclude<T[K], undefined> };
 }
 
 export async function saveMeal(db: DailyPlateDb, meal: Omit<SavedMeal, 'revision' | 'deleted' | 'updatedAt'>): Promise<SavedMeal> {

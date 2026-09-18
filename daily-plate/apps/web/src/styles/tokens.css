@@ -1,0 +1,44 @@
+:root {
+  color-scheme: light;
+  --bg: #faf7f0;
+  --surface: #ffffff;
+  --surface-tint: #f4efe3;
+  --ink: #24332f;
+  --ink-soft: #55625e;
+  --ink-mute: #77837f;
+  --line: #e3dccc;
+  --line-strong: #cfc6b2;
+
+  --teal: #176a5b;
+  --teal-deep: #0f4f44;
+  --teal-ink: #ffffff;
+  --teal-soft: #e2efea;
+  --teal-soft-ink: #0f4f44;
+
+  --coral: #d67b5d;
+  --coral-ink: #8f4127;
+  --coral-soft: #f9e8e0;
+
+  --gold: #d9aa4b;
+  --gold-ink: #7a5a12;
+  --gold-soft: #f7edd6;
+
+  --danger-ink: #8c2f2f;
+  --danger-soft: #f8e3e3;
+
+  --radius: 14px;
+  --radius-lg: 22px;
+  --tap: 52px;
+  --tap-lg: 56px;
+  --text: 18px;
+  --text-sm: 16px;
+  --text-lg: 22px;
+  --text-num: 30px;
+  --gutter: 18px;
+  --shadow: 0 1px 2px rgba(36, 51, 47, 0.06), 0 6px 20px rgba(36, 51, 47, 0.08);
+  --shadow-sheet: 0 -8px 40px rgba(36, 51, 47, 0.18);
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

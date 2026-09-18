@@ -122,7 +122,7 @@ export function resolveQuantity(food: FoodQuantityContext, quantity: Quantity): 
     case 'portion': {
       const portion = food.portions.find((p) => p.id === unit.portionId);
       if (!portion) return fail('unknown-portion', 'That portion is not saved for this food.');
-      const label = `${amount} ${portion.name}`;
+      const label = `${amount} ${pluralPortion(portion.name, amount)}`;
       if (portion.servings !== undefined) {
         if (food.basis.kind !== 'serving') return fail('incompatible-unit', 'Portion is in servings but this food has no serving basis.');
         return { ok: true, factor: mul(amount, portion.servings), label };
@@ -146,6 +146,12 @@ export function resolveQuantity(food: FoodQuantityContext, quantity: Quantity): 
       return r.ok ? { ...r, label: `${amount} ${unit.unit === 'floz' ? 'fl oz' : 'ml'}` } : r;
     }
   }
+}
+
+/** "bottle" -> "bottles" when the amount is not exactly 1; names already ending in s are left alone. */
+export function pluralPortion(name: string, amount: Decimal): string {
+  if (Number(amount) === 1 || /s$/i.test(name.trim())) return name;
+  return `${name}s`;
 }
 
 export function unitLabel(unit: QuantityUnit, portions: Portion[]): string {

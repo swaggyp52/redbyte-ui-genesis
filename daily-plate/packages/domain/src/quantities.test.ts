@@ -27,7 +27,7 @@ describe('resolveQuantity (N05, N06)', () => {
   it('resolves servings and named portions for a serving basis', () => {
     expect(resolveQuantity(shake, { amount: '1.5', unit: { kind: 'serving' } })).toMatchObject({ ok: true, factor: '1.5' });
     expect(resolveQuantity(shake, { amount: '1', unit: { kind: 'portion', portionId: 'half' } })).toMatchObject({ ok: true, factor: '0.5' });
-    expect(resolveQuantity(shake, { amount: '2', unit: { kind: 'portion', portionId: 'bottle' } })).toMatchObject({ ok: true, factor: '2', label: '2 bottle' });
+    expect(resolveQuantity(shake, { amount: '2', unit: { kind: 'portion', portionId: 'bottle' } })).toMatchObject({ ok: true, factor: '2', label: '2 bottles' });
   });
 
   it('resolves grams and ounces against per-100 g without double scaling', () => {

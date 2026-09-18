@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isDecimal, isLocalDate, MEAL_SLOTS, NUTRIENT_KEYS } from '@daily-plate/domain';
+import { isDecimal, isLocalDate, NUTRIENT_KEYS } from '@daily-plate/domain';
 
 export const SCHEMA_VERSION = 1 as const;
 
@@ -19,7 +19,7 @@ export const LongTextSchema = z.string().trim().max(2000);
 export const TimeZoneSchema = z.string().min(1).max(64);
 
 export const NutrientKeySchema = z.enum(NUTRIENT_KEYS);
-export const MealSlotSchema = z.enum(MEAL_SLOTS as [string, ...string[]]);
+export const MealSlotSchema = z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'unassigned']);
 export const DayTypeSchema = z.enum(['rest', 'training']);
 export const PreparationSchema = z.enum(['unspecified', 'as-sold', 'raw', 'cooked', 'dry', 'prepared', 'drained', 'undrained']);
 

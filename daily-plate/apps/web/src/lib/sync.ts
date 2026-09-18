@@ -1,4 +1,4 @@
-import type { Bootstrap, Change, MutationResult } from '@daily-plate/contracts';
+import type { Bootstrap, Change, Mutation, MutationResult } from '@daily-plate/contracts';
 import { ApiClient, ApiError, OfflineError } from './api.js';
 import { clearProjection, getMeta, setMeta, type DailyPlateDb, type OutboxItem } from './db.js';
 
@@ -113,7 +113,9 @@ export class SyncEngine {
 
   private async run(): Promise<void> {
     if (!this.isOnline()) {
+      // Count what is waiting and keep a bounded retry alive; the online event is not guaranteed on every platform.
       await this.emit({ state: 'offline' });
+      if (this.status.pending > 0) this.scheduleRetry();
       return;
     }
     await this.emit({ state: 'syncing' });
@@ -265,13 +267,15 @@ export class SyncEngine {
     const current = item.conflictCurrent as { revision?: number } | undefined;
     const payload = item.mutation.payload as { baseRevision?: number };
     if (current?.revision !== undefined && payload.baseRevision !== undefined) {
-      const next = { ...item.mutation, mutationId: crypto.randomUUID(), payload: { ...item.mutation.payload, baseRevision: current.revision } };
+      const next: Mutation = { ...item.mutation, mutationId: crypto.randomUUID(), payload: { ...item.mutation.payload, baseRevision: current.revision } as Mutation['payload'] };
+      const { lastError: _l, conflictCurrent: _c, ...rest } = item;
       await this.db.transaction('rw', this.db.outbox, async () => {
         await this.db.outbox.delete(mutationId);
-        await this.db.outbox.put({ ...item, mutationId: next.mutationId, mutation: next as never, status: 'pending', attempts: 0, conflictCurrent: undefined, lastError: undefined });
+        await this.db.outbox.put({ ...rest, mutationId: next.mutationId, mutation: next, status: 'pending', attempts: 0 });
       });
     } else {
-      await this.db.outbox.put({ ...item, status: 'pending', attempts: 0, lastError: undefined });
+      const { lastError: _l, conflictCurrent: _c, ...rest } = item;
+      await this.db.outbox.put({ ...rest, status: 'pending', attempts: 0 });
     }
     await this.notifyLocalChange();
   }

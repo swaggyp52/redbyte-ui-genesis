@@ -90,6 +90,12 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      workbox-precaching:
+        specifier: 7.4.1
+        version: 7.4.1
+      workbox-routing:
+        specifier: 7.4.1
+        version: 7.4.1
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -115,6 +121,9 @@ importers:
       fake-indexeddb:
         specifier: 6.2.5
         version: 6.2.5
+      fastify:
+        specifier: 5.12.5
+        version: 5.12.5
       jsdom:
         specifier: 30.1.0
         version: 30.1.0
