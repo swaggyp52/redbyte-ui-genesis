@@ -5,15 +5,18 @@
 set -euo pipefail
 ARCHIVE="${1:?archive path}"
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/dp-cleanroom-XXXXXX")
-trap 'rm -rf "$TMP"' EXIT
+LOG="$TMP/cleanroom.log"
+cleanup() { if [ "${KEEP:-0}" = "1" ] || [ "$1" != "0" ]; then echo "kept $TMP (log: $LOG)"; else rm -rf "$TMP"; fi; }
+trap 'cleanup $?' EXIT
 tar -xzf "$ARCHIVE" -C "$TMP"
 cd "$TMP/daily-plate"
 test -f pnpm-lock.yaml && test -f pnpm-workspace.yaml && test -f .nvmrc && test -f .npmrc || { echo "archive missing workspace files"; exit 1; }
 ! find . -name node_modules -o -name dist -o -name '*.db' | grep -q . || { echo "archive contains build debris"; exit 1; }
 echo "== install (frozen lockfile, no parent workspace)"
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 corepack pnpm install --frozen-lockfile >/dev/null
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 corepack pnpm install --frozen-lockfile >"$LOG" 2>&1 || { tail -30 "$LOG"; exit 1; }
 echo "== verify"
-corepack pnpm verify >/dev/null
+corepack pnpm verify >>"$LOG" 2>&1 || { tail -40 "$LOG"; exit 1; }
+grep -E "Tests +[0-9]+ passed" "$LOG"
 echo "== server smoke from the extracted tree"
 PORT=18899
 DP_DATA_DIR="$TMP/data" DP_PORT=$PORT DP_ORIGINS=http://localhost:$PORT DP_WEB_DIST="$TMP/daily-plate/apps/web/dist" DP_LOG_LEVEL=error node apps/server/dist/main.js &

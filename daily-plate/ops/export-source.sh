@@ -10,10 +10,14 @@ cd "$HERE"
 if [ -n "$(git status --porcelain -- .)" ]; then echo "warning: uncommitted changes in daily-plate/ are NOT included (git archive uses HEAD)"; fi
 COMMIT=$(git rev-parse HEAD)
 SHORT=$(git rev-parse --short HEAD)
-PREFIX=$(git rev-parse --show-prefix)   # e.g. daily-plate/ when nested in a parent repo
+PREFIX=$(git rev-parse --show-prefix)   # e.g. daily-plate/ when nested in a parent repo; empty when standalone
 mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
 NAME="daily-plate-src-$SHORT.tar.gz"
-git archive --format=tar.gz --prefix=daily-plate/ -o "$OUT/$NAME" HEAD:"${PREFIX%/}"
+# git archive resolves the subtree relative to the repository root, so run it from there.
+cd "$(git rev-parse --show-toplevel)"
+if [ -n "$PREFIX" ]; then TREE="HEAD:${PREFIX%/}"; else TREE="HEAD"; fi
+git archive --format=tar.gz --prefix=daily-plate/ -o "$OUT/$NAME" "$TREE"
 ( cd "$OUT" && sha256sum "$NAME" > "$NAME.sha256" )
 cat > "$OUT/MANIFEST.txt" <<MANIFEST
 archive: $NAME

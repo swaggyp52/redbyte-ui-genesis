@@ -50,6 +50,45 @@ Build environment for everything below: Anthropic cloud sandbox, Linux x86_64, N
 - [ ] Mother acceptance script on her phone.
 - [ ] Tag the release (branch pushed; PR opened as draft).
 
+## Cloud completion campaign (2026-09-18, second pass)
+
+Baseline re-verified at ed2e342 (`pnpm verify`: 95 tests) before any edit. Environment unchanged: no Docker daemon, no provider egress, no Pi, no iPhone, Chromium only. WebKit and containers are exercised by the committed GitHub workflow once it runs on the PR.
+
+### Gate A — Food acquisition and trust — PASS (fixture-backed), live coverage NOT MEASURED
+- [x] USDA data types Foundation + SR Legacy + Survey (FNDDS) + Branded; page size 10; `page` parameter up to 20; cache keys include normalization version, data types, page size, page and query.
+- [x] Food details (`/foods/details/usda/:id`): documented `foodPortions` → single-unit household portions (large, medium, cup, tablespoon…); nested-nutrient shape and id-only shape both normalized; branded `labelNutrients` scaled by serving size only for missing per-100 fields.
+- [x] Relevance: shared `rankCandidates` (generic reference foods above flavoured branded hits for short generic queries; variant words such as vanilla/zero/raw must match; dedupe by provider id only). Shared `rankLocalFoods` on phone and Pi.
+- [x] Barcode order phone → Pi → OFF (raw then padded) → USDA branded search accepted only on exact GTIN. Saved codes never contact a provider. Unknown codes ride into the label form.
+- [x] Counts never become grams (`quantityForPhrase`, tested). "Half my shake" resolves to the shake's own serving.
+- [x] Normalization tests: search vs detail shapes, numbers vs ids, 100 g vs 100 ml, label-per-serving scaling, portion counts (0.5 cup → cup), prepared vs as-sold, reported zero ≠ unknown.
+- [x] 80-case catalog set + replay/live harness. Replay run recorded; **live coverage NOT MEASURED** (egress denied in every available cloud environment).
+- [ ] **BLOCKED** Authentic provider captures and the live coverage run (needs a connected machine and a real USDA key). Samuel Adams product still unverified.
+
+### Gate B — Daily-use completion — PASS (Chromium), WebKit via CI
+- [x] Database result → amount sheet directly; "Check or edit the label" secondary; adding also saves the food for offline reuse.
+- [x] Saved meals appear in search and are added in place with parts unticked or amounts changed.
+- [x] Enter searches; first local hit is never opened implicitly; stale responses discarded (generation guard, tested with a delayed route).
+- [x] No keyboard grab on opening Add Food; "N added · Done" banner supports consecutive additions.
+- [x] Yesterday's (or any past day's) meal group → "Add this to today" preview → today, original untouched.
+- [x] Multiple local barcode matches ask which one; missing barcode carried into the label form and local on the next scan.
+- [x] Type in rem; rows wrap; 200% text: no horizontal overflow, primary actions reachable (lived-in spec).
+- [x] Lived-in synthetic accounts (day/week/months seeds): 13 foods incl. long names, variants, alcohol tag, less-than fiber, estimated salad, a recipe, a pinned meal, a draft, 100 days of entries. Demo seed refused in production.
+- [x] 23 Playwright journeys on Chromium (10 original + 9 catalog + 4 lived-in), axe WCAG 2.2 AA on every screen.
+- [ ] **BLOCKED** iOS keyboard/safe-area behaviour and VoiceOver on a physical iPhone.
+
+### Gate C — Cloud release evidence — PARTIAL (workflow committed; first run happens on the PR)
+- [x] `.github/workflows/daily-plate-cloud.yml`: path-filtered, `contents: read`, bounded timeouts and concurrency, no `pull_request_target`, no secrets. Jobs: verify (frozen install, `pnpm verify`, `pnpm audit --prod`, source archive artifact), journeys (Chromium and WebKit), container smoke (x64 and `ubuntu-24.04-arm`), Windows source smoke.
+- [x] `ops/ci/container-smoke.sh`: non-root read-only boot, healthcheck, SQLite engine gate, create → restart → recover, backup + scratch restore, anonymous 401.
+- [ ] **PENDING** Results of the workflow on this PR (recorded in `TEST_EVIDENCE.md` when available). If the ARM runner label is unavailable to the account, that job stays queued/failed and the Pi build remains the ARM proof.
+- [ ] **BLOCKED** WebKit and Docker locally (not installed in the sandbox).
+
+### Gate D — Portable handoff — PASS
+- [x] `ops/export-source.sh`: `git archive` of the subtree at HEAD (dotfiles, lockfile, workspace files, docs, scripts, icons; no node_modules/dist/data/.env), sha256 + MANIFEST.
+- [x] `ops/cleanroom-test.sh`: extraction into an unrelated temp dir, frozen install, `pnpm verify`, real server smoke. Run here: see TEST_EVIDENCE E10.
+- [x] `ops/preflight-config.sh`: read-only, dry-run by nature; fails on placeholders, non-final RP ID, unwritable paths, stub settings.
+- [x] Docs reflect the code (DATA_SOURCES normalization `usda-2`, DECISIONS D-17…D-24, OPERATIONS 1b/1c/6b, SECURITY test-tooling fence).
+- [ ] **BLOCKED** ARM64 image digest and Pi runtime identity (recorded by the Pi build).
+
 ## Next executable actions (desktop)
 1. Pull the branch; move `daily-plate/` to its own folder/repo.
 2. Run `OPERATIONS.md` §1 (Pi inspection) and fill in the facts.

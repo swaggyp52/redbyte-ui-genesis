@@ -21,6 +21,7 @@
 - Outbound allow-list, HTTPS only, no redirects, no general proxy, no URL fetching from user input.
 - Errors: 5xx bodies are `{error:'internal'}`; cookies and authorization headers are redacted from logs.
 - `/healthz` returns `{ok:true}` only.
+- Test tooling is fenced: the provider stub (`DP_PROVIDER_STUB_DIR`) and the demo seed refuse to run when `NODE_ENV=production`; the read-only preflight fails if the stub variable is set.
 
 ## Verified in tests
 S01 unauthenticated (401 on all data routes), S02 second synthetic user cannot read/change/replay, S03 invite preview/replay + passkey challenge replay, S04 CSRF header/origin, S05 CSP headers. Bundle grep for `DP_USDA_API_KEY`/`tskey` returns nothing (see TEST_EVIDENCE).

@@ -22,6 +22,16 @@ ls -ld /srv 2>/dev/null; mount | grep -E ' / | /srv'      # pick DP_DATA_DIR on 
 ```
 Record: architecture, memory headroom, free disk, Docker availability, the two serve/funnel outputs, and the chosen paths in `ops/.env`. If Docker is missing, stop and ask before installing anything.
 
+## 1b. Read-only configuration check (run before every install or upgrade)
+```bash
+ops/preflight-config.sh ops/.env      # validates values, paths, permissions, stage mode; changes nothing
+ops/preflight.sh                      # disk, memory, backup age, neighbours, host serve/funnel snapshot
+```
+`preflight-config.sh` fails on placeholder values, a non-final RP ID, an unwritable data directory, a missing Docker, or a test-only provider stub. It never creates directories or edits files.
+
+## 1c. Cloud verification already available (GitHub Actions)
+`.github/workflows/daily-plate-cloud.yml` (also kept at `ops/ci/daily-plate-cloud.yml`) runs only for `daily-plate/**` changes: x64 verify + audit + source archive, Chromium and WebKit journeys against the real server with fixture-backed providers, container smoke on x64 and on the `ubuntu-24.04-arm` hosted runner (native ARM64), and a Windows source install/unit-test smoke. What it proves and does not prove is written in `TEST_EVIDENCE.md`. WebKit is not Safari; the ARM runner is not the Pi.
+
 ## 2. Build
 ```bash
 pnpm install --frozen-lockfile
@@ -59,6 +69,13 @@ Only after §3 passes and the owner approves exposing **this node alone**: set `
 4. `ops/smoke.sh`; open the app on a phone that still has the old version: the "update ready" banner appears, tapping it reloads, queued entries replay.
 5. Rollback: set `DP_VERSION` back to the last-known-good tag and `docker compose up -d app`. Never restore a pre-deploy database over new entries; use `restore-check` to inspect first.
 
+## 6b. Portable handoff
+```bash
+ops/export-source.sh <out-dir>          # git archive of daily-plate/ at HEAD + sha256 + MANIFEST (no secrets, data, node_modules, dist)
+ops/cleanroom-test.sh <archive.tar.gz>  # extracts into a temp dir, frozen install, verify, build, real server smoke
+```
+The archive is what to move to the desktop project folder or a fresh repository. Native modules are compiled on install; never copy an x86 `node_modules` to the Pi.
+
 ## 7. Operator CLI (inside the container)
 ```
 node dist/cli.js version                 # app, node, arch, sqlite, schema
@@ -66,7 +83,9 @@ node dist/cli.js invite [--name X] [--recover <userId>]
 node dist/cli.js users | sessions <userId> | revoke <userId> | passkeys <userId>
 node dist/cli.js backup [--label daily|weekly|premigration] [--dir /data/backups]
 node dist/cli.js verify-backup <file> | restore-check <file> [--scratch <dir>]
+node dist/benchmark/run.js --mode live   # explicit, rate-bounded catalog coverage run (needs DP_USDA_API_KEY; not automated)
 ```
+Test-only (refused under NODE_ENV=production): `node dist/dev/seed.js --profile week|months` builds a synthetic account; `DP_PROVIDER_STUB_DIR=<fixtures>` answers providers from fixtures.
 
 ## 8. Recovery card (for the owner)
 - Lost phone: `revoke <userId>`, then `invite --recover <userId>` and send the new link; she redeems it and re-adds Face ID unlock.

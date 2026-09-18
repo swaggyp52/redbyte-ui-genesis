@@ -25,4 +25,6 @@ pnpm --filter @daily-plate/web run test:e2e  # Playwright journeys against the b
 pnpm dev                                     # server on 127.0.0.1:8787 (data in apps/server/data)
 pnpm dev:web                                 # Vite on :5173, proxies /api
 pnpm plate invite --name "Mom"               # first invitation link
+ops/export-source.sh out && ops/cleanroom-test.sh out/daily-plate-src-*.tar.gz   # portable handoff proof
 ```
+Provider access from this project is limited to USDA FoodData Central (search, details, verified GTIN) and Open Food Facts (barcode). See `DATA_SOURCES.md` for the coverage benchmark and how live coverage is (not yet) measured.

@@ -33,3 +33,19 @@ Only decisions that shaped the code. Dates are 2026-09-18 unless noted.
 **D-15 Recipe deletion hides its food.** The recipe's derived food is hidden and unpinned rather than deleted so past diary entries keep resolving.
 
 **D-16 Playwright journey is one session.** The e2e suite shares one browser context so cookies and IndexedDB persist like on a real phone.
+
+**D-17 One ranking module.** `rankLocalFoods` and `rankCandidates` live in `@daily-plate/domain` and are the only ranking code; the Pi's search service and the phone's Add Food call the same functions so results cannot drift.
+
+**D-18 Database result → amount first.** A provider hit opens the portion sheet directly (identity, source note, warnings, household portions from the details call). The full label form is a secondary "Check or edit the label" action. Adding a database item also saves it as one of her foods so it is offline next time; that is the deliberate difference between saving and logging.
+
+**D-19 Barcode order.** Phone-saved foods, then Pi-saved foods, then Open Food Facts, then a USDA branded search accepted only on exact GTIN. A scanned code no source knows travels into the label form so the next scan is local.
+
+**D-20 Counts are never grams.** A typed count ("2 eggs") maps to the food's piece/serving unit; if none exists the amount is dropped with a visible hint rather than converted to 2 g.
+
+**D-21 Search means search.** Enter submits an online search; the first local hit is never opened implicitly. Every online response carries the query generation that issued it and is discarded if the query changed.
+
+**D-22 Type in rem.** All font sizes are rem so the platform's text scaling reaches the layout; rows wrap instead of clipping at 200%. Spacing stays in px.
+
+**D-23 Test-only provider stub and seed.** `DP_PROVIDER_STUB_DIR` answers USDA/OFF from fixtures and `dev/seed.js` builds synthetic accounts; both throw under `NODE_ENV=production`, which the image sets.
+
+**D-24 No commercial provider yet.** See DATA_SOURCES "Adding another provider". `FoodCandidate` is the extension point; nothing speculative is wired.
