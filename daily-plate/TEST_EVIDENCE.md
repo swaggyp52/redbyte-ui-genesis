@@ -27,8 +27,17 @@ Environment for every row: Anthropic cloud sandbox, Linux x86_64, Node v24.21.0,
 | E14 | `.github/workflows/daily-plate-cloud.yml` | Committed; runs on this PR's next push. Results (Chromium + WebKit journeys, x64 + arm64 container smoke, Windows source smoke) are recorded below when the run completes |
 | E15 | Live USDA / Open Food Facts calls | **BLOCKED**: egress denied (CONNECT 403) in this environment; no authentic captures exist yet |
 
-### Workflow results (fill from the Actions run)
-_pending first run_
+### Workflow results
+Run [35389064842](https://github.com/swaggyp52/redbyte-ui-genesis/actions/runs/35389064842) at 9101a99 (GitHub-hosted runners):
+
+| Job | Runner | Result |
+|---|---|---|
+| Verify (x64, Node 24) | ubuntu-24.04 | **PASS**: frozen install, `pnpm verify` (113 tests, builds), `pnpm audit --prod`, source archive artifact uploaded |
+| Container (x64) | ubuntu-24.04 | **Smoke PASS**: native image build; non-root read-only boot; `sqlite 3.53.4`; invite → entry → restart → entry recovered (45 g protein); backup `ok: true`; scratch restore `ok: true`; anonymous bootstrap 401. Image `amd64 sha256:f8b47bda…`. The job was marked failed only by the last "record identity" step writing to a missing directory (fixed in the next commit) |
+| Container (arm64) | ubuntu-24.04-arm (native ARM64) | **Smoke PASS** with the same steps; image `arm64 sha256:f05c33e5…`. Same record-step failure, same fix. A hosted ARM runner is not the Pi: no Pi resource figures come from this |
+| Journeys (iphone-chromium) | ubuntu-24.04 | _in progress at time of writing; recorded on completion_ |
+| Journeys (iphone-webkit) | ubuntu-24.04 | _in progress; WebKit is Playwright's engine, not Safari_ |
+| Windows source install + unit tests | windows-latest | _in progress_ |
 
 ## Acceptance matrix
 

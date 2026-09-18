@@ -9,10 +9,6 @@ on:
     paths:
       - 'daily-plate/**'
       - '.github/workflows/daily-plate-cloud.yml'
-  push:
-    branches: ['claude/daily-plate-**']
-    paths:
-      - 'daily-plate/**'
   workflow_dispatch:
 
 permissions:
@@ -118,7 +114,9 @@ jobs:
         run: ops/ci/container-smoke.sh daily-plate:ci
       - name: Record image identity
         run: |
+          mkdir -p ../test-results
           docker image inspect daily-plate:ci --format '{{.Architecture}} {{.Id}}' | tee ../test-results/container-${{ matrix.arch }}.txt
+          docker run --rm daily-plate:ci node dist/cli.js version | tee -a ../test-results/container-${{ matrix.arch }}.txt
       - uses: actions/upload-artifact@v4
         with:
           name: container-${{ matrix.arch }}-${{ github.sha }}
