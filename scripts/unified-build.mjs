@@ -3,7 +3,7 @@ import fs from 'fs';
 
 /**
  * unified-build.mjs
- * 
+ *
  * Orchestrates the full build pipeline:
  * 0. Pre-build all packages (so apps can resolve them cleanly)
  * 1. Sets UNIFIED_BUILD_INTERNAL=1 to prevent recursion.
@@ -30,11 +30,13 @@ try {
         'rb-lab-engine',
     ];
     for (const pkg of packagesToBuild) {
-        try {
-            execSync(`pnpm --filter @redbyte/${pkg} run build`, { stdio: 'pipe', env });
-        } catch (err) {
-            // Some packages may not have a build script, that's OK
+        const manifest = JSON.parse(fs.readFileSync(`packages/${pkg}/package.json`, 'utf8'));
+        if (!manifest.scripts?.build) {
+            console.log(`  ${pkg}: no build script`);
+            continue;
         }
+        console.log(`  Building ${pkg}...`);
+        execSync(`pnpm --filter @redbyte/${pkg} run build`, { stdio: 'inherit', env });
     }
 
     console.log('1. Building playground OS...');

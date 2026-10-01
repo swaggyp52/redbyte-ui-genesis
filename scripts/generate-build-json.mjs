@@ -1,6 +1,6 @@
 /**
  * generate-build-json.mjs
- * 
+ *
  * Generates a build.json file in the public directory (or dist).
  * Usage: node scripts/generate-build-json.mjs <output-dir> <env-tag>
  */
@@ -8,6 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { sourceState } from './source-state.mjs';
 
 const outputDir = process.argv[2] || './public';
 const envTag = process.argv[3] || 'dev';
@@ -28,7 +29,8 @@ const buildData = {
     sha,
     timestamp: new Date().toISOString(),
     env: envTag,
-    version: process.env.npm_package_version || '1.0.0'
+    version: process.env.RB_CANDIDATE_VERSION || process.env.npm_package_version || '1.0.0',
+    sourceDigest: sourceState().sourceDigest
 };
 
 const outputPath = path.join(outputDir, 'build.json');

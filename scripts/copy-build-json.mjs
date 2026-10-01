@@ -1,11 +1,12 @@
 /**
  * copy-build-json.mjs
- * 
+ *
  * Usage: node copy-build-json.mjs <target-dist-dir>
  */
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { sourceState } from './source-state.mjs';
 
 const targetDir = process.argv[2];
 
@@ -29,7 +30,8 @@ const data = JSON.stringify({
     sha,
     timestamp: new Date().toISOString(),
     env: isProd ? 'production' : (process.env.VITE_APP_ENV || 'dev'),
-    version: process.env.npm_package_version || '1.0.0'
+    version: process.env.RB_CANDIDATE_VERSION || process.env.npm_package_version || '1.0.0',
+    sourceDigest: sourceState().sourceDigest
 }, null, 2);
 
 const absoluteTarget = path.resolve(process.cwd(), targetDir);

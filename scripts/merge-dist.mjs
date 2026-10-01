@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { sourceState } from './source-state.mjs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { prepareEmptyOutputDir } from './merge-dist-lib.mjs';
@@ -85,7 +86,8 @@ async function merge() {
         const versionPayload = {
             sha: resolveGitSha(),
             builtAt: new Date().toISOString(),
-            version: appVersion,
+            version: process.env.RB_CANDIDATE_VERSION || appVersion,
+            sourceDigest: sourceState().sourceDigest,
             env: isProductionEnv ? 'production' : 'dev',
         };
         fs.writeFileSync(

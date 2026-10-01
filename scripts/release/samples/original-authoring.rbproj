@@ -1,0 +1,107 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "name": "Portable original sources",
+  "createdAt": "2026-09-30T00:00:00.000Z",
+  "updatedAt": "2026-09-30T00:00:00.000Z",
+  "circuit": {
+    "nodes": [
+      {
+        "id": "a",
+        "type": "INPUT",
+        "label": "A",
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "b",
+        "type": "INPUT",
+        "label": "B",
+        "position": {
+          "x": 0,
+          "y": 120
+        }
+      },
+      {
+        "id": "gate",
+        "type": "AND",
+        "label": "Both",
+        "position": {
+          "x": 180,
+          "y": 60
+        }
+      },
+      {
+        "id": "y",
+        "type": "OUTPUT",
+        "label": "Y",
+        "position": {
+          "x": 360,
+          "y": 60
+        }
+      }
+    ],
+    "connections": [
+      {
+        "id": "a-g",
+        "from": {
+          "nodeId": "a",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "gate",
+          "portName": "a"
+        }
+      },
+      {
+        "id": "b-g",
+        "from": {
+          "nodeId": "b",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "gate",
+          "portName": "b"
+        }
+      },
+      {
+        "id": "g-y",
+        "from": {
+          "nodeId": "gate",
+          "portName": "out"
+        },
+        "to": {
+          "nodeId": "y",
+          "portName": "in"
+        }
+      }
+    ]
+  },
+  "hdl": {
+    "top": "student_top",
+    "sources": [
+      {
+        "path": "rtl/student_top.vhd",
+        "language": "vhdl",
+        "text": "-- ORIGINAL student top\nlibrary ieee; use ieee.std_logic_1164.all;\nentity student_top is port(A,B: in std_logic; Y: out std_logic); end;\narchitecture rtl of student_top is begin Y <= A and B; end;\n"
+      },
+      {
+        "path": "rtl/student_helper.v",
+        "language": "verilog",
+        "text": "// ORIGINAL helper retained as a read-only source\nmodule student_helper(input a, input b, output y); assign y = a & b; endmodule\n"
+      },
+      {
+        "path": "constraints/original-A.xdc",
+        "language": "xdc",
+        "text": "# ORIGINAL A\nset_property PACKAGE_PIN V17 [get_ports A]\n"
+      },
+      {
+        "path": "constraints/original-B.xdc",
+        "language": "xdc",
+        "text": "# ORIGINAL B\nset_property PACKAGE_PIN V16 [get_ports A]\n"
+      }
+    ]
+  }
+}
