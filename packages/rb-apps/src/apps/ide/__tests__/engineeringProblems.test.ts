@@ -71,14 +71,29 @@ const failingRun = {
 } as unknown as RuntimeVerifyRun;
 
 describe('buildEngineeringProblems', () => {
+  it('reports one board issue across node, field and artifact aliases', () => {
+    const signal = relation({ fieldId: 'input_1', label: 'Input 1', nodeId: 'node-v2-1', direction: 'in' });
+    const problems = buildEngineeringProblems(baseInput({
+      relationships: index([signal]),
+      blockingIssues: [{ code: 'RBP1001', message: 'Required Basys3 I/O mappings are missing.', fixPath: { mode: 'hardware' } }],
+      mappingProjection: [{ logicalSignalId: 'node-v2-1', logicalLabel: 'node-v2-1', direction: 'in', artifactPortName: 'Input_1',
+        boardResourceId: null, boardResourceLabel: null, packagePin: null, ioStandard: 'LVCMOS33', exactXdcLine: '', required: true, conflictState: 'missing-pin' }],
+      exportErrors: ['node-v2-1', 'input_1', 'Input_1'].map(port => ({ id: port, code: 'RBEX1002', port,
+        title: 'Declared port missing Basys3 assignment', message: `Port ${port} has no assignment`, hint: [],
+        severity: 'error', owner: { kind: 'mapping', id: port }, actions: [], canonical: {} } as never)),
+    }));
+    expect(problems).toHaveLength(1);
+    expect(problems[0].message).toBe('Input 1 has no board resource');
+    expect(problems[0].objectLabel).toBe('Input 1');
+  });
   it('reports one problem per failing signal with the first failure and the owning object', () => {
     const problems = buildEngineeringProblems(baseInput({ lastRun: failingRun }));
     const failure = problems.find((problem) => problem.code === 'check-failed');
     expect(failure).toBeDefined();
     expect(failure?.message).toBe('SUM[2]: 2 checks fail in Default');
-    expect(failure?.detail).toContain('case 5');
+    expect(failure?.detail).toContain('Case 6 (tick 5)');
     expect(failure?.object).toEqual({ kind: 'case-tick', scenarioId: 'default', tick: 5 });
-    expect(failure?.document).toEqual({ kind: 'cases', scenarioId: 'default' });
+    expect(failure?.document).toEqual({ kind: 'scenario', scenarioId: 'default' });
     expect(failure?.freshness).toBe('current');
     expect(problems.filter((problem) => problem.code === 'check-failed')).toHaveLength(1);
   });

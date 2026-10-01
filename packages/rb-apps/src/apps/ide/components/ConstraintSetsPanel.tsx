@@ -7,10 +7,11 @@ import { parseXdcPins } from '../../../import/xdcImport';
 
 /**
  * Constraint-sets panel — a project may carry several named XDC constraint sets
- * (mirroring Vivado's constrs_1 / constrs_2), with exactly one active. This is
+ * with one captured set or the live mapping active. This is
  * the Board & Constraints UI over the store's constraint-set authority: add a
  * set (captured from the current pin assignments), rename, remove, and choose
- * the active one. The active set is what Build & Export packages.
+ * the active one. Activation restores captured structured assignments; ordinary
+ * mapping edits return to live mapping. Reference text never becomes authority.
  *
  * Honest boundary: RedByte reads and organizes XDC text; it never runs Vivado
  * or programs a board. The pin counts come from the same bounded XDC reader used
@@ -26,7 +27,7 @@ export interface ConstraintSetsPanelProps {
   readonly onAdd: (name: string, xdcText: string) => { ok: boolean; error?: string } | void;
   readonly onRemove: (id: string) => void;
   readonly onRename: (id: string, name: string) => { ok: boolean; error?: string } | void;
-  readonly onSetActive: (id: string) => void;
+  readonly onSetActive: (id: string | null) => { ok: boolean; error?: string } | void;
 }
 
 function pinCount(xdcText: string): number {
@@ -52,6 +53,11 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
 
   const active = activeConstraintSet(doc);
   const canCapture = !!liveXdcText && liveXdcText.trim().length > 0;
+
+  const activate = (id: string | null) => {
+    const result = onSetActive(id);
+    setError(result && !result.ok ? result.error ?? 'Could not activate set' : null);
+  };
 
   const submitAdd = () => {
     const chosen = name.trim() || `Constraint set ${doc.sets.length + 1}`;
@@ -83,10 +89,11 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
         <span className="ide-constraint-sets-count" data-testid="ide-constraint-sets-count">
           {doc.sets.length} set{doc.sets.length === 1 ? '' : 's'}
         </span>
-        {doc.sets.length === 0 ? <span className="ide-constraint-sets-live-note">live mapping is active · packaged as top.xdc</span> : null}
+        {!active ? <span className="ide-constraint-sets-live-note">live mapping is active · packaged as top.xdc</span> : null}
       </summary>
       <p className="ide-constraint-sets-note">
-        One set is active at a time and is what Build &amp; Export packages as <code>top.xdc</code>.
+        Set active restores captured pin assignments. Editing assignments returns to Live mapping.
+        The current assignments are what Build &amp; Export packages as <code>top.xdc</code>.
       </p>
 
       {error ? (
@@ -95,13 +102,15 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
         </div>
       ) : null}
 
-      {doc.sets.length === 0 || doc.activeId === null ? (
-        <div className="ide-constraint-sets-live" data-testid="ide-constraint-sets-live" aria-label="Live mapping is the active constraints">
+        <div className="ide-constraint-sets-live" data-testid="ide-constraint-sets-live" aria-label={!active ? 'Live mapping is the active constraints' : 'Return to live mapping'}>
           <span className="ide-constraint-sets-live-name">Live mapping</span>
           <code>{livePinCount ?? pinCount(liveXdcText ?? '')} pins</code>
-          <span className="ide-constraint-sets-live-note">active · packaged as top.xdc</span>
+          {!active ? <span className="ide-constraint-sets-live-note">active · packaged as top.xdc</span> : (
+            <button type="button" className="ide-constraint-set-activate" data-testid="ide-constraint-sets-use-live" onClick={() => activate(null)}>
+              Use live mapping
+            </button>
+          )}
         </div>
-      ) : null}
       {doc.sets.length === 0 ? (
         <p className="ide-constraint-sets-empty" data-testid="ide-constraint-sets-empty">
           Capture the live assignments as a named set to version them.
@@ -122,9 +131,10 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
                   type="button"
                   className="ide-constraint-set-activate"
                   data-testid={`ide-constraint-set-activate-${set.id}`}
-                  onClick={() => onSetActive(set.id)}
+                  onClick={() => activate(set.id)}
+                  disabled={!set.mappingSnapshot}
                   aria-pressed={isActive}
-                  title={isActive ? 'Active constraint set' : 'Make active'}
+                  title={!set.mappingSnapshot ? 'Reference text has no captured mapping; capture current pins to create an activatable set' : isActive ? 'Active constraint set' : 'Restore these captured pin assignments'}
                 >
                   <span className={`ide-constraint-set-dot${isActive ? ' is-on' : ''}`} aria-hidden="true" />
                   {isActive ? (
@@ -132,7 +142,7 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
                       Active
                     </span>
                   ) : (
-                    <span className="ide-constraint-set-activate-label">Set active</span>
+                    <span className="ide-constraint-set-activate-label">{set.mappingSnapshot ? 'Set active' : 'Reference only'}</span>
                   )}
                 </button>
 
@@ -214,10 +224,10 @@ export const ConstraintSetsPanel: React.FC<ConstraintSetsPanelProps> = ({
       {active ? (
         <details className="ide-constraint-sets-preview" data-testid="ide-constraint-sets-active-preview">
           <summary>
-            Active: <strong>{active.name}</strong> · {pinCount(active.xdcText)} pins
+            Active: <strong>{active.name}</strong> · {pinCount(liveXdcText ?? active.xdcText)} pins
           </summary>
           <pre className="ide-constraint-sets-xdc" data-testid="ide-constraint-sets-active-xdc">
-            {active.xdcText.trim() || '(no constraint text)'}
+            {(liveXdcText ?? active.xdcText).trim() || '(no constraint text)'}
           </pre>
         </details>
       ) : null}

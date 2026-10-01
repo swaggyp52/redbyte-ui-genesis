@@ -37,6 +37,7 @@ import {
   addConstraintSet as addConstraintSetToDoc,
   createEmptyConstraintSets,
   normalizeConstraintSets,
+  getConstraintSetMapping,
   removeConstraintSet as removeConstraintSetFromDoc,
   renameConstraintSet as renameConstraintSetInDoc,
   setActiveConstraintSet as setActiveConstraintSetInDoc,
@@ -575,7 +576,7 @@ export interface ProjectRuntimeState {
   /** Rename a constraint set. Returns ok or an error (e.g. duplicate name). */
   renameConstraintSet: (id: string, name: string) => { ok: true } | { ok: false; error: string };
   /** Set the active constraint set. */
-  setActiveConstraintSet: (id: string) => void;
+  setActiveConstraintSet: (id: string | null) => { ok: boolean; error?: string };
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -663,6 +664,14 @@ interface DesignHistorySnapshot {
 }
 
 interface RuntimeSeedState extends PersistedRuntimeState {
+  projectKind: ProjectKind;
+  sourceExampleId: string | null;
+  scenarioAuthority: ScenarioAuthority;
+  importMeta: IdeImportMeta | null;
+  activeLabTaskId: string | null;
+  hardwareMappingV2: HardwareMappingDocumentV2;
+  hierarchy: ProjectHierarchyDocument;
+  verifyRunArchive: RuntimeVerifyRun[];
   activeTop: string;
   sourceModel: ProjectSourceModel;
   importedWaveform: ProviderWaveform | null;
@@ -886,10 +895,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       loadFromProject: (project, testbench, workspace) => {
         const circuit = cloneCircuit(project.circuit);
         const legacyProjectIoRows = ioRowsFromProject(project);
+        const restoredConstraintSets = project.constraintSets
+          ? normalizeConstraintSets(project.constraintSets)
+          : buildConstraintSetsFromSources(deriveSourceModel(project));
         const {
           hardwareMappingV2,
           projectIoRows,
-        } = deriveAuthoritativeHardwareState(circuit, pickHardwareMappingV2FromProject(project));
+        } = deriveAuthoritativeHardwareState(circuit, restoredConstraintSets.activeId
+          ? getConstraintSetMapping(restoredConstraintSets, restoredConstraintSets.activeId)
+          : pickHardwareMappingV2FromProject(project));
         const incomingProjectId = (project.meta?.projectId ?? '').trim();
         const persistedProjectKind = normalizeProjectKind(project.meta?.projectKind, 'saved');
         const rawSourceExampleId =
@@ -1052,7 +1066,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           importedWaveform: workspace?.runEvidence?.importedWaveform ? structuredClone(workspace.runEvidence.importedWaveform) : null,
           vcdAnalyzer: normalizeVcdAnalyzerConfig(workspace?.runEvidence?.vcdAnalyzer),
           // Imported XDC constraint files seed the project's constraint sets.
-          constraintSets: buildConstraintSetsFromSources(deriveSourceModel(project)),
+          constraintSets: restoredConstraintSets,
           designPast: [],
           designFuture: [],
           designRevision: 0,
@@ -1118,6 +1132,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             hardwareMappingV2,
             projectIoRows,
+            constraintSets: { ...state.constraintSets, activeId: null },
             scenarioAuthority:
               state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
             projectHealthCore: {
@@ -1154,6 +1169,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             hardwareMappingV2,
             projectIoRows,
+            constraintSets: { ...state.constraintSets, activeId: null },
             scenarioAuthority:
               state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
             projectHealthCore: {
@@ -1173,6 +1189,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             hardwareMappingV2,
             projectIoRows,
+            constraintSets: { ...state.constraintSets, activeId: null },
             scenarioAuthority:
               state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
             projectHealthCore: {
@@ -1202,6 +1219,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           return {
             hardwareMappingV2: synchronizedDoc,
             projectIoRows,
+            constraintSets: { ...state.constraintSets, activeId: null },
             scenarioAuthority:
               state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
             projectHealthCore: {
@@ -2384,7 +2402,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         let error: string | undefined;
         set((state) => {
           try {
-            const next = addConstraintSetToDoc(state.constraintSets, name, xdcText);
+            const next = addConstraintSetToDoc(state.constraintSets, name, xdcText, state.hardwareMappingV2);
             id = next.sets[next.sets.length - 1]?.id ?? '';
             return {
               constraintSets: next,
@@ -2419,10 +2437,25 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         return error ? { ok: false, error } : { ok: true };
       },
       setActiveConstraintSet: (id) => {
-        set((state) => ({
-          constraintSets: setActiveConstraintSetInDoc(state.constraintSets, id),
-          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
-        }));
+        let error: string | undefined;
+        set((state) => {
+          if (id === state.constraintSets.activeId) return state;
+          try {
+            const constraintSets = setActiveConstraintSetInDoc(state.constraintSets, id);
+            const restored = id === null ? {} : deriveAuthoritativeHardwareState(
+              state.circuit, getConstraintSetMapping(constraintSets, id),
+            );
+            return {
+              ...restored, constraintSets,
+              scenarioAuthority: state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
+              projectHealthCore: { ...state.projectHealthCore, dirtySinceVerify: true, dirtySinceExport: true },
+            };
+          } catch (e) {
+            error = e instanceof Error ? e.message : 'Could not activate constraint set';
+            return state;
+          }
+        });
+        return error ? { ok: false, error } : { ok: true };
       },
       startBlankProject: () => {
         set((state) => {
@@ -3160,7 +3193,7 @@ export function mergePersistedRuntimeState(
   const detachedScenarioAuthority = shouldResetDetachedStarterCompareState
     ? deriveScenarioAuthority({
         projectKind: restoredProjectKind,
-        activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
+        activeExampleId: null,
         hasVectors: detachedProjectVectors.length > 0,
         hasAssertions: false,
         dirtySinceVerify: true,
@@ -3286,11 +3319,11 @@ function inferDetachedExampleProvenance(input: {
   projectDescription: string;
 }): IdeExampleDefinition | null {
   if (input.projectKind === 'example') {
-    return getIdeExampleById(input.sourceExampleId ?? input.activeExampleId ?? '');
+    return getIdeExampleById(input.sourceExampleId ?? input.activeExampleId ?? '') ?? null;
   }
   const directExampleId = input.sourceExampleId ?? input.activeExampleId;
   if (directExampleId) {
-    return getIdeExampleById(directExampleId);
+    return getIdeExampleById(directExampleId) ?? null;
   }
   const normalizedName = input.projectName.trim().toLowerCase();
   const normalizedDescription = input.projectDescription.trim().toLowerCase();
@@ -4031,7 +4064,7 @@ function ensureVectorInputCoverage<T extends TestVector>(
   let authoredClockValue: 0 | 1 = clockPolicy?.startLevel === 1 ? 1 : 0;
 
   return vectors.map((vector) => {
-    const nextInputs: Record<string, 0 | 1> = { ...(vector.inputs ?? {}) };
+    const nextInputs = normalizeVectorBinaryRecord(vector.inputs);
     const normalizedInputKeys = new Set(
       Object.keys(nextInputs)
         .map((key) => normalizePortToken(key))
@@ -4112,15 +4145,19 @@ function buildRowRekeyMap(
   return rekeyMap;
 }
 
+function normalizeVectorBinaryRecord(record: TestVector['inputs'] | undefined): Record<string, 0 | 1> {
+  return Object.fromEntries(Object.entries(record ?? {}).map(([key, value]) => [key, value === true || value === 1 ? 1 : 0]));
+}
+
 function rekeyVectorSignalRecord(
-  record: Record<string, 0 | 1> | undefined,
+  record: TestVector['inputs'] | undefined,
   rekeyMap: Map<string, string>
 ): Record<string, 0 | 1> {
   if (!record) return {};
 
   const nextRecord: Record<string, 0 | 1> = {};
   const seen = new Set<string>();
-  const entries = Object.entries(record);
+  const entries = Object.entries(normalizeVectorBinaryRecord(record));
 
   const applyEntries = (preferAliasKeys: boolean) => {
     for (const [rawKey, value] of entries) {
@@ -4165,7 +4202,7 @@ function ensureVectorOutputCoverage<T extends TestVector>(
   if (outputRows.length === 0) return cloneVectors(vectors);
 
   return vectors.map((vector) => {
-    const nextExpected: Record<string, 0 | 1> = { ...(vector.expected ?? {}) };
+    const nextExpected = normalizeVectorBinaryRecord(vector.expected);
     const normalizedExpectedKeys = new Set(
       Object.keys(nextExpected)
         .map((key) => normalizePortToken(key))
@@ -4645,7 +4682,7 @@ function reconcileTestbenchAfterDesignChange(input: {
     snapshot.projectVectors !== undefined &&
     !hasSameVectorIoContract(state.projectIoRows, nextIoRows);
   const sourceProjectVectors = shouldRestoreSnapshotVectors
-    ? cloneVectors(snapshot.projectVectors)
+    ? cloneVectors(snapshot.projectVectors ?? [])
     : cloneVectors(state.projectVectors);
   const projectVectorRows = shouldRestoreSnapshotVectors
     ? snapshot.projectIoRows
@@ -4699,7 +4736,7 @@ function reconcileTestbenchAfterDesignChange(input: {
     ? stripExpectedOutputs(nextProjectVectors)
     : nextProjectVectors;
   const customVectors = shouldDiscardInheritedStarterExpectations
-    ? stripExpectedOutputs(nextCustomVectors)
+    ? nextCustomVectors.map(vector => ({ ...vector, expected: {} }))
     : nextCustomVectors;
   const scenarios = shouldDiscardInheritedStarterExpectations
     ? nextScenarios.map((scenario) => {

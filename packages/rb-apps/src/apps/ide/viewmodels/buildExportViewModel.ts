@@ -1,4 +1,5 @@
-import { encodeRBProject, type RBProject } from '../../../export/projectFormat';
+import { deriveSourceModel, encodeRBProject, type RBProject } from '../../../export/projectFormat';
+import type { HdlSource } from '../../../fpga/toolchainBackend';
 import { compareCodepoint } from '../../../export/codepointSort';
 import {
   exportProjectAsBasys3,
@@ -203,6 +204,7 @@ export function buildExportViewModel(
   const hierarchyVhdl = generateHierarchicalVhdlProject(project);
   const flattenedProject = flattenProjectMacros({
     ...project,
+    sourceModel: project.sourceModel ?? (project.hdl?.sources.length ? deriveSourceModel(project) : undefined),
     circuit: elaborateProjectHierarchy(project.circuit, project.hierarchy),
   });
   const runtimeBackedTestbench = buildRuntimeBackedTestbench(
@@ -222,6 +224,7 @@ export function buildExportViewModel(
     if (exportResult.projectProjection) {
       exportResult.projectProjection = {
         ...exportResult.projectProjection,
+        circuit: project.circuit,
         hierarchy: project.hierarchy,
         hdl: {
           ...(exportResult.projectProjection.hdl ?? { top: resolveTopEntity(project), sources: [] }),
@@ -712,12 +715,29 @@ function buildArtifacts(
       status: blocked ? 'blocked' : 'ready',
       note: 'Hardware manager programming scaffold for Basys3 bring-up.',
     });
+    // The manifest describes final delivered bytes, including provenance headers
+    // and newline normalization. Original authoring sources stay in sourceModel.
+    const deliveredProject: RBProject = {
+      ...projectedProject,
+      hdl: {
+        ...(projectedProject.hdl ?? { top: topEntity, sources: [] }),
+        sources: (projectedProject.hdl?.sources ?? []).map((source: HdlSource) => ({
+          ...source,
+          text: artifacts.find((artifact) => artifact.category === 'design-source' && artifact.path === source.path)?.content ?? source.text,
+        })),
+      },
+      fpga: {
+        ...(projectedProject.fpga ?? { board: 'basys3', top: topEntity }),
+        constraints: { type: 'xdc', text: artifacts.find((artifact) => artifact.path === 'top.xdc')!.content },
+      },
+    };
+    const deliveredProjectJson = encodeRBProject(deliveredProject);
     artifacts.push({
       path: 'project.rbproj.json',
       kind: 'json',
       category: 'build-artifact',
-      content: normalizeArtifactContent(rbprojJson),
-      preview: buildPreview(rbprojJson),
+      content: normalizeArtifactContent(deliveredProjectJson),
+      preview: buildPreview(deliveredProjectJson),
       status: 'ready',
       note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
     });
@@ -890,8 +910,7 @@ function canonicalizeExecutionPlanVectors(
           .map((key) => [
             key,
             vector.inputs?.[key] === true ||
-            vector.inputs?.[key] === 1 ||
-            vector.inputs?.[key] === '1'
+            vector.inputs?.[key] === 1
               ? 1
               : 0,
           ])
@@ -902,8 +921,7 @@ function canonicalizeExecutionPlanVectors(
           .map((key) => [
             key,
             vector.expected?.[key] === true ||
-            vector.expected?.[key] === 1 ||
-            vector.expected?.[key] === '1'
+            vector.expected?.[key] === 1
               ? 1
               : 0,
           ])

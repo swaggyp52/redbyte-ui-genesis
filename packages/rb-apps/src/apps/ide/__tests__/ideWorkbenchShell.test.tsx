@@ -6,8 +6,8 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { IdeWorkbenchShell } from '../components/IdeWorkbenchShell';
 import { workspacePreferencesStore } from '../workspacePreferences';
 
-afterEach(() => cleanup());
-beforeEach(() => workspacePreferencesStore.reset());
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => { vi.stubGlobal('innerWidth', 1440); workspacePreferencesStore.reset(); });
 
 function renderShell(
   overrides: Partial<React.ComponentProps<typeof IdeWorkbenchShell>> = {}
@@ -73,9 +73,10 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     expect(view.container.querySelector('[class*="dock-toggle-rail"]')).toBeNull();
   });
 
-  it('shows the console only for blocking diagnostics or an explicitly expanded tool', () => {
+  it('keeps advisory output restorable and expands blocking diagnostics', () => {
     const quiet = renderShell({ console: <div>Quiet output</div>, consoleHasEntries: true, consoleMode: 'auto' });
-    expect(quiet.queryByTestId('ide-workbench-console')).toBeNull();
+    expect(quiet.getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
+    expect(quiet.getByTestId('ide-console-toggle')).toHaveAttribute('aria-expanded', 'false');
     quiet.unmount();
 
     const blocking = renderShell({
@@ -85,6 +86,18 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     });
     expect(blocking.getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'blocking');
     expect(blocking.getByTestId('ide-workbench-console').textContent).toContain('disconnected output');
+  });
+
+  it('keeps the construction library after selection at compact width and exposes the inspector explicitly', () => {
+    vi.stubGlobal('innerWidth', 1100);
+    const view = renderShell();
+    expect(view.getByTestId('library')).toBeTruthy();
+    expect(view.queryByTestId('inspector')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-show-right-dock'));
+    expect(view.getByTestId('inspector')).toBeTruthy();
+    fireEvent.click(view.getByTestId('ide-hide-right-dock'));
+    fireEvent.click(view.getByTestId('ide-show-left-dock'));
+    expect(view.getByTestId('library')).toBeTruthy();
   });
 
   it('exposes keyboard-resizable, hideable panels through direct workbench controls', () => {

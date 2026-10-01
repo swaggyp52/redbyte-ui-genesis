@@ -3,20 +3,21 @@ import React from 'react';
 import type { RuntimeVerifyRun } from '../../projectRuntime';
 import { getRuntimeVerifyRunId } from '../../runArchive';
 import { summarizeRepetitions, outputDigest } from '../../runDeterminism';
+import { describeRecordingState, type RecordingState } from './recordingState';
 import './run-identity.css';
 
-export function RunIdentityStrip({ run, archive, changes, onSelect, onDifference }: {
+export function RunIdentityStrip({ run, archive, changes, recording, onSelect, onDifference }: {
   run: RuntimeVerifyRun;
   archive: readonly RuntimeVerifyRun[];
   changes: readonly string[];
+  recording?: RecordingState;
   onSelect?: (runId: string) => void;
   onDifference?: (signal: string, tick: number) => void;
 }) {
   const repetition = summarizeRepetitions(run, archive);
   const digest = run.outputDigest ?? outputDigest(run);
-  const records = archive.filter(entry => entry.scenarioId === run.scenarioId);
-  const checks = run.assertionStatus === 'not-configured' || run.runKind === 'trace' ? 0 : run.report.rows.length;
-  const failed = checks ? run.report.rows.filter(row => row.status === 'fail').length : 0;
+  const state = recording ?? describeRecordingState({ run, archive, changes, stale: false });
+  const records = archive.filter(entry => entry.projectId === run.projectId && entry.scenarioId === run.scenarioId);
   const hasRepeats = repetition.runs.length > 1;
   const repeatStatus = <span data-testid="ide-run-repetition" role="status">
     {run.identity ? hasRepeats ? `${repetition.runs.length} runs · ${repetition.identical} identical` : '1 run · no repeat yet' : 'Older recording · identity unavailable'}
@@ -25,15 +26,16 @@ export function RunIdentityStrip({ run, archive, changes, onSelect, onDifference
     ['Design', run.identity?.design], ['Stimulus', run.identity?.stimulus],
     ['Engine', run.identity?.engine], ['Output', digest],
   ] as const;
-  return <section className="rb-run-identity" data-testid="ide-run-identity" aria-label="Recorded execution identity">
+  return <section className="rb-run-identity" data-testid="ide-run-identity" data-run-id={state.runId ?? ''} data-currency={state.currency} aria-label="Recorded execution identity">
     <div className="rb-run-identity__status">
-      <strong className="rb-run-identity__label">Recorded {run.sequence ? `#${run.sequence}` : 'run'}</strong>
+      <strong className="rb-run-identity__label">Recorded {state.ordinal ? `#${state.ordinal}` : 'run'}</strong>
       {hasRepeats && repeatStatus}
 
-      <span data-testid="ide-run-check-result" data-check-status={run.assertionStatus === 'not-evaluated' ? 'not-evaluated' : checks === 0 ? 'not-configured' : failed > 0 ? 'fail' : 'pass'}>{run.assertionStatus === 'not-evaluated' ? 'Checks not evaluated' : checks === 0 ? 'No checks · outputs recorded' : failed > 0 ? failed + ' of ' + checks + ' checks failed' : checks + ' checks passed'}</span>
+      <span data-testid="ide-run-check-result" data-check-status={state.verdict === 'unchecked' ? 'not-configured' : state.verdict}>{state.label}</span>
+      {state.currencyLabel && <span data-testid="ide-run-currency">{state.currencyLabel}</span>}
       {records.length > 1 && onSelect && <label>Recording <select aria-label="Recorded run" value={getRuntimeVerifyRunId(run)} onChange={event => onSelect(event.target.value)}>
-        {records.map((entry, index) => <option key={getRuntimeVerifyRunId(entry)} value={getRuntimeVerifyRunId(entry)}>
-          {entry.sequence ?? index + 1} · {entry.assertionStatus === 'not-configured' ? 'No checks' : entry.status === 'fail' ? 'Checks failed' : 'Checks passed'} · {(entry.outputDigest ?? outputDigest(entry)).slice(0, 8)}
+        {state.options.map(option => <option key={option.runId} value={option.runId}>
+          {option.label} · {option.verdictLabel}
         </option>)}
       </select></label>}
     <WorkbenchDisclosure className="rb-run-identity__details" data-testid="ide-run-details" summary="Run details">
@@ -53,7 +55,8 @@ export function RunIdentityStrip({ run, archive, changes, onSelect, onDifference
       <dl>{values.map(([label, value]) => <div key={label}><dt>{label}</dt><dd><code>{value ?? 'Unavailable'}</code></dd></div>)}</dl>
       <p>Browser execution · no physical hardware evidence. Output digest is FNV-1a over recorded engine samples, excluding display aliases, timestamps and check results. Repetition counts cover recordings retained in this project; identical means the samples also agree.</p>
       <ol>{records.map((entry, index) => <li key={getRuntimeVerifyRunId(entry)}>
-        <button type="button" onClick={() => onSelect?.(getRuntimeVerifyRunId(entry))}>Run {entry.sequence ?? index + 1}</button>{' '}
+        <button type="button" onClick={() => onSelect?.(getRuntimeVerifyRunId(entry))}>Recording {state.options[index].ordinal}</button>{' '}
+        <span>{state.options[index].verdictLabel}</span>{' '}
         <code data-recording-output-digest={entry.outputDigest ?? outputDigest(entry)}>{entry.outputDigest ?? outputDigest(entry)}</code>
         {entry.reproducedFromRunId && <span> · reproduced</span>}
       </li>)}</ol>

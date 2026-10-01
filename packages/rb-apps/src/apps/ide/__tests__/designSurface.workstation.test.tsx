@@ -294,11 +294,31 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
-    expect(view.getByTestId('ide-show-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-show-left-dock')).toBeNull();
     expect(view.getByTestId('ide-right-dock')).toBeTruthy();
     expect(view.queryByTestId('ide-design-library-workspace-toggle')).toBeNull();
     expect(view.queryByTestId('ide-design-library-collapse')).toBeNull();
+  });
+
+  it('shows one actionable missing-input issue and readable independent compiler warnings', () => {
+    const gate = { id: 'node-v2-2', type: 'AND', position: { x: 90, y: 0 }, rotation: 0, config: {}, state: {} };
+    useCircuitStore.setState({ circuit: { nodes: [gate], connections: [] } });
+    const missing: IdeDiagnostic = { ...WARNING_DIAGNOSTIC, id: 'required-a', code: 'IR005',
+      message: "Primitive 'node-v2-2' (AND) has unconnected required input port 'a'",
+      owner: { kind: 'port', nodeId: gate.id, portName: 'a' } };
+    const independent: IdeDiagnostic = { ...missing, id: 'other-warning', code: 'IR006',
+      message: "Primitive 'node-v2-2' has a separate compiler concern" };
+    const view = renderSurface({ compilerStatus: {
+      dirtySinceVerify: true, dirtySinceExport: true, errorCount: 0, warningCount: 2,
+      diagnostics: [missing, independent],
+    } });
+    act(() => useLogicViewStore.getState().selectNode(gate.id));
+    const guidance = view.getByTestId('ide-design-inspector-guidance');
+    expect(guidance.textContent).toContain('Input not wired yet');
+    expect(guidance.textContent).not.toContain('unconnected required input');
+    expect(guidance.textContent).not.toContain('node-v2-2');
+    expect(guidance.textContent).toContain("Primitive 'AND gate' has a separate compiler concern");
   });
 
   it('renders the selection inspector without collapse or reveal controls', async () => {
@@ -742,8 +762,13 @@ describe('DesignSurface workstation redesign', () => {
       },
     });
 
-    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('blocking');
-    expect(view.getByTestId('ide-mode-design').getAttribute('data-console-state')).toBe('blocking');
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
+    expect(view.getByTestId('ide-mode-design').getAttribute('data-console-state')).toBe('collapsed');
+    expect(view.getByTestId('ide-design-authoring-summary-counts').textContent).toContain('1E');
+    fireEvent.click(view.getByTestId('ide-console-toggle'));
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('expanded');
+    fireEvent.click(view.getByTestId('ide-console-toggle'));
+    expect(view.getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
     fireEvent.click(view.getByTestId('ide-design-open-diagnostics'));
     await waitFor(() => {
       expect(view.getByTestId('ide-design-diagnostics-dialog')).toBeTruthy();

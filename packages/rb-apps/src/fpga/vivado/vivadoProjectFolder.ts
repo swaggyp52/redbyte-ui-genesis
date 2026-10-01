@@ -109,10 +109,25 @@ export async function buildVivadoProjectFolderEntries(
     })
     .sort((left, right) => compareCodepoint(left.path, right.path));
 
-  const extraDesignSourcePaths = importedVhdArtifacts.map((artifact) => {
-    const tail = artifact.path.trim().replace(/^imported\//i, '').replace(/\\/g, '/');
-    return `imported/${tail}`;
+  // Native hierarchy companions are design sources too. Preserve their emitted
+  // leaf-first order; imported companions retain their existing sorted layout.
+  const nativeVhdArtifacts = input.artifacts.filter((artifact) => {
+    const name = artifact.path.trim().toLowerCase();
+    return name.endsWith('.vhd') && name !== 'top.vhd' && name !== 'testbench.vhd'
+      && !name.startsWith('imported/');
   });
+  const designCompanions = [
+    ...importedVhdArtifacts.map((artifact) => ({ artifact,
+      relativePath: `imported/${artifact.path.trim().replace(/^imported\//i, '').replace(/\\/g, '/')}` })),
+    ...nativeVhdArtifacts.map((artifact) => ({ artifact, relativePath: `new/${artifact.path.trim().replace(/\\/g, '/')}` })),
+  ];
+  for (const { relativePath } of designCompanions) {
+    if (relativePath.split('/').some((segment) => segment === '..' || segment === '.' || !segment) || relativePath.includes(':')) {
+      throw new Error(`Vivado export aborted: invalid design-source path ${relativePath}`);
+    }
+  }
+
+  const extraDesignSourcePaths = designCompanions.map(({ relativePath }) => relativePath);
 
   const xprText = buildVivadoXpr({
     projectFileName: `${slug}.xpr`,
@@ -184,10 +199,9 @@ export async function buildVivadoProjectFolderEntries(
     { name: constraintsPath, text: constraintsText },
   ];
 
-  for (const artifact of importedVhdArtifacts) {
-    const insideImported = artifact.path.replace(/^imported\//i, '').trim().replace(/\\/g, '/');
+  for (const { artifact, relativePath } of designCompanions) {
     entries.push({
-      name: `${slug}/${slug}.srcs/sources_1/imported/${insideImported}`,
+      name: `${slug}/${slug}.srcs/sources_1/${relativePath}`,
       text: artifact.content,
     });
   }
@@ -221,8 +235,8 @@ export interface BuildVivadoXprInput {
 function buildExtraDesignVhdlXmlBlocks(paths: string[] | undefined): string[] {
   if (!paths?.length) return [];
   const lines: string[] = [];
-  const sorted = [...paths].sort((left, right) => compareCodepoint(left, right));
-  for (const raw of sorted) {
+  // The caller orders native companions by dependency, imports by codepoint.
+  for (const raw of paths) {
     const normalized = raw.replace(/\\/g, '/').replace(/^\/+/, '');
     lines.push(`      <File Path="$PSRCDIR/sources_1/${xmlAttr(normalized)}">`);
     lines.push('        <FileInfo>');

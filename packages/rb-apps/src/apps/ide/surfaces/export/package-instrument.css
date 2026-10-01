@@ -46,10 +46,10 @@
 
 /* Files: tree (left) · preview (centre) · handoff (right). */
 .ide-root .rb-pkg-files { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-.ide-root .rb-pkg-section-header { display: flex; align-items: baseline; gap: 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 0 var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-pkg-section-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; flex: none; min-height: var(--wb-toolwindow-header-h); padding: 4px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-pkg-section-header > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ide-root .rb-pkg-section-header h3 { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
-.ide-root .rb-pkg-section-header > p { margin: 0 0 0 auto; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-pkg-section-header > p { flex-basis: 100%; margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-mono); white-space: normal; overflow-wrap: anywhere; }
 .ide-root .rb-pkg-file-workspace { display: grid; grid-template-columns: minmax(210px, 250px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
 .ide-root .rb-pkg-file-list { display: flex; flex-direction: column; min-height: 0; overflow: auto; border-right: 1px solid var(--wb-border-strong); }
 .ide-root .rb-pkg-file-groups { display: block; }
@@ -95,10 +95,12 @@
 /* The file name and its note give way; the two actions do not. Without this the header shrank
    the buttons instead of the text and "Download file" was cut off at 1280px - an inline-flex
    group clips, it does not ellipsise, so there was nothing to say it had been cut. */
-.ide-root .rb-pkg-preview header > div { display: flex; align-items: baseline; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.ide-root .rb-pkg-preview header > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; flex: 1 1 auto; min-width: 0; }
 .ide-root .rb-pkg-preview header > div > span { color: var(--wb-text-3); font: 600 var(--wb-text-xs) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-pkg-preview header strong { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-mono); }
-.ide-root .rb-pkg-preview header p { margin: 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-pkg-preview header p { margin: 0; flex-basis: 100%; color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: normal; overflow-wrap: anywhere; }
+.ide-root .rb-pkg-preview header strong { overflow-wrap: anywhere; }
+.ide-root .rb-pkg-preview > header { flex-wrap: wrap; padding-block: var(--wb-space-2); }
 .ide-root .rb-pkg-preview-actions,
 /* Same element, higher specificity than the `header > div` rule above it: without this the
    actions were flex: 1 1 auto and shrank instead of the file name. */

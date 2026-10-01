@@ -141,7 +141,7 @@
 /* ── Application frame ─────────────────────────────────────────────────────── */
 
 .ide-root {
-  grid-template-rows: var(--wb-cmdbar-h) minmax(0, 1fr) var(--wb-status-h);
+  grid-template-rows: auto minmax(0, 1fr) var(--wb-status-h);
   grid-template-columns: minmax(0, 1fr);
   height: 100dvh;
   overflow: hidden;
@@ -184,12 +184,14 @@
 /* Command bar ───────────────────────────────────────────────────────────── */
 
 .ide-root .wb-cmdbar {
+  flex-wrap: wrap;
   z-index: 50;
   display: flex;
   align-items: center;
   gap: var(--wb-space-1);
   min-width: 0;
-  height: var(--wb-cmdbar-h);
+  min-height: var(--wb-cmdbar-h);
+  height: auto;
   padding: 0 var(--wb-space-2);
   border-bottom: 1px solid var(--wb-frame-border);
   color: var(--wb-frame-text);
@@ -281,7 +283,7 @@
 .ide-root .wb-cmdbar-fact[data-tone='ok'] { color: var(--wb-ok); }
 .ide-root .wb-cmdbar-fact[data-tone='warn'] { color: #f2b544; }
 .ide-root .wb-cmdbar-fact[data-tone='error'] { color: #ff7b7b; }
-.ide-root .wb-cmdbar-center { display: flex; flex: 1 1 auto; justify-content: center; min-width: 0; padding: 0 var(--wb-space-2); }
+.ide-root .wb-cmdbar-center { display: flex; flex: 1 1 160px; justify-content: center; min-width: 0; padding: 0 var(--wb-space-2); }
 .ide-root .wb-cmdbar-object,
 .ide-root .wb-cmdbar-search {
   display: inline-flex;
@@ -1138,6 +1140,8 @@
 }
 
 /* Document tab context menu: the same menu grammar as the frame menus. */
+.ide-root .ide-workbench-workspace { position: relative; }
+
 .ide-root .wb-doctab-menu { z-index: 60; min-width: 160px; }
 .ide-root .wb-doctab-menu .wb-menu-item[disabled] { color: var(--wb-text-3); cursor: default; }
 

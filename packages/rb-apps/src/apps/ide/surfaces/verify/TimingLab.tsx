@@ -151,7 +151,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   };
 
   const deleteEvent = () => {
-    if (!onVectorsChange || !selectedVector || orderedVectors.length <= 1) return;
+    if (!onVectorsChange || !selectedVector) return;
     const next = orderedVectors.filter((vector) => vector.id !== selectedVector.id);
     onVectorsChange(next);
     onSelectTick(next[Math.max(0, orderedVectors.indexOf(selectedVector) - 1)]?.tick ?? next[0]?.tick ?? 0);
@@ -297,7 +297,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
           type="button"
           className="wb-btn wb-btn--ghost rb-timing-danger"
           onClick={deleteEvent}
-          disabled={!editable || orderedVectors.length <= 1}
+          disabled={!editable || !selectedVector}
           data-testid="ide-scenario-delete-event"
         >
           Delete

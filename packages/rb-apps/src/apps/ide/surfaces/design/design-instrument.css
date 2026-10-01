@@ -4,6 +4,8 @@
 
 /* Header: module trail · wire cue · mode segment. */
 .ide-root .rb-design-header { padding-left: var(--wb-space-3); }
+.ide-root .rb-design-header:has(.rb-design-wirecue) { flex-wrap: nowrap; }
+.ide-root .rb-design-header:has(.rb-design-wirecue) .rb-design-breadcrumb { flex: 0 1 180px; overflow: hidden; }
 .ide-root .rb-design-breadcrumb { display: inline-flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
 .ide-root .rb-design-breadcrumb button {
   height: var(--wb-control-h);
@@ -19,7 +21,9 @@
 .ide-root .rb-design-breadcrumb button.is-current { color: var(--wb-text); cursor: default; }
 .ide-root .rb-design-breadcrumb .wb-sep { color: var(--wb-text-3); }
 .ide-root .rb-design-breadcrumb .ide-design-breadcrumb-of { color: var(--wb-text-3); font-weight: 500; }
-.ide-root .rb-design-wirecue { display: inline-flex; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
+.ide-root .rb-design-wirecue { display: inline-flex; flex: 1 1 120px; min-width: 0; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
+.ide-root .rb-design-wirecue-msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-design-wirecue :is(button, .rb-design-wirecue-badge) { flex-shrink: 0; }
 .ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--rb-action); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
 .ide-root .rb-design-wirecue-msg code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .rb-design-wirecue-msg.is-error { color: var(--wb-err); }
@@ -27,6 +31,23 @@
 .ide-root .rb-design-mode .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
 .ide-root .rb-design-mode[data-mode='live'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-ok) 16%, transparent); border-color: var(--wb-ok); }
 .ide-root .rb-design-mode[data-mode='replay'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-warn) 18%, transparent); border-color: var(--wb-warn); }
+
+/* Investigation remains available without covering the circuit being repaired. */
+.ide-root :is(.ide-design-replay-controls, .ide-design-failure-details) {
+  min-width: 0; border-bottom: 1px solid var(--wb-border); background: var(--wb-surface);
+  color: var(--wb-text); font-size: var(--wb-text-sm);
+}
+.ide-root :is(.ide-design-replay-controls, .ide-design-failure-details) > summary {
+  padding: var(--wb-space-2) var(--wb-space-3); cursor: pointer; color: var(--wb-text); font-weight: 600;
+}
+.ide-root .ide-design-failure-details > .ide-design-debug-context-banner {
+  position: static; inset: auto; width: auto; max-height: 180px; overflow: auto;
+  margin: 0; border-radius: 0; background: var(--wb-surface-2); color: var(--wb-text); box-shadow: none;
+}
+.ide-root .ide-design-replay-controls .ide-design-replay-transport {
+  max-height: 180px; overflow: auto; color: var(--wb-text); background: var(--wb-surface);
+}
+.ide-root .ide-design-replay-controls :is(button, select, input) { color: var(--wb-text); background: var(--wb-surface); }
 
 /* Toolbar. */
 .ide-root .rb-design-toolbar { padding-left: var(--wb-space-2); }
@@ -666,4 +687,22 @@
   min-width: 0;
   max-width: 100%;
   flex: 1 1 20rem;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip {
+  background: var(--wb-surface-2) !important;
+  border-color: var(--wb-border-strong) !important;
+  box-shadow: var(--wb-shadow, none) !important;
+  color: var(--wb-text) !important;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip strong,
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip-copy p {
+  color: var(--wb-text) !important;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip-label {
+  color: var(--wb-accent) !important;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip .ide-button {
+  color: var(--wb-text) !important;
+  background: var(--wb-surface-1) !important;
+  border-color: var(--wb-border-strong) !important;
 }

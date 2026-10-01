@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { IdeButton } from '../../components/IdePrimitives';
+import type { RecordingState } from './recordingState';
 
 // Case Lab — the combinational simulation instrument. A single editable
 // truth-table grid: one row per test case, input columns, expected/observed
@@ -46,8 +47,8 @@ export interface CaseLabProps {
   /** No mapped inputs exist yet: the input columns are placeholders until Board maps real signals. */
   readonly isUsingFallbackSignals?: boolean;
   readonly onGoToHardware?: () => void;
-  /** Run ledger, newest first, for the history line (current vs previous). */
-  readonly runHistory?: readonly { readonly runId: string; readonly status: 'pass' | 'fail'; readonly passedRows: number; readonly failedRows: number; readonly ranAtIso: string }[];
+  /** Read model of the selected recording; chronology and verdict share the header authority. */
+  readonly recording?: RecordingState;
   /**
    * Which axis the rows are in. Defaults to the truth table this instrument was built for.
    * A clocked circuit asks for `'time'`: see the comment on `rows`. The case that needs it is
@@ -105,7 +106,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   onDismissAutoVectorNotice,
   isUsingFallbackSignals,
   onGoToHardware,
-  runHistory,
+  recording,
   caseOrder = 'combination',
 }) => {
   const [failuresOnly, setFailuresOnly] = useState(false);
@@ -195,9 +196,10 @@ export const CaseLab: React.FC<CaseLabProps> = ({
     if (onSetExpectedMany) onSetExpectedMany(edits);
     else for (const edit of edits) onSetExpected(edit.tick, edit.signalId, edit.next);
   };
-  const latestRun = runHistory?.[0] ?? null;
-  const previousRun = runHistory?.[1] ?? null;
-  const historyDelta = latestRun && previousRun ? latestRun.failedRows - previousRun.failedRows : null;
+  const comparison = recording?.comparison;
+  const previousRun = comparison?.previous;
+  const historyDelta = comparison?.failedDelta ?? null;
+  const caseNumberByTick = new Map([...vectors].sort((a, b) => a.tick - b.tick).map((vector, index) => [vector.tick, index + 1]));
 
   const cycleExpected = (tick: number, signalId: string, current: '0' | '1' | '') => {
     // First click asserts the common case (1), second flips to 0, third clears the check.
@@ -212,16 +214,17 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           {vectors.length}
           {failCount ? ` · ${failCount} failing` : ''}
         </span>
-        {latestRun ? (
-          <span className="ide-case-lab-history" data-testid="ide-case-lab-history" aria-label="Comparison history" title={previousRun ? `Previous comparison: ${previousRun.passedRows} passed · ${previousRun.failedRows} failed` : 'No previous comparison'}>
-            <span>Compare</span>
-            <code>{latestRun.status.toUpperCase()}</code>
+        {comparison ? (
+          <span className="ide-case-lab-history" data-testid="ide-case-lab-history" data-run-id={comparison.runId} aria-label="Comparison history" title={previousRun ? `Compared with recording ${previousRun.ordinal}: ${previousRun.passed} passed · ${previousRun.failed} failed` : 'No preceding checked recording retained'}>
+            <span>Recording {comparison.ordinal ?? ''}</span>
+            <code>{comparison.verdict.toUpperCase()}</code>
+            {recording?.currencyLabel && <span>{recording.currencyLabel}</span>}
             {historyDelta !== null ? (
               <span className={historyDelta < 0 ? 'is-better' : historyDelta > 0 ? 'is-worse' : ''}>
                 {historyDelta === 0 ? 'same as previous' : historyDelta < 0 ? `${-historyDelta} fewer failing than previous` : `${historyDelta} more failing than previous`}
               </span>
             ) : (
-              <span>first run</span>
+              <span>no previous comparison</span>
             )}
           </span>
         ) : null}
@@ -412,7 +415,9 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                     aria-selected={isSelected || selectedTicks.has(vector.tick)}
                     onClick={(event) => handleRowClick(vector.tick, event)}
                   >
-                    <td className="ide-case-lab-num" title={`Case ${vector.tick}`}>{vector.tick}</td>
+                    <td className="ide-case-lab-num" title={`Case ${caseNumberByTick.get(vector.tick)} · execution tick ${vector.tick}`}>
+                      <span>Case {caseNumberByTick.get(vector.tick)}</span>{' '}<small>t{vector.tick}</small>
+                    </td>
                     {inputFields.map((field) => (
                       <td key={field.id} className="ide-case-lab-in">
                         {onSetInput ? <button type="button" className="wb-btn wb-btn--ghost"

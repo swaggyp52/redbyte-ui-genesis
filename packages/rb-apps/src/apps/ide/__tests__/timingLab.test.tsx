@@ -38,6 +38,25 @@ function renderComposer(
 }
 
 describe('TimingLab', () => {
+  it('clears the final authored event and starts a fresh scenario without inherited stimulus or checks', () => {
+    const onVectorsChange = vi.fn();
+    const props = { scenarioName: 'Fresh scenario', inputFields, outputFields, selectedTick: 0,
+      lens: 'scenario' as const, onSelectTick: vi.fn(), onVectorsChange };
+    const view = render(<TimingLab {...props} vectors={[{ id: 'old', tick: 0,
+      inputs: { a: 1, b: 1 }, expected: { sum: 1 } }]} />);
+    fireEvent.click(view.getByTestId('ide-scenario-delete-event'));
+    expect(onVectorsChange).toHaveBeenLastCalledWith([]);
+    view.rerender(<TimingLab {...props} vectors={[]} />);
+    expect(view.getByTestId('ide-scenario-event-editor-empty')).toBeTruthy();
+    fireEvent.click(view.getByTestId('ide-scenario-composer-add-event'));
+    expect(onVectorsChange).toHaveBeenLastCalledWith([
+      { id: 'event-01', tick: 0, inputs: { a: 0, b: 0 }, expected: {} },
+    ]);
+    view.rerender(<TimingLab {...props} onVectorsChange={undefined} vectors={[
+      { id: 'read-only', tick: 0, inputs: { a: 0, b: 0 }, expected: {} },
+    ]} />);
+    expect((view.getByTestId('ide-scenario-delete-event') as HTMLButtonElement).disabled).toBe(true);
+  });
   it('offers the auto clock run length on the bar and reports edits in cycles', () => {
     const runLengthVectors = vectors.map((vector) => ({ ...vector, expected: { ...vector.expected } as Record<string, 0 | 1> }));
     const onRunCyclesChange = vi.fn();

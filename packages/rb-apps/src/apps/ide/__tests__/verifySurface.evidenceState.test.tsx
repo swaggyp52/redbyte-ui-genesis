@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import type { RuntimeVerifyRun, VerifyRunMeta } from '../projectRuntime';
 
@@ -72,6 +72,7 @@ function renderSurface(extra: Partial<React.ComponentProps<typeof VerifySurface>
     />
   );
 }
+afterEach(cleanup);
 
 describe('Simulate evidence state word', () => {
   it('reads RECORDED · CURRENT for a run whose inputs are unchanged', () => {
@@ -91,5 +92,32 @@ describe('Simulate evidence state word', () => {
     expect(chip.getAttribute('data-state')).toBe('stale');
     expect(chip.textContent).toContain('STALE');
     expect(getByTestId('ide-verify-evidence-state-reason').textContent).toBe('The design changed after this run.');
+  });
+
+  it('renders one selected recording verdict across the header and table, including stale historical evidence', () => {
+    const first = { ...makeRun(), runId: 'first', sequence: 1 };
+    const second: RuntimeVerifyRun = {
+      ...makeRun(), runId: 'second', sequence: 2, status: 'fail',
+      report: { ...makeRun().report, status: 'fail', rows: makeRun().report.rows.map((row, index) => index === 1 ? { ...row, status: 'fail', actual: '0' } : row) },
+    };
+    const third = { ...makeRun(), runId: 'third', sequence: 3 };
+    const archive = [first, second, third];
+    const props = { hasVectors: true, vectors: VECTORS, mappedSignals: SIGNALS, deterministicHash: 'evidence-state', runArchive: archive, onOpenProjectVectors: vi.fn() };
+    const view = render(<VerifySurface {...props} lastRun={third} />);
+    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('PASS');
+    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('1 fewer failing');
+    expect(view.getByTestId('ide-run-identity').getAttribute('data-run-id')).toBe('third');
+    view.rerender(<VerifySurface {...props} lastRun={second} runIsStale />);
+    expect(view.getByTestId('ide-run-check-result').textContent).toContain('checks failed');
+    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('FAIL');
+    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('1 more failing');
+    expect(view.getByTestId('ide-case-lab-history').getAttribute('data-run-id')).toBe('second');
+    expect(view.getByTestId('ide-run-currency').textContent).toBe('Current work differs');
+    expect(view.getByTestId('ide-verify-evidence-state').getAttribute('data-state')).toBe('stale');
+    expect(view.getByTestId('ide-run-identity').getAttribute('data-currency')).toBe('differs');
+    // The first recording has no predecessor even though later recordings exist.
+    view.rerender(<VerifySurface {...props} lastRun={first} />);
+    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('no previous comparison');
+    expect(view.getByTestId('ide-run-check-result').textContent).toContain('checks passed');
   });
 });

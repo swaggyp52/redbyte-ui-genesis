@@ -149,8 +149,8 @@ function buildTwoOutputHistoryFixture(): RBProject {
 }
 
 function assertHardwareStaleStatus(getByTestId: RenderResult['getByTestId']): void {
-  // The command strip is drawn in the after-mapping tools; Board Check is the one that remains.
-  fireEvent.click(getByTestId('ide-hw-mode-btn-bringup'));
+  // Simulation tools retain the detailed verification/export authority status.
+  fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
   expect(getByTestId('ide-hardware-command-strip').textContent).toContain('STALE');
   expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
   const readinessCallout = getByTestId('ide-hardware-readiness-callout');

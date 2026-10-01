@@ -928,10 +928,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? formatBoardResourceChip(selectedMappingRow.boardResourceType) ??
         (selectedMappingRow.direction === 'in' ? 'Input control' : 'Output control')
       : null;
-  // A new row means a new pending choice: the previous row's resource never narrates this one.
+  // A new row or restored assignment invalidates the previous pending choice.
+  // Captured-set activation must update the editor and board alongside the table.
   useEffect(() => {
     setSelectedBoardResourceAlias(null);
-  }, [selectedMappingRowId]);
+  }, [selectedMappingRowId, selectedMappingRow?.pin, constraintSets?.doc.activeId]);
   const selectedMappedBoardResource = selectedMappingRow
     ? getBasys3BoardResource(selectedMappingRow.pin)
     : null;
@@ -3805,7 +3806,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </summary>
                   <p className="ide-copy ide-copy--flush">
                     {constraintSets && activeConstraintSet(constraintSets.doc)
-                      ? 'The active set is what Build & Export packages as top.xdc; the lines below are the live mapping.'
+                      ? 'These assignments were restored from the active captured set. The lines below are what Build & Export packages as top.xdc. Editing a pin returns to Live mapping.'
                       : 'Each signal’s pin becomes these lines in top.xdc. Select a line to select its signal.'}
                   </p>
                   <ol className="rb-board-xdc-lines" data-testid="ide-hw-xdc-lines">

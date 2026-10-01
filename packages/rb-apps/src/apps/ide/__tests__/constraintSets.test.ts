@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { migrateIoMappingToHardwareMappingV2 } from '@redbyte/rb-utils';
 import {
   activeConstraintSet,
   addConstraintSet,
@@ -12,10 +13,12 @@ import {
 
 const XDC_A = 'set_property PACKAGE_PIN V17 [get_ports {sw0}]\n';
 const XDC_B = 'set_property PACKAGE_PIN U16 [get_ports {ld0}]\n';
+const MAPPING_A = migrateIoMappingToHardwareMappingV2({ inputs: [{ id: 'sw0', nodeId: 'sw', port: 'out', label: 'sw0', pin: 'V17' }], outputs: [] });
+const MAPPING_B = migrateIoMappingToHardwareMappingV2({ inputs: [], outputs: [{ id: 'ld0', nodeId: 'ld', port: 'in', label: 'ld0', pin: 'U16' }] });
 
 describe('constraint sets', () => {
   it('first added set becomes active', () => {
-    const doc = addConstraintSet(createEmptyConstraintSets(), 'Basys3', XDC_A);
+    const doc = addConstraintSet(createEmptyConstraintSets(), 'Basys3', XDC_A, MAPPING_A);
     expect(doc.sets).toHaveLength(1);
     expect(doc.activeId).toBe(doc.sets[0].id);
     expect(activeConstraintSet(doc)?.name).toBe('Basys3');
@@ -31,8 +34,8 @@ describe('constraint sets', () => {
   });
 
   it('switches the active set and reparses the active XDC', () => {
-    let doc = addConstraintSet(createEmptyConstraintSets(), 'A', XDC_A);
-    doc = addConstraintSet(doc, 'B', XDC_B);
+    let doc = addConstraintSet(createEmptyConstraintSets(), 'A', XDC_A, MAPPING_A);
+    doc = addConstraintSet(doc, 'B', XDC_B, MAPPING_B);
     expect(activeConstraintSet(doc)?.name).toBe('A');
     const idB = doc.sets.find((s) => s.name === 'B')!.id;
     doc = setActiveConstraintSet(doc, idB);
@@ -41,13 +44,14 @@ describe('constraint sets', () => {
     expect(parsed?.pinMap).toMatchObject({ ld0: 'U16' });
   });
 
-  it('removing the active set promotes the first remaining set', () => {
-    let doc = addConstraintSet(createEmptyConstraintSets(), 'A', XDC_A);
-    doc = addConstraintSet(doc, 'B', XDC_B);
+  it('removing the active set returns to live mapping without applying another capture', () => {
+    let doc = addConstraintSet(createEmptyConstraintSets(), 'A', XDC_A, MAPPING_A);
+    doc = addConstraintSet(doc, 'B', XDC_B, MAPPING_B);
     const idA = doc.sets.find((s) => s.name === 'A')!.id;
     doc = removeConstraintSet(doc, idA);
     expect(doc.sets.map((s) => s.name)).toEqual(['B']);
-    expect(activeConstraintSet(doc)?.name).toBe('B');
+    expect(activeConstraintSet(doc)).toBeUndefined();
+    expect(doc.activeId).toBeNull();
   });
 
   it('removing the last set leaves no active set', () => {
@@ -58,7 +62,7 @@ describe('constraint sets', () => {
     expect(parseActiveConstraintSet(doc)).toBeUndefined();
   });
 
-  it('normalizes malformed input and guarantees exactly one active set', () => {
+  it('normalizes malformed input and retains reference sets without assigning authority', () => {
     const doc = normalizeConstraintSets({
       sets: [
         { name: 'A', xdcText: XDC_A },
@@ -71,7 +75,6 @@ describe('constraint sets', () => {
     expect(doc.sets.map((s) => s.name)).toEqual(['A', 'B', 'C']);
     // ids deduped
     expect(new Set(doc.sets.map((s) => s.id)).size).toBe(3);
-    // requested active was invalid → falls back to the first
-    expect(doc.activeId).toBe(doc.sets[0].id);
+    expect(doc.activeId).toBeNull();
   });
 });

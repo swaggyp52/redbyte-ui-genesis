@@ -60,7 +60,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     expect(queryByTestId('ide-verify-left-dock')).toBeNull();
     const failure = getByTestId('ide-verify-fail-nav-summary');
     expect(failure.textContent).toContain('out_led');
-    expect(failure.textContent).toContain('Case 0');
+    expect(failure.textContent).toContain('Case 1');
     expect(failure.closest('details')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();

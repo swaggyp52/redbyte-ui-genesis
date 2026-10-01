@@ -19,6 +19,41 @@ function baseProject(overrides: Partial<RBProject> = {}): RBProject {
 }
 
 describe('RBProject source-model persistence', () => {
+  it.each(['sourceModel', 'constraintSets'])('refuses an unsupported %s schema instead of discarding authoring content', field => {
+    const document = { ...baseProject(), [field]: { schemaVersion: '2.0', files: [{ path: 'future.bin', text: 'preserve me' }] } };
+    expect(() => decodeRBProject(JSON.stringify(document))).toThrow(`Unsupported ${field} schema 2.0`);
+  });
+
+  it('promotes legacy mixed HDL/XDC/Tcl originals before narrowing the toolchain projection', () => {
+    const originals = [
+      { path: 'rtl/top.vhd', language: 'vhdl', text: 'entity top;' },
+      { path: 'pins.xdc', language: 'xdc', text: 'if {$keep} { arbitrary Tcl }\r\n' },
+      { path: 'build.tcl', language: 'tcl', text: 'unsupported original script\n' },
+      { path: 'notes.dat', language: 'unknown', text: 'opaque original\r\n' },
+    ];
+    const decoded = decodeRBProject(JSON.stringify({ ...baseProject(), hdl: { top: 'original_top', sources: originals } }));
+    const reopened = decodeRBProject(encodeRBProject(decoded));
+    expect(reopened.hdl?.sources).toEqual([originals[0]]);
+    expect(reopened.hdl?.top).toBe('original_top');
+    expect(reopened.sourceModel?.topEntity).toBe('original_top');
+    for (const source of originals) {
+      expect(reopened.sourceModel?.files.find(file => file.path === source.path)?.text).toBe(source.text);
+    }
+  });
+
+  it.each([
+    { schemaVersion: '1.0', files: [{ path: 'rtl/top.vhd', text: 42 }] },
+    { schemaVersion: '1.0', files: [{ path: 'same.vhd', text: 'first' }, { path: 'same.vhd', text: 'second' }] },
+    { schemaVersion: '1.0', files: null },
+  ])('refuses malformed source authority without dropping original authoring content', sourceModel => {
+    expect(() => decodeRBProject(JSON.stringify({ ...baseProject(), sourceModel }))).toThrow(/Invalid project: source model/);
+  });
+
+  it('preserves opaque utility text that the simulator cannot execute', () => {
+    const model = addSourceFile(createEmptyProjectSourceModel(), { path: 'notes/opaque.dat', text: 'opaque\r\nbytes retained\n', language: 'unknown', fileset: 'utility' });
+    const decoded = decodeRBProject(encodeRBProject(baseProject({ sourceModel: model })));
+    expect(decoded.sourceModel?.files).toEqual(model.files);
+  });
   it('round-trips a project that carries a source model', () => {
     let model = createEmptyProjectSourceModel();
     model = addSourceFile(model, { path: 'rtl/top.vhd', text: 'entity top;', fileset: 'design' });
@@ -42,9 +77,10 @@ describe('RBProject source-model persistence', () => {
     expect(decodeRBProject(encoded).sourceModel).toBeUndefined();
   });
 
-  it('omits an empty source model rather than emitting an empty object', () => {
+  it('preserves an explicit empty authoring model without promoting generated HDL', () => {
     const encoded = encodeRBProject(baseProject({ sourceModel: createEmptyProjectSourceModel() }));
-    expect(encoded).not.toContain('sourceModel');
+    expect(decodeRBProject(encoded).sourceModel).toEqual(createEmptyProjectSourceModel());
+    expect(deriveSourceModel(decodeRBProject(encoded)).files).toEqual([]);
   });
 });
 

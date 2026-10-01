@@ -3,13 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ConstraintSetsPanel } from '../components/ConstraintSetsPanel';
 import { addConstraintSet, createEmptyConstraintSets } from '../constraintSets';
+import { migrateIoMappingToHardwareMappingV2 } from '@redbyte/rb-utils';
 
 const noop = () => {};
+const mapping = migrateIoMappingToHardwareMappingV2({ inputs: [{ id: 'a', nodeId: 'input-a', port: 'out', label: 'a', pin: 'V17' }], outputs: [] });
 
 const docWithTwo = () => {
   let doc = createEmptyConstraintSets();
-  doc = addConstraintSet(doc, 'Basys3', 'set_property PACKAGE_PIN V17 [get_ports a]\nset_property PACKAGE_PIN V16 [get_ports b]');
-  doc = addConstraintSet(doc, 'Variant', 'set_property PACKAGE_PIN W17 [get_ports a]');
+  doc = addConstraintSet(doc, 'Basys3', 'set_property PACKAGE_PIN V17 [get_ports a]\nset_property PACKAGE_PIN V16 [get_ports b]', mapping);
+  doc = addConstraintSet(doc, 'Variant', 'set_property PACKAGE_PIN W17 [get_ports a]', mapping);
   return doc;
 };
 
@@ -76,5 +78,23 @@ describe('ConstraintSetsPanel', () => {
     fireEvent.change(screen.getByTestId('ide-constraint-sets-add-name'), { target: { value: 'Basys3' } });
     fireEvent.click(screen.getByTestId('ide-constraint-sets-add'));
     expect(screen.getByTestId('ide-constraint-sets-error').textContent).toContain('Duplicate');
+  });
+
+  it('offers explicit live mapping and displays activation refusal', () => {
+    const onSetActive = vi.fn(() => ({ ok: false, error: 'Mapping no longer matches this design' }));
+    const doc = docWithTwo();
+    render(<ConstraintSetsPanel doc={doc} onAdd={noop} onRemove={noop} onRename={noop} onSetActive={onSetActive} />);
+    fireEvent.click(screen.getByTestId('ide-constraint-sets-use-live'));
+    expect(onSetActive).toHaveBeenCalledWith(null);
+    expect(screen.getByRole('alert').textContent).toContain('Mapping no longer matches');
+  });
+
+  it('retains raw reference sets but explains why they cannot be active', () => {
+    const doc = addConstraintSet(createEmptyConstraintSets(), 'Imported Tcl', 'if {$enabled} { set_property PACKAGE_PIN V17 [get_ports a] }');
+    render(<ConstraintSetsPanel doc={doc} onAdd={noop} onRemove={noop} onRename={noop} onSetActive={noop} />);
+    const button = screen.getByTestId(`ide-constraint-set-activate-${doc.sets[0].id}`) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toContain('Reference only');
+    expect(screen.getByTestId('ide-constraint-sets-live').textContent).toContain('active');
   });
 });

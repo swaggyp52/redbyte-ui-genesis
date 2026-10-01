@@ -95,7 +95,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       setNarrowViewport(window.innerWidth < 900);
     });
     observer.observe(shell);
-    setLayoutMode(detectLayoutMode(shell.clientWidth));
+    if (shell.clientWidth > 0) setLayoutMode(detectLayoutMode(shell.clientWidth));
     const rootStyleObserver = new MutationObserver(() => setLayoutMode(detectLayoutMode(shell.clientWidth)));
     rootStyleObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
     return () => { observer.disconnect(); rootStyleObserver.disconnect(); };
@@ -107,7 +107,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const narrowProject = mode === 'project' && narrowViewport;
   const rightRequested = rightDockAllowed && surfacePreferences.docks.right.visible &&
     (!splitDesign || surfacePreferences.docks.right.explicitlyToggled === true);
-  const showRightDock = rightRequested && (!narrowProject || surfacePreferences.docks.right.explicitlyToggled === true);
+  const showRightDock = rightRequested && (!narrowProject || surfacePreferences.docks.right.explicitlyToggled === true)
+    // On a small Design viewport, placing/selecting a part must leave the
+    // construction library available. The inspector remains a direct reveal.
+    && !(mode === 'design' && layoutMode === 'compact' && surfacePreferences.docks.right.explicitlyToggled !== true);
   const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible &&
     (!(splitDesign || (mode === 'verify' && layoutMode === 'compact')) || surfacePreferences.docks.left.explicitlyToggled === true) &&
     (!narrowProject || surfacePreferences.docks.left.explicitlyToggled === true) &&
@@ -246,18 +249,6 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-support-dock-policy="persistent-configurable"
       data-workspace-preset={preferences.activePresetId ?? 'custom'}
     >
-      <div className="ide-workbench-panel-controls" aria-label="Workspace panels">
-        {leftDockAllowed && !showLeftDock ? (
-          <button type="button" onClick={() => setDockVisible('left', true)} data-testid="ide-show-left-dock">
-            Show left panel
-          </button>
-        ) : null}
-        {rightDockAllowed && !showRightDock ? (
-          <button type="button" onClick={() => setDockVisible('right', true)} data-testid="ide-show-right-dock">
-            Show right panel
-          </button>
-        ) : null}
-      </div>
       <div
         className={`ide-workbench-main${showLeftDock ? '' : ' hide-left-dock'}${
           showRightDock ? '' : ' hide-right-dock'
@@ -300,6 +291,18 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           aria-label={`${mode} workspace`}
         >
           {workspace}
+          <div className="ide-workbench-panel-controls" aria-label="Workspace panels">
+            {leftDockAllowed && !showLeftDock ? (
+              <button type="button" onClick={() => setDockVisible('left', true)} data-testid="ide-show-left-dock">
+                Show left panel
+              </button>
+            ) : null}
+            {rightDockAllowed && !showRightDock ? (
+              <button type="button" onClick={() => setDockVisible('right', true)} data-testid="ide-show-right-dock">
+                Show right panel
+              </button>
+            ) : null}
+          </div>
         </main>
 
         {showRightDock ? (

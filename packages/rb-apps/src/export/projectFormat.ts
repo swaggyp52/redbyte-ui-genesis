@@ -17,7 +17,7 @@ import {
 import type { MacroDefinition } from '../apps/ide/macros/MacroLibrary';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
-import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
+import type { HdlSource, ToolchainProjectInput } from '../fpga/toolchainBackend';
 import type { HardwareMappingDocumentV2, IoMapping, LabSpecV1, TestVector } from '@redbyte/rb-utils';
 import { stableStringify } from './stableStringify';
 import { compareCodepoint } from './codepointSort';
@@ -26,7 +26,6 @@ import {
   type ProjectHierarchyDocument,
 } from '../apps/ide/projectHierarchy';
 import {
-  isEmptyProjectSourceModel,
   normalizeProjectSourceModel,
   promoteToolchainInput,
   type ProjectSourceModel,
@@ -35,6 +34,7 @@ import {
   CURRENT_PROJECT_FORMAT_VERSION,
   migrateRBProjectDocument,
 } from './projectFormatMigrations';
+import { normalizeConstraintSets, normalizeMappingSnapshot, type ConstraintSetsDocument } from '../apps/ide/constraintSets';
 
 export {
   CURRENT_PROJECT_FORMAT_VERSION,
@@ -119,6 +119,8 @@ export interface RBProject {
    * bridges from `hdl` in that case.
    */
   sourceModel?: ProjectSourceModel;
+  /** Named board mapping snapshots; absent on legacy project files. */
+  constraintSets?: ConstraintSetsDocument;
   meta?: {
     appVersion?: string;
     gitCommit?: string;
@@ -144,9 +146,12 @@ export const createRBProject = (input: Omit<RBProject, 'kind' | 'version' | 'upd
 });
 
 const normalizeProjectCircuit = (
-  circuit: Circuit,
+  circuit: unknown,
   opts: { synthesizeBuses?: boolean } = {}
 ): Circuit => {
+  if (!isRecord(circuit) || !Array.isArray(circuit.nodes) || !Array.isArray(circuit.connections)) {
+    throw new Error('Invalid project: circuit must include nodes and connections arrays');
+  }
   const nodes = [...circuit.nodes]
     .map((node, index) => normalizeProjectNode(node, index))
     .sort((a, b) => compareCodepoint(a.id, b.id));
@@ -185,7 +190,7 @@ const normalizeProjectCircuit = (
   // declarations on DECODE ONLY (the idempotent migration for pre-bus
   // projects) — encode stays a pure projection of in-memory state so saving
   // never invents declarations or resurrects a deleted bus.
-  const declared = normalizeBusDeclarations((circuit as { buses?: unknown }).buses);
+  const declared = normalizeBusDeclarations(circuit.buses);
   const withDeclared = pruneBusBits({
     nodes,
     connections,
@@ -210,24 +215,38 @@ const normalizeProbes = (probes?: Probe[]): Probe[] | undefined => {
     });
 };
 
-const normalizeHdl = (hdl?: ToolchainProjectInput): ToolchainProjectInput | undefined => {
-  if (!hdl) return hdl;
-  const sources = [...(hdl.sources ?? [])]
-    .map((source) => ({ ...source }))
-    .sort((a, b) => {
-      const left = `${a.path}.${a.language}`;
-      const right = `${b.path}.${b.language}`;
-      return compareCodepoint(left, right);
-    });
+function readPortableHdl(hdl: unknown): { sources: { path: string; language: string; text: string }[]; top?: string } | undefined {
+  if (hdl === undefined) return undefined;
+  if (!isRecord(hdl) || !Array.isArray(hdl.sources)) throw new Error('Invalid project: HDL sources must be an array');
+  const sources = hdl.sources.map((source: unknown) => {
+    if (!isRecord(source) || typeof source.path !== 'string' || !source.path.trim() ||
+        typeof source.text !== 'string' || typeof source.language !== 'string') {
+      throw new Error('Invalid project: source must carry a path, language and text');
+    }
+    return { ...source, path: source.path, language: source.language, text: source.text };
+  });
+  return { ...hdl, sources, top: readOptionalString(hdl.top) ?? undefined };
+}
 
-  return {
-    ...hdl,
-    sources,
-  };
+const normalizeHdl = (hdl: unknown): ToolchainProjectInput | undefined => {
+  const portable = readPortableHdl(hdl);
+  if (!portable) return undefined;
+  const sources = portable.sources.filter((source): source is HdlSource => source.language === 'verilog' || source.language === 'vhdl')
+    .sort((a, b) => compareCodepoint(`${a.path}.${a.language}`, `${b.path}.${b.language}`));
+  return { ...portable, sources };
 };
 
-const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
-  if (!ioMapping) return ioMapping;
+function legacySourceModel(hdl: unknown): ProjectSourceModel | undefined {
+  const portable = readPortableHdl(hdl);
+  // Older files carried XDC, Tcl and utility originals alongside HDL. Promote
+  // these into the existing authoring owner before projecting typed toolchain RTL.
+  return portable?.sources.some(source => source.language !== 'verilog' && source.language !== 'vhdl')
+    ? promoteToolchainInput(portable) : undefined;
+}
+
+const normalizeIoMapping = (ioMapping: unknown): IoMapping | undefined => {
+  if (ioMapping === undefined) return undefined;
+  if (!isRecord(ioMapping)) throw new Error('Invalid project: I/O mapping must be an object');
   const normalizeEntry = (
     entry: unknown,
     direction: 'in' | 'out',
@@ -245,7 +264,7 @@ const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
       pin: readOptionalString(entry.pin)?.toUpperCase() ?? '',
     };
   };
-  const inputs = [...(ioMapping.inputs ?? [])]
+  const inputs = [...(Array.isArray(ioMapping.inputs) ? ioMapping.inputs : [])]
     .map((entry, index) => normalizeEntry(entry, 'in', index))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     .sort((a, b) => {
@@ -253,7 +272,7 @@ const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
       const right = `${b.nodeId}.${b.port}.${b.id}`;
       return compareCodepoint(left, right);
     });
-  const outputs = [...(ioMapping.outputs ?? [])]
+  const outputs = [...(Array.isArray(ioMapping.outputs) ? ioMapping.outputs : [])]
     .map((entry, index) => normalizeEntry(entry, 'out', index))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     .sort((a, b) => {
@@ -264,17 +283,13 @@ const normalizeIoMapping = (ioMapping?: IoMapping): IoMapping | undefined => {
   return { inputs, outputs };
 };
 
-const normalizeHardwareMappingV2 = (
-  raw?: HardwareMappingDocumentV2 | Record<string, unknown>
-): HardwareMappingDocumentV2 | undefined => {
-  if (!raw || !isRecord(raw)) return undefined;
-  if (readOptionalString(raw.schemaVersion) !== '2.0') return undefined;
-  if (!Array.isArray(raw.entries)) return undefined;
-  return {
-    schemaVersion: '2.0',
-    boardId: (readOptionalString(raw.boardId) as HardwareMappingDocumentV2['boardId']) ?? 'basys3',
-    entries: raw.entries as HardwareMappingDocumentV2['entries'],
-  };
+const normalizeHardwareMappingV2 = (raw: unknown): HardwareMappingDocumentV2 | undefined => {
+  if (raw === undefined) return undefined;
+  // Older V2 documents omitted boardId; Basys3 was the only supported board.
+  const candidate = isRecord(raw) && raw.boardId === undefined ? { ...raw, boardId: 'basys3' } : raw;
+  const mapping = normalizeMappingSnapshot(candidate);
+  if (!mapping) throw new Error('Invalid project: hardware mapping must be a supported structured Basys3 mapping');
+  return mapping;
 };
 
 const normalizeVectors = (vectors?: TestVector[]): TestVector[] | undefined => {
@@ -330,6 +345,8 @@ const normalizeMacros = (macros?: MacroDefinition[]): MacroDefinition[] | undefi
           return compareCodepoint(left.portName, right.portName);
         }),
       cluster: {
+        originX: readFiniteNumber(macro.cluster.originX, 0),
+        originY: readFiniteNumber(macro.cluster.originY, 0),
         nodes: [...macro.cluster.nodes]
           .map((node) => ({
             ...node,
@@ -382,13 +399,10 @@ export const encodeRBProject = (project: RBProject) => {
     hierarchy: project.hierarchy
       ? normalizeProjectHierarchy(project.hierarchy, project.customComponents ?? [])
       : undefined,
-    // Emit the source model only when it carries content, so projects that have
-    // not adopted it stay byte-identical (golden export path untouched).
-    sourceModel: (() => {
-      if (!project.sourceModel) return undefined;
-      const model = normalizeProjectSourceModel(project.sourceModel);
-      return isEmptyProjectSourceModel(model) ? undefined : model;
-    })(),
+    // Presence is meaningful: an explicit empty authoring model must not be
+    // replaced with generated HDL on reopen. Legacy files without it still migrate.
+    sourceModel: project.sourceModel !== undefined ? normalizePortableSourceModel(project.sourceModel) : legacySourceModel(project.hdl),
+    constraintSets: project.constraintSets ? normalizeConstraintSets(project.constraintSets) : undefined,
     meta: project.meta
       ? {
           ...project.meta,
@@ -406,8 +420,8 @@ export const encodeRBProject = (project: RBProject) => {
  * callers can treat sources uniformly regardless of when the project was made.
  */
 export const deriveSourceModel = (project: RBProject): ProjectSourceModel => {
-  if (project.sourceModel && !isEmptyProjectSourceModel(project.sourceModel)) {
-    return normalizeProjectSourceModel(project.sourceModel);
+  if (project.sourceModel) {
+    return normalizePortableSourceModel(project.sourceModel);
   }
   return promoteToolchainInput(project.hdl);
 };
@@ -420,7 +434,7 @@ export const normalizeRBProject = (value: unknown): RBProject => {
   // through the ordered migration ladder. This is a no-op for a document already
   // at the current version, so current-version documents normalize unchanged
   // (and the byte-identical golden export path is untouched).
-  const doc: Record<string, any> = migrateRBProjectDocument(value).document;
+  const doc: Record<string, unknown> = migrateRBProjectDocument(value).document;
   if (doc.kind !== 'rb-project' || doc.version !== CURRENT_PROJECT_FORMAT_VERSION) {
     throw new Error('Invalid project: unsupported kind or version');
   }
@@ -436,6 +450,12 @@ export const normalizeRBProject = (value: unknown): RBProject => {
   if (!Array.isArray(doc.circuit.nodes) || !Array.isArray(doc.circuit.connections)) {
     throw new Error('Invalid project: circuit must include nodes and connections arrays');
   }
+  for (const field of ['sourceModel', 'constraintSets'] as const) {
+    const model = doc[field];
+    if (isRecord(model) && model.schemaVersion !== undefined && model.schemaVersion !== '1.0') {
+      throw new Error(`Unsupported ${field} schema ${String(model.schemaVersion)}. The project was not opened; keep the original file.`);
+    }
+  }
 
   return {
     ...doc,
@@ -445,10 +465,10 @@ export const normalizeRBProject = (value: unknown): RBProject => {
     updatedAt: readOptionalString(doc.updatedAt) ?? '1970-01-01T00:00:00.000Z',
     name,
     description: readOptionalString(doc.description) ?? undefined,
-    circuit: normalizeProjectCircuit(doc.circuit as Circuit, { synthesizeBuses: true }),
+    circuit: normalizeProjectCircuit(doc.circuit, { synthesizeBuses: true }),
     probes: normalizeProbes(Array.isArray(doc.probes) ? doc.probes : undefined),
-    hdl: normalizeHdl(isRecord(doc.hdl) ? (doc.hdl as ToolchainProjectInput) : undefined),
-    fpga: isRecord(doc.fpga) ? { ...(doc.fpga as RBFpgaConfig) } : undefined,
+    hdl: normalizeHdl(doc.hdl),
+    fpga: normalizeFpga(doc.fpga),
     layout: isRecord(doc.layout)
       ? {
           ...(doc.layout as NonNullable<RBProject['layout']>),
@@ -463,17 +483,13 @@ export const normalizeRBProject = (value: unknown): RBProject => {
     recorder: isRecord(doc.recorder)
       ? { ...(doc.recorder as NonNullable<RBProject['recorder']>) }
       : undefined,
-    ioMapping: normalizeIoMapping(isRecord(doc.ioMapping) ? (doc.ioMapping as IoMapping) : undefined),
-    hardwareMappingV2: normalizeHardwareMappingV2(
-      isRecord(doc.hardwareMappingV2) ? (doc.hardwareMappingV2 as HardwareMappingDocumentV2) : undefined
-    ),
+    ioMapping: normalizeIoMapping(doc.ioMapping),
+    hardwareMappingV2: normalizeHardwareMappingV2(doc.hardwareMappingV2),
     vectors: normalizeVectors(Array.isArray(doc.vectors) ? doc.vectors as TestVector[] : undefined),
-    traceMetadata: isRecord(doc.traceMetadata)
-      ? { ...(doc.traceMetadata as TraceMetadata) }
-      : undefined,
+    traceMetadata: normalizeTraceMetadata(doc.traceMetadata),
     submodules: normalizeSubmodules(Array.isArray(doc.submodules) ? doc.submodules as SubmoduleEntry[] : undefined),
     macros: normalizeMacros(Array.isArray(doc.macros) ? doc.macros as MacroDefinition[] : undefined),
-    labSpec: isRecord(doc.labSpec) ? { ...(doc.labSpec as LabSpecV1) } : undefined,
+    labSpec: normalizeLabSpec(doc.labSpec),
     customComponents: Array.isArray(doc.customComponents)
       ? doc.customComponents.filter(isCompositeNodeDef)
       : undefined,
@@ -493,13 +509,8 @@ export const normalizeRBProject = (value: unknown): RBProject => {
       }
       return normalizeProjectHierarchy(doc.hierarchy, legacyDefinitions);
     })(),
-    // Attach the source model only when the document carries a non-empty one,
-    // mirroring encodeRBProject so encode∘decode stays idempotent.
-    sourceModel: (() => {
-      if (!isRecord(doc.sourceModel)) return undefined;
-      const model = normalizeProjectSourceModel(doc.sourceModel);
-      return isEmptyProjectSourceModel(model) ? undefined : model;
-    })(),
+    sourceModel: doc.sourceModel !== undefined ? normalizePortableSourceModel(doc.sourceModel) : legacySourceModel(doc.hdl),
+    constraintSets: isRecord(doc.constraintSets) ? normalizeConstraintSets(doc.constraintSets) : undefined,
     meta: isRecord(doc.meta) ? { ...(doc.meta as NonNullable<RBProject['meta']>) } : undefined,
   };
 };
@@ -514,7 +525,7 @@ export const decodeRBProject = (raw: string): RBProject => {
   return normalizeRBProject(parsed);
 };
 
-function normalizeProjectNode(node: Node | Record<string, unknown>, index: number): Node {
+function normalizeProjectNode(node: unknown, index: number): Node {
   if (!isRecord(node)) {
     throw new Error(`Invalid project: node ${index + 1} is not an object`);
   }
@@ -534,7 +545,7 @@ function normalizeProjectNode(node: Node | Record<string, unknown>, index: numbe
   const y = readFiniteNumber(rawPosition?.y ?? node.y, 0);
 
   const normalized: Node = {
-    ...(node as Node),
+    ...node,
     id,
     type,
     position: { x, y },
@@ -570,14 +581,14 @@ function normalizeProjectNode(node: Node | Record<string, unknown>, index: numbe
 }
 
 function normalizeProjectConnection(
-  connection: Connection | Record<string, unknown>,
+  connection: unknown,
   index: number
-): Connection {
+): Connection & { from: PortRef; to: PortRef } {
   if (!isRecord(connection)) {
     throw new Error(`Invalid project: connection ${index + 1} is not an object`);
   }
 
-  const normalized: Connection = {
+  const normalized: Connection & { from: PortRef; to: PortRef } = {
     from: normalizePortRef(
       connection.from,
       'out',
@@ -644,12 +655,12 @@ function normalizePortRef(
 }
 
 function normalizeProjectVector(
-  vector: TestVector | Record<string, unknown>,
+  vector: unknown,
   index: number
 ): TestVector | null {
   if (!isRecord(vector)) return null;
   return {
-    ...(vector as TestVector),
+    ...vector,
     tick: readFiniteNumber(vector.tick, index),
     inputs: normalizeBitRecord(vector.inputs),
     expected: normalizeBitRecord(vector.expected),
@@ -667,7 +678,7 @@ function normalizeBitRecord(value: unknown): Record<string, 0 | 1> {
   return normalized;
 }
 
-function isRecord(value: unknown): value is Record<string, any> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
@@ -687,7 +698,7 @@ function readFiniteNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function cloneRecord(value: unknown): Record<string, any> | undefined {
+function cloneRecord(value: unknown): Record<string, unknown> | undefined {
   return isRecord(value) ? { ...value } : undefined;
 }
 
@@ -716,4 +727,71 @@ function isMacroDefinition(value: unknown): value is MacroDefinition {
     Array.isArray(value.cluster.nodes) &&
     Array.isArray(value.cluster.connections)
   );
+}
+
+function normalizeFpga(value: unknown): RBFpgaConfig | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || value.board !== 'basys3') throw new Error('Invalid project: FPGA board must be basys3');
+  const constraints = value.constraints;
+  if (constraints !== undefined && (!isRecord(constraints) || constraints.type !== 'xdc' || typeof constraints.text !== 'string')) {
+    throw new Error('Invalid project: FPGA constraints must carry XDC text');
+  }
+  return {
+    ...value, board: 'basys3',
+    constraints: isRecord(constraints) ? { type: 'xdc', text: String(constraints.text) } : undefined,
+    part: readOptionalString(value.part) ?? undefined,
+    preset: readOptionalString(value.preset) ?? undefined,
+    top: readOptionalString(value.top) ?? undefined,
+  };
+}
+
+function normalizeTraceMetadata(value: unknown): TraceMetadata | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || typeof value.tickCount !== 'number' || !Number.isSafeInteger(value.tickCount) || value.tickCount < 0) {
+    throw new Error('Invalid project: trace tick count must be a nonnegative integer');
+  }
+  return {
+    ...value, tickCount: value.tickCount,
+    startTick: typeof value.startTick === 'number' ? readFiniteNumber(value.startTick, 0) : undefined,
+    sampleRate: typeof value.sampleRate === 'number' ? readFiniteNumber(value.sampleRate, 0) : undefined,
+    probeIds: Array.isArray(value.probeIds) ? value.probeIds.filter((id): id is string => typeof id === 'string') : undefined,
+  };
+}
+
+function normalizeLabSpec(value: unknown): LabSpecV1 | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || value.schemaVersion !== '1.0' || typeof value.title !== 'string' ||
+      !Array.isArray(value.objectives) || !value.objectives.every((item: unknown) => typeof item === 'string') ||
+      !Array.isArray(value.checkpoints)) throw new Error('Invalid project: lab spec is malformed');
+  const checkpoints: LabSpecV1['checkpoints'] = value.checkpoints.map((entry: unknown) => {
+    if (!isRecord(entry) || typeof entry.id !== 'string' || typeof entry.title !== 'string' ||
+        (entry.type !== 'truth-table' && entry.type !== 'test-vector' && entry.type !== 'waveform' && entry.type !== 'board-io' && entry.type !== 'custom')) {
+      throw new Error('Invalid project: lab checkpoint is malformed');
+    }
+    return { ...entry, id: entry.id, title: entry.title, type: entry.type,
+      label: readOptionalString(entry.label) ?? undefined,
+      description: readOptionalString(entry.description) ?? undefined,
+      config: cloneRecord(entry.config), spec: cloneRecord(entry.spec) };
+  });
+  return { ...value, schemaVersion: '1.0', title: value.title, objectives: value.objectives, checkpoints,
+    labId: readOptionalString(value.labId) ?? undefined, id: readOptionalString(value.id) ?? undefined,
+    description: readOptionalString(value.description) ?? undefined };
+}
+
+function normalizePortableSourceModel(value: unknown): ProjectSourceModel {
+  if (!isRecord(value) || !Array.isArray(value.files)) throw new Error('Invalid project: source model must contain a files array. Keep the original file.');
+  const paths = new Set<string>();
+  const ids = new Set<string>();
+  for (const file of value.files) {
+    if (!isRecord(file) || typeof file.path !== 'string' || !file.path.trim() || typeof file.text !== 'string') {
+      throw new Error('Invalid project: source model file must carry a path and text. Keep the original file.');
+    }
+    const path = file.path.trim();
+    if (paths.has(path)) throw new Error(`Invalid project: source model has duplicate path "${path}". Keep the original file.`);
+    paths.add(path);
+    const id = readOptionalString(file.id);
+    if (id && ids.has(id)) throw new Error(`Invalid project: source model has duplicate id "${id}". Keep the original file.`);
+    if (id) ids.add(id);
+  }
+  return normalizeProjectSourceModel(value);
 }

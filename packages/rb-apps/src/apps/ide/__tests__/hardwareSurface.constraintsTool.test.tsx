@@ -7,6 +7,7 @@ import { HardwareSurface } from '../surfaces/HardwareSurface';
 import type { ProjectHealth } from '../projectHealth';
 import { deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 import { addConstraintSet, createEmptyConstraintSets } from '../constraintSets';
+import { migrateIoMappingToHardwareMappingV2 } from '@redbyte/rb-utils';
 
 /**
  * P2.5H Wave Two — Constraints is a tool in the Board side panel: every
@@ -116,7 +117,8 @@ describe('Board — Constraints tool', () => {
   });
 
   it('keeps the named sets inside the tool and names the active set', () => {
-    const doc = addConstraintSet(createEmptyConstraintSets(), 'Lab 3 pins', 'set_property PACKAGE_PIN V17 [get_ports {SW0}]');
+    const mapping = migrateIoMappingToHardwareMappingV2({ inputs: [{ id: 'sw0', nodeId: 'sw0-node', port: 'out', label: 'SW0', pin: 'V17' }], outputs: [] });
+    const doc = addConstraintSet(createEmptyConstraintSets(), 'Lab 3 pins', 'set_property PACKAGE_PIN V17 [get_ports {SW0}]', mapping);
     const { getByTestId } = renderBoard(doc);
     const tool = getByTestId('ide-hw-constraints-tool');
     expect(tool.querySelector('[data-testid="ide-constraint-sets"]')).toBeTruthy();

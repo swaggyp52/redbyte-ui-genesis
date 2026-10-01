@@ -1,7 +1,7 @@
 import type { Circuit, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { netlistFromCircuit } from '../../export/netlistExport';
-import { vhdlFromNetlist, type VhdlTopPort } from '../../export/vhdlExport';
+import { emitRegisterVhdl, vhdlFromNetlist, type VhdlTopPort } from '../../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../../fpga/boards/basys3/basys3Bundle';
 import type { RBProject } from '../../export/projectFormat';
 import type { NativeVisualModuleDefinition, ModulePort } from './projectHierarchy';
@@ -174,8 +174,9 @@ function generateStructuralModuleSource(
   }
 
   const signalNames = new Set<string>();
+  const nodeById = new Map(circuit.nodes.map((node) => [node.id, node]));
   const signalFor = (nodeId: string, portName = 'out'): string => {
-    const name = `n_${safeIdentifier(nodeId)}_${safeIdentifier(portName)}`;
+    const name = structuralSignalName(nodeId, portName, nodeById);
     signalNames.add(name);
     return name;
   };
@@ -206,6 +207,7 @@ function generateStructuralModuleSource(
       );
       continue;
     }
+    if (appendStructuralRegister(node, incoming, sourceForInput, signalFor, statements)) continue;
     const target = signalFor(node.id, 'out');
     const a = sourceForInput(node.id, firstConnectedPort(node, incoming, ['a', 'in', 'd']) ?? 'a');
     const b = sourceForInput(node.id, firstConnectedPort(node, incoming, ['b']) ?? 'b');
@@ -273,7 +275,7 @@ function generateStructuralTop(
 
   const signalNames = new Set<string>();
   const signalFor = (nodeId: string, portName = 'out') => {
-    const name = `n_${safeIdentifier(nodeId)}_${safeIdentifier(portName)}`;
+    const name = structuralSignalName(nodeId, portName, nodeById);
     signalNames.add(name);
     return name;
   };
@@ -304,6 +306,7 @@ function generateStructuralTop(
       continue;
     }
     if (isBoundaryInput(node) || isBoundaryOutput(node)) continue;
+    if (appendStructuralRegister(node, incoming, sourceForInput, signalFor, statements)) continue;
     const target = signalFor(node.id, 'out');
     const a = sourceForInput(node.id, firstConnectedPort(node, incoming, ['a', 'in', 'd']) ?? 'a');
     const b = sourceForInput(node.id, firstConnectedPort(node, incoming, ['b']) ?? 'b');
@@ -339,6 +342,41 @@ function generateStructuralTop(
     'end structural;',
     '',
   ].filter((line) => line !== '').join('\n');
+}
+
+function isStructuralRegister(node: Node | undefined): boolean {
+  return node?.type === 'Register1' || node?.type === 'DFlipFlop';
+}
+
+function structuralSignalName(nodeId: string, portName: string, nodes: Map<string, Node>): string {
+  let port = portName;
+  if (isStructuralRegister(nodes.get(nodeId))) {
+    if (['q', 'out'].includes(port.toLowerCase())) port = 'Q';
+    else if (['q_inv', 'qn'].includes(port.toLowerCase())) port = 'Q_inv';
+  }
+  return `n_${safeIdentifier(nodeId)}_${safeIdentifier(port)}`;
+}
+
+function appendStructuralRegister(
+  node: Node,
+  incoming: Map<string, PortRef>,
+  sourceForInput: (nodeId: string, portName: string) => string,
+  signalFor: (nodeId: string, portName?: string) => string,
+  statements: string[],
+): boolean {
+  if (!isStructuralRegister(node)) return false;
+  const signal = signalFor(node.id, 'Q');
+  signalFor(node.id, 'Q_inv');
+  const emitted = emitRegisterVhdl({ id: node.id, type: node.type, config: node.config, signal,
+    input: (port) => {
+      const prefix = `${node.id}.`;
+      const key = [...incoming.keys()].find((candidate) => candidate.startsWith(prefix)
+        && candidate.slice(prefix.length).toLowerCase() === port);
+      return key ? sourceForInput(node.id, key.slice(prefix.length)) : undefined;
+    },
+  });
+  statements.push(...emitted.lines);
+  return true;
 }
 
 function gateExpression(type: string, a: string, b: string, c: string): string {

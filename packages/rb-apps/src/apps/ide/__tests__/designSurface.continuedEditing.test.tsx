@@ -263,6 +263,17 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
   });
 
+  it('keeps mismatch investigation outside the working canvas and reveals its details on request', () => {
+    const view = renderSurface({ externalDebugTick: 3, externalDebugContext: makeDebugContext(3) });
+    const failure = view.getByTestId('ide-design-debug-context-banner');
+    expect(failure.closest('[data-testid="ide-design-canvasWrap"]')).toBeNull();
+    expect(failure.closest('.ide-design-canvasWrap')).toBeNull();
+    const disclosure = view.getByTestId('ide-design-failure-details');
+    expect(disclosure.hasAttribute('open')).toBe(false);
+    expect(disclosure.querySelector('summary')?.textContent).toContain('expected');
+    expect(disclosure.contains(failure)).toBe(true);
+  });
+
   it('shows the simulation strip when an external debug context is active', () => {
     const debugContext = makeDebugContext(3);
     const view = renderSurface({

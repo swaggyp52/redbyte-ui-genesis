@@ -157,9 +157,16 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
     kind: 'board-io',
     constraintSetId: input.activeConstraintSetId ?? 'default',
   };
+  const resolveSignal = (id: string) => input.relationships.resolveField(id)
+    ?? input.relationships.resolveNode(id)
+    ?? input.relationships.signals.find(signal =>
+      signal.fieldId.toLowerCase() === id.toLowerCase() || signal.label.replace(/\s+/g, '_').toLowerCase() === id.toLowerCase());
+  const boardHasSpecificIssue = input.mappingProjection.some(p => p.required && !p.packagePin);
 
   // ── Project health (blocking) ────────────────────────────────────────
   for (const issue of input.blockingIssues) {
+    // The specific signal rows own the missing assignment, including its repair.
+    if (issue.code === 'RBP1001' && boardHasSpecificIssue) continue;
     const fixMode = legacyFixMode(issue.fixPath?.mode);
     push({
       id: `issue:${issue.code}`,
@@ -187,7 +194,7 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
     const relation = input.relationships.resolveNode(issue.nodeId);
     push({
       id: `design:${issue.kind}:${issue.portKey}`,
-      severity: issue.severity === 'error' ? 'error' : 'warning',
+      severity: issue.severity === 'error' ? 'error' : issue.severity === 'draft' ? 'info' : 'warning',
       category: 'design',
       code: issue.kind,
       message: issue.title,
@@ -206,8 +213,8 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
 
   // ── Design compiler diagnostics ──────────────────────────────────────
   for (const diagnostic of input.designDiagnostics) {
-    const nodeId = diagnostic.location?.nodeId;
-    const port = diagnostic.location?.port;
+    const nodeId = diagnostic.location?.nodeId ?? diagnostic.owner?.nodeId;
+    const port = diagnostic.location?.port ?? diagnostic.owner?.portName;
     if (nodeId && port && authoredPorts.has(`${nodeId}.${port}`)) continue;
     const messageKey = diagnostic.message.trim().toLowerCase();
     if (seenDesignMessages.has(messageKey)) continue;
@@ -264,7 +271,8 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
   // ── Board mapping ────────────────────────────────────────────────────
   const boardProblemPorts = new Set<string>();
   for (const projection of input.mappingProjection) {
-    const relation = input.relationships.resolveField(projection.logicalSignalId);
+    const relation = resolveSignal(projection.logicalSignalId) ?? resolveSignal(projection.artifactPortName);
+    const logicalLabel = relation?.label ?? projection.logicalLabel;
     const object: EngineeringObjectRef = {
       kind: 'signal',
       fieldId: projection.logicalSignalId,
@@ -273,15 +281,17 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
     };
     if (projection.required && !projection.packagePin) {
       boardProblemPorts.add(projection.artifactPortName);
+      boardProblemPorts.add(projection.logicalSignalId);
+      if (relation) { boardProblemPorts.add(relation.fieldId); if (relation.nodeId) boardProblemPorts.add(relation.nodeId); }
       push({
         id: `board:unmapped:${projection.logicalSignalId}`,
         severity: 'error',
         category: 'board',
         code: 'board-unmapped',
-        message: `${projection.logicalLabel} has no board resource`,
+        message: `${logicalLabel} has no board resource`,
         detail: `${projection.direction === 'in' ? 'Input' : 'Output'} port ${projection.artifactPortName} needs a Basys3 resource before the package can carry it`,
         object,
-        objectLabel: projection.logicalLabel,
+        objectLabel: logicalLabel,
         document: boardDocument,
         freshness: 'current',
         action: 'Assign a board resource',
@@ -319,7 +329,13 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
   ];
   const exportByCode = new Map<string, { view: ExportDiagnosticView; severity: ProblemSeverity }[]>();
   for (const entry of exportEntries) {
-    if (entry.view.port && boardProblemPorts.has(entry.view.port)) continue;
+    const port = entry.view.port;
+    const relation = port ? resolveSignal(port) : undefined;
+    if (port && (boardProblemPorts.has(port) || [...boardProblemPorts].some(id => id.toLowerCase() === port.toLowerCase())
+      || (relation && boardProblemPorts.has(relation.fieldId)))) continue;
+    // No top-level IO of a direction is valid while constructing. The concrete
+    // rows above already explain assignments once those signals exist.
+    if (/^No (input|output) mappings found\./.test(entry.view.message)) continue;
     const list = exportByCode.get(entry.view.code) ?? [];
     list.push(entry);
     exportByCode.set(entry.view.code, list);
@@ -415,7 +431,7 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
         const relation = input.relationships.resolveRunSignal(signal);
         const where = input.isSequential
           ? `t${entry.firstTick}`
-          : `case ${entry.caseIndex ?? entry.firstTick}`;
+          : `Case ${(entry.caseIndex ?? entry.firstTick) + 1} (tick ${entry.firstTick})`;
         push({
           id: `sim:fail:${run.scenarioId}:${signal}`,
           severity: 'error',

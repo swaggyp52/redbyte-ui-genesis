@@ -251,6 +251,8 @@ describe('DesignSurface debug nav — banner visibility', () => {
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
     });
+    const revealInspector = view.queryByTestId('ide-show-right-dock');
+    if (revealInspector) fireEvent.click(revealInspector);
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-context-inspector')).toBeTruthy();
@@ -650,6 +652,8 @@ describe('DesignSurface debug nav — replay authority', () => {
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
     });
+    const revealInspector = view.queryByTestId('ide-show-right-dock');
+    if (revealInspector) fireEvent.click(revealInspector);
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-context-current').textContent).toBe('1');
@@ -787,6 +791,8 @@ describe('DesignSurface debug nav — replay authority', () => {
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
     });
+    const revealInspector = view.queryByTestId('ide-show-right-dock');
+    if (revealInspector) fireEvent.click(revealInspector);
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-inspector-identity-title')).toBeTruthy();

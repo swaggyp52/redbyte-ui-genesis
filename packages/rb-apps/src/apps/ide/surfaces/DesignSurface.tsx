@@ -1394,7 +1394,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const circuitHasState = useMemo(
     () =>
       editorCircuit.nodes.some(
-        (node) => node.type === 'DFlipFlop' || node.type === 'TFlipFlop' || node.type === 'JKFlipFlop'
+        (node) => Boolean(getComponentSupport(node.type)?.clockPort)
       ),
     [editorCircuit.nodes]
   );
@@ -3012,12 +3012,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   const stepSimulation = useCallback(() => {
+    const clockInputs = new Set<string>();
+    const nodesById = new Map(editorCircuit.nodes.map((node) => [node.id, node]));
+    for (const connection of editorCircuit.connections) {
+      const from = resolveConnectionEndpoint(connection.from);
+      const to = resolveConnectionEndpoint(connection.to);
+      const target = nodesById.get(to.nodeId);
+      const clockPort = target ? getComponentSupport(target.type)?.clockPort : undefined;
+      if (clockPort === to.portName &&
+          Object.prototype.hasOwnProperty.call(runtimeSim?.inputs ?? {}, from.nodeId)) {
+        clockInputs.add(from.nodeId);
+      }
+    }
+    for (const nodeId of clockInputs) onRuntimeSimSetInput?.(nodeId, 0);
+    for (const nodeId of clockInputs) onRuntimeSimSetInput?.(nodeId, 1);
     onRuntimeSimStep?.();
-  }, [onRuntimeSimStep]);
+    for (const nodeId of clockInputs) onRuntimeSimSetInput?.(nodeId, 0);
+  }, [editorCircuit, runtimeSim?.inputs, onRuntimeSimSetInput, onRuntimeSimStep]);
 
   const resetSimulation = useCallback(() => {
+    // Runtime owns the live inputs; restore their authored defaults through its
+    // existing actions before clearing register state and the exploratory trace.
+    const authoredNodes = new Map(editorCircuit.nodes.map((node) => [node.id, node]));
+    for (const nodeId of Object.keys(runtimeSim?.inputs ?? {})) {
+      const node = authoredNodes.get(nodeId);
+      if (!node) continue;
+      const initial = node.state?.isOn;
+      onRuntimeSimSetInput?.(nodeId, initial === 1 || initial === true || initial === '1' ? 1 : 0);
+    }
     onRuntimeSimReset?.();
-  }, [onRuntimeSimReset]);
+  }, [editorCircuit.nodes, runtimeSim?.inputs, onRuntimeSimSetInput, onRuntimeSimReset]);
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedNodeIdsAll = useMemo(() => Array.from(selection.nodes), [selection.nodes]);
@@ -3504,9 +3528,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [designIssueMap]);
 
   const selectedNodeDiagnostics = useMemo(
-    () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []),
-    [diagnosticsByNode, selectedNode]
+    () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []).filter((diagnostic) => {
+      // The connectivity authority already offers the actionable draft issue.
+      const requiredPort = /unconnected required input port ['"]([^'"]+)['"]/.exec(diagnostic.message)?.[1];
+      if (!requiredPort || !selectedNode) return true;
+      return !(designIssueMap.byNode.get(selectedNode.id) ?? []).some(
+        (issue) => issue.kind === 'unconnected-input' && issue.focusTarget.portKey === requiredPort
+      );
+    }),
+    [diagnosticsByNode, selectedNode, designIssueMap]
   );
+  const describeCompilerDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
+    let message = diagnostic.message;
+    for (const node of editorCircuit.nodes) {
+      const label = ioRowByNodeId.get(node.id)?.label?.trim() || node.label?.trim() || nodeTypeLabel(node.type);
+      message = message.split(`'${node.id}'`).join(`'${label}'`);
+    }
+    return message;
+  }, [editorCircuit.nodes, ioRowByNodeId]);
   const diagnosticsDrawerRows = useMemo(() => {
     if (diagnosticFilterNodeId) {
       return diagnosticsByNode.get(diagnosticFilterNodeId) ?? [];
@@ -4080,6 +4119,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const showPartialBlankAuthoring =
     workspacePreset.showCanvasTools &&
+    toolMode !== 'wire' &&
     !showBlankStateCard &&
     !isPlacementMode &&
     editorCircuit.nodes.length > 0 &&
@@ -5565,7 +5605,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     key={`${diagnostic.code}-${diagnostic.message}`}
                     className={`rb-insp-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
                   >
-                    <span>{diagnostic.message}</span>
+                    <span>{describeCompilerDiagnostic(diagnostic)}</span>
                   </li>
                 ))}
               </ul>
@@ -6116,7 +6156,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </select>
               </label>
               <IdeCallout tone="info">
-                Supported learning path: one scalar Register1, rising-edge capture,
+                Supported learning path: scalar Register1 registers sharing one clock, rising-edge capture,
                 and optional active-high asynchronous clear. Unsupported imported
                 settings stay visible for repair but cannot be newly selected.
               </IdeCallout>
@@ -6896,7 +6936,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         }
         consoleMode="auto"
         console={renderBottomWorkspace()}
-        consoleHasBlocking={compilerErrorCount > 0}
+        // Draft register wiring can be incomplete while a student is placing
+        // parts. Keep its errors visible in the header/Problems strip without
+        // resizing the canvas mid-wire; opening details is an explicit action.
+        consoleHasBlocking={false}
         consoleHasEntries={
           authoringIssues.length > 0 ||
           compilerDiagnostics.length > 0 ||
@@ -7714,6 +7757,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-testid="ide-design-wire-cue"
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-wire-active={wireStartPort ? '1' : '0'}
+                    title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
                   >
                     {wireFeedback ? (
                       <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
@@ -8135,8 +8179,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </p>
                     ) : null}
                     {canRenderReplayScrubber && (
-                      <div
-                        className="ide-design-replay-transport"
+                      <details className="ide-design-replay-controls" data-testid="ide-design-replay-controls">
+                      <summary className="wb-btn wb-btn--ghost">Playback controls</summary>
+                      <div className="ide-design-replay-transport"
                         data-testid="ide-design-replay-transport"
                         tabIndex={0}
                         onKeyDown={(event) => {
@@ -8281,6 +8326,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           ) : null}
                         </div>
                       </div>
+                      </details>
                     )}
                   </div>
                 ) : null}
@@ -8328,91 +8374,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             )}
 
-            {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
-            <div
-              ref={paneRowRef}
-              className="ide-design-pane-row"
-              data-design-view={effectiveDesignView}
-              data-testid="ide-design-pane-row"
-            >
-              {workspacePreset.showCanvasPane ? (
-                <div
-                  className="ide-design-pane ide-design-pane--canvas"
-                  style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
-                >
-
-            <div
-              ref={canvasViewportRef}
-              className="ide-design-canvasWrap ide-design-canvas-work-object"
-              data-testid="ide-design-canvas-wrap"
-              data-work-object="circuit"
-              aria-label="Circuit authoring workspace"
-            >
-              {pinnedProbeRows.length > 0 && (
-                <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
-                  {pinnedProbeRows.map((probe) => (
-                    <span
-                      key={probe.key}
-                      className="ide-design-probe-pill"
-                      data-testid={`ide-design-probe-pill-${probe.key}`}
-                    >
-                      <code>{probe.label}</code>
-                      <span className="ide-design-probe-value">{probe.value}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="ide-design-layout ide-design-layout-canvas-only">
-                <section
-                  className="rb-sch-frame"
-                  data-testid="ide-design-canvas"
-                  data-hierarchy-surface="design"
-                  data-hierarchy-role="primary"
-                  data-hierarchy-focal="circuit-canvas"
-                >
-                  {focusedAssetContext && (
-                    <DesignFocusBanner
-                      context={focusedAssetContext}
-                      isPlacementArmed={
-                        focusedAssetContext.kind === 'macro' &&
-                        activeMacroInsertionId === focusedAssetContext.macroId
-                      }
-                      onClear={handleClearFocusedAsset}
-                      onBackToProject={onGoToProject}
-                    />
-                  )}
-                  {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
-                    <div
-                      className="ide-design-diagnostic-callout"
-                      data-testid="ide-design-diagnostic-callout"
-                      data-blocks-canvas-placement="1"
-                      data-blocks-macro-placement="1"
-                    >
-                      <IdeCallout tone="warn">
-                        Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
-                        {typeof diagnosticRouteRequest.tick === 'number' ? ` at tick ${diagnosticRouteRequest.tick}` : ''}.
-                        <div className="ide-inline-actions ide-design-diagnostic-callout-actions">
-                          {onGoToProject && (
-                            <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-design-diagnostic-go-mapping">
-                              Open mapping
-                            </IdeButton>
-                          )}
-                          {onGoToVerify && (
-                            <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-diagnostic-go-verify">
-                              Rerun simulation
-                            </IdeButton>
-                          )}
-                          {onClearDiagnostic && (
-                            <IdeButton tone="ghost" onClick={onClearDiagnostic} testId="ide-design-diagnostic-dismiss">
-                              Dismiss
-                            </IdeButton>
-                          )}
-                        </div>
-                      </IdeCallout>
-                    </div>
-                  )}
-                  {activeDebugContext ? (
+            {activeDebugContext ? (
+              <details className="ide-design-failure-details" data-testid="ide-design-failure-details">
+                <summary className="wb-btn wb-btn--ghost">
+                  Failure details · {getVerifyDebugDisplaySignal(activeDebugContext)} · expected {activeDebugContext.expected}, observed {activeDebugContext.actual}
+                </summary>
                     <div
                       className="ide-design-debug-context-banner"
                       data-testid="ide-design-debug-context-banner"
@@ -8557,7 +8523,92 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         ) : null}
                       </div>
                     </div>
-                  ) : null}
+              </details>
+            ) : null}
+            {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
+            <div
+              ref={paneRowRef}
+              className="ide-design-pane-row"
+              data-design-view={effectiveDesignView}
+              data-testid="ide-design-pane-row"
+            >
+              {workspacePreset.showCanvasPane ? (
+                <div
+                  className="ide-design-pane ide-design-pane--canvas"
+                  style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
+                >
+
+            <div
+              ref={canvasViewportRef}
+              className="ide-design-canvasWrap ide-design-canvas-work-object"
+              data-testid="ide-design-canvas-wrap"
+              data-work-object="circuit"
+              aria-label="Circuit authoring workspace"
+            >
+              {pinnedProbeRows.length > 0 && (
+                <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
+                  {pinnedProbeRows.map((probe) => (
+                    <span
+                      key={probe.key}
+                      className="ide-design-probe-pill"
+                      data-testid={`ide-design-probe-pill-${probe.key}`}
+                    >
+                      <code>{probe.label}</code>
+                      <span className="ide-design-probe-value">{probe.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="ide-design-layout ide-design-layout-canvas-only">
+                <section
+                  className="rb-sch-frame"
+                  data-testid="ide-design-canvas"
+                  data-hierarchy-surface="design"
+                  data-hierarchy-role="primary"
+                  data-hierarchy-focal="circuit-canvas"
+                >
+                  {focusedAssetContext && (
+                    <DesignFocusBanner
+                      context={focusedAssetContext}
+                      isPlacementArmed={
+                        focusedAssetContext.kind === 'macro' &&
+                        activeMacroInsertionId === focusedAssetContext.macroId
+                      }
+                      onClear={handleClearFocusedAsset}
+                      onBackToProject={onGoToProject}
+                    />
+                  )}
+                  {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
+                    <div
+                      className="ide-design-diagnostic-callout"
+                      data-testid="ide-design-diagnostic-callout"
+                      data-blocks-canvas-placement="1"
+                      data-blocks-macro-placement="1"
+                    >
+                      <IdeCallout tone="warn">
+                        Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
+                        {typeof diagnosticRouteRequest.tick === 'number' ? ` at tick ${diagnosticRouteRequest.tick}` : ''}.
+                        <div className="ide-inline-actions ide-design-diagnostic-callout-actions">
+                          {onGoToProject && (
+                            <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-design-diagnostic-go-mapping">
+                              Open mapping
+                            </IdeButton>
+                          )}
+                          {onGoToVerify && (
+                            <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-diagnostic-go-verify">
+                              Rerun simulation
+                            </IdeButton>
+                          )}
+                          {onClearDiagnostic && (
+                            <IdeButton tone="ghost" onClick={onClearDiagnostic} testId="ide-design-diagnostic-dismiss">
+                              Dismiss
+                            </IdeButton>
+                          )}
+                        </div>
+                      </IdeCallout>
+                    </div>
+                  )}
                   <div
                     className={`rb-sch-stage ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
                       presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
@@ -8572,7 +8623,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-placement-active={isPlacementMode ? '1' : '0'}
                     data-presentation-zoom={presentationZoom}
                     data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
-                    onPointerDownCapture={handleWireModePointerDownCapture}
+                    onPointerDownCapture={(event) => {
+                      handleWireModePointerDownCapture(event);
+                      if (effectiveLearningMode !== 'live') return;
+                      const target = event.target as Element;
+                      const nodeId = target.closest('[data-node-id]')?.getAttribute('data-node-id');
+                      if (nodeId && target.getAttribute('data-testid') === `switch-toggle-${nodeId}`) {
+                        // Let live switch clicks reach their control rather than
+                        // being captured by the canvas as a pending drag.
+                        event.stopPropagation();
+                      }
+                    }}
+                    onClickCapture={(event) => {
+                      if (effectiveLearningMode !== 'live') return;
+                      const target = event.target as Element;
+                      const nodeId = target.closest('[data-node-id]')?.getAttribute('data-node-id');
+                      if (!nodeId || target.getAttribute('data-testid') !== `switch-toggle-${nodeId}`) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      selectNodeInStore(nodeId, false);
+                      const current = runtimeSim.inputs[nodeId] ?? liveSignals.get(`${nodeId}.out`) ?? 0;
+                      // Repeated exploration changes runtime values while the
+                      // authored isOn defaults remain available for Reset.
+                      handleInputToggled(nodeId, 'out', current === 1 ? 0 : 1);
+                    }}
                     onClick={handleCanvasPlacementClick}
                     onPointerMove={handleCanvasPlacementPointerMove}
                     onPointerLeave={() => {
@@ -9572,7 +9646,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <code>{diagnostic.code}</code>
                         <span>{diagnostic.title}</span>
                       </div>
-                      <p className="ide-copy">{diagnostic.message}</p>
+                      <p className="ide-copy">{describeCompilerDiagnostic(diagnostic)}</p>
                       {diagnostic.hint.length > 0 ? (
                         <p className="ide-copy ide-design-diagnostic-hint">{diagnostic.hint[0]}</p>
                       ) : null}

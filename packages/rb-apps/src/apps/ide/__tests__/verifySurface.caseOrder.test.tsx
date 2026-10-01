@@ -82,7 +82,7 @@ function renderSurface(kind: 'sequential' | 'combinational') {
 /** The case numbers as they are painted, top to bottom. */
 function renderedCaseNumbers(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('.ide-case-lab-row')).map((row) =>
-    (row.querySelector('.ide-case-lab-num')?.textContent ?? '').trim()
+    (row.querySelector('.ide-case-lab-num small')?.textContent ?? '').trim()
   );
 }
 
@@ -120,7 +120,9 @@ describe('Simulate case table — the rows are in the order the experiment is in
 
     expect(getByTestId('ide-verify-lab-grid').getAttribute('data-representation')).toBe('table');
     // A,B ascending: 00, 01, 10, 11 — which is ticks 3, 1, 2, 0 for this authored set.
-    expect(renderedCaseNumbers(container)).toEqual(['3', '1', '2', '0']);
+    expect(renderedCaseNumbers(container)).toEqual(['t3', 't1', 't2', 't0']);
+    expect(Array.from(container.querySelectorAll('.ide-case-lab-num > span')).map(cell => cell.textContent))
+      .toEqual(['Case 4', 'Case 2', 'Case 3', 'Case 1']);
     const head = getByTestId('ide-case-lab-num-head');
     expect(head.getAttribute('data-case-order')).toBe('combination');
     expect(head.getAttribute('title')).toContain('input combination');

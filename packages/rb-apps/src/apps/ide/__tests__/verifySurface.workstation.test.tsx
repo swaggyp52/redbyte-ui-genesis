@@ -446,8 +446,8 @@ describe('VerifySurface workstation controls', () => {
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks' }));
     expect(getByTestId('ide-verify-repair-title').textContent).toContain('Compare failed');
     expect(getByTestId('ide-run-check-result').textContent).toContain('1 of 2 checks failed');
-    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 1');
-    expect(getByTestId('ide-verify-repair-case').textContent).toContain('Case 1');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 2');
+    expect(getByTestId('ide-verify-repair-case').textContent).toContain('Case 2');
     expect(getByTestId('ide-verify-repair-signal').textContent).toContain('LD0');
     expect(getByTestId('ide-verify-repair-expected').textContent).toContain('1');
     expect(getByTestId('ide-verify-repair-observed').textContent).toContain('0');
@@ -2058,7 +2058,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('ld0');
-    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 1');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 2');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('expected 1');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('got 0');
     showWaveformRepresentation({ queryByTestId });

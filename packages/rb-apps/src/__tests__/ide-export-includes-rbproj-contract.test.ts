@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
-import { decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
+import type { HdlSource } from '../fpga/toolchainBackend';
+import { decodeRBProject, deriveSourceModel, encodeRBProject, type RBProject } from '../export/projectFormat';
 import { parseVhdl } from '../import/vhdlImport';
 import { parsedHdlToCircuit } from '../import/hdlToCircuit';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
@@ -102,10 +103,18 @@ describe('IDE export includes rbproj contract', () => {
     expect(canonicalExport.success).toBe(true);
     expect(canonicalExport.bundle).toBeTruthy();
     expect(canonicalExport.projectProjection).toBeTruthy();
-    const encodedProjection = encodeRBProject(canonicalExport.projectProjection!)
-      .replace(/\r\n/g, '\n')
-      .trim();
     const exportViewModel = buildExportViewModel(project);
+    const finalVhd = exportViewModel.artifacts.find(artifact => artifact.path === 'top.vhd')!.content;
+    const finalXdc = exportViewModel.artifacts.find(artifact => artifact.path === 'top.xdc')!.content;
+    const generatedProjection = canonicalExport.projectProjection!;
+    const encodedProjection = encodeRBProject({
+      ...generatedProjection,
+      sourceModel: deriveSourceModel(project),
+      hdl: { ...generatedProjection.hdl!, sources: generatedProjection.hdl!.sources.map((source: HdlSource) => ({
+        ...source, text: exportViewModel.artifacts.find(artifact => artifact.path === source.path)?.content ?? source.text,
+      })) },
+      fpga: { ...generatedProjection.fpga!, constraints: { type: 'xdc', text: finalXdc } },
+    }).replace(/\r\n/g, '\n').trim();
 
     expect(exportViewModel.status).toBe('ok');
 
@@ -124,9 +133,12 @@ describe('IDE export includes rbproj contract', () => {
     expect(projectedProject.vectors).toEqual(authoredProject.vectors);
     expect(projectedProject.name).toBe(project.name);
     expect(projectedProject.meta).toEqual(project.meta);
+    expect(projectedProject.sourceModel?.topEntity).toBe(project.hdl?.top);
+    expect(projectedProject.sourceModel?.files.find(source => source.path === 'top.vhd')?.text)
+      .toBe(loadFixtureVhdl());
     expect(projectedProject.hdl?.sources.find((source) => source.path === 'top.vhd')?.text)
-      .toBe(canonicalExport.bundle!.topVhd);
-    expect(projectedProject.fpga?.constraints?.text).toBe(canonicalExport.bundle!.topXdc);
+      .toBe(finalVhd);
+    expect(projectedProject.fpga?.constraints?.text).toBe(finalXdc);
 
     const zipA = await buildVivadoKitZip(exportViewModel.artifacts);
     const zipB = await buildVivadoKitZip(exportViewModel.artifacts);
@@ -138,6 +150,8 @@ describe('IDE export includes rbproj contract', () => {
 
     const rbprojText = await rbprojZipEntry!.async('string');
     expect(rbprojText.replace(/\r\n/g, '\n').trim()).toBe(encodedProjection);
+    expect(await zip.file('top.vhd')!.async('string')).toBe(projectedProject.hdl!.sources.find(source => source.path === 'top.vhd')!.text);
+    expect(await zip.file('top.xdc')!.async('string')).toBe(projectedProject.fpga!.constraints!.text);
 
     const parsedProject = JSON.parse(rbprojText) as RBProject;
     expect(parsedProject.name).toBe('rbproj-export-contract');

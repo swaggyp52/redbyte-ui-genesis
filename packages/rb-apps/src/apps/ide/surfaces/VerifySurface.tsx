@@ -137,7 +137,8 @@ import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping 
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
 import { RunIdentityStrip } from './verify/RunIdentityStrip';
-import { BROWSER_ENGINE_VERSION, describeRecordingChanges } from '../runDeterminism';
+import { describeRecordingState } from './verify/recordingState';
+import { describeRecordingChanges } from '../runDeterminism';
 import { ManualBench } from './verify/ManualBench';
 import { CaseLab } from './verify/CaseLab';
 import { buildFieldSignalResolver, normalizeSignalId } from '../signalIdentity';
@@ -411,7 +412,6 @@ const VERIFY_WAVEFORM_LABEL_ALLOWANCE = 104;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
-  runHistory,
   runArchive = [],
   onSelectRecordedRun,
   deterministicHash,
@@ -3213,7 +3213,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedFailureRepairCaseLabel =
     selectedFailureExplanationCase?.caseIndex !== undefined &&
     selectedFailureExplanationCase.caseIndex !== null
-      ? `Case ${selectedFailureExplanationCase.caseIndex}`
+      ? `Case ${selectedFailureExplanationCase.caseIndex + 1}`
       : selectedFailureExplanationCase
         ? `Tick ${selectedFailureExplanationCase.tick}`
         : null;
@@ -3237,16 +3237,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const selectedCaseTickLabel =
     selectedTick !== null
       ? stepIndex >= 0
-        ? `Case ${stepIndex} \u00b7 t${selectedTick}`
+        ? `Case ${stepIndex + 1} \u00b7 t${selectedTick}`
         : `t${selectedTick}`
       : null;
   const selectedCasePositionLabel =
     selectedTick !== null && stepIndex >= 0
-      ? `Case ${stepIndex} of ${totalSteps} \u00b7 t${selectedTick}`
+      ? `Case ${stepIndex + 1} of ${totalSteps} \u00b7 t${selectedTick}`
       : `${totalSteps} case${totalSteps === 1 ? '' : 's'}`;
   const selectedScopeCaseLabel =
     selectedTick !== null && stepIndex >= 0
-      ? `Case ${stepIndex} of ${totalSteps}`
+      ? `Case ${stepIndex + 1} of ${totalSteps}`
       : `${totalSteps} case${totalSteps === 1 ? '' : 's'}`;
 
   const goToPrevStep = useCallback(() => {
@@ -4921,6 +4921,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // `deriveVerifyCurrent`; Simulate must not claim CURRENT while they say stale. Simulate may
   // still add reasons of its own (wrong scenario, stale authored reference), never remove one.
   const runProofIsStale = runIsStale || runEvidenceIsStale;
+  const recording = describeRecordingState({
+    run: lastRun,
+    archive: runArchive,
+    stale: runProofIsStale,
+    changes: lastRun ? describeRecordingChanges(lastRun, {
+      circuit: inspectionCircuit,
+      stimulusHash: computeExecutionStimulusHash(effectiveNextRunVectors, effectiveClockPolicy),
+      scenarioContentHash: currentScenarioContentHash ?? undefined,
+    }) : [],
+  });
   // The evidence row states what the waveform *is* — separately from the PASS/FAIL
   // verdict: a run in progress, a replay walking a recorded run, a recorded run
   // that still describes the current project, or a recorded run whose inputs
@@ -7003,10 +7013,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             });
             showRecordedView();
           } : undefined}
-          reproduceDisabledReason={lastRun && (!lastRun.executionInput || !lastRun.circuitSnapshot)
-            ? 'This older recording did not retain reproduction inputs.'
-            : lastRun?.identity?.engine && lastRun.identity.engine !== BROWSER_ENGINE_VERSION
-              ? 'The recorded engine is unavailable.' : undefined}
+          reproduceDisabledReason={lastRun && !recording.reproducible.ok ? recording.reproducible.reason : undefined}
           onRun={runVerification}
           runLabel={runState === 'running' ? 'Running…' : compactCommandRunLabel}
           runDisabled={runState === 'running' || gradingBlockedByDesign}
@@ -7052,11 +7059,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ) : null}
         </div>
         {lastRun && <RunIdentityStrip run={lastRun} archive={runArchive}
-          changes={describeRecordingChanges(lastRun, {
-            circuit: inspectionCircuit,
-            stimulusHash: computeExecutionStimulusHash(effectiveNextRunVectors, effectiveClockPolicy),
-            scenarioContentHash: currentScenarioContentHash ?? undefined,
-          })}
+          recording={recording}
+          changes={recording.changes}
           onSelect={onSelectRecordedRun ? runId => { onSelectRecordedRun(runId); showRecordedView(); } : undefined}
           onDifference={(signal, tick) => { setSelectedSignal(canonicalWaveformSignalByRawKey.get(normalizeFieldId(normalizeSignalKey(signal))) ?? signal); setSelectedTick(tick); openCircuitInvestigation(); }}
         />}
@@ -7470,7 +7474,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           />
         ) : (
           <CaseLab
-            runHistory={getRuntimeVerifyRunKind(lastRun) === 'trace' ? [] : runHistory?.filter((run) => run.runKind !== 'trace')}
+            recording={recording}
             caseOrder={isSequentialRun ? 'time' : 'combination'}
             inputFields={stimulusPanelInputFields}
             outputFields={outputFields}
@@ -8162,9 +8166,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </>
           ) : (
             <>
-              <header><button type="button" className="wb-btn" onClick={() => setDrawerOpen(false)} aria-label="Close simulation details">Close</button><strong>{selectedSignal ?? (selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : 'Select an event')}</strong></header>
+              <header><button type="button" className="wb-btn" onClick={() => setDrawerOpen(false)} aria-label="Close simulation details">Close</button><strong>{selectedSignal ?? (selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent.tick}` : `Case ${selectedAuthoredEventIndex + 1}`) : 'Select an event')}</strong></header>
               <dl>
-                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent?.tick ?? selectedTick}` : `Case ${selectedAuthoredEvent?.tick ?? selectedTick}`) : '—'}</dd></div>
+                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? (isSequentialRun ? `t${selectedAuthoredEvent.tick}` : `Case ${selectedAuthoredEventIndex + 1}`) : '—'}</dd></div>
                 <div><dt>Time</dt><dd>{selectedTick != null ? `t${selectedTick}` : '—'}</dd></div>
                 <div><dt>Input changes</dt><dd>{selectedEventChangedInputs.length > 0 ? selectedEventChangedInputs.map((field) => field.label).join(', ') : 'None at this event'}</dd></div>
                 <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? 'Not recorded'}</dd></div>

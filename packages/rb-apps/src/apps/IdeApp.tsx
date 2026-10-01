@@ -365,6 +365,7 @@ const IdeWorkspace: React.FC = () => {
   const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
   const [designFocusRequest, setDesignFocusRequest] = useState<DesignFocusRequest | null>(null);
   const [loadModalOpen, setLoadModalOpen] = useState(false);
+  const [projectFileError, setProjectFileError] = useState<string | null>(null);
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
   const [savedRunSignature, setSavedRunSignature] = useState<string | null>(null);
@@ -1462,6 +1463,8 @@ const IdeWorkspace: React.FC = () => {
       },
       ioMapping: projectIoMapping,
       hardwareMappingV2,
+      sourceModel,
+      constraintSets: constraintSetsDoc,
       vectors: authoritativeProjectVectors,
       hierarchy,
       customComponents: customComponents.length > 0 ? customComponents : undefined,
@@ -1489,6 +1492,8 @@ const IdeWorkspace: React.FC = () => {
       projectIoRows,
       projectIoMapping,
       hardwareMappingV2,
+      sourceModel,
+      constraintSetsDoc,
       projectKind,
       projectName,
       authoritativeProjectVectors,
@@ -1893,6 +1898,7 @@ const IdeWorkspace: React.FC = () => {
         scenarios: result.value.snapshot.scenarios,
         activeScenarioId: result.value.snapshot.activeScenarioId,
       },
+      workspaceSnapshot: { runEvidence: result.value.snapshot.runEvidence },
     });
     if (restored) setLastSavedAt(`Recovery restored ${formatSavedAtLabel(result.value.snapshot.savedAtIso)}`);
   }, [handleSafeLoadIntoIde, repositoryState.recoveryCheckpoint, setLastSavedAt]);
@@ -1971,6 +1977,7 @@ const IdeWorkspace: React.FC = () => {
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
+      setProjectFileError(null);
       try {
         const raw = await file.text();
         // Detect an older format BEFORE loading — never upgrade silently. If a
@@ -2000,6 +2007,7 @@ const IdeWorkspace: React.FC = () => {
         }
         if (plan.status === 'too-new' || plan.status === 'invalid') {
           setLastSavedAt(`Load failed for ${file.name}: ${plan.error ?? 'unsupported project'}`);
+          setProjectFileError(`Could not open ${file.name}: ${plan.error ?? 'unsupported project'}. Your current project is preserved.`);
           return;
         }
         const parsed = decodeRBProject(raw);
@@ -2026,6 +2034,7 @@ const IdeWorkspace: React.FC = () => {
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'unknown project error';
         setLastSavedAt(`Load failed for ${file.name}: ${reason}`);
+        setProjectFileError(`Could not open ${file.name}: ${reason}. Your current project is preserved.`);
       }
     },
     [handleSafeLoadIntoIde, savedProjects, setLastSavedAt]
@@ -2605,6 +2614,7 @@ const IdeWorkspace: React.FC = () => {
       return false;
     }
     replaceWithBlankProject();
+    workspacePreferencesStore.setDesignView('canvas');
     setProjectHdlSources([]);
     if (projectKind === 'import') {
       clearImportRecoveryUrlState();
@@ -2910,9 +2920,10 @@ const IdeWorkspace: React.FC = () => {
       const label = (node as { label?: string } | undefined)?.label?.trim();
       const moduleTrail = selectedEngineeringObject.moduleId === 'top' ? '' : `${selectedEngineeringObject.moduleId} / `;
       if (label) return `${moduleTrail}${label}${node?.type ? ` · ${node.type}` : ''}`;
+      if (node) return `${moduleTrail}${node.type}`;
     }
     return describeEngineeringObject(selectedEngineeringObject);
-  }, [circuit.nodes, relationshipIndex, selectedEngineeringObject]);
+  }, [circuit.nodes, relationshipIndex, scenarios, selectedEngineeringObject]);
   const selectionKindLabel = useMemo(() => {
     switch (selectedEngineeringObject?.kind) {
       case 'signal': return 'signal';
@@ -3760,6 +3771,12 @@ const IdeWorkspace: React.FC = () => {
         data-testid="ide-project-file-input"
       />
 
+      {projectFileError ? (
+        <IdeModal title="Project could not be opened" testId="ide-project-open-error"
+          body={<p role="alert">{projectFileError}</p>}
+          actions={<IdeButton onClick={() => setProjectFileError(null)}>Close</IdeButton>}
+          onClose={() => setProjectFileError(null)} />
+      ) : null}
       {loadModalOpen ? (
         <IdeModal
           title="Open Existing Project"

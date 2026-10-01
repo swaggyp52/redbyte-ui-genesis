@@ -138,6 +138,86 @@ afterEach(() => {
 });
 
 describe('DesignSurface blank-state guidance', () => {
+  it('keeps repeated canvas input exploration in runtime state and reset restores the authored default', () => {
+    const authored = structuredClone(FOCUS_CIRCUIT);
+    authored.nodes[0].state = {};
+    useCircuitStore.setState({ circuit: authored });
+    const mutations = vi.fn();
+    function LiveHarness() {
+      const [sim, setSim] = React.useState({ ...makeRuntimeSim(), inputs: { sw0_node: 0 as 0 | 1 } });
+      return <DesignSurface runtimeSim={sim} ioRows={[]}
+        onRuntimeSimSetInput={(id, value) => setSim(current => ({ ...current,
+          inputs: { ...current.inputs, [id]: value }, signals: { ...current.signals, [`${id}.out`]: value } }))}
+        onRuntimeSimReset={vi.fn()} onCircuitMutated={mutations}
+        onGoToProject={vi.fn()} onGoToVerify={vi.fn()} />;
+    }
+    const view = render(<LiveHarness />);
+    fireEvent.click(view.getByTestId('ide-design-explore'));
+    for (const expected of [1, 0, 1]) {
+      fireEvent.click(view.getByTestId('switch-toggle-sw0_node'));
+      expect(view.getByTestId('node-INPUT-sw0_node').getAttribute('data-sim-value')).toBe(String(expected));
+      expect(useCircuitStore.getState().circuit.nodes[0].state).toEqual({});
+    }
+    fireEvent.click(view.getByTestId('ide-design-live-reset'));
+    expect(view.getByTestId('node-INPUT-sw0_node').getAttribute('data-sim-value')).toBe('0');
+    expect(mutations).not.toHaveBeenCalled();
+  });
+  it('restores authored input defaults before resetting exploratory register state', () => {
+    useCircuitStore.setState({ circuit: {
+      ...structuredClone(FOCUS_CIRCUIT),
+      nodes: [...structuredClone(FOCUS_CIRCUIT.nodes),
+        { ...structuredClone(FOCUS_CIRCUIT.nodes[0]), id: 'low_input', state: {} }],
+    } });
+    const actions: Array<string> = [];
+    const view = render(<DesignSurface
+      runtimeSim={{ ...makeRuntimeSim(), inputs: { sw0_node: 0, low_input: 1 } }}
+      ioRows={[]}
+      onRuntimeSimSetInput={(id, value) => actions.push(`${id}=${value}`)}
+      onRuntimeSimReset={() => actions.push('reset')}
+      onGoToProject={vi.fn()}
+      onGoToVerify={vi.fn()}
+    />);
+    fireEvent.click(view.getByTestId('ide-design-explore'));
+    fireEvent.click(view.getByTestId('ide-design-live-reset'));
+    expect(actions).toEqual(['sw0_node=1', 'low_input=0', 'reset']);
+    expect(useCircuitStore.getState().circuit.nodes[0].state).toEqual({ isOn: 1 });
+  });
+  it('offers Clock edge during exploration of the supported scalar register', () => {
+    const input = structuredClone(FOCUS_CIRCUIT.nodes[0]);
+    const output = structuredClone(FOCUS_CIRCUIT.nodes[1]);
+    useCircuitStore.setState({ circuit: {
+      nodes: [input, { ...input, id: 'clock', label: 'CLK' }, output,
+        { id: 'register', type: 'Register1', position: { x: 90, y: 0 }, rotation: 0, config: {}, state: {} }],
+      connections: [
+        { id: 'd', from: { nodeId: input.id, portName: 'out' }, to: { nodeId: 'register', portName: 'D' } },
+        { id: 'clk', from: { nodeId: 'clock', portName: 'out' }, to: { nodeId: 'register', portName: 'CLK' } },
+        { id: 'q', from: { nodeId: 'register', portName: 'Q' }, to: { nodeId: output.id, portName: 'in' } },
+      ],
+    } });
+    const actions: Array<string> = [];
+    const view = render(<DesignSurface
+      runtimeSim={{ ...makeRuntimeSim(), inputs: { [input.id]: 1, clock: 0 } }}
+      ioRows={[]}
+      onRuntimeSimSetInput={(id, value) => actions.push(`${id}=${value}`)}
+      onRuntimeSimStep={() => actions.push('step')}
+      onGoToProject={vi.fn()}
+      onGoToVerify={vi.fn()}
+    />);
+    fireEvent.click(view.getByTestId('ide-design-explore'));
+    expect(view.getByTestId('ide-design-live-step').textContent).toContain('Clock edge');
+    expect(view.getByTestId('ide-design-live-note').textContent).toContain('not recorded');
+    fireEvent.click(view.getByTestId('ide-design-live-step'));
+    expect(actions).toEqual(['clock=0', 'clock=1', 'step', 'clock=0']);
+  });
+  it('clears partial-circuit guidance while Wire is active so first connections stay reachable', () => {
+    useCircuitStore.setState({ circuit: { ...structuredClone(FOCUS_CIRCUIT), connections: [] } });
+    const view = renderSurface();
+    expect(view.getByTestId('ide-design-authoring-quickstrip')).toBeTruthy();
+    fireEvent.click(view.getByTestId('ide-design-tool-wire'));
+    expect(view.queryByTestId('ide-design-authoring-quickstrip')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-design-tool-select'));
+    expect(view.getByTestId('ide-design-authoring-quickstrip')).toBeTruthy();
+  });
   it('keeps a lighter blank-state onboarding card while giving the canvas the unused inspector space', async () => {
     const view = renderSurface();
 
