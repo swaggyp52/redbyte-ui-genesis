@@ -22,6 +22,7 @@
   },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "typecheck": "node ../../scripts/rb-typecheck-app.mjs",
     "test": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__",
     "test:vhdl": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts",
     "test:ci": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__",

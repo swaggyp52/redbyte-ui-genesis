@@ -14,49 +14,23 @@
 //   node scripts/rb-typecheck-baseline.mjs            compare against the committed baseline
 //   node scripts/rb-typecheck-baseline.mjs --write    re-record it (say why in the commit)
 //   node scripts/rb-typecheck-baseline.mjs --json     print the fingerprint and exit 0
+//
+// The scope list, the pinned compiler (5.9.3 - three versions are installed and 5.3.3 reports a
+// different count) and the diagnostic parser are shared with scripts/rb-typecheck-app.mjs, the raw
+// application check, through scripts/rb-typecheck-scope.mjs so that both commands measure the same
+// project with the same compiler. This script's comparison, output and exit semantics are its own.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ROOT, SCOPES, parseDiagnostics, resolveTsc } from './rb-typecheck-scope.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BASELINE = path.join(ROOT, 'docs', 'validation', 'typecheck-baseline.json');
-
-/** Every scope this repository claims to have type-checked. Add a scope, do not widen one. */
-const SCOPES = [
-  { name: 'rb-apps', project: 'packages/rb-apps/tsconfig.json' },
-];
-
-// `@redbyte/rb-apps` declares no TypeScript of its own, and three versions are installed through
-// other packages (5.3.3, 5.8.2, 5.9.3). Whichever one a bare `tsc` happens to resolve changes the
-// count — 5.3.3 reports 762 diagnostics where 5.9.3 reports 778 — so a number is only meaningful
-// beside the compiler that produced it. This pins one and refuses to compare across a change.
-const PINNED_TYPESCRIPT = '5.9.3';
-
-/** The pinned compiler, resolved through the store rather than a hoisted or global tsc. */
-function resolveTsc() {
-  const pinned = path.join(
-    ROOT, 'node_modules', '.pnpm', `typescript@${PINNED_TYPESCRIPT}`, 'node_modules', 'typescript', 'bin', 'tsc'
-  );
-  if (fs.existsSync(pinned)) return pinned;
-  throw new Error(
-    `TypeScript ${PINNED_TYPESCRIPT} is not installed at ${pinned}. ` +
-      'Install it, or change PINNED_TYPESCRIPT and re-record the baseline with --write.'
-  );
-}
-
-const DIAGNOSTIC = /^(.*?)\((\d+),(\d+)\): error (TS\d+): (.*)$/;
 
 function run(scope, tsc) {
   const args = ['-p', scope.project, '--noEmit', '--pretty', 'false'];
   const result = spawnSync(process.execPath, [tsc, ...args], { cwd: ROOT, encoding: 'utf8' });
-  const lines = `${result.stdout ?? ''}${result.stderr ?? ''}`.split(/\r?\n/);
-  const diagnostics = [];
-  for (const line of lines) {
-    const match = DIAGNOSTIC.exec(line.trim());
-    if (match) diagnostics.push({ file: match[1].replace(/\\/g, '/'), code: match[4] });
-  }
+  const diagnostics = parseDiagnostics(`${result.stdout ?? ''}${result.stderr ?? ''}`);
   const byCode = {};
   const byFile = {};
   for (const diagnostic of diagnostics) {
