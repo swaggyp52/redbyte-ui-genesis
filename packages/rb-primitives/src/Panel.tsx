@@ -43,9 +43,6 @@ export function Panel<T extends React.ElementType = 'div'>({
 
   const className = [...baseStyles, ...variantStyles[variant], ...paddingStyles[padding]].join(' ');
 
-  return (
-    <Component className={className} {...props}>
-      {children}
-    </Component>
-  );
+  // Keep native/custom host props checked by the public generic signature.
+  return React.createElement(Component, { className, ...props }, children);
 }

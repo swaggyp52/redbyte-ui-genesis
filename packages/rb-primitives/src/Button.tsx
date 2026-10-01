@@ -88,17 +88,15 @@ export function Button<T extends React.ElementType = 'button'>({
 
   const className = [...baseStyles, ...variantStyles[variant], ...sizeStyles[size]].join(' ');
 
-  return (
-    <Component
-      className={className}
-      disabled={disabled}
-      aria-disabled={disabled}
-      role={role}
-      aria-label={ariaLabel}
-      type={(props as any).type || (Component === 'button' ? 'button' : undefined)}
-      {...props}
-    >
-      {children}
-    </Component>
-  );
+  // The public generic props retain the selected host's native prop contract.
+  // createElement supports a runtime-selected host without a generic JSX intersection.
+  return React.createElement(Component, {
+    className,
+    disabled,
+    'aria-disabled': disabled,
+    role,
+    'aria-label': ariaLabel,
+    type: Component === 'button' ? 'button' : undefined,
+    ...props,
+  }, children);
 }

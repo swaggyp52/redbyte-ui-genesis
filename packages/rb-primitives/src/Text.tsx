@@ -50,9 +50,6 @@ export function Text<T extends React.ElementType = 'span'>({
 
   const className = [sizeStyles[size], weightStyles[weight], colorStyles[color]].join(' ');
 
-  return (
-    <Component className={className} {...props}>
-      {children}
-    </Component>
-  );
+  // Keep native/custom host props checked by the public generic signature.
+  return React.createElement(Component, { className, ...props }, children);
 }
