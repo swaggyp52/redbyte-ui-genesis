@@ -115,3 +115,49 @@ Initial failures and intermediate raw inventories remain alongside terminal proo
 Original `.redbyte/student-confidence/` rc2 receipts remain historical and unchanged.
 The recovery bundle preserves all reviewed new commits; exact path origins/hashes
 and copies of the eight unrelated owner files are recorded separately in integration.
+
+
+## Awake owner acceptance successor (rc4)
+
+Connor authorized a scoped exploratory continuation after the completed overnight
+checkpoint. Two new designs were authored through native headed Edge: a sensor
+disagreement alarm (eight independent checks) and enabled event memory with a
+complementary output (16 checks). Real mismatches and repairs, wiring recovery,
+keyboard commit/cancel/save, all three workbench sizes, duplicate-pin prevention,
+actual downloaded VHDL/XDC, export/back navigation, project switching/reopening
+and clean-profile full-session recovery passed. Recovered driver setup/assertion
+mistakes remain classified in the evidence.
+
+The confirmed defect was unreadable Import ZIP upload guidance in the default
+light theme. Commit `40f87ddf6c7976bf17b30a034692a1a96266e65a` replaces its one
+hardcoded background with the existing theme inset token and adds a rendered
+contrast regression to the retained import recovery gate. Exact rc3 failed at
+1.177:1. Actual extracted rc4 passes at 13.51:1 for the title and 5.81:1 for
+guidance at 1366x768, 1440x900 and 1920x1080. This is the only new product change.
+
+Raw TypeScript remains zero diagnostics under unchanged TypeScript 5.9.3 scope
+and baseline. The three focused viewport runs, aggregate gates, all 72 canonical
+classroom stages and the complete old wrapper passed on final source. The wrapper
+executed 122 commands and retains its pre-existing optional screenshot skip.
+A fresh unified build preceded reproducible rc4 packaging. The unpack audit
+matched 149 checksum entries and all 134 application files to fresh dist.
+All 21 maintained extracted-package journeys, full counter session, source
+preservation, import recovery, pin/artifact agreement, 38 repository checks and
+12 launcher tests passed. Native headed Edge repeated both new designs on rc4,
+including actual CMD Stop/Start session preservation with no browser errors.
+
+Frozen application revision: `40f87ddf6c7976bf17b30a034692a1a96266e65a`.
+Fingerprint: `84af8b68010a0f9357f415fa27541b56b1cbe3eeb2b33ac4e0a3ecd7946563a0`
+over 2,370 build inputs. ZIP: `redbyte-1.0.0-rc.4-win-x64.zip`, 32,829,875 bytes,
+SHA-256 `80239d91c1512c1a94861b7299a4b1fbb333a12647a353372ec34cc18d0e9deb`.
+rc1/rc2/rc3 bytes and all unrelated owner paths remain preserved. The ZIP and
+two-page owner guide were delivered privately to Library; the exact returned
+identities and Windows metadata limitation remain in ignored local receipts.
+
+Readiness is a local owner trial of the documented browser/VHDL subset. Real
+Vivado/FPGA, fresh-machine behavior and Connor's human usability acceptance
+remain external. Legacy raw-Verilog register/driver advisories remain visible;
+the actual VHDL handoff passed inspection. Minor label/toast observations were
+not elevated into a redesign. No public release, push, merge or deployment
+occurred. All owned proof servers/browsers are stopped. Current evidence is
+`.redbyte/owner-acceptance/2026-10-01-1508/DELIVERY.md` and adjacent receipts.
