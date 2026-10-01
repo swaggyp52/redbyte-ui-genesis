@@ -18,6 +18,7 @@ import { Minimap } from './components/Minimap';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { getNodePosition } from './tools/nodePosition';
+import { getCanvasViewBounds, getVisibleCanvasNodes } from './viewportCulling';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
 import { describePortRefForStudents } from './tools/wireGuidance';
 import { computeWireNetIds } from './tools/netHighlight';
@@ -431,35 +432,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     };
   }, [stopWheelMomentum, zoomFn]);
 
-  const viewBounds = React.useMemo(() => {
-    const margin = 200;
-    const left = (-camera.x) / camera.zoom - margin;
-    const top = (-camera.y) / camera.zoom - margin;
-    const right = (width - camera.x) / camera.zoom + margin;
-    const bottom = (height - camera.y) / camera.zoom + margin;
-    return { left, top, right, bottom };
-  }, [camera.x, camera.y, camera.zoom, width, height]);
+  const viewBounds = React.useMemo(
+    () => getCanvasViewBounds(camera, width, height),
+    [camera.x, camera.y, camera.zoom, width, height]
+  );
 
   // Viewport culling is render-only; selection and interaction use the full circuit model.
   const visibleNodes = React.useMemo(
-    () =>
-      circuit.nodes.map((node) => {
-        // Nodes without position default to (0,0) so they are always renderable.
-        if (!node.position) {
-          return { ...node, position: { x: 0, y: 0 } };
-        }
-        return node;
-      }).filter((node) => {
-        const x = getNodePosition(node).x;
-        const y = getNodePosition(node).y;
-        const entry = geometryIndex?.get(node.id);
-        if (entry) {
-          // Bounds intersection: a wide module block stays visible while any part of it is on screen.
-          const b = entry.geometry.bounds;
-          return x + b.maxX >= viewBounds.left && x + b.minX <= viewBounds.right && y + b.maxY >= viewBounds.top && y + b.minY <= viewBounds.bottom;
-        }
-        return x >= viewBounds.left && x <= viewBounds.right && y >= viewBounds.top && y <= viewBounds.bottom;
-      }),
+    () => getVisibleCanvasNodes(circuit.nodes, viewBounds, geometryIndex),
     [circuit.nodes, geometryIndex, viewBounds]
   );
 

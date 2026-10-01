@@ -65,3 +65,5 @@ export {
 export { SchematicNodeView, schematicLodForZoom, DEFAULT_SCHEMATIC_LAYERS, type SchematicLod, type SchematicLayers, type SchematicNodeViewProps } from './components/SchematicNodeView';
 export { SchematicBusBrackets, layoutBusBrackets, type SchematicBusGroup, type BusBracketLayout } from './components/SchematicBusBrackets';
 export { SchematicWireView, type SchematicWireViewProps } from './components/SchematicWireView';
+
+export { getCanvasViewBounds, getVisibleCanvasNodes } from './viewportCulling';
