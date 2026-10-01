@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -22,52 +22,68 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
 
-  const hudCount = await page.locator('[data-testid="ide-design-tool-hud"]').count();
-  assert(hudCount >= 1, 'design tool HUD marker must exist');
+  assert(await visible(page.getByTestId('ide-design-toolbar')), 'current design toolbar must be visible');
+  assert(await visible(page.getByTestId('ide-design-tool-segmented')), 'current Select/Wire controls must be visible');
 
   if (!(await page.locator('[data-testid="ide-design-palette-and"]').first().isVisible().catch(() => false))) {
-    const paletteRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+    const paletteRail = page.locator('[data-testid="ide-show-left-dock"]').first();
     if (await paletteRail.isVisible().catch(() => false)) {
       await paletteRail.click();
     }
   }
+  await page.getByTestId('ide-design-left-tab-components').click();
   await page.waitForSelector('[data-testid="ide-design-palette-and"]', { timeout: 10000 });
 
   const paletteCount = await page.locator('[data-testid^="ide-design-palette-"]').count();
   assert(paletteCount >= 8, `expected >=8 design primitives in palette, found ${paletteCount}`);
 
   await page.locator('[data-testid="ide-design-palette-and"]').click();
-  await page.waitForSelector('[data-testid="ide-design-placement-cue"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-design-live-canvas"]').evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    element.dispatchEvent(
-      new MouseEvent('click', {
-        bubbles: true,
-        clientX: rect.left + rect.width * 0.55,
-        clientY: rect.top + rect.height * 0.62,
-      })
-    );
-  });
+  await page.waitForFunction(() => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-placement-active') === '1');
+  const canvasBox = await page.getByTestId('ide-design-live-canvas').boundingBox();
+  assert(canvasBox, 'AND placement requires measurable canvas bounds');
+  await page.mouse.click(canvasBox.x + canvasBox.width * .55, canvasBox.y + canvasBox.height * .62);
   const andNode = page.locator('[data-testid^="node-AND-"]').first();
   await andNode.waitFor({ timeout: 10000 });
   const andNodeId = await andNode.getAttribute('data-node-id');
   assert(Boolean(andNodeId), 'AND node must expose a data-node-id');
-  await page.evaluate((nodeId) => {
-    const logicStore = window.__RB_LOGIC_VIEW_STORE__;
-    if (!logicStore?.getState) return;
-    logicStore.getState().selectNode(nodeId, false);
-  }, andNodeId);
+  await page.getByTestId('ide-design-tool-select').click();
+  // Insertion selects its new part. Deselect through real canvas interaction
+  // before proving selection of the painted AND body; group bounds also include
+  // pin stubs, labels and unpainted space.
+  const currentCanvas = page.getByTestId('ide-design-live-canvas');
+  const selectionCanvasBox = await currentCanvas.boundingBox();
+  assert(selectionCanvasBox, 'canvas must remain measurable after placing AND');
+  await currentCanvas.click({ position: { x: selectionCanvasBox.width * .12, y: selectionCanvasBox.height * .18 } });
+  await page.waitForFunction(() => (window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes?.size ?? -1) === 0,
+    undefined, { timeout: 10000 });
+  const paintedBody = andNode.locator('.rb-sym-body');
+  await paintedBody.waitFor({ state: 'visible' });
+  await paintedBody.click();
   await page.waitForFunction(
-    () => {
-      const logicStore = window.__RB_LOGIC_VIEW_STORE__;
-      if (!logicStore?.getState) return false;
-      return (logicStore.getState().selection?.nodes?.size ?? 0) === 1;
+    (expectedNodeId) => {
+      const selected = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes;
+      return selected?.size === 1 && selected.has(expectedNodeId);
     },
-    undefined,
+    andNodeId,
     { timeout: 10000 }
   );
+  assert(await andNode.getAttribute('data-node-selected') === '1',
+    'painted AND selection marker must agree with canonical selection');
 
-  await page.waitForSelector('[data-testid="ide-design-inspector-identity-title"]', { timeout: 10000 });
+  // The current Design inspector is contextual and can start compact.
+  // Reveal its real dock and choose Inspector before inspecting its subject.
+  const revealInspector = page.getByTestId('ide-show-right-dock');
+  if (await visible(revealInspector)) await revealInspector.click();
+  await page.getByTestId('ide-right-dock').waitFor({ state: 'visible', timeout: 10000 });
+  const inspectorTab = page.getByTestId('ide-design-right-tab-inspector');
+  await inspectorTab.waitFor({ state: 'visible' });
+  if (await inspectorTab.getAttribute('aria-selected') !== 'true') await inspectorTab.click();
+  assert(await inspectorTab.getAttribute('aria-selected') === 'true', 'Inspector tab must own selected part details');
+  await page.waitForFunction((expectedNodeId) => {
+    const selected = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes;
+    return selected?.size === 1 && selected.has(expectedNodeId);
+  }, andNodeId, { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-inspector-identity-title"]', { state: 'visible', timeout: 10000 });
   const identityTitle = (await page.locator('[data-testid="ide-design-inspector-identity-title"]').first().textContent())?.trim();
   assert(identityTitle === 'AND gate', `expected AND gate identity title, got ${identityTitle}`);
 
@@ -85,6 +101,17 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
   assert(actionsText.includes('Copy'), 'primary actions must expose copy');
   assert(actionsText.includes('Duplicate'), 'primary actions must expose duplicate');
   assert(actionsText.includes('Trace net'), 'primary actions must expose trace net');
+  // Keep these as reachable controls, beyond hidden/offscreen section text.
+  for (const name of ['Copy', 'Duplicate', 'Trace net']) {
+    const action = page.getByTestId('ide-design-inspector-actions').getByRole('button', { name, exact: true });
+    await action.scrollIntoViewIfNeeded();
+    assert(await action.isVisible(), name + ' must be visibly reachable in Inspector');
+    if (name === 'Trace net') {
+      assert(await action.isDisabled(), 'Trace net must remain disabled until the selected node has fanout');
+    } else {
+      assert(await action.isEnabled(), name + ' must be available for the selected AND');
+    }
+  }
 
   const labelEditText = (await page.locator('[data-testid="ide-design-label-edit-btn"]').textContent())?.trim() ?? '';
   assert(labelEditText.includes('Add label'), `label editor must surface Add label, got ${labelEditText}`);

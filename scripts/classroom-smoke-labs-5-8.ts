@@ -2,27 +2,12 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDeterministicZip, sha256Hex } from '../packages/rb-apps/src/export/deterministicZip';
+import { analyzeClassroomStarter, type ClassroomStarter } from '../packages/rb-apps/src/labs/classroomStarterContract';
 
 type LabSmokeSpec = {
   labId: 'lab-5' | 'lab-6' | 'lab-7' | 'lab-8';
   starterPath: string;
   requiredLabels: string[];
-};
-
-type StarterNode = {
-  id?: string;
-  type?: string;
-  label?: string;
-};
-
-type StarterConnection = {
-  fromNodeId?: string;
-  toNodeId?: string;
-};
-
-type StarterCircuitFile = {
-  nodes?: StarterNode[];
-  connections?: StarterConnection[];
 };
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -57,49 +42,16 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-function normalize(value: unknown): string {
-  return String(value ?? '').trim().toLowerCase();
-}
-
-function analyzeStarter(starter: StarterCircuitFile, spec: LabSmokeSpec) {
-  const nodes = Array.isArray(starter.nodes) ? starter.nodes : [];
-  const connections = Array.isArray(starter.connections) ? starter.connections : [];
-
-  if (connections.length !== 0) {
-    fail(`${spec.labId} starter must be unsolved scaffold with zero connections (found ${connections.length}).`);
-  }
-
-  const labels = nodes.map((node) => normalize(node.label));
-  for (const marker of spec.requiredLabels) {
-    if (!labels.some((label) => label.includes(marker))) {
-      fail(`${spec.labId} starter missing required label marker: ${marker}`);
-    }
-  }
-
-  const suspiciousTypes = new Set(['AND', 'NAND', 'OR', 'NOR', 'XOR', 'XNOR', 'MUX', 'DECODER', 'TRISTATE', 'FULLADDER', 'COUNTER', 'FSM', 'DFF', 'LATCH']);
-  const suspiciousNodes = nodes.filter((node) => suspiciousTypes.has(String(node.type ?? '').toUpperCase()));
-  if (suspiciousNodes.length > 0) {
-    fail(`${spec.labId} starter contains solution-like logic nodes: ${suspiciousNodes.map((node) => node.type).join(', ')}`);
-  }
-
-  return {
-    labId: spec.labId,
-    nodeCount: nodes.length,
-    connectionCount: connections.length,
-    requiredLabelsSatisfied: true,
-  };
-}
-
 async function main() {
   const report = {
     schema: 'rb_classroom_smoke_labs_5_8_v1',
     generatedAt: '2026-02-16T00:00:00.000Z',
-    results: [] as Array<ReturnType<typeof analyzeStarter>>,
+    results: [] as Array<ReturnType<typeof analyzeClassroomStarter>>,
   };
 
   for (const spec of LAB_SPECS) {
-    const starter = JSON.parse(readFileSync(spec.starterPath, 'utf8')) as StarterCircuitFile;
-    report.results.push(analyzeStarter(starter, spec));
+    const starter = JSON.parse(readFileSync(spec.starterPath, 'utf8')) as ClassroomStarter;
+    report.results.push(analyzeClassroomStarter(starter, spec));
   }
 
   const entries = [

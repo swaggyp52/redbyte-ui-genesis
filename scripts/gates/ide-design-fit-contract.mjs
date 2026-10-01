@@ -72,5 +72,17 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
     `loaded example should be readable by height (${occupancy.heightRatio.toFixed(3)})`
   );
 
-  await fitButton.evaluate((button) => button.click());
+  await fitButton.click();
+
+  const menu = page.getByTestId('ide-design-toolbar-overflow');
+  await menu.locator('summary').click();
+  assert(await menu.evaluate(element => element.open), 'View menu must open through its visible summary');
+  const topologyBefore = await page.evaluate(() => JSON.stringify(window.__RB_PROJECT_RUNTIME__?.getState?.()?.circuit));
+  await page.getByTestId('ide-design-menu-fit').click();
+  assert(!await menu.evaluate(element => element.open), 'Fit design must dismiss its View menu before the next canvas action');
+  const topologyAfter = await page.evaluate(() => JSON.stringify(window.__RB_PROJECT_RUNTIME__?.getState?.()?.circuit));
+  assert(topologyAfter === topologyBefore, 'menu Fit must preserve circuit topology');
+  const liveCamera = await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera);
+  assert(liveCamera && [liveCamera.x, liveCamera.y, liveCamera.zoom].every(Number.isFinite) && liveCamera.zoom > 0,
+    'menu Fit must leave a finite usable camera');
 });
