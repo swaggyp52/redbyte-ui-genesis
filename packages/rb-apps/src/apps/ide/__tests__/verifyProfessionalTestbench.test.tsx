@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import { StimulusCanvas } from '../components/StimulusCanvas';
 import type { RuntimeVerifyRun } from '../projectRuntime';
@@ -8,12 +8,16 @@ import { ScenarioLibraryHeader } from '../surfaces/ScenarioLibraryHeader';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import { TestbenchDocumentTabs } from '../surfaces/verify/TestbenchDocumentTabs';
 import type { VerifyScenario } from '../verifyScenario';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
+import { workspacePreferencesStore } from '../workspacePreferences';
+
+beforeEach(() => workspacePreferencesStore.reset());
 
 afterEach(() => {
   cleanup();
 });
 
-const VECTORS = [
+const VECTORS: VerifyAuthorVector[] = [
   { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
   { id: 'vec-1', tick: 1, inputs: { sw0: 1 }, expected: {} },
 ];
@@ -33,6 +37,9 @@ function makePassRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'half-adder-testbench',
     scenarioName: 'Half adder behavior',
+    runKind: 'verify',
+    simulationStatus: 'complete',
+    assertionStatus: 'passing',
     status: 'pass',
     deterministicHash: 'professional-testbench',
     reportHash: 'professional-testbench-report',
@@ -46,6 +53,13 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'half-adder-testbench',
+      scenarioName: 'Half adder behavior',
+      status: 'pass',
+      deterministicHash: 'professional-testbench',
+      generatedAtIso: '2026-07-14T00:00:00.000Z',
+      reportHash: 'professional-testbench-report',
       vectors: [
         { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
         { id: 'vec-1', tick: 1, inputs: { sw0: 1 }, expected: {}, caseIndex: 1 },
@@ -55,9 +69,8 @@ function makePassRun(): RuntimeVerifyRun {
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [
         { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-0', caseIndex: 0 },
-        { tick: 1, signal: 'ld0', expected: undefined, actual: '1', status: 'pass', vectorId: 'vec-1', caseIndex: 1 },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '1' }, mismatches: [] },
@@ -76,7 +89,7 @@ describe('professional Verify testbench workflow', () => {
     };
     const view = render(
       <TestbenchDocumentTabs
-        scenarios={[scenario]}
+        scenarios={[scenario, makeScenario('other-scenario', 'Other scenario')]}
         activeScenarioId={scenario.id}
         onSwitch={vi.fn()}
         onCreate={vi.fn()}
@@ -206,14 +219,15 @@ describe('professional Verify testbench workflow', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-verify-view-table'));
     expect(getByTestId('ide-verify-context-scenario').textContent).toBe('Half adder behavior');
-    expect(getByTestId('ide-verify-context-state').textContent).toContain('Checks aligned');
-    expect(getByTestId('ide-verify-command-bar').getAttribute('data-run-mode')).toBe('compare');
+    expect(getByTestId('ide-verify-context-state').textContent).toContain('Checks passing');
+    expect(getByTestId('ide-verify-command-bar').getAttribute('data-run-mode')).toBe('simulation');
     const primaryActions = within(getByTestId('ide-vcb-run-authority')).getAllByRole('button');
     expect(primaryActions[0]).toBe(getByTestId('ide-vcb-run'));
-    expect(getByTestId('ide-stimulus-observed-ld0-t0').textContent).toBe('0');
-    expect(getByTestId('ide-stimulus-case-status-t0').textContent).toBe('PASS');
-    expect(getByTestId('ide-stimulus-case-status-t1').textContent).toBe('Observed');
+    expect(getByTestId('ide-case-lab-row-0').querySelector('.ide-case-lab-obs')?.textContent).toBe('0');
+    expect(getByTestId('ide-case-lab-row-0').querySelector('.ide-case-lab-verdict')?.textContent).toBe('pass');
+    expect(getByTestId('ide-case-lab-row-1').querySelector('.ide-case-lab-verdict')?.textContent).toBe('observed');
   });
 
   it('marks the testbench document and every case stale when the circuit changed after Compare', () => {
@@ -234,42 +248,83 @@ describe('professional Verify testbench workflow', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-context-state').textContent).toContain('Needs update');
-    expect(getByTestId('ide-stimulus-case-status-t0').textContent).toBe('STALE');
-    expect(getByTestId('ide-stimulus-case-status-t1').textContent).toBe('STALE');
-    expect(getByTestId('ide-verify-results-summary')).toHaveAttribute('data-kind', 'stale');
+    fireEvent.click(getByTestId('ide-verify-view-table'));
+    expect(getByTestId('ide-verify-context-state').textContent).toContain('Simulation stale');
+    expect(getByTestId('ide-case-lab-row-0').querySelector('.ide-case-lab-verdict')?.textContent).toBe('stale');
+    expect(getByTestId('ide-case-lab-row-1').querySelector('.ide-case-lab-verdict')?.textContent).toBe('stale');
+    expect(getByTestId('ide-run-identity')).toHaveAttribute('data-currency', 'differs');
+    expect(getByTestId('ide-run-currency').textContent).toBe('Current work differs');
+    fireEvent.click(getByTestId('ide-verify-view-waveform'));
     expect(getByTestId('ide-verify-workspace-waveform')).toHaveAttribute('data-state', 'stale');
   });
 
-  it('does not project another testbench run into the active document', () => {
-    const activeScenario = makeScenario('active-testbench', 'Active testbench');
-    const { getByTestId } = render(
-      <VerifySurface
-        deterministicHash="professional-testbench"
-        hasVectors
-        vectors={VECTORS}
-        lastRun={makePassRun()}
-        scenarios={[activeScenario, makeScenario('half-adder-testbench', 'Half adder behavior')]}
-        activeScenarioId={activeScenario.id}
-        activeScenario={activeScenario}
-        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
-        mappedSignals={[
+  it.each(['verify', 'trace'] as const)(
+    'does not project another %s testbench recording into the active document',
+    (runKind) => {
+      const activeScenario = makeScenario('active-testbench', 'Active testbench');
+      const recordedScenario = makeScenario('half-adder-testbench', 'Half adder behavior');
+      const checkedRun = makePassRun();
+      const retainedRun: RuntimeVerifyRun = runKind === 'verify' ? checkedRun : {
+        ...checkedRun,
+        runKind: 'trace',
+        assertionStatus: 'not-evaluated',
+        report: { ...checkedRun.report, rows: [] },
+      };
+      const commonProps: React.ComponentProps<typeof VerifySurface> = {
+        deterministicHash: 'professional-testbench',
+        hasVectors: true,
+        vectors: VECTORS,
+        lastRun: retainedRun,
+        scenarios: [activeScenario, recordedScenario],
+        mappedInputs: [{ id: 'sw0', label: 'SW0' }],
+        mappedSignals: [
           { id: 'sw0', label: 'SW0', direction: 'in' },
           { id: 'ld0', label: 'LD0', direction: 'out' },
-        ]}
-        onOpenProjectVectors={vi.fn()}
-        onVectorsChange={vi.fn()}
-        verifyMode="combinational"
-      />
-    );
+        ],
+        onOpenProjectVectors: vi.fn(),
+        onVectorsChange: vi.fn(),
+        verifyMode: 'combinational',
+      };
+      const view = render(
+        <VerifySurface {...commonProps} activeScenarioId={activeScenario.id} activeScenario={activeScenario} />
+      );
+      const { getByTestId } = view;
 
-    expect(getByTestId('ide-testbench-document-tab-active-testbench').textContent).toContain('Active testbench');
-    expect(getByTestId('ide-testbench-document-tab-active-testbench')).toHaveAttribute('aria-selected', 'true');
-    expect(getByTestId('ide-verify-primary-status').textContent).toContain(
-      'Results belong to another scenario'
-    );
-    expect(getByTestId('ide-stimulus-observed-ld0-t0').textContent).toBe('-');
-    expect(getByTestId('ide-verify-results-summary')).toHaveAttribute('data-kind', 'stale');
-    expect(getByTestId('ide-verify-workspace-waveform')).toHaveAttribute('data-state', 'stale');
-  });
+      fireEvent.click(getByTestId('ide-verify-view-table'));
+      fireEvent.click(getByTestId('ide-show-left-dock'));
+      expect(getByTestId('ide-testbench-document-tab-active-testbench').textContent).toContain('Active testbench');
+      expect(getByTestId('ide-testbench-document-tab-active-testbench')).toHaveAttribute('aria-selected', 'true');
+      expect(getByTestId('ide-verify-primary-status').textContent).toContain(
+        'Results belong to another scenario'
+      );
+      // Tick 0 can leak through a checked report row; tick 1 has no report row
+      // and can leak through the waveform fallback. Neither belongs to this scenario.
+      for (const tick of [0, 1]) {
+        const row = getByTestId(`ide-case-lab-row-${tick}`);
+        const observedCell = row.querySelector('.ide-case-lab-obs');
+        if (!observedCell) throw new Error('The active case must expose its observed output cell');
+        expect(observedCell.textContent).toBe('\u00b7');
+        expect(observedCell.querySelector('button, input')).toBeNull();
+        expect(row.querySelector('.ide-case-lab-verdict')?.textContent).toBe('stale');
+      }
+      expect(getByTestId('ide-run-identity')).toHaveAttribute('data-currency', 'differs');
+      expect(getByTestId('ide-run-currency').textContent).toBe('Current work differs');
+      fireEvent.click(getByTestId('ide-verify-view-waveform'));
+      expect(getByTestId('ide-verify-workspace-waveform')).toHaveAttribute('data-state', 'stale');
+
+      // Switching back to the recording's own scenario restores its observations.
+      // This also proves scenario changes invalidate the memoized case projection.
+      view.rerender(
+        <VerifySurface {...commonProps} activeScenarioId={recordedScenario.id} activeScenario={recordedScenario} />
+      );
+      fireEvent.click(getByTestId('ide-verify-view-table'));
+      expect(getByTestId('ide-case-lab-row-0').querySelector('.ide-case-lab-obs')?.textContent).toBe('0');
+      expect(getByTestId('ide-case-lab-row-1').querySelector('.ide-case-lab-obs')?.textContent).toBe('1');
+      expect(getByTestId('ide-case-lab-row-0').querySelector('.ide-case-lab-verdict')?.textContent).toBe(
+        runKind === 'verify' ? 'pass' : 'observed'
+      );
+      expect(getByTestId('ide-case-lab-row-1').querySelector('.ide-case-lab-verdict')?.textContent).toBe('observed');
+      expect(getByTestId('ide-run-identity')).toHaveAttribute('data-currency', 'current');
+    }
+  );
 });

@@ -143,7 +143,7 @@ export function moveDesignToolbarCommandGroup(
     groupOrder[targetIndex],
     groupOrder[currentIndex],
   ];
-  const groupedCommandIds = new Set(
+  const groupedCommandIds = new Set<IdeCommandId>(
     DESIGN_TOOLBAR_COMMAND_GROUPS.flatMap((group) => [...group.commandIds])
   );
   const commandsByGroup = new Map(

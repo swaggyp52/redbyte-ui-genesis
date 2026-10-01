@@ -74,6 +74,7 @@ function makePassiveSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: undefined,
     speedHz: 10,
     irHash: 'ir-hash',
@@ -91,6 +92,7 @@ function makeRunningSim(): RuntimeSimState {
   return {
     tick: 3,
     running: true,
+    stepMode: false,
     lastAction: 'run',
     speedHz: 10,
     irHash: 'ir-hash',

@@ -144,7 +144,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
       container && typeof ResizeObserver !== 'undefined'
         ? new ResizeObserver(measure)
         : null;
-    resizeObserver?.observe(container);
+    if (container) resizeObserver?.observe(container);
     window.addEventListener('resize', measure);
     return () => {
       resizeObserver?.disconnect();

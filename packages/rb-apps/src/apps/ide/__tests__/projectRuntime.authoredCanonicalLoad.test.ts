@@ -130,19 +130,20 @@ describe('projectRuntime — an authored project rehydrates unchanged', () => {
     const state = useProjectRuntime.getState();
     const scenario = state.scenarios.find((entry) => entry.id === state.activeScenarioId);
     expect(scenario, 'the full adder must have an active scenario').toBeTruthy();
-    const vectors = (scenario as { vectors: Array<Record<string, unknown>> }).vectors;
+    if (!scenario) throw new Error('The full adder must have an active scenario');
+    const vectors = scenario.vectors;
     expect(vectors.length, 'the scenario must have vectors to hash').toBeGreaterThan(0);
 
     // Older projects may lack authoring ids. Adding those identities on first edit must
     // not change execution content, even though new saves preserve them byte for byte.
     const withIds = computeScenarioContentHash({
-      ...(scenario as object),
+      ...scenario,
       vectors: vectors.map((vector, index) => ({ ...vector, id: `event-${index + 1}` })),
-    } as never);
+    });
     const withoutIds = computeScenarioContentHash({
-      ...(scenario as object),
+      ...scenario,
       vectors: vectors.map(({ id: _id, ...rest }) => rest),
-    } as never);
+    });
     expect(withoutIds, 'an authoring id must not change the scenario content hash').toBe(withIds);
   });
 });

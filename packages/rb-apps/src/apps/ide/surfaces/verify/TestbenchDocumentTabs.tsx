@@ -16,7 +16,7 @@ function summarizeScenario(scenario: VerifyScenario) {
   }));
   const isSequential =
     Boolean(scenario.steps?.length) ||
-    scenario.sequentialPolicy?.executionModel === 'manual_event_driven_lab' ||
+    scenario.sequentialPolicy?.executionModel === 'manual' ||
     (scenario.sequentialPolicy?.runCycles ?? 1) > 1 ||
     inputNames.some((inputName) => /(^|[_\W])(clk|clock)([_\W]|$)/i.test(inputName));
 

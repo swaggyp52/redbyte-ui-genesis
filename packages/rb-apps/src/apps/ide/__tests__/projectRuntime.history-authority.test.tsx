@@ -408,6 +408,7 @@ describe('projectRuntime history authority', () => {
 
   it('prunes orphan rows and keeps the pinned survivor when duplicate rows target one live boundary node', () => {
     const malformedProject = buildHistoryFixture();
+    if (!malformedProject.ioMapping) throw new Error('Expected history fixture IO mapping');
     malformedProject.ioMapping.outputs = [
       {
         id: 'ld0_shadow',
@@ -456,6 +457,7 @@ describe('projectRuntime history authority', () => {
 
   it('reconciles orphan and duplicate boundary rows immediately when loading a malformed project', () => {
     const malformedProject = buildHistoryFixture();
+    if (!malformedProject.ioMapping) throw new Error('Expected history fixture IO mapping');
     malformedProject.ioMapping.outputs = [
       {
         id: 'ld0_shadow',

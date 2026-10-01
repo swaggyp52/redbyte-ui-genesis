@@ -137,6 +137,7 @@ const VERIFY_PREFLIGHT_CODE_BY_KIND: Record<VerifyEvidencePreflightIssue['kind']
   'missing-output-node': 'VPRE1002',
   'missing-expected-binding': 'VPRE1003',
   'missing-output-sample': 'VPRE1004',
+  'floating-output': 'VPRE1005',
   'unsupported-temporal': 'VPRE2001',
   'invalid-ir': 'VPRE9001',
 };

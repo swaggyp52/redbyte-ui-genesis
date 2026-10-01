@@ -5,7 +5,7 @@
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { TickEngine, Node, Connection, Circuit, PortRef } from '@redbyte/rb-logic-core';
-import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
+import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState, type Camera } from './useLogicViewStore';
 import {
   NodeView,
   type ChipMetadata,
@@ -17,6 +17,7 @@ import { WireView } from './components/WireView';
 import { Minimap } from './components/Minimap';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
+import { getNodePosition } from './tools/nodePosition';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
 import { describePortRefForStudents } from './tools/wireGuidance';
 import { computeWireNetIds } from './tools/netHighlight';
@@ -252,8 +253,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const rawSelection = useLogicViewStore(useShallow((state) => state.selection));
   // Guard: Ensure selection Sets exist and are valid Sets (prevent crash if store state is malformed/hydrated as keys)
   const selection = React.useMemo(() => ({
-    nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set(),
-    wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set(),
+    nodes: rawSelection?.nodes instanceof Set ? rawSelection.nodes : new Set<string>(),
+    wires: rawSelection?.wires instanceof Set ? rawSelection.wires : new Set<string>(),
   }), [rawSelection]);
 
   const editingState = useLogicViewStore(useShallow((state) => state.editingState));
@@ -449,8 +450,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         }
         return node;
       }).filter((node) => {
-        const x = node.position.x;
-        const y = node.position.y;
+        const x = getNodePosition(node).x;
+        const y = getNodePosition(node).y;
         const entry = geometryIndex?.get(node.id);
         if (entry) {
           // Bounds intersection: a wide module block stays visible while any part of it is on screen.
@@ -510,8 +511,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       if (!node?.position) continue;
       junctions.push({
         key: sourceKey,
-        screenX: (node.position.x + 24) * camera.zoom + camera.x,
-        screenY: node.position.y * camera.zoom + camera.y,
+        screenX: (getNodePosition(node).x + 24) * camera.zoom + camera.x,
+        screenY: getNodePosition(node).y * camera.zoom + camera.y,
         active: (renderSignals.get(sourceKey) ?? 0) === 1,
       });
     }
@@ -571,8 +572,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       if (!target) return;
       const nextZoom = Math.min(2, Math.max(camera.zoom, 1.1));
       setCamera({
-        x: width / 2 - target.position.x * nextZoom,
-        y: height / 2 - target.position.y * nextZoom,
+        x: width / 2 - getNodePosition(target).x * nextZoom,
+        y: height / 2 - getNodePosition(target).y * nextZoom,
         zoom: nextZoom,
       });
     },
@@ -725,8 +726,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       // Calculate delta for the dragged node
       const draggedNode = circuit.nodes.find(n => n.id === nodeId);
       if (!draggedNode) return;
-      const dx = newX - draggedNode.position.x;
-      const dy = newY - draggedNode.position.y;
+      const dx = newX - getNodePosition(draggedNode).x;
+      const dy = newY - getNodePosition(draggedNode).y;
       // If this node is selected and there are multiple selected nodes, move all of them
       const isNodeSelected = selection.nodes.has(nodeId);
       const hasMultipleSelected = selection.nodes.size > 1;
@@ -743,8 +744,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               ...n,
               position: {
                 // Keep multi-node movement as a single deterministic delta derived from the anchor.
-                x: n.position.x + dx,
-                y: n.position.y + dy,
+                x: getNodePosition(n).x + dx,
+                y: getNodePosition(n).y + dy,
               },
             };
           }
@@ -771,8 +772,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     const newY = snapEnabled ? snapPointToGrid(y, gridSize) : y;
     const draggedNode = circuit.nodes.find(n => n.id === nodeId);
     if (!draggedNode) return;
-    const dx = newX - draggedNode.position.x;
-    const dy = newY - draggedNode.position.y;
+    const dx = newX - getNodePosition(draggedNode).x;
+    const dy = newY - getNodePosition(draggedNode).y;
     const isNodeSelected = selection.nodes.has(nodeId);
     const hasMultipleSelected = selection.nodes.size > 1;
     const updatedCircuit = {
@@ -782,7 +783,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
           return { ...n, position: { x: newX, y: newY } };
         }
         if (isNodeSelected && hasMultipleSelected && selection.nodes.has(n.id)) {
-          return { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } };
+          return { ...n, position: { x: getNodePosition(n).x + dx, y: getNodePosition(n).y + dy } };
         }
         return n;
       }),
@@ -1156,10 +1157,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     let minY = Infinity, maxY = -Infinity;
 
     circuit.nodes.forEach((node) => {
-      minX = Math.min(minX, node.position.x);
-      maxX = Math.max(maxX, node.position.x);
-      minY = Math.min(minY, node.position.y);
-      maxY = Math.max(maxY, node.position.y);
+      minX = Math.min(minX, getNodePosition(node).x);
+      maxX = Math.max(maxX, getNodePosition(node).x);
+      minY = Math.min(minY, getNodePosition(node).y);
+      maxY = Math.max(maxY, getNodePosition(node).y);
     });
 
     if (!isFinite(minX)) {

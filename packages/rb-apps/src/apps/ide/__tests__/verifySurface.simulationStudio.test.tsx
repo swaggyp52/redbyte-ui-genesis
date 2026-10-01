@@ -3,6 +3,7 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 if (!HTMLElement.prototype.scrollIntoView) {
@@ -12,12 +13,12 @@ if (!HTMLElement.prototype.scrollIntoView) {
   });
 }
 
-const vectors = [
+const vectors: VerifyAuthorVector[] = [
   { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: {} },
   { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: {} },
 ];
 
-const vectorsWithChecks = [
+const vectorsWithChecks: VerifyAuthorVector[] = [
   { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
   { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
 ];
@@ -42,12 +43,19 @@ function makeTraceRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'scenario',
+      scenarioName: 'No-check scenario',
+      status: 'pass',
+      deterministicHash: 'hash',
+      generatedAtIso: '2026-07-26T00:00:00.000Z',
+      reportHash: 'report',
       vectors,
       inputsAtTick: { 0: { sw0: 0 }, 1: { sw0: 1 } },
       inputsByVectorId: { v0: { sw0: 0 }, v1: { sw0: 1 } },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '1' }, mismatches: [] },

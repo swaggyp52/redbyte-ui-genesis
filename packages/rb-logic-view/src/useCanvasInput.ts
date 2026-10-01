@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { screenToWorld, clientToLocal, worldToGrid } from '@redbyte/rb-viewport';
 import { NODE_SIZE } from './tools/placement';
+import type { InteractionMode } from './useLogicViewStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,8 +24,8 @@ interface UseCanvasInputOptions {
   onPlacementCancel?: () => void;
   isSpacePressed: boolean;
   isReplayMode: boolean;
-  interactionMode: string; // 'idle' | 'placing' | 'draggingNode' | 'boxSelecting' | 'wiring' | 'panning'
-  setInteractionMode: (mode: string) => void;
+  interactionMode: InteractionMode;
+  setInteractionMode: (mode: InteractionMode) => void;
   snapEnabled: boolean;
   gridSize: number;
 }

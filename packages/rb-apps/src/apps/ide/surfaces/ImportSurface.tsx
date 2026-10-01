@@ -2684,6 +2684,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   return (
     <IdeSurfaceLayout
+      inspector={null}
       mode="import"
       layoutIntent="workbench"
       leftDockMode="hidden"
@@ -2691,22 +2692,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       consoleMode="hidden"
       consoleHasBlocking={blockingErrors.length > 0 || hasImportBlocker}
       consoleHasEntries={warnings.length > 0 || blockingErrors.length > 0}
-      productSpine={{
-        currentStage: workflowActiveLabel,
-        nextStage: currentWorkflowStepId === 'apply' ? 'Design' : currentWorkflowStepId === 'review' ? 'Apply' : 'Review',
-        status: showVerifyResetNotice
-          ? 'Applied'
-          : hasImportBlocker
-            ? 'Blocked'
-            : detectedBehavioralConstructs.length > 0
-              ? 'Reviewable · apply blocked'
-              : canImport
-                ? 'Ready to review'
-                : 'In progress',
-        owner: 'Import',
-        title: showVerifyResetNotice ? 'Project replacement complete' : activeImportTaskLabel,
-        detail: statusMessage,
-      }}
     >
       <IdePanel testId="ide-import-panel">
         <section className="ide-import-v3" data-testid="ide-import-workbench" aria-label="Import recovery workflow">

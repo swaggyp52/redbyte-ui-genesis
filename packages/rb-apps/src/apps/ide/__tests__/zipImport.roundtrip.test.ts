@@ -15,12 +15,18 @@ function loadFixture02(): Uint8Array {
   return new Uint8Array(readFileSync(FIXTURE_PATH));
 }
 
+
+function requireValue<T>(value: T | undefined, label: string): T {
+  if (value === undefined) throw new Error(`Expected ${label} in the imported fixture`);
+  return value;
+}
+
 async function buildRoundtripZip(
   original: Awaited<ReturnType<typeof importVivadoZipBytes>>
 ): Promise<Uint8Array> {
   const zip = new JSZip();
-  const hdlSource = original.project.hdl.sources[0];
-  const xdcConstraints = original.project.fpga.constraints;
+  const hdlSource = requireValue(requireValue(original.project.hdl, 'HDL').sources[0], 'HDL source');
+  const xdcConstraints = requireValue(original.project.fpga, 'FPGA metadata').constraints;
   zip.file('top.vhd', hdlSource.text);
   if (xdcConstraints?.text) {
     zip.file('top.xdc', xdcConstraints.text);
@@ -76,19 +82,19 @@ describe('zipImport — round-trip guarantee', () => {
     const roundtrip = await importVivadoZipBytes(roundtripBytes, { sourceName: 'roundtrip.zip' });
 
     const originalPins = new Map([
-      ...original.project.ioMapping.inputs.map(
-        (r) => [r.label.toLowerCase(), r.pin] as [string, string]
+      ...requireValue(original.project.ioMapping, 'IO mapping').inputs.map(
+        (r) => [requireValue(r.label, 'IO label').toLowerCase(), r.pin] as [string, string]
       ),
-      ...original.project.ioMapping.outputs.map(
-        (r) => [r.label.toLowerCase(), r.pin] as [string, string]
+      ...requireValue(original.project.ioMapping, 'IO mapping').outputs.map(
+        (r) => [requireValue(r.label, 'IO label').toLowerCase(), r.pin] as [string, string]
       ),
     ]);
     const roundtripPins = new Map([
-      ...roundtrip.project.ioMapping.inputs.map(
-        (r) => [r.label.toLowerCase(), r.pin] as [string, string]
+      ...requireValue(roundtrip.project.ioMapping, 'IO mapping').inputs.map(
+        (r) => [requireValue(r.label, 'IO label').toLowerCase(), r.pin] as [string, string]
       ),
-      ...roundtrip.project.ioMapping.outputs.map(
-        (r) => [r.label.toLowerCase(), r.pin] as [string, string]
+      ...requireValue(roundtrip.project.ioMapping, 'IO mapping').outputs.map(
+        (r) => [requireValue(r.label, 'IO label').toLowerCase(), r.pin] as [string, string]
       ),
     ]);
 
@@ -105,6 +111,6 @@ describe('zipImport — round-trip guarantee', () => {
     const roundtripBytes = await buildRoundtripZip(original);
     const roundtrip = await importVivadoZipBytes(roundtripBytes, { sourceName: 'roundtrip.zip' });
 
-    expect(roundtrip.project.hdl.sources.length).toBeGreaterThanOrEqual(1);
+    expect(requireValue(roundtrip.project.hdl, 'round-trip HDL').sources.length).toBeGreaterThanOrEqual(1);
   });
 });

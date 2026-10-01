@@ -31,8 +31,8 @@ const COMPLETE_ROWS = [
 
 function makeHealthVerifyNotRun(): ProjectHealth {
   return {
-    lastVerify: null,
-    lastExport: null,
+    lastVerify: undefined,
+    lastExport: undefined,
     dirtySinceVerify: false,
     dirtySinceExport: true,
     blockingIssues: [],
@@ -47,7 +47,7 @@ function makeHealthVerifyStale(): ProjectHealth {
       reportHash: 'old-report-hash',
       ranAtIso: '2026-03-08T00:00:00.000Z',
     },
-    lastExport: null,
+    lastExport: undefined,
     dirtySinceVerify: true,
     dirtySinceExport: true,
     blockingIssues: [],

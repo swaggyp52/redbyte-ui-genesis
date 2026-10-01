@@ -44,6 +44,7 @@ function makePassiveSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: undefined,
     speedHz: 10,
     irHash: 'ir-hash',
@@ -442,8 +443,8 @@ describe('DesignSurface editing power (Slice 2)', () => {
       const circuit = useCircuitStore.getState().circuit;
       const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
       const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
-      expect(sw0Node?.position.x).toBe(16);
-      expect(ld0Node?.position.x).toBe(196);
+      expect(sw0Node?.position?.x).toBe(16);
+      expect(ld0Node?.position?.x).toBe(196);
     });
   });
 
@@ -462,8 +463,8 @@ describe('DesignSurface editing power (Slice 2)', () => {
       const circuit = useCircuitStore.getState().circuit;
       const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
       const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
-      expect(sw0Node?.position.y).toBe(64);
-      expect(ld0Node?.position.y).toBe(64);
+      expect(sw0Node?.position?.y).toBe(64);
+      expect(ld0Node?.position?.y).toBe(64);
     });
   });
 
@@ -503,8 +504,8 @@ describe('DesignSurface editing power (Slice 2)', () => {
       const circuit = useCircuitStore.getState().circuit;
       const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
       const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
-      expect(sw0Node?.position.x).toBe(0);
-      expect(ld0Node?.position.x).toBe(0);
+      expect(sw0Node?.position?.x).toBe(0);
+      expect(ld0Node?.position?.x).toBe(0);
     });
 
     const selectedNodes = useLogicViewStore.getState().selection.nodes;
@@ -558,10 +559,10 @@ describe('DesignSurface editing power (Slice 2)', () => {
       const circuit = useCircuitStore.getState().circuit;
       const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
       const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
-      expect(sw0Node?.position.y).toBe(32);
-      expect(ld0Node?.position.y).toBe(32);
-      expect(sw0Node?.position.x).toBe(16);
-      expect(ld0Node?.position.x).toBe(196);
+      expect(sw0Node?.position?.y).toBe(32);
+      expect(ld0Node?.position?.y).toBe(32);
+      expect(sw0Node?.position?.x).toBe(16);
+      expect(ld0Node?.position?.x).toBe(196);
     });
   });
 
@@ -617,12 +618,12 @@ describe('DesignSurface editing power (Slice 2)', () => {
       const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
       const and0Node = circuit.nodes.find((node) => node.id === 'and0_node');
       const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
-      expect(ld0Node?.position.x).toBe(0);
-      expect(and0Node?.position.x).toBe(90);
-      expect(sw0Node?.position.x).toBe(180);
-      expect(ld0Node?.position.y).toBe(48);
-      expect(and0Node?.position.y).toBe(96);
-      expect(sw0Node?.position.y).toBe(16);
+      expect(ld0Node?.position?.x).toBe(0);
+      expect(and0Node?.position?.x).toBe(90);
+      expect(sw0Node?.position?.x).toBe(180);
+      expect(ld0Node?.position?.y).toBe(48);
+      expect(and0Node?.position?.y).toBe(96);
+      expect(sw0Node?.position?.y).toBe(16);
     });
 
     const selectedNodes = useLogicViewStore.getState().selection.nodes;
@@ -649,7 +650,8 @@ describe('DesignSurface editing power (Slice 2)', () => {
 
   it('box-selecting overlapping node bounds creates a group that can nudge immediately', async () => {
     const view = renderSurface();
-    const canvas = view.getByTestId('logic-canvas-svg') as SVGSVGElement;
+    const canvas = view.getByTestId('logic-canvas-svg');
+    if (!(canvas instanceof SVGSVGElement)) throw new Error('Expected the logic canvas to be an SVG element');
     prepareCanvasSelection(canvas);
     const start = worldPointToCanvasClient(10, 10);
     const end = worldPointToCanvasClient(170, 40);
@@ -675,14 +677,15 @@ describe('DesignSurface editing power (Slice 2)', () => {
       const circuit = useCircuitStore.getState().circuit;
       const sw0Node = circuit.nodes.find((node) => node.id === 'sw0_node');
       const ld0Node = circuit.nodes.find((node) => node.id === 'ld0_node');
-      expect(sw0Node?.position.x).toBe(16);
-      expect(ld0Node?.position.x).toBe(196);
+      expect(sw0Node?.position?.x).toBe(16);
+      expect(ld0Node?.position?.x).toBe(196);
     });
   });
 
   it('Shift plus box-select keeps the existing group and adds overlapping nodes', async () => {
     const view = renderSurface();
-    const canvas = view.getByTestId('logic-canvas-svg') as SVGSVGElement;
+    const canvas = view.getByTestId('logic-canvas-svg');
+    if (!(canvas instanceof SVGSVGElement)) throw new Error('Expected the logic canvas to be an SVG element');
     prepareCanvasSelection(canvas);
 
     act(() => {

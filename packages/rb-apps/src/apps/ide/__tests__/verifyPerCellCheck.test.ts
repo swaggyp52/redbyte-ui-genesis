@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { updateExpectedCellInVectorSets } from '../surfaces/VerifySurface';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
 
 describe('Verify per-cell optional checks', () => {
   it('changes only the selected signal at the selected event', () => {
-    const projectVectors = [
+    const projectVectors: VerifyAuthorVector[] = [
       { id: 'vec-01', tick: 0, inputs: { a: 0 }, expected: { carry: 0 } },
       { id: 'vec-02', tick: 1, inputs: { a: 1 }, expected: { carry: 1 } },
     ];
@@ -25,7 +26,7 @@ describe('Verify per-cell optional checks', () => {
   });
 
   it('does not mutate the collections when no confirmation update is applied', () => {
-    const projectVectors = [
+    const projectVectors: VerifyAuthorVector[] = [
       { id: 'vec-01', tick: 0, inputs: { a: 0 }, expected: {} },
     ];
 

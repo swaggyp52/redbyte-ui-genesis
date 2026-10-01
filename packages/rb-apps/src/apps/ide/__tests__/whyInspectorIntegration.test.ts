@@ -9,7 +9,7 @@ import {
   type ExplainerSignalMapping,
   type SignalExplanation,
 } from '../surfaces/verify/signalExplainer';
-import type { VerifyWaveSample } from '../../verifyReport';
+import type { VerifyWaveSample } from '../verifyReport';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -65,13 +65,13 @@ function makeDffGraph(): ExplainerCircuitGraph {
   return {
     nodes: [
       { id: 'sw_d', type: 'Switch', label: 'D' },
-      { id: 'clk_node', type: 'ClockSource', label: 'clk' },
+      { id: 'clk_node', type: 'Clock', label: 'clk' },
       { id: 'dff1', type: 'DFlipFlop' },
       { id: 'led_q', type: 'LED', label: 'Q' },
     ],
     connections: [
       { from: { nodeId: 'sw_d', portName: 'out' }, to: { nodeId: 'dff1', portName: 'D' } },
-      { from: { nodeId: 'clk_node', portName: 'out' }, to: { nodeId: 'dff1', portName: 'clk' } },
+      { from: { nodeId: 'clk_node', portName: 'out' }, to: { nodeId: 'dff1', portName: 'CLK' } },
       { from: { nodeId: 'dff1', portName: 'Q' }, to: { nodeId: 'led_q', portName: 'in' } },
     ],
   };
@@ -160,7 +160,7 @@ describe('Why inspector integration contract', () => {
       const waveform = makeWaveform({
         D: ['0', '1', '1', '1'],
         clk: ['0', '0', '1', '0'],
-        Q: ['0', '0', '0', '1'],
+        Q: ['0', '0', '1', '1'],
       });
       const explanation = explainSignal({
         selectedSignal: 'Q',
@@ -173,8 +173,9 @@ describe('Why inspector integration contract', () => {
         clockSignalName: 'clk',
       });
       expect(explanation.explanationKind).toBe('sequential');
-      expect(explanation.relevantClockEdge).not.toBeNull();
-      expect(explanation.relevantPriorState).not.toBeNull();
+      expect(explanation.relevantClockEdge).toEqual({ clockSignal: 'clk', edgeTick: 2, edgeDirection: 'rising' });
+      expect(explanation.relevantPriorState).toEqual({ signal: 'Q', value: '1', tick: 2 });
+      expect(explanation.changed).toBe(false); // Falling clock at tick 3 holds Q.
     });
   });
 
@@ -303,16 +304,16 @@ describe('Why inspector integration contract', () => {
       const waveform = makeWaveform({
         D:   ['0', '1', '1', '1', '0', '0'],
         clk: ['0', '0', '1', '0', '1', '0'],
-        Q:   ['0', '0', '0', '1', '1', '0'],
+        Q:   ['0', '0', '1', '1', '0', '0'],
       });
       const graph = makeDffGraph();
       const mappings = makeDffMappings();
       const roles = { D: 'input' as const, clk: 'clock' as const, Q: 'output' as const };
 
-      // Tick 3: Q transitions 0→1, there was a rising clock edge at tick 2
-      const t3 = explainSignal({
+      // Tick 2: the rising edge captures D=1; tick 3 falls and holds Q=1.
+      const t2 = explainSignal({
         selectedSignal: 'Q',
-        tick: 3,
+        tick: 2,
         waveform,
         signalRoles: roles,
         signalMappings: mappings,
@@ -320,11 +321,23 @@ describe('Why inspector integration contract', () => {
         circuitKind: 'sequential',
         clockSignalName: 'clk',
       });
-      expect(t3.explanationKind).toBe('sequential');
-      expect(t3.changed).toBe(true);
-      expect(t3.currentValue).toBe('1');
-      expect(t3.relevantClockEdge).not.toBeNull();
-      expect(t3.summary.length).toBeGreaterThan(0);
+      expect(t2.explanationKind).toBe('sequential');
+      expect(t2.changed).toBe(true);
+      expect(t2.currentValue).toBe('1');
+      expect(t2.relevantClockEdge).toEqual({ clockSignal: 'clk', edgeTick: 2, edgeDirection: 'rising' });
+      expect(t2.relevantPriorState).toEqual({ signal: 'Q', value: '0', tick: 1 });
+      expect(t2.steps.some(step => step.port === 'D' && step.description.includes('is 1'))).toBe(true);
+      expect(t2.summary.length).toBeGreaterThan(0);
+
+      const held = explainSignal({
+        selectedSignal: 'Q', tick: 3, waveform, signalRoles: roles,
+        signalMappings: mappings, circuitGraph: graph, circuitKind: 'sequential', clockSignalName: 'clk',
+      });
+      expect(held.explanationKind).toBe('sequential');
+      expect(held.changed).toBe(false);
+      expect(held.currentValue).toBe('1');
+      expect(held.relevantClockEdge).toEqual({ clockSignal: 'clk', edgeTick: 2, edgeDirection: 'rising' });
+      expect(held.relevantPriorState).toEqual({ signal: 'Q', value: '1', tick: 2 });
     });
   });
 });

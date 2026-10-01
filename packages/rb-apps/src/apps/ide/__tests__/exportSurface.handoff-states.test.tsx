@@ -123,9 +123,13 @@ describe('ExportSurface handoff states', () => {
     expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
     expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-trusted');
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.textContent).toContain('Validate package');
-    expect(actions.textContent).toContain('Download');
-    expect(getByTestId('ide-export-package-download-v1').textContent).toBe('Download Package');
+    expect(actions.textContent).toContain('Generate & download checked ZIP');
+    expect(actions.textContent).toContain('Technical details');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Generate & download checked ZIP');
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    fireEvent.click(getByTestId('ide-export-validate-package'));
+    expect(getByTestId('ide-export-validation-result').textContent).toContain('files structurally valid');
+    expect(inspector.getAttribute('data-export-action-state')).toBe('not-downloaded');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
     expect(getByTestId('ide-export-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
@@ -153,7 +157,7 @@ describe('ExportSurface handoff states', () => {
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
   });
 
-  it('advisory: Simulate repair stays primary while a structurally valid draft remains downloadable', () => {
+  it('advisory: draft generation and Simulate repair remain separate actionable choices', () => {
     const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <ExportSurface
@@ -164,11 +168,12 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.textContent).toContain('Open Simulate');
-    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
-    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(actions.textContent).toContain('Generate & download draft ZIP');
+    const repair = within(getByTestId('ide-export-state-summary')).getByRole('button', { name: 'Open Simulate' });
+    expect(actions.contains(repair)).toBe(false);
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');
     expect((getByTestId('ide-export-draft-download-v1') as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(getByTestId('ide-export-package-build-v1'));
+    fireEvent.click(repair);
     expect(onOpenVerify).toHaveBeenCalledTimes(1);
   });
 
@@ -185,7 +190,7 @@ describe('ExportSurface handoff states', () => {
     expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Draft export available');
     expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Simulated');
     expect(getByTestId('ide-export-upstream-verify').textContent).toContain('expected outputs differ');
-    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('draft');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
@@ -247,6 +252,7 @@ describe('ExportSurface handoff states', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
     expect(getByTestId('ide-export-simulation-evidence-tier').textContent).toContain('Draft');
     const verifyReadiness = getByTestId('ide-export-upstream-verify');
     expect(verifyReadiness.textContent).toContain('Stale - rerun Simulate');
@@ -279,7 +285,8 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-readiness-hero').textContent).toMatch(/stale|build/i);
-    expect(getByTestId('ide-export-package-build-v1').textContent).toMatch(/build|rebuild/i);
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Generate & download checked ZIP');
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-action-state')).toBe('not-downloaded');
   });
 
   // ── ExportVivadoInstructions ──────────────────────────────────────────────────
@@ -416,7 +423,7 @@ describe('ExportSurface handoff states', () => {
       fireEvent.click(view.getByTestId('ide-export-draft-download-v1'));
     });
     await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(1));
-    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Downloaded unverified');
+    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Downloaded unverified package');
 
     const trustedRun: Parameters<typeof ExportSurface>[0]['verifyLastRun'] = {
       scenarioId: 'trusted-scenario',
@@ -435,12 +442,19 @@ describe('ExportSurface handoff states', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trusted-scenario',
+        scenarioName: 'Trusted Scenario',
+        status: 'pass',
+        deterministicHash: passVerify.hash,
+        generatedAtIso: passVerify.ranAtIso!,
+        reportHash: passVerify.reportHash!,
         vectors: [],
         inputsAtTick: {},
         inputsByVectorId: {},
         signalRoles: {},
         rows: [],
-      } as NonNullable<Parameters<typeof ExportSurface>[0]['verifyLastRun']>['report'],
+      },
       waveform: [],
     };
     view.rerender(
@@ -462,7 +476,7 @@ describe('ExportSurface handoff states', () => {
     expect(view.getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
 
     await act(async () => {
-      fireEvent.click(view.getByTestId('ide-export-package-download-v1'));
+      fireEvent.click(view.getByTestId('ide-export-package-build-v1'));
     });
     await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(2));
     expect(inspector.getAttribute('data-export-derived-state')).toBe('downloaded-trusted');

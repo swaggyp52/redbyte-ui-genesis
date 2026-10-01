@@ -113,7 +113,7 @@ export function serializeCluster(circuit: Circuit, selectedIds: Set<string>): Cl
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   if (selected.length === 0) {
-    return { nodes: [], connections: [] };
+    return { nodes: [], connections: [], originX: 0, originY: 0 };
   }
 
   // Compute bounding-box origin

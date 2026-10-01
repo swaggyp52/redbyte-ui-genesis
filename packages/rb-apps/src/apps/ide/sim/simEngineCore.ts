@@ -972,7 +972,7 @@ function toIoMappingFromSimulationRows(ioRows: SimulationIoRow[]): IoMapping {
 function buildDefaultScheduleContract(): VerifyScheduleContract {
   return {
     schedule: 'combinational',
-    reason: 'no-sequential',
+    reason: 'combinational',
     analysis: {
       hasClockedMacros: false,
       hasClockNet: false,

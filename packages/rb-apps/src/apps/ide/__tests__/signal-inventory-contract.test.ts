@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import type { TestVector } from '@redbyte/rb-utils';
 import type { VerifyPreRunInventory, VerifySignalLane } from '../viewmodels/buildVerifySessionViewModel';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import type { VerifyScenario } from '../verifyScenario';
 
 // ---------------------------------------------------------------------------

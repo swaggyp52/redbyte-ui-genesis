@@ -19,7 +19,7 @@ const scalar = (
   direction: 'in' | 'out',
   pin: string,
   portName = id
-): HardwareMappingEntryV2 => ({ id, kind: 'scalar', width: 1 as const, direction, portName, nodeId: `${id}_node`, pin });
+): HardwareMappingEntryV2 => ({ id, kind: 'scalar', width: 1 as const, direction, portName, nodeId: `${id}_node`, port: direction === 'in' ? 'out' : 'in', pin });
 const bus2 = (id: string, direction: 'in' | 'out', pins: [string, string]): HardwareMappingEntryV2 => ({
   id,
   kind: 'bus',

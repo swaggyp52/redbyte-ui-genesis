@@ -68,6 +68,8 @@ function buildMacroProject() {
         ],
         outputs: [{ id: 'output:node-v2-3.out', label: 'Q', nodeId: 'node-v2-3', portName: 'out' }],
         cluster: {
+          originX: 140,
+          originY: 40,
           nodes: [
             {
               originalId: 'node-v2-3',

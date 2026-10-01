@@ -23,6 +23,13 @@ function makeComboFailureRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'combo-kmap-fail',
+      scenarioName: 'Combo provenance fail case',
+      status: 'fail',
+      deterministicHash: 'det_combo_kmap',
+      generatedAtIso: '2026-03-08T18:30:00.000Z',
+      reportHash: 'rep_combo_kmap',
       vectors: [
         { id: 'vec-00', tick: 0, inputs: { sw0: 0, sw1: 0 }, expected: { ld0: 0, ld1: 0 } },
         { id: 'vec-01', tick: 1, inputs: { sw0: 0, sw1: 1 }, expected: { ld0: 1, ld1: 0 } },
@@ -47,7 +54,7 @@ function makeComboFailureRun(): RuntimeVerifyRun {
         { tick: 2, signal: 'ld0', expected: '1', actual: '1', status: 'pass' },
         { tick: 2, signal: 'ld1', expected: '0', actual: '1', status: 'fail' },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', sw1: '0', ld0: '0', ld1: '0' }, mismatches: [] },
       {

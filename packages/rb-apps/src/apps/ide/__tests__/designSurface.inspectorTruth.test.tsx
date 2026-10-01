@@ -69,6 +69,7 @@ function makePassiveSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: undefined,
     speedHz: 10,
     irHash: 'ir-hash',
@@ -85,6 +86,7 @@ function makeSimWithTrace(): RuntimeSimState {
   return {
     tick: 5,
     running: false,
+    stepMode: true,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -122,7 +124,7 @@ function makeStatusWithIrDiagnostics(): DesignCompilerStatus {
         owner: { kind: 'node', nodeId: 'and0_node' },
         location: { nodeId: 'and0_node' },
         stage: 'design',
-        origin: 'elaborator',
+        origin: 'ir',
         actions: [],
       },
     ],

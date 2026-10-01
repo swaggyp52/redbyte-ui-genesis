@@ -159,7 +159,7 @@ function createProjectFromExample(exampleId: string): RBProject {
     vectors: example.vectors.map((vector) => ({
       tick: vector.tick,
       inputs: { ...vector.inputs },
-      expected: vector.expected ? { ...vector.expected } : undefined,
+      expected: { ...(vector.expected ?? {}) },
     })),
     fpga: {
       board: 'basys3',

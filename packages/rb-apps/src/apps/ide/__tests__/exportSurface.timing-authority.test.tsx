@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import { deriveVerifySchedule, type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { ExportSurface } from '../surfaces/ExportSurface';
 
@@ -78,7 +78,8 @@ const manualLabContract: VerifyScheduleContract = {
   temporalIssues: [],
 };
 
-function buildMinimalVerifyRun(input: { deterministicHash: string }): RuntimeVerifyRun {
+function buildMinimalVerifyRun(input: { deterministicHash: string; scheduleContract?: VerifyScheduleContract }): RuntimeVerifyRun {
+  const contract = input.scheduleContract ?? manualLabContract;
   return {
     scenarioId: 'default',
     scenarioName: 'Default',
@@ -86,16 +87,23 @@ function buildMinimalVerifyRun(input: { deterministicHash: string }): RuntimeVer
     deterministicHash: input.deterministicHash,
     reportHash: 'rep-timing-auth',
     generatedAtIso: '2026-04-15T12:00:00.000Z',
-    schedule: 'clocked_macro',
-    scheduleContract: manualLabContract,
+    schedule: contract.schedule,
+    scheduleContract: contract,
     meta: {
-      circuitKind: 'sequential',
-      clockingProtocol: 'clocked_macro',
-      samplePoint: 'post-rising-edge',
-      tick0Meaning: 'initial-state',
-      clockSignalName: '__sim_clk__',
+      circuitKind: contract.schedule === 'clocked_macro' ? 'sequential' : 'combinational',
+      clockingProtocol: contract.schedule === 'clocked_macro' ? 'clocked_macro' : null,
+      samplePoint: contract.samplePoint,
+      tick0Meaning: contract.tick0Meaning,
+      clockSignalName: contract.clockSignalName ?? null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'default',
+      scenarioName: 'Default',
+      status: 'pass',
+      deterministicHash: input.deterministicHash,
+      generatedAtIso: '2026-04-15T12:00:00.000Z',
+      reportHash: 'rep-timing-auth',
       vectors: [],
       inputsAtTick: {},
       signalRoles: {},
@@ -106,7 +114,7 @@ function buildMinimalVerifyRun(input: { deterministicHash: string }): RuntimeVer
 }
 
 describe('ExportSurface timing authority (Verify contract alignment)', () => {
-  it('uses the last Verify run schedule contract when deterministic hashes match (manual-event lab)', () => {
+  it('keeps live combinational timing authoritative against a poisoned matching-hash manual run', () => {
     const project = buildCombinationalMappedProject();
     const hash = 'det-align-001';
     const verifyLastRun = buildMinimalVerifyRun({ deterministicHash: hash });
@@ -120,8 +128,37 @@ describe('ExportSurface timing authority (Verify contract alignment)', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('ide-export-open-technical-evidence'));
     const clockGate = screen.getByTestId('ide-export-gate-clock');
-    expect(clockGate.textContent).toMatch(/Manual-event lab/i);
+    // Matching a caller-supplied hash does not authorize a contradictory saved schedule.
+    expect(clockGate.textContent).toMatch(/Combinational/i);
+    expect(clockGate.textContent).not.toMatch(/Manual-event lab/i);
+  });
+
+  it('keeps actual authored manual-event sequential timing positive with matching live run metadata', () => {
+    const project = buildCombinationalMappedProject();
+    const source = project.hdl?.sources[0];
+    if (!source) throw new Error('Manual-event fixture requires its authored VHDL source');
+    source.text = source.text.replace('  ld0 <= sw0;', `  process (sw0) begin
+    if rising_edge(sw0) then ld0 <= sw0; end if;
+  end process;`);
+    const liveContract = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+    expect(liveContract.schedule).toBe('clocked_macro');
+    expect(liveContract.timingMode).toBe('manual_event_driven_lab');
+    expect(liveContract.reason).toBe('hdl-sequential');
+    const hash = 'actual-manual-live';
+    const verifyLastRun = buildMinimalVerifyRun({ deterministicHash: hash, scheduleContract: liveContract });
+    expect(verifyLastRun.scheduleContract).toEqual(liveContract);
+    expect(verifyLastRun.meta).toEqual({
+      circuitKind: 'sequential', clockingProtocol: 'clocked_macro',
+      samplePoint: 'post-rising-edge', tick0Meaning: 'initial-state', clockSignalName: null,
+    });
+    render(<ExportSurface project={project} determinismHash={hash} verifyLastRun={verifyLastRun} designReady />);
+    fireEvent.click(screen.getByTestId('ide-export-open-technical-evidence'));
+    expect(screen.getByTestId('ide-export-gate-clock').textContent).toMatch(/Manual-event lab/i);
+    // The historical run has no scenario/version qualification. Timing identity
+    // does not silently upgrade it into trusted comparison/package evidence.
+    expect(screen.getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).not.toBe('trusted');
   });
 
   it('falls back to live structural timing when Verify run is stale (hash mismatch)', () => {
@@ -137,6 +174,7 @@ describe('ExportSurface timing authority (Verify contract alignment)', () => {
       />
     );
 
+    fireEvent.click(screen.getByTestId('ide-export-open-technical-evidence'));
     const clockGate = screen.getByTestId('ide-export-gate-clock');
     expect(clockGate.textContent).toMatch(/Combinational/i);
   });

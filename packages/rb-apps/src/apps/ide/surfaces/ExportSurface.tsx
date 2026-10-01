@@ -1091,8 +1091,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           return 'Package stale — rebuild to match the current design';
         case 'export-missing':
           return 'Package not built yet — evidence validated';
-        case 'mapping-review':
-          return 'Package ready — mapping review pending';
         case 'ready':
           return 'Package current';
         default:
@@ -1675,6 +1673,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
   return (
     <IdeSurfaceLayout
+      inspector={null}
       mode="export"
       layoutIntent="workbench"
       consoleHasBlocking={hasBlockingErrors}
@@ -1686,18 +1685,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       // as a button that does nothing. An empty panel says there is nothing, which is an answer.
       consoleMode="collapsed"
       console={<ProblemsPanel origin="bottom-panel" />}
-      productSpine={{
-        currentStage: 'Build & Export',
-        nextStage: exportBlocked
-          ? blockedRecovery.owner
-          : downloadDone
-            ? 'Vivado'
-            : 'Download package',
-        status: formatExportDerivedState(exportTrustAxes.derived),
-        owner: exportBlocked ? blockedRecovery.owner : 'Build & Export',
-        title: surfaceStatusTitle,
-        detail: surfaceStatusDetail,
-      }}
     >
       <IdePanel testId="ide-export-panel">
         <section

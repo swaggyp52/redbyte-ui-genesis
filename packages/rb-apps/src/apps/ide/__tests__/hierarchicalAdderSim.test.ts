@@ -7,7 +7,7 @@ import {
   placeModuleInstance,
 } from '../projectHierarchy';
 import { recomputeSimulationState, resetSimulationState } from '../sim/simEngine';
-import type { SimulationIoRow } from '../sim/simTypes';
+import type { RuntimeSimState, SimulationIoRow } from '../sim/simTypes';
 import { createRBProject, decodeRBProject, encodeRBProject } from '../../../export/projectFormat';
 
 // A FullAdder module built the real way (create-from-selection over gates).
@@ -110,7 +110,7 @@ describe('hierarchical adder simulation', () => {
     };
 
     for (const [a, b] of [[0, 0], [1, 2], [3, 1], [2, 2], [3, 3]] as const) {
-      let sim = { ...reset.value, inputs: { ...reset.value.inputs } };
+      const sim: RuntimeSimState = { ...reset.value, inputs: { ...reset.value.inputs } };
       sim.inputs['A0'] = bit(a, 0); sim.inputs['A1'] = bit(a, 1);
       sim.inputs['B0'] = bit(b, 0); sim.inputs['B1'] = bit(b, 1);
       const settled = recomputeSimulationState(flat, ioRows, sim);
@@ -153,7 +153,7 @@ describe('hierarchical adder simulation', () => {
     const reset = resetSimulationState(flat, ioRows);
     expect(reset.status).toBe('ok');
     if (reset.status !== 'ok') return;
-    let sim = { ...reset.value, inputs: { ...reset.value.inputs, A0: 1, A1: 1, B0: 1, B1: 0 } }; // 3 + 1
+    const sim: RuntimeSimState = { ...reset.value, inputs: { ...reset.value.inputs, A0: 1, A1: 1, B0: 1, B1: 0 } }; // 3 + 1
     const settled = recomputeSimulationState(flat, ioRows, sim);
     expect(settled.status).toBe('ok');
     if (settled.status !== 'ok') return;

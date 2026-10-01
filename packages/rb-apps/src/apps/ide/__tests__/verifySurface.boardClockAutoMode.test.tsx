@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import { VerifySurface } from '../surfaces/VerifySurface';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import type { VerifyReportVector } from '../verifyReport';
 import {
   computeScenarioContentHash,
   computeScenarioStimulusHash,
@@ -353,12 +354,16 @@ describe('VerifySurface board clock auto mode', () => {
         startLevel: 0,
       }
     );
-    const reportVectors = Array.from({ length: 8 }, (_, tick) => ({
-      id: `auto-${tick}`,
-      tick,
-      inputs: { clk: 1, rst: tick === 0 ? 1 : 0 },
-      expected: tick === 0 ? { ld0: 0 } : {},
-    }));
+    const reportVectors = Array.from<undefined, VerifyReportVector>({ length: 8 }, (_, tick) => {
+      const expected: VerifyReportVector['expected'] = {};
+      if (tick === 0) expected.ld0 = 0;
+      return {
+        id: `auto-${tick}`,
+        tick,
+        inputs: { clk: 1, rst: tick === 0 ? 1 : 0 },
+        expected,
+      };
+    });
     const lastRun: RuntimeVerifyRun = {
       scenarioId: activeScenario.id,
       scenarioName: activeScenario.name,
@@ -393,12 +398,19 @@ describe('VerifySurface board clock auto mode', () => {
         clockSignalName: 'CLK100MHZ',
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: activeScenario.id,
+        scenarioName: activeScenario.name,
+        status: 'pass',
+        deterministicHash: 'policy-stale-hash',
+        generatedAtIso: '2026-07-22T00:00:00.000Z',
+        reportHash: 'policy-stale-report',
         vectors: reportVectors,
         inputsAtTick: Object.fromEntries(reportVectors.map((vector) => [vector.tick, vector.inputs])),
         inputsByVectorId: Object.fromEntries(reportVectors.map((vector) => [vector.id, vector.inputs])),
         signalRoles: { clk: 'clock', rst: 'reset', ld0: 'output' },
         rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' }],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { clk: '0', rst: '0', ld0: '0' }, mismatches: [] }],
     };
     const view = render(
@@ -453,12 +465,16 @@ describe('VerifySurface board clock auto mode', () => {
         startLevel: 0,
       }
     );
-    const reportVectors = Array.from({ length: 4 }, (_, tick) => ({
-      id: `auto-${tick}`,
-      tick,
-      inputs: { clk: 1, rst: tick === 0 ? 1 : 0 },
-      expected: tick === 0 ? { ld0: 0 } : {},
-    }));
+    const reportVectors = Array.from<undefined, VerifyReportVector>({ length: 4 }, (_, tick) => {
+      const expected: VerifyReportVector['expected'] = {};
+      if (tick === 0) expected.ld0 = 0;
+      return {
+        id: `auto-${tick}`,
+        tick,
+        inputs: { clk: 1, rst: tick === 0 ? 1 : 0 },
+        expected,
+      };
+    });
     const lastRun: RuntimeVerifyRun = {
       scenarioId: activeScenario.id,
       scenarioName: activeScenario.name,
@@ -493,12 +509,19 @@ describe('VerifySurface board clock auto mode', () => {
         clockSignalName: 'CLK100MHZ',
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: activeScenario.id,
+        scenarioName: activeScenario.name,
+        status: 'pass',
+        deterministicHash: 'auto-expected-edit',
+        generatedAtIso: '2026-07-22T00:10:00.000Z',
+        reportHash: 'auto-expected-edit-report',
         vectors: reportVectors,
         inputsAtTick: Object.fromEntries(reportVectors.map((vector) => [vector.tick, vector.inputs])),
         inputsByVectorId: Object.fromEntries(reportVectors.map((vector) => [vector.id, vector.inputs])),
         signalRoles: { clk: 'clock', rst: 'reset', ld0: 'output' },
         rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass' }],
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: [{ tick: 0, signals: { clk: '0', rst: '1', ld0: '0' }, mismatches: [] }],
     };
     const sharedProps = {
@@ -577,7 +600,7 @@ describe('VerifySurface board clock auto mode', () => {
         expected: { ld0: 1 as const },
       },
     ];
-    const reportVectors = [
+    const reportVectors: VerifyReportVector[] = [
       { id: 'vec-01', tick: 0, inputs: { clk: 0, rst: 0 }, expected: { ld0: 0 } },
       { id: 'vec-02', tick: 1, inputs: { clk: 1, rst: 0 }, expected: { ld0: 1 } },
     ];
@@ -613,6 +636,13 @@ describe('VerifySurface board clock auto mode', () => {
         clockSignalName: 'CLK100MHZ',
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: activeScenario.id,
+        scenarioName: activeScenario.name,
+        status: 'pass',
+        deterministicHash: 'custom-exact-plan',
+        generatedAtIso: '2026-07-22T00:20:00.000Z',
+        reportHash: 'custom-exact-plan-report',
         vectors: reportVectors,
         inputsAtTick: Object.fromEntries(reportVectors.map((vector) => [vector.tick, vector.inputs])),
         inputsByVectorId: Object.fromEntries(reportVectors.map((vector) => [vector.id, vector.inputs])),
@@ -624,7 +654,7 @@ describe('VerifySurface board clock auto mode', () => {
           actual: String(vector.expected.ld0),
           status: 'pass' as const,
         })),
-      } as RuntimeVerifyRun['report'],
+      },
       waveform: reportVectors.map((vector) => ({
         tick: vector.tick,
         signals: { clk: String(vector.inputs.clk), rst: '0', ld0: String(vector.expected.ld0) },

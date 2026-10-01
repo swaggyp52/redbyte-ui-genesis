@@ -3,10 +3,11 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { StimulusCanvas } from '../components/StimulusCanvas';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
 
 const INPUTS = [{ id: 'sw0', label: 'SW0' }];
 const OUTPUTS = [{ id: 'ld0', label: 'LD0' }];
-const VECTORS = [
+const VECTORS: VerifyAuthorVector[] = [
   { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
   { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
 ];

@@ -36,7 +36,7 @@ describe('projectRuntime.activeTop — single authority', () => {
         updatedAt: '2026-08-30T00:00:00.000Z',
         name: 'My Design',
         circuit: { nodes: [], connections: [] },
-        fpga: { board: 'Basys3', part: 'xc7a35tcpg236-1', top: 'custom_top' },
+        fpga: { board: 'basys3', part: 'xc7a35tcpg236-1', top: 'custom_top' },
       });
     });
     expect(useProjectRuntime.getState().activeTop).toBe('custom_top');

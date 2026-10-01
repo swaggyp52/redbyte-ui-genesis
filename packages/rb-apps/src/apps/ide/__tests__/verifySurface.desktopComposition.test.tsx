@@ -39,6 +39,13 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'pass-scenario',
+      scenarioName: 'Pass Scenario',
+      status: 'pass',
+      deterministicHash: 'comp-test',
+      generatedAtIso: '2026-02-27T00:00:00.000Z',
+      reportHash: 'rep-pass',
       vectors: [
         { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 },
       ],
@@ -48,7 +55,7 @@ function makePassRun(): RuntimeVerifyRun {
       rows: [
         { tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 },
       ],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
     ],

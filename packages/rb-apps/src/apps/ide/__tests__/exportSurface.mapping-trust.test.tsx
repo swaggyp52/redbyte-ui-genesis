@@ -106,13 +106,15 @@ function buildExampleProject(exampleId: string): RBProject {
     vectors: example.vectors.map((vector) => ({
       tick: vector.tick,
       inputs: { ...vector.inputs },
-      expected: vector.expected ? { ...vector.expected } : undefined,
+      expected: { ...(vector.expected ?? {}) },
     })),
     fpga: { board: 'basys3', top: 'top' },
   };
 }
 
 function withUpdatedPin(project: RBProject, rowId: string, pin: string): RBProject {
+  const mapping = project.ioMapping;
+  if (!mapping) throw new Error('The export mapping fixture must contain IO mappings');
   const updateEntries = <T extends { id: string; pin?: string }>(entries: T[]): T[] =>
     entries.map((entry) =>
       entry.id === rowId
@@ -126,152 +128,110 @@ function withUpdatedPin(project: RBProject, rowId: string, pin: string): RBProje
   return {
     ...project,
     ioMapping: {
-      inputs: updateEntries(project.ioMapping.inputs),
-      outputs: updateEntries(project.ioMapping.outputs),
+      inputs: updateEntries(mapping.inputs),
+      outputs: updateEntries(mapping.outputs),
     },
   };
 }
 
+function reportRow(view: ReturnType<typeof render>, logicalLabel: string): HTMLElement {
+  const table = view.getByTestId('ide-package-handoff-mapping');
+  // Linked report data rows intentionally expose role=button for navigation.
+  // Inspect actual table cells so both linked and static rows retain one identity.
+  const row = Array.from(table.querySelectorAll<HTMLTableRowElement>('tbody tr')).find((entry) =>
+    entry.cells[0]?.textContent?.trim().toLowerCase() === logicalLabel.toLowerCase());
+  if (!row) throw new Error(`Missing live report mapping for ${logicalLabel}`);
+  return row;
+}
+
 describe('ExportSurface mapping trust', () => {
-  it('rebuilds the previewed constraints when Map Pins updates project mapping upstream', () => {
+  it('rebuilds previewed constraints and report bindings after upstream Board mapping changes', () => {
     let currentProject = buildProject();
-    const view = render(
-      <ExportSurface
-        project={currentProject}
-        determinismHash="ide-hash"
-      />
-    );
-
-    fireEvent.click(view.getByTestId('ide-export-artifact-tab-top-xdc'));
-
+    const view = render(<ExportSurface project={currentProject} determinismHash="ide-hash" />);
+    fireEvent.click(view.getByTestId('ide-export-file-top-xdc'));
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN V17');
-
     currentProject = withUpdatedPin(currentProject, 'sw0', 'W16');
-    view.rerender(
-      <ExportSurface
-        project={currentProject}
-        determinismHash="ide-hash"
-      />
-    );
-
+    view.rerender(<ExportSurface project={currentProject} determinismHash="ide-hash" />);
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN W16');
-
-    const sw0Row = view.getByTestId('ide-export-map-row-sw0');
-    expect(sw0Row.textContent).toContain('SW2 (pin W16)');
+    expect(view.getByTestId('ide-export-preview-code').textContent).not.toContain('PACKAGE_PIN V17');
+    view.rerender(<ExportSurface project={currentProject} determinismHash="ide-hash" activeDocument={{ kind: 'handoff' }} />);
+    const cells = within(reportRow(view, 'sw0')).getAllByRole('cell');
+    expect(cells[3].textContent).toContain('SW2');
+    expect(cells[4].textContent).toBe('W16');
   });
 
-  it('renders the pin table as read-only even when a parent updater exists', () => {
+  it('renders report mappings as read-only even when a parent updater exists', () => {
     const onUpdateMappingPin = vi.fn();
-    const view = render(
-      <ExportSurface
-        project={buildProject()}
-        determinismHash="ide-hash"
-        onUpdateMappingPin={onUpdateMappingPin}
-      />
-    );
-
-    const sw0Row = view.getByTestId('ide-export-map-row-sw0');
-    expect(within(sw0Row).queryByRole('textbox')).toBeNull();
-    expect(sw0Row.textContent).toContain('SW0 (pin V17)');
+    const view = render(<ExportSurface project={buildProject()} determinismHash="ide-hash"
+      activeDocument={{ kind: 'handoff' }} onUpdateMappingPin={onUpdateMappingPin} />);
+    const row = reportRow(view, 'sw0');
+    expect(within(row).queryByRole('textbox')).toBeNull();
+    const cells = within(row).getAllByRole('cell');
+    expect(cells[3].textContent).toContain('SW0');
+    expect(cells[4].textContent).toBe('V17');
     expect(onUpdateMappingPin).not.toHaveBeenCalled();
   });
 
-  it('shows active project/map-pins authority and upstream pin reconciliation', () => {
+  it('routes mapping review to the owning Board document and reconciles upstream changes', () => {
+    const onOpenDocument = vi.fn();
+    const onUpdateMappingPin = vi.fn();
     let currentProject = buildProject();
-    const view = render(
-      <ExportSurface
-        project={currentProject}
-        determinismHash="ide-hash"
-        onUpdateMappingPin={() => {
-          // no-op for this authority-visibility test
-        }}
-      />
-    );
-
-    expect(view.getByTestId('ide-export-mapping-authority-text').textContent).toContain(
-      'Map Pins owns the saved pin binding.'
-    );
-
+    const view = render(<ExportSurface project={currentProject} determinismHash="ide-hash"
+      activeDocument={{ kind: 'handoff' }} onOpenDocument={onOpenDocument} onUpdateMappingPin={onUpdateMappingPin} />);
+    fireEvent.click(view.getByTestId('ide-package-handoff-open-board'));
+    expect(onOpenDocument).toHaveBeenLastCalledWith({ kind: 'board-io', constraintSetId: 'default' });
     currentProject = withUpdatedPin(currentProject, 'sw0', 'W16');
-    view.rerender(
-      <ExportSurface
-        project={currentProject}
-        determinismHash="ide-hash"
-        onUpdateMappingPin={() => {
-          // no-op for this authority-visibility test
-        }}
-      />
-    );
-
-    expect(view.getByTestId('ide-export-mapping-authority-updates').textContent).toContain(
-      '1 pin was updated from Map Pins.'
-    );
-    expect(view.getByTestId('ide-export-pin-updated-upstream-sw0').textContent).toContain(
-      'Updated from Map Pins.'
-    );
+    view.rerender(<ExportSurface project={currentProject} determinismHash="ide-hash"
+      activeDocument={{ kind: 'handoff' }} onOpenDocument={onOpenDocument} onUpdateMappingPin={onUpdateMappingPin} />);
+    const row = reportRow(view, 'sw0');
+    expect(within(row).getAllByRole('cell')[4].textContent).toBe('W16');
+    fireEvent.click(row);
+    expect(onOpenDocument).toHaveBeenLastCalledWith({ kind: 'board-io', constraintSetId: 'default' });
+    expect(onUpdateMappingPin).not.toHaveBeenCalled();
   });
 
-  it('keeps the same Map Pins authority copy when no project updater is wired', () => {
-    const view = render(<ExportSurface project={buildProject()} determinismHash="ide-hash" />);
-
-    expect(view.getByTestId('ide-export-mapping-authority-text').textContent).toContain(
-      'Map Pins owns the saved pin binding.'
-    );
-    expect(view.queryByTestId('ide-export-mapping-authority-updates')).toBeNull();
+  it('keeps Board ownership and the read-only report when no mapping updater is wired', () => {
+    const onOpenDocument = vi.fn();
+    const view = render(<ExportSurface project={buildProject()} determinismHash="ide-hash"
+      activeDocument={{ kind: 'handoff' }} onOpenDocument={onOpenDocument} />);
+    const row = reportRow(view, 'sw0');
+    expect(within(row).queryByRole('textbox')).toBeNull();
+    fireEvent.click(row);
+    expect(onOpenDocument).toHaveBeenLastCalledWith({ kind: 'board-io', constraintSetId: 'default' });
+    expect(view.getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Board & Constraints');
   });
 
-  it('keeps live boundary rows visible when export labels sanitize differently', () => {
-    const view = render(
-      <ExportSurface project={buildExampleProject('two-bit-counter')} determinismHash="ide-hash" />
-    );
-
-    const enableRow = view.getByTestId('ide-export-map-row-en');
-    const resetRow = view.getByTestId('ide-export-map-row-rst');
-
-    expect(enableRow.textContent).toContain('SW0 (pin V17)');
-    expect(resetRow.textContent).toContain('BTNC (pin U18)');
-    expect(within(enableRow).queryByRole('textbox')).toBeNull();
-    expect(within(resetRow).queryByRole('textbox')).toBeNull();
+  it('keeps live boundary rows visible when labels sanitize differently in artifacts', () => {
+    const view = render(<ExportSurface project={buildExampleProject('two-bit-counter')} determinismHash="ide-hash"
+      activeDocument={{ kind: 'handoff' }} />);
+    const enable = reportRow(view, 'EN');
+    const reset = reportRow(view, 'RST');
+    expect(within(enable).getAllByRole('cell')[3].textContent).toContain('SW0');
+    expect(within(enable).getAllByRole('cell')[4].textContent).toBe('V17');
+    expect(within(reset).getAllByRole('cell')[3].textContent).toContain('BTNC');
+    expect(within(reset).getAllByRole('cell')[4].textContent).toBe('U18');
+    expect(within(enable).queryByRole('textbox')).toBeNull();
+    expect(within(reset).queryByRole('textbox')).toBeNull();
   });
 
-  it('shows a buildable missing-bundle state instead of Export Blocked when prerequisites are satisfied', () => {
-    const verifyResult = {
-      status: 'pass' as const,
-      hash: 'verify-pass-hash',
-      reportHash: 'verify-report-hash',
-      ranAtIso: '2026-04-23T12:00:00.000Z',
-    };
+  it('shows a generatable missing-bundle state when prerequisites are satisfied', () => {
+    const verifyResult = { status: 'pass' as const, runKind: 'verify' as const, hash: 'verify-pass-hash',
+      reportHash: 'verify-report-hash', ranAtIso: '2026-04-23T12:00:00.000Z' };
     const workflowAuthority = deriveProjectWorkflowAuthority({
-      projectHealthCore: {
-        lastVerify: verifyResult,
-        lastExport: undefined,
-        dirtySinceVerify: false,
-        dirtySinceExport: false,
-      },
-      readiness: {
-        hasCircuit: true,
-        hasIoMapping: true,
-        hasVectors: true,
-      },
-      verifyLastRun: verifyResult,
-      verifyRunHistory: [{ projectHash: 'verify-pass-hash' }],
-      currentVerifyProjectHash: 'verify-pass-hash',
-      currentExportHash: 'current-export-hash',
+      projectHealthCore: { lastVerify: verifyResult, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      readiness: { hasCircuit: true, hasIoMapping: true, hasVectors: true },
+      verifyLastRun: verifyResult, verifyRunHistory: [{ projectHash: 'verify-pass-hash' }],
+      currentVerifyProjectHash: 'verify-pass-hash', currentExportHash: 'current-export-hash',
     });
-
-    const view = render(
-      <ExportSurface
-        project={buildProject()}
-        determinismHash="current-export-hash"
-        verifyResult={verifyResult}
-        workflowAuthority={workflowAuthority}
-      />
-    );
-
-    expect(view.getByTestId('ide-export-panel').textContent).toContain('Export Ready to Build');
-    expect(view.getByTestId('ide-export-command-strip').textContent).toContain('READY TO BUILD');
-    expect(view.getByTestId('ide-export-command-strip').textContent).toContain('Build the current Vivado project ZIP');
-    expect(view.getByTestId('ide-export-rebuild-btn').textContent).toContain('Build Current Bundle');
+    const view = render(<ExportSurface project={buildProject()} determinismHash="current-export-hash"
+      verifyResult={verifyResult} workflowAuthority={workflowAuthority} />);
+    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Package not built yet — evidence validated');
+    const action = view.getByTestId('ide-export-package-build-v1');
+    expect(action.textContent).toBe('Generate & download checked ZIP');
+    expect(action.hasAttribute('disabled')).toBe(false);
+    const inspector = view.getByTestId('ide-export-package-inspector-v1');
+    expect(inspector.getAttribute('data-export-structural-state')).toBe('downloadable');
+    expect(inspector.getAttribute('data-export-action-state')).toBe('not-downloaded');
     expect(view.getByTestId('ide-export-panel').textContent).not.toContain('Export Blocked');
   });
 });

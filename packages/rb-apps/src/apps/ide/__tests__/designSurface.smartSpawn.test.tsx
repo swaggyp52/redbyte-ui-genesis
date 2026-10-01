@@ -28,6 +28,7 @@ const CIRCUIT_WITH_CENTERED_XOR: Circuit = {
 const passiveSimulation: RuntimeSimState = {
   tick: 0,
   running: false,
+  stepMode: false,
   speedHz: 10,
   irHash: 'ir-hash',
   traceHash: 'trace-hash',

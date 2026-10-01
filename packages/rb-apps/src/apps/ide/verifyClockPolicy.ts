@@ -471,8 +471,9 @@ function isRowBackedBySimOnlyClock(
 ): boolean {
   const nodes = circuit?.nodes ?? [];
   const clockNodes = nodes.filter((node) => node.type === 'Clock');
-  const exactNode = row.nodeId
-    ? clockNodes.find((node) => matchesSignalToken(node.id, row.nodeId))
+  const rowNodeId = row.nodeId;
+  const exactNode = rowNodeId
+    ? clockNodes.find((node) => matchesSignalToken(node.id, rowNodeId))
     : undefined;
   if (exactNode) {
     return readClockRole(exactNode.config as Record<string, unknown> | undefined) === 'sim';
@@ -643,11 +644,11 @@ function clearSignalAliases(
 
 function nextTickAfter(vectors: readonly TestVector[]): number {
   const lastTick = vectors.at(-1)?.tick;
-  return Number.isFinite(lastTick) ? Math.max(0, Math.floor(lastTick)) + 1 : 0;
+  return typeof lastTick === 'number' && Number.isFinite(lastTick) ? Math.max(0, Math.floor(lastTick)) + 1 : 0;
 }
 
 function normalizeTick(value: number | undefined, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.floor(value));
 }
 

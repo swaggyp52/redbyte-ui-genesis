@@ -42,9 +42,11 @@ describe('zipImport — nested Vivado folder structure', () => {
   it('populates ioRows with all 3 ports', async () => {
     const bytes = await buildNestedVivadoZip();
     const result = await importVivadoZipBytes(bytes, { sourceName: 'project.zip' });
+    const mapping = result.project.ioMapping;
+    if (!mapping) throw new Error('Expected imported IO mapping');
     const allRows = [
-      ...result.project.ioMapping.inputs,
-      ...result.project.ioMapping.outputs,
+      ...mapping.inputs,
+      ...mapping.outputs,
     ];
     expect(allRows).toHaveLength(3);
   });

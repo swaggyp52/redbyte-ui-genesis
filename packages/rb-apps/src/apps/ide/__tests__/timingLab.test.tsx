@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { TimingLab } from '../surfaces/verify/TimingLab';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
 import { ScenarioTestbenchPreview } from '../surfaces/verify/ScenarioTestbenchPreview';
 
 const inputFields = [
@@ -9,7 +10,7 @@ const inputFields = [
   { id: 'b', label: 'B' },
 ];
 const outputFields = [{ id: 'sum', label: 'SUM' }];
-const vectors = [
+const vectors: VerifyAuthorVector[] = [
   { id: 'event-a', tick: 0, inputs: { a: 0 as const, b: 0 as const }, expected: {} },
   { id: 'event-b', tick: 1, inputs: { a: 1 as const, b: 0 as const }, expected: { sum: 1 as const } },
 ];

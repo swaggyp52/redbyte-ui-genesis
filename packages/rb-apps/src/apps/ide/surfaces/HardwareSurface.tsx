@@ -699,9 +699,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return {
       label: effectiveTimingGuidance.signalLabelSingular,
-      pillTone: (hasClockMapping ? 'ok' : 'warn') as const,
-      checkClass: (hasClockMapping ? 'is-ok' : 'is-missing') as const,
-      checkGlyph: (hasClockMapping ? '✓' : '○') as const,
+      pillTone: hasClockMapping ? ('ok' as const) : ('warn' as const),
+      checkClass: hasClockMapping ? ('is-ok' as const) : ('is-missing' as const),
+      checkGlyph: (hasClockMapping ? '✓' : '○'),
       statusText: hasClockMapping ? 'Mapped for synthesis' : 'Needs clock pin',
     };
   }, [effectiveTimingGuidance.signalLabelSingular, explicitTimingMode, hasClockMapping]);
@@ -1757,8 +1757,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         primaryLabel: failureTruthPrimaryCtaLabel,
         primaryAction: dominantPrimaryAction,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: onOpenVerify ? OPEN_SIMULATE_LABEL : null,
-        secondaryAction: onOpenVerify ?? null,
+        secondaryLabel: OPEN_SIMULATE_LABEL,
+        secondaryAction: onOpenVerify,
       };
     }
 
@@ -2996,8 +2996,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       dock={hwMode === 'live' ? activeDock : null}
       inspector={
         hwMode !== 'live' ? null : <>
-          {hwMode !== 'map' && (
-            <IdeInspectorSection title={hwMode === 'live' ? simulatedBoardSourceLabel : 'Exploration I/O state'} defaultOpen>
+          <IdeInspectorSection title={hwMode === 'live' ? simulatedBoardSourceLabel : 'Exploration I/O state'} defaultOpen>
               {hwMode === 'live' && <p className="ide-copy" data-testid="ide-hardware-state-source">
                 {isRecordedBoardPreview ? `${verifyLastRun?.scenarioName} · tick ${selectedBoardTick ?? 'unavailable'}${boardValuesStale ? ' · Retained recording and saved mappings; current inputs changed' : ''}` : 'Browser exploration · no recorded run'}
               </p>}
@@ -3006,8 +3005,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 rows={liveHardwareRows}
                 testId="ide-hardware-live-state-table"
               />
-            </IdeInspectorSection>
-          )}
+          </IdeInspectorSection>
           {activeInspector}
         </>
       }
@@ -3108,8 +3106,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <button
               type="button"
               role="tab"
-              aria-selected={hwMode === 'map'}
-              className={`wb-btn${hwMode === 'map' ? ' is-active' : ''}`}
+              aria-selected={false}
+              className="wb-btn"
               data-testid="ide-hw-mode-btn-map"
               onClick={() => {
                 setHwMode('map');

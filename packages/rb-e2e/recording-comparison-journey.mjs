@@ -26,6 +26,14 @@ const run = async () => {
   await page.waitForFunction(id => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId !== id, before);
   return selected();
 };
+// DOM observations prove what the student sees; runtime reads only identify owners.
+const observations = () => tid('ide-case-lab').locator('tbody .ide-case-lab-obs code')
+  .allTextContents().then(values => values.map(value => value.trim()));
+const verdicts = () => tid('ide-case-lab').locator('tbody .ide-case-lab-verdict')
+  .allTextContents().then(values => values.map(value => value.trim()));
+const assertReadOnlyObservations = async () => assert.equal(
+  await tid('ide-case-lab').locator('tbody .ide-case-lab-obs button, tbody .ide-case-lab-obs input').count(),
+  0, 'Recorded observations are read-only');
 const results = [];
 try {
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -75,17 +83,52 @@ try {
   assert.match(await tid('ide-case-lab-history').innerText(), /Current work differs/);
   assert.match(await tid('ide-run-check-result').innerText(), /checks passed/);
   assert.equal((await selected()).runId, fourth.runId, 'Edits retain the immutable historical verdict');
+  const ownObservations = await observations();
+  assert.ok(ownObservations.length > 0 && ownObservations.every(value => /^[01]$/.test(value)),
+    'The owning scenario still shows its retained binary observations after an edit');
+  assert.ok((await verdicts()).every(value => value === 'stale'), 'Edited checks mark the owning cases stale');
+  await assertReadOnlyObservations();
   await page.getByLabel('Manage testbench', { exact: true }).click();
   await tid('ide-scenario-duplicate-btn').click();
   assert.equal(await tid('ide-case-lab-history').count(), 0, 'A new scenario must not borrow the old scenario comparison');
+  assert.equal(await selected(), undefined, 'A duplicated scenario has no selected recording before its own run');
+  const emptyObservations = await observations();
+  assert.equal(emptyObservations.length, ownObservations.length, 'The copied authored cases retain their table shape');
+  assert.ok(emptyObservations.every(value => value === '\u00b7'),
+    'Matching tick and output names never borrow another scenario recording into the new case table');
+  const emptyVerdicts = await verdicts();
+  assert.ok(emptyVerdicts.length > 0 && emptyVerdicts.every(value => value === '\u2014'),
+    'Unrun copied cases have no recorded verdict');
+  await assertReadOnlyObservations();
+  await page.screenshot({ path: path.join(out, 'new-scenario-empty-observations-1440x900.png') });
   const other = await run();
   assert.equal(other.status, 'fail');
   assert.match(await tid('ide-case-lab-history').innerText(), /no previous comparison/);
   assert.notEqual(other.scenarioId, fourth.scenarioId);
+  const otherObservations = await observations();
+  assert.ok(otherObservations.length > 0 && otherObservations.every(value => /^[01]$/.test(value)),
+    'Running the copied scenario provides its own observations');
+  await assertReadOnlyObservations();
   await tid(`ide-testbench-document-tab-${fourth.scenarioId}`).click();
   assert.equal((await selected()).runId, fourth.runId);
   assert.match(await tid('ide-case-lab-history').innerText(), /PASS/);
   assert.match(await tid('ide-case-lab-history').innerText(), /same as previous/);
+  assert.deepEqual(await observations(), ownObservations, 'Selecting the recorded scenario restores its actual cells');
+  assert.ok((await verdicts()).every(value => value === 'stale'), 'The restored recording retains the edited-check warning');
+  assert.equal(await tid('ide-run-identity').getAttribute('data-currency'), 'differs');
+  await tid('ide-verify-view-waveform').click();
+  assert.equal(await tid('ide-verify-workspace-waveform').getAttribute('data-state'), 'stale');
+  await tid('ide-verify-waveform-svg').waitFor({ state: 'visible' });
+  assert.ok(await tid('ide-verify-waveform-point').count() > 0, 'The retained stale trace remains inspectable');
+  assert.equal((await selected()).runId, fourth.runId, 'Opening Recorded trace preserves the exact recording');
+  await page.screenshot({ path: path.join(out, 'own-scenario-retained-trace-1440x900.png') });
+  await tid('ide-verify-view-table').click();
+  await tid(`ide-testbench-document-tab-${other.scenarioId}`).click();
+  assert.equal((await selected()).runId, other.runId, 'Switching back selects the copied scenario recording');
+  assert.deepEqual(await observations(), otherObservations, 'The copied scenario restores its actual cells');
+  assert.equal(await tid('ide-run-identity').getAttribute('data-currency'), 'current');
+  await tid(`ide-testbench-document-tab-${fourth.scenarioId}`).click();
+  assert.equal((await selected()).runId, fourth.runId);
   await picker.selectOption(second.runId);
   await tid('ide-verify-view-table').click();
   await command('project.save');
@@ -107,7 +150,10 @@ try {
   await tid('ide-verify-view-table').click();
   assert.match(await tid('ide-case-lab-history').innerText(), /FAIL/);
   assert.match(await tid('ide-case-lab-history').innerText(), /1 more failing/);
-  results.push({ other: other.runId, savedSelection: second.runId });
+  results.push({ other: other.runId, savedSelection: second.runId,
+    caseScope: { ownObservations, emptyObservations, otherObservations,
+      unrunVerdicts: emptyVerdicts, retainedTrace: fourth.runId,
+      proof: 'Real scenario duplication, run, switch and recorded-trace controls; no authored state injection' } });
   results.push({ first: first.runId, second: second.runId, third: third.runId, fourth: fourth.runId, field, errors });
   assert.deepEqual(errors, []);
   await page.screenshot({ path: path.join(out, 'retained-pass-stale-1440x900.png') });

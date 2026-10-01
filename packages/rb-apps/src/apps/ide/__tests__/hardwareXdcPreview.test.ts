@@ -13,6 +13,7 @@ const scalar = (id: string, direction: 'in' | 'out', pin: string): HardwareMappi
   direction,
   portName: id,
   nodeId: `${id}_node`,
+  port: direction === 'in' ? 'out' : 'in',
   pin,
 });
 

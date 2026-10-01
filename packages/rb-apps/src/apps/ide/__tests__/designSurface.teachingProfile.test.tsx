@@ -64,6 +64,7 @@ function makeEmptyRuntime(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: 'reset',
     speedHz: 10,
     irHash: '',

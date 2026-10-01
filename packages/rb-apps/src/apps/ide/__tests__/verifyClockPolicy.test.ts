@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import {
   detectVerifyClockPolicy,
   materializeVectorsForClockPolicy,

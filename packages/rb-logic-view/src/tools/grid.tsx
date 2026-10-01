@@ -68,12 +68,12 @@ export function renderGrid(
   width: number,
   height: number,
   config: GridConfig
-): JSX.Element {
+): React.JSX.Element {
   const { size, color, majorLineInterval = 5, majorLineColor = '#444' } = config;
   const band = resolveGridZoomBand(camera.zoom);
   const bandStyle = GRID_BAND_STYLES[band];
 
-  const lines: JSX.Element[] = [];
+  const lines: React.JSX.Element[] = [];
 
   // Calculate visible grid range
   const startX = Math.floor(-camera.x / (size * camera.zoom)) * size;

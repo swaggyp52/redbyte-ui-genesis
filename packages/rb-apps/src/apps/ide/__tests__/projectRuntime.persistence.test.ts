@@ -443,7 +443,7 @@ describe('mergePersistedRuntimeState', () => {
     const circuitWithoutXorOutput = {
       ...authored.circuit,
       connections: authored.circuit.connections.filter(
-        (connection) => connection.to.nodeId !== 'ld2_node'
+        (connection) => (typeof connection.to === 'string' ? connection.to : connection.to.nodeId) !== 'ld2_node'
       ),
     };
     runtime.applyCircuitMutation(circuitWithoutXorOutput);
@@ -501,7 +501,7 @@ describe('mergePersistedRuntimeState', () => {
     const beforeRepair = useProjectRuntime.getState();
     const repairedCircuit = structuredClone(beforeRepair.circuit);
     repairedCircuit.connections = repairedCircuit.connections.filter(
-      (connection) => connection.to.nodeId !== 'ld2_node'
+      (connection) => (typeof connection.to === 'string' ? connection.to : connection.to.nodeId) !== 'ld2_node'
     );
     runtime.applyCircuitMutation(repairedCircuit);
 
@@ -1761,7 +1761,7 @@ describe('useProjectRuntime blank project replacement', () => {
   });
 });
 
-function buildBlankWorkProject(projectKind: 'blank' | 'custom' | 'import') {
+function buildBlankWorkProject(projectKind: 'blank' | 'custom' | 'import'): RBProject {
   return {
     kind: 'rb-project' as const,
     version: 1,

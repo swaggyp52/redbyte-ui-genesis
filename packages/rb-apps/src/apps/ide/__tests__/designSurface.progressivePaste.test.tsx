@@ -47,6 +47,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 2,
     running: false,
+    stepMode: true,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',

@@ -5414,6 +5414,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const caseLabData = useMemo(() => {
     const observed: Record<number, Record<string, string>> = {};
     const verdict: Record<number, StimulusCaseEvidenceState> = {};
+    // The authored case table belongs to the active scenario. A retained recording
+    // from another scenario remains inspectable in Recorded trace, but matching
+    // ticks or signal names do not make its observations belong to these cases.
+    if (isWrongScenario) {
+      for (const vector of authoredVectors) {
+        observed[vector.tick] = {};
+        verdict[vector.tick] = 'stale';
+      }
+      return { observed, verdict };
+    }
     // Exact (tick, normalized run signal) index — no containment matching.
     const rowByTickSignal = new Map<string, (typeof caseLabReportRows)[number]>();
     for (const row of caseLabReportRows) {
@@ -5459,7 +5469,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       else verdict[vector.tick] = 'not-run';
     }
     return { observed, verdict };
-  }, [authoredVectors, canonicalWaveformSignalByRawKey, caseLabReportRows, caseLabSignalResolver, lastRun, mappedSignals, outputFields, sessionShowsCompareEvidence, surfaceLastRun, testbenchEvidenceIsStale]);
+  }, [authoredVectors, canonicalWaveformSignalByRawKey, caseLabReportRows, caseLabSignalResolver, isWrongScenario, lastRun, mappedSignals, outputFields, sessionShowsCompareEvidence, surfaceLastRun, testbenchEvidenceIsStale]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
@@ -6961,9 +6971,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'Design blocked'
                 : runState === 'running'
                 ? 'Running'
-                : verifyMode === 'blocked'
-                  ? 'Blocked'
-                  : isNoCircuitTaskFirst
+                : isNoCircuitTaskFirst
                     ? 'No circuit'
                     : runProofIsStale
                       ? 'Simulation stale'

@@ -588,7 +588,7 @@ function groupBoardPaletteItems(
   inputs: BoardIoPaletteItem[],
   outputs: BoardIoPaletteItem[]
 ): BoardPaletteGroup[] {
-  return [
+  const groups: BoardPaletteGroup[] = [
     {
       id: 'switches',
       title: 'Switches (SW0–SW15)',
@@ -624,7 +624,8 @@ function groupBoardPaletteItems(
         (entry) => entry.kind === 'segment' || entry.kind === 'anode' || entry.kind === 'dp'
       ),
     },
-  ].filter((group) => group.entries.length > 0);
+  ];
+  return groups.filter((group) => group.entries.length > 0);
 }
 
 function snapFitZoom(rawZoom: number): number {
@@ -663,10 +664,10 @@ interface DesignDebugSignalSample {
 
 interface DesignDebugToggleSample {
   nodeId: string;
-  source: 'canvas' | 'dock';
+  source: 'canvas' | 'dock' | 'inspector';
   requestedValue: 0 | 1;
   requestedAtIso: string;
-  uiBefore: 0 | 1;
+  uiBefore: RuntimeLogicValue;
   simInputBefore: 0 | 1;
   downstreamBefore: DesignDebugSignalSample | null;
 }
@@ -833,7 +834,7 @@ function resolveNodeInspectionTeachingProfile(
 }
 
 function resolveDesignDebugSample(
-  signals: Record<string, 0 | 1>,
+  signals: Record<string, RuntimeLogicValue>,
   preferredKeys: readonly string[]
 ): DesignDebugSignalSample | null {
   for (const key of preferredKeys) {
@@ -1506,7 +1507,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       });
   }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
   const liveInputValueById = useMemo(() => {
-    const valueById = new Map<string, 0 | 1>();
+    const valueById = new Map<string, RuntimeLogicValue>();
     for (const row of allLiveInputRows) {
       valueById.set(row.id, row.value);
     }
@@ -3432,7 +3433,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [selectedNode, editorCircuit, liveSignals]);
   const selectedNodeSignalMap = useMemo(
     () =>
-      new Map<string, 0 | 1 | null>(
+      new Map<string, RuntimeLogicValue | null>(
         (selectedNodeSignals ?? []).map((entry) => [entry.port, entry.value])
       ),
     [selectedNodeSignals]
@@ -5847,7 +5848,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
                     <IdeButton
                       tone="secondary"
-                      onClick={() => handlePortClick(selectedNode.id, selectedSequentialInspector.actionPort)}
+                      onClick={() => {
+                        const actionPort = selectedSequentialInspector.actionPort;
+                        if (actionPort) handlePortClick(selectedNode.id, actionPort);
+                      }}
                     testId="ide-design-context-sequential-action"
                   >
                     {selectedSequentialInspector.actionLabel}
@@ -8023,7 +8027,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <button type="button" className="wb-menu-item" onClick={toggleSnapToGrid} data-testid="ide-design-tool-snap" aria-pressed={snapToGrid}>
                         <span className="wb-menu-item-check" aria-hidden="true">{snapToGrid ? '●' : ''}</span><span className="wb-menu-item-label">Snap to grid</span><span className="wb-menu-item-key">G</span>
                       </button>
-                      <button type="button" className="wb-menu-item" onClick={() => fitToCircuit()} data-testid="ide-design-menu-fit">
+                      <button type="button" className="wb-menu-item" onClick={(event) => {
+                        fitToCircuit();
+                        const menu = event.currentTarget.closest('details');
+                        if (menu instanceof HTMLDetailsElement) menu.open = false;
+                      }} data-testid="ide-design-menu-fit">
                         <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Fit design</span><span className="wb-menu-item-key">F</span>
                       </button>
                       <button type="button" className="wb-menu-item" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-menu-fit-selection">
@@ -10034,7 +10042,7 @@ function describeVerifyDebugSummary(context: VerifyDebugContext): string {
   return base;
 }
 
-function formatReplayCausationValue(value: 0 | 1 | null): string {
+function formatReplayCausationValue(value: RuntimeLogicValue | null): string {
   return value == null ? '?' : `${value}`;
 }
 
@@ -10778,7 +10786,7 @@ function buildSequentialInspectorContext(input: {
 }
 
 function resolveSequentialRsControlPort(
-  nodeSignals: Map<string, 0 | 1 | null>
+  nodeSignals: Map<string, RuntimeLogicValue | null>
 ): string {
   if (nodeSignals.has('S')) return 'S';
   if (nodeSignals.has('R')) return 'R';
@@ -10817,7 +10825,7 @@ function resolveNodeInputSource(
 }
 
 function summarizeSequentialPorts(
-  nodeSignals: Map<string, 0 | 1 | null>,
+  nodeSignals: Map<string, RuntimeLogicValue | null>,
   ports: readonly string[]
 ): string {
   const entries = ports
@@ -10826,7 +10834,7 @@ function summarizeSequentialPorts(
   return entries.length > 0 ? entries.join(', ') : 'No live signal values yet';
 }
 
-function summarizeRegisterBusOutputs(nodeSignals: Map<string, 0 | 1 | null>, width: number): string {
+function summarizeRegisterBusOutputs(nodeSignals: Map<string, RuntimeLogicValue | null>, width: number): string {
   const bitSummaries: string[] = [];
   const limit = Math.min(width, 8);
   for (let i = 0; i < limit; i += 1) {

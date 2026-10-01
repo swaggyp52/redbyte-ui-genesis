@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import { buildClockHelperVectors, resolveActiveScheduleContract } from '../clockAuthority';
 
 function makeContract(

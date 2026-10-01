@@ -376,7 +376,7 @@ function resolveConnectionEndpoint(
   if (typeof raw === 'string') {
     const pinKey = side === 'from' ? 'fromPin' : 'toPin';
     const portKey = side === 'from' ? 'fromPort' : 'toPort';
-    const port = (connection as Record<string, unknown>)[pinKey] ?? (connection as Record<string, unknown>)[portKey];
+    const port = connection[pinKey] ?? connection[portKey];
     return {
       nodeId: raw,
       portName: typeof port === 'string' && port.trim() ? port : side === 'from' ? 'out' : 'in',

@@ -196,6 +196,21 @@ describe('DesignSurface Unified Workbench v3 chrome', () => {
     expect(view.getByTestId('ide-design-toolbar-overflow').textContent).toContain('View');
   });
 
+  it('closes the View menu after Fit so the next canvas action is unobstructed', () => {
+    const view = renderSurface();
+    const menu = view.getByTestId('ide-design-toolbar-overflow');
+    if (!(menu instanceof HTMLDetailsElement)) throw new Error('View must be a details menu');
+    menu.open = true;
+    const circuitBefore = JSON.stringify(useCircuitStore.getState().circuit);
+    act(() => useLogicViewStore.getState().setCamera({ x: 900, y: -700, zoom: 0.2 }));
+    fireEvent.click(view.getByTestId('ide-design-menu-fit'));
+    expect(menu.open).toBe(false);
+    const camera = useLogicViewStore.getState().camera;
+    expect([camera.x, camera.y, camera.zoom].every(Number.isFinite)).toBe(true);
+    expect(camera.zoom).toBeGreaterThan(0);
+    expect(JSON.stringify(useCircuitStore.getState().circuit)).toBe(circuitBefore);
+  });
+
   it('surfaces verify focus inside the simulation strip instead of the toolbar band', () => {
     const view = renderSurface({
       activeVerifySignal: 'LD0',

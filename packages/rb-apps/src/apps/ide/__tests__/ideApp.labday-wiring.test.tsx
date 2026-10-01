@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { ThemeProvider } from '@redbyte/rb-theme';
 import type { RBProject } from '../../../export/projectFormat';
 import { IdeApp } from '../../IdeApp';
 import { useProjectRuntime } from '../projectRuntime';
 import { computeScenarioContentHash } from '../verifyScenario';
+import { workspacePreferencesStore } from '../workspacePreferences';
 
 // The active mode is no longer a top-bar label (`ide-topbar-mode-label` was
 // removed when the stage-nav became the single workflow authority). The current
@@ -223,7 +224,6 @@ function buildDraftAuthoringProject(): RBProject {
     meta: {
       projectId: 'rb-draft-authoring-project',
       projectKind: 'custom',
-      activeExampleId: null,
       sourceExampleId: null,
       scenarioAuthority: 'none',
     },
@@ -284,6 +284,7 @@ describe('IdeApp lab-day wiring', () => {
     sessionStorage.clear();
     useProjectRuntime.persist.clearStorage();
     useProjectRuntime.setState(useProjectRuntime.getInitialState(), true);
+    workspacePreferencesStore.reset();
     localStorage.setItem('rb-onboarding-v1-seen', '1');
     seedIdeRoute('project');
   });
@@ -345,9 +346,8 @@ describe('IdeApp lab-day wiring', () => {
 
     await view.findByTestId('ide-export-panel', {}, { timeout: 15000 });
 
-    // Build & Export opens on the handoff dossier. The generated files are a second document,
-    // opened from the dossier's own header - the same route the acceptance journey takes.
-    fireEvent.click(await view.findByTestId('ide-package-handoff-open-files', {}, { timeout: 15000 }));
+    // Package opens on its generated files; the report is an explicit second document.
+    await view.findByTestId('ide-export-package-files', {}, { timeout: 15000 });
     fireEvent.click(await view.findByTestId('ide-export-file-top-vhd', {}, { timeout: 15000 }));
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity lab_day_top is');
     fireEvent.click(view.getByTestId('ide-export-file-vivado-import-tcl'));
@@ -410,14 +410,15 @@ describe('IdeApp lab-day wiring', () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
     });
 
-    // The structural Design blocker is a real problem row on the Overview, with
-    // its repair path pointing at Design — not a hero status line.
+    // The Overview's lead problem keeps the structural blocker and its repair owner dominant.
     await waitFor(() => {
-      expect(view.getByTestId('ide-project-problems').textContent).toMatch(/floating-output|Output not/);
+      expect(view.getByTestId('ide-project-attention').textContent).toMatch(/floating-output|Output not/);
     });
-    expect(view.getByTestId('ide-project-problems').textContent).toContain('Output');
+    const attention = view.getByTestId('ide-project-attention');
+    expect(attention.textContent).toContain('Output');
     expect(view.getByTestId('ide-project-fact-problems').textContent).not.toContain('none');
-    expect(view.getAllByText('Open Design').length).toBeGreaterThan(0);
+    fireEvent.click(within(attention).getByRole('button', { name: /^Open Design$/ }));
+    await waitFor(() => expect(view.getByTestId('ide-root').getAttribute('data-ide-stage')).toBe('design'));
   });
 
   it('renders Project home on first load at /', async () => {
@@ -451,8 +452,17 @@ describe('IdeApp lab-day wiring', () => {
     await waitFor(() => {
       expect(view.getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
       expect(view.getByTestId('ide-hw-map-row-phase_driver').textContent?.toLowerCase()).toContain('phase_driver');
-      expect(view.getByTestId('ide-hw-map-row-phase_driver').textContent).toContain('W5');
+      expect(view.getByTestId('ide-hw-map-row-binding-phase_driver').textContent).toBe('CLK100MHZ');
     });
+    // Compact mapping rows name the board resource. Its saved package pin belongs
+    // to the selected binding chain, reached through the row's actual Edit control.
+    fireEvent.click(view.getByTestId('ide-hw-map-row-action-phase_driver'));
+    await waitFor(() => {
+      expect(view.getByTestId('ide-hardware-chain-board').textContent).toContain('CLK100MHZ');
+      expect(view.getByTestId('ide-hardware-chain-pin').textContent).toContain('W5');
+      expect(view.getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN W5');
+    });
+    expect(useProjectRuntime.getState().verifyLastRun).toBeUndefined();
   });
 
   it(
@@ -478,8 +488,11 @@ describe('IdeApp lab-day wiring', () => {
 
       fireEvent.click(await view.findByTestId('mode-button-verify'));
       await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
-      const useSaved = await view.findByTestId('ide-vcb-use-saved-checks');
-      fireEvent.click(useSaved);
+      // The current Run action evaluates authored checks automatically.
+      expect(view.getByTestId('ide-vcb-check-count').textContent).toBe('3 optional checks');
+      expect(view.getByTestId('ide-vcb-check-count').getAttribute('title')).toBe(
+        '3 saved checks are evaluated automatically.'
+      );
 
       await act(async () => {
         fireEvent.click(await findVerifyRunAction(view));
@@ -523,6 +536,7 @@ describe('IdeApp lab-day wiring', () => {
         stateAfterRun.verifyLastRun?.deterministicHash
       );
 
+      fireEvent.click(view.getByTestId('ide-export-close-technical-evidence'));
       await act(async () => {
         useProjectRuntime.getState().setVectors([
           { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
@@ -535,10 +549,16 @@ describe('IdeApp lab-day wiring', () => {
       await view.findByTestId('ide-hardware-panel', {}, { timeout: 15000 });
 
       await waitFor(() => {
-        expect(view.getByTestId('ide-hardware-readiness-callout').textContent).toContain(
-          'changed after the last Compare run'
+        expect(view.getByTestId('ide-hw-mapping-next-reason').textContent).toBe(
+          'The recorded run is stale. Rerun it in Simulate for a checked package.'
         );
       });
+      const editedState = useProjectRuntime.getState();
+      const editedScenario = editedState.scenarios.find(scenario => scenario.id === editedState.activeScenarioId);
+      expect(editedScenario).toBeTruthy();
+      expect(editedState.verifyLastRun?.runId).toBe(stateAfterRun.verifyLastRun?.runId);
+      expect(editedState.verifyLastRun?.scenarioContentHash).not.toBe(computeScenarioContentHash(editedScenario!));
+      expect(editedState.projectHealthCore.dirtySinceVerify).toBe(true);
     },
     20_000
   );
@@ -556,6 +576,9 @@ describe('IdeApp lab-day wiring', () => {
       fireEvent.click(await findVerifyRunAction(view));
     });
 
+    // The compact workbench reveals its scenario explorer on demand.
+    const revealScenarios = view.queryByTestId('ide-show-left-dock');
+    if (revealScenarios) fireEvent.click(revealScenarios);
     await waitFor(() => {
       expect(view.getByTestId('ide-testbench-documents')).toBeTruthy();
     });
@@ -654,8 +677,25 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.queryByTestId('ide-verify-auto-vector-notice')).toBeNull();
     });
 
-    expect(view.getByTestId('ide-vcb-author-expected')).toBeTruthy();
-    expect(view.getByTestId('ide-vcb-use-saved-checks')).toBeDisabled();
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toBe('0 optional checks');
+    expect(view.getByTestId('ide-vcb-check-count').getAttribute('title')).toBe(
+      'No checks configured · records outputs without a pass/fail verdict.'
+    );
+    fireEvent.click(view.getByTestId('ide-verify-view-table'));
+    const expectedCell = view.getByTestId('ide-case-lab').querySelector<HTMLButtonElement>(
+      '[data-testid^="ide-case-lab-exp-"]'
+    );
+    expect(expectedCell).toBeTruthy();
+    if (!expectedCell) throw new Error('Detached scenario must retain its optional check editor');
+    expect(expectedCell).toBeEnabled();
+    fireEvent.click(expectedCell);
+    await waitFor(() => {
+      expect(view.getByTestId('ide-vcb-check-count').textContent).toBe('1 optional checks');
+      expect(useProjectRuntime.getState().projectVectors.some(vector =>
+        Object.values(vector.expected ?? {}).includes(1))).toBe(true);
+    });
+    expect(useProjectRuntime.getState().activeExampleId).toBeNull();
+    expect(useProjectRuntime.getState().projectKind).toBe('custom');
     expect(view.queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(view.queryByTestId('ide-verify-session-title')).toBeNull();
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();

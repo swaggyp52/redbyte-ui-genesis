@@ -26,12 +26,19 @@ function makeRun(overrides: Partial<RuntimeVerifyRun> = {}): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'scenario',
+      scenarioName: 'Scenario',
+      status: 'pass',
+      deterministicHash: 'circuit',
+      reportHash: 'report',
+      generatedAtIso: '2026-07-26T00:00:00.000Z',
       vectors: [],
       inputsAtTick: {},
       inputsByVectorId: {},
       signalRoles: {},
       rows: [],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [],
     ...overrides,
   };
@@ -73,6 +80,7 @@ describe('simulation evidence semantics', () => {
       runKind: 'verify',
       assertionStatus: 'passing',
       evidence: {
+        circuitHash: 'circuit',
         ioRows: [],
         vectors: [],
         normalizationMap: [],

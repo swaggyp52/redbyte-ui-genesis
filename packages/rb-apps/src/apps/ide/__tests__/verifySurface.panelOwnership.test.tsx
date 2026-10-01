@@ -43,12 +43,19 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'pass-scenario',
+      scenarioName: 'Pass Scenario',
+      status: 'pass',
+      deterministicHash: 'po-test',
+      generatedAtIso: '2026-04-08T00:00:00.000Z',
+      reportHash: 'rep-pass',
       vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 }],
       inputsAtTick: { 0: { sw0: 0 } },
       inputsByVectorId: { 'vec-01': { sw0: 0 } },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 }],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
   };
 }
@@ -71,12 +78,19 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'fail-scenario',
+      scenarioName: 'Fail Scenario',
+      status: 'fail',
+      deterministicHash: 'po-test',
+      generatedAtIso: '2026-04-08T01:00:00.000Z',
+      reportHash: 'rep-fail',
       vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
       inputsAtTick: { 0: { sw0: 0 } },
       inputsByVectorId: { 'vec-01': { sw0: 0 } },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01', caseIndex: 0 }],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] }],
   };
 }
