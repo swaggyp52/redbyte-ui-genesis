@@ -1,3 +1,4 @@
+import { normalizeConnection } from '@redbyte/rb-logic-core';
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
@@ -77,8 +78,9 @@ export function isometricTransform(circuit: Circuit): ViewState {
   nodes.sort((a, b) => (a.view.y + (a.view.z || 0)) - (b.view.y + (b.view.z || 0)));
 
   const wires: ViewWire[] = circuit.connections.map((conn, idx) => {
-    const fromNode = circuit.nodes.find((n) => n.id === conn.from.nodeId);
-    const toNode = circuit.nodes.find((n) => n.id === conn.to.nodeId);
+    const { from: fromRef, to: toRef } = normalizeConnection(conn);
+    const fromNode = circuit.nodes.find((n) => n.id === fromRef.nodeId);
+    const toNode = circuit.nodes.find((n) => n.id === toRef.nodeId);
 
     if (!fromNode || !toNode) {
       return {
@@ -92,9 +94,9 @@ export function isometricTransform(circuit: Circuit): ViewState {
     const toNodeView = nodes.find((n) => n.id === toNode.id)!;
 
     return {
-      id: `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`,
-      from: fromNodeView.ports[conn.from.portName] || { x: fromNodeView.view.x, y: fromNodeView.view.y },
-      to: toNodeView.ports[conn.to.portName] || { x: toNodeView.view.x, y: toNodeView.view.y },
+      id: `${fromRef.nodeId}.${fromRef.portName}-${toRef.nodeId}.${toRef.portName}`,
+      from: fromNodeView.ports[fromRef.portName] || { x: fromNodeView.view.x, y: fromNodeView.view.y },
+      to: toNodeView.ports[toRef.portName] || { x: toNodeView.view.x, y: toNodeView.view.y },
     };
   });
 

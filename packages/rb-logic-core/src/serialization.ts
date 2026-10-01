@@ -4,24 +4,31 @@
 
 import type { Circuit, Connection, PortRef, SerializedCircuitV1 } from './types';
 
-function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
-  const fromIsString = typeof conn.from === 'string';
-  const toIsString = typeof conn.to === 'string';
+/** Historical object endpoints may identify the port with either name. */
+type ConnectionEndpointInput = string | { nodeId: string; portName?: string; port?: string };
 
-  const fromNodeId = fromIsString ? conn.from as string : (conn.from as PortRef).nodeId;
-  const toNodeId = toIsString ? conn.to as string : (conn.to as PortRef).nodeId;
+export type ConnectionInput = Omit<Connection, 'from' | 'to'> & {
+  from: ConnectionEndpointInput;
+  to: ConnectionEndpointInput;
+};
 
-  const fromPortName = fromIsString
-    ? (conn as any).fromPin ?? (conn as any).fromPort ?? 'out'
-    : (conn.from as PortRef).portName ?? (conn.from as PortRef).port ?? (conn as any).fromPin ?? (conn as any).fromPort ?? 'out';
-
-  const toPortName = toIsString
-    ? (conn as any).toPin ?? (conn as any).toPort ?? 'in'
-    : (conn.to as PortRef).portName ?? (conn.to as PortRef).port ?? (conn as any).toPin ?? (conn as any).toPort ?? 'in';
-
+/** Normalize both historical connection formats with the engine/serialization precedence. */
+export function normalizeConnection(conn: ConnectionInput): { from: PortRef; to: PortRef } {
+  const from = conn.from;
+  const to = conn.to;
   return {
-    from: { nodeId: fromNodeId, portName: fromPortName },
-    to: { nodeId: toNodeId, portName: toPortName },
+    from: {
+      nodeId: typeof from === 'string' ? from : from.nodeId,
+      portName: typeof from === 'string'
+        ? conn.fromPin ?? conn.fromPort ?? 'out'
+        : from.portName ?? from.port ?? conn.fromPin ?? conn.fromPort ?? 'out',
+    },
+    to: {
+      nodeId: typeof to === 'string' ? to : to.nodeId,
+      portName: typeof to === 'string'
+        ? conn.toPin ?? conn.toPort ?? 'in'
+        : to.portName ?? to.port ?? conn.toPin ?? conn.toPort ?? 'in',
+    },
   };
 }
 

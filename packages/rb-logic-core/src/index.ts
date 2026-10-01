@@ -114,7 +114,8 @@ export { ProbeRecorder } from './ProbeRecorder';
 export type { ProbeSample } from './ProbeRecorder';
 
 // Serialization
-export { serialize, deserialize } from './serialization';
+export { serialize, deserialize, normalizeConnection } from './serialization';
+export type { ConnectionInput } from './serialization';
 
 // Circuit format conversion
 export { toCircuitV1, fromCircuitV1 } from './convertCircuitV1';

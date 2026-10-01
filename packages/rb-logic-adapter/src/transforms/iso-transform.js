@@ -1,6 +1,4 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// Use without permission prohibited.
-// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
+import { normalizeConnection } from '@redbyte/rb-logic-core';
 import { getNodeDimensions, pos } from './shared-helpers';
 /**
  * Isometric projection formula
@@ -61,8 +59,9 @@ export function isometricTransform(circuit) {
     // Sort nodes by depth (back to front rendering)
     nodes.sort((a, b) => (a.view.y + (a.view.z || 0)) - (b.view.y + (b.view.z || 0)));
     const wires = circuit.connections.map((conn, idx) => {
-        const fromNode = circuit.nodes.find((n) => n.id === conn.from.nodeId);
-        const toNode = circuit.nodes.find((n) => n.id === conn.to.nodeId);
+        const { from: fromRef, to: toRef } = normalizeConnection(conn);
+        const fromNode = circuit.nodes.find((n) => n.id === fromRef.nodeId);
+        const toNode = circuit.nodes.find((n) => n.id === toRef.nodeId);
         if (!fromNode || !toNode) {
             return {
                 id: `wire_${idx}`,
@@ -73,9 +72,9 @@ export function isometricTransform(circuit) {
         const fromNodeView = nodes.find((n) => n.id === fromNode.id);
         const toNodeView = nodes.find((n) => n.id === toNode.id);
         return {
-            id: `${conn.from.nodeId}.${conn.from.portName}-${conn.to.nodeId}.${conn.to.portName}`,
-            from: fromNodeView.ports[conn.from.portName] || { x: fromNodeView.view.x, y: fromNodeView.view.y },
-            to: toNodeView.ports[conn.to.portName] || { x: toNodeView.view.x, y: toNodeView.view.y },
+            id: `${fromRef.nodeId}.${fromRef.portName}-${toRef.nodeId}.${toRef.portName}`,
+            from: fromNodeView.ports[fromRef.portName] || { x: fromNodeView.view.x, y: fromNodeView.view.y },
+            to: toNodeView.ports[toRef.portName] || { x: toNodeView.view.x, y: toNodeView.view.y },
         };
     });
     return { nodes, wires };

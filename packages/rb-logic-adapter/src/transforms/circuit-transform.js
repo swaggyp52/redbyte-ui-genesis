@@ -1,7 +1,5 @@
-// Copyright © 2025 Connor Angiel — RedByte OS Genesis
-// Use without permission prohibited.
-// Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
-import { calculatePortPosition, getNodeDimensions, pos, normalizePortRef } from './shared-helpers';
+import { normalizeConnection } from '@redbyte/rb-logic-core';
+import { calculatePortPosition, getNodeDimensions, pos } from './shared-helpers';
 /**
  * Circuit transform - nodes positioned exactly as in engine
  */
@@ -30,8 +28,7 @@ export function circuitTransform(circuit) {
         };
     });
     const wires = circuit.connections.map((conn, idx) => {
-        const fromRef = normalizePortRef(conn.from, conn.fromPin ?? conn.fromPort ?? 'out');
-        const toRef = normalizePortRef(conn.to, conn.toPin ?? conn.toPort ?? 'in');
+        const { from: fromRef, to: toRef } = normalizeConnection(conn);
         const fromNode = circuit.nodes.find((n) => n.id === fromRef.nodeId);
         const toNode = circuit.nodes.find((n) => n.id === toRef.nodeId);
         if (!fromNode || !toNode) {
