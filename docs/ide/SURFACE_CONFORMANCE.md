@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: surface change governance
@@ -10,12 +10,20 @@ role: surface change governance
 
 **Document:** RB-SURF-CONF-001 v1.0
 **Original issue date:** 2026-04-21
-**Last validated:** 2026-07-22
+**Last validated:** 2026-09-30
 **Applies to:** IDE surface work in `packages/rb-apps/src/apps/ide/**`
 
 ---
 
 ## Purpose
+
+The September Studio continuation uses current code, contracts and tests as behavior
+authority. The [current finish ticket](../release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md)
+records local candidate evidence and remaining limits. Canonical snapshots, captured
+mapping activation and shared recording ownership supersede older presentation-only
+interpretations. A download receipt identifies requested bytes; it does not confirm
+the browser's final disk destination. Dated proof and print manuals retain their
+historical evidence boundaries.
 
 This document extends the repo's manual-governance model to product legitimacy work. It defines:
 
@@ -43,7 +51,8 @@ Working memory, architecture notes, and bug context may live in the Obsidian vau
 
 ## Canonical Read Order
 
-Before proposing or implementing any product, UX, workflow, or surface change, read:
+After root AGENTS.md and the newest complete state/cockpit entries, read the applicable
+portions for the affected surface. Use the gap audit and proof documents on demand:
 
 1. `docs/contracts/RedByte_Product_Contract.md`
 2. `docs/manuals/RedByte_Product_Manual.md`
@@ -86,7 +95,7 @@ When a change touches one of these file patterns, the corresponding review and p
 | `**/HardwareSurface.tsx` | contract + manual + gap audit + system map + manual QA Phase 4 + relevant rehearsal doc | targeted tests plus a mapping replay or screenshot proving synchronized feedback |
 | `**/ExportSurface.tsx` | contract + manual + gap audit + system map + manual QA Phase 5 | targeted tests plus artifact or screenshot proof of handoff/readiness behavior |
 | `**/ImportSurface.tsx` | contract + manual + gap audit + system map + manual QA Phase 6 | targeted tests plus import replay or screenshot proving fidelity messaging |
-| `**/IdeApp.tsx`, `**/workflowStages.ts`, `**/IdeStageNav.tsx`, `**/IdeTopBar.tsx`, `**/IdeWorkbenchShell.tsx` | Unified Workbench v3/global shell contract + affected surface rows + release checklist | cross-surface proof that horizontal stages, active surface, primary action, status language, Import utility boundary, stable work regions, internal/root clipping, nominal-center pointer hitability, keyboard reachability, one `main`, named canvas, and result announcement/focus stay coherent |
+| `**/IdeApp.tsx`, `**/workflowStages.ts`, `**/IdeStageNav.tsx`, `**/IdeTopBar.tsx`, `**/IdeWorkbenchShell.tsx` | Current Studio/global shell contract + affected surface rows + release checklist | cross-surface proof that workspace rail, active surface, primary action, status language, Import utility boundary, stable work regions, internal/root clipping, nominal-center pointer hitability, keyboard reachability, one `main`, named canvas, and result announcement/focus stay coherent |
 | `**/verifyScenario*.ts`, `**/projectRuntime.ts`, `**/simEngineCore.ts` sequential-scenario paths | Verify manual/spec + system map + manual QA Phase 3 | focused scenario/runtime tests plus standalone `ide:gate:sequential-testbench-authority`; prove save/reload, duplicate/rename, Design repair, Import recovery, flat-clock hold, rising-edge-only capture, and report/waveform/check agreement |
 | `**/basys3ExportContract.ts`, `**/buildExportViewModel.ts`, `**/testbenchGenerator.ts`, `**/basys3ExportService.ts` | Board & Constraints / Build & Export / Import manual/specs + system map | mapping and testbench-projection tests plus standalone `ide:gate:mapping-preview-package-agreement`; preview, package, embedded manifest, and re-import must agree |
 | `**/exportTrustState.ts`, Export download receipt paths | Export manual/spec + traceability + readiness docs | trust-axis unit tests and current-receipt tests; a draft download must remain draft and stale package bytes must revoke action authority |

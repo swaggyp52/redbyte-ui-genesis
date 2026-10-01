@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: Project surface spec
@@ -8,8 +8,24 @@ role: Project surface spec
 
 # Project Mode Spec
 
-Status: Unified Workbench v3 RC source contract - project overview and workflow authority
+Status: local P2.6C candidate - project snapshot, recovery and workflow authority
 Mode ID: `project`
+
+## Current local finish contract (2026-09-30)
+
+The canonical snapshot carries original `sourceModel` and structured `constraintSets`
+alongside the circuit, hierarchy, and effective mapping. Save, Save As, Duplicate,
+explicit reopen, recovery, and complete session backups consume that same projection.
+Generated HDL/XDC is export output and never replaces original authoring sources.
+Format 1 remains additive and compatible; legacy absent source models derive from HDL,
+while explicitly empty models stay empty. Unsupported newer authoring schemas refuse
+to open with a visible reason and preserve the current project.
+
+Browser refresh/restart and explicit Open are separate acceptance paths. Complete
+session backups carry all scenarios, retained recordings, and export receipts;
+plain rbproj files carry the active portable design/stimulus. Recovery opens a separately
+named backup, retaining recordings while rebinding their owner to that backup's identity.
+The current P2.6C finish ticket records the source/build/package evidence boundaries.
 
 
 ## Current P2.6B document and ledger ownership (2026-09-12)

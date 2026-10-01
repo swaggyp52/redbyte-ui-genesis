@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-10-01
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-07-22
+**Last Updated:** 2026-10-01
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -62,6 +62,8 @@ When docs conflict:
 |------|---------|
 | [ACTIVE_WORK.md](./ACTIVE_WORK.md) | Current cockpit: branch posture, top priorities, blockers, latest proof, next target |
 | [../AI_STATE.md](../AI_STATE.md) | Latest repo posture and factual change history |
+| [release/local-candidate-quickstart.md](./release/local-candidate-quickstart.md) | Current local Windows candidate launch, portable-session boundaries and owner circuit walkthrough |
+| [release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md](./release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md) | Current finite finish checklist, measured evidence and historical dispositions |
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |

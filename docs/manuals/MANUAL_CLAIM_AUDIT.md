@@ -1,7 +1,7 @@
 # RedByte Product Manual — Claim Audit
 
-**Document:** RB-AUDIT-001 v1.2
-**Date:** 2026-07-22
+**Document:** RB-AUDIT-001 v1.3
+**Date:** 2026-09-16 (v1.2 dated 2026-07-22)
 **Auditor:** Connor Angiel
 **Scope:** Material claims in `RedByte_Product_Manual.md` v1.2 reconciled against current code, tests, architecture docs, and Unified Workbench v3 RC source evidence.
 
@@ -24,6 +24,7 @@ Each claim is rated:
 | **PARTIAL** | Claim is directionally correct but imprecise. Needs tightening. |
 | **NEEDS EDIT** | Claim is factually wrong. Must be corrected. |
 | **RESULT-DEPENDENT** | Semantic wording is prepared, but final exact-tree source/test evidence has not yet been recorded here. |
+| **SUPERSEDED** | The claim described a retired model. The row names the finding that replaces it; the manual no longer states the claim as current. |
 
 ---
 
@@ -266,9 +267,10 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | The manual names the current failure-repair actions: Edit expected for a wrong saved check, Inspect Design for a circuit mismatch, and Open Design for a structural preflight failure. |
 | **Sections** | §7.3, §9 |
-| **Status** | **VERIFIED** |
-| **Source** | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` renders `ide-verify-repair-edit-expected`, `ide-verify-repair-open-design` with visible label `Inspect Design`, and `ide-verify-structural-open-design` with visible label `Open Design`. |
+| **Status** | **SUPERSEDED** (2026-09-16, by #29) |
+| **Source** | Historical: `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` rendered `ide-verify-repair-edit-expected`, `ide-verify-repair-open-design` with visible label `Inspect Design`, and `ide-verify-structural-open-design` with visible label `Open Design`. |
 | **Correction** | Removed the stale `Jump to failing node` action from the current workflow. |
+| **Superseded** | At `f38221195` the `Edit expected` / `Inspect Design` repair lanes are retired. The current failure path is the failure focus row in `VerifySurface.tsx` (`ide-verify-fail-nav`: `First`, `Previous`, `Next`, and `ide-verify-fail-focus-trace` with visible label `Trace in Design`); `Open Design` remains the structural-failure route. See #29. |
 
 ---
 
@@ -380,10 +382,39 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Design distinguishes structural Edit, exploratory Live, and read-only recorded Replay on one circuit canvas; Verify presents named documents as scenario cards; a document with no expected-output checks remains stimulus-only through compatible Design edits, undo, and redo. |
 | **Sections** | §7.1-§7.3, §9 |
-| **Status** | **VERIFIED LOCALLY** |
+| **Status** | **SUPERSEDED** (2026-09-16, by #29) for the Edit / Live / Replay mode claim; the scenario-card and stimulus-only preservation claims were not re-audited in this pass |
 | **Source** | `DesignSurface.tsx`, `TestbenchDocumentTabs.tsx`, `projectRuntime.ts`, and the related Design/Verify CSS. |
 | **Tests** | Focused Design mode/common-palette assertions, the scenario-card assertion, and the stimulus-only history-authority regression. Browser-E0 replay also proved a sequential `7 events / 0 checks` document, no-check simulation, circuit Replay, deliberate FAIL, repair, passing checks, and trusted local package download. |
 | **Correction** | Added explicit mode/evidence boundaries, scenario-card summaries, and the rule that compatible circuit edits must not manufacture checks from observed outputs. |
+| **Superseded** | At `f38221195` Design has no peer Edit / Live / Replay modes. `DesignSurface.tsx` renders `ide-design-explore` (`Explore` / `Finish exploring`), the `ide-design-live-transport` group (`Exploring · not recorded`, `Clock edge`, `Reset values`), `ide-design-test-design` (`Test this design` / `Return to experiment`) and, for a recording handed back from Simulate, `Recorded view · {scenario} · tN` with `ide-design-current-design` (`Return to current design`). See #29. |
+
+---
+
+### 29. Design Explore and Simulate Run / Reproduce Experiment Model (P2.6B)
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Design owns authoring; its **Explore** is explicitly unrecorded (`Exploring · not recorded`, `Clock edge` applied once when asked for circuits with state, `Reset values`, `Finish exploring`), and `Test this design` hands off to Simulate. Simulate owns authored scenarios and recorded evidence: one **Run** (`Run` / `Rerun` / `Running…`) records an immutable, selectable recording and evaluates saved checks automatically; zero checks reads `No checks · outputs recorded` and is never PASS; the identity strip shows `Recorded #N`, `N checks passed` / `M of N checks failed` / `Checks not evaluated`, the `Recording` selector, `1 run · no repeat yet` / `N runs · M identical`, and `Run details` (Design + Stimulus + Engine → Output, FNV-1a digest). **Reproduce** re-executes the selected recording's retained design/stimulus/engine and is rejected with `This older recording did not retain reproduction inputs.` or `The recorded engine is unavailable.`; a divergence raises `Same configuration produced different outputs.`. A sequential scenario uses one `Time instrument` (Up/Down lane, Left/Right tick, Shift+Left/Right edge, Space/Enter edits only the selected authored input); a combinational scenario uses `Table` with `Recorded trace`. `Details` and `Inspect` (`Recorded circuit`, with `Inspect signal`, `Trace upstream`, `Edit current design`) are explicit auxiliary views over retained topology. Failing checks expose the `Fail` focus row (`First` / `Previous` / `Next`, `Trace in Design`). A later change marks the recording `STALE` (`Design changed — run again to record the current circuit.`, `Checks changed — run again before trusting the previous verdict.`, `Browser reloaded — run again before trusting this recording as current evidence.`) and the header notes `This recording is retained. Rerun uses current inputs; Reproduce uses this recording’s inputs.` Board Check reads the selected recording's values; Package shows the downloaded `ZIP SHA-256`. There are no Edit / Live / Replay workspace modes, no Observe / Compare run modes, no separate Timeline / Waveform destinations and no Live I/O peer. |
+| **Sections** | §2.5, §4.1, §4.1.1, §4.4, §5.4, §7.2, §7.3, §9.1-§9.5, §15.3, §16.2, Glossary, Appendix D |
+| **Status** | **CORRECTED** (source-read at `f38221195`; browser evidence is the P2.6C record, not rerun for this documentation pass) |
+| **Source** | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` (Explore transport, `Test this design`, recorded view), `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` (`Run` / `Rerun` labels, `reproduceDisabledReason`, representation switch `Time instrument` / `Table` / `Recorded trace` / `Details` / `Inspect`, stale detail copy, failure focus row), `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx` (`Reproduce`, check-count explainer), `packages/rb-apps/src/apps/ide/surfaces/verify/RunIdentityStrip.tsx` (recording header, `Run details`, repetition and divergence copy), `packages/rb-apps/src/apps/ide/surfaces/verify/RecordedCircuitInspector.tsx` (`Recorded circuit`, `Trace upstream`, `Edit current design`), `packages/rb-apps/src/apps/ide/surfaces/verify/TimingLab.tsx` and `TimingLanes.tsx` (Time instrument, keyboard), `packages/rb-apps/src/apps/ide/runDeterminism.ts` (`describeRecordingChanges`), `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` (recorded mapping rows / Board Check observations), `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` and `export/HandoffOverviewDocument.tsx` (`ZIP SHA-256` / `Package SHA-256`). Spec: `docs/ide/03-verify.md` "Current P2.6B experiment model". |
+| **Tests** | Recorded, not rerun here: the P2.6C closeout in `docs/ACTIVE_WORK.md` (15 browser journeys against built `6206d3fbb`, Design/Verify owner tests 468/468, storage 89/89) and `docs/validation/test-debt.md`. The `Add expected outputs` command-bar offer described in earlier P2.5L notes is declared on `VerifyCommandBarProps` but not rendered at `f38221195`; the manual does not claim it. |
+| **Correction** | Replaced the Design Edit / Live / Replay mode description, the Simulate Scenario / Replay / Checks lens model, the `Run simulation` / `Simulation complete` / `No checks configured` wording as the primary labels, the `Edit expected` / `Inspect Design` repair lanes, the Observe-only / Compare vocabulary and the retired shortcut table with the shipped Explore / Run / Reproduce model, the five recording states and the Reproduce rejection rules. Markdown only; `RedByte_Product_Manual_print.html` and the PDF are not regenerated in this pass. |
+
+---
+
+## Change Log
+
+| Date | Changed source | Old claim | New claim | Section updated |
+|------|----------------|-----------|-----------|-----------------|
+| 2026-09-16 | `DesignSurface.tsx` | Design offers peer **Edit**, **Live**, and **Replay** workspace modes; Replay is enabled for a recorded Verify run | Design owns authoring; **Explore** is explicitly unrecorded (`Exploring · not recorded`, `Clock edge`, `Reset values`, `Finish exploring`); **Test this design** hands off to Simulate; a recording handed back shows `Recorded view · scenario · tN` with `Return to current design` | §2.5, §7.2, Glossary |
+| 2026-09-16 | `VerifySurface.tsx`, `verify/VerifyCommandBar.tsx` | Simulate is a Simulation & Replay Studio with Scenario / Replay / Checks lenses, Timeline / Waveform / Checks / Testbench lenses and a **Run simulation** authority; no-check runs read **Simulation complete / No checks configured** | One **Run** (`Run` / `Rerun`) records an immutable recording and evaluates saved checks automatically; zero checks reads **No checks · outputs recorded** and is never PASS; **Reproduce** is the secondary command; no Observe / Compare selector, Live I/O toggle or peer Timeline / Waveform destination | §2.5, §4.1, §4.1.1, §4.4, §5.4, §7.3, §9.2 |
+| 2026-09-16 | `verify/RunIdentityStrip.tsx` | (not described) | Recording header: `Recorded #N`, check result, `Recording` selector, `1 run · no repeat yet` / `N runs · M identical`, `Run details` identity and FNV-1a digest, `Same configuration produced different outputs.` | §7.3, §9.2, §9.5, Glossary |
+| 2026-09-16 | `VerifySurface.tsx` (`reproduceDisabledReason`) | (not described) | Reproduce rejected with `This older recording did not retain reproduction inputs.` or `The recorded engine is unavailable.` | §7.3, §15.3, Glossary |
+| 2026-09-16 | `VerifySurface.tsx` (failure focus row) | Repair lanes **Edit expected** / **Inspect Design**; **Open Design** for structural failures | Failure focus row `Fail` with `First` / `Previous` / `Next` and **Trace in Design**; **Open Design** retained for structural failures | §7.3, §9.3, §9.4 |
+| 2026-09-16 | `VerifySurface.tsx`, `verify/RecordedCircuitInspector.tsx` | **Open circuit replay** with first/previous/play/next/last transport on the Design canvas | **Details** and **Inspect** (`Recorded circuit` with `Inspect signal`, `Trace upstream`, `Edit current design`) as explicit auxiliary views over retained topology | §7.3, §9.1, §9.4 |
+| 2026-09-16 | `verify/TimingLab.tsx`, `verify/TimingLanes.tsx` | Timeline lens; Simulate shortcuts limited to J/K/F and Left/Right | One `Time instrument` for sequential scenarios; Up/Down lane, Left/Right tick, Shift+Left/Right edge, Space/Enter edits only the selected authored input; `Table` / `Recorded trace` for combinational | §7.3, §9.1, Appendix D, Glossary |
+| 2026-09-16 | `VerifySurface.tsx` (stale detail), `runDeterminism.ts` | `Stale verification indicator`; `Design changed - rerun Compare` | **STALE** with `Design changed — run again to record the current circuit.` / `Checks changed — run again before trusting the previous verdict.` / `Browser reloaded — run again before trusting this recording as current evidence.`; `Simulation stale`; retained-recording note | §7.3, §9.3, §15.3, §16.2 |
 
 ---
 
@@ -393,6 +424,7 @@ Each claim is rated:
 |--------|----------|
 | **NEEDS EDIT / PARTIAL / CORRECTED / VERIFIED** | Existing statuses outside the rows below are retained from the prior audit and were not recalculated by this semantic-only pass. |
 | **RESULT-DEPENDENT** | #22–#24 require final exact-tree source/test evidence before their status may be promoted. |
+| **SUPERSEDED** | #19 and #28 described the retired Edit / Live / Replay and Edit expected / Inspect Design models; #29 replaces them (2026-09-16, Markdown only, print/PDF pending). |
 
 This semantic-only pass does not recalculate status totals or close result-dependent rows.
 

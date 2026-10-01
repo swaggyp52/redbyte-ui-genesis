@@ -8,6 +8,14 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
+> Current local candidate scope, 2026-10-01: use the newest P2.6C finish checklist
+> in `docs/release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md` and
+> `docs/release/local-candidate-quickstart.md` for the current Windows distribution,
+> workspace and portable-session behavior. The July RC freeze and older named
+> certification receipts below are historical evidence for their specific packages.
+> This completion assignment adds local Browser E0 and Windows launcher evidence;
+> it does not change any E1/E2/E3 certification row or authorize classroom deployment.
+
 **Last updated:** 2026-07-22
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  

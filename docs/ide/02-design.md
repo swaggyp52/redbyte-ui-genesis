@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-09-05
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -8,8 +8,24 @@ role: Design surface spec
 
 # Design Mode Spec
 
-Status: Unified Workbench v3 RC source; final exact-SHA certification pending
+Status: local P2.6C candidate; exact source digest and current evidence are in the finish ticket
 Mode ID: `design`
+
+## Current local authoring/repair contract (2026-09-30)
+
+Starting Blank opens Schematic regardless of a previous HDL preference. Placement at
+compact widths leaves the library available; the inspector remains an explicit reveal.
+Wire mode keeps the toolbar and ports spatially stable and removes the early guidance
+band from the hit area. Draft connectivity issues are notes; duplicate compiler/board/
+package diagnostics for the same issue do not become extra work items. Visible ordinary
+diagnostics use student labels or component types instead of internal node IDs.
+
+Explore uses runtime values without recording or changing authored defaults. Input-body
+clicks toggle current values repeatedly; Reset values restores defaults and register state.
+Clock edge is offered for supported clocked components, including Register1, and pulses
+an externally connected input clock through the existing runtime. Replay identity and
+return-to-authoring stay direct; full playback/failure details sit outside the circuit
+behind disclosures. Sources remain read-only, and unsupported HDL is preserved as a reference.
 
 
 ## Current P2.6B authoring and handoff (2026-09-12)

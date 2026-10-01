@@ -1,21 +1,22 @@
 ---
 doc_status: current
-last_validated: 2026-08-09
+last_validated: 2026-10-01
 owner: Connor Angiel
 used_by_claude: true
-role: ordered deferred queue after Stable Preview - Browser-E0 closeout
+role: ordered deferred queue after local Browser E0 candidate completion
 ---
 
 # RedByte Work Queue
 
-The release lane remains **Stable Preview - Browser-E0** on `main`. Product
-System v3 is an explicit candidate on `product/redbyte-workbench-v3` and draft
-PR #80. Its integrated Studio reconstruction must receive user visual review
-before a feature milestone or merge begins.
+The current local candidate is the existing P2.6C feature checkout,
+`claude/redbyte-studio-completion-p2-6-q7m3v8`, with reviewed local completion
+commits and separate preserved owner edits. PR #86 is stacked on PR #85. The PR #80 posture and its 14-capture review
+queue are historical. `main` remains the production release branch; local
+candidate completion does not authorize a merge or public deployment.
 
 | Order | Deferred item | Start condition | Required boundary |
 |---|---|---|---|
-| 1 | Product System v3 user visual review | The 14 final Studio captures and both normal-use flows are available. | Record concrete visual/interaction defects; do not substitute test counts or remote status for review. |
+| 1 | Local candidate owner acceptance and integration decision | Use the current Windows ZIP, QUICKSTART circuit walkthrough and final P2.6C evidence. | Record extended-session and visual acceptance separately; inspect both stacked PRs before proposing integration into main. |
 | 2 | Vivado E1 proof | The reviewed candidate package and a supported Vivado machine are named. | Record synthesis, implementation, and bitstream results for the exact package; do not imply E2/E3. |
 | 3 | Basys3 E2/E3 proof | E1 package proof exists and a board/procedure are available. | Keep programming evidence separate from observed behavior. |
 | 4 | Supervised classroom pilot | Deployment identity is current and instructor/TA procedures are agreed. | Measure setup, recovery, and support; do not call a pilot university reliability. |
@@ -23,8 +24,11 @@ before a feature milestone or merge begins.
 
 ## Queue Rules
 
-- `main` is the release source; the named Product System v3 branch is the only
-  current candidate source until review resolves PR #80.
+- `main` is the production release branch. The inspected local candidate is
+  `claude/redbyte-studio-completion-p2-6-q7m3v8`; the exact candidate commit and
+  content fingerprint live in its receipt. Current finish evidence belongs to the existing P2.6C ticket.
+  The earlier PR #80 branch posture is historical. PR #86 is stacked on PR #85;
+  merging it into its feature base alone does not release to main.
 - One logical change per commit.
 - No force push or history rewriting.
 - Do not update goldens or screenshots to hide a behavior defect.

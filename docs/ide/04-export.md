@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -8,8 +8,21 @@ role: Export surface spec
 
 # Export Mode Spec
 
-Status: Unified Workbench v3 RC trust source; final exact-SHA certification pending
+Status: local P2.6C candidate; exact source digest and current evidence are in the finish ticket
 Mode ID: `export`
+
+## Current local constraints and artifact contract (2026-09-30)
+
+A named captured set stores validated structured assignments. Activating it restores
+those assignments into the canonical mapping, including on file load; subsequent mapping
+edits return to live authority. Imported raw XDC remains a preserved reference and cannot
+activate without a mapping snapshot. Arbitrary Tcl is never executed or trusted as mapping.
+Table, selected-pin editor, board highlight, validation, top.xdc preview, downloaded ZIP,
+embedded project manifest, and receipt must agree. The manifest carries exact emitted
+HDL/XDC bytes; original authoring sources remain separate. Draft/checked/stale labels
+are retained. Generated-file metadata and frame context wrap at enlarged text and actual
+browser zoom without reducing the shared typography. Windows packaging uses the same unified
+dist and bundled pinned Node, with source digest and per-file/ZIP checksums; see local-candidate-quickstart.md.
 
 
 ## Current P2.6B operational Package (2026-09-12)

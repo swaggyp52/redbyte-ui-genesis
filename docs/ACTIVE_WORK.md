@@ -1,12 +1,66 @@
 ---
 doc_status: current
-last_validated: 2026-09-14
+last_validated: 2026-10-01
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
 ---
 
 # RedByte - Active Work Cockpit
+
+## Sustained student confidence - 2026-10-01
+
+rc.1 and all starting owner work are preserved. Reviewed product/tooling changes
+are committed locally on the existing feature branch; unrelated setup/routing and
+lint edits remain separate. The final focused selection passes 428/428 across 36
+files. Raw app typecheck remains red: 545 diagnostics in 167 files, down 25 with
+zero additions; no baseline or golden was changed.
+
+The original counter exercises hierarchy, three sequential scenarios, separate
+wiring/expectation failures, stimulus repair, history, recovery and actual exports.
+Newly exposed hierarchy export defects and construction friction are fixed.
+Final Node20 canonical classroom 72/72, repository status 39/39, sequential 24/24,
+mapping/package agreement, 21 packaged journeys and the complete counter pass.
+Actual CMD/default Edge upgrade/restart and all four visual scales pass.
+
+Candidate `1.0.0-rc.2`: application commit `5fbec3a8df1200765b7a14d7e2fc2602e2cb2657`,
+2,278-input digest `bf5b636af3707f2b2e4b89d4666c5656b50aacd2a7a74bdc1b248ea35c7f5cde`.
+ZIP SHA-256 `13d316e2670159ae7d4ef750985207c38f807f475e7e544363f5640b0c973c85`,
+32,822,383 bytes. The final documentation commit records these results separately
+from the application commit; build inputs remain unchanged.
+
+The newest
+[Studio finish ticket](release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md)
+owns the finite checklist; [QUICKSTART](release/local-candidate-quickstart.md) and
+the shipped lab own the human walkthrough. No push, merge, deployment, human owner
+acceptance, fresh-machine, Vivado or physical-board claim follows from this work.
+
+## Local Studio completion and Windows candidate - 2026-09-30
+
+Candidate `1.0.0-rc.1` is local and uncommitted on
+`claude/redbyte-studio-completion-p2-6-q7m3v8`, HEAD
+`f382211956b5e2748b0f02f238a4d637a627334b`, with existing owner work preserved.
+Its 2,270-input source digest is
+`fe0ed50f37db3422dcd53ca3143d48001f2beebc2ca0c419819fc7af4bdf07b2`.
+ZIP SHA-256: `c7d2446f62c3d359e04d1e68410965a7d6bdad23be1a4b3acab354aa365cdb29`.
+
+Original-source/constraint preservation, selected-recording comparison, captured
+mapping/actual-package authority, blank AND/Register1 authoring and repair, and
+compact/enlarged UI issues are implemented and have local evidence. Final Node
+20.19.0 verify:gates, explicit package builds, 229 focused tests, 11 boundary tests,
+38 repository checks, 24 sequential-authority steps and mapping/package authority
+pass. The final-source classroom aggregate passes 72/72, exit 0; the packaged campaign
+passes 21/21 with `sourceUnchanged: true`, exit 0. The unsigned ZIP passes repeat-byte packaging,
+145 checksum rows, exact 134-file unified-app copy, clean unpack, repeated start
+and space-path start/stop. Raw typecheck still fails with 570 diagnostics / 170 files,
+exit 2; no baseline or protected golden was relaxed.
+
+The finite completion owner is [the current Studio finish ticket](release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md),
+including retained failure evidence, owner walkthrough, remaining limits and the
+future stacked #85/#86 integration plan. [QUICKSTART](release/local-candidate-quickstart.md)
+ships in the candidate. Extended owner/classroom and fresh-machine acceptance remain
+unverified; no remote delivery, public deployment, Vivado or physical-board proof is
+claimed. Older entries below retain their original evidence boundaries.
 
 ## P2.6C validation closeout - 2026-09-14
 

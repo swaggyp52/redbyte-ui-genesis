@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-15
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: canonical IDE product debt register
@@ -8,9 +8,21 @@ role: canonical IDE product debt register
 
 # RedByte IDE Product Debt Register
 
-This file is the canonical owner for current IDE product debt: what is proven, what remains unsatisfying, what is risky to touch, and what needs browser or screenshot proof before cleanup. The current composition is Unified Workbench v3. Dated entries below remain as a historical debt ledger; they do not restore an older shell, disclosure, or collapsible-dock contract.
+This file owns IDE product debt. The current composition is the P2.6C Studio continuation; source, contracts and current tests establish behavior. The dated July and earlier entries below preserve reproduction history and do not restore an older shell, disclosure or dock contract.
 
-## Current Stable Truths
+## Current disposition - 2026-09-30
+
+- The user journey is Project -> Design -> Simulate -> Board & Constraints -> Build & Export. Internal route IDs remain project/design/verify/hardware/export; Import is a utility.
+- The current shell uses the workspace rail and object tabs. Compact Design has an explicit inspector reveal; the library remains available while placing components and Wire mode preserves canvas geometry.
+- Canonical snapshots preserve original sources, hierarchy, captured constraint sets and active selection. Captured mapping sets own their restored assignments; raw Tcl remains reference-only. The shared recording model keeps selected, previous compatible, historical and stale recordings distinct.
+- Authored checks, exploratory input controls, replay and failure disclosures have separate owners. Human case labels do not change execution ticks. Board preview, actual export ZIP and embedded manifest must agree with the active mapping.
+- The finite local completion checklist and its evidence are in [the Studio finish ticket](release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md). [The local candidate walkthrough](release/local-candidate-quickstart.md) describes supported use and backup boundaries.
+- Remaining debt includes raw rb-apps typecheck (570 diagnostics), extended human/classroom acceptance, fresh-machine Windows verification, unsigned distribution, browser storage quota/eviction and print-manual regeneration. Browser E0 does not establish Vivado E1, programming E2 or observed-board E3.
+- Legacy root/polish CSS still participates in the product. Broad deletion remains unsafe; any future cleanup needs scoped source and browser evidence.
+
+## Historical July 2026 stable truths
+
+These statements describe the July reconstruction, not the current Studio composition.
 
 - The product authority is exactly `Project -> Design -> Verify -> Map Pins -> Export`; Import is a separate utility and not a sixth progress stage.
 - Unified Workbench v3 removes the proof ribbon, bottom status footer, injected product-spine header, permanent workflow side rail, onboarding overlay, and core `details` disclosures. The persistent shell is one product bar, one horizontal five-stage navigator, and one active workbench; Import remains a separate utility.
@@ -23,7 +35,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - `ide-root.css` is still the primary legacy style system, and `ide-polish-pass.css` is still an additive overlay. Neither file should be pruned casually.
 - Unified Workbench v3 has deterministic multi-viewport browser gates, focused surface tests, and retained screenshot evidence. That proof is sufficient for this bounded reconstruction, but it still does not authorize broad deletion from the legacy CSS strata.
 
-## Current Unified Workbench v3 Debt
+## Historical July 2026 Unified Workbench v3 debt
 
 - **Design space target:** the enforced laptop floor is 62% of the full viewport. The measured canvas is 63.1% at `1366x768` and 65.0% at `1440x900`; the separate 70% strategic laptop target remains unmet.
 - **Usability evidence:** blind Student A and B flows completed locally. Student C stopped after native Import confirmation when browser control became unavailable, and the XOR flow has automated browser proof only. The usability lab is therefore partial.
@@ -33,7 +45,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 ## Historical Debt Ledger
 
-The entries below preserve reproduction history and risk context. Each affected surface carries a 2026-07-15 v3 disposition; those dispositions and the current-debt section above win over older wording.
+The entries below preserve reproduction history and risk context. July dispositions explain that reconstruction; the current September disposition and linked finish ticket take precedence for the present candidate.
 
 ### RB-DEBT-001 - Hardware / Map Pins workspace still reads too dense
 

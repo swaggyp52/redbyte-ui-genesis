@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -8,8 +8,17 @@ role: Verify surface spec
 
 # Verify Mode Spec
 
-Status: Unified Workbench v3 RC authority source; final exact-SHA certification pending
+Status: local P2.6C candidate; exact source digest and current evidence are in the finish ticket
 Mode ID: `verify`
+
+## Current local recording/comparison contract (2026-09-30)
+
+The runtime ledger remains oldest-first. The shared recording read model scopes comparison
+to project, scenario, and selected recording, then finds its preceding compatible run.
+The identity strip and case table use that same selection. An older recording, another
+scenario, or a stale recording never certifies the current draft. Human case labels start
+at Case 1; the execution tick is separate and unchanged. PASS-to-FAIL-to-PASS, longer history,
+scenario switching, older selections, stale edits, reopen, and restored sessions are acceptance paths.
 
 
 ## Current P2.6B experiment model (2026-09-12)
@@ -159,6 +168,14 @@ Scenario -> Run simulation -> Inspect replay -> Optional checks
 Rows and cases in Verify are authored **ticks/testbench steps**. In **auto board clock** mode, Verify starts the shared vector sequence at cycle 0 and materializes `max(runCycles, authored-row count, 1)` rows; every visible Auto result row is sampled post-rising-edge. When automatic reset applies, its assertion is materialized in cycle 0 and its later deassertion remains in the same sequence—there is no hidden runtime reset prelude. In **manual** or **custom pattern** mode, each authored row is one settled sample and drives the actual resolved clock input from the authored value. Only a low-to-high transition advances the supported rising-edge state model; repeated high, high-to-low, repeated low, and flat-low rows hold state. Manual/custom execution also injects no hidden reset.
 
 ## Named document and sequential policy authority
+
+For native structural hierarchy, establish data/enable during the preceding
+low-clock event before the capturing edge. Module combinational values settle
+between authored events; asserting data and clock simultaneously is not a setup
+guarantee. The modulo-8 counter sample demonstrates this stimulus repair while
+keeping its independently specified output checks unchanged. An authored scenario
+may contain no events; Add Event then creates a first row with zero inputs and no
+inherited checks. Recorded-run views remain read-only.
 
 Each named testbench is one browser-local authored document. The document owns:
 

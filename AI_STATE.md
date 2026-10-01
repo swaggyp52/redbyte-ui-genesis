@@ -1,5 +1,75 @@
 # AI State
 
+## Sustained student confidence - 2026-10-01
+
+The rc.2 continuation preserves the rc.1 archive and its complete dirty baseline.
+Reviewed product/runtime and raw-typecheck tooling are organized into local
+commits on the same feature branch. Agent setup/routing and the independent lint
+command remain owner edits outside those commits. No remote delivery is authorized.
+
+The original enabled/resettable counter is authored from blank through visible
+controls: reusable XOR/AND slices, three scenarios, separate wiring/expectation
+failures, stimulus repair and actual package inspection. Native hierarchy ZIPs now
+include definitions and supported clocked registers; the embedded project retains
+editable hierarchy and original source. Draft diagnostics, panel restore controls,
+last-event deletion and wire-cue geometry have regressions. All 428 tests in the
+final 36-file focused selection pass. Raw TypeScript is 570/170 -> 545/167
+(diagnostics/files), 25 removed and zero added; unchanged scope/compiler/baseline,
+exit 2. Final Node20 verify:gates/build pass; canonical classroom:gate 72/72,
+repo:status 39/39, sequential authority 24/24, mapping/package agreement, 21/21
+packaged journeys (source unchanged), and the original complete counter pass.
+All 149 checksum entries and the exact 134-file fresh application match. Actual
+CMD/default Edge upgrade/restart passes; four-scale sample import/run and wire
+layout pass, including measured 200% browser zoom.
+
+Candidate `1.0.0-rc.2`: application commit `5fbec3a8df1200765b7a14d7e2fc2602e2cb2657`,
+2,278-input digest `bf5b636af3707f2b2e4b89d4666c5656b50aacd2a7a74bdc1b248ea35c7f5cde`.
+ZIP SHA-256 `13d316e2670159ae7d4ef750985207c38f807f475e7e544363f5640b0c973c85`,
+32,822,383 bytes. The final documentation commit records these results separately
+from the application commit; build inputs remain unchanged.
+Evidence and the retained legacy-wrapper failures are in the newest Studio finish
+ticket section and `.redbyte/student-confidence/validation/`.
+
+Owner acceptance, literal Explorer double-click/fresh-machine proof, Vivado and
+physical FPGA certification remain open. Earlier results below are historical.
+
+## Local Studio completion and Windows candidate - 2026-09-30
+
+Current branch is `claude/redbyte-studio-completion-p2-6-q7m3v8`, HEAD
+`f382211956b5e2748b0f02f238a4d637a627334b`. Existing owner work is preserved;
+the continuation is local and uncommitted. Candidate `1.0.0-rc.1` records 2,270
+build/validation inputs with digest
+`fe0ed50f37db3422dcd53ca3143d48001f2beebc2ca0c419819fc7af4bdf07b2`.
+The ZIP is `.redbyte/releases/redbyte-1.0.0-rc.1-win-x64.zip`, SHA-256
+`c7d2446f62c3d359e04d1e68410965a7d6bdad23be1a4b3acab354aa365cdb29`.
+
+Canonical snapshots now retain original sources and named constraint sets across
+explicit lifecycle/backup/recovery paths. Shared recording ownership fixes reversed
+comparison and historical/stale verdicts. Captured-set activation restores effective
+mapping; generated previews, actual ZIP bytes and embedded manifests agree. Blank
+AND/Register1 journeys exercise real placement, wires, body inputs, clock step,
+authored failure, investigation, repair, save and resume. Compact library/Wire
+continuity, deduplicated human diagnostics and canvas-visible replay are corrected.
+
+Under Node 20.19.0 / pnpm 10.24.0, final verify:gates and explicit package builds pass;
+focused tests pass 229/229, boundary tests 11/11, repository status 38/38, the sequential
+authority gate 24/24 steps, and mapping/package authority passes. The final-source
+classroom aggregate passes 72/72 stages, exit 0. The final packaged campaign passes 21/21 with
+`sourceUnchanged: true`, exit 0.
+Normal/enlarged-text and actual 200% zoom captures are reviewed separately. The ZIP
+passes repeat-byte packaging, all 145 checksum rows, exact 134-file unified-app copy,
+clean unpack, repeated start and Windows space-path start/stop checks.
+
+Raw rb-apps typecheck remains red: 570 diagnostics in 170 files, exit 2. The virtual
+HEAD comparison with current dependencies is 581 -> 570 with no added diagnostics;
+it is not a pristine initial-tree comparison. Goldens and the baseline are unchanged.
+Unsigned distribution, fresh-machine and extended human acceptance, storage quota,
+print regeneration and Vivado/physical-board proof remain separate limits. No staging,
+commit, push, PR mutation, merge, public deployment or board operation occurred.
+The exact checklist, before/after evidence and stacked #85/#86 integration plan are
+in `docs/release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md`;
+owner instructions are in `docs/release/local-candidate-quickstart.md`.
+
 ## P2.6C validation closeout - 2026-09-14
 
 Application candidate: 6206d3fbb4a9f5ff5b49dab54faa20bbadeed3be. The canonical

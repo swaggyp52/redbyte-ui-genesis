@@ -5,6 +5,60 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## Sustained student boundary reduction (2026-10-01)
+
+Pinned Node 20.19.0 / TypeScript 5.9.3 raw `typecheck:app` reports 545 diagnostics
+in 167 files, exit 2, versus the preserved 570/170 baseline. Stable file/code/message
+multisets measure exactly 25 removals and zero additions; line moves are ignored.
+Scope remains 1,429 compiler inputs, 898 under rb-apps. No baseline, compiler,
+scope exclusion, protected golden or broad suppression changed. The 36-file focused
+selection passes 428/428. Final verify:gates and build pass; canonical classroom
+72/72, repository status 39/39, sequential authority 24/24 and mapping agreement pass
+against the final extracted application. Its 21 maintained journeys and complete
+original counter pass, with unchanged input fingerprint. These do not erase raw debt.
+
+Prioritized remaining boundaries: filesystem store (22 diagnostics), toolchain
+backend (15), ZIP import tests (11), HardwareSurface (7), and VHDL export (6), then
+legacy shell/view/test clusters. Raw CI remains red and is a public-release blocker;
+a passing ratchet is not a clean raw typecheck. Exact inventories and retained
+failures live in `.redbyte/student-confidence/validation/diagnostic-inventory.json`
+and the type-boundaries/hierarchy-export folders. Older measurements below retain
+their original identities.
+
+## Final local candidate aggregates (2026-09-30)
+
+On the frozen 2,270-input source state
+`fe0ed50f37db3422dcd53ca3143d48001f2beebc2ca0c419819fc7af4bdf07b2`, under
+Node 20.19.0 / pnpm 10.24.0, the canonical classroom command passes 72/72 stages,
+repository status passes 38/38, verify:gates passes with protected goldens unchanged,
+and the complete unpacked-candidate browser campaign passes 21/21 with
+`sourceUnchanged: true`. Focused owner tests pass 229/229, boundary tests 11/11,
+standalone sequential authority executes all 24 steps and mapping/package authority
+passes. Commands, exits and raw logs are in the current Studio finish ticket and
+`.redbyte/release-candidate/validation/`; older inventories below remain historical.
+
+Raw rb-apps typecheck remains a failing command: 570 diagnostics in 170 files,
+TypeScript 5.9.3, exit 2. The virtual HEAD comparison with current dependencies
+measured 581 -> 570 with no added diagnostics; it is not a pristine initial-tree
+comparison. No baseline, golden or broad suppression was added to conceal debt.
+Declaration builds can emit diagnostics while returning exit 0. The existing
+retired-shell no-op gates are historical infrastructure, not new product proof.
+
+The standalone sequential consumer now opens current disclosures and inspects
+committed IndexedDB. It uses authored event controls, preserves stimulus while
+clearing/re-authoring optional checks, asserts current recording currency and
+checks real edge/hold, repair and generated testbench semantics. Removed sequential
+combinational-coverage chips are not resurrected. Three built journeys explicitly
+reveal the compact inspector before their existing assertions. Initial failures
+and corrected runs remain preserved in separate local evidence folders.
+
+## Release-candidate repository consumer census (2026-09-30)
+
+The finite inventory of 34 named `ide:gate:*` consumers from `scripts/repo-status.mjs` now passes 34/34, with zero missing scripts, under Node 20.19.0 against the current development server at `http://localhost:5173/os`. The initial current-source census measured 13 passing consumers, 20 failures and one missing shell-chrome script. Retired controls were migrated to their current owners while preserving actual authoring, recording, recovery, geometry and ZIP-download behavior. The missing shell-chrome consumer now checks the five-stage workflow, separate Import utility, keyboard activation and reload. No consumer was removed, skipped or replaced with a no-op.
+
+The migration exposed a real Design Explore input-body defect. A click hit the input symbol but left canonical simulation input unchanged. The product fix preserves authored defaults and uses current runtime input authority; the final consumer requires a real body click and agreement between the canonical simulation value and inspector. Simulate also proves observation without optional checks, a deliberately failing expected output, matching table/recording tick, explicit Details/Checks mismatch recovery, and a passing repaired run.
+
+Full baseline and final raw logs, commands, exit codes, the intermediate product failure and all 34 dispositions are retained locally in `.redbyte/release-candidate/validation/repo-consumers/`. This is source-development evidence. The aggregate `repo:status` wrapper, fixed-build classroom chain and packaged candidate have separate receipts; this census does not substitute for them. Historical inventories below remain as measured records.
 ## P2.6C committed aggregate results (2026-09-14)
 
 Against application build 6206d3fbb4a9f5ff5b49dab54faa20bbadeed3be, the canonical

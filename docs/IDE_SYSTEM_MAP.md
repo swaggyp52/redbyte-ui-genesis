@@ -2,6 +2,17 @@
 
 > Living reference for the IDE codebase. Update when surfaces, authorities, or gates change.
 
+> **Current P2.6C local completion (2026-09-30):** the canonical project projection
+> carries original `sourceModel` and `constraintSets`; the existing repository and
+> session backup remain the storage owners. Active captured sets restore structured
+> mappings and live pin edits detach that selection. `verify/recordingState.ts`
+> supplies one project/scenario/selected-recording comparison to the strip and table.
+> Compact Design keeps the library during placement and reveals the inspector
+> explicitly; Explore values are separate from authored defaults. Playback/failure
+> details stay outside the circuit. The current surface specs, newest state entries
+> and P2.6C finish ticket supersede older layout descriptions below. This is a local
+> uncommitted Browser E0 candidate; no historical receipt certifies its current build.
+
 **Release / certification:** Instructor-facing “what is safe for students right now” (starter matrix, E0–E3 tiers, Vivado proof links) lives in `docs/STUDENT_RELEASE_READINESS.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md`, and `docs/release/vivado-basys3-certification-matrix.md`.
 
 > **Current Product System v3 candidate routing (2026-08-01):** The
@@ -44,7 +55,7 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 | Surface | File | Responsibility |
 |---------|------|----------------|
 | Public Start | `public/start.html`, `apps/playground/src/boot/ide-bootstrap.ts` | Professional browser entry that explains the five-stage RedByte workflow and opens the IDE through one dominant action. It is not a workflow stage and does not own project readiness. |
-| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Live Project Center and control point for **Project -> Design -> Simulate -> Board & Constraints -> Build & Export**. Loaded state explains identity, target, design sources, simulation evidence, constraint progress, package state, blocker, and one recommendation. Build Fresh / Open Starter / Import / Open Existing remain directly reachable without making students manage core disclosures. |
+| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Live Project Center and control point for **Project -> Design -> Simulate -> Board & Constraints -> Build & Export**. Loaded state explains identity, target, design sources, simulation evidence, constraint progress, package state, blocker, and one recommendation. Blank project / Start a lab / Import / Open Existing remain directly reachable without making students manage core disclosures. |
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Canvas-first structural authoring and live exploration. The circuit canvas receives the available width while idle; the bounded **Inspector** is contextual and opens only when a circuit object or supported workspace asset owns selection focus. Camera actions remain reachable, and constrained widths move lower-frequency actions into **More tools** and selected details below the canvas instead of creating a permanent third column. |
 | Simulate (internal `verify` mode) | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Simulation & Replay Studio and testbench-document owner for named scenarios, stimulus, clock policy, deterministic runs, waveform/circuit replay, optional assertions, and repair routing. Inputs, outputs, and available internal lanes live in an integrated signal shelf above the lab grid rather than a separate left rail. One `Run simulation` authority records behavior; simulation completion stays independent from assertion PASS/FAIL, and `Edit expected` stays separate from `Inspect Design` / `Open Design` repair. |
 | Board & Constraints (internal `hardware` mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Basys3 physical-assignment workspace. A signal row selects canonical logical identity; the compatible-resource selector and highlighted interactive board both commit through the same mapping callback. The inspector shows resource, package pin, I/O standard, conflict, and exact XDC consequence before Build & Export. |
