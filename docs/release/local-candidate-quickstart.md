@@ -40,8 +40,8 @@ actual source content digest; an uncommitted candidate is not identified by HEAD
 `SHA256SUMS.txt` records every packaged file except the checksum list itself.
 
 For a source rebuild in the repository, use its pinned Node 20.19.0 and pnpm 10.24.0,
-set `RB_CANDIDATE_VERSION=1.0.0-rc.2`, and run `corepack pnpm build:unified` followed
-by `corepack pnpm release:package:local 1.0.0-rc.2`. The packager refuses a stale
+set `RB_CANDIDATE_VERSION=1.0.0-rc.3`, and run `corepack pnpm build:unified` followed
+by `corepack pnpm release:package:local 1.0.0-rc.3`. The packager refuses a stale
 source/build fingerprint or an existing version directory. It archives the same
 files twice and requires equal ZIP hashes; this is reproducible packaging of a
 given build, not a claim that independently timed builds have identical metadata.

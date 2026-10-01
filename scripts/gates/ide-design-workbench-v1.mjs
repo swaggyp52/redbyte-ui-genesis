@@ -752,6 +752,12 @@ async function proveZoomFitCenter(page, viewport) {
   await fit.click();
   await page.waitForTimeout(250);
   await assertGraphWorkbench(page, viewport, 'direct fit');
+  if (compactToolbar) {
+    const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert((await overflow.getAttribute('open')) === null, 'Fit design must dismiss its View menu');
+    await overflow.locator('summary').click();
+    await reset.waitFor({ state: 'visible', timeout: 5000 });
+  }
   await reset.click();
   await page.waitForTimeout(250);
   await center.click();
