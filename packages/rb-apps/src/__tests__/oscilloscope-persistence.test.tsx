@@ -103,7 +103,7 @@ describe('Oscilloscope Persistence on Circuit Changes', () => {
 
     // Sampling should handle missing node by returning 0
     // (This is what the sampleSignals function does: `const outputs = node ? engine.getNodeOutputs(probe.nodeId) : {};`)
-    const mockOutputs = nodeExistsAfterDelete ? { out: 1 } : {};
+    const mockOutputs: Record<string, number> = nodeExistsAfterDelete ? { out: 1 } : {};
     const value = mockOutputs[probe.portName] ?? 0;
     expect(value).toBe(0); // Missing node returns 0
   });

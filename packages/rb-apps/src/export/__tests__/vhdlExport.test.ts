@@ -488,3 +488,18 @@ describe('vhdlFromNetlist', () => {
       expect(result.warnings).toEqual([]);
     });
   });
+
+
+it('warns when an exported netlist contains an unknown primitive', () => {
+  const result = vhdlFromNetlist({
+    ...minimalAndNetlist,
+    nodes: [
+      ...minimalAndNetlist.nodes,
+      { id: 'unsupported', type: 'CustomUnsupportedPrimitive', ports: [] },
+    ],
+  });
+  expect(result.warnings).toContain(
+    'Unsupported node type "CustomUnsupportedPrimitive" (id: unsupported) — skipped'
+  );
+  expect(result.vhd).toContain('entity top is');
+});

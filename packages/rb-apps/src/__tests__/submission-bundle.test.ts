@@ -61,7 +61,7 @@ async function hashZipEntry(zip: JSZip, path: string): Promise<string> {
   const entry = zip.file(path);
   if (!entry) throw new Error(`missing zip entry: ${path}`);
   const bytes = await entry.async('uint8array');
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
   return Array.from(new Uint8Array(digest))
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');

@@ -2,8 +2,9 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import { getConnectionNodeId, getConnectionPort } from '../utils/connectionUtils';
+import type { Circuit } from '@redbyte/rb-logic-core';
 import type {
-  Circuit,
   CircuitSummary,
   DebugOverlay,
   MismatchEntry,
@@ -34,7 +35,7 @@ export const positionFromTick = (tick: number, width: number, maxTick: number) =
   return ratio * width;
 };
 
-export const normalizeStimulusEvents = (events: RunStimulusEvent[]) => {
+export const normalizeStimulusEvents = <Event extends RunStimulusEvent>(events: Event[]) => {
   return events
     .map((event, index) => ({ event, index }))
     .sort((a, b) => {
@@ -82,8 +83,8 @@ export const normalizeCircuit = (circuit: Circuit) => {
 
   const connections = [...circuit.connections]
     .map((connection) => ({
-      from: { nodeId: connection.from.nodeId, portName: connection.from.portName },
-      to: { nodeId: connection.to.nodeId, portName: connection.to.portName },
+      from: { nodeId: getConnectionNodeId(connection.from), portName: getConnectionPort(connection, 'from', 'out') },
+      to: { nodeId: getConnectionNodeId(connection.to), portName: getConnectionPort(connection, 'to', 'in') },
     }))
     .sort((a, b) => {
       const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
@@ -95,14 +96,28 @@ export const normalizeCircuit = (circuit: Circuit) => {
 };
 
 export const normalizeStimulus = (events: RunStimulusEvent[]) => {
-  return normalizeStimulusEvents(events).map((event) => ({
-    tick: event.tick,
-    type: event.type,
-    nodeId: event.nodeId,
-    portName: event.portName,
-    value: event.value,
-    label: event.label ?? '',
-  }));
+  return normalizeStimulusEvents(events).map((event) => {
+    // Retain the v1/v2 digest projection, including hardware-event compatibility.
+    // Hardware payload hashing needs an explicit record-version migration.
+    if (event.type !== 'input_toggled') {
+      return {
+        tick: event.tick,
+        type: event.type,
+        nodeId: undefined,
+        portName: undefined,
+        value: undefined,
+        label: '',
+      };
+    }
+    return {
+      tick: event.tick,
+      type: event.type,
+      nodeId: event.nodeId,
+      portName: event.portName,
+      value: event.value,
+      label: event.label ?? '',
+    };
+  });
 };
 
 export const normalizeTrace = (trace: RunTraceSample[]) => {

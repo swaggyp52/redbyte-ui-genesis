@@ -4,7 +4,7 @@
 // Scope (v1): ParsedHDL + XdcParseResult → RBProject with auto-layout + IO mapping.
 // Canonical mapping is **hardwareMappingV2**; structured **ioMapping** is kept for compatibility.
 
-import type { RBProject } from '@redbyte/rb-circuit';
+import type { RBProject } from '../export/projectFormat';
 import type { ParsedHDL } from './hdlToCircuit.js';
 import type { XdcParseResult } from './xdcImport.js';
 import { buildImportedProjectCompilerResult } from './importCompiler.js';

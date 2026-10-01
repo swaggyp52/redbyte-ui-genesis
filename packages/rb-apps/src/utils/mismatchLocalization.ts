@@ -1,3 +1,4 @@
+import { getConnectionNodeId, getConnectionPort } from './connectionUtils';
 // Copyright Ac 2025 Connor Angiel
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
@@ -34,12 +35,12 @@ export const buildSuspectSet = (
     if (current.depth >= maxDepth) continue;
 
     circuit.connections.forEach((connection) => {
-      if (connection.to.nodeId !== current.nodeId) return;
-      const wireId = `${connection.from.nodeId}.${connection.from.portName}-${connection.to.nodeId}.${connection.to.portName}`;
+      if (getConnectionNodeId(connection.to) !== current.nodeId) return;
+      const wireId = `${getConnectionNodeId(connection.from)}.${getConnectionPort(connection, 'from', 'out')}-${getConnectionNodeId(connection.to)}.${getConnectionPort(connection, 'to', 'in')}`;
       wireIds.add(wireId);
-      if (!nodeIds.has(connection.from.nodeId)) {
-        nodeIds.add(connection.from.nodeId);
-        queue.push({ nodeId: connection.from.nodeId, depth: current.depth + 1 });
+      if (!nodeIds.has(getConnectionNodeId(connection.from))) {
+        nodeIds.add(getConnectionNodeId(connection.from));
+        queue.push({ nodeId: getConnectionNodeId(connection.from), depth: current.depth + 1 });
       }
     });
   }

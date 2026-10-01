@@ -98,6 +98,8 @@ describe('RBProject roundtrip serialization (IDE)', () => {
           ],
           outputs: [{ id: 'out-q', label: 'Q', nodeId: 'node-v2-3', portName: 'out' }],
           cluster: {
+            originX: 0,
+            originY: 0,
             nodes: [
               {
                 originalId: 'node-v2-1',

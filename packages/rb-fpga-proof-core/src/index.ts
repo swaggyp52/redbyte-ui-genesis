@@ -130,7 +130,7 @@ export async function resolveEventsFromCapsule(
   }
 
   // Look for external reference
-  const eventsRef = capsule.events_ref || (capsule as Record<string, unknown>).events_ref;
+  const eventsRef = capsule.events_ref;
   if (!eventsRef || typeof eventsRef !== 'string') {
     return { events: [] };
   }
@@ -178,7 +178,7 @@ export function verifyHashes(
   }
 
   // Check dual schema
-  const summary = (capsule.summary || (capsule as Record<string, unknown>).test_summary) as
+  const summary = (capsule.summary || capsule.test_summary) as
     | SummaryCardModel
     | undefined;
   if (!summary) {

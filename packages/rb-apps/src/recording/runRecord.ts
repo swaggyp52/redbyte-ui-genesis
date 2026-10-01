@@ -29,6 +29,8 @@ export type RunStimulusEvent =
     target: string;
   };
 
+export type InputToggleStimulusEvent = Extract<RunStimulusEvent, { type: 'input_toggled' }>;
+
 export interface RunProbe {
   id: string;
   nodeId: string;
@@ -166,8 +168,8 @@ export const decodeRunRecord = (raw: string): RunRecord => {
   return parsed as RunRecord;
 };
 
-export const indexStimulusByTick = (events: RunStimulusEvent[]) => {
-  const byTick = new Map<number, RunStimulusEvent[]>();
+export const indexStimulusByTick = <Event extends RunStimulusEvent>(events: Event[]) => {
+  const byTick = new Map<number, Event[]>();
   events.forEach((event) => {
     const list = byTick.get(event.tick) ?? [];
     list.push(event);

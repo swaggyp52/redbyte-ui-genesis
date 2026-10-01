@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { verifyBundleBytes } from '../../../../scripts/v1-verify-bundle.mjs';
 
 async function sha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
   return Array.from(new Uint8Array(digest))
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
@@ -59,6 +59,20 @@ async function makeValidBundleBytes(): Promise<Uint8Array> {
 }
 
 describe('v1 bundle verifier', () => {
+  it('returns typed failure issues for invalid ZIP bytes', async () => {
+    const result = await verifyBundleBytes(new TextEncoder().encode('invalid zip bytes'));
+    expect(result.ok).toBe(false);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]).toMatch(/^invalid zip:/);
+  });
+
+  it('returns missing-manifest failures without claiming file authority', async () => {
+    const bytes = await new JSZip().generateAsync({ type: 'uint8array' });
+    const result = await verifyBundleBytes(bytes);
+    expect(result).toEqual({ ok: false, issues: ['missing manifest.json'] });
+    expect('filePath' in result).toBe(false);
+  });
+
   it('accepts legacy classroom student-export schema v1 bundles', async () => {
     const zip = new JSZip();
     zip.file(

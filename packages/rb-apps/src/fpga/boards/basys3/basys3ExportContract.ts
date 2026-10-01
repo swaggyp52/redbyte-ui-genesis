@@ -271,7 +271,7 @@ function detectTimingRole(
   return 'unconstrained';
 }
 
-const STATEFUL_NODE_TYPES = new Set(getVhdlStatefulNodeTypes());
+const STATEFUL_NODE_TYPES = new Set<string>(getVhdlStatefulNodeTypes());
 
 function detectClockPolicy(
   exportModel: Basys3ExportModel,

@@ -11,7 +11,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import type { HardwareState } from '../../stores/hardwareStore';
-import type { BoardInteractionHandler } from '../BoardPanel';
+import type { BoardInteractionHandler } from './boardInteraction';
 
 interface Spartan3EBoardProps {
   ioSnapshot: HardwareState['ioSnapshot'];

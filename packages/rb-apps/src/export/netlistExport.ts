@@ -15,6 +15,7 @@ export interface NetlistPort {
 export interface NetlistNode {
   id: string;
   type: string;
+  config?: Record<string, unknown>;
   label?: string;
   ports: NetlistPort[];
   boundaryKind?: 'input' | 'output' | 'clock' | 'reset';

@@ -47,6 +47,9 @@ describe('fixture04 lab8 security lock import', () => {
       xdcResult: xdc,
     });
 
+    const ioMapping = result.project.ioMapping;
+    expect(ioMapping).toBeDefined();
+    if (!ioMapping) throw new Error('Fixture import must provide I/O mapping');
     expect(result.status.parse).toBe('success');
     expect(result.status.reconstruction).toBe('success');
     expect(result.status.compiler).toBe('runnable');
@@ -55,9 +58,9 @@ describe('fixture04 lab8 security lock import', () => {
     ).length;
     expect(registerFamilyCount).toBe(8);
     expect(result.project.hardwareMappingV2?.entries).toHaveLength(6);
-    expect(result.project.ioMapping.inputs).toHaveLength(5);
-    expect(result.project.ioMapping.outputs).toHaveLength(1);
-    expect(result.project.ioMapping.inputs.map((entry) => entry.pin)).toEqual(
+    expect(ioMapping.inputs).toHaveLength(5);
+    expect(ioMapping.outputs).toHaveLength(1);
+    expect(ioMapping.inputs.map((entry) => entry.pin)).toEqual(
       expect.arrayContaining(['V15', 'W14', 'W13', 'V2', 'W15'])
     );
   });
@@ -77,12 +80,15 @@ describe('fixture04 lab8 security lock import', () => {
       xdcResult: xdc,
     });
 
+    const ioMapping = imported.project.ioMapping;
+    expect(ioMapping).toBeDefined();
+    if (!ioMapping) throw new Error('Fixture import must provide I/O mapping');
     expect(imported.status.compiler).toBe('runnable');
-    const exportModel = buildBasys3ExportModel(imported.project.circuit, imported.project.ioMapping);
-    const contract = buildExportContract(exportModel, imported.project.ioMapping, 'top');
+    const exportModel = buildBasys3ExportModel(imported.project.circuit, ioMapping);
+    const contract = buildExportContract(exportModel, ioMapping, 'top');
     expect(contract.timingMode).toBe('manual_event_driven_lab');
 
-    const bundle = exportBasys3Bundle(imported.project.circuit, imported.project.ioMapping, {
+    const bundle = exportBasys3Bundle(imported.project.circuit, ioMapping, {
       entityName: 'top',
       exportModel,
     });
@@ -101,10 +107,10 @@ describe('fixture04 lab8 security lock import', () => {
     expect(reparsed.ports.filter((port) => port.direction === 'in').length).toBe(5);
     expect(reparsed.ports.filter((port) => port.direction === 'out').length).toBe(1);
     expect(reconstructedRegisters).toBe(sourceRegisters);
-    expect(imported.project.ioMapping.inputs.map((entry) => entry.pin)).toEqual(
+    expect(ioMapping.inputs.map((entry) => entry.pin)).toEqual(
       expect.arrayContaining(['V15', 'W14', 'W13', 'V2', 'W15'])
     );
-    expect(imported.project.ioMapping.outputs.map((entry) => entry.pin)).toEqual(
+    expect(ioMapping.outputs.map((entry) => entry.pin)).toEqual(
       expect.arrayContaining(['E19'])
     );
   });

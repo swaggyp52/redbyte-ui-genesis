@@ -13,7 +13,7 @@
 import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
 import { resolveIoMappingFromProjectFields, type IoMapping } from '@redbyte/rb-utils';
-import type { RBProject } from '../../export/projectFormat';
+import type { RBProject } from '../../../export/projectFormat';
 import { generateTestbenchVhdl } from './testbenchGenerator';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { compareCodepoint } from '../../../export/codepointSort';
@@ -852,7 +852,11 @@ function validateMultipleDrivers(project: RBProject): Basys3ExportError[] {
   const driverCount = new Map<string, number>();
 
   for (const conn of project.circuit?.connections ?? []) {
-    const key = `${conn.to?.nodeId ?? (conn as Record<string, unknown>).toNodeId}.${conn.to?.portName ?? (conn as Record<string, unknown>).toPort}`;
+    const nodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
+    const portName = typeof conn.to === 'string'
+      ? conn.toPin ?? conn.toPort ?? 'in'
+      : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    const key = `${nodeId}.${portName}`;
     driverCount.set(key, (driverCount.get(key) ?? 0) + 1);
   }
 

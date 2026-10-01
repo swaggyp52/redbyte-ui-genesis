@@ -1,5 +1,5 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { toCircuitV1 } from '@redbyte/rb-logic-core';
+import { isNodeTypeSupportedFor, toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
@@ -10,19 +10,23 @@ import {
 import { buildBasys3ExportModel, type Basys3ExportModel } from './basys3ExportModel';
 import {
   buildExportContract,
+  validateExportContract,
   type Basys3ExportContract,
   type Basys3PortContract,
 } from './basys3ExportContract';
 import { lintBasys3ProjectPorts } from './portLint';
+import { deriveVerifyScheduleFromStructure } from './verifySchedule';
 
 export { buildVhdlTopLevelBindings } from './basys3ExportModel';
 
 export interface Basys3BundleResult {
+  /** Legacy Verilog projection; its unsupported-node warnings remain advisory. */
   topV: string;
   topVhd: string;
   topXdc: string;
   readme: string;
   warnings: string[];
+  /** Canonical VHDL/XDC handoff validity, not legacy Verilog support. */
   valid: boolean;
 }
 
@@ -208,6 +212,18 @@ export function exportBasys3Bundle(
   const entityName = options?.entityName ?? 'top';
   const contract = options?.contract ?? buildExportContract(exportModel, ioMapping, entityName);
 
+  const contractErrors = validateExportContract(contract).filter((error) => error.severity === 'error');
+  warnings.push(...contractErrors.map((error) => `[${error.code}] ${error.message}`));
+  const unsupportedVhdlNodes = exportModel.netlist.nodes.filter(
+    (node) => !isNodeTypeSupportedFor(node.type, 'vhdlExport')
+  );
+  // Use the same current scalar-register and temporal policy as the project
+  // service, including register configurations inside elaborated modules.
+  const temporalIssues = deriveVerifyScheduleFromStructure(
+    exportModel.ir, exportModel.simModel, ioMapping, undefined,
+    { ...circuit, nodes: exportModel.netlist.nodes }
+  ).temporalIssues;
+  warnings.push(...temporalIssues.map((issue) => issue.message));
   const vhdl = vhdlFromNetlist(exportModel.netlist, {
     entityName,
     topPorts: exportModel.topPorts,
@@ -285,7 +301,12 @@ export function exportBasys3Bundle(
 
   const valid =
     xdcPinWarnings.length === 0 &&
-    verilog.unsupportedNodes.length === 0 &&
+    // The student kit is top.vhd + top.xdc. Legacy Verilog cannot express every
+    // supported VHDL primitive (notably Register1), and is advisory above.
+    unsupportedVhdlNodes.length === 0 &&
+    temporalIssues.length === 0 &&
+    contractErrors.length === 0 &&
+
     vhdlXdcMismatches.length === 0 &&
     exportModel.blockingDiagnostics.length === 0;
 

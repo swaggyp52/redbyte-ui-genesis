@@ -33,6 +33,34 @@ describe('Playground Layout Store', () => {
     expect(loaded?.schematicMiniEnabled).toBe(false);
   });
 
+  it('retains the IDE split ratio through perspective changes and persistence', () => {
+    const store = useLayoutStore.getState();
+    store.setSplitRatio(0.65);
+    store.setPerspective('analyze');
+    expect(useLayoutStore.getState().splitRatio).toBe(0.65);
+    expect(loadLayoutState()?.splitRatio).toBe(0.65);
+    store.setSplitRatio(0.95);
+    expect(useLayoutStore.getState().splitRatio).toBe(0.8);
+    expect(loadLayoutState()?.splitRatio).toBe(0.8);
+    store.setSplitRatio(0.05);
+    expect(useLayoutStore.getState().splitRatio).toBe(0.2);
+    expect(loadLayoutState()?.splitRatio).toBe(0.2);
+  });
+
+  it('opens a collapsed help dock using the retained layout data contract', () => {
+    const store = useLayoutStore.getState();
+    store.setRightDockState('collapsed');
+    store.setHelpDockSection('circuit-controls');
+    store.openDock('learn', 'help', 'missing-wire');
+    expect(useLayoutStore.getState()).toMatchObject({
+      rightDockState: 'expanded',
+      rightDockTab: 'learn',
+      learnSubview: 'help',
+      learnHelpErrorCode: 'missing-wire',
+      helpDockSection: 'circuit-controls',
+    });
+  });
+
   it('toggles schematic mini view layout', () => {
     const store = useLayoutStore.getState();
     store.setPerspective('schematic');

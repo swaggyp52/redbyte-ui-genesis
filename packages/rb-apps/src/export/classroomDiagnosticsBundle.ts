@@ -153,7 +153,7 @@ export async function generateClassroomDiagnosticsBundle(
 
   for (const file of sortedFiles) {
     const bytes = toByteArray(file.text);
-    const sha256 = await hashBytes(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    const sha256 = await hashBytes(new Uint8Array(bytes).buffer);
     includedFiles.push({
       path: file.path,
       sha256,
@@ -209,7 +209,7 @@ export async function generateClassroomDiagnosticsBundle(
 
 export function downloadClassroomDiagnosticsBundle(bundle: ClassroomDiagnosticsBundleResult): void {
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([bundle.bytes], { type: 'application/zip' }));
+  link.href = URL.createObjectURL(new Blob([new Uint8Array(bundle.bytes)], { type: 'application/zip' }));
   link.download = bundle.filename;
   link.click();
   URL.revokeObjectURL(link.href);

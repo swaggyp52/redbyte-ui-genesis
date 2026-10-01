@@ -35,7 +35,7 @@ describe("exportV2Bundle", () => {
     const originalFile = JSZip.prototype.file;
     const fileSpy = vi
       .spyOn(JSZip.prototype, "file")
-      .mockImplementation(function (...args: unknown[]) {
+      .mockImplementation(function (this: JSZip, ...args: unknown[]) {
         const path = args[0];
         const data = args.length > 1 ? args[1] : undefined;
         if (typeof path === "string" && args.length > 1) {

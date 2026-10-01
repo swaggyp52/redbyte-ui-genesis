@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { materializeIoMappingFromHardwareMappingV2 } from '@redbyte/rb-utils';
 import type { ParsedHDL } from '../hdlToCircuit.js';
-import type { XdcParseResult } from '../xdcImport.js';
+import { parseXdcPins } from '../xdcImport.js';
 import { importToRbProject } from '../importToRbProject.js';
 
 describe('importToRbProject', () => {
@@ -47,14 +47,7 @@ describe('importToRbProject', () => {
       lang: 'vhdl',
     };
 
-    const xdc: XdcParseResult = {
-      pinMap: {
-        SW0: 'V17',
-        SW1: 'V16',
-        LD0: 'U16',
-      },
-      warnings: [],
-    };
+    const xdc = parseXdcPins('set_property PACKAGE_PIN V17 [get_ports {SW0}]\nset_property PACKAGE_PIN V16 [get_ports {SW1}]\nset_property PACKAGE_PIN U16 [get_ports {LD0}]');
 
     const result = importToRbProject(hdl, xdc);
 
@@ -89,12 +82,7 @@ describe('importToRbProject', () => {
       lang: 'vhdl',
     };
 
-    const xdc: XdcParseResult = {
-      pinMap: {
-        unmatched_port: 'V17',
-      },
-      warnings: [],
-    };
+    const xdc = parseXdcPins('set_property PACKAGE_PIN V17 [get_ports {unmatched_port}]');
 
     const result = importToRbProject(hdl, xdc);
 

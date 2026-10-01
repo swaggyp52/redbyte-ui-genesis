@@ -2,8 +2,8 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { SerializedCircuitV1 } from '@redbyte/rb-logic-core';
-import type { LabProjectV1 } from '@redbyte/rb-utils';
+import { fromCircuitV1, type Node, type SerializedCircuitV1 } from '@redbyte/rb-logic-core';
+import type { CircuitV1, LabProjectV1 } from '@redbyte/rb-utils';
 import example01 from './01_wire-lamp.json';
 import example02 from './02_and-gate.json';
 import example03 from './03_half-adder.json';
@@ -66,6 +66,25 @@ export interface ExampleMetadata {
   description: string;
   layer: CircuitLayer;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
+}
+
+function normalizeLegacyExampleCircuit(
+  source: { nodes: Node[]; connections: CircuitV1['connections'] }
+): SerializedCircuitV1 {
+  // Adapt these two JSON examples to the real persisted CircuitV1 schema,
+  // then use its canonical converter for endpoint and node-state semantics.
+  const circuit = fromCircuitV1({
+    schemaVersion: '1.0',
+    nodes: source.nodes.map((node) => ({
+      ...node,
+      x: node.position?.x ?? node.x ?? 0,
+      y: node.position?.y ?? node.y ?? 0,
+      params: node.config ?? node.params ?? {},
+    })),
+    connections: source.connections,
+    customChips: [],
+  });
+  return { version: 1, nodes: circuit.nodes, connections: circuit.connections };
 }
 
 const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: ExampleMetadata }> = {
@@ -233,7 +252,7 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     },
   },
   '17_traffic-light-fsm-basys3': {
-    data: example17 as SerializedCircuitV1,
+    data: normalizeLegacyExampleCircuit(example17),
     metadata: {
       id: '17_traffic-light-fsm-basys3',
       name: 'Traffic Light FSM (Basys3)',
@@ -243,7 +262,7 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     },
   },
   '18_4bit-alu-basys3': {
-    data: example18 as SerializedCircuitV1,
+    data: normalizeLegacyExampleCircuit(example18),
     metadata: {
       id: '18_4bit-alu-basys3',
       name: '4-bit ALU (Basys3)',

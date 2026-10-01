@@ -4,8 +4,15 @@
 
 import { create } from 'zustand';
 import type { SplitScreenMode, ViewMode } from './viewStateStore';
-import type { RightDockState, RightDockTab } from '../components/RightDock';
-import type { HelpSectionId } from '../components/HelpDock';
+// Persisted layout data belongs to this store, rather than removed renderers.
+// Unions preserved from RightDock/HelpDock at 9f31efe95^; do not change stored values.
+export type RightDockState = 'collapsed' | 'peek' | 'expanded';
+export type RightDockTab =
+  | 'inspector' | 'health' | 'learn' | 'probes' | 'record'
+  | 'chips' | 'io' | 'hdl' | 'import';
+export type HelpSectionId =
+  | 'circuit-controls' | 'schematic-controls' | 'scope-controls'
+  | '3d-controls' | 'code-controls';
 
 export type PerspectiveId =
   | 'build'           // Circuit + RightDock

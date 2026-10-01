@@ -22,6 +22,7 @@ import { resolveBasys3PackagePin } from '../fpga/boards/basys3/basys3Pins';
 import { buildDeterministicVerifyContext } from '../fpga/boards/basys3/verifySchedule';
 import { runDeterministicVerifyFromModel } from '../apps/ide/sim/simEngineCore';
 import { LAB_STARTERS } from '../apps/ide/labStarters';
+import { detectVerifyClockPolicy } from '../apps/ide/verifyClockPolicy';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
@@ -148,15 +149,16 @@ function buildLab8IoMapping(): IoMapping {
 
 function buildLab8Project(): RBProject {
   return {
-    projectId: 'lab8-export-test',
-    schemaVersion: '1.0',
+    kind: 'rb-project',
+    version: 1,
+    meta: { projectId: 'lab8-export-test' },
     name: 'Lab 8 Export Test',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     circuit: buildLab8Circuit(),
     ioMapping: buildLab8IoMapping(),
-    hdl: { top: 'top' },
-  } as RBProject;
+    hdl: { top: 'top', sources: [] },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -311,12 +313,20 @@ describe('Lab 8 Export Validation', () => {
     const circuit = buildLab8Circuit();
     const ioMapping = buildLab8IoMapping();
     const verifyContext = buildDeterministicVerifyContext(circuit, ioMapping);
+    const clockPolicy = detectVerifyClockPolicy({
+      circuit,
+      ioRows: starter.example.ioRows,
+      scheduleContract: verifyContext.schedule,
+    });
+    expect(clockPolicy?.overrideMode).toBe('manual-pulses');
+    if (!clockPolicy) throw new Error('Lab 8 ENTER must retain its authored clock policy');
     const verifyResult = runDeterministicVerifyFromModel(
       circuit,
       verifyContext.simModel,
       starter.example.ioRows,
       starter.example.vectors,
-      verifyContext.schedule
+      verifyContext.schedule,
+      clockPolicy
     );
 
     expect(verifyResult.evidence.preflight).toEqual([]);

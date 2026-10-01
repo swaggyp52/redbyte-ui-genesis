@@ -30,6 +30,18 @@ async function loadLabFixture(projectPath: string): Promise<LabProjectV1> {
   return JSON.parse(projectText) as LabProjectV1;
 }
 
+function requireCanonicalConnection(connection: RBProject['circuit']['connections'][number]) {
+  if (typeof connection.from === 'string' || typeof connection.to === 'string') {
+    throw new Error('The workflow fixture must use canonical connection endpoints');
+  }
+  return { from: connection.from, to: connection.to };
+}
+
+function connectionKey(connection: RBProject['circuit']['connections'][number]): string {
+  const { from, to } = requireCanonicalConnection(connection);
+  return `${from.nodeId}.${from.portName}->${to.nodeId}.${to.portName}`;
+}
+
 function normalizeForComparison(project: RBProject): unknown {
   // Exclude fields that legitimately vary on re-export:
   // - updatedAt (current timestamp)
@@ -56,10 +68,7 @@ function normalizeForComparison(project: RBProject): unknown {
     .sort((a, b) => a.id.localeCompare(b.id));
 
   const connections = [...(circuit?.connections ?? [])]
-    .map((connection) => ({
-      from: { nodeId: connection.from.nodeId, portName: connection.from.portName },
-      to: { nodeId: connection.to.nodeId, portName: connection.to.portName },
-    }))
+    .map(requireCanonicalConnection)
     .sort((a, b) => {
       const left = `${a.from.nodeId}.${a.from.portName}->${a.to.nodeId}.${a.to.portName}`;
       const right = `${b.from.nodeId}.${b.from.portName}->${b.to.nodeId}.${b.to.portName}`;
@@ -146,10 +155,10 @@ describe('Phase 4: Lab Workflow Export-Verify Gate', () => {
 
     // Verify connection structure stable
     const originalConnections = rbProject.circuit.connections
-      .map((c) => `${c.from.nodeId}.${c.from.portName}->${c.to.nodeId}.${c.to.portName}`)
+      .map(connectionKey)
       .sort();
     const reimportedConnections = reimported.circuit.connections
-      .map((c) => `${c.from.nodeId}.${c.from.portName}->${c.to.nodeId}.${c.to.portName}`)
+      .map(connectionKey)
       .sort();
     expect(reimportedConnections).toEqual(originalConnections);
   });

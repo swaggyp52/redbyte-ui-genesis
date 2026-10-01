@@ -63,18 +63,18 @@ export interface VhdlExportResult {
 /**
  * Node types that are top-level inputs (physical switches/buttons on Basys3)
  */
-const INPUT_NODE_TYPES = new Set(getBoundaryInputNodeTypes());
+const INPUT_NODE_TYPES = new Set<string>(getBoundaryInputNodeTypes());
 
 /**
  * Node types that are top-level outputs (physical LEDs on Basys3)
  */
-const OUTPUT_NODE_TYPES = new Set(getBoundaryOutputNodeTypes());
+const OUTPUT_NODE_TYPES = new Set<string>(getBoundaryOutputNodeTypes());
 
 /**
  * Node types handled natively by this generator.
  * All others produce a warning and are skipped.
  */
-const SUPPORTED_LOGIC_TYPES = new Set(getVhdlLogicNodeTypes());
+const SUPPORTED_LOGIC_TYPES = new Set<string>(getVhdlLogicNodeTypes());
 
 const INITIALIZED_SEQUENTIAL_TYPES = new Set([
   'DFlipFlop',

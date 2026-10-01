@@ -28,14 +28,16 @@ describe('Basys3 board surface projection', () => {
       'DP',
     ]);
 
-    for (const item of inventory.filter((candidate) => candidate.source.kind === 'board-profile')) {
+    for (const item of inventory) {
+      const source = item.source;
+      if (source.kind !== 'board-profile') continue;
       expect(item.source).toMatchObject({
         profileId: BASYS3_BOARD_PROFILE.id,
         profileVersion: BASYS3_BOARD_PROFILE.version,
       });
       expect(
         BASYS3_BOARD_PROFILE.resources.some(
-          (resource) => resource.id === item.source.resourceId && resource.alias === item.boardAlias
+          (resource) => resource.id === source.resourceId && resource.alias === item.boardAlias
         )
       ).toBe(true);
     }

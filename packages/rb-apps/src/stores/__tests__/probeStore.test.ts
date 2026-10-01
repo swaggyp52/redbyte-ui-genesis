@@ -69,7 +69,7 @@ describe('Probe Store', () => {
     expect(useProbeStore.getState().activeProbeId).toBe(id);
 
     // Wait for queueMicrotask to complete the cross-store sync
-    await new Promise((resolve) => queueMicrotask(resolve));
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
     expect(useViewStateStore.getState().selectedNodeIds.has('node-5')).toBe(true);
   });
 });

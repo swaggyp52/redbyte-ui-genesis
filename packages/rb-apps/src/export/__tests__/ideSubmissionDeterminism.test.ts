@@ -33,8 +33,8 @@ function toSimIoRows(ioRows: Array<{ id: string; label: string; direction: 'in' 
 
 function runDeterministicVerify(project: RBProject, ioRows: typeof project['ioMapping'] extends undefined ? never : NonNullable<RBProject['ioMapping']>['inputs']): ReturnType<typeof buildVerifyReport> {
   const allIoRows = [
-    ...(project.ioMapping?.inputs ?? []).map((r) => ({ ...r, direction: 'in' as const })),
-    ...(project.ioMapping?.outputs ?? []).map((r) => ({ ...r, direction: 'out' as const })),
+    ...(project.ioMapping?.inputs ?? []).map((r) => ({ ...r, label: r.label ?? r.id, direction: 'in' as const })),
+    ...(project.ioMapping?.outputs ?? []).map((r) => ({ ...r, label: r.label ?? r.id, direction: 'out' as const })),
   ];
   const rows = buildVerifyRowsDeterministicFromCircuit(
     project.circuit,

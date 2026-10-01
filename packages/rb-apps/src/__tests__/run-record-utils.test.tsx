@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { describe, it, expect } from 'vitest';
-import type { RunStimulusEvent, RunTraceSample } from '../recording/runRecord';
+import type { InputToggleStimulusEvent, RunStimulusEvent, RunTraceSample } from '../recording/runRecord';
 import {
   tickFromPosition,
   positionFromTick,
@@ -28,7 +28,7 @@ describe('run record utils', () => {
   });
 
   it('normalizes stimulus events with stable sorting', () => {
-    const events: RunStimulusEvent[] = [
+    const events: InputToggleStimulusEvent[] = [
       { tick: 5, type: 'input_toggled', nodeId: 'a', portName: 'out', value: 1 },
       { tick: 2, type: 'input_toggled', nodeId: 'b', portName: 'out', value: 0 },
       { tick: 5, type: 'input_toggled', nodeId: 'c', portName: 'out', value: 1 },
@@ -40,7 +40,7 @@ describe('run record utils', () => {
   });
 
   it('updates indexed schedule after event edits', () => {
-    const events: RunStimulusEvent[] = [
+    const events: InputToggleStimulusEvent[] = [
       { tick: 2, type: 'input_toggled', nodeId: 'a', portName: 'out', value: 1 },
       { tick: 4, type: 'input_toggled', nodeId: 'b', portName: 'out', value: 0 },
     ];
@@ -96,7 +96,7 @@ describe('run record utils', () => {
   });
 
   it('produces stable stimulus digests across reorderings', () => {
-    const events: RunStimulusEvent[] = [
+    const events: InputToggleStimulusEvent[] = [
       { tick: 2, type: 'input_toggled', nodeId: 'a', portName: 'out', value: 1 },
       { tick: 1, type: 'input_toggled', nodeId: 'b', portName: 'out', value: 0 },
     ];

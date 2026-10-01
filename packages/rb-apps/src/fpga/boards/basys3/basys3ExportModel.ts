@@ -67,11 +67,21 @@ export function buildBasys3ExportModel(
   });
   const simModel = buildSimulationModel(ir);
   const bindingRefs = buildTopLevelBindingRefs(ioMapping, ir);
+  const netlist = netlistFromIr(ir);
+  const configByNodeId = new Map(
+    semanticCircuit.nodes.map((node) => [node.id, node.config] as const)
+  );
+  // Every board-export entry point must retain the register's reset/enable
+  // contract, including direct bundle callers outside the project service.
+  for (const node of netlist.nodes) {
+    const config = configByNodeId.get(node.id);
+    if (config) node.config = { ...config };
+  }
 
   return {
     ir,
     simModel,
-    netlist: netlistFromIr(ir),
+    netlist,
     topPorts: bindingRefs.topPorts,
     topInputBindings: bindingRefs.topInputBindings,
     topOutputBindings: bindingRefs.topOutputBindings,

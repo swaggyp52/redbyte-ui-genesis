@@ -42,6 +42,7 @@ export function evaluateChecks(labTemplate, events) {
     const eventCount = orderedEvents.length;
     const hwTickSpan = computeHwTickSpan(orderedEvents);
     const results = checks.map((check) => {
+        const identity = { id: check.id, type: check.type };
         if (check.type === 'min_events') {
             const pass = eventCount >= check.min;
             return {
@@ -71,8 +72,7 @@ export function evaluateChecks(labTemplate, events) {
             };
         }
         return {
-            id: check.id,
-            type: check.type,
+            ...identity,
             pass: false,
             message: 'unknown check type',
         };

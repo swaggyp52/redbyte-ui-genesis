@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { verifyEvidenceBundle } from '../verifyEvidence';
 import { EvidenceBundle } from '../../evidenceSchema';
 import { canonicalizeEvidence, hashEvidence } from '../evidenceHash';
@@ -18,24 +19,26 @@ describe('Evidence Verification', () => {
     // Compute correct hash
     const { integrity, ...withoutIntegrity } = validEvidence;
     const canonical = canonicalizeEvidence(withoutIntegrity);
-    const { hash, bytes } = hashEvidence(canonical);
+    const { hash, hashedBytes } = hashEvidence(canonical);
     validEvidence.integrity.integrityHash = hash;
-    validEvidence.integrity.hashedBytes = bytes;
+    validEvidence.integrity.hashedBytes = hashedBytes;
     expect(verifyEvidenceBundle(validEvidence).status).toBe('PASS');
   });
   it('fails verification for tampered evidence', () => {
     const { integrity, ...withoutIntegrity } = validEvidence;
     const canonical = canonicalizeEvidence(withoutIntegrity);
-    const { hash, bytes } = hashEvidence(canonical);
+    const { hash, hashedBytes } = hashEvidence(canonical);
     const seeded = {
       ...validEvidence,
-      integrity: { ...validEvidence.integrity, integrityHash: hash, hashedBytes: bytes },
+      integrity: { ...validEvidence.integrity, integrityHash: hash, hashedBytes },
     };
     const tampered = { ...seeded, app: { version: 'tampered' } };
-    expect(verifyEvidenceBundle(tampered as any).status).toBe('FAIL');
+    expect(verifyEvidenceBundle(tampered).status).toBe('FAIL');
   });
   it('errors for unsupported schemaVersion', () => {
-    const unsupported = { ...validEvidence, schemaVersion: '0.9' };
-    expect(verifyEvidenceBundle(unsupported as any).status).toBe('ERROR');
+    const unsupported: EvidenceBundle = { ...validEvidence };
+    // Deliberately corrupt the wire-level schema discriminator to exercise runtime validation.
+    Object.defineProperty(unsupported, 'schemaVersion', { value: '0.9' });
+    expect(verifyEvidenceBundle(unsupported).status).toBe('ERROR');
   });
 });

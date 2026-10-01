@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Circuit, CircuitV1, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
+import { type Circuit, toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
+import type { CircuitV1 } from '@redbyte/rb-utils';
 
 /**
  * Round-trip test for Circuit <-> CircuitV1 conversion

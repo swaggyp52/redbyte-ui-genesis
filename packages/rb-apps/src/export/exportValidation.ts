@@ -4,7 +4,10 @@
 // Scope (v1): Check entity naming, port parity, identifier hygiene.
 // Does NOT perform synthesis simulation, but validates structural requirements.
 
-import type { RBProject } from '@redbyte/rb-circuit';
+import type { RBProject } from './projectFormat';
+import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
+import { getBoundaryInputNodeTypes, getBoundaryOutputNodeTypes } from '@redbyte/rb-logic-core';
+import { resolveBasys3PackagePin } from '../fpga/boards/basys3/basys3Pins';
 
 export interface ExportValidationResult {
   ok: boolean;
@@ -38,9 +41,11 @@ export function validateExportForBasys3(project: RBProject): ExportValidationRes
   }
 
   // 2. Extract port nodes from circuit (INPUT/OUTPUT types)
-  const ports = project.circuit.nodes.filter(
-    (n) => n.type === 'INPUT' || n.type === 'OUTPUT'
-  );
+  const boundaryTypes = new Set<string>([
+    ...getBoundaryInputNodeTypes(),
+    ...getBoundaryOutputNodeTypes(),
+  ]);
+  const ports = project.circuit.nodes.filter((node) => boundaryTypes.has(node.type));
 
   if (ports.length === 0) {
     warnings.push('Circuit has no I/O ports');
@@ -53,7 +58,7 @@ export function validateExportForBasys3(project: RBProject): ExportValidationRes
     'library', 'use', 'type', 'record', 'array', 'is', 'in', 'out', 'inout',
   ]);
 
-  const illegalCharRE = /[^a-zA-Z0-9_]/g;
+  const illegalCharRE = /[^a-zA-Z0-9_]/;
   const portNames = new Set<string>();
 
   for (const port of ports) {
@@ -83,50 +88,33 @@ export function validateExportForBasys3(project: RBProject): ExportValidationRes
     }
   }
 
-  // 4. Validate IO mapping (if present)
-  if (project.ioMapping && Object.keys(project.ioMapping).length > 0) {
-    const mappedPorts = Object.keys(project.ioMapping);
-    const allPortNames = ports.map((p) => p.label || p.id);
-
-    for (const mappedPort of mappedPorts) {
-      if (!allPortNames.includes(mappedPort)) {
-        errors.push(
-          `IO mapping references unknown port '${mappedPort}' (not in circuit)`
-        );
+  // 4. Validate the canonical structured mapping (V2 takes precedence).
+  const ioMapping = resolveIoMappingFromProjectFields(project);
+  const mappingRows = ioMapping ? [...ioMapping.inputs, ...ioMapping.outputs] : [];
+  if (mappingRows.length > 0) {
+    const mappedNodeIds = new Set<string>();
+    for (const row of mappingRows) {
+      const node = ports.find((port) => port.id === row.nodeId);
+      const portName = row.label || node?.label || row.nodeId;
+      if (!node) {
+        errors.push(`IO mapping references unknown port '${portName}' (not in circuit)`);
+        continue;
+      }
+      if (row.pin?.trim()) mappedNodeIds.add(row.nodeId);
+      if (row.pin?.trim() && !resolveBasys3PackagePin(row.pin)) {
+        warnings.push(`Pin '${row.pin}' for port '${portName}' may not be valid for Basys3`);
       }
     }
-
-    // Check for unmatched ports (may be OK, but warn)
-    const unmappedPorts = allPortNames.filter((p) => !mappedPorts.includes(p));
+    const unmappedPorts = ports
+      .filter((port) => !mappedNodeIds.has(port.id))
+      .map((port) => port.label || port.id);
     if (unmappedPorts.length > 0) {
       warnings.push(
         `Ports not in IO mapping: ${unmappedPorts.join(', ')} (will export with unassigned pins)`
       );
     }
-  } else {
-    // No IO mapping provided
-    if (ports.length > 0) {
-      warnings.push('No IO mapping provided; exported design will not have pin assignments');
-    }
-  }
-
-  // 5. Check for Basys3 pin validity (if mapping provided)
-  if (project.ioMapping) {
-    const basys3Pins = new Set([
-      'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13', // Switches
-      'U16', 'E19', 'U19', 'V19', 'W18', 'U18', 'U17', 'U14', // LEDs
-      'D19', 'D20', 'L20', 'L19', // Buttons
-      'W5', // Clock
-      'D10', 'A9', // UART
-      'L19', // Reset (common)
-      // Add more as needed
-    ]);
-
-    for (const [portName, pin] of Object.entries(project.ioMapping)) {
-      if (!basys3Pins.has(pin)) {
-        warnings.push(`Pin '${pin}' for port '${portName}' may not be valid for Basys3`);
-      }
-    }
+  } else if (ports.length > 0) {
+    warnings.push('No IO mapping provided; exported design will not have pin assignments');
   }
 
   return {

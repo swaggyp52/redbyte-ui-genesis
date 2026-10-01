@@ -2,6 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
+import { getConnectionNodeId } from './connectionUtils';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ChipPort } from '../stores/chipStore';
 
@@ -76,8 +77,8 @@ function analyzeCircuitTopology(circuit: Circuit): {
   const hasOutgoing = new Set<string>();
 
   circuit.connections.forEach((conn) => {
-    const fromId = conn.from.nodeId;
-    const toId = conn.to.nodeId;
+    const fromId = getConnectionNodeId(conn.from);
+    const toId = getConnectionNodeId(conn.to);
 
     // Ignore self-loops for topology analysis
     if (fromId !== toId) {

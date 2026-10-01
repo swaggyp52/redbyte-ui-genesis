@@ -68,6 +68,7 @@ export const getOscilloscopeHoverInfo = ({
     const data = probeData.get(probe.id);
     if (!data || data.samples.length === 0) return;
     const sample = findClosestSample(data.samples, hoverTime);
+    if (typeof sample.value !== 'number' || !Number.isFinite(sample.value)) return;
     const traceY = height / 2 - (sample.value * voltageScale * height) / 4;
     const distance = Math.abs(y - traceY);
     if (distance <= maxDistance && (!best || distance < Math.abs(best.y - y))) {

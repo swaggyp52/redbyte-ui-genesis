@@ -18,6 +18,11 @@ import { useCircuitStore } from '../stores/circuitStore';
 import { CircuitEngine, TickEngine } from '@redbyte/rb-logic-core';
 import type { Circuit, Node } from '@redbyte/rb-logic-core';
 
+function requireEndpointNodeId(endpoint: Circuit['connections'][number]['from']): string {
+  if (typeof endpoint === 'string') throw new Error('Expected canonical connection endpoints');
+  return endpoint.nodeId;
+}
+
 describe('Playground Stabilization', () => {
   let initialCircuit: Circuit;
 
@@ -61,6 +66,7 @@ describe('Playground Stabilization', () => {
       const node = circuit.nodes[0];
 
       expect(node.position).toBeDefined();
+      if (!node.position) throw new Error('Added component must have a position');
       expect(typeof node.position.x).toBe('number');
       expect(typeof node.position.y).toBe('number');
       expect(node.id).toBeDefined();
@@ -104,8 +110,8 @@ describe('Playground Stabilization', () => {
       const circuit2 = useCircuitStore.getState().circuit;
       const updatedNode = circuit2.nodes.find(n => n.id === nodeId);
 
-      expect(updatedNode?.position.x).toBe(100);
-      expect(updatedNode?.position.y).toBe(200);
+      expect(updatedNode?.position?.x).toBe(100);
+      expect(updatedNode?.position?.y).toBe(200);
       expect(updatedNode?.position).not.toEqual(originalPosition);
     });
 
@@ -168,8 +174,8 @@ describe('Playground Stabilization', () => {
 
       const finalCircuit = useCircuitStore.getState().circuit;
       expect(finalCircuit.connections).toHaveLength(1);
-      expect(finalCircuit.connections[0].from.nodeId).toBe(switchNode!.id);
-      expect(finalCircuit.connections[0].to.nodeId).toBe(lampNode!.id);
+      expect(requireEndpointNodeId(finalCircuit.connections[0].from)).toBe(switchNode!.id);
+      expect(requireEndpointNodeId(finalCircuit.connections[0].to)).toBe(lampNode!.id);
     });
 
     it('should prevent invalid wire (output to output)', () => {
@@ -235,7 +241,7 @@ describe('Playground Stabilization', () => {
       // Redo
       store.redo();
       expect(useCircuitStore.getState().circuit.connections).toHaveLength(1);
-      expect(useCircuitStore.getState().circuit.connections[0].from.nodeId).toBe(switchNode.id);
+      expect(requireEndpointNodeId(useCircuitStore.getState().circuit.connections[0].from)).toBe(switchNode.id);
     });
 
     it('should restore wire after node deletion undo', () => {
@@ -277,8 +283,8 @@ describe('Playground Stabilization', () => {
       const restoredCircuit = useCircuitStore.getState().circuit;
       expect(restoredCircuit.nodes).toHaveLength(2);
       expect(restoredCircuit.connections).toHaveLength(1);
-      expect(restoredCircuit.connections[0].from.nodeId).toBe(switchNode.id);
-      expect(restoredCircuit.connections[0].to.nodeId).toBe(lampNode.id);
+      expect(requireEndpointNodeId(restoredCircuit.connections[0].from)).toBe(switchNode.id);
+      expect(requireEndpointNodeId(restoredCircuit.connections[0].to)).toBe(lampNode.id);
     });
   });
 

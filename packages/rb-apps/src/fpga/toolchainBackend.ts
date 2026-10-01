@@ -383,7 +383,7 @@ function normalizeSources(input: ToolchainProjectInput | undefined): HdlSource[]
   if (!input) return [];
   return [...(input.sources ?? [])]
     .filter((source) => typeof source.path === 'string' && source.path.trim().length > 0)
-    .map((source) => ({
+    .map((source): HdlSource => ({
       path: source.path,
       language: source.language === 'vhdl' ? 'vhdl' : 'verilog',
       text: source.text ?? '',
@@ -485,7 +485,7 @@ function normalizeSynthRequest(input: SynthRequest): SynthRequest {
   const top = normalizeSynthTop(input.top) ?? 'top';
   const sources = Array.isArray(input.sources)
     ? input.sources
-        .map((source) => ({
+        .map((source): SynthRequest['sources'][number] => ({
           path: normalizeSynthSourcePath(source?.path ?? '') ?? '',
           language: source?.language === 'verilog' ? 'verilog' : 'verilog',
           text: typeof source?.text === 'string' ? source.text : '',
@@ -571,6 +571,29 @@ function makeEntrySink(run_id: string, sink?: ToolchainLogSink) {
     sink?.log(entry);
   };
   return { entries, emit };
+}
+
+// The diagnostics endpoint is external input. Preserve only fields proved at runtime.
+function parseBridgeDiagnostics(value: unknown) {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const programmer = raw.programmer && typeof raw.programmer === 'object'
+    ? raw.programmer as Record<string, unknown> : {};
+  const capabilities = programmer.capabilities && typeof programmer.capabilities === 'object'
+    ? programmer.capabilities as Record<string, unknown> : {};
+  return {
+    reachable: raw.reachable === true,
+    version: typeof raw.version === 'string' ? raw.version : undefined,
+    uptimeMs: typeof raw.uptimeMs === 'number' ? raw.uptimeMs : undefined,
+    activeRunCount: typeof raw.activeRunCount === 'number' ? raw.activeRunCount : undefined,
+    lastErrorCode: typeof raw.lastErrorCode === 'string' ? raw.lastErrorCode : undefined,
+    programmer: {
+      found: programmer.found === true,
+      version: typeof programmer.version === 'string' ? programmer.version : undefined,
+      pathHash: typeof programmer.pathHash === 'string' ? programmer.pathHash : undefined,
+      capabilities: { program: capabilities.program === true, detect: capabilities.detect === true },
+    },
+  };
 }
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number, init?: RequestInit) {
@@ -2097,7 +2120,7 @@ function normalizeBuildpackToolStatus(rawTool: unknown): BuildpackToolStatus | u
       : source === 'bundled' || source === 'buildpack'
         ? 'unknown'
         : 'unknown';
-  const normalized = {
+  const normalized: BuildpackToolStatus = {
     ok: tool.ok === true,
     source,
     status,
@@ -2114,7 +2137,7 @@ function normalizeBuildpackStatusResult(input: BuildpackStatusResult): Buildpack
   const runId = typeof input.run_id === 'string' ? input.run_id : createRunId('buildpack-status');
   const installed = Array.isArray(input.installed)
     ? input.installed
-        .map((pack) => ({
+        .map((pack): BuildpackStatusResult['installed'][number] => ({
           name: typeof pack.name === 'string' ? pack.name : 'unknown',
           version: typeof pack.version === 'string' ? pack.version : 'unknown',
           platformKey: typeof pack.platformKey === 'string' ? pack.platformKey : null,
@@ -4673,7 +4696,7 @@ function makeStubBackend(id: ToolchainBackendId): ToolchainBackend {
     },
     async doctorReportV2() {
       const diagnosticsUrl = `${BRIDGE_URL}/diagnostics`;
-      let diagnostics: {
+      type BridgeDiagnostics = {
         reachable?: boolean;
         version?: string;
         uptimeMs?: number;
@@ -4685,12 +4708,13 @@ function makeStubBackend(id: ToolchainBackendId): ToolchainBackend {
           pathHash?: string;
           capabilities?: { program?: boolean; detect?: boolean };
         };
-      } | null = null;
+      };
+      let diagnostics: BridgeDiagnostics | null = null;
 
       if (typeof fetch !== 'undefined') {
         try {
           const response = await fetchJsonWithTimeout(diagnosticsUrl, 2500);
-          diagnostics = (response.data ?? null) as typeof diagnostics;
+          diagnostics = parseBridgeDiagnostics(response.data);
         } catch {
           diagnostics = null;
         }
@@ -4705,7 +4729,7 @@ function makeStubBackend(id: ToolchainBackendId): ToolchainBackend {
 
       const board = detectBoardsResult?.boards[0];
       const boardError = detectBoardsResult?.ok ? null : detectBoardsResult?.tools?.openFPGALoader?.error ?? 'board_missing';
-      const lastErrorCode = mapHardwareErrorCode(diagnostics?.lastErrorCode ?? boardError ?? '') ?? null;
+      const lastErrorCode = mapHardwareErrorCode(diagnostics?.lastErrorCode ?? boardError ?? '') ?? undefined;
 
       return buildDoctorReportV2({
         backendId: id,

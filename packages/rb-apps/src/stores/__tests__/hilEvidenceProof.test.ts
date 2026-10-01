@@ -1,82 +1,105 @@
-import { describe, it, expect, vi } from 'vitest';
-import { useLabWorkflowStore } from '../stores/useLabWorkflowStore';
-import { useHardwareSessionStore } from '../stores/hardwareSessionStore';
-import { exportV2Bundle } from '../utils/bundleExport';
-import { hardwareClient } from '../services/hardwareClient';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createHash, webcrypto } from 'node:crypto';
+import JSZip from 'jszip';
+import type { CapsuleObject } from '@redbyte/rb-fpga-signing';
+import { useLabWorkflowStore, type LabHardwareSnapshot } from '../useLabWorkflowStore';
+import { exportV2Bundle, type ExportV2Options } from '../../utils/bundleExport';
 
-// MOCKS FOR BROWSER APIS
-if (typeof global.crypto === 'undefined') {
-    (global as any).crypto = {
-        subtle: {
-            digest: async () => new Uint8Array(32).buffer
-        }
+// This is software preservation proof for synthetic I/O. No bridge connection,
+// physical switch interaction, board programming or hardware acceptance is exercised.
+const readBlob = (blob: Blob): Promise<ArrayBuffer> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+        if (reader.result !== null && typeof reader.result !== 'string') resolve(reader.result);
+        else reject(new Error('Expected bundle bytes from FileReader'));
     };
-}
-if (typeof global.URL.createObjectURL === 'undefined') {
-    global.URL.createObjectURL = vi.fn(() => 'blob:abc');
-    global.URL.revokeObjectURL = vi.fn();
-}
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read bundle bytes'));
+    reader.readAsArrayBuffer(blob);
+});
 
-describe('HIL Evidence Proof (COM7 + Live Bits)', () => {
-    it('should capture real-time switch bits into snapshots and bundles', async () => {
-        const workflow = useLabWorkflowStore.getState();
-        const hardware = useHardwareSessionStore.getState();
+describe('Lab snapshot and bundle preservation (synthetic COM7 metadata)', () => {
+    beforeAll(() => vi.stubGlobal('crypto', webcrypto));
+    afterAll(() => vi.unstubAllGlobals());
+    beforeEach(() => useLabWorkflowStore.getState().reset());
+    afterEach(() => useLabWorkflowStore.getState().reset());
 
-        // 1. SETUP SESSION
+    it('preserves supplied switch bits in the store and actual ZIP contents', async () => {
         useLabWorkflowStore.setState({
             selectedLabId: 'lab0',
             studentIdentity: { name: 'Test Student', id: '12345' },
-            currentStep: 'hardware'
+            currentStep: 'hardware',
         });
 
-        // 2. SIMULATE PHYSICAL INTERACTION (SW0 ON)
-        // Mock the hardwareClient to emit an IO update
-        const snapshot1 = {
-            timestamp: new Date().toISOString(),
-            inputs: { SW: 1 }, // 0000_0000_0000_0001
+        // Synthetic bridge-shaped payloads retain the original bit groups and metadata.
+        const snapshot1: LabHardwareSnapshot = {
+            timestamp: '2026-10-01T00:00:00.000Z',
+            inputs: { SW: 1 },
             outputs: {},
             source: 'bridge',
-            port: 'COM7'
+            port: 'COM7',
         };
-
-        // Manually trigger what the UI handleCaptureSnapshot would do
+        const snapshot2: LabHardwareSnapshot = {
+            timestamp: '2026-10-01T00:00:01.000Z',
+            inputs: { SW: 3 },
+            outputs: {},
+            source: 'bridge',
+            port: 'COM7',
+        };
         useLabWorkflowStore.getState().addHardwareSnapshot(snapshot1);
-
-        // 3. SIMULATE PHYSICAL INTERACTION (SW0 + SW1 ON)
-        const snapshot2 = {
-            timestamp: new Date().toISOString(),
-            inputs: { SW: 3 }, // 0000_0000_0000_0011
-            outputs: {},
-            source: 'bridge',
-            port: 'COM7'
-        };
         useLabWorkflowStore.getState().addHardwareSnapshot(snapshot2);
 
-        // 4. VERIFY STORE STATE
         const finalSnapshots = useLabWorkflowStore.getState().hardwareSnapshots;
         expect(finalSnapshots).toHaveLength(2);
         expect(finalSnapshots[0].inputs.SW).toBe(1);
         expect(finalSnapshots[1].inputs.SW).toBe(3);
+        expect(finalSnapshots).toEqual([snapshot1, snapshot2]);
 
-        console.log('SNAPSHOT 1 (SW0):', JSON.stringify(finalSnapshots[0], null, 2));
-        console.log('SNAPSHOT 2 (SW0+SW1):', JSON.stringify(finalSnapshots[1], null, 2));
-
-        // 5. GENERATE BUNDLE
-        const result = await exportV2Bundle({
+        const eventLog = [
+            { type: 'hw_connect', port: 'COM7', status: 'online' },
+            { type: 'snapshot_captured', data: snapshot1 },
+            { type: 'snapshot_captured', data: snapshot2 },
+        ];
+        const options: ExportV2Options = {
             labId: 'lab0',
             studentId: '12345',
             studentName: 'Test Student',
-            attemptId: 'att_lab0_12345_6789',
-            completedSteps: ['selection', 'specification', 'design', 'simulation', 'hardware'],
             hardwareSnapshots: finalSnapshots,
-            eventLog: [
-                { type: 'hw_connect', port: 'COM7', status: 'online' },
-                { type: 'snapshot_captured', data: snapshot1 },
-                { type: 'snapshot_captured', data: snapshot2 }
-            ]
-        } as any);
-
+            eventLog,
+        };
+        const result = await exportV2Bundle(options);
         expect(result.blob).toBeDefined();
-        console.log('EXPORT FILENAME:', result.filename);
+        expect(result.blob.size).toBeGreaterThan(0);
+        expect(result.filename).toBe(`RB-lab0-Test_Student-${result.timestamp.split('T')[0]}.rb-lab.zip`);
+
+        const zip = await JSZip.loadAsync(await readBlob(result.blob));
+        const requiredFile = (name: string) => {
+            const file = zip.file(name);
+            expect(file, name).not.toBeNull();
+            if (!file) throw new Error(`Missing actual bundle entry: ${name}`);
+            return file;
+        };
+        expect(JSON.parse(await requiredFile('manifest.json').async('string'))).toMatchObject({
+            schema_version: 'v2',
+            lab_id: 'lab0',
+            student: { id: '12345', name: 'Test Student' },
+            board: 'basys3',
+            bitstream_present: false,
+            trace_summary: { events: 0, crc_failures: 0 },
+        });
+        expect(JSON.parse(await requiredFile('proofs/snapshots.json').async('string'))).toEqual(finalSnapshots);
+        expect((await requiredFile('proofs/events.ndjson').async('string')).split('\n')
+            .map(line => JSON.parse(line))).toEqual(eventLog);
+        expect(await requiredFile('trace/hw_trace.ndjson').async('string')).toBe('');
+        expect(zip.file('bitstream/design.bit')).toBeNull();
+
+        const capsule: CapsuleObject = JSON.parse(await requiredFile('integrity/capsule.json').async('string'));
+        expect(capsule.algo).toBe('sha256');
+        for (const name of ['manifest.json', 'proofs/snapshots.json', 'proofs/events.ndjson']) {
+            const bytes = await requiredFile(name).async('uint8array');
+            expect(capsule.files).toContainEqual({
+                path: name,
+                hash: createHash('sha256').update(bytes).digest('hex'),
+            });
+        }
     });
 });
