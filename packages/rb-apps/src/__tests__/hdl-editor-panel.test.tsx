@@ -735,7 +735,7 @@ describe('HdlEditorPanel', () => {
       }),
       revokeObjectURL: vi.fn(),
     } as any);
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       downloadedFileName = this.download;
     });
 
@@ -1097,7 +1097,7 @@ describe('HdlEditorPanel', () => {
       }),
       revokeObjectURL: vi.fn(),
     } as any);
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       downloadedFileName = this.download;
     });
 

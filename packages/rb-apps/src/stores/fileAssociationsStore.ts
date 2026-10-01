@@ -3,8 +3,24 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { create } from 'zustand';
-import type { FileActionTarget } from '../apps/files/fileActionTargets';
-import { FILE_ACTION_TARGETS } from '../apps/files/fileActionTargets';
+import { listApps } from '../AppRegistry';
+
+/** Caller-supplied eligibility metadata; declaring it does not register or launch an app. */
+export interface FileActionTarget {
+  id: string;
+  name: string;
+  appId: string;
+  isEligible: (resourceType: 'file' | 'folder', resourceName: string) => boolean;
+}
+
+export interface FileAssociationValidationContext {
+  /** Only currently available targets may be adopted by an association import. */
+  getKnownTargetIds: () => readonly string[];
+}
+
+const currentAppTargets: FileAssociationValidationContext = {
+  getKnownTargetIds: () => listApps().map((app) => app.manifest.id),
+};
 
 /**
  * File associations data model: resourceType → extension → targetId
@@ -105,7 +121,7 @@ function loadInitialState(): FileAssociationsState {
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store: ReturnType<typeof createFileAssociationsStore> | null = null;
 
-function createFileAssociationsStore() {
+export function createFileAssociationsStore(context: FileAssociationValidationContext = currentAppTargets) {
   return create<FileAssociationsStore>((set, get) => ({
     ...loadInitialState(),
 
@@ -227,8 +243,9 @@ function createFileAssociationsStore() {
         return { success: false };
       }
 
-      // Get all valid targetIds from FILE_ACTION_TARGETS
-      const validTargetIds = new Set(FILE_ACTION_TARGETS.map((t) => t.id));
+      // The default context uses the actual app registry. Retired app IDs are
+      // preserved as stored data, but cannot be adopted as available import targets.
+      const validTargetIds = new Set(context.getKnownTargetIds());
       const unknownTargets: string[] = [];
       const normalizedAssociations: FileAssociationsState['associations'] = {};
 
@@ -322,7 +339,9 @@ export const useFileAssociationsStore: ReturnType<typeof createFileAssociationsS
 export function resolveDefaultTarget(
   resourceType: 'file' | 'folder',
   extension: string,
-  eligibleTargets: FileActionTarget[]
+  eligibleTargets: FileActionTarget[],
+  getSavedDefault: (resourceType: 'file' | 'folder', extension: string) => string | null =
+    useFileAssociationsStore.getState().getDefaultTarget,
 ): string {
   if (eligibleTargets.length === 0) {
     throw new Error('resolveDefaultTarget called with empty eligibleTargets - caller must guard with isFileActionEligible');
@@ -331,7 +350,7 @@ export function resolveDefaultTarget(
   const normalized = normalizeExtension(extension);
 
   // Try to get saved default
-  const savedDefault = useFileAssociationsStore.getState().getDefaultTarget(resourceType, normalized);
+  const savedDefault = getSavedDefault(resourceType, normalized);
 
   // If saved default exists and is in eligibleTargets, use it
   if (savedDefault && eligibleTargets.some((t) => t.id === savedDefault)) {

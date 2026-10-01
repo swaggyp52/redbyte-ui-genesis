@@ -384,7 +384,7 @@ export async function exportEvidence(data: any): Promise<void> {
         ...data
     }, null, 2);
 
-    await fs.createFile('/' + filename, content);
+    fs.createFile('home', filename, content);
 
     if (typeof document !== 'undefined') {
         const blob = new Blob([content], { type: 'application/json' });

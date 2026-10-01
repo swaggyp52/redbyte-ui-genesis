@@ -1,13 +1,32 @@
-import { LabTransport, TransportStatus, TransportType } from '@redbyte/rb-logic-3d';
-import { hardwareClient, IOSnapshot, ConnectionState } from './hardwareClient';
+import { hardwareClient, type IOSnapshot, type ConnectionState } from './hardwareClient';
+
+export interface HardwareClientTransportOptions {
+    nodeId?: string;
+}
+
+export interface HardwareClientTransportStatus {
+    type: 'bridge';
+    connected: boolean;
+}
+
+/** Polling and interaction methods implemented by this retained adapter. */
+export interface HardwareClientTransportApi {
+    readonly type: 'bridge';
+    connect(options?: HardwareClientTransportOptions): Promise<void>;
+    disconnect(): Promise<void>;
+    getStatus(): HardwareClientTransportStatus;
+    poll(): Record<string, number>;
+    pushInteraction(nodeId: string, pinId: string, value: number): void;
+    loadPreset(nodeId: string, presetId: string): void;
+}
 
 /**
  * HardwareClientTransport bridges the global HardwareClient singleton
- * to the rb-logic-3d LabStore. This allows the 3D lab to consume
- * real-time I/O from the bridge without opening redundant WebSockets.
+ * to a polling and interaction API without opening redundant WebSockets.
+ * This adapter owns no graph, timeline, simulation store, or scene.
  */
-export class HardwareClientTransport implements LabTransport {
-    public readonly type: TransportType = 'bridge';
+export class HardwareClientTransport implements HardwareClientTransportApi {
+    public readonly type = 'bridge';
     private lastOutputs: Record<string, number> = {};
     private isConnected: boolean = false;
     private unsubscribeIO: (() => void) | null = null;
@@ -19,7 +38,7 @@ export class HardwareClientTransport implements LabTransport {
         this.isConnected = state.status === 'connected';
     }
 
-    async connect(options?: any): Promise<void> {
+    async connect(options?: HardwareClientTransportOptions): Promise<void> {
         if (options?.nodeId) {
             this.activeNodeId = options.nodeId;
         }
@@ -65,7 +84,7 @@ export class HardwareClientTransport implements LabTransport {
         this.unsubscribeStatus = null;
     }
 
-    getStatus(): TransportStatus {
+    getStatus(): HardwareClientTransportStatus {
         return {
             type: 'bridge',
             connected: this.isConnected,

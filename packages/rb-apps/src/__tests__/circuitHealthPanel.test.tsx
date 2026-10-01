@@ -34,7 +34,7 @@ describe('CircuitHealthPanel', () => {
     render(
       <CircuitHealthPanel
         circuit={TEST_CIRCUIT}
-        onFocusNode={(nodeId) => useViewStateStore.getState().setHighlightedNode(nodeId, 0)}
+        onFocusNode={(nodeId: string) => useViewStateStore.getState().setHighlightedNode(nodeId, 0)}
       />
     );
 

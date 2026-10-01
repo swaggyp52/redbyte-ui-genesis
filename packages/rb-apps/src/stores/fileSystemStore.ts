@@ -3,9 +3,10 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import { create } from 'zustand';
-import type { FileSystemState, FileEntry } from '../apps/files/fsTypes';
+import type { FileSystemState, FileEntry } from './fileSystemModel';
 import {
   createInitialFsState,
+  decodeFileSystemEnvelope,
   createFolder as fsCreateFolder,
   createFile as fsCreateFile,
   renameEntry as fsRenameEntry,
@@ -14,7 +15,7 @@ import {
   getPath as fsGetPath,
   resolveFolderLink as fsResolveFolderLink,
   getFallbackFolderId as fsGetFallbackFolderId,
-} from '../apps/files/fsModel.js';
+} from './fileSystemModel';
 import { recordAuditTransition } from '../utils/audit.js';
 
 const STORAGE_KEY = 'rb:file-system';
@@ -62,7 +63,7 @@ type FileSystemStore = FileSystemState & FileSystemActions;
  */
 function serializeState(envelope: FileSystemPersistenceEnvelope): string {
   // Sort folder keys and entries for deterministic output
-  const sortedFolders: Record<string, any> = {};
+  const sortedFolders: FileSystemState['folders'] = {};
   const folderKeys = Object.keys(envelope.state.folders).sort();
 
   for (const key of folderKeys) {
@@ -98,18 +99,8 @@ function loadPersistedState(): FileSystemState | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
 
-    const envelope = JSON.parse(raw) as FileSystemPersistenceEnvelope;
-
-    // Validate envelope structure
-    if (envelope.version !== 1) return null;
-    if (!envelope.state || typeof envelope.state !== 'object') return null;
-
-    // Validate minimal shape
-    if (!envelope.state.folders || typeof envelope.state.folders !== 'object') return null;
-    if (!Array.isArray(envelope.state.roots)) return null;
-    if (typeof envelope.state.nextId !== 'number') return null;
-
-    return envelope.state;
+    const envelope: unknown = JSON.parse(raw);
+    return decodeFileSystemEnvelope(envelope);
   } catch {
     // JSON parse error or validation failure -> return null for fallback
     return null;
@@ -140,7 +131,7 @@ function persistState(state: FileSystemState): void {
 // Lazy-init singleton to prevent TDZ crash from circular imports
 let _store: ReturnType<typeof createFileSystemStore> | null = null;
 
-function createFileSystemStore() {
+export function createFileSystemStore() {
   return create<FileSystemStore>((set, get) => {
     // Load persisted state or fall back to default seed
     const persistedState = loadPersistedState();
@@ -246,9 +237,13 @@ function createFileSystemStore() {
     getAllFiles: () => {
       const fs = get();
       const allFiles: FileEntry[] = [];
+      const visited = new Set<string>();
 
-      // Recursively collect all files from all folders
+      // Resolve retained root links and visit a shared/imported folder only once.
       function collectFilesFromFolder(folderId: string): void {
+        folderId = fsResolveFolderLink(folderId);
+        if (visited.has(folderId)) return;
+        visited.add(folderId);
         const folder = fs.folders[folderId];
         if (!folder) return;
 
@@ -355,26 +350,8 @@ function createFileSystemStore() {
     },
 
     importJson: (json: string) => {
-      const envelope = JSON.parse(json) as FileSystemPersistenceEnvelope;
-
-      // Validate envelope
-      if (envelope.version !== 1) {
-        throw new Error('Invalid persistence version');
-      }
-      if (!envelope.state || typeof envelope.state !== 'object') {
-        throw new Error('Invalid state shape');
-      }
-
-      // Validate minimal schema
-      if (!envelope.state.folders || typeof envelope.state.folders !== 'object') {
-        throw new Error('Missing or invalid folders');
-      }
-      if (!Array.isArray(envelope.state.roots)) {
-        throw new Error('Missing or invalid roots');
-      }
-      if (typeof envelope.state.nextId !== 'number') {
-        throw new Error('Missing or invalid nextId');
-      }
+      const parsed: unknown = JSON.parse(json);
+      const importedState = decodeFileSystemEnvelope(parsed);
 
       // Replace state atomically
       const before: FileSystemState = {
@@ -382,13 +359,13 @@ function createFileSystemStore() {
         roots: get().roots,
         nextId: get().nextId,
       };
-      set(envelope.state);
-      persistState(envelope.state);
+      set(importedState);
+      persistState(importedState);
       recordAuditTransition({
         scope: 'file_system',
         action: 'import',
         before,
-        after: envelope.state,
+        after: importedState,
       });
     },
 
@@ -415,7 +392,7 @@ function createFileSystemStore() {
 }
 
 /**
- * Global filesystem store for Files app and search provider.
+ * Retained arbitrary file-content owner for evidence and trace utilities.
  * Provides centralized access to filesystem state with persistence.
  * Lazy-initialized to prevent TDZ crash from circular imports.
  */

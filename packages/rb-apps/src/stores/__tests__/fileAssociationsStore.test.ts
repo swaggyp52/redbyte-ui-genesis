@@ -4,13 +4,59 @@
 
 import { describe, it, expect, afterEach } from 'vitest';
 import {
-  useFileAssociationsStore,
-  resolveDefaultTarget,
+  createFileAssociationsStore,
+  useFileAssociationsStore as productionAssociationsStore,
+  resolveDefaultTarget as resolveTarget,
   loadFileAssociations,
+  type FileActionTarget,
 } from '../fileAssociationsStore';
-import type { FileActionTarget } from '../../apps/files/fileActionTargets';
+import { getApp } from '../../AppRegistry';
+
+// These string IDs are data fixtures for normalization/import/fallback tests,
+// not restored applications or a production target registry.
+const useFileAssociationsStore = createFileAssociationsStore({
+  getKnownTargetIds: () => ['text-viewer', 'logic-playground'],
+});
+const resolveDefaultTarget = (
+  resourceType: 'file' | 'folder', extension: string, eligibleTargets: FileActionTarget[],
+) => resolveTarget(resourceType, extension, eligibleTargets,
+  useFileAssociationsStore.getState().getDefaultTarget);
 
 describe('PHASE_AA: File Associations Store', () => {
+  it('rejects retired IDs against the real default registry without restoring apps', () => {
+    expect(getApp('text-viewer')).toBeNull();
+    expect(getApp('logic-playground')).toBeNull();
+    const store = productionAssociationsStore.getState();
+    store.resetAll();
+    const result = store.importJson(JSON.stringify({ associations: {
+      file: { txt: 'text-viewer', rblogic: 'logic-playground' },
+    } }));
+    expect(result).toEqual({ success: true, unknownTargets: ['text-viewer', 'logic-playground'] });
+    expect(productionAssociationsStore.getState().listAssociations()).toEqual([]);
+    store.resetAll();
+  });
+
+  it('retains persisted string IDs as data while resolver respects currently eligible targets', () => {
+    const store = productionAssociationsStore.getState();
+    store.resetAll();
+    store.setDefaultTarget('file', 'txt', 'text-viewer');
+    expect(store.getDefaultTarget('file', 'txt')).toBe('text-viewer');
+    expect(JSON.parse(store.exportJson()).associations.file.txt).toBe('text-viewer');
+    expect(() => resolveTarget('file', 'txt', [])).toThrow('empty eligibleTargets');
+    store.resetAll();
+  });
+
+  it('reevaluates the explicit validation context on every import', () => {
+    let knownIds = ['viewer-a'];
+    const isolated = createFileAssociationsStore({ getKnownTargetIds: () => knownIds });
+    const payload = JSON.stringify({ associations: { file: { txt: 'viewer-a' } } });
+    expect(isolated.getState().importJson(payload)).toEqual({ success: true, unknownTargets: undefined });
+    expect(isolated.getState().getDefaultTarget('file', 'txt')).toBe('viewer-a');
+    knownIds = [];
+    expect(isolated.getState().importJson(payload)).toEqual({ success: true, unknownTargets: ['viewer-a'] });
+    expect(isolated.getState().getDefaultTarget('file', 'txt')).toBeNull();
+  });
+
   afterEach(() => {
     localStorage.clear();
     // Reset store to initial state
@@ -159,8 +205,8 @@ describe('PHASE_AA: File Associations Store', () => {
       const loaded = loadFileAssociations();
 
       expect(loaded).not.toBe(null);
-      expect(loaded!.associations.file.txt).toBe('text-viewer');
-      expect(loaded!.associations.file.rblogic).toBe('logic-playground');
+      expect(loaded?.associations.file?.txt).toBe('text-viewer');
+      expect(loaded?.associations.file?.rblogic).toBe('logic-playground');
     });
 
     it('handles corrupted JSON in localStorage', () => {

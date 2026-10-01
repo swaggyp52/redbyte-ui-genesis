@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { type RedByteCapsule } from '../hardware/capsuleFormat';
 import { loadCapsuleFromFS } from '../utils/traceFileUtils';
-import { PanelLayout } from '../components/PanelLayout';
+import { LabPanelLayout } from './LabPanelLayout';
 
 export const InspectorPanel: React.FC = () => {
     const [capsule, setCapsule] = useState<RedByteCapsule | null>(null);
@@ -40,7 +40,7 @@ export const InspectorPanel: React.FC = () => {
     };
 
     return (
-        <PanelLayout
+        <LabPanelLayout
             className="w-80 border-l border-gray-800 bg-gray-900"
             header={
                 <div className="flex items-center justify-between">
@@ -129,6 +129,6 @@ export const InspectorPanel: React.FC = () => {
                     No evidence loaded.
                 </div>
             )}
-        </PanelLayout>
+        </LabPanelLayout>
     );
 };
