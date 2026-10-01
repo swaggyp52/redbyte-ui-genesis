@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useLabStore } from '@redbyte/rb-logic-3d';
+import { useLabStore } from '../internal/physicalLabModel';
 import { VIRTUAL_LAB_TEMPLATES } from '../apps/virtual-lab-templates';
 import { toast } from '@redbyte/rb-primitives';
 import { getFriendlyErrorMessage } from '../utils/studentErrors';
@@ -166,7 +166,10 @@ export const HardwarePanel: React.FC = () => {
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <span className="text-[9px] text-gray-600 uppercase font-bold">Target</span>
-                                    <select className="w-full bg-black border border-white/10 rounded px-2 py-1 outline-none text-white text-[10px]" value={target} onChange={(e) => setTarget(e.target.value as any)} title="Target Board">
+                                    <select className="w-full bg-black border border-white/10 rounded px-2 py-1 outline-none text-white text-[10px]" value={target} onChange={(e) => {
+                                        const targetValue = e.target.value;
+                                        if (targetValue === 'basys3' || targetValue === 'arduino-uno') setTarget(targetValue);
+                                    }} title="Target Board">
                                         <option value="arduino-uno">Arduino UNO (AVR)</option>
                                     </select>
                                 </div>

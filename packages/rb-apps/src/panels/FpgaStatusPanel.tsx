@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLabStore } from '@redbyte/rb-logic-3d';
+import { useLabStore } from '../internal/physicalLabModel';
 import { FPGA_PRESET_DEFS } from './fpgaPresetCatalog';
 
 export const FpgaStatusPanel: React.FC = () => {
@@ -107,7 +107,10 @@ export const FpgaStatusPanel: React.FC = () => {
                                 <select
                                     className="bg-black border border-gray-700 rounded px-1 text-gray-300 outline-none h-5"
                                     value={target}
-                                    onChange={(e) => setTarget(e.target.value as any)}
+                                    onChange={(e) => {
+                                        const targetValue = e.target.value;
+                                        if (targetValue === 'basys3' || targetValue === 'arduino-uno') setTarget(targetValue);
+                                    }}
                                     disabled={activeTransportStatus.connected}
                                     title="Select Hardware Target"
                                 >
