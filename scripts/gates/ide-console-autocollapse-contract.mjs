@@ -41,8 +41,8 @@ await runIdeGate('IDE console autocollapse contract satisfied', async ({ page, b
 
   // ① Nothing is wrong, so nothing takes the room.
   assert(
-    (await consoleState(page)) === 'absent',
-    'the console must not mount itself on a workspace with no blocking diagnostic'
+    ['absent', 'collapsed'].includes(await consoleState(page)),
+    'the console must not expand itself on a workspace with no blocking diagnostic'
   );
   const problems = page.locator('[data-testid="ide-status-problems"]').first();
   if (await problems.count()) {
@@ -60,11 +60,8 @@ await runIdeGate('IDE console autocollapse contract satisfied', async ({ page, b
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   const reveal = page.locator('[data-testid="ide-show-bottom-dock"]').first();
-  assert(
-    await reveal.count(),
-    'a workspace that has a console must offer a way to open it while it is closed'
-  );
-  await reveal.click();
+  if (await reveal.count()) await reveal.click();
+  else assert(await consoleState(page) === 'collapsed', 'a mounted console must begin as a collapsed strip');
   await page.waitForSelector(CONSOLE, { timeout: 10000 });
   const opened = await consoleState(page);
   assert(
@@ -82,6 +79,14 @@ await runIdeGate('IDE console autocollapse contract satisfied', async ({ page, b
     rootState === opened,
     `the shell root says the console is "${rootState}" while the console says "${opened}"`
   );
+
+  const panelBounds = await page.locator(CONSOLE).first().boundingBox();
+  assert(panelBounds && panelBounds.height <= 28, 'collapsed diagnostics must remain a compact strip');
+  const toggle = page.locator('[data-testid="ide-console-toggle"]').first();
+  await toggle.click();
+  assert(await consoleState(page) === 'expanded', 'an explicit request must expand diagnostic output');
+  await toggle.click();
+  assert(await consoleState(page) === 'collapsed', 'closing output must restore the strip');
 
   // ③ Moving to another workspace does not expand it.
   await page.locator('[data-testid="mode-button-export"]').click();

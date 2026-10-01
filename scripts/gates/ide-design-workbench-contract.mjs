@@ -75,7 +75,11 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     'design surface should opt into edge-to-edge framing'
   );
   const consoleCount = await modeRoot.locator('[data-testid="ide-workbench-console"]').count();
-  assert(consoleCount === 0, 'quiet design should hide the empty workbench console by default');
+  if (consoleCount > 0) {
+    const consolePanel = modeRoot.locator('[data-testid="ide-workbench-console"]').first();
+    assert(await consolePanel.getAttribute('data-console-state') === 'collapsed', 'quiet design console must stay collapsed');
+    assert((await consolePanel.boundingBox()).height <= 28, 'quiet design console must remain a compact strip');
+  }
   const diagnosticsCount = await modeRoot.locator('[data-testid="ide-design-console-list"]').count();
   assert(diagnosticsCount === 0, 'quiet design should not render diagnostics chrome when there are no diagnostics');
   assert(await visible(canvas), 'design canvas marker missing');
@@ -256,8 +260,8 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   ]);
   assert(Boolean(canvasSplitBox && hdlSplitBox), 'split pane geometry unavailable');
   assert(
-    hdlSplitBox.width > canvasSplitBox.width,
-    `split mode should bias code pane wider than canvas (canvas=${canvasSplitBox.width}, code=${hdlSplitBox.width})`
+    hdlSplitBox.width >= 300 && canvasSplitBox.width >= 440,
+    `split mode must preserve a readable code editor beside an authorable canvas (canvas=${canvasSplitBox.width}, code=${hdlSplitBox.width})`
   );
   const retiredSplitToolbarCount = await modeRoot.locator('[data-testid="ide-design-split-compare-tools"]').count();
   assert(retiredSplitToolbarCount === 0, 'split mode should not restore a duplicate comparison toolbar');
@@ -276,7 +280,7 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
   // publishes ide-design-live-tick, and to Simulate. Asserting it here would be asserting a
   // feature into existence rather than protecting one, so the mode switch is asserted instead.
   assert(
-    await visible(modeRoot.locator('[data-testid="ide-design-learning-mode-live"]').first()),
+    await visible(modeRoot.locator('[data-testid="ide-design-explore"]').first()),
     'split mode must still offer the live reading through its mode control'
   );
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, runIdeGate, openDesignBoardPalette, designInputIds, selectDesignInput } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design multiselect contract satisfied', async ({ page, baseUrl }) => {
   await runDeterministicPass(page, baseUrl);
@@ -53,17 +53,12 @@ async function runDeterministicPass(page, baseUrl) {
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
 
-  const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
-  const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
-  if (!boardPaletteVisible) {
-    await page.locator('[data-testid="ide-design-palette-toggle-board"]').first().click();
-    await boardPalette.waitFor({ state: 'visible', timeout: 10000 });
-  }
+  await openDesignBoardPalette(page);
 
   await ensureSnapEnabled(page);
 
   // Board-first palette: selecting board chips enters placement mode; clicking blank
-  // canvas commits the nodes. We need ≥4 nodes for a meaningful marquee-select test.
+  // canvas commits the nodes. Four nodes make marquee selection meaningful.
   await placeBoardEntry(page, '[data-testid="ide-design-board-input-sw0"]', 0.18, 0.30);
   await placeBoardEntry(page, '[data-testid="ide-design-board-input-sw1"]', 0.18, 0.48);
   await placeBoardEntry(page, '[data-testid="ide-design-board-input-sw2"]', 0.18, 0.66);
@@ -91,7 +86,7 @@ async function runDeterministicPass(page, baseUrl) {
   });
   assert(baselineNodeCount > 0, `invalid baseline node count: ${baselineNodeCount}`);
 
-  await page.locator('[data-testid="ide-design-tool-delete"]').click();
+  await page.keyboard.press('Delete');
   await page.waitForFunction(
     (baseline) => {
       const store = window.__RB_CIRCUIT_STORE__;
@@ -136,10 +131,11 @@ async function resetWorkspace(page) {
 
 async function ensureSnapEnabled(page) {
   const snapButton = page.locator('[data-testid="ide-design-tool-snap"]').first();
-  const snapText = ((await snapButton.textContent()) ?? '').toLowerCase();
-  if (!snapText.includes('on')) {
-    await snapButton.click();
-  }
+  const menu = page.locator('[data-testid="ide-design-toolbar-overflow"]');
+  await menu.locator('summary').click();
+  if (await snapButton.getAttribute('aria-pressed') !== 'true') await snapButton.click();
+  assert(await snapButton.getAttribute('aria-pressed') === 'true', 'snap menu command must be enabled');
+  await menu.locator('summary').click();
 }
 
 async function marqueeSelectNodes(page) {

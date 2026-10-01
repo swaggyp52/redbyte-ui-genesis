@@ -17,9 +17,8 @@ await runIdeGate('IDE export blockers contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-hw-map-table"]', { timeout: 10000 });
 
-  const advancedEditor = page.locator('[data-testid="ide-hw-structured-editor"]');
-  await advancedEditor.locator('summary').first().click();
-  await advancedEditor.locator('[data-testid^="ide-hw-structured-entry-"]').first().getByRole('button', { name: 'Clear' }).click();
+  await page.locator('[data-testid^="ide-hw-map-row-action-"]').first().click();
+  await page.locator('[data-testid="ide-hw-clear-selected-resource"]').first().click();
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
@@ -40,17 +39,6 @@ await runIdeGate('IDE export blockers contract satisfied', async ({ page, baseUr
   assert(await visible(mapPinsFix), 'blocked Export must expose the direct Map Pins recovery action');
   await mapPinsFix.click();
 
-  const navigatedToHardware = await page.locator('[data-testid="ide-mode-hardware"]').first().isVisible().catch(() => false);
-  const stayedOnExport = await page.locator('[data-testid="ide-mode-export"]').first().isVisible().catch(() => false);
-  assert(
-    navigatedToHardware || stayedOnExport,
-    'mapping recovery should keep app on Export or navigate to Map Pins'
-  );
-  if (navigatedToHardware) {
-    assert(
-      await visible(page.locator('[data-testid="ide-hw-map-table"]').first()),
-      'Map Pins fix path should show the Hardware mapping table'
-    );
-  }
+  await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 10000 });
+  assert(await visible(page.locator('[data-testid="ide-hw-map-table"]')), 'Map Pins recovery must open the assignment table');
 });
-

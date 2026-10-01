@@ -219,6 +219,12 @@ async function selectDesignNode(page, nodeId) {
     nodeId,
     { timeout: 5000 },
   );
+  // Compact Design preserves the construction library until the student
+  // explicitly requests the contextual inspector.
+  const revealInspector = page.locator('[data-testid="ide-show-right-dock"]').first();
+  if (await revealInspector.isVisible().catch(() => false)) {
+    await revealInspector.click();
+  }
   await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 5000 });
   await page.waitForSelector('[data-testid="ide-design-context-current"]', { timeout: 5000 });
 }

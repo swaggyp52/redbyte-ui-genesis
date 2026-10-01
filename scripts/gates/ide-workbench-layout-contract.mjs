@@ -5,14 +5,14 @@
 // that has nothing in it yet, gaining the waveform only once a run exists.
 //
 // Migrated 2026-09-06. Three things had gone stale against a deliberately replaced interface:
-//   · the landing expected `ide-project-landing-example-*` on a flat page. The Start Center is
+//   - the landing expected `ide-project-landing-example-*` on a flat page. The Start Center is
 //     a sectioned library that opens on Course labs, and the harness already knows that path
 //     (loadStarterProject), so the gate uses it.
-//   · the dock table named `ide-inspector` and `ide-workbench-dock-toggle-*`, both deleted with
+//   - the dock table named `ide-inspector` and `ide-workbench-dock-toggle-*`, both deleted with
 //     IdeLeftRail.tsx in 24de703b6 (2026-07-25). The right dock is `ide-right-dock` and it is
 //     contextual on selection, which ide:gate:shell-layout-integrity already asserts per mode
 //     (contextualDockViolationCount); this gate no longer keeps a second, staler copy.
-//   · every mode was told whether to mount a console. The bottom panel is opt-in per surface
+//   - every mode was told whether to mount a console. The bottom panel is opt-in per surface
 //     preference now; ide:gate:console-autocollapse-contract owns that behaviour.
 // What is kept is what still has no other owner: the one-move start, a body per mode, and the
 // testbench-before-waveform invariant on Simulate.
@@ -114,7 +114,8 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
   );
   assert(preRunTestbenchVisible, 'verify pre-run missing testbench workspace');
   assert(preRunPrimaryVisible, 'verify pre-run missing primary action');
-  assert(!preRunWaveformVisible, 'verify pre-run should be testbench-first, not waveform-first');
+  assert(await page.evaluate(() => !window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun), 'authored stimulus must not be presented as a recorded run before Run');
+  assert(await visible(verifyRoot.locator('[data-testid="ide-verify-lab-grid"]')), 'pre-run integrated lab must retain editable testbench inputs');
 
   await clickIfVisible(
     verifyRoot.locator(
@@ -125,7 +126,7 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
   assert(Boolean(runButtonTestId), 'verify missing enabled run action after preparation');
 
   await page.waitForFunction(() => {
-    return Boolean(document.querySelector('[data-testid="ide-verify-workspace-waveform"]'));
+    return Boolean(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun && document.querySelector('[data-testid="ide-verify-workspace-waveform"]'));
   }, { timeout: 30000 });
   const verifyWaveformVisible = await verifyRoot
     .locator('[data-testid="ide-verify-workspace-waveform"]')

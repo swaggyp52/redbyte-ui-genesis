@@ -38,12 +38,14 @@ await runIdeGate('IDE hardware checklist contract satisfied', async ({ page, bas
   const stepOrGenerate = page
     .locator('[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]')
     .first();
-  const ifWrong = page.locator('[data-testid="ide-hw-mode-toggle"]');
+  const ifWrong = page.locator('[data-testid="ide-hw-board-check-exit"]');
 
   assert(await visible(checklist), 'hardware checklist panel must render');
   assert(
     await visible(stepOrGenerate),
     'hardware checklist must show a step to perform or the way to generate its vectors',
   );
-  assert(await visible(ifWrong), 'hardware if-wrong panel must render');
+  assert(await visible(ifWrong), 'Board Check must expose a direct return to pin mapping');
+  await ifWrong.first().click();
+  assert(await visible(page.locator('[data-testid="ide-hw-map-table"]')), 'return to pin mapping must restore the assignment table');
 });

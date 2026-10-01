@@ -151,7 +151,8 @@ export async function selectFirstVisibleDesignNode(page) {
   const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
   assert(canvas, 'Design live canvas must have a browser-visible bounding box');
 
-  const nodes = page.locator('[data-node-id]');
+  const nonInputIds = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes.filter(node => !['INPUT', 'Switch'].includes(node.type)).map(node => node.id));
+  const nodes = page.locator(nonInputIds.map(id => `[data-node-id="${id}"]`).join(', '));
   const count = await nodes.count();
   for (let index = 0; index < count; index += 1) {
     const node = nodes.nth(index);
@@ -161,6 +162,8 @@ export async function selectFirstVisibleDesignNode(page) {
     if (!nodeId) continue;
 
     await node.click({ position: { x: box.width / 2, y: box.height / 2 } });
+    const revealInspector = page.locator('[data-testid="ide-show-right-dock"]').first();
+    if (await revealInspector.isVisible().catch(() => false)) await revealInspector.click();
     await page.waitForSelector('[data-testid="ide-right-dock"]', { state: 'visible', timeout: 5000 });
     await page.waitForFunction(
       (expectedNodeId) => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes?.has?.(expectedNodeId) === true,

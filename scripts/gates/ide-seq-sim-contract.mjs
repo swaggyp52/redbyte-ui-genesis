@@ -1,37 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
-
-async function text(locator) {
-  return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function openQuickInputs(page) {
-  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
-  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
-    await liveInputsToggle.click();
-  }
-  await page.locator('[data-testid^="ide-design-input-toggle-"]').first().waitFor({ state: 'visible', timeout: 10000 });
-}
-
-async function setBinaryInput(page, nodeId, target) {
-  const selector = `[data-testid="ide-design-input-toggle-${nodeId}"]`;
-  await page.locator(selector).first().waitFor({ state: 'visible', timeout: 10000 });
-  const beforePressed = await page.locator(selector).first().getAttribute('aria-pressed');
-  const before = beforePressed === 'true' ? '1' : beforePressed === 'false' ? '0' : '';
-  if (before === String(target)) return;
-  await page.locator(selector).first().click();
-  await page.waitForFunction(
-    ({ id, value }) => {
-      const button = document.querySelector(`[data-testid="ide-design-input-toggle-${id}"]`);
-      if (!button) return false;
-      const current = button.getAttribute('aria-pressed') === 'true' ? '1' : '0';
-      return current === String(value);
-    },
-    { id: nodeId, value: target },
-    { timeout: 10000 }
-  );
-}
+import { assert, runIdeGate, designInputIds, selectDesignInput } from './_gateHarness.mjs';
 
 await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, baseUrl }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
@@ -83,21 +52,13 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
 
   const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
   await fitButton.evaluate((button) => button.click());
-  await openQuickInputs(page);
-
-  const inputIds = await page.$$eval('[data-testid^="ide-design-input-toggle-"]', (rows) =>
-    rows
-      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-input-toggle-/, ''))
-      .filter(Boolean)
-  );
-  const dataInputId =
-    inputIds.find((entry) => /dff_data|_data|(^d_in$)|(^d$)/i.test(entry)) ??
-    inputIds.find((entry) => !/clk/i.test(entry)) ??
-    inputIds[0];
-  assert(Boolean(dataInputId), 'expected at least one live input for sequential example');
-
-  await setBinaryInput(page, dataInputId, 1);
-  const inputCount = await page.locator('[data-testid^="ide-design-input-toggle-"]').count();
-  assert(inputCount >= 2, `expected data and clock quick inputs for sequential circuit, got ${inputCount}`);
-  await setBinaryInput(page, dataInputId, 0);
+  const inputIds = await designInputIds(page);
+  assert(inputIds.includes('d_in') && inputIds.includes('clk_in'), 'sequential design must expose independent data and clock inputs');
+  for (const [id, values] of [['d_in', [1, 0]], ['clk_in', [0, 1]]]) {
+    const toggle = await selectDesignInput(page, id);
+    for (const value of values) {
+      if (await toggle.getAttribute('aria-pressed') !== String(Boolean(value))) await toggle.click();
+      assert(await toggle.getAttribute('aria-pressed') === String(Boolean(value)), `${id} must accept binary value ${value}`);
+    }
+  }
 });

@@ -7,29 +7,6 @@ function parsePercent(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-async function waitForPresentationMode(page, expectedMode) {
-  await page.waitForFunction(
-    (mode) => {
-      const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
-      return canvas?.getAttribute('data-presentation-zoom') === mode;
-    },
-    expectedMode,
-    { timeout: 5000 }
-  );
-}
-
-async function ensurePresentationMode(page, toggleLocator, expectedMode) {
-  const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
-  const currentMode = await canvas.getAttribute('data-presentation-zoom');
-  if (currentMode === expectedMode) {
-    return;
-  }
-  await toggleLocator.evaluate((element) => {
-    if (element instanceof HTMLElement) element.click();
-  });
-  await waitForPresentationMode(page, expectedMode);
-}
-
 await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -45,8 +22,8 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
 
   const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
   const zoomPill = page.locator('[data-testid="ide-design-canvas-stat-zoom"]').first();
-  const canvasToggle = page.locator('[data-testid="ide-design-presentation-zoom-toggle-canvas"]').first();
-  const toolbarToggle = page.locator('[data-testid="ide-design-presentation-zoom-toggle"]').first();
+  const zoomIn = page.locator('[data-testid="ide-design-zoom-in"]').first();
+  const zoomOut = page.locator('[data-testid="ide-design-zoom-out"]').first();
   const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
 
   assert(await visible(canvas), 'design canvas must be visible');
@@ -58,9 +35,7 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
     const zoom = document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]');
     return /\d+%/.test((zoom?.textContent || '').trim());
   }, { timeout: 10000 });
-  const canvasCount = await canvasToggle.count();
-  const toolbarCount = await toolbarToggle.count();
-  assert(canvasCount + toolbarCount > 0, 'presentation zoom toggle must exist');
+  assert(await visible(zoomIn) && await visible(zoomOut), 'canvas must offer readable zoom controls');
 
   const zoomText = await zoomPill.textContent();
   const zoomValue = parsePercent(zoomText ?? '');
@@ -120,33 +95,12 @@ await runIdeGate('IDE canvas legibility contract satisfied', async ({ page, base
     `circuit should fit the visible window viewport reasonably (width=${denseMetrics.widthRatio.toFixed(3)}, height=${denseMetrics.heightRatio.toFixed(3)})`
   );
 
-  if (canvasCount > 0) {
-    await ensurePresentationMode(page, canvasToggle, 'classroom');
-  } else {
-    await ensurePresentationMode(page, toolbarToggle, 'classroom');
-  }
-  const classroomMetrics = await page.evaluate(() => {
-    const labelNodes = Array.from(document.querySelectorAll('[data-node-id] .logic-node-label'));
-    const labelSize = labelNodes.length > 0
-      ? Math.min(
-          ...labelNodes.map((node) =>
-            Number.parseFloat(node.getAttribute('font-size') ?? String(getComputedStyle(node).fontSize))
-          )
-        )
-      : 0;
-    const mode = document
-      .querySelector('[data-testid="ide-design-live-canvas"]')
-      ?.getAttribute('data-presentation-zoom');
-    return { labelSize, mode: mode ?? '' };
-  });
-
-  assert(
-    classroomMetrics.mode === 'classroom',
-    `presentation zoom should switch to classroom mode, got "${classroomMetrics.mode}"`
-  );
-  assert(
-    classroomMetrics.labelSize === 0 || classroomMetrics.labelSize >= denseMetrics.labelSize,
-    `classroom mode should not reduce label size (dense=${denseMetrics.labelSize}, classroom=${classroomMetrics.labelSize})`
-  );
+  await zoomIn.click();
+  await page.waitForFunction((before) => Number.parseInt(document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]').textContent, 10) > before, zoomValue);
+  const enlarged = parsePercent(await zoomPill.textContent());
+  assert(enlarged > zoomValue, 'zoom in must enlarge the circuit for closer reading');
+  await zoomOut.click();
+  await page.waitForFunction((before) => Number.parseInt(document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]').textContent, 10) < before, enlarged);
+  await fitButton.click();
+  assert(Number.isFinite(parsePercent(await zoomPill.textContent())), 'Fit must return a valid readable camera zoom');
 });
-

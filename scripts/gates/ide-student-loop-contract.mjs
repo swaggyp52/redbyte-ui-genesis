@@ -147,7 +147,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     'hardware mode toggle must be visible',
   );
 
-  // 4b. Hardware — after clicking Board Check, require tool-specific active-mode
+  // 4b. Hardware: after clicking Board Check, require tool-specific active-mode
   // evidence: the tool selected, and its dock (a step to perform, or the offer to
   // generate vectors) or the stage naming Board Check. The readiness callout is
   // an alternative only when it names an unmet prerequisite. The always-present
@@ -156,66 +156,10 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   // Board and is retired.)
   const bringupModeButton = page.locator('[data-testid="ide-hw-mode-btn-bringup"]').first();
   await bringupModeButton.click();
-  await page.waitForFunction(() => {
-    const isVisibleElement = (element) => {
-      if (!(element instanceof HTMLElement)) return false;
-      const style = window.getComputedStyle(element);
-      return element.getClientRects().length > 0 && style.visibility !== 'hidden';
-    };
-    const bringupButton = document.querySelector('[data-testid="ide-hw-mode-btn-bringup"]');
-    const bringupDock = document.querySelector('[data-testid="ide-hw-bringup-dock"]');
-    const bringupStep = document.querySelector(
-      '[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]',
-    );
-    const bringupStage = document.querySelector('[data-testid="ide-hw-board-chrome-stage"]');
-    const readinessCallout = document.querySelector('[data-testid="ide-hardware-readiness-callout"]');
-    const readinessText = readinessCallout?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-    const bringupSpecificState =
-      bringupButton?.getAttribute('aria-selected') === 'true' &&
-      (isVisibleElement(bringupDock) ||
-        isVisibleElement(bringupStep) ||
-        (isVisibleElement(bringupStage) && /Board Check/i.test(bringupStage.textContent ?? '')));
-    const explicitPrerequisite =
-      isVisibleElement(readinessCallout) &&
-      !/^E0 handoff ready\b/i.test(readinessText) &&
-      /blocked|cannot|different|incomplete|locked|missing|must|needs?|not run|required|repair|re-?run|stale/i.test(
-        readinessText,
-      );
-    return bringupButton?.getAttribute('aria-selected') === 'true' &&
-      (bringupSpecificState || explicitPrerequisite);
-  }, undefined, { timeout: 5000 });
-
-  const bringupModeSelected = (await bringupModeButton.getAttribute('aria-selected')) === 'true';
-  const hasBringupDock = await page
-    .locator('[data-testid="ide-hw-bringup-dock"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const hasBringupStep = await page
-    .locator('[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const bringupStage = page.locator('[data-testid="ide-hw-board-chrome-stage"]').first();
-  const hasBringupStage =
-    (await bringupStage.isVisible().catch(() => false)) &&
-    /Board Check/i.test((await bringupStage.textContent().catch(() => '')) ?? '');
-  const readinessCallout = page.locator('[data-testid="ide-hardware-readiness-callout"]').first();
-  const readinessCalloutVisible = await readinessCallout.isVisible().catch(() => false);
-  const readinessText = ((await readinessCallout.textContent().catch(() => '')) ?? '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const hasExplicitPrerequisite =
-    readinessCalloutVisible &&
-    !/^E0 handoff ready\b/i.test(readinessText) &&
-    /blocked|cannot|different|incomplete|locked|missing|must|needs?|not run|required|repair|re-?run|stale/i.test(
-      readinessText,
-    );
-  assert(
-    bringupModeSelected &&
-      (hasBringupDock || hasBringupStep || hasBringupStage || hasExplicitPrerequisite),
-    'Board Check must become active with tool-specific workspace evidence, or show an explicit ' +
-      `prerequisite blocker; selected=${bringupModeSelected}, dock=${hasBringupDock}, ` +
-      `step=${hasBringupStep}, stage=${hasBringupStage}, readiness="${readinessText}"`,
-  );
+  const boardCheck = page.locator('[data-testid="ide-hw-bringup-dock"]').first();
+  await boardCheck.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await visible(page.locator('[data-testid="ide-hw-bringup-step"], [data-testid="ide-hw-bringup-generate"]').first()), 'Board Check must show a reference step or a way to generate one');
+  assert(/no physical.board observation/i.test(await page.locator('[data-testid="ide-hw-board-workspace"]').textContent()), 'browser reference must keep physical evidence separate');
+  await page.locator('[data-testid="ide-hw-board-check-exit"]').click();
+  assert(await visible(page.locator('[data-testid="ide-hw-map-table"]')), 'Board Check must provide a working return to assignments');
 });

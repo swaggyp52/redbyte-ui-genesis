@@ -20,6 +20,36 @@ export async function visible(locator) {
   return locator.first().isVisible().catch(() => false);
 }
 
+
+export async function openDesignBoardPalette(page) {
+  const reveal = page.locator('[data-testid="ide-show-left-dock"]').first();
+  if (await visible(reveal)) await reveal.click();
+  await page.locator('[data-testid="ide-design-left-tab-board"]').first().click();
+  const toggle = page.locator('[data-testid="ide-design-library-toggle-board"]').first();
+  if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+  await page.locator('[data-testid="ide-design-board-io-palette"]').first().waitFor({ state: 'visible' });
+}
+
+export async function designInputIds(page) {
+  return page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes
+    .filter((node) => node.type === 'Switch' || node.type === 'INPUT').map((node) => node.id));
+}
+
+export async function selectDesignInput(page, nodeId) {
+  const selectTool = page.locator('[data-testid="ide-design-tool-select"]').first();
+  if (await visible(selectTool)) await selectTool.click();
+  const node = page.locator(`[data-node-id="${nodeId}"]`).first();
+  await node.waitFor({ state: 'visible' });
+  const box = await node.boundingBox();
+  assert(Boolean(box), `input ${nodeId} must be on the canvas`);
+  // The center is a switch handle; the upper body selects its inspector.
+  await node.click({ position: { x: box.width / 2, y: 8 } });
+  await page.waitForFunction((id) => window.__RB_LOGIC_VIEW_STORE__?.getState()?.selection?.nodes?.has(id), nodeId);
+  const toggle = page.locator('[data-testid="ide-design-inspector-input-toggle"]').first();
+  await toggle.waitFor({ state: 'visible' });
+  return toggle;
+}
+
 export function assertBuildFreshReplacementDialog(message, label = 'Build Fresh replacement dialog') {
   assert(/build fresh/i.test(message), `${label} must name Build Fresh, got "${message}"`);
   assert(/fresh blank project/i.test(message), `${label} must describe a fresh blank project, got "${message}"`);

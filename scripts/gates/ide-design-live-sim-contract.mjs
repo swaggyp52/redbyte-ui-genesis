@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, runIdeGate, openDesignBoardPalette, designInputIds, selectDesignInput } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
@@ -52,66 +52,30 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
-  const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
-  const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
-  if (!boardPaletteVisible) {
-    await page.locator('[data-testid="ide-design-palette-toggle-board"]').first().click();
-    await boardPalette.waitFor({ state: 'visible', timeout: 10000 });
-  }
+  await openDesignBoardPalette(page);
 
-  // Place two switch inputs from the board palette — they render switch-toggle-* handles
-  // and create live-input-* rows in the inspector.
+  // Construct a useful board input/output path before exercising live values.
   await placeBoardInput(page, '[data-testid="ide-design-board-input-sw0"]', 0.24, 0.38);
   await placeBoardInput(page, '[data-testid="ide-design-board-input-sw1"]', 0.24, 0.58);
+  await placeBoardInput(page, '[data-testid="ide-design-board-output-ld0"]', 0.68, 0.38);
   await page.waitForSelector('[data-testid^="switch-toggle-"]', { timeout: 10000 });
 
-  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
-  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
-    await liveInputsToggle.click();
-  }
-  await page.locator('[data-testid^="ide-design-input-toggle-"]').first().waitFor({ state: 'visible', timeout: 10000 });
-  const liveInputIds = await page.$$eval('[data-testid^="ide-design-input-toggle-"]', (rows) =>
-    rows
-      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-input-toggle-/, ''))
-      .filter((entry) => entry.length > 0)
-  );
-  assert(liveInputIds.length > 0, 'expected live input rows before toggle');
-
-  const toggleIds = await page.$$eval(
-    '[data-testid^="switch-toggle-"]:not([data-testid$="-container"])',
-    (rows) =>
-      rows
-        .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^switch-toggle-/, ''))
-        .filter((entry) => entry.length > 0)
-  );
-  const targetId = liveInputIds.find((entry) => toggleIds.includes(entry));
-  assert(Boolean(targetId), 'expected a matching switch toggle for at least one live input row');
-
-  const toggleSelector = `[data-testid="switch-toggle-${targetId}"]`;
-  const targetToggle = page.locator(toggleSelector).first();
-  await targetToggle.waitFor({ state: 'visible', timeout: 10000 });
-  const beforePressed = await page.locator(`[data-testid="ide-design-input-toggle-${targetId}"]`).first().getAttribute('aria-pressed');
-  const beforeValue = beforePressed === 'true' ? '1' : beforePressed === 'false' ? '0' : beforePressed;
-  assert(beforeValue === '0' || beforeValue === '1', `expected binary live input value, got "${beforeValue}"`);
-
-  await page.$eval(toggleSelector, (entry) => {
-    entry.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  });
-  await page.waitForFunction(
-    ({ id, previous }) => {
-      const row = document.querySelector(`[data-testid="ide-design-live-input-${id}"] code`);
-      const button = document.querySelector(`[data-testid="ide-design-input-toggle-${id}"]`);
-      if (button) {
-        const value = button.getAttribute('aria-pressed') === 'true' ? '1' : '0';
-        return value !== previous;
-      }
-      if (!row) return false;
-      const value = (row.textContent || '').trim();
-      if (value !== '0' && value !== '1') return false;
-      if (previous !== '0' && previous !== '1') return false;
-      return value !== previous;
-    },
-    { id: targetId, previous: beforeValue },
-    { timeout: 10000 }
-  );
+  const inputIds = await designInputIds(page);
+  assert(inputIds.length === 2, 'both placed switches must be addressable as circuit inputs');
+  const targetId = inputIds[0];
+  const outputId = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes.find(node => node.type === 'OUTPUT').id);
+  await page.locator(`[data-testid="port-${targetId}-out"]`).click();
+  await page.locator(`[data-testid="port-${outputId}-in"]`).click();
+  await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.connections.length === 1);
+  await page.locator('[data-testid="ide-design-explore"]').click();
+  const inspectorToggle = await selectDesignInput(page, targetId);
+  const before = await inspectorToggle.getAttribute('aria-pressed');
+  assert(before === 'true' || before === 'false', 'selected input must expose binary value');
+  const body = page.locator(`[data-testid="switch-toggle-${targetId}"]`).first();
+  await body.click();
+  const changed = await page.waitForFunction(({ id, previous }) => Boolean(window.__RB_PROJECT_RUNTIME__.getState().sim.inputs[id]) !== (previous === 'true'), { id: targetId, previous: before }, { timeout: 5000 }).then(() => true).catch(() => false);
+  const afterEvidence = await page.evaluate(id => ({ input: window.__RB_PROJECT_RUNTIME__.getState().sim.inputs[id], node: window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes.find(node => node.id === id), mode: document.querySelector('[data-testid="ide-design-learning-mode"]')?.getAttribute('data-mode'), editing: window.__RB_LOGIC_VIEW_STORE__.getState().editingState }), targetId);
+  assert(changed, `clicking the on-canvas input body in Explore must update canonical simulation input (before=${before}, after=${JSON.stringify(afterEvidence)})`);
+  assert(await inspectorToggle.getAttribute('aria-pressed') !== before, 'on-canvas switch must update the existing inspector value');
+  assert(await inspectorToggle.getAttribute('aria-pressed') === String(Boolean(afterEvidence.input)), 'inspector value must agree with canonical simulation input');
 });

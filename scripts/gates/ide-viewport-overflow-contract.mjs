@@ -39,7 +39,7 @@ await runIdeGate('IDE viewport overflow contract satisfied', async ({ page, base
 
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-project-import-primary"]').first().click();
+  await page.locator('[data-testid="mode-button-import"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,

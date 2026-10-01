@@ -12,7 +12,7 @@ await runIdeGate('IDE shell density contract satisfied', async ({ page, baseUrl 
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
   const topBar = page.locator('[data-testid="ide-top-bar"]').first();
-  const leftRail = page.locator('[data-testid="ide-left-rail"]').first();
+  const leftRail = page.locator('[data-testid="ide-workspace-rail"]').first();
 
   assert(await visible(topBar), 'top bar must be visible');
   assert(await visible(leftRail), 'left rail must be visible');

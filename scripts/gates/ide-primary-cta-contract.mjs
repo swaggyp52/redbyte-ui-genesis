@@ -56,6 +56,8 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
     }
     if (mode === 'verify') {
       const selectors = [
+        '[data-testid="ide-vcb-run"]',
+        '[data-testid="ide-verify-no-circuit-open-design"]',
         '[data-testid="ide-verify-run"]',
         '[data-testid="ide-verify-empty-run"]',
         '[data-testid="ide-verify-generate-basic-vectors-footer"]',
@@ -86,8 +88,9 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
       const modeToggleVisible = await modeToggle.isVisible().catch(() => false);
       const blockedPrimaryVisible = await blockedPrimary.isVisible().catch(() => false);
       const blockedSecondaryVisible = await blockedSecondary.isVisible().catch(() => false);
+      const emptyVisible = await modeRoot.locator('[data-testid="ide-hw-map-empty"]').first().isVisible().catch(() => false);
       assert(
-        workbenchVisible || modeToggleVisible || blockedPrimaryVisible || blockedSecondaryVisible,
+        workbenchVisible || modeToggleVisible || blockedPrimaryVisible || blockedSecondaryVisible || emptyVisible,
         'mode=hardware expected the Map Pins workbench or a blocked-state CTA to be visible'
       );
       continue;
@@ -120,7 +123,7 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   const projectRoot = page.locator('[data-testid="ide-mode-project"]').first();
-  const importLauncher = projectRoot.locator('[data-testid="ide-project-import-primary"]').first();
+  const importLauncher = page.locator('[data-testid="mode-button-import"]').first();
   assert(await importLauncher.isVisible().catch(() => false), 'project surface must expose Import as a utility CTA');
   await importLauncher.click();
   await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });

@@ -96,6 +96,11 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
 
     await page.getByTestId('ide-verify-repair-open-design').click();
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+    const failureDetails = page.getByTestId('ide-design-failure-details');
+    await failureDetails.waitFor({ state: 'visible', timeout: 10000 });
+    if ((await failureDetails.getAttribute('open')) === null) {
+      await failureDetails.locator('summary').click();
+    }
     await page.waitForSelector('[data-testid="ide-design-debug-context-banner"]', { timeout: 10000 });
     await assertComplexSignalTracePanel(page, nodes);
     await capture(page, `${viewport.label}-03-design-signal-trace-panel.png`);
@@ -152,13 +157,10 @@ async function buildWrongFullAdderSumCircuit(page) {
     [nodes.wrongOr, 'out', nodes.SUM_OUT, 'in'],
   ];
 
-  // Arrange the completed graph in one stable camera frame before wiring.
-  await fitCenterZoom(page);
-  for (const [id, position] of [
-    [nodes.A, { x: 0.10, y: 0.28 }], [nodes.B, { x: 0.10, y: 0.48 }],
-    [nodes.CIN, { x: 0.10, y: 0.68 }], [nodes.XOR_AB, { x: 0.38, y: 0.38 }],
-    [nodes.wrongOr, { x: 0.62, y: 0.50 }], [nodes.SUM_OUT, { x: 0.86, y: 0.50 }],
-  ]) await moveNodeToCanvasFraction(page, id, position);
+  // Placement and label editing can refit the camera as the sheet changes.
+  // Use the student's Arrange action to separate the complete set of parts
+  // before wiring; screen fractions from earlier camera frames are not a layout.
+  await arrangeCircuit(page);
   for (const wire of wires) {
     await connectPorts(page, ...wire);
   }
@@ -459,6 +461,20 @@ async function waitForConnectionCount(page, expected, label) {
   );
   const actual = (await readCircuit(page)).connectionCount;
   assert(actual === expected, `${label}: expected ${expected} connections, got ${actual}`);
+}
+
+async function arrangeCircuit(page) {
+  const menu = page.getByTestId('ide-design-toolbar-overflow').first();
+  const wasOpen = (await menu.getAttribute('open')) !== null;
+  if (!wasOpen) await menu.locator('summary').click();
+  const arrange = page.getByTestId('ide-design-arrange');
+  await arrange.waitFor({ state: 'visible', timeout: 5000 });
+  assert(await arrange.isEnabled(), 'Arrange must be available for the six-part circuit');
+  await arrange.click();
+  if (!wasOpen && (await menu.getAttribute('open')) !== null) {
+    await menu.locator('summary').click();
+  }
+  await fitCenterZoom(page);
 }
 
 async function moveNodeToCanvasFraction(page, nodeId, position) {

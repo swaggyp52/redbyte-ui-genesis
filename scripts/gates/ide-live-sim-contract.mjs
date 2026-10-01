@@ -1,23 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
-
-async function text(locator) {
-  return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function openQuickInputs(page) {
-  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
-  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
-    await liveInputsToggle.click();
-  }
-  await page.locator('[data-testid^="ide-design-input-toggle-"]').first().waitFor({ state: 'visible', timeout: 10000 });
-}
-
-async function quickInputValue(page, nodeId) {
-  const pressed = await page.locator(`[data-testid="ide-design-input-toggle-${nodeId}"]`).first().getAttribute('aria-pressed');
-  return pressed === 'true' ? '1' : pressed === 'false' ? '0' : '';
-}
+import { assert, loadStarterProject, runIdeGate, designInputIds, selectDesignInput } from './_gateHarness.mjs';
 
 await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -36,29 +19,13 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
   const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
   await fitButton.evaluate((button) => button.click());
 
-  await openQuickInputs(page);
-  const inputIds = await page.$$eval('[data-testid^="ide-design-input-toggle-"]', (rows) =>
-    rows
-      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-input-toggle-/, ''))
-      .filter((entry) => entry.length > 0)
-  );
-  assert(inputIds.length >= 1, `expected at least 1 quick input toggle, found ${inputIds.length}`);
-
+  const inputIds = await designInputIds(page);
+  assert(inputIds.length >= 1, `expected a circuit input, found ${inputIds.length}`);
   const targetId = inputIds[0];
-  const before = await quickInputValue(page, targetId);
-  assert(before === '0' || before === '1', `expected binary quick input value, got "${before}"`);
-  await page.locator(`[data-testid="ide-design-input-toggle-${targetId}"]`).first().click();
-  await page.waitForFunction(
-    ({ id, previous }) => {
-      const button = document.querySelector(`[data-testid="ide-design-input-toggle-${id}"]`);
-      if (!button) return false;
-      const value = button.getAttribute('aria-pressed') === 'true' ? '1' : '0';
-      return value !== previous;
-    },
-    { id: targetId, previous: before },
-    { timeout: 10000 }
-  );
-
-  const after = await quickInputValue(page, targetId);
-  assert(after === '0' || after === '1', `expected binary quick input value after toggle, got "${after}"`);
+  const targetToggle = await selectDesignInput(page, targetId);
+  const before = await targetToggle.getAttribute('aria-pressed');
+  assert(before === 'true' || before === 'false', 'input inspector must expose binary state');
+  await targetToggle.click();
+  await page.waitForFunction((previous) => document.querySelector('[data-testid="ide-design-inspector-input-toggle"]')?.getAttribute('aria-pressed') !== previous, before);
+  assert(await targetToggle.getAttribute('aria-pressed') !== before, 'input must change after toggling');
 });

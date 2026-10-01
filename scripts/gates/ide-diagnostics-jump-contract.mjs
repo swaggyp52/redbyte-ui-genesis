@@ -18,10 +18,10 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-hw-map-table"]', { timeout: 10000 });
 
-  const firstMappingRow = page.locator('[data-testid^="ide-hw-map-row-"]').first();
+  const firstMappingRow = page.locator('tr[data-testid^="ide-hw-map-row-"]').first();
   assert(await firstMappingRow.isVisible().catch(() => false), 'expected Hardware map row to exist');
   await firstMappingRow.click();
-  const rowSelected = await firstMappingRow.getAttribute('aria-pressed');
+  const rowSelected = await firstMappingRow.getAttribute('aria-selected');
   assert(rowSelected === 'true', 'Hardware map row should be selectable without creating Design diagnostics');
 
   await page.locator('[data-testid="mode-button-design"]').click();

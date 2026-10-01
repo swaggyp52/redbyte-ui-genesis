@@ -224,6 +224,7 @@
         "ide:gate:export-generates-hdl": "node ./scripts/gates/ide-export-generates-hdl.mjs",
         "ide:gate:import-renders-schematic": "node ./scripts/gates/ide-import-renders-schematic.mjs",
         "ide:gate:shell-structure": "node ./scripts/gates/ide-shell-structure-contract.mjs",
+        "ide:gate:shell-chrome-contract": "node ./scripts/gates/ide-shell-chrome-contract.mjs",
         "ide:gate:layout-contract": "node ./scripts/gates/ide-layout-contract.mjs",
         "ide:gate:workbench-layout-contract": "node ./scripts/gates/ide-workbench-layout-contract.mjs",
         "ide:gate:design-build-contract": "node ./scripts/gates/ide-design-build-contract.mjs",
