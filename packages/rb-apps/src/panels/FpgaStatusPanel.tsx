@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLabStore } from '@redbyte/rb-logic-3d';
-import { FPGA_PRESET_DEFS } from '@redbyte/rb-logic-3d/presets';
+import { FPGA_PRESET_DEFS } from './fpgaPresetCatalog';
 
 export const FpgaStatusPanel: React.FC = () => {
     const isRunning = useLabStore(state => state.simulation.isRunning);
@@ -37,7 +37,7 @@ export const FpgaStatusPanel: React.FC = () => {
 
     // Sync selected preset with active if available
     const activePresetId = partState?.preset;
-    const activePresetName = activePresetId ? FPGA_PRESET_DEFS.find((d: any) => d.id === activePresetId)?.name : 'Passthrough (Default)';
+    const activePresetName = activePresetId ? FPGA_PRESET_DEFS.find((d) => d.id === activePresetId)?.name : 'Passthrough (Default)';
 
     const handleLoad = () => {
         if (fpgaNode && selectedPreset) {
@@ -170,7 +170,7 @@ export const FpgaStatusPanel: React.FC = () => {
                         disabled={playbackMode === 'replay'}
                         title="Select FPGA Design"
                     >
-                        {FPGA_PRESET_DEFS.map((def: any) => (
+                        {FPGA_PRESET_DEFS.map((def) => (
                             <option key={def.id} value={def.id}>
                                 {def.name}
                             </option>
