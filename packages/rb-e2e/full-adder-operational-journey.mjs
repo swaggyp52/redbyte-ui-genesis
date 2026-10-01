@@ -37,6 +37,11 @@ const JSZip = createRequire(new URL('../rb-apps/package.json', import.meta.url))
 
 const tid = (t) => `[data-testid="${t}"]`;
 
+async function revealDesignInspector(page) {
+  const reveal = page.locator(tid('ide-show-right-dock'));
+  if (await reveal.isVisible()) await reveal.click();
+}
+
 /**
  * Read a downloaded package with jszip — the same archive tooling the app builds packages
  * with, resolved through the rb-apps package so this journey adds no dependency. Directory
@@ -220,6 +225,7 @@ async function run(width, height) {
   await page.click(tid('mode-button-design'));
   await page.waitForSelector(tid('node-XOR-xor2_node'), { timeout: 8000 });
   await page.click(tid('node-XOR-xor2_node'));
+  await revealDesignInspector(page);
   await page.waitForSelector(tid('ide-design-swap-group'), { state: 'visible', timeout: 6000 });
   assert(await page.locator(tid('ide-design-swap-or')).count() > 0, 'inspector offers a compatible OR swap for the selected XOR gate');
   console.log(`[${label}] B. Design — selected SUM gate (XOR2); compatible gate swaps available`);
@@ -303,6 +309,7 @@ async function run(width, height) {
   await page.click(tid('mode-button-design'));
   await page.waitForSelector(tid('node-XOR-xor2_node'), { timeout: 8000 });
   await page.click(tid('node-XOR-xor2_node'));
+  await revealDesignInspector(page);
   await page.waitForSelector(tid('ide-design-swap-or'), { state: 'visible', timeout: 6000 });
   await page.click(tid('ide-design-swap-or')); // SUM becomes XOR1 OR CIN — runnable but wrong
   await page.waitForSelector(tid('node-OR-xor2_node'), { timeout: 6000 });
@@ -343,6 +350,7 @@ async function run(width, height) {
     { timeout: 8000 }
   );
   const driverRow = page.locator(tid('ide-design-driver-row-in'));
+  await revealDesignInspector(page);
   await driverRow.waitFor({ state: 'visible', timeout: 6000 });
   assert(/XOR2|SUM/i.test(await driverRow.textContent()), 'Connectivity names the failing output\'s driver (XOR2 / SUM)');
   await driverRow.click();

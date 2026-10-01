@@ -52,6 +52,9 @@ try {
   const xorId = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes.find(node => node.type === 'XOR')?.id);
   assert.ok(xorId, 'The real counter has a replaceable XOR');
   await page.locator(`[data-node-id="${xorId}"]`).first().click();
+  const revealInspector = tid('ide-show-right-dock');
+  if (await revealInspector.isVisible()) await revealInspector.click();
+  await tid('ide-design-swap-or').waitFor({ state: 'visible' });
   const designGeometry = await page.evaluate(() => {
     const elements = ['.ide-workbench-main', '.ide-workbench-workspace', '.ide-workbench-dock-right', '.rb-design-dock-body'];
     const result = {};

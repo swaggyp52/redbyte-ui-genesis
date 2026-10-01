@@ -13,6 +13,7 @@ try{
   const run=async()=>{const previous=(await selectedRun())?.runId;await tid('ide-vcb-run').click();await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId!==id,previous);return selectedRun();};
   const tick=async n=>{await tid('ide-timing-lanes').press('Home');for(let i=0;i<n;i++)await tid('ide-timing-lanes').press('ArrowRight');};
   const editor=async()=>{const d=tid('ide-scenario-event-editor-details');if((await d.getAttribute('open'))===null)await d.locator('summary').click();};
+  const revealInspector=async()=>{const reveal=tid('ide-show-right-dock');if(await reveal.isVisible())await reveal.click();};
   const setCheck=async value=>{await tick(3);await editor();const c=tid('ide-scenario-check-q0');for(let i=0;i<4;i++){if((await c.locator('strong').innerText()).trim()===value)return;await c.click();}assert.equal((await c.locator('strong').innerText()).trim(),value);};
   await page.goto(BASE_URL,{waitUntil:'networkidle'});await tid('ide-project-start-a-lab-primary').click();await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();await page.locator('[data-testid^="ide-project-gannon-lab-start-"]').first().click();
   await tid('mode-button-design').click();await tid('ide-design-test-design').click();await tid('ide-vcb-run').waitFor();assert.equal(await selectedRun(),null,'Design handoff does not auto-run');
@@ -31,11 +32,11 @@ try{
     // Persisted evidence is JSON; optional undefined clone properties do not alter it.
     assert.deepEqual(JSON.parse(JSON.stringify(selected)),JSON.parse(JSON.stringify(failed)),'The failed record is immutable after check repair'); }
   await picker.selectOption(repaired.runId);
-  await tid('mode-button-design').click();await page.locator('[data-node-id="xor0"]').first().click();await tid('ide-design-swap-or').click();await tid('ide-design-test-design').click();
+  await tid('mode-button-design').click();await page.locator('[data-node-id="xor0"]').first().click();await revealInspector();await tid('ide-design-swap-or').click();await tid('ide-design-test-design').click();
   assert.match(await tid('ide-run-input-changes').innerText(),/Design changed.*XOR.*OR/);
   const defect=await run();assert.equal(defect.status,'fail','Replacing XOR0 by OR causes a real output mismatch at t3');assert.ok(defect.circuitSnapshot.nodes.some(n=>n.id==='xor0'&&n.type==='OR'));
   await tid('ide-verify-inspect-circuit').click();await page.getByLabel('Recorded circuit signal').selectOption('LD0');await tick(3);await shot('counter-design-defect');
-  await page.getByRole('button',{name:'Edit current design',exact:true}).click();await page.locator('[data-node-id="xor0"]').first().click();await tid('ide-design-swap-xor').click();await tid('ide-design-test-design').click();
+  await page.getByRole('button',{name:'Edit current design',exact:true}).click();await page.locator('[data-node-id="xor0"]').first().click();await revealInspector();await tid('ide-design-swap-xor').click();await tid('ide-design-test-design').click();
   const restored=await run();assert.equal(restored.status,'pass');assert.equal(restored.outputDigest,observed.outputDigest,'Repair restores the original circuit output digest');
   await picker.selectOption(defect.runId);assert.deepEqual(await selectedRun(),defect,'Historical OR topology and failed samples survive repair');
   // The Project explorer is the one document navigator and every retained recording opens exactly.
