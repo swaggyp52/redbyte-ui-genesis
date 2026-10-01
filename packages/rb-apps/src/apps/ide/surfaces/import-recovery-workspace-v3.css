@@ -497,7 +497,7 @@
   background:
     linear-gradient(rgba(104, 179, 240, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(104, 179, 240, 0.025) 1px, transparent 1px),
-    #0a0f16;
+    var(--ide-surface-inset, #0a0f16);
   background-size: 22px 22px;
 }
 

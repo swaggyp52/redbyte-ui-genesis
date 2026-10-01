@@ -71,6 +71,27 @@ async function ensureUploadStage(page) {
   assert(await visible(page.locator('[data-testid="ide-import-zip-dropzone"]').first()), 'Import Upload stage must expose the ZIP dropzone');
 }
 
+async function assertUploadTextReadable(page) {
+  const readings = await page.getByTestId('ide-import-zip-dropzone').evaluate((panel) => {
+    const rgb = (value) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const luminance = (channels) => channels.map((channel) => {
+      const unit = channel / 255;
+      return unit <= 0.04045 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const background = getComputedStyle(panel).backgroundColor;
+    return [...panel.querySelectorAll('strong, p')].map((element) => {
+      const foreground = getComputedStyle(element).color;
+      const a = luminance(rgb(foreground));
+      const b = luminance(rgb(background));
+      return { text: element.textContent, foreground, background, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+    });
+  });
+  assert(readings.length === 2, 'ZIP upload must retain its filename/prompt and recovery guidance');
+  for (const reading of readings) {
+    assert(reading.ratio >= 4.5, `ZIP upload text must remain readable (4.5:1): ${JSON.stringify(reading)}`);
+  }
+}
+
 async function buildManifestZip() {
   await mkdir(FIXTURE_DIR, { recursive: true });
   const project = {
@@ -229,6 +250,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   assert(await visible(firstLook), 'Import must have one clear utility/recovery workbench');
   const stepper = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
   assert(await visible(stepper), 'Import must expose the Upload -> Review -> Apply sequence');
+  await assertUploadTextReadable(page);
   await screenshotIfRequested(page, 'import-empty-1366x768');
   const firstLookText = await text(firstLook);
   assert(
@@ -317,6 +339,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
     /manifest restore/i.test(await text(manifestReview)),
     'Review must preserve manifest restore fidelity'
   );
+  await assertUploadTextReadable(page);
   await screenshotIfRequested(page, 'import-redbyte-manifest-inspection-1366x768');
 
   await page.locator('[data-testid="ide-import-replace-project"]').click();
