@@ -221,7 +221,7 @@ function makeSteps(): RebuildStep[] {
   return STEP_ORDER.map((s) => ({ id: s.id, label: s.label, state: 'idle' as const }));
 }
 
-/** Clock gate row detail: same timing classification as Simulate / Board & Constraints when hashes align. */
+/** Clock gate row detail: same timing classification as Simulate / Board when hashes align. */
 function formatExportClockGateDetail(
   contract: VerifyScheduleContract | undefined,
   baseDetail: string
@@ -381,11 +381,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     else dialog.setAttribute('open', '');
   }, [technicalEvidenceOpen]);
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
-  const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
-    const topVhd = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'top.vhd');
-    const readme = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-    return topVhd?.path ?? readme?.path ?? baseViewModel.artifacts[0]?.path ?? '';
-  });
+  const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>('');
   const [openFixPathId, setOpenFixPathId] = useState<string | null>(null);
 
   // ── Engineering-object continuity ──────────────────────────────────────
@@ -437,11 +433,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       setSelectedArtifactPath('');
       return;
     }
-    const exists = viewModel.artifacts.some((artifact) => artifact.path === selectedArtifactPath);
-    if (!exists) {
-      const topVhd = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'top.vhd');
-      const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-      setSelectedArtifactPath(topVhd?.path ?? readme?.path ?? viewModel.artifacts[0].path);
+    // A file that is no longer generated closes; nothing else is opened in its place.
+    if (selectedArtifactPath && !viewModel.artifacts.some((artifact) => artifact.path === selectedArtifactPath)) {
+      setSelectedArtifactPath('');
     }
   }, [viewModel.artifacts, selectedArtifactPath]);
 
@@ -688,9 +682,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     [effectivePinsByPortKey, viewModel.pinTable]
   );
   const mappingAuthoritySummary =
-    'Board & Constraints owns the saved pin binding. Build & Export mirrors that mapping so you can inspect constraints and generated files without editing board state here.';
+    'Board owns the saved pin binding. Package mirrors that mapping so you can inspect constraints and generated files without editing board state here.';
   const mappingAuthorityUpdateSummary = recentlyReconciledPins.size > 0
-    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Board & Constraints.`
+    ? `${recentlyReconciledPins.size} pin ${recentlyReconciledPins.size === 1 ? 'was' : 'were'} updated from Board.`
     : '';
 
   const appEnv = (import.meta as ImportMeta & {
@@ -758,7 +752,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : clockDiag
           ? clockDiag.message.slice(0, 55)
           : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
-    const mappingGateActionLabel = mappingTone === 'error' ? 'Open Board & Constraints' : 'Review mapping';
+    const mappingGateActionLabel = mappingTone === 'error' ? 'Open Board' : 'Review mapping';
     return [
       {
         id: 'verify',
@@ -885,9 +879,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => worstAgreementTone(artifactAgreementRows),
     [artifactAgreementRows]
   );
-  const selectedArtifact =
-    viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath) ??
-    viewModel.artifacts[0];
+  const selectedArtifact = selectedArtifactPath
+    ? viewModel.artifacts.find((artifact) => artifact.path === selectedArtifactPath)
+    : undefined;
   const artifactGroups = useMemo(
     () => buildArtifactGroups(viewModel.artifacts),
     [viewModel.artifacts]
@@ -1090,7 +1084,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'export-stale':
           return 'Package stale — rebuild to match the current design';
         case 'export-missing':
-          return 'Package not built yet — evidence validated';
+          // The state behind this: the current simulation run passes its checks and the mapping
+          // is complete, and no package has been generated from them yet. It says nothing about
+          // Vivado or a board.
+          return 'Package not built yet — the current simulation passes its checks';
         case 'ready':
           return 'Package current';
         default:
@@ -1613,8 +1610,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       case 'map-pins':
       default:
         return {
-          owner: 'Board & Constraints',
-          label: 'Open Board & Constraints',
+          owner: 'Board',
+          label: 'Open Board',
           action: onGoToHardware ?? onGoToProject,
           testId: 'ide-export-blocked-open-map-pins',
         };
@@ -1656,7 +1653,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     },
     {
       id: 'mapping',
-      owner: 'Board & Constraints',
+      owner: 'Board',
       ready: mappingStageReady,
       status: mappingStageReady
         ? 'Ready'
@@ -1666,8 +1663,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       detail: mappingStageReady
         ? mappingPlain
         : unmappedRequiredPorts.length > 0
-          ? 'Open Board & Constraints to assign one Basys3 resource and package pin to every required signal.'
-          : mappingBlockingDiagnostic?.message ?? 'Open Board & Constraints to resolve the saved assignment blocker.',
+          ? 'Open Board to assign one Basys3 resource and package pin to every required signal.'
+          : mappingBlockingDiagnostic?.message ?? 'Open Board to resolve the saved assignment blocker.',
     },
   ];
 
@@ -1739,12 +1736,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 testId="ide-export-open-technical-evidence">Technical details</IdeButton>
             </div>
             <div className="rb-pkg-state-summary" data-testid="ide-export-state-summary">
-              <strong data-testid="ide-export-derived-state">{surfaceStatusTitle}</strong>
-              <span>{trustReason}</span>
+              <strong data-testid="ide-export-derived-state">{hasCircuitFromProject ? surfaceStatusTitle : 'Circuit required'}</strong>
+              <span>{hasCircuitFromProject ? trustReason : 'Add a circuit in Design before generating a hardware handoff.'}</span>
               {!exportBlocked && isDraftExport && onOpenVerify ? (
                 <button type="button" className="wb-btn wb-btn--ghost" onClick={onOpenVerify}>Open Simulate</button>
               ) : null}
             </div>
+            {/* The one boundary a student needs at handoff, stated once, where the work leaves. */}
+            <p className="rb-pkg-next" data-testid="ide-export-next-step-lead">
+              {!hasCircuitFromProject ? <>Start in <button type="button" className="wb-btn" onClick={onGoToDesign}>Design</button>. Add and connect a circuit, then return to generate its package.</> : <>
+              <strong>Next, in Vivado</strong> Unzip the package and open its <code>.xpr</code> project. Synthesis,
+              the bitstream and the board itself happen there — RedByte has not run them.
+              </>}
+            </p>
           </section>
 
           {downloadError ? (
@@ -1759,10 +1763,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           >
             <header className="rb-pkg-section-header">
               <div>
-                <p className="ide-surface-block-label">Generated files</p>
+                <p className="ide-surface-block-label">In this package</p>
               </div>
-              <p>{readyArtifactCount} ready · {viewModel.artifacts.length} generated.
-                {' '}The project ZIP adds its <code>.xpr</code> project and setup instructions.</p>
+              <p>{hasCircuitFromProject ? <>{readyArtifactCount} of {viewModel.artifacts.length} files ready, plus the Vivado <code>.xpr</code> project the ZIP adds.</> : <>Generated scaffolding · circuit source is missing. These files do not establish package readiness.</>}
+                {' '}{selectedArtifact ? 'Showing one file exactly as it will be packaged.' : 'Choose a file to read it exactly as it will be packaged.'}</p>
             </header>
             {showsHandoffDossier ? (
               <HandoffOverviewDocument
@@ -1793,7 +1797,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 }
               />
             ) : (
-            <div className="rb-pkg-file-workspace" data-testid="ide-export-package-files">
+            <div className="rb-pkg-file-workspace" data-testid="ide-export-package-files" data-view={selectedArtifact ? 'file' : 'contents'}>
               <nav
                 className="rb-pkg-file-list"
                 data-testid="ide-export-file-browser"
@@ -1832,6 +1836,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 {formatArtifactGlyph(artifact.path)}
                               </span>
                               <span className="rb-pkg-file-name">{artifact.path}</span>
+                              {describeArtifactRole(artifact.path) ? (
+                                <span className="rb-pkg-file-role">{describeArtifactRole(artifact.path)}</span>
+                              ) : null}
                               <strong
                                 className="rb-pkg-file-availability"
                                 aria-label={availability}
@@ -1850,6 +1857,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   ))}
                 </div>
               </nav>
+              {/* A file's source appears when a file is chosen, and only then. */}
+              {selectedArtifact || viewModel.artifacts.length === 0 ? (
               <article
                 className="rb-pkg-preview"
                 data-testid="ide-export-selected-preview-v1"
@@ -1859,11 +1868,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <>
                     <header>
                       <div>
-                        <span>Selected file</span>
+                        <span>File</span>
                         <strong data-testid="ide-export-preview-path">{selectedArtifact.path}</strong>
                         <p>{selectedArtifact.note}</p>
                       </div>
                       <div className="rb-pkg-preview-actions">
+                        <button type="button" className="wb-btn wb-btn--ghost" onClick={() => setSelectedArtifactPath('')}
+                          data-testid="ide-export-close-file" title="Close this file and return to the package contents">
+                          Back to contents
+                        </button>
                         <IdeButton
                           tone="secondary"
                           onClick={() => void copyToClipboard(selectedArtifact.content, 'artifact')}
@@ -1899,6 +1912,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p>No generated package files are available yet.</p>
                 )}
               </article>
+              ) : null}
 
             </div>
             )}
@@ -2189,6 +2203,21 @@ function formatArtifactAvailability(
   return hasTrustedCurrentReceipt ? 'Ready' : 'Downloadable';
 }
 
+/** What a packaged file is for, in a student's words. The filename and its bytes are unchanged. */
+function describeArtifactRole(path: string): string | null {
+  const name = path.split('/').pop()?.toLowerCase() ?? '';
+  if (name === 'top.vhd' || name === 'top.v') return 'Your design, as HDL';
+  if (name === 'top.xdc') return 'Pin assignments for the board';
+  if (name.startsWith('testbench.')) return 'Your scenario, as a testbench';
+  if (name === 'vivado_import.tcl') return 'Creates the Vivado project';
+  if (name === 'program_and_test.tcl') return 'Program-and-test script';
+  if (name === 'expected_io.json') return 'Expected inputs and outputs';
+  if (name.endsWith('.rbproj.json')) return 'This project, to reopen in RedByte';
+  if (name === 'readme.txt') return 'How to use this package';
+  if (name === 'bringup.md') return 'Board bring-up checklist';
+  return null;
+}
+
 function formatArtifactGlyph(path: string): string {
   const extension = path.split('.').pop()?.toLowerCase();
   if (extension === 'vhd') return 'VH';
@@ -2212,7 +2241,7 @@ function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGro
       id: 'constraints',
       label: 'Constraints',
       description:
-        'Board pin and timing constraints aligned to the current Board & Constraints authority.',
+        'Board pin and timing constraints aligned to the current mapping in Board.',
       artifacts: [],
     },
     {

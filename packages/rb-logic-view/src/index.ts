@@ -54,6 +54,7 @@ export {
   type SymbolPin,
 } from './symbols/portGeometry';
 export { outlineFor, type SymbolOutline } from './symbols/ansiSymbols';
+export { placeSchematicLabels, type SchematicLabel } from './symbols/schematicLabels';
 export {
   connectionEndpoints,
   polylinePath,

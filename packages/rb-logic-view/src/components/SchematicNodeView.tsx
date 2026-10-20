@@ -4,6 +4,7 @@ import type { Camera } from '../useLogicViewStore';
 import { wirePortState } from '../tools/wireGuidance';
 import { outlineFor } from '../symbols/ansiSymbols';
 import { GRID, STUB, type SymbolGeometry, type SymbolPin } from '../symbols/portGeometry';
+import type { SchematicLabel } from '../symbols/schematicLabels';
 import type { LogicDisplayValue, NodeIoPresentation } from './NodeView';
 
 /**
@@ -88,6 +89,7 @@ export interface SchematicNodeViewProps {
   /** Show the value beside every pin (detail LOD) or only for interesting pins. */
   showAllValues?: boolean;
   layers?: SchematicLayers;
+  labelPosition?: SchematicLabel;
 }
 
 const FONT_MONO = 'var(--rb-font-mono, Consolas, monospace)';
@@ -129,6 +131,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
   onProbeToggle,
   showAllValues = false,
   layers = DEFAULT_SCHEMATIC_LAYERS,
+  labelPosition,
 }) => {
   const [hovered, setHovered] = React.useState(false);
   const pos = dragPosition ?? node.position ?? { x: node.x ?? 0, y: node.y ?? 0 };
@@ -250,7 +253,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
       {isBlock ? (
         <>
           {title ? (
-            <text className="rb-sym-title" x={0} y={minY + 13} textAnchor="middle" fontFamily={FONT_MONO} fontSize={11} fontWeight={600} pointerEvents="none">
+            <text className="rb-sym-title" x={0} y={minY + 13} textAnchor="middle" fontFamily={FONT_MONO} fontSize={12.5} fontWeight={600} pointerEvents="none">
               {title}
             </text>
           ) : null}
@@ -260,7 +263,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
             y={title ? minY + 25 : minY + 12}
             textAnchor="middle"
             fontFamily={FONT_MONO}
-            fontSize={9.5}
+            fontSize={10.5}
             pointerEvents="none"
           >
             {typeLabel}
@@ -274,7 +277,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
             y={4}
             textAnchor="start"
             fontFamily={FONT_MONO}
-            fontSize={11}
+            fontSize={12.5}
             fontWeight={600}
             pointerEvents="none"
           >
@@ -288,7 +291,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
             y={4}
             textAnchor="end"
             fontFamily={FONT_MONO}
-            fontSize={11}
+            fontSize={12.5}
             fontWeight={700}
             pointerEvents="none"
             data-testid={`sym-value-${node.id}`}
@@ -297,7 +300,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
           </text>
           ) : null}
           {pinAlias && layers.boardBindings && lod !== 'overview' ? (
-            <text className="rb-sym-alias" x={0} y={maxY + 11} textAnchor="middle" fontFamily={FONT_MONO} fontSize={9} pointerEvents="none">
+            <text className="rb-sym-alias" x={0} y={maxY + 12} textAnchor="middle" fontFamily={FONT_MONO} fontSize={10.5} pointerEvents="none">
               {pinAlias}
             </text>
           ) : null}
@@ -305,12 +308,12 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
       ) : (
         <>
           {title && layers.netLabels && lod !== 'overview' ? (
-            <text className="rb-sym-title" x={0} y={minY - 5} textAnchor="middle" fontFamily={FONT_MONO} fontSize={10} fontWeight={600} pointerEvents="none">
+            <text className="rb-sym-title" x={labelPosition?.x ?? 0} y={labelPosition?.y ?? minY - 6} textAnchor="middle" fontFamily={FONT_MONO} fontSize={12.5} fontWeight={600} pointerEvents="none">
               {title}
             </text>
           ) : null}
           {showGateType ? (
-            <text className="rb-sym-type" x={(minX + maxX) / 2 - 2} y={maxY + 11} textAnchor="middle" fontFamily={FONT_MONO} fontSize={9} pointerEvents="none">
+            <text className="rb-sym-type" x={(minX + maxX) / 2 - 2} y={maxY + 12} textAnchor="middle" fontFamily={FONT_MONO} fontSize={10.5} pointerEvents="none">
               {typeLabel}
             </text>
           ) : null}
@@ -342,7 +345,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
                 y={pin.y + 3.5}
                 textAnchor={pin.side === 'left' ? 'start' : 'end'}
                 fontFamily={FONT_MONO}
-                fontSize={9.5}
+                fontSize={10.5}
                 pointerEvents="none"
               >
                 {pinLabel(pin)}
@@ -398,7 +401,7 @@ const SchematicNodeViewComponent: React.FC<SchematicNodeViewProps> = ({
                 y={pin.y - 4}
                 textAnchor={pin.side === 'left' ? 'end' : 'start'}
                 fontFamily={FONT_MONO}
-                fontSize={9}
+                fontSize={10.5}
                 pointerEvents="none"
               >
                 {valueText(value)}

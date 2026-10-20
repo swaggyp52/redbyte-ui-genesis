@@ -2,6 +2,7 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import { useProjectRuntime, type ProjectIoRow, type RuntimeSimState } from '../projectRuntime';
@@ -171,7 +172,7 @@ describe('DesignSurface inspector — named sections', () => {
     expect(view.queryByTestId('ide-design-inspector-related')).toBeNull();
   });
 
-  it('shows the pin and the constraint lines in Mapping and offers Board & Constraints', async () => {
+  it('shows the pin and the constraint lines in Mapping and offers the way to Board', async () => {
     const view = renderSurface();
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
@@ -180,7 +181,7 @@ describe('DesignSurface inspector — named sections', () => {
       expect(view.getByTestId('ide-design-inspector-mapping-pin').textContent).toBe('U16');
     });
     expect(view.getByTestId('ide-design-inspector-mapping-xdc').textContent).toContain('U16');
-    expect(view.getByTestId('ide-design-inspector-mapping-open').textContent).toContain('Board & Constraints');
+    expect(view.getByTestId('ide-design-inspector-mapping-open').textContent).toBe('Open in Board');
     // Selection details keeps its one-line board summary (the primary flow contract).
     expect(view.getByTestId('ide-design-inspector-selection-details').textContent).toContain('U16');
   });
@@ -212,5 +213,127 @@ describe('DesignSurface inspector — named sections', () => {
     });
     expect(view.getByTestId('ide-design-inspector-related-board-io')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-related-package-artifact')).toBeTruthy();
+  });
+
+  it('opens on the actions for the selection, with reference sections closed until asked for', async () => {
+    const view = renderSurface();
+    act(() => {
+      useLogicViewStore.getState().selectNode('and0_node');
+    });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-connectivity')).toBeTruthy();
+    });
+    // Reference material is one named step away, not expanded beside the schematic.
+    for (const id of ['ide-design-inspector-selection-details', 'ide-design-inspector-connectivity']) {
+      const section = view.getByTestId(id);
+      expect(section.getAttribute('data-open')).toBe('false');
+      expect(section.querySelector('.ide-inspector-content')?.hasAttribute('hidden')).toBe(true);
+      expect(view.getByTestId(`${id}-toggle`).getAttribute('aria-expanded')).toBe('false');
+    }
+    // The actions a student takes on the selection are not behind a toggle.
+    expect(view.getByTestId('ide-design-inspector-actions').querySelector('.ide-inspector-toggle')).toBeNull();
+
+    act(() => {
+      view.getByTestId('ide-design-inspector-connectivity-toggle').click();
+    });
+    const connectivity = view.getByTestId('ide-design-inspector-connectivity');
+    expect(connectivity.getAttribute('data-open')).toBe('true');
+    expect(connectivity.querySelector('.ide-inspector-content')?.hasAttribute('hidden')).toBe(false);
+    expect(view.getByTestId('ide-design-inspector-connectivity-toggle').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  // Keeping a closed section's content in the document is only acceptable if it is really
+  // out of reach until asked for, and if asking for it needs nothing but a keyboard. This
+  // walks that path: closed and unreachable, opened with Enter, the first control inside
+  // reached with Tab and used, then closed again with Space.
+  it('a closed section is out of reach, opens from the keyboard, and its first action then works', async () => {
+    const user = userEvent.setup();
+    const view = renderSurface();
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-connectivity')).toBeTruthy();
+    });
+
+    const toggle = view.getByTestId('ide-design-inspector-connectivity-toggle');
+    const content = view.getByTestId('ide-design-inspector-connectivity').querySelector('.ide-inspector-content') as HTMLElement;
+    const driverRow = content.querySelector<HTMLButtonElement>('[data-testid^="ide-design-driver-row-"]');
+    expect(driverRow).not.toBeNull();
+
+    // Closed: a native button announces the state, and the content is hidden, not just clipped.
+    expect(toggle.tagName).toBe('BUTTON');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('Connectivity');
+    expect(content.hidden).toBe(true);
+
+    // Tab from the closed toggle does not land on anything inside the closed section.
+    toggle.focus();
+    expect(document.activeElement).toBe(toggle);
+    await user.tab();
+    expect(content.contains(document.activeElement)).toBe(false);
+
+    // Enter on the toggle opens it.
+    toggle.focus();
+    await user.keyboard('{Enter}');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(content.hidden).toBe(false);
+
+    // The next Tab stop is now the first control inside, and using it follows the wire upstream.
+    await user.tab();
+    expect(document.activeElement).toBe(driverRow);
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(useLogicViewStore.getState().selection.nodes.has('and0_node')).toBe(true);
+    });
+    expect(useLogicViewStore.getState().selection.nodes.has('ld0_node')).toBe(false);
+  });
+
+  it('Space closes an opened section again and puts its content back out of reach', async () => {
+    const user = userEvent.setup();
+    const view = renderSurface();
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-connectivity')).toBeTruthy();
+    });
+    const toggle = view.getByTestId('ide-design-inspector-connectivity-toggle');
+    const content = view.getByTestId('ide-design-inspector-connectivity').querySelector('.ide-inspector-content') as HTMLElement;
+
+    toggle.focus();
+    await user.keyboard(' ');
+    expect(content.hidden).toBe(false);
+    await user.keyboard(' ');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(content.hidden).toBe(true);
+    await user.tab();
+    expect(content.contains(document.activeElement)).toBe(false);
+  });
+
+  it('Evidence starts closed and shows the live value once it is opened', async () => {
+    const user = userEvent.setup();
+    const view = renderSurface();
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-context-inspector')).toBeTruthy();
+    });
+    const evidence = view.getByTestId('ide-design-context-inspector');
+    const toggle = view.getByTestId('ide-design-context-inspector-toggle');
+    const content = evidence.querySelector('.ide-inspector-content') as HTMLElement;
+
+    expect(evidence.getAttribute('data-open')).toBe('false');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(content.hidden).toBe(true);
+    // The value is kept, not removed: it is one named step away.
+    expect(content.contains(view.getByTestId('ide-design-context-current'))).toBe(true);
+
+    toggle.focus();
+    await user.keyboard('{Enter}');
+    expect(evidence.getAttribute('data-open')).toBe('true');
+    expect(content.hidden).toBe(false);
+    expect(view.getByTestId('ide-design-context-current').closest('[hidden]')).toBeNull();
   });
 });

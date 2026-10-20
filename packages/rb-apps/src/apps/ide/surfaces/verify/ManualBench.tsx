@@ -29,7 +29,7 @@ import type { ScenarioStepDraft } from '../../verifyScenarioSteps';
  */
 
 export interface ManualBenchProps {
-  /** Navigate to the Virtual Board (Board & Constraints) — same live state. */
+  /** Navigate to the Virtual Board (Board) — same live state. */
   readonly onOpenVirtualBoard?: () => void;
   /** Navigate to the waveform/analyzer view. */
   readonly onOpenAnalyzer?: () => void;

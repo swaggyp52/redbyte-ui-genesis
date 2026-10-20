@@ -57,7 +57,7 @@ import type {
 } from '../labTaskDefinition';
 import {
   BOARD_CONSTRAINTS_STAGE_LABEL,
-  EXPORT_STAGE_LABEL,
+  PACKAGE_WORKSPACE_NAME,
   PROGRAM_STAGE_LABEL,
   VERIFY_STAGE_LABEL,
 } from '../workflowStages';
@@ -111,14 +111,14 @@ export const CHROME_CONTRACT = {
 } satisfies IdeChromeContract;
 
 const OPEN_SIMULATE_LABEL = `Open ${VERIFY_STAGE_LABEL}`;
-const OPEN_BUILD_EXPORT_LABEL = `Open ${EXPORT_STAGE_LABEL}`;
+const OPEN_BUILD_EXPORT_LABEL = `Open ${PACKAGE_WORKSPACE_NAME}`;
 
 function formatHardwareWorkflowDestinationText(value: string): string {
   return value
     .replaceAll('Open Verify', OPEN_SIMULATE_LABEL)
     .replaceAll('open Verify', `open ${VERIFY_STAGE_LABEL}`)
     .replaceAll('Open Export', OPEN_BUILD_EXPORT_LABEL)
-    .replaceAll('open Export', `open ${EXPORT_STAGE_LABEL}`);
+    .replaceAll('open Export', `open ${PACKAGE_WORKSPACE_NAME}`);
 }
 
 export interface HardwareMappingRow {
@@ -1599,51 +1599,51 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     failureTruth.condition === 'ready'
       ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are not proven in RedByte and must be captured as external E1/E2/E3 evidence.'
       : failureTruthMessage;
-  /* Once every required signal is mapped the next step is Build & Export - but what Build & Export
+  /* Once every required signal is mapped the next step is Package - but what Package
      will offer depends on the evidence, and the Board says which rather than sending a reader to
      find out. "Draft" and "checked" are Package's own words for its two trust states, so the two
      surfaces describe the same package the same way. */
   const mappingReadyNext = useMemo<{ headline: string; reason: string | null }>(() => {
     switch (failureTruth.condition) {
       case 'ready':
-        return { headline: 'Inspect the checked package in Build & Export', reason: null };
+        return { headline: 'Open Package to inspect the checked package', reason: null };
       case 'export-missing':
         return {
-          headline: 'Generate the checked package in Build & Export',
+          headline: 'Open Package to generate the checked package',
           reason: 'The current recording passes its checks.',
         };
       case 'export-stale':
         return {
-          headline: 'Regenerate the package in Build & Export',
+          headline: 'Open Package to regenerate the package',
           reason: 'The last generated package predates the current design.',
         };
       case 'verify-not-run':
         return {
-          headline: 'Build & Export offers a draft package',
+          headline: 'Package will offer a draft package',
           reason: 'No run is recorded for this design yet. Run a scenario in Simulate for a checked package.',
         };
       case 'verify-stale':
         return {
-          headline: 'Build & Export offers a draft package',
+          headline: 'Package will offer a draft package',
           reason: 'The recorded run is stale. Rerun it in Simulate for a checked package.',
         };
       case 'trace-only':
         return {
-          headline: 'Build & Export offers a draft package',
+          headline: 'Package will offer a draft package',
           reason: 'The recording has no checks. Add optional expected values and rerun in Simulate for a checked package.',
         };
       case 'assertions-differ':
         return {
-          headline: 'Build & Export offers a draft package',
+          headline: 'Package will offer a draft package',
           reason: 'The current recording has failed checks. Inspect the mismatch in Simulate.',
         };
       case 'mapping-review':
         return {
-          headline: 'Build & Export offers a draft package',
+          headline: 'Package will offer a draft package',
           reason: 'The last passing recording used a different mapping. Rerun in Simulate for a checked package.',
         };
       default:
-        return { headline: 'Inspect the package in Build & Export', reason: null };
+        return { headline: 'Open Package to inspect the package', reason: null };
     }
   }, [failureTruth.condition]);
   const dominantPrimaryAction = useMemo(() => {
@@ -1820,7 +1820,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
     return {
       title: 'Follow the board check steps, then build the package',
-      body: 'Once the checks match at the board, Build & Export carries the handoff notes and the Vivado steps.',
+      body: 'Once the checks match at the board, Package carries the handoff notes and the Vivado steps.',
       primaryLabel: OPEN_BUILD_EXPORT_LABEL,
       primaryAction: onOpenExport,
       primaryTestId: 'ide-hardware-next-primary',
@@ -2211,7 +2211,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const hardwareBoardChromeStage =
     hwMode === 'map'
-      ? 'Board & Constraints'
+      ? 'Board'
       : hwMode === 'bringup'
         ? 'Board Check'
         : 'Simulated board';
@@ -2319,7 +2319,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--map" testId="ide-hw-map-dock">
       <header className="ide-workbench-placeholder-header ide-hw-map-dock-header">
         <div className="ide-hw-map-dock-head-main">
-          <h3>Board & Constraints</h3>
+          <h3>Board</h3>
           <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
             Map signal -&gt; board control -&gt; package pin -&gt; XDC constraint.
           </p>
@@ -2705,7 +2705,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       </IdeInspectorSection>
       <IdeInspectorSection title="Advanced XDC preview" defaultOpen={false}>
         <p className="ide-copy ide-copy--flush">
-          {EXPORT_STAGE_LABEL} uses the same saved {BOARD_CONSTRAINTS_STAGE_LABEL} assignment when
+          {PACKAGE_WORKSPACE_NAME} uses the same saved {BOARD_CONSTRAINTS_STAGE_LABEL} assignment when
           generating <code>top.xdc</code>.
         </p>
         <pre className="ide-hw-xdc-preview" data-testid="ide-hw-xdc-preview">
@@ -2785,7 +2785,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? hasNoBoundaryRows
         ? PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals
         : mappingReady
-          ? 'Every required signal has one coherent Basys3 resource and package pin. Continue to Build & Export to inspect the handoff package.'
+          ? 'Every required signal has one coherent Basys3 resource and package pin. Continue to Package to inspect the handoff package.'
           : selectedMappingRow
             ? `${selectedMappingLabel} is selected. Choose a compatible resource in the selected-signal control to assign the package pin.`
             : 'Pin mapping connects each circuit signal to a physical Basys3 resource. Select a signal row, choose a compatible resource, then save the assignment.'
@@ -2886,7 +2886,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           title={OPEN_BUILD_EXPORT_LABEL}
         >
           <span className="ide-hardware-dep-step__num">2</span>
-          <span className="ide-hardware-dep-step__label">{EXPORT_STAGE_LABEL}</span>
+          <span className="ide-hardware-dep-step__label">{PACKAGE_WORKSPACE_NAME}</span>
           <span className="ide-hardware-dep-step__status">
             {hardwareState === 'ready'
               ? '✓'
@@ -3080,8 +3080,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </IdeButton>
             <span className="ide-hw-mode-exit-hint" data-testid="ide-hw-mode-exit-hint">
               {hwMode === 'bringup'
-                ? 'Board Check active — press Esc or click Back to return to Board & Constraints.'
-                : 'Simulation active — press Esc or click Back to return to Board & Constraints.'}
+                ? 'Board Check active — press Esc or click Back to return to Board.'
+                : 'Simulation active — press Esc or click Back to return to Board.'}
             </span>
           </div>
         ) : null}
@@ -3347,7 +3347,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     {mappingHandoffBlockedByDesign
                       ? 'Open Design'
                       : mappingReady
-                        ? 'Continue to Build & Export'
+                        ? 'Continue to Package'
                         : 'Select next signal'}
                   </IdeButton>
                 </div>
@@ -3766,6 +3766,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           >Clear</IdeButton>
                         ) : null}
                       </div>
+                      {/* The assignment in a student's words. The identity chain and the XDC it
+                          produces are exact and unchanged, one named step away. */}
+                      <p className="rb-board-assignment" data-testid="ide-hw-assignment-summary">
+                        <strong>{selectedMappingLabel}</strong>
+                        <span aria-hidden="true">→</span>
+                        <strong>{selectedMappingBoardControl}</strong>
+                        {selectedMappingPackagePin ? <span className="rb-board-assignment-pin">pin {selectedMappingPackagePin}</span> : null}
+                      </p>
+                      <details className="rb-board-constraint-detail" data-testid="ide-hw-constraint-detail">
+                      <summary>Constraint details</summary>
                       <div className="ide-hardware-basys3-binding-chain" data-testid="ide-hardware-basys3-binding-chain" aria-label="Selected Basys3 binding chain">
                         <span className="rb-board-detail-label">Saved constraint</span>
                         <span data-testid="ide-hardware-chain-signal"><small>Logical port</small><strong>{selectedMappingLabel}</strong></span>
@@ -3779,6 +3789,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         <span data-testid="ide-hardware-chain-io-standard"><small>I/O standard</small><strong>{selectedMappedBoardResource?.ioStandard ?? 'Unassigned'}</strong></span>
                         <pre data-testid="ide-hardware-basys3-binding-xdc">{selectedBoardResourceXdc || 'Assign a resource to preview the XDC constraint.'}</pre>
                       </div>
+                      </details>
                       {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
                         <details
                           className="rb-board-electrical"
@@ -3804,7 +3815,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </summary>
                   <p className="ide-copy ide-copy--flush">
                     {constraintSets && activeConstraintSet(constraintSets.doc)
-                      ? 'These assignments were restored from the active captured set. The lines below are what Build & Export packages as top.xdc. Editing a pin returns to Live mapping.'
+                      ? 'These assignments were restored from the active captured set. The lines below are what Package writes as top.xdc. Editing a pin returns to Live mapping.'
                       : 'Each signal’s pin becomes these lines in top.xdc. Select a line to select its signal.'}
                   </p>
                   <ol className="rb-board-xdc-lines" data-testid="ide-hw-xdc-lines">

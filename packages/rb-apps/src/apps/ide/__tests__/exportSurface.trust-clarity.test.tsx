@@ -255,7 +255,7 @@ describe('ExportSurface trust clarity', () => {
     expect(view.getByTestId('ide-export-gate-verify').textContent).toContain('Stale');
   });
 
-  it('blocks an unmapped package and sends the primary repair action to Board & Constraints', () => {
+  it('blocks an unmapped package and sends the primary repair action to Board', () => {
     const onGoToHardware = vi.fn();
     const view = renderPackage({ project: buildMappingBlockedProject(), onGoToHardware });
     expect(view.getByTestId('ide-export-state-summary').textContent).toMatch(/mapping|pin assignments/i);
@@ -345,7 +345,7 @@ describe('ExportSurface trust clarity', () => {
       workflowAuthority: makeWorkflowAuthority({ verifyResult: passResult }) });
     openTechnical(view);
     const mappingAction = view.getByTestId('ide-export-gate-action-mapping');
-    expect(mappingAction.textContent).toBe('Open Board & Constraints');
+    expect(mappingAction.textContent).toBe('Open Board');
     fireEvent.click(mappingAction);
     expect(onGoToHardware).toHaveBeenCalledOnce();
   });
@@ -356,6 +356,9 @@ describe('ExportSurface trust clarity', () => {
     expect(primaryDownload(view).className).toContain('ide-button-primary');
     expect(view.getByTestId('ide-export-open-handoff').className).not.toContain('ide-button-primary');
     expect(view.queryByTestId('ide-package-handoff-document')).toBeNull();
+    // File work: choosing the file shows its generated source.
+    expect(view.queryByTestId('ide-export-preview-code')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity top');
     fireEvent.click(view.getByRole('button', { name: 'Open report' }));
     expect(onOpenDocument).toHaveBeenCalledWith({ kind: 'handoff' });

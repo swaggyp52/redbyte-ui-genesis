@@ -3,7 +3,7 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import { sameEngineeringObject, type EngineeringObjectRef } from '../../engineeringSelection';
 import type { WorkbenchDocument } from '../../workbenchDocuments';
 import type { IdeMode } from '../../workflowStages';
-import { ArchitecturePreview } from './ArchitecturePreview';
+import { SchematicProjection, type SchematicProjectionModule } from '../../components/SchematicProjection';
 import { xdcPortToken } from '../../hardwareXdcPreview';
 import type { OverviewFact, ProjectMappingRowLike, ProjectProblem } from './projectWorkbenchModel';
 
@@ -33,6 +33,8 @@ export interface ProjectOverviewDocumentProps {
   readonly circuit: Circuit | undefined;
   readonly ioLabelByNodeId: ReadonlyMap<string, string>;
   readonly moduleNameByNodeId: ReadonlyMap<string, string>;
+  /** Module definitions, so an instance on the sheet is drawn with the ports Design gives it. */
+  readonly modules?: readonly SchematicProjectionModule[];
   readonly mappingRows: readonly ProjectMappingRowLike[];
   readonly problems: readonly ProjectProblem[];
   readonly selected: EngineeringObjectRef | null;
@@ -60,6 +62,8 @@ const TOP_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
  */
 /** Facts that change what a reader does next. Everything else describes the project. */
 const STATUS_FACT_IDS = ['simulation', 'mapping', 'package'] as const;
+/** The status rows are named for the workspace that owns them, so each reads as a place to go. */
+const STATUS_LABELS: Readonly<Record<string, string>> = { simulation: 'Simulate', mapping: 'Board', package: 'Package' };
 
 export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = ({
   projectName,
@@ -70,7 +74,7 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
   facts,
   circuit,
   ioLabelByNodeId,
-  moduleNameByNodeId,
+  modules,
   mappingRows,
   problems,
   selected,
@@ -160,13 +164,15 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
       <div className="rb-project-stage">
         <section className="rb-project-canvas" aria-label="Circuit" data-testid="ide-project-design-overview">
           {hasCircuit && circuit ? (
-            <ArchitecturePreview
+            <SchematicProjection
               circuit={circuit}
+              ariaLabel={`${projectName} schematic`}
               ioLabelByNodeId={ioLabelByNodeId}
-              moduleNameByNodeId={moduleNameByNodeId}
+              modules={modules}
               selectedNodeId={selectedNodeId}
               onSelectNode={(nodeId) => onSelect({ kind: 'node', moduleId: 'top', nodeId })}
-              onOpenDesign={() => onOpenDocument({ kind: 'schematic', moduleId: 'top' })}
+              onOpenNode={() => onOpenDocument({ kind: 'schematic', moduleId: 'top' })}
+              testId="ide-project-circuit-preview"
             />
           ) : sourceSummary && sourceSummary.fileCount > 0 ? (
             // An imported or source-only project has no graph to draw. Say what it does have.
@@ -192,8 +198,78 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
             </div>
           )}
           <footer className="rb-project-canvas-foot">
+            <span className="rb-project-canvas-caption">
+              {hasCircuit ? 'Your schematic, as drawn in Design' : 'No schematic yet'}
+            </span>
+            <span className="wb-toolbar-spacer" />
+            <button
+              type="button"
+              className="wb-btn"
+              onClick={() => onOpenDocument({ kind: 'schematic', moduleId: 'top' })}
+              data-testid="ide-project-overview-open-design-primary"
+            >
+              Open in Design
+            </button>
+            <button type="button" className="wb-btn wb-btn--ghost" onClick={() => onOpenDocument({ kind: 'architecture' })} data-testid="ide-project-overview-open-architecture">
+              Block view
+            </button>
+          </footer>
+        </section>
+
+        <aside className="rb-project-context" aria-label="Project state">
+          <h3 className="rb-project-context-title">Where things stand</h3>
+          <dl className="rb-project-status" data-testid="ide-project-status">
+            {statusFacts.map((fact) => (
+              <div key={fact.id} className="rb-project-status-row" data-testid={`ide-project-fact-${fact.id}`} data-tone={fact.tone}>
+                <dt>{STATUS_LABELS[fact.id] ?? fact.label}</dt>
+                <dd>{renderFactValue(fact)}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="rb-project-attention" data-testid="ide-project-attention">
+            {leadProblem ? (
+              <>
+                <h3 className="rb-project-context-title">Needs attention</h3>
+                {/* What is wrong, in words. The code identifies it in the Problems list, where
+                    it is searchable and copyable; it is not a student's first sentence. */}
+                <p className="rb-project-attention-lead" data-problem-code={leadProblem.code} title={`Problem ${leadProblem.code}`}
+                  data-tone={leadProblem.severity === 'error' ? 'error' : leadProblem.severity === 'warning' ? 'warn' : undefined}>
+                  {leadProblem.message}
+                </p>
+                <div className="rb-project-attention-actions">
+                  {leadProblem.fixMode ? (
+                    <button
+                      type="button"
+                      className="wb-btn"
+                      data-testid={`ide-project-problem-fix-${leadProblem.id}`}
+                      onClick={() => onNavigateMode(leadProblem.fixMode as IdeMode)}
+                    >
+                      Open {leadProblem.fixMode === 'verify' ? 'Simulate' : leadProblem.fixMode === 'hardware' ? 'Board' : leadProblem.fixMode === 'export' ? 'Package' : 'Design'}
+                    </button>
+                  ) : null}
+                  {onOpenProblems ? (
+                    <button type="button" className="wb-btn wb-btn--ghost" onClick={onOpenProblems} data-testid="ide-project-open-problems">
+                      {problems.length > 1 ? `All ${problems.length} problems` : 'Open Problems'}
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <p className="rb-project-attention-lead" data-testid="ide-project-attention-clear">
+                Nothing is asking for attention.
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* ── Everything the project knows about itself, one disclosure away ───────────── */}
+      <details className="rb-doc-section rb-project-details" data-testid="ide-project-details">
+        <summary>Project details</summary>
+        <div className="rb-project-top-row">
             <label className="rb-doc-top" data-testid="ide-project-active-top">
-            <span>Top</span>
+            <span>Top entity</span>
             <input
               className="rb-doc-top-input"
               value={topDraft}
@@ -225,70 +301,7 @@ export const ProjectOverviewDocument: React.FC<ProjectOverviewDocumentProps> = (
             />
           </label>
           {topError ? <span className="rb-doc-error" role="alert" data-testid="ide-project-active-top-error">{topError}</span> : null}
-            <span className="wb-toolbar-meta">
-              {circuit ? `${circuit.nodes.length} components · ${circuit.connections.length} nets` : 'no circuit'}
-            </span>
-            <span className="wb-toolbar-spacer" />
-            <button
-              type="button"
-              className="wb-link"
-              onClick={() => onOpenDocument({ kind: 'schematic', moduleId: 'top' })}
-              data-testid="ide-project-overview-open-design-primary"
-            >
-              Open in Design
-            </button>
-            <button type="button" className="wb-link" onClick={() => onOpenDocument({ kind: 'architecture' })} data-testid="ide-project-overview-open-architecture">
-              Architecture
-            </button>
-          </footer>
-        </section>
-
-        <aside className="rb-project-context" aria-label="Project state">
-          <dl className="rb-project-status" data-testid="ide-project-status">
-            {statusFacts.map((fact) => (
-              <div key={fact.id} className="rb-project-status-row" data-testid={`ide-project-fact-${fact.id}`} data-tone={fact.tone}>
-                <dt>{fact.label}</dt>
-                <dd>{renderFactValue(fact)}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <div className="rb-project-attention" data-testid="ide-project-attention">
-            {leadProblem ? (
-              <>
-                <p className="rb-project-attention-lead" data-tone={leadProblem.severity === 'error' ? 'error' : leadProblem.severity === 'warning' ? 'warn' : undefined}>
-                  <code>{leadProblem.code}</code> {leadProblem.message}
-                </p>
-                <div className="rb-project-attention-actions">
-                  {leadProblem.fixMode ? (
-                    <button
-                      type="button"
-                      className="wb-btn"
-                      data-testid={`ide-project-problem-fix-${leadProblem.id}`}
-                      onClick={() => onNavigateMode(leadProblem.fixMode as IdeMode)}
-                    >
-                      Open {leadProblem.fixMode === 'verify' ? 'Simulate' : leadProblem.fixMode === 'hardware' ? 'Board' : leadProblem.fixMode === 'export' ? 'Package' : 'Design'}
-                    </button>
-                  ) : null}
-                  {onOpenProblems ? (
-                    <button type="button" className="wb-link" onClick={onOpenProblems} data-testid="ide-project-open-problems">
-                      Open Problems
-                    </button>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <p className="rb-project-attention-lead" data-testid="ide-project-attention-clear">
-                Nothing is asking for attention.
-              </p>
-            )}
-          </div>
-        </aside>
-      </div>
-
-      {/* ── Everything the project knows about itself, one disclosure away ───────────── */}
-      <details className="rb-doc-section rb-project-details" data-testid="ide-project-details">
-        <summary>Project details</summary>
+        </div>
         <dl className="rb-facts" data-testid="ide-project-professional-facts">
           {detailFacts.map((fact) => (
             <div key={fact.id} className="rb-fact" data-testid={`ide-project-fact-${fact.id}`} data-tone={fact.tone}>

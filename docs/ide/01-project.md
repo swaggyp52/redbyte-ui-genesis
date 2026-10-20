@@ -36,7 +36,9 @@ The shared bounded starter picker is also reachable directly from an empty Simul
 
 Overview shows one blocker and an Open Problems action; the complete list lives in the canonical dock. The explorer retains its summary/count. Single-run groups say no repeat yet.
 
-The explorer owns Overview, Sources, Architecture, Runs and Compile Order. Visiting those
+The explorer owns Overview, Sources, Architecture and Runs. Compile Order and the generated
+files are in one group, **Technical files** (`ide-project-explorer-group-generated`), which is
+closed until opened and still found by the filter (2026-10-05, local candidate). Visiting those
 roots creates no tabs; source previews remain genuine secondary documents. Inspectors follow
 Project selections and the active document, including deliberate module/source cross-probes.
 Runs groups the full retained configuration triple and displays output digests, counts and

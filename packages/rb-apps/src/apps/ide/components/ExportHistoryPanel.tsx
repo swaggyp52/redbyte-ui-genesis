@@ -12,7 +12,7 @@ import {
  * (`exportHistory`). It lists each generation/download event newest-first with
  * its provenance (kind, verification trust, content hashes), lets the engineer
  * select any package to inspect, and compares the selection against the package
- * before it so it is clear exactly which artifacts changed. Build & Export
+ * before it so it is clear exactly which artifacts changed. Package
  * remains the authority for generating packages.
  */
 

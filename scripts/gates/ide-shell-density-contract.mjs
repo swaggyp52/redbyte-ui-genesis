@@ -28,8 +28,8 @@ await runIdeGate('IDE shell density contract satisfied', async ({ page, baseUrl 
 
   assert(topBarBox.height <= 52, `top bar must stay dense (<=52px), got ${topBarBox.height}`);
   assert(
-    leftRailBox.width <= 72,
-    `left rail width must stay compact (<=72px), got ${leftRailBox.width}`
+    leftRailBox.width === 80,
+    `left rail must follow the existing workbench 5rem (80px) width, got ${leftRailBox.width}`
   );
 
   if (consoleCount > 0) {

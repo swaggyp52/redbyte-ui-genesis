@@ -414,6 +414,20 @@ function buildRegisterOutputs(q: number, width: number, scalarCompatibility: boo
   return outputs;
 }
 
+/** Publish held state without evaluating a device or creating a clock edge.
+ * Used to establish the common read boundary before native clock capture. */
+export function readClockedStateOutputs(
+  nodeType: string,
+  state: Record<string, unknown>,
+  config: Record<string, unknown>,
+): NodeOutputs {
+  if (nodeType === 'Register1' || nodeType === 'RegisterBus' || nodeType === 'StateBank') {
+    const width = normalizeWidth(config.width, nodeType === 'Register1' ? 1 : 8);
+    return buildRegisterOutputs(Number(state.q ?? 0), width, nodeType === 'Register1');
+  }
+  return sequentialOutputs(Number(state.q ?? 0));
+}
+
 function evaluateRegisterFamily(
   inputs: NodeInputs,
   state: Record<string, any>,

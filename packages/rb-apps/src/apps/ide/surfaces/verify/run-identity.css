@@ -1,7 +1,8 @@
 /* Recording context rests below execution. Full identities have one disclosure. */
 .rb-run-identity { min-width: 0; border-top: 1px solid var(--wb-border); color: var(--wb-text); padding: 5px 12px; font-size: var(--wb-text-sm); background: var(--wb-surface-2); }
 .rb-run-identity__status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
-.rb-run-identity__label { font-weight: 650; }
+.rb-run-identity__label { font-weight: 600; }
+.rb-run-identity__status > [data-testid='ide-run-check-result'] { font-weight: 600; }
 .rb-run-identity__status > span { color: var(--wb-text-2); }
 .rb-run-identity__status > [data-check-status='fail'] { color: var(--wb-err); }
 .rb-run-identity__status > [data-check-status='pass'] { color: var(--wb-ok); }

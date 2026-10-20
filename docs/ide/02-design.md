@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-09-30
+last_validated: 2026-10-08
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -10,6 +10,23 @@ role: Design surface spec
 
 Status: local P2.6C candidate; exact source digest and current evidence are in the finish ticket
 Mode ID: `design`
+
+## Interactive hierarchy contract (2026-10-08)
+
+Explore supports runnable combinational module hierarchies, including repeated and nested
+instances. Only actual top-level inputs are drivable. Module ports and internal boundary
+nodes are inspection targets, projected from the existing parent live engine. Enter this
+instance and the breadcrumb use the exact instance ID path; labels do not establish identity.
+Selecting a connection preserves its destination input. Returning to the parent restores
+that connection, and Finish exploring retains the authoring camera and experiment owners.
+Local rules use actual parent values; unavailable values remain unknown.
+
+Authoring shortcuts and unrelated authoring tools are unavailable during hierarchy exploration.
+Large local drawings keep explicit omitted counts and 24-branch pages. Enlarge live drawing
+changes only this inspection view. Definitions, cases, expected outputs, recordings, mappings
+and checked export authority are unchanged by exploration. Sequential modules remain explicitly
+unqualified for live hierarchy exploration; their clock/reset cases run in Simulate. Existing
+flat sequential exploration keeps its clock-edge and reset controls.
 
 ## Current local authoring/repair contract (2026-09-30)
 
@@ -75,6 +92,9 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 1. Workbench header and direct toolbar
 - `ide-design-workspace-header` is the only persistent top owner. It names the current Canvas / Code / Split state and keeps the owning next action visible without adding a second command deck.
 - Select, Wire, Undo, Redo, Fit, Zoom, and View remain direct. Port selection opens a compact picker only when more than one port needs disambiguation; it must not become a canvas-obscuring HUD.
+- 2026-10-05, local candidate (not owner-accepted). Fit, Selection and zoom are a view dock on the sheet's lower left corner (`ide-design-viewdock`, same control ids), not toolbar buttons. The command row is one row of one height: its status chip takes only left-over room, and Explore, like the wire cue, has a strip of its own, so the height changes on a mode change and never on selection. Gate: `scripts/gates/ide-design-working-camera.mjs`.
+- Working view, same date. A resized sheet is never rescaled: opening the inspector keeps the zoom and slides the view only far enough to keep the selected (or just-placed) part on the sheet; an untouched framed view stays centred. The camera is remembered per project and module for the session (not saved with the project) and restored on returning to Design, reopening a project and entering or leaving a module; Save As keeps the current view. New work is framed once; Fit is explicit.
+- Library, same date. A compact labeled list at 208px that does not change form on selection; long names wrap rather than truncate; a fixed strip under the list (`ide-design-palette-detail`) shows the focused part's ports for keyboard and pointer alike.
 - Project remains reachable through the horizontal five-stage navigator or contextual recovery. The old standalone Design command strip, rail controls, and floating layout toggles are retired.
 
 2. Stable left library
@@ -98,6 +118,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 4. Stable right inspector
 - Is selection-driven support in a stable `240-280px` region at desktop widths. At constrained widths selected details move to a stable lower region automatically; the student does not open/close a core rail to recover the canvas.
 - For a selected node, the compact identity and actionable issue guidance come first, primary Actions follow immediately, and teaching/reference/mapping context follows in **Selection details**. Cross-platform font wrapping in secondary context must not push direct edit controls below the `1366x768` classroom first viewport.
+- 2026-10-05, local candidate: within Actions for one selected part the groups are, in the markup and on screen, Value → Net tracing → Edit. Selection details, Connectivity, Evidence and Related start closed with their content hidden, and open from the keyboard. Running copy names the other workspaces as the rail does ("Open in Board", "Open Board").
 - The inspector is organised as named sections over existing authorities, in this order: Identity (the properties surface: name, kind, rename; there is no standalone Properties section) → Actions → Selection details → **Connectivity** (pin values, input drivers, what the selection drives) → **Evidence** (`ide-design-context-inspector`: live or replayed state, verify focus, probes) → **Mapping** (board resource, package pin, constraint set, the constraint lines the package writes, Open in Board & Constraints) → **Source** (the generated VHDL lines that name the signal, Show HDL beside the schematic; collapsed by default) → **Related** (the documents the signal appears in, as a list). Mapping renders when the selection has a board row or relation, and Related when the signal resolves to a boundary relation; Source renders for any single selected node and says so plainly when the signal is not named in the generated source. Board relations always name the package pin, even when the row stores the board alias.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
 - With no selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It stays secondary to the canvas.

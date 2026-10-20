@@ -5,7 +5,7 @@ import { LAB_STARTERS, type LabStarter } from '../../labStarters';
 import { GANNON_PILOT_LABS, formatGannonPilotProofScope, type GannonPilotLab } from '../../gannonPilotLabs';
 import type { GuidedLabTaskDefinition } from '../../labTaskDefinition';
 import type { ProjectHierarchyDocument } from '../../projectHierarchy';
-import { ArchitecturePreview } from './ArchitecturePreview';
+import { SchematicProjection } from '../../components/SchematicProjection';
 
 /**
  * Start Center — a visual project and lab library, not a web catalog.
@@ -517,7 +517,7 @@ const Preview: React.FC<{
             {item.kind === 'lab' ? `Lab ${item.lab.labNumber} · ${DIFFICULTY_LABEL[item.lab.difficulty] ?? item.lab.difficulty} · ${boardLabel}`
             : item.kind === 'guided' ? `Guided scratch lab · ${boardLabel}`
             : item.kind === 'starter' ? `${item.example.course} · ${item.example.lab} · ${item.example.concept}`
-            : item.kind === 'recent' ? `Saved ${relativeTime(item.project.savedAtIso)} · ${item.project.projectHash.slice(0, 12)}`
+            : item.kind === 'recent' ? `Saved ${relativeTime(item.project.savedAtIso)}`
             : recoveryLabel ?? 'Snapshot'}
           </p>
         </div>
@@ -558,7 +558,13 @@ const Preview: React.FC<{
 
       {circuit && circuit.nodes.length > 0 ? (
         <div className="rb-start-figure" data-testid="ide-project-start-figure">
-          <ArchitecturePreview circuit={circuit} ioLabelByNodeId={ioLabels} moduleNameByNodeId={moduleNames} />
+          <SchematicProjection
+            circuit={circuit}
+            ariaLabel={`${title} schematic`}
+            ioLabelByNodeId={ioLabels}
+            modules={hierarchy?.modules}
+            testId="ide-project-start-schematic"
+          />
         </div>
       ) : item.kind === 'guided' ? (
         <div className="rb-start-figure rb-start-figure--truth" data-testid="ide-project-start-figure">

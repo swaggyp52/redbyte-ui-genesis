@@ -624,6 +624,163 @@ dock choices persist per workspace; reset restores the defaults. The bottom dock
 | Global Simulation failing while editing or mapping | A historical experiment's result is not the active workspace's status. |
 | A narrated cause without recorded samples | Connectivity is evidence of a path, not proof of a state transition. |
 
+### 2026-10-04 - The circuit is the product
+
+**Decided (implemented locally; not yet accepted by the owner).** The presentation is organised
+around building and understanding a circuit, not around how RedByte stores it. Engineering stays
+on screen; implementation bookkeeping moves behind an explicit control.
+
+Type. One rem scale owned by `theme/redbyte-type.css`: 15px ordinary text and commands, 14px
+signal names and dense values, 13px secondary readouts, 12px ornament only, 16px prominent
+labels, and 18 / 20 / 24px headings. Controls are 32px, toolbars 44px. These are design
+targets, not an accessibility claim. No rule may force a size with `!important` to work around
+the scale.
+
+One drawing. Project's overview and the Start previews draw the project with the same symbols,
+pin geometry and router as Design, read-only, in the student's own placement
+(`components/SchematicProjection.tsx`). The block diagram remains as the explicitly chosen
+Architecture / "Block view". The palette shows each part's schematic symbol.
+
+Frame. One application bar (it owns Back / Forward and names the board without its part code),
+one rail, one status line. A collapsed Problems panel is a handle in the status line and takes
+no room of its own; the bottom panel is docked, not floating.
+
+Simulate. The scenario's row carries its recording's state and the one primary Run; Reproduce
+sits with the recording. Selection, edge stepping and playback share one instrument toolbar with
+the event commands. Recorded output bits that name themselves as one word (LD1, LD0) are also
+shown as a number, from recorded samples only: a tick with any member unrecorded has no value.
+That word belongs to the recording. Its members, their order and their names come from the
+recording's own captured signal roles and execution rows, and its values from that recording's
+untranslated samples; the live design's current labels play no part, so renaming or removing an
+output cannot change or remove an old recording's lane. Where the design has since renamed a
+member the lane says "as recorded". The grouping is an unsigned display reading of numbered
+output names, not a claim that they are a counter. The recorded circuit opens on the symbols the
+selected signal touches, at a working scale, with the whole circuit one press away.
+
+Design. Schematic labels are 12.5 drawing units for names and values and 10.5 for pins, and a
+boundary symbol is as wide as its name needs. The inspector opens on the selection's name, value
+control, mapping and tracing actions; Details, Connectivity and Related are named sections that
+open on request.
+
+Board. The illustration is drawn on the schematic's plane in the schematic's ink. Assigned,
+selected, compatible, conflicting and unavailable each have one look; logic-high is shown only
+by the LED or switch itself and only from a recording. No glow. A selected signal states its
+assignment in words (signal, resource, pin); the saved-constraint chain and its XDC are exact,
+unchanged and one named disclosure away.
+
+Package. The landing is the handoff: the package, its truthful state, one action, the external
+Vivado step stated once, and the package's contents by role. No file is selected on arrival and
+no source is mounted unasked. Choosing a file - here, from the report, or by any artifact
+selection - opens exactly that file with copy and download, and "Back to contents" closes it.
+Bytes, hashes and integrity checks are unchanged.
+
+| Superseded | Why |
+|---|---|
+| 13px ordinary text with 11-12px used for most labels | The product's real reading size was 12px. |
+| A block-diagram stand-in on Project and Start | It was not recognisably the student's drawing. |
+| A blanket `!important` control size in Design | It hid the scale problem and made Design's buttons disagree with every other workspace. |
+| A status line under a second, empty Problems strip | Two strips described one panel. |
+| Run and Reproduce as adjacent equal buttons | They read as two ways to execute the same thing. |
+| One green glow for assigned, selected and logic-high | Three meanings shared one signal. |
+| A recording's word lane grouped by the live design's labels | A later rename removed the lane from a recording that still held the samples. |
+| A file's source open on arrival at Package | It made a handoff read as a code editor. |
+| The problem code as the first word of Project's attention line | The sentence a student needs is what is wrong; the code identifies it in Problems. |
+
+Not changed: project, runtime, recording, selection, navigation, mapping and export authorities;
+generated artifacts and goldens; the supported-construct boundary; the stage names
+"Board & Constraints" and "Build & Export" in product language. Open at the time: with the
+inspector open on a 1366px window Design's schematic names rendered near 11px, below the 14px
+aim. The 2026-10-05 record below closes it.
+
+### 2026-10-05 - A stable working view
+
+Local, uncommitted, not visually accepted by the owner.
+
+The working view is the student's. The Design camera is changed by the student and by Fit, and
+by nothing else:
+
+- A resized sheet is never rescaled. Selecting a part opens the inspector and narrows the
+  sheet; the zoom stays, and the view slides only as far as it must to keep the selected part
+  on the sheet. A part just placed and then released follows the same rule. A framed view
+  nobody has touched stays centred, at its zoom, as panes open and close.
+- The view is remembered per project and per module for the session, and restored on returning
+  from another workspace, on reopening a project from the saved list, and on going into and out
+  of a module definition. Save As keeps the student where they are; from then on the copy and
+  the original keep separate views. Work not yet looked at is framed once. The memory is view
+  state: it is not saved with the project and a reload starts fresh.
+- Recorded-circuit viewing in Simulate keeps its own framing and is not part of this.
+
+One composition for Design, with or without the inspector:
+
+- The library is compact and labeled - symbol and name on one row at 208px - and keeps that
+  form through selection, wiring and inspection. It does not collapse to icons. Widening it is
+  the student's explicit, remembered choice. A long name takes two lines; none is cut off.
+- Under the list, a strip of fixed height names the part in focus and its ports. It follows
+  keyboard focus and the pointer, replaces the tooltip as the way to read a part's interface,
+  and does not move the list.
+- Fit, Selection and zoom are on the sheet, in its lower left corner, in one group. They are
+  always visible, they do not move when the inspector opens, and they are not in the toolbar.
+- The command row is one row of one height. A status chip takes only the room the commands
+  leave and gives way before they do. Exploring has a strip of its own, as wiring does, so the
+  height changes when the student changes mode and not when they select something.
+- For one selected part the inspector reads in the order of use, in the markup as on screen:
+  value, then net tracing, then editing. Details, Connectivity, Evidence and Related are closed
+  until opened; their content is hidden, not merely collapsed, and each opens from the keyboard.
+
+Names. An instruction to go to a workspace uses the name on the rail: "Open Board",
+"Continue to Package". The long stage labels remain the formal titles (the mapping document's
+heading inside Board, the command palette, the shortcut list, the public start page) and remain
+the stage authority in `workflowStages.ts`. Package's state for a design whose current run
+passes and whose package has not been generated reads "the current simulation passes its
+checks"; it says nothing of Vivado or a board.
+
+Project's explorer keeps Compile Order and the generated files in one group, "Technical files",
+closed until opened and found by the filter. Nothing was removed.
+
+| Superseded | Why |
+|---|---|
+| Refitting the whole circuit whenever the sheet changed size while the view was still the fitted one | Selecting a part is such a change: names went from 16px to 11px at the moment a student looked closely. |
+| Framing the whole circuit on every entry to Design | It discarded a deliberate zoom on each return from Simulate. |
+| Fit and zoom in the toolbar, folding into the View menu as the bar narrowed | They were the first things hidden when a pane opened, and they made the row wrap. |
+| A 248px library whose port summary was a mouse tooltip | A keyboard could not read a part's interface. |
+| Edit commands ahead of tracing in the inspector | The value a student sets and the trace that explains it are used first. |
+| "Continue to Build & Export", "Open Board & Constraints" in running copy | The rail calls the workspaces Board and Package. |
+| "Package not built yet - evidence validated" | It named no state a student could check. |
+| Compile Order among the Project documents, Generated Files as its own group | Both are for inspecting the build. |
+
+### 2026-10-05 - Milestone 4: see the behavior, find the mistake
+
+Local, uncommitted candidate; production verification and exact identity are recorded in
+`docs/ACTIVE_WORK.md`. Owner visual acceptance remains open.
+
+Simulate composes one experiment header, one primary Table/Time instrument, and one selected
+result. The selected result names the exact case/tick/signal, retained expected/observed values,
+recorded inputs and one failure navigator. History and Reproduce are secondary recording
+actions. Opening the recorded circuit preserves the instrument and selected context. Missing
+samples are missing; observations without checks are not passing tests. A draft check edit and
+an editable Design handoff are separate actions and leave old recordings immutable.
+
+The circuit is inspectable through retained topology, names and actual sampled gate pins.
+Highlighted upstream connectivity indicates where to inspect, not a root cause. Supported local
+logic is explicitly derived; sequential prior/current state and sampled clock edges are shown
+only when retained samples support them. Whole-circuit and module-instance access remain
+ordinary controls. Shared primitive label placement avoids local wire collisions without
+changing connections, saved positions, junctions or the Design camera. Successful routine
+wiring is evident on the canvas; duplicate celebration/action toasts are retired. Escape
+cancels a transient operation first and otherwise clears ordinary selection while preserving
+explicitly pinned investigation state.
+
+Save As asks for a validated noncolliding friendly name. Cancel and failed saves leave the
+original work open; pending saves cannot submit twice. Identity changes only after the existing
+repository transaction succeeds. The independent copy retains scenarios and recordings under
+the existing session-copy contract. Friendly names do not rename HDL entities, ports or XDC
+constraints. The current Simulate session view is copied to the new independent preference scope.
+
+The canonical workspace names are **Project, Design, Simulate, Board, Package** in navigation,
+titles, command palette, shortcuts and help. `workflowStages.ts` owns these labels. Stable route
+IDs remain `project/design/verify/hardware/export`; engineering references to constraints and
+export remain valid. This explicitly supersedes the earlier short-name/formal-title distinction.
+
 ## Attribution
 
 Connor Angiel

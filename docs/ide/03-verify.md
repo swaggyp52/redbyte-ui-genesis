@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-09-30
+last_validated: 2026-10-08
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -8,10 +8,106 @@ role: Verify surface spec
 
 # Verify Mode Spec
 
-Status: local P2.6C candidate; exact source digest and current evidence are in the finish ticket
+## Cancellable execution contract (2026-10-08)
+
+Explicit Run prepares an owned request and executes the same browser-v2 engine and schedule
+inside a dedicated module worker. Preparing, Computing and Publishing are transient statuses;
+the last complete recording stays inspectable. Cancel Run invalidates admission and terminates
+the actual worker. Playback Pause controls retained observations separately.
+
+One Run is admitted at a time. A completed response publishes its report, samples, bounded
+capture, execution input, generated source, identity, history and ledger in one guarded runtime
+update. Project/design/case/mapping/scenario edits, same-ID reopening, result clearing, cancellation
+and leaving Simulate invalidate a pending request. Late results cannot replace retained evidence.
+Worker/transfer failures report an error and allow a new Run; unavailable workers do not fall
+back to a blocking execution disguised as cancellable. Transient progress does not serialize
+or persist the recording archive. Completed recording persistence keeps the existing envelope.
+
+Timing evidence distinguishes preparation, request copy, engine compute, response transfer,
+artifact construction, admission/persistence and subsequent paint opportunities. Paint opportunity
+is a measured browser scheduling boundary, not an assertion that every later effect has rendered.
+Whole UI actions and heartbeat gaps remain separate browser measurements. Preparation, artifact
+construction and durable admission are synchronous; their measured stalls remain explicit.
+
+## Signal Journey - local connected inspection (2026-10-07)
+
+Run can opt into bounded evaluation steps from the actual execution path. Follow signal opens
+an immutable investigation inside Simulate; the experiment remains mounted and Return to experiment
+preserves its instrument/history state. This adds no workspace. A shared inspection carries the
+retained project/revision/run, tick, globally unique captured event, exact node/port/bit and instance
+ID path. Friendly labels are presentation. The original followed cone remains available while
+stepping or selecting internal objects. Hover preview does not commit selection.
+Workspace navigation closes the investigation without discarding its identity; Resume signal
+reopens the same object and phase. Return restores the retained run, signal and tick even after
+another recording was selected while the investigation was closed.
+
+Circuit is the primary atlas. Gate/module identity, actual input values, a local rule such as
+`0 OR 1 = 1`, and whether the output changed lead the explanation. Revision, engine, scheduler,
+raw aliases and evaluation provenance are available in details. Sequential explanations retain
+data, clock/control and prior/next state separately; only genuine native aliases share a row.
+Pending captured state is explicitly distinguished from the prior state still drawn on the circuit.
+Logic promotes the bounded local equation and lets the student expand one input branch at a time.
+Input-port selection derives its exact driver; output-port selection derives the gate rule.
+Selecting a drawn connection commits its exact retained port while keeping the paused phase.
+Negation groups the complete NAND/NOR rule rather than only its first operand. Table
+or recorded time uses published samples and retained binary/decimal word lanes. Generated HDL uses
+retained deterministic emitter spans, with the mapped statement visible on entry and reverse selection
+qualified by module instance. Board boundary reads retained mapping and simulated values at the chosen
+phase; missing phase values remain unrecorded. Workbench problems are labeled as current editable
+design diagnostics during historical inspection. Inspection never commands a board output.
+
+Playback uses captured inputs, driver provenance, prior/result outputs and actual state boundaries.
+Native edge devices capture against a common prior-Q boundary, publish together, then combinational
+logic settles. Pending capture results and published samples are distinct. Logical execution order
+does not establish physical delay or hazards. Cases keep stable tick-order labels even when the table
+is displayed by input combination; authored checks are independent of derived expressions.
+
+Capture is bounded to 10,000 events/4 MiB in the app; drawings focus at most 256 nodes and expressions
+at most 48 terms. Registers, feedback and unsupported primitives stop Boolean expansion. Legacy
+recordings retain their samples; unsupported old-engine reproduction and missing exact source maps
+are explicit. Do not attach a newly reconstructed trace or current source to an old recording.
+Large instances offer a recoverable four-node local focus with explicit omitted-graph counts;
+all actual loads remain reachable in 24-destination pages. Generated source uses 120-line pages,
+and cases/recorded time use 50-sample pages without changing the recording or inspection phase.
+Current Design live exploration says it is not recorded. Authored cases require an explicit Run
+for a new recording; recorded playback neither drives those inputs nor advances a live clock.
+Supported combinational module circuits now allow live Design exploration using the parent engine.
+Exact repeated/nested instance projection and ordinary authored reusable modules have separate proof.
+Sequential module hierarchy exploration remains explicitly unqualified and directs students to
+authored clock/reset cases in Simulate.
+
+Status: local uncommitted candidate; exact source digest and current evidence are in docs/ACTIVE_WORK.md.
 Mode ID: `verify`
 
-## Current local recording/comparison contract (2026-09-30)
+## Current local selected-result contract (2026-10-05, milestone 4)
+
+Simulate has three levels: experiment (scenario, one recorded verdict/currentness and Run),
+instrument (Table or Time), and selected result (exact signal/case/tick, retained expected and
+observed values, recorded inputs, one failure navigator, Inspect circuit and Edit expectation).
+The old bottom run line and repeated timing-value inventory are retired. The experiment says
+No recording yet before execution; absent observations remain missing. Case counts describe
+rows, check counts describe checked outputs. Zero-check recordings are not passing tests.
+
+Recordings & details holds history, Reproduce, repetition, comparison and hashes as secondary
+actions. Selecting history does not execute; opening investigation preserves the instrument,
+selected tick and signal. Draft input/expectation edits remain distinct from retained observations
+and mismatch marks. Edit expectation changes the owned authored scenario; Edit in Design
+carries the investigation to the editable circuit. Neither changes a historical recording.
+
+The recorded schematic uses that recording's topology, full names and samples. Selected nets
+and upstream connectivity are an inspection region, not a root-cause verdict. Clicking an
+available gate exposes exact retained values beside its pins. A local rule is explicitly derived
+and requires supported binary inputs. Sequential readouts use actual sampled prior/current
+states; an edge requires adjacent recorded clock values. Missing/unknown evidence stays missing
+or unknown. Whole circuit, instance selection, explicit Fit and Enlarge remain reachable;
+manual viewing is not reset by sample changes. Shared local label placement changes no wiring
+or saved node positions. Save As copies the current scenario view into an independently scoped
+session preference only after the repository save succeeds.
+
+This section supersedes the older run-line, failure-navigation and toolbar composition below.
+Local production evidence and remaining limits are recorded in docs/ACTIVE_WORK.md.
+
+## Earlier local recording/comparison contract (2026-09-30)
 
 The runtime ledger remains oldest-first. The shared recording read model scopes comparison
 to project, scenario, and selected recording, then finds its preceding compatible run.

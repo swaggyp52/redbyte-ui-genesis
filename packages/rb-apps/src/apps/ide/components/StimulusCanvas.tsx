@@ -634,7 +634,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           onClick={() => onNavigateToMapping?.()}
           data-testid="ide-stimulus-empty-nav"
         >
-          Board & Constraints
+          Board
         </button>{' '}
         first.
       </p>

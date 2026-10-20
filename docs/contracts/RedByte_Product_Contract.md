@@ -61,7 +61,7 @@ RedByte must enable a user to:
 The five RedByte-owned student stages are:
 
 ```text
-Project -> Design -> Simulate -> Board & Constraints -> Build & Export
+Project -> Design -> Simulate -> Board -> Package
 ```
 
 Vivado build, board programming, and physical observation are downstream proof tiers after Export. Import / Recover is a utility, not a sixth stage.
@@ -272,7 +272,7 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 
 | Area | What must be proven | Evidence type | Status |
 |---|---|---|---|
-| Combinational path | Design -> Simulate -> Build & Export -> Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven for matrix rows; keep per-row E1/E2/E3 truth in certification matrix |
+| Combinational path | Design -> Simulate -> Package -> Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven for matrix rows; keep per-row E1/E2/E3 truth in certification matrix |
 | Sequential path | Rising-edge single-clock path works end-to-end | runtime + Vivado validation | proven for matrix rows; board observation remains per-row |
 | Sequential boundaries | Falling-edge-triggered capture, multi-clock domains, and unsupported reset modes are blocked or warned | code inspection + runtime | enforced for known boundary rows; keep regression coverage current |
 | Design-time feedback | Driver conflicts, loops, floating drivers caught during design | runtime | implemented; still needs periodic runtime audit |

@@ -1042,7 +1042,7 @@ describe('VerifySurface workstation controls', () => {
     showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-workbench').getAttribute('data-trace-signals')).toBe('2');
     expect(getByTestId('ide-verify-workbench').getAttribute('data-trace-ticks')).toBe('3');
-    expect(getByTestId('ide-verify-evidence-state').getAttribute('data-state')).toBe('recorded');
+    expect(getByTestId('ide-run-identity').getAttribute('data-currency')).toBe('current');
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
     selectRecordedSignal(getByTestId, 'sw0');
     expect(getByTestId('ide-sim-context-inspector').textContent).toContain('Current value0');
@@ -1168,13 +1168,13 @@ describe('VerifySurface workstation controls', () => {
 
     const time = getByTestId('ide-timing-lanes');
     fireEvent.click(getByTestId('ide-timing-lanes-tick-1'));
-    expect(getByTestId('ide-time-selection').textContent).toContain('t1');
+    expect(getByTestId('ide-verify-selected-result')).toHaveAttribute('data-tick','1');
     fireEvent.keyDown(time, {key: 'ArrowRight'});
-    expect(getByTestId('ide-time-selection').textContent).toContain('t2');
+    expect(getByTestId('ide-verify-selected-result')).toHaveAttribute('data-tick','2');
     // The interval between sparse recorded samples is not silently filled.
-    expect(getByTestId('ide-time-selected-value').textContent).toBe('unrecorded');
+    expect(getByTestId('ide-selected-result-observed').textContent).toBe('—');
     fireEvent.keyDown(time, {key: 'ArrowRight'});
-    expect(getByTestId('ide-time-selection').textContent).toContain('t3');
+    expect(getByTestId('ide-verify-selected-result')).toHaveAttribute('data-tick','3');
   });
 
   it('arms assertion checking immediately after capturing outputs as expected', () => {
@@ -1775,11 +1775,12 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId } = view;
 
     await waitFor(() => {
-      expect(getByTestId('ide-verify-evidence-state-reason').textContent).toContain('Design changed');
+      expect(getByTestId('ide-run-input-changes').textContent).toContain('Design changed');
     });
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Simulation stale');
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
-    expect(getByTestId('ide-vcb-check-count').textContent).toContain('1 optional checks');
+    expect(getByTestId('ide-run-check-result').textContent).toContain('1 checks passed');
+    expect(queryByTestId('ide-vcb-check-count')).toBeNull();
     expect(onVectorsChange).not.toHaveBeenCalled();
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
@@ -2016,8 +2017,8 @@ describe('VerifySurface workstation controls', () => {
     const primaryRow = getByTestId('ide-verify-waveform-primary');
     const stepControls = getByTestId('ide-verify-step-controls');
     const transport = getByTestId('ide-verify-waveform-transport');
-    const failNav = getByTestId('ide-verify-fail-nav');
-    const runLine = getByTestId('ide-verify-run-line');
+    const failNav = queryByTestId('ide-verify-fail-nav');
+    const selectedResult = getByTestId('ide-verify-selected-result');
     const traceTools = getByTestId('ide-verify-waveform-cmd');
 
     expect(primaryRow.parentElement).toBe(waveformBar);
@@ -2030,9 +2031,8 @@ describe('VerifySurface workstation controls', () => {
     // line, which every representation renders, and not in the trace toolbar, which only the
     // trace representation renders.
     expect(traceTools.contains(primaryRow)).toBe(true);
-    expect(traceTools.contains(failNav)).toBe(false);
-    expect(runLine.contains(failNav)).toBe(true);
-    expect(primaryRow.contains(failNav)).toBe(false);
+    expect(failNav).toBeNull(); // a passing recording has no mismatch navigator
+    expect(traceTools.contains(selectedResult)).toBe(false);
   });
 
   it('keeps primary mismatch navigation and waveform tools visible on fail runs', () => {
@@ -2057,10 +2057,11 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
+    expect(getByTestId('ide-verify-selected-result').contains(getByTestId('ide-verify-fail-nav'))).toBe(true);
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('Case 2');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('expected 1');
-    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('got 0');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('observed 0');
     showWaveformRepresentation({ queryByTestId });
     expect(getByTestId('ide-verify-waveform-tools-panel')).toBeTruthy();
     expect(getByTestId('ide-verify-zoom-out').getAttribute('aria-label')).toBe('Zoom out waveform');
@@ -2720,10 +2721,8 @@ describe('VerifySurface workstation controls', () => {
     );
 
     const status = getByTestId('ide-verify-primary-status');
-    expect(status.textContent).toMatch(/Board pins|Board & Constraints|not finished/i);
-    expect(getByTestId('ide-verify-primary-open-project-mappins').textContent).toContain(
-      'Board & Constraints'
-    );
+    expect(status.textContent).toMatch(/Board pins|assign them in Board|not finished/i);
+    expect(getByTestId('ide-verify-primary-open-project-mappins').textContent).toBe('Open Project — Board');
   });
 
   it('shows PASS (INCOMPLETE) status label when pass run has incomplete-mapping qualification', () => {
@@ -2931,7 +2930,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(staleTestbench.getByTestId('ide-verify-evidence-state-reason').textContent).toContain(
+    expect(staleTestbench.getByTestId('ide-run-input-changes').textContent).toContain(
       'Checks changed'
     );
     staleTestbench.unmount();
@@ -2959,7 +2958,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(staleDesign.getByTestId('ide-verify-evidence-state-reason').textContent).toContain(
+    expect(staleDesign.getByTestId('ide-run-input-changes').textContent).toContain(
       'Design changed'
     );
   });
@@ -2996,7 +2995,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(view.getByTestId('ide-verify-evidence-state-reason').textContent).toContain(
+    expect(view.getByTestId('ide-run-input-changes').textContent).toContain(
       'Browser reloaded'
     );
     expect(view.getByTestId('ide-verify-workspace-waveform')).toHaveAttribute(

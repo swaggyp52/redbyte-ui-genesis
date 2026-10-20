@@ -25,19 +25,19 @@
   --rb-radius-1: 8px;
   --rb-radius-2: 12px;
   --rb-radius-3: 16px;
-  /* Typography: 12/14/15/16/20/24 */
-  --rb-font-size-1: 12px;
-  --rb-font-size-2: 14px;
-  --rb-font-size-3: 15px;
-  --rb-font-size-4: 16px;
-  --rb-font-size-5: 20px;
-  --rb-font-size-6: 24px;
-  /* Line heights: 16/18/20/24/32 */
-  --rb-line-height-1: 16px;
-  --rb-line-height-2: 18px;
-  --rb-line-height-3: 20px;
-  --rb-line-height-4: 24px;
-  --rb-line-height-5: 32px;
+  /* Typography: sizes resolve to the one scale in theme/redbyte-type.css. */
+  --rb-font-size-1: var(--rb-text-meta);
+  --rb-font-size-2: var(--rb-text-body);
+  --rb-font-size-3: 1rem;
+  --rb-font-size-4: var(--rb-text-head);
+  --rb-font-size-5: var(--rb-text-title);
+  --rb-font-size-6: var(--rb-text-doc);
+  /* Line heights follow the text they set, so larger type is never clipped by a fixed box. */
+  --rb-line-height-1: 1.35;
+  --rb-line-height-2: 1.35;
+  --rb-line-height-3: 1.4;
+  --rb-line-height-4: 1.4;
+  --rb-line-height-5: 1.35;
   /* Weights: 400/500/600 */
   --rb-font-weight-regular: 400;
   --rb-font-weight-medium: 500;
@@ -419,9 +419,9 @@
   min-height: var(--ide-console-collapsed-h);
   overflow: auto;
   border: 1px solid color-mix(in srgb, var(--ide-border) 82%, #8ec7ff 18%);
-  border-radius: var(--ide-radius-s);
+  border-radius: 0;
   background: linear-gradient(180deg, rgba(13, 22, 31, 0.95), rgba(8, 15, 22, 0.97));
-  box-shadow: var(--rb-shadow-1);
+  box-shadow: none;
   padding: var(--ide-space-1) var(--ide-space-2);
   transition:
     min-height var(--rb-motion-fast) var(--rb-ease-standard),
@@ -6166,7 +6166,7 @@ details[open] summary .details-arrow {
    the state unusable - a collapsed console could not be reopened - so the shell always
    rendered the console expanded instead, and a handful of advisory problems took a fifth of
    the workbench. Collapsed is now what the word means: a strip carrying its own toggle. */
-.ide-workbench-console.is-collapsed {
+.ide-workbench-console.is-collapsed:not([data-console-handle='status-line']) {
   min-height: 28px !important;
   max-height: 28px !important;
   padding: 0 var(--ide-space-2) !important;
@@ -11243,11 +11243,11 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-workbench-console {
-  border-radius: 10px 10px 0 0;
+  border-radius: 0;
   border-left: 0;
   border-right: 0;
   border-bottom: 0;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
   padding: 6px 12px 10px;
 }
 

@@ -49,11 +49,19 @@ export interface VhdlTopOutputBinding {
 }
 
 export interface VhdlExportResult {
+  sourceMap: VhdlNodeSourceSpan[];
   vhd: string;
   entityName: string;
   inputPorts: string[];
   outputPorts: string[];
   warnings: string[];
+}
+
+export interface VhdlNodeSourceSpan {
+  nodeId: string;
+  startLine: number;
+  endLine: number;
+  kind: 'evaluation' | 'boundary' | 'instance';
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +335,13 @@ export function vhdlFromNetlist(
 
   const warnings: string[] = [];
   const lines: string[] = [];
+  const sourceMap: VhdlNodeSourceSpan[] = [];
+  const mapped = (nodeId: string, kind: VhdlNodeSourceSpan['kind'], emit: () => void) => {
+    const startLine = lines.join('\n').split('\n').length + (lines.length ? 1 : 0);
+    emit();
+    const endLine = lines.join('\n').split('\n').length;
+    if (endLine >= startLine) sourceMap.push({ nodeId, kind, startLine, endLine });
+  };
 
   // ---- Classify nodes -------------------------------------------------------
   // Clock nodes: only those that arrived as IRPort boundary nodes (boundaryKind === 'clock')
@@ -454,6 +469,7 @@ export function vhdlFromNetlist(
   lines.push('  Port (');
 
   const portDecls: string[] = [];
+  const inputDeclarations: Array<{nodeId:string;index:number}> = [];
 
   // Collect input port strings
   const inputPortNames: string[] = [];
@@ -469,6 +485,8 @@ export function vhdlFromNetlist(
       seenNames.add(port.name);
       const typeStr = port.vhdlType ?? 'STD_LOGIC';
       if (port.dir === 'in') {
+        for (const binding of topInputBindings ?? []) if(binding.portName === port.name)
+          inputDeclarations.push({nodeId:binding.toNodeId,index:portDecls.length});
         portDecls.push(`    ${port.name} : in  ${typeStr}`);
         inputPortNames.push(port.name);
       } else {
@@ -482,6 +500,7 @@ export function vhdlFromNetlist(
       const typeStr = isVector
         ? `STD_LOGIC_VECTOR(${group.width} downto 0)`
         : 'STD_LOGIC';
+      for(const member of group.nodes) inputDeclarations.push({nodeId:member.nodeId,index:portDecls.length});
       portDecls.push(`    ${group.baseName} : in  ${typeStr}`);
       inputPortNames.push(group.baseName);
     });
@@ -496,6 +515,9 @@ export function vhdlFromNetlist(
     });
   }
 
+  const declarationsStart=lines.join('\n').split('\n').length+1;
+  for(const declaration of inputDeclarations)sourceMap.push({nodeId:declaration.nodeId,kind:'boundary',
+    startLine:declarationsStart+declaration.index,endLine:declarationsStart+declaration.index});
   lines.push(portDecls.join(';\n'));
   lines.push('  );');
   lines.push(`end entity ${entityName};`);
@@ -527,7 +549,7 @@ export function vhdlFromNetlist(
   lines.push('begin');
 
   // ---- Concurrent signal assignments ----------------------------------------
-  supportedLogicNodes.forEach((node) => {
+  supportedLogicNodes.forEach((node) => mapped(node.id, 'evaluation', () => {
     const sigName = nodeIdToSignal.get(node.id)!;
     const nets = netlist.nets;
 
@@ -760,11 +782,11 @@ export function vhdlFromNetlist(
     const aStr = aSig ?? "'0'";
     const bStr = bSig ?? "'0'";
     lines.push(`  ${sigName} <= ${aStr} ${op} ${bStr};`);
-  });
+  }));
 
   // ---- Drive output ports from internal signals or direct input connections --
   if ((topOutputBindings?.length ?? 0) > 0) {
-    topOutputBindings?.forEach((binding) => {
+    topOutputBindings?.forEach((binding) => mapped(binding.fromNodeId, 'boundary', () => {
         const topOutputSignalRef = topBindingSignalRef(binding);
         // First: direct signal lookup — works for directly-pinned logic gate outputs
         // (e.g. AND gate output port 'out' → signal 'and_0').
@@ -806,9 +828,9 @@ export function vhdlFromNetlist(
           return;
         }
         lines.push(`  ${topOutputSignalRef} <= ${resolvedDriverSig};`);
-    });
+    }));
   } else {
-    outputNodes.forEach((outNode) => {
+    outputNodes.forEach((outNode) => mapped(outNode.id, 'boundary', () => {
       const portExpr = nodeIdToSignal.get(outNode.id)!;
       // Find the net driving this output node's 'in' port
       const driverNet = netlist.nets.find(
@@ -829,7 +851,7 @@ export function vhdlFromNetlist(
         return;
       }
       lines.push(`  ${portExpr} <= ${resolvedDriverSig};`);
-    });
+    }));
   }
 
   lines.push(`end architecture Behavioral;`);
@@ -838,6 +860,7 @@ export function vhdlFromNetlist(
 
   return {
     vhd,
+    sourceMap,
     entityName,
     inputPorts: inputPortNames,
     outputPorts: outputPortNames,

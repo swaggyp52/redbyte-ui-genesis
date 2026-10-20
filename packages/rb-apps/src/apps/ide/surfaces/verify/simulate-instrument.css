@@ -3,8 +3,15 @@
    owns only what is specific to Simulate. No !important. */
 
 /* Toolbar: instrument segment · run intent · explainer · Run. */
-.ide-root .rb-sim-toolbar { padding: 6px var(--wb-space-3); gap: 6px 12px; background: var(--wb-surface); }
-.ide-root .rb-sim-scenario-name { font: 650 var(--wb-text-lg) / 1.3 var(--wb-font-ui); color: var(--wb-text); min-width: 0; overflow-wrap: anywhere; }
+.ide-root .rb-sim-toolbar { padding: 8px var(--wb-space-4); gap: 6px 14px; min-height: 3.5rem; background: var(--wb-surface); }
+/* The recording reports itself in the scenario's own row. A notice about it - inputs changed,
+   a divergence, the opened run details - needs the width, so it takes a line below instead. */
+.ide-root .rb-sim-toolbar .rb-run-identity { flex: 0 1 auto; min-width: 0; padding: 0 0 0 14px; border: 0; border-left: 1px solid var(--wb-border-strong); background: transparent; font-size: var(--rb-text-body); }
+.ide-root .rb-sim-toolbar .rb-run-identity:has(.rb-run-identity__details[open]),
+.ide-root .rb-sim-toolbar .rb-run-identity:has(.rb-run-identity__changes),
+.ide-root .rb-sim-toolbar .rb-run-identity:has(.rb-run-identity__alarm) { order: 20; flex: 1 0 100%; padding: 8px 0 0; border-left: 0; border-top: 1px solid var(--wb-border); }
+.ide-root .rb-sim-toolbar .rb-sim-reproduce { height: var(--wb-control-h); color: var(--wb-text-2); }
+.ide-root .rb-sim-scenario-name { font: var(--rb-weight-title) var(--rb-text-title) / 1.25 var(--wb-font-ui); color: var(--wb-text); min-width: 0; overflow-wrap: anywhere; }
 .ide-root .rb-sim-seg .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
 .ide-root .rb-sim-seg .wb-btn.is-blocked { color: var(--wb-text-3); }
 .ide-root .rb-sim-run .ide-button {
@@ -241,7 +248,7 @@
 .ide-root .rb-sig-focus code { font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .rb-sig-list { padding: 0 0 4px; }
 .ide-root .rb-sig-group { display: block; }
-.ide-root .rb-sig-group-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 var(--wb-space-3) 0 8px; border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
+.ide-root .rb-sig-group-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; height: 2rem; padding: 0 var(--wb-space-3) 0 8px; border-top: 1px solid var(--wb-border); background: var(--wb-surface-2); }
 .ide-root .rb-sig-group:first-child .rb-sig-group-header { border-top: 0; }
 .ide-root .rb-sig-group-label { flex: 1; color: var(--wb-text-2); font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 .ide-root .rb-sig-group-header .ide-copy { margin: 0; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
@@ -251,8 +258,8 @@
 .ide-root .rb-sig-row {
   flex: 1;
   min-width: 0;
-  min-height: 1.5rem;
-  padding: 3px var(--wb-space-3) 3px 14px;
+  min-height: 2rem;
+  padding: 4px var(--wb-space-3) 4px 14px;
   border: 0;
   border-left: 2px solid transparent;
   border-radius: 0;
@@ -308,11 +315,11 @@
 .ide-root .rb-sim-lab-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 0;
-  grid-template-rows: minmax(min-content, 1fr) fit-content(34%);
-  grid-template-areas: 'cases inspector' 'evidence evidence';
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-areas: 'cases inspector' 'evidence inspector' 'result result';
   gap: 0;
 }
-.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) { min-height: min-content; }
+.ide-root .rb-sim-lab-grid:not([data-studio-mode='replay']) { min-height: 0; }
 .ide-root .rb-sim-lab-grid[data-details-open='true']:not([data-investigation]) { grid-template-columns: minmax(0, 1fr) minmax(250px, 32%); }
 .ide-root .rb-sim-inspector .ide-verify-supporting-strip { flex: none; min-height: 0; max-height: none; overflow: visible; margin: 0; border: 0; background: var(--wb-surface); color: var(--wb-text); }
 /* Details owns scrolling for the complete analysis, including repair actions. */
@@ -356,12 +363,15 @@
    each one belonged to the toolbar underneath and a click on "Waveform" pressed what was behind
    it. */
 .ide-root .rb-sim-representation__choice { min-height: var(--wb-control-h); padding: 1px 8px; border: 1px solid transparent; border-radius: var(--wb-radius); background: transparent; color: var(--wb-text-2); font: var(--wb-text-sm) var(--wb-font-ui); line-height: 1.2; white-space: nowrap; cursor: pointer; }
-.ide-root .rb-sim-representation__choice:hover:not(:disabled) { color: var(--wb-text); border-color: var(--wb-border); }
+.ide-root .rb-sim-representation__choice:hover:not(:disabled) { color: var(--wb-text); border-color: var(--wb-border-strong); }
+/* These open a view beside the lanes, so they are buttons with a pressed state. */
+.ide-root .rb-sim-representation__choice { padding: 1px 12px; border-color: var(--wb-border-strong); color: var(--wb-text); background: var(--wb-surface); font-size: var(--rb-text-dense); }
+.ide-root .rb-sim-representation__choice[aria-pressed='true'] { border-color: var(--wb-accent); background: var(--wb-accent-bg-strong); font-weight: var(--rb-weight-strong); }
 .ide-root .rb-sim-representation__choice:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
 .ide-root .rb-sim-representation__choice.is-active { color: var(--wb-text); border-color: var(--wb-border-strong); background: var(--wb-surface); font-weight: 500; }
 .ide-root .rb-sim-representation__choice:disabled { opacity: 0.45; cursor: default; }
 .ide-root .rb-sim-representation__note { margin-left: 2px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
-.ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: min-content; }
+.ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus { grid-area: cases; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; }
 .ide-root .rb-sim-lab-grid > .rb-sim-inspector { grid-area: inspector; min-height: 0; }
 /* The waveform is the evidence the failure focus points at, and it was being laid out past
    the pane that holds it: measured in a settled Compare FAIL at 1440x900, the canvas ran
@@ -414,7 +424,7 @@
 .ide-root .ide-case-lab-note.is-warn { color: var(--wb-warn); }
 .ide-root .ide-case-lab-note-dismiss { height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font-size: var(--wb-text-xs); cursor: pointer; }
 /* Waveform tab: the evidence deck becomes the document; cases shrink to a strip. */
-.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr); grid-template-areas: 'evidence inspector'; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'evidence inspector' 'result result'; }
 /* The primary instrument fills its row; the run line below it is as tall as its own content.
    `min-height: 0` plus `overflow: hidden` - correct when this region was a resizable deck -
    collapsed it to 1px once the row became `auto`, and the result sentence was drawn outside a
@@ -471,7 +481,22 @@
 .ide-root .rb-timing:focus-visible { box-shadow: inset 0 0 0 2px var(--wb-focus); }
 /* The bar wraps rather than shrinking one of its facts into a single letter: at 628px the
    generated-clock chip was ellipsised to "c...", which says nothing at all. */
-.ide-root .rb-timing-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; flex: none; min-height: var(--wb-toolbar-h); padding: 2px var(--wb-space-3); border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-timing-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; flex: none; min-height: var(--wb-toolbar-h); padding: 4px var(--wb-space-4); border-bottom: 1px solid var(--wb-border); background: var(--wb-surface); }
+/* The selection tools live in the timing bar: one toolbar reads left to right as what is
+   selected, how to move through the recording, the event being edited, and the views. */
+.ide-root .rb-timing-selection { display: flex; flex: 1 0 100%; min-width: 0; padding-bottom: 4px; border-bottom: 1px solid var(--wb-border); }
+.ide-root .rb-timing-selection:empty { display: none; }
+.ide-root .rb-timing-bar > .rb-timing-spacer { display: none; }
+.ide-root .rb-timing-bar > .rb-timing-settings { margin-left: auto; }
+.ide-root .rb-timing-selection .rb-tl-context { flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: transparent; font-size: var(--rb-text-dense); }
+.ide-root .rb-timing-selection .rb-tl-context .rb-wave-group--tail { margin-left: auto; }
+.ide-root .rb-timing-edit { display: inline-flex; align-items: center; gap: 2px; }
+.ide-root .rb-timing-edit::before { content: 'Events'; margin-right: 6px; color: var(--wb-text-2); font: var(--rb-weight-strong) var(--rb-text-dense) var(--wb-font-ui); }
+.ide-root .rb-tl-context > strong { color: var(--wb-text); font: var(--rb-weight-strong) var(--rb-text-body) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-tl-context > [data-testid='ide-time-selected-value'] { min-width: 2rem; padding: 2px 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-surface-2); font: var(--rb-weight-strong) var(--rb-text-body) var(--wb-font-mono); text-align: center; }
+.ide-root .rb-tl-word-readout { display: inline-flex; align-items: baseline; gap: 6px; padding: 2px 10px; border: 1px solid color-mix(in srgb, var(--wb-accent) 45%, var(--wb-border-strong)); border-radius: var(--wb-radius); color: var(--wb-text); background: var(--wb-accent-bg); font: var(--rb-text-dense) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-tl-word-readout b { font-size: var(--rb-text-head); font-weight: var(--rb-weight-title); }
+.ide-root .rb-tl-word-readout small { margin: 0; color: var(--wb-text-2); font: var(--rb-text-meta) var(--wb-font-mono); }
 .ide-root .rb-timing-generated { flex: 0 1 auto; min-width: 6rem; }
 .ide-root .rb-timing-title { color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); }
 /* "7 events · 14 checks" is one fact, so it stays on one line; it was wrapping into two rows
@@ -480,7 +505,7 @@
 .ide-root .rb-timing-spacer { flex: 1 1 auto; }
 /* Navigation and event commands share one wrapping instrument toolbar. */
 .ide-root .rb-timing-bar .rb-sim-representation { display: contents; }
-.ide-root .rb-timing-bar .rb-sim-representation__label { display: none; }
+.ide-root .rb-sim-representation__label { display: none; }
 .ide-root .rb-timing-danger { color: var(--wb-err); }
 .ide-root .rb-timing-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .ide-root .rb-timing-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--wb-text-sm); }
@@ -556,10 +581,12 @@
 /* The lanes are the working area: they take the region and scroll inside it, so the
    instrument can measure what it actually has and draw to fit. */
 .ide-root .rb-tl { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--rb-wave-bg, var(--wb-paper)); border-bottom: 1px solid var(--wb-border); }
-.ide-root .rb-tl-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+/* The lanes take the room that is left and scroll inside it. Sized by their content they pushed the
+   event disclosures below the fold of a short window, where the first one was cut in half. */
+.ide-root .rb-tl-scroll { flex: 1 1 0; min-height: 9rem; overflow: auto; }
 .ide-root .rb-tl-svg { display: block; font-family: var(--wb-font-mono); }
 .ide-root .rb-tl-selected { fill: var(--wb-accent-bg); }
-.ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-tl-ruler-label, .ide-root .rb-tl-group { fill: var(--wb-text-2); font: 600 var(--rb-text-meta) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
 /* The column's hit target is the rect; the number, the grid line and the edge marker are drawn
    after it, so they sat on top of it and swallowed the click. Clicking the tick NUMBER - the
    most obvious place to click a tick - did nothing at all. They are decoration; the rect owns
@@ -567,7 +594,7 @@
 .ide-root .rb-tl-tick-label,
 .ide-root .rb-tl-grid,
 .ide-root .rb-tl-edge { pointer-events: none; }
-.ide-root .rb-tl-tick-label { fill: var(--wb-text-3); font: .625rem var(--wb-font-mono); }
+.ide-root .rb-tl-tick-label { fill: var(--wb-text-2); font: var(--rb-text-meta) var(--wb-font-mono); }
 .ide-root .rb-tl-tick.is-event .rb-tl-tick-label { fill: var(--wb-text); font-weight: 700; }
 .ide-root .rb-tl-tick-hit { fill: transparent; cursor: pointer; }
 .ide-root .rb-tl-tick-hit:hover { fill: var(--wb-hover-bg); }
@@ -576,7 +603,11 @@
 .ide-root .rb-tl-edge { fill: var(--wb-text-2); }
 .ide-root .rb-tl-fail { fill: var(--wb-err); }
 .ide-root .rb-tl-group-rule, .ide-root .rb-tl-lane-rule { stroke: var(--wb-border); stroke-width: 1; }
-.ide-root .rb-tl-label { fill: var(--wb-text); font: .71875rem var(--wb-font-mono); }
+.ide-root .rb-tl-label { fill: var(--wb-text); font: var(--rb-weight-medium) var(--rb-text-dense) var(--wb-font-mono); }
+/* A word lane reads recorded output bits as one number, drawn as a bus: a closed segment for
+   each stretch of time the value holds. No sample, no segment. */
+.ide-root .rb-tl-word-segment { fill: var(--wb-accent-bg); stroke: var(--wb-text); stroke-width: 1.5; stroke-linejoin: round; }
+.ide-root .rb-tl-word-value { fill: var(--wb-text); font: var(--rb-weight-title) var(--rb-text-head) var(--wb-font-mono); pointer-events: none; }
 .ide-root .rb-tl-tag { fill: var(--wb-text-3); font: 600 var(--rb-text-micro) var(--wb-font-ui); letter-spacing: 0.05em; text-transform: uppercase; }
 .ide-root .rb-tl-trace { fill: none; stroke: var(--wb-accent); stroke-width: 1.75; stroke-linejoin: miter; }
 .ide-root .rb-tl-lane.is-clock .rb-tl-trace { stroke: var(--wb-text-2); }
@@ -594,7 +625,9 @@
    whether or not they had anything to say, which is the space the timeline needed. The strip
    is as tall as its content and never grows into the instrument's room. */
 .ide-root .rb-timing-editor-details { flex: none; max-height: 45%; overflow: auto; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface-2); }
-.ide-root .rb-timing-editor-details > summary { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 var(--wb-space-3); color: var(--wb-text-2); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
+/* Closed, the disclosure is exactly its summary. A percentage cap on a short pane used to cut the summary in half. */
+.ide-root .rb-timing-editor-details:not([open]) { max-height: none; min-height: 2.25rem; overflow: visible; }
+.ide-root .rb-timing-editor-details > summary { display: flex; align-items: center; gap: 8px; min-height: 2.25rem; padding: 0 var(--wb-space-3); color: var(--wb-text-2); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
 .ide-root .rb-timing-editor-details > summary::-webkit-details-marker { display: none; }
 .ide-root .rb-timing-editor-details > summary::before { content: '\25B8'; color: var(--wb-text-3); }
 .ide-root .rb-timing-editor-details[open] > summary::before { content: '\25BE'; }
@@ -654,20 +687,20 @@
 /* The investigation frame owns pane composition. Its shared controls stay outside
    both panes, and a short/text-scaled viewport scrolls this working region. */
 .ide-root .rb-sim-lab-frame[data-investigation-open] { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 22rem; overflow: auto; }
-.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.ide-root .rb-sim-lab-grid[data-investigation] { grid-template-columns: minmax(0, 1fr) minmax(320px, 46%); min-height: 0; }
 .ide-root .rb-sim-lab-grid[data-investigation] > .rb-sim-primary { min-height: 0; overflow: auto; }
 .ide-root .rb-sim-lab-grid[data-investigation] .rb-timing { flex-shrink: 0; min-height: min-content; }
 .ide-root .rb-sim-lab-grid[data-investigation] .rb-tl { flex-shrink: 0; min-height: 30rem; }
-.ide-root .rb-sim-lab-grid[data-investigation='timeline'] { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'evidence'; }
-.ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='timeline'] { grid-template-areas: 'cases' 'evidence'; }
-.ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='both'] { grid-template-areas: 'cases inspector' 'evidence inspector'; }
+.ide-root .rb-sim-lab-grid[data-investigation='timeline'] { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'cases' 'evidence' 'result'; }
+.ide-root .rb-sim-lab-grid[data-studio-mode='replay'][data-investigation='timeline'] { grid-template-areas: 'evidence' 'result'; }
+.ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='both'] { grid-template-areas: 'cases inspector' 'evidence inspector' 'result result'; }
 
 .ide-root .rb-sim-lab-grid[data-investigation='timeline'] > .rb-recorded-circuit { display: none; }
-.ide-root .rb-sim-lab-grid[data-investigation='circuit'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: 'inspector'; }
+.ide-root .rb-sim-lab-grid[data-investigation='circuit'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'inspector' 'result'; }
 .ide-root .rb-sim-lab-grid[data-investigation='circuit'] > .rb-sim-region { display: none; }
 @media (max-width: 1000px) {
-  .ide-root .rb-sim-lab-grid[data-investigation='both'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(340px, 55vh) minmax(300px, auto); grid-template-areas: 'evidence' 'inspector'; }
-  .ide-root .rb-sim-lab-grid[data-unified-time][data-investigation='both'] { grid-template-rows: minmax(240px, 45vh) auto minmax(300px, auto); grid-template-areas: 'cases' 'evidence' 'inspector'; }
+  .ide-root .rb-sim-lab-grid[data-investigation='both'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(240px, 45vh) auto minmax(300px, auto) auto; grid-template-areas: 'cases' 'evidence' 'inspector' 'result'; }
+  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'][data-investigation='both'] { grid-template-rows: minmax(240px, 45vh) minmax(300px, auto) auto; grid-template-areas: 'evidence' 'inspector' 'result'; }
   .ide-root .rb-sim-lab-grid[data-details-open='true']:not([data-investigation]) { grid-template-columns: minmax(0, 1fr); position: relative; }
   .ide-root [data-testid='ide-sim-context-inspector'] { position: absolute; z-index: 6; inset: 0 0 0 12%; box-shadow: -4px 0 14px #15243d33; }
 
@@ -690,6 +723,23 @@
 .ide-root .rb-timing-run-length input { width: 52px; height: 20px; padding: 0 4px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-timing-run-length input:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -1px; }
 /* Generated lanes: what the run will use, drawn as such, not editable here. */
+.ide-root .rb-selected-result { grid-area: result; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--wb-border-strong); background: var(--wb-surface); min-width: 0; font-size: var(--rb-text-body); }
+.ide-root .rb-selected-result-main, .ide-root .rb-selected-result-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.ide-root .rb-selected-result-values { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; }
+.ide-root .rb-selected-result-values > span { color: var(--wb-text-2); }
+.ide-root .rb-selected-result-values > strong { font-family: var(--wb-font-mono); }
+.ide-root .rb-selected-result-mismatch { color: var(--wb-err); }
+.ide-root .rb-selected-result-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+.ide-root .rb-selected-result-inputs, .ide-root .rb-result-failures { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.ide-root .rb-selected-result-inputs > span, .ide-root .rb-result-failures > span { font-size: var(--rb-text-meta); color: var(--wb-text-2); }
+.ide-root .rb-selected-result-context > .rb-wave-group--tail { margin-left: auto; }
+.ide-root .rb-selected-result-check { max-width: 32rem; font-size: var(--rb-text-dense); }
+.ide-root .rb-selected-result-check > summary { cursor: pointer; padding: 6px; color: var(--wb-accent); }
+.ide-root .rb-selected-result-check[open] { flex-basis: 100%; }
+.ide-root .rb-selected-result-check > small { display: block; padding-top: 4px; color: var(--wb-text-2); }
+.ide-root .ide-case-lab-observation { width: 100%; min-height: 30px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.ide-root .ide-case-lab-observation:focus-visible, .ide-root .rb-selected-result summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .ide-case-lab-obs.is-selected-result { box-shadow: inset 0 0 0 2px var(--wb-accent); font-weight: var(--rb-weight-strong); }
 .ide-root .rb-timing-generated { display: inline-block; flex: 0 1 auto; height: 18px; padding: 0 6px; border: 1px dashed var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); line-height: 16px; white-space: nowrap; min-width: 0; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .ide-root .rb-tl-lane.is-generated .rb-tl-trace { stroke-dasharray: 4 3; opacity: 0.85; }
 .ide-root .rb-tl-cell.is-generated { cursor: default; }
@@ -880,7 +930,7 @@
 }
 
 /* Recorded values are actual samples; expected values remain an explicit overlay. */
-.ide-root .rb-tl-observed-label { fill: var(--wb-text); font: .6875rem var(--wb-font-mono); pointer-events: none; }
+.ide-root .rb-tl-observed-label { fill: var(--wb-text); font: var(--rb-text-meta) var(--wb-font-mono); pointer-events: none; }
 .ide-root .rb-tl-context .rb-wave-play-disclosure { position: relative; }
 .ide-root .rb-tl-context .rb-wave-play-disclosure[open] .rb-wave-play { position: absolute; top: 100%; left: 0; z-index: 5; padding: 8px; min-width: 15rem; flex-wrap: wrap; background: var(--wb-surface); border: 1px solid var(--wb-border); }
 .ide-root .rb-recorded-navigation { display: contents; }

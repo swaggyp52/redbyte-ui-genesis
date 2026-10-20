@@ -217,8 +217,8 @@ describe('ExportSurface handoff states', () => {
       expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
     }
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.textContent).toContain('Open Board & Constraints');
-    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Board & Constraints');
+    expect(actions.textContent).toContain('Open Board');
+    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Board');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
@@ -292,7 +292,7 @@ describe('ExportSurface handoff states', () => {
   // ── ExportVivadoInstructions ──────────────────────────────────────────────────
 
   it('keeps the generated file list and selected preview visible', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="h1"
@@ -300,8 +300,14 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    // Arriving shows the package's contents, not a file's source.
+    expect(queryByTestId('ide-export-selected-preview-v1')).toBeNull();
+    fireEvent.click(getByTestId('ide-export-file-top-vhd'));
     expect(getByTestId('ide-export-selected-preview-v1')).toBeTruthy();
-    expect(getByTestId('ide-export-preview-path').textContent).toBeTruthy();
+    expect(getByTestId('ide-export-preview-path').textContent).toBe('top.vhd');
+    fireEvent.click(getByTestId('ide-export-close-file'));
+    expect(queryByTestId('ide-export-selected-preview-v1')).toBeNull();
+    fireEvent.click(getByTestId('ide-export-file-top-vhd'));
     for (const role of ['project', 'source', 'constraints', 'simulation', 'readme']) {
       expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
       expect(getByTestId(`ide-export-submission-role-${role}`)).toBeTruthy();

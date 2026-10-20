@@ -226,6 +226,13 @@ async function selectDesignNode(page, nodeId) {
     await revealInspector.click();
   }
   await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 5000 });
+  // The live value this contract reads is in the inspector's Evidence section, which now starts
+  // closed. Open it the way a student does; the contract is unchanged - a real input toggle
+  // must change the value shown there.
+  const evidenceToggle = page.locator('[data-testid="ide-design-context-inspector-toggle"]').first();
+  await evidenceToggle.waitFor({ state: 'visible', timeout: 5000 });
+  if ((await evidenceToggle.getAttribute('aria-expanded')) === 'false') await evidenceToggle.click();
+  assert((await evidenceToggle.getAttribute('aria-expanded')) === 'true', 'the Evidence section must open from its own control');
   await page.waitForSelector('[data-testid="ide-design-context-current"]', { timeout: 5000 });
 }
 

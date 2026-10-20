@@ -13,7 +13,9 @@ await runIdeGate('IDE export generates HDL contract satisfied', async ({ page, b
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-artifact-preview"]', { timeout: 10000 });
+  // Package opens on its contents; a file's source is shown once that file is chosen.
+  await page.waitForSelector('[data-testid="ide-export-artifact-tabs"]', { timeout: 10000 });
+  assert((await page.locator('[data-testid="ide-export-artifact-preview"]').count()) === 0, 'no file source may be mounted before a file is chosen');
 
   const tabs = page.locator('[data-testid="ide-export-artifact-tabs"] button');
   const tabCount = await tabs.count();

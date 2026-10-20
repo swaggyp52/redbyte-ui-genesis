@@ -8,7 +8,7 @@ import { parseXdcPins } from '../../../import/xdcImport';
 /**
  * Constraint-sets panel — a project may carry several named XDC constraint sets
  * with one captured set or the live mapping active. This is
- * the Board & Constraints UI over the store's constraint-set authority: add a
+ * the Board UI over the store's constraint-set authority: add a
  * set (captured from the current pin assignments), rename, remove, and choose
  * the active one. Activation restores captured structured assignments; ordinary
  * mapping edits return to live mapping. Reference text never becomes authority.

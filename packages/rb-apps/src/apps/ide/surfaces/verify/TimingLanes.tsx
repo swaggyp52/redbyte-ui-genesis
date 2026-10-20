@@ -1,6 +1,8 @@
 import { WorkbenchDisclosure } from '../../components/WorkbenchDisclosure';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../ScenarioBuilderPanel';
+import type { RecordedWordLane, RecordedWordValue } from './recordedWordLanes';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
 
 // Timing lanes — the sequential authoring instrument. A horizontal tick ruler,
@@ -16,6 +18,7 @@ export interface TimingLanesProps {
   readonly outputFields: readonly VerifyVectorDraftInput[];
   readonly clockFieldIds: ReadonlySet<string>;
   readonly playbackControls?: React.ReactNode;
+  readonly selectionReadout?: boolean;
   readonly formatObservedValue?: (value: string) => string;
   readonly showExpectedOverlay?: boolean;
   readonly selectedTick: number | null;
@@ -37,9 +40,14 @@ export interface TimingLanesProps {
   readonly generatedFieldIds?: ReadonlySet<string>;
   readonly generatedValueAt?: (fieldId: string, tick: number) => 0 | 1 | null;
   readonly generatedNote?: string;
+  /** Word lanes of the selected recording, derived from that recording alone (its own output
+   *  names and samples). The live design's current labels play no part in them. */
+  readonly recordedWords?: readonly RecordedWordLane[];
+  /** Where the selection tools render. The lab's toolbar hosts them; alone, they sit above the lanes. */
+  readonly contextHost?: HTMLElement | null;
 }
 
-const BASE_LABEL_W = 132;
+const BASE_LABEL_W = 152;
 /**
  * The instrument sizes itself to the room it is given.
  *
@@ -58,14 +66,14 @@ function fitLabel(text: string, hasTag: boolean): string {
   return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`;
 }
 
-const TICK_W_MIN = 22;
-const TICK_W_MAX = 64;
+const TICK_W_MIN = 28;
+const TICK_W_MAX = 72;
 const TICK_W_FALLBACK = 30;
-const LANE_H_MIN = 26;
+const LANE_H_MIN = 34;
 /* 52 left 160px of a 478px region empty with five signals on a 900px display: the instrument
    was capped below the room it had. A trace lane taller than this stops reading as a trace. */
 const LANE_H_MAX = 80;
-const LANE_H_FALLBACK = 34;
+const LANE_H_FALLBACK = 40;
 
 
 const NAMES_ITSELF_CLOCK = /^(clk|clock)\b|\bclk\b/i;
@@ -85,7 +93,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   generatedNote,
   selectedTick,
   selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
-  playbackControls, formatObservedValue = value => value, showExpectedOverlay = true,
+  playbackControls, selectionReadout = true, formatObservedValue = value => value, showExpectedOverlay = true,
   editable,
   observedValuesByTick,
   caseEvidenceByTick,
@@ -93,14 +101,16 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   onDriveInput,
   onCycleExpected,
   spareTicks = 4,
+  recordedWords,
+  contextHost,
 }) => {
   // The available box, observed rather than assumed. Until it is known the instrument draws at
   // its fallback size, which is what the previous fixed geometry produced.
   const [textScale, setTextScale] = useState(() => typeof document === 'undefined' ? 1 :
     (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16);
   const LABEL_W = BASE_LABEL_W * textScale;
-  const RULER_H = 22 * textScale;
-  const GROUP_H = 18 * textScale;
+  const RULER_H = 28 * textScale;
+  const GROUP_H = 24 * textScale;
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
   useLayoutEffect(() => {
@@ -187,8 +197,16 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   }, [lanes, ordered, maxTick, clockFieldIds, generatedClocks.length]);
   const sortedEdges = useMemo(() => Array.from(risingEdges).sort((left, right) => left - right), [risingEdges]);
 
+  // Words are read only from a recording: with no samples there is no number to show.
+  const wordGroups = observedTicks.length > 0 ? recordedWords ?? [] : [];
+  const wordAt = (group: RecordedWordLane, tick: number): RecordedWordValue | null =>
+    group.valueByTick.get(tick) ?? null;
+  // When the design has since renamed a member, the lane says its names are the recording's.
+  const liveOutputLabels = new Set(outputFields.map((field) => field.label));
+  const namedAsRecorded = (group: RecordedWordLane) => group.members.some((member) => !liveOutputLabels.has(member.label));
+
   const stimulusLaneCount = generatedClocks.length + lanes.length;
-  const laneCount = stimulusLaneCount + outputFields.length;
+  const laneCount = stimulusLaneCount + wordGroups.length + outputFields.length;
 
   // Fit the scenario across the pane when it fits at a legible tick; otherwise draw at the
   // minimum and let the time axis scroll. Never wider than TICK_W_MAX: a three-tick scenario
@@ -211,9 +229,10 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   }, [box, laneCount, textScale, RULER_H, GROUP_H]);
 
   const width = LABEL_W + ticks.length * TICK_W;
-  const height = RULER_H + GROUP_H + stimulusLaneCount * LANE_H + GROUP_H + outputFields.length * LANE_H + 4;
+  const height = RULER_H + GROUP_H + stimulusLaneCount * LANE_H + GROUP_H + (wordGroups.length + outputFields.length) * LANE_H + 4;
   const inputsTop = RULER_H + GROUP_H;
   const outputsTop = inputsTop + stimulusLaneCount * LANE_H + GROUP_H;
+  const bitsTop = outputsTop + wordGroups.length * LANE_H;
   const x = (tick: number) => LABEL_W + tick * TICK_W;
 
   /** Stepped 0/1 trace across ticks for one lane. */
@@ -238,6 +257,36 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
     }
     return d.trim();
   };
+
+  const selectedWords = selectedTick == null ? [] : wordGroups.flatMap((group) => {
+    const word = wordAt(group, selectedTick);
+    return word ? [{ group, word }] : [];
+  });
+  const context = (
+    <div className="rb-tl-context" data-testid="ide-time-selection">
+      {selectionReadout && <><strong>{selectedSignal ?? 'Select a signal'} · {selectedTick == null ? 'Select a tick' : 't' + selectedTick}</strong>
+      <code data-testid="ide-time-selected-value">{(() => {
+        const field = inputFields.concat(outputFields).find(field => field.label === selectedSignal);
+        return field && selectedTick != null ? observedValuesByTick?.[selectedTick]?.[field.id] ?? 'unrecorded' : 'unrecorded';
+      })()}</code>
+      {selectedWords.map(({ group, word }) => (
+        <span key={group.id} className="rb-tl-word-readout" data-testid="ide-time-selected-word" data-word={group.label} data-word-value={word.value}
+          data-as-recorded={namedAsRecorded(group) ? 'true' : undefined}
+          title={`${group.members.map((member) => member.label).join(' ')} = ${word.bits} in binary${namedAsRecorded(group) ? ' · signal names as recorded; the design has since been renamed' : ''}`}>
+          {group.label} = <b>{word.value}</b> <small>{word.bits}</small>{namedAsRecorded(group) ? <small className="rb-tl-as-recorded">as recorded</small> : null}
+        </span>
+      ))}
+      </>}
+      <WorkbenchDisclosure className="rb-time-measure" data-testid="ide-time-measure" summary="Measure A–B">
+        <div className="rb-time-measure-body">
+          <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorA?.(selectedTick)}>Set A</button>
+          <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorB?.(selectedTick)}>Set B</button>
+          <span>A {cursorA == null ? '—' : 't' + cursorA} · B {cursorB == null ? '—' : 't' + cursorB}{cursorA != null && cursorB != null ? ' · Δ ' + Math.abs(cursorB - cursorA) + ' ticks' : ''}</span>
+        </div>
+      </WorkbenchDisclosure>
+      {playbackControls}
+    </div>
+  );
 
   return (
     <div
@@ -289,21 +338,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
         }
       }}
     >
-      <div className="rb-tl-context" data-testid="ide-time-selection">
-        <strong>{selectedSignal ?? 'Select a signal'} · {selectedTick == null ? 'Select a tick' : 't' + selectedTick}</strong>
-        <code data-testid="ide-time-selected-value">{(() => {
-          const field = inputFields.concat(outputFields).find(field => field.label === selectedSignal);
-          return field && selectedTick != null ? observedValuesByTick?.[selectedTick]?.[field.id] ?? 'unrecorded' : 'unrecorded';
-        })()}</code>
-        <WorkbenchDisclosure className="rb-time-measure" data-testid="ide-time-measure" summary="Measure A–B">
-          <div className="rb-time-measure-body">
-            <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorA?.(selectedTick)}>Set A</button>
-            <button type="button" className="wb-btn" disabled={selectedTick == null} onClick={() => onSetCursorB?.(selectedTick)}>Set B</button>
-            <span>A {cursorA == null ? '—' : 't' + cursorA} · B {cursorB == null ? '—' : 't' + cursorB}{cursorA != null && cursorB != null ? ' · Δ ' + Math.abs(cursorB - cursorA) + ' ticks' : ''}</span>
-          </div>
-        </WorkbenchDisclosure>
-        {playbackControls}
-      </div>
+      {contextHost ? createPortal(context, contextHost) : context}
       <div className="rb-tl-scroll" ref={boxRef}>
         <svg className="rb-tl-svg" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="presentation">
           {/* selected tick column */}
@@ -419,9 +454,56 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
               </g>
             );
           })}
+          {/* word lanes: recorded output bits read together as one number */}
+          {wordGroups.map((group, laneIndex) => {
+            const top = outputsTop + laneIndex * LANE_H;
+            const hi = top + 6;
+            const lo = top + LANE_H - 6;
+            // Consecutive ticks holding one value are drawn as a single bus segment.
+            const runs: { start: number; end: number; word: RecordedWordValue }[] = [];
+            for (const tick of ticks) {
+              const word = wordAt(group, tick);
+              if (!word) continue;
+              const last = runs[runs.length - 1];
+              if (last && last.end === tick - 1 && last.word.value === word.value) last.end = tick;
+              else runs.push({ start: tick, end: tick, word });
+            }
+            return (
+              <g key={group.id} className="rb-tl-lane rb-tl-lane--word" data-testid={`ide-timing-word-lane-${group.base}`}
+                data-as-recorded={namedAsRecorded(group) ? 'true' : undefined}>
+                <line className="rb-tl-lane-rule" x1={0} x2={width} y1={top + LANE_H} y2={top + LANE_H} />
+                <title>{`${group.members.map((member) => member.label).join(', ')} read as one unsigned number; ${group.members[group.members.length - 1].label} is bit 0${namedAsRecorded(group) ? '. Names are the ones this recording was made with.' : ''}`}</title>
+                <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>{fitLabel(group.label, false)}</text>
+                {runs.map((run) => {
+                  const x0 = x(run.start);
+                  const x1 = x(run.end) + TICK_W;
+                  const slant = Math.min(5, TICK_W / 4);
+                  const mid = (hi + lo) / 2;
+                  return (
+                    <g key={run.start}>
+                      <path className="rb-tl-word-segment"
+                        d={`M ${x0} ${mid} L ${x0 + slant} ${hi} H ${x1 - slant} L ${x1} ${mid} L ${x1 - slant} ${lo} H ${x0 + slant} Z`} />
+                      <text className="rb-tl-word-value" x={(x0 + x1) / 2} y={mid + 5 * textScale} textAnchor="middle">{run.word.value}</text>
+                    </g>
+                  );
+                })}
+                {ticks.map((tick) => {
+                  const word = wordAt(group, tick);
+                  return (
+                    <rect key={tick} className="rb-tl-cell rb-tl-cell--word" x={x(tick)} y={top} width={TICK_W} height={LANE_H}
+                      role="gridcell"
+                      aria-label={`${group.label} at t${tick}: ${word ? `${word.value}, binary ${word.bits}` : 'unrecorded'}`}
+                      data-word-value={word ? word.value : 'unrecorded'}
+                      data-testid={`ide-timing-word-${group.base}-${tick}`}
+                      onClick={() => onSelectTick(tick)} />
+                  );
+                })}
+              </g>
+            );
+          })}
           {/* output lanes */}
           {outputFields.map((field, laneIndex) => {
-            const top = outputsTop + laneIndex * LANE_H;
+            const top = bitsTop + laneIndex * LANE_H;
             const observedTrace = tracePath((tick) => {
               const observed = observedAt(field.id, tick);
               return observed === '1' ? 1 : observed === '0' ? 0 : null;

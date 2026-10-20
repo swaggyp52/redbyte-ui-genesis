@@ -17,7 +17,7 @@
 
 > **Current Product System v3 candidate routing (2026-08-01):** The
 > student-visible five-stage spine is **Project -> Design -> Simulate -> Board &
-> Constraints -> Build & Export**. Internal route IDs and source filenames still
+> Constraints -> Package**. Internal route IDs and source filenames still
 > use `verify`, `hardware`, and `export` for compatibility; those implementation
 > names do not replace the current student-facing stage names. Current candidate
 > authority comes from the checked-out Product System v3 code/tests together with
@@ -55,17 +55,17 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 | Surface | File | Responsibility |
 |---------|------|----------------|
 | Public Start | `public/start.html`, `apps/playground/src/boot/ide-bootstrap.ts` | Professional browser entry that explains the five-stage RedByte workflow and opens the IDE through one dominant action. It is not a workflow stage and does not own project readiness. |
-| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Live Project Center and control point for **Project -> Design -> Simulate -> Board & Constraints -> Build & Export**. Loaded state explains identity, target, design sources, simulation evidence, constraint progress, package state, blocker, and one recommendation. Blank project / Start a lab / Import / Open Existing remain directly reachable without making students manage core disclosures. |
+| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Live Project Center and control point for **Project -> Design -> Simulate -> Board -> Package**. Loaded state explains identity, target, design sources, simulation evidence, constraint progress, package state, blocker, and one recommendation. Blank project / Start a lab / Import / Open Existing remain directly reachable without making students manage core disclosures. |
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Canvas-first structural authoring and live exploration. The circuit canvas receives the available width while idle; the bounded **Inspector** is contextual and opens only when a circuit object or supported workspace asset owns selection focus. Camera actions remain reachable, and constrained widths move lower-frequency actions into **More tools** and selected details below the canvas instead of creating a permanent third column. |
 | Simulate (internal `verify` mode) | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Simulation & Replay Studio and testbench-document owner for named scenarios, stimulus, clock policy, deterministic runs, waveform/circuit replay, optional assertions, and repair routing. Inputs, outputs, and available internal lanes live in an integrated signal shelf above the lab grid rather than a separate left rail. One `Run simulation` authority records behavior; simulation completion stays independent from assertion PASS/FAIL, and `Edit expected` stays separate from `Inspect Design` / `Open Design` repair. |
-| Board & Constraints (internal `hardware` mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Basys3 physical-assignment workspace. A signal row selects canonical logical identity; the compatible-resource selector and highlighted interactive board both commit through the same mapping callback. The inspector shows resource, package pin, I/O standard, conflict, and exact XDC consequence before Build & Export. |
-| Build & Export (internal `export` mode) | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Downstream package decision, grouped source tree, code preview, compatibility/handoff inspector, and Browser-E0 structural validation owner. Build & Export reads Design, Simulate, and Board & Constraints readiness, routes repair to the owning stage, and keeps structural validation, trusted download, draft download, and external Vivado proof distinct. |
+| Board (internal `hardware` mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Basys3 physical-assignment workspace. A signal row selects canonical logical identity; the compatible-resource selector and highlighted interactive board both commit through the same mapping callback. The inspector shows resource, package pin, I/O standard, conflict, and exact XDC consequence before Package. |
+| Package (internal `export` mode) | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Downstream package decision, grouped source tree, code preview, compatibility/handoff inspector, and Browser-E0 structural validation owner. Package reads Design, Simulate, and Board readiness, routes repair to the owning stage, and keeps structural validation, trusted download, draft download, and external Vivado proof distinct. |
 | Import utility | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Safe horizontal Upload -> Review -> Apply recovery. ZIP, Paste HDL, and conditional Paste XDC are source choices inside Upload; Review precedes explicit Apply confirmation. Import stays outside the numbered stage navigator, preserves active work until confirmation, and cancel performs no replacement. |
 
 ### Current Product System v3 Milestone A authority (2026-08-01)
 
-- **Five-stage authority:** `Project -> Design -> Simulate -> Board & Constraints
-  -> Build & Export`; Import / Recover remains a separate utility with no stage
+- **Five-stage authority:** `Project -> Design -> Simulate -> Board
+  -> Package`; Import / Recover remains a separate utility with no stage
   number or completion state.
 - **Integrated shell ownership:** `IdeTopBar` contains the sole five-stage
   navigator together with project identity, board/save state, Commands, Save,
@@ -89,12 +89,12 @@ current Product System v3 authority and must not be used to restore retired July
 workflow names or shell composition.
 
 - **Persistent shell:** `IdeApp.tsx`, `IdeTopBar.tsx`, `IdeStageNav.tsx`, and `IdeWorkbenchShell.tsx` compose the product bar, exactly five horizontal stages, and the active workbench. `IdeLeftRail`, passive onboarding overlay, permanent footer/status console, and student-managed dock-toggle architecture are absent from v3.
-- **Five-stage authority:** `Project -> Design -> Simulate -> Board & Constraints -> Build & Export` (internal route ids remain project/design/verify/hardware/export) uses current/complete/attention/blocked state from existing workflow authority. Import is a top-bar utility with no stage number or completion state.
+- **Five-stage authority:** `Project -> Design -> Simulate -> Board -> Package` (internal route ids remain project/design/verify/hardware/export) uses current/complete/attention/blocked state from existing workflow authority. Import is a top-bar utility with no stage number or completion state.
 - **Top bar:** product identity, editable project identity, board/save state, Import, and Help. Surface execution and repair actions stay inside the owning workspace.
 - **Project:** textual engineering overview, one current recommendation, and directly reachable start/change/recovery paths.
 - **Design:** stable `200-220px` library, flexible dominant canvas, and `240-280px` inspector at desktop widths; selected details move below the canvas automatically at constrained widths. Students do not manage the basic layout. Fresh frozen unified-gate metrics generated at `2026-07-15T16:47:52.947Z` report available three-region Design workbench canvas share (`canvas / (canvas + library + inspector)`) of `64.81203%` at 1366 (`862 / 212 / 256` px), `66.66667%` at 1440 (`936 / 212 / 256` px), and `75.15924%` at 1920 (`1416 / 212 / 256` px). The enforced `62%` laptop floor conforms; the strategic `70%` laptop target remains unmet.
 - **Verify:** Simulation & Replay Studio keeps named testbench documents, combinational/sequential stimulus authoring, one `Run simulation` command, Scenario/Replay/Checks lenses, waveform and read-only Design-canvas replay, and distinct assertion-edit versus circuit-repair paths in one stable workspace.
-- **Board & Constraints:** progress, mapping table, row `Assign` / `Edit` / `Resolve` actions, resource selector, `Save assignment`, package-pin/XDC consequence, conflict repair, and secondary reference-only board remain visible without auxiliary after-mapping panels becoming page authorities.
+- **Board:** progress, mapping table, row `Assign` / `Edit` / `Resolve` actions, resource selector, `Save assignment`, package-pin/XDC consequence, conflict repair, and secondary reference-only board remain visible without auxiliary after-mapping panels becoming page authorities.
 - **Export:** one blocked/draft/ready handoff decision, stable file browser/preview, state-owned `Open Export` repair routing, separate trusted `Download Package` and `Download draft` actions, and secondary `Open technical evidence` dialog.
 - **Import:** horizontal Upload -> Review -> Apply; ZIP / Paste HDL / conditional Paste XDC are Upload-source choices, review precedes explicit replacement confirmation, and cancel preserves current work.
 - **Evidence and boundary:** fresh rebuilt v3 proof covers the five stages plus Import utility across four viewport conditions with empty failure/browser-problem arrays. The latest source-blind professor rerun on the frozen current build is **HOLD**, not GO: the workflow rail/stage state contradicts Design and Export blocker state, Verify defaults to Observe-only with blank expected-value dashes and no clear Compare-unlock path, and the Design recovery route can lose the specific `LD2` no-driver cause discovered from Export/Map Pins. Blank Student/timestamp fields and dash semantics remain visible debt. Student A and Student B each reached a UI-reported nine-file download; neither downloaded archive was independently inspected. Student C completed the final blind Import Task 4 in 2m35 with about 10 clicks, one intentional Design -> Import loop, no misclick or irreversible action, and proof that cancel preserved the original project before confirmation applied the candidate; candidate persistence and pin-alias explanation remain debt. The final blind Broken XOR task reached Compare PASS in 16.4 minutes with 51 clicks, 4 key presses, 2 lab-selection mistakes, about 5 wire misses, about 4 backtracks, and no irreversible action; diagnosis, Undo, and Update Compare worked, while affordance and wording remain debt. Generated bytes, mapping authority, Compare semantics, and E0/E1/E2/E3 boundaries are unchanged; nothing was pushed or deployed. **Verdict: broad local implementation evidence exists, but professor approval remains on HOLD pending repair and rerun.**
@@ -133,7 +133,7 @@ The bullets in this and the following predecessor sections are retained for sour
 - **Authoritative board planner model**: `basys3Pins.ts` owns the shared Basys3 resource catalog for planner-visible resources (clock, switches, buttons, LEDs, seven-segment controls) plus extended official XDC references (Pmods, XADC, VGA, USB-UART, PS/2, QSPI). Hardware summary cards, the board visual, the inspector, and Export/XDC binding truth all consume that same source.
 - **Clock truth is explicit**: the 100 MHz oscillator is surfaced as `CLK100MHZ` on package pin `W5`, and Hardware exposes the 10 ns `create_clock` relationship that Export emits for the mapped top-level clock port.
 - **Catalog + XDC traceability**: Hardware now makes the chain explicit: project signal -> board resource -> package pin -> XDC binding preview. The preview stays secondary detail inside Hardware, but students can inspect it without dropping into a schema editor or leaving the planner.
-- **After-mapping tools**: Board Check, Simulation, and the Verify -> Export -> Program dependency ribbon are demoted below the Board & Constraints board workspace. They remain available without visually competing with pin binding. Pre-flight (P2.6, retired): it restated Package's trust state and the Vivado handoff on the Board; that reading is Build & Export's.
+- **After-mapping tools**: Board Check, Simulation, and the Verify -> Export -> Program dependency ribbon are demoted below the Board board workspace. They remain available without visually competing with pin binding. Pre-flight (P2.6, retired): it restated Package's trust state and the Vivado handoff on the Board; that reading is Package's.
 - **Advanced editor containment**: Structured `hardwareMappingV2` entry editing remains available behind an explicit `Advanced mapping editor` disclosure and is not part of the default student path.
 - **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
 
@@ -176,7 +176,7 @@ The bullets in this and the following predecessor sections are retained for sour
 | `projectWorkflowAuthority.ts` | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` | Canonical product-truth snapshot for verify state, draft-vs-trusted export state, strict stage completion, primary CTA, and Hardware/Export handoff labels |
 | `simEngine.ts` | `packages/rb-apps/src/apps/ide/sim/simEngine.ts` | Simulation advancement, trace accumulation |
 | `componentSupportRegistry.ts` | `packages/rb-logic-core/src/analysis/componentSupportRegistry.ts` | Canonical component support matrix for Design authoring, Verify mode support, VHDL export support, Import HDL aliases, classroom availability, and sequential metadata |
-| `basys3ExportContract.ts` | `packages/rb-apps/src/fpga/boards/basys3/basys3ExportContract.ts` | Canonical semantic mapping projection and Basys3 port/timing/conflict contract consumed by Board & Constraints and all package projections |
+| `basys3ExportContract.ts` | `packages/rb-apps/src/fpga/boards/basys3/basys3ExportContract.ts` | Canonical semantic mapping projection and Basys3 port/timing/conflict contract consumed by Board and all package projections |
 | `exportTrustState.ts` | `packages/rb-apps/src/apps/ide/exportTrustState.ts` | Exact structural, `verificationTrust`, and action enums; byte-bearing package-source fingerprint; current download-receipt validation |
 | `verifyClockPolicy.ts` / `buildExportViewModel.ts` / `testbenchGenerator.ts` | `packages/rb-apps/src/apps/ide/verifyClockPolicy.ts`, `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`, `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts` | Shared materialized execution vectors plus resolved clock/schedule projection; deterministic Auto-versus-manual/custom `testbench.vhd`; package fingerprinting |
 | `importPortIdentity.ts` | `packages/rb-apps/src/apps/ide/importPortIdentity.ts` | Strict scalar/vector-bit Import identity grammar and manifest-only embedded-XDC projection |
@@ -193,7 +193,7 @@ The bullets in this and the following predecessor sections are retained for sour
 | Is the testbench configured? | Partially covered by `readiness.hasVectors` and Verify vector/check state; needs clearer product-state naming. |
 | Is Compare current? | Covered by `verifyCurrent`, `compareCurrent`, and the normalized verify project hash. |
 | Did Compare pass? | Covered by `trustedVerifyCurrent`, `comparePassCurrent`, `compareMatches`, and `comparePassIncomplete`. |
-| Are pins mapped? | Covered by `readiness.hasIoMapping` and Board & Constraints mapping rows. |
+| Are pins mapped? | Covered by `readiness.hasIoMapping` and Board mapping rows. |
 | Is draft export possible? | Covered by `exportAvailable` and `draftExportAvailable`. |
 | Is trusted export possible/current? | Covered by `exportPackageCurrent`, `exportTrusted`, `trustedVerifyCurrent`, and `ProjectTruthState.hardware-proof-required`. |
 | Has Vivado build proof been recorded? | Not represented in runtime state; tracked in release/certification docs and `out/vivado-cert/`. |
@@ -244,10 +244,10 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 
 ---
 
-### Path 3: Build & Export -> Vivado Package
+### Path 3: Package -> Vivado Package
 
 1. Project must have: IO mapping complete + current Compare PASS with saved checks for a trusted export. Structurally buildable but unverified packages are labeled draft/debug, not trusted handoff.
-2. `Open Build & Export` enters the stable handoff workspace (`ExportSurface` on the internal `export` route); the surface computes its blocked/draft/ready decision from shared workflow authority and diagnostics.
+2. `Open Package` enters the stable handoff workspace (`ExportSurface` on the internal `export` route); the surface computes its blocked/draft/ready decision from shared workflow authority and diagnostics.
 3. Trusted readiness exposes `Download Package`; a structurally buildable but untrusted state exposes the separate `Download draft` action and warning language. These actions are not interchangeable.
 4. The file browser/preview exposes package contents in the primary workspace, while `Open technical evidence` opens the secondary evidence dialog.
 5. `buildExportViewModel.ts` accepts the shared materialized execution vectors plus the resolved clock/schedule projection. It does not consume waveform, UI status, or Compare-result objects as testbench-generation inputs.
@@ -263,9 +263,9 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (guards current Export readi
 
 ---
 
-### Path 4: Board & Constraints Checklist
+### Path 4: Board Checklist
 
-1. Board & Constraints receives `health` + `mappingRows` + `vectorsCount` through internal `hardware` mode.
+1. Board receives `health` + `mappingRows` + `vectorsCount` through internal `hardware` mode.
 2. It derives assignment progress and missing/conflicting resources from the same mapping authority Export consumes.
 3. A row's `Assign`, `Edit`, or `Resolve` action opens the resource selector for that signal.
 4. The student chooses a valid Basys3 resource and uses `Save assignment`; `Clear` affects only the selected row.
@@ -275,7 +275,7 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (guards current Export readi
 
 Gate: `scripts/gates/ide-bringup-contract.mjs`
 
-**Ownership truth:** Board & Constraints ends when required assignments are coherent and routes the student to Build & Export. Build & Export owns downstream package readiness and routes stale, missing, trace-only, or differing simulation evidence back to Simulate; Board & Constraints does not repair or reclassify that evidence. A structurally buildable but untrusted package remains an explicitly labeled draft unless a real Design or constraint prerequisite blocks artifact generation.
+**Ownership truth:** Board ends when required assignments are coherent and routes the student to Package. Package owns downstream package readiness and routes stale, missing, trace-only, or differing simulation evidence back to Simulate; Board does not repair or reclassify that evidence. A structurally buildable but untrusted package remains an explicitly labeled draft unless a real Design or constraint prerequisite blocks artifact generation.
 
 ---
 
@@ -328,7 +328,7 @@ User picks file
 | `ide-shell-density-contract.mjs` | Shell passes density assertions at 1280px |
 | `ide-unified-workbench-v3-flow.mjs` | Product bar + horizontal five-stage navigation, Import utility boundary, no permanent workflow rail/core disclosures/dock toggles, stable five-stage plus Import work objects, text/target floors, root and internal clipping checks, nominal-center hitability, one `main`, named/focusable canvas, four viewport conditions, and no browser errors. Focused tests and independent reachability artifacts separately cover keyboard activation and Verify result announcement/focus. |
 | `ide-sequential-testbench-authority.mjs` | Implements the required standalone `ide:gate:sequential-testbench-authority` RC gate: named sequential document policy through edit, pulse/runtime semantics, generated-testbench authority, Export staleness, save/reload, duplicate/rename, compatible Design repair, and Import recovery without portable `RBProject` policy drift. Run it separately from the 72-step aggregate. |
-| `ide-mapping-preview-package-agreement.mjs` | Implements the required standalone `ide:gate:mapping-preview-package-agreement` RC gate: logical Board & Constraints mapping row, exact XDC preview, generated package files, embedded manifest projection, and manifest-first re-import agreement. Run it separately from the 72-step aggregate. |
+| `ide-mapping-preview-package-agreement.mjs` | Implements the required standalone `ide:gate:mapping-preview-package-agreement` RC gate: logical Board mapping row, exact XDC preview, generated package files, embedded manifest projection, and manifest-first re-import agreement. Run it separately from the 72-step aggregate. |
 | `ide-design-port-target-authority.mjs` | Sparse/dense Design port target geometry, keyboard operation, compact picker, and normal wiring at the constrained laptop viewport. |
 | `ide-hardware-phase5-contract.mjs` | Inputs/Outputs/Clock-Reset grouping, current readiness, and named inline conflict repair across laptop/desktop/wide viewports. |
 | `ide-export-submission-answer-contract.mjs` | First-viewport answer to What should I submit, role guidance, readability, and E0-only boundary across three viewports. |

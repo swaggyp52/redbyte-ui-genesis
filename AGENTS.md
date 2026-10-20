@@ -1,64 +1,72 @@
-# Agent instructions (entry point)
+# RedByte agent operating guide
 
-Before proposing or implementing any work, read `AI_STATE.md` at the repo root in full.
-If anything conflicts with prior context, `AI_STATE.md` wins over memory, prompt carryover, and older docs.
+## Product and authority
 
-Also follow:
-- `docs/ai-usage-rules.md` (AI contribution rules)
-- `docs/legal-attribution.md` (canonical attribution guidance; reference Connor Angiel only)
-- `docs/DOC_INDEX.md` (current startup order, stale-zone routing, proof-storage rules)
-- `docs/ACTIVE_WORK.md` (current cockpit and next technical target)
+RedByte is an FPGA educational IDE: Project -> Design -> Simulate -> Board & Constraints ->
+Build & Export. Internal route IDs remain project/design/verify/hardware/export; import is a utility.
+Basys3 is xc7a35tcpg236-1; Vivado target is 2024.2. Board programming is an external handoff.
+Use this checkout unless the user selects another. The old OneDrive RedByte FPGA clone is historical.
+Current user instructions govern task scope. Current code/tests establish runtime behavior;
+AI_STATE.md and docs/ACTIVE_WORK.md record status and evidence, not immutable release truth.
 
-Canonical local worktree:
-- Use `C:\Users\conno\redbyte-ui-genesis-main` as the default RedByte working directory.
-- Treat `C:\Users\conno\OneDrive\Documents\RedByte FPGA` as historical/local source context only unless the user explicitly selects it again.
-- Before any push, verify folder, branch, remote, local/remote commit delta, validation results, and clean status. Never force push.
+## Startup and context
 
-Repo-local RedByte skills live under `.agents/skills/`. Read the applicable `SKILL.md` playbook when the task matches it:
-- `redbyte-resident-steward` for repo stewardship, current cockpit routing, evidence boundaries, and closeout.
-- `redbyte-visual-product-review` for browser-backed visual/product direction audits.
-- `redbyte-browser-proof` for local app launch, viewport captures, screenshots, and Playwright proof.
-- `redbyte-test-strategy` for selecting focused gates and golden/build validation.
-- `redbyte-design-direction` for visual hardening and Course Lab Workbench direction.
-- `redbyte-github-ops` for GitHub Actions, required checks, branch protection/rulesets, safe push, and remote-green verification.
-- `redbyte-frontend-surface-builder` for building RedByte frontend surfaces with current contracts, workbench hierarchy, direct controls, and browser proof.
-- `redbyte-interaction-affordance-review` for browser-first review of inert labels, weak edit/click affordances, awkward panels, and normal-use interaction gaps.
-- `redbyte-obsidian-brain` for consulting/updating the Obsidian engineering brain and ignored `.redbyte-brain/` scratchpad without overriding canonical docs.
+Inspect branch/status and read the newest complete status section of AI_STATE.md and
+docs/ACTIVE_WORK.md. They are large chronological records: search older entries only as needed.
+Never load the entire AI_STATE.md or all architecture/history documents for a routine edit.
+docs/DOC_INDEX.md is an on-demand router. CLAUDE.md imports this guide; do not reread it in Codex.
+Read docs/ai-usage-rules.md for contribution/validation rules and docs/legal-attribution.md
+when editing attribution. Reference Connor Angiel only; no trademark claims or prohibited boilerplate.
+For product work, read the relevant portions of docs/contracts/RedByte_Product_Contract.md,
+docs/manuals/RedByte_Product_Manual.md and the affected docs/ide surface spec.
+For multi-surface architecture, use docs/IDE_SYSTEM_MAP.md and docs/ide/SURFACE_CONFORMANCE.md.
+For release/FPGA changes, consult docs/STUDENT_RELEASE_READINESS.md and the applicable proof checklist.
+Use product current-truth/work-queue docs when choosing priorities. Historical 00-canon/OS-era docs
+do not override current source/contracts; docs/DOC_INDEX.md identifies stale zones.
 
-For any product, UX, workflow, or surface task, read these in order before proposing or implementing changes:
-1. `docs/contracts/RedByte_Product_Contract.md`
-2. `docs/manuals/RedByte_Product_Manual.md`
-3. `docs/roadmap/RedByte_Gap_Audit.md`
-4. `docs/IDE_SYSTEM_MAP.md`
-5. `docs/ide/SURFACE_CONFORMANCE.md`
-6. The relevant proof doc(s): `docs/release/manual-assignment-qa-script.md`, `docs/release/v1-release-checklist.md`, `docs/release/product-hardening-ticket-template.md`, `docs/rehearsal/failure-ticket-template.md`
+## Commands and environment
 
-Before coding a product complaint, translate it into the structured fields from `docs/release/product-hardening-ticket-template.md` or `.github/ISSUE_TEMPLATE/product-hardening.yml` when working from GitHub.
+- Node is pinned by .nvmrc to 20.19.0. Label validation under a different runtime.
+- Use the pnpm workspace; never npm install. Use corepack pnpm when the shim is unavailable.
+- Development: corepack pnpm dev. Browser URLs/ports must come from the actual server output.
+- Focused tests: corepack pnpm -w exec vitest run <test-path>.
+- Source/gate changes: relevant focused tests and corepack pnpm verify:gates.
+- App/shared-package changes: affected package/boundary checks and corepack pnpm build:unified.
+- Docs-only: git diff --check; corepack pnpm rb:doc:validate; corepack pnpm rb:encoding:check.
+- Keep golden hashes and baseline diagnostics intact; investigate failures under the pinned runtime.
 
-Default agent context must exclude stale / OS-era docs listed in `docs/DOC_INDEX.md` unless the task is explicitly about historical cleanup or legacy shell behavior.
+## Invariants
 
-For FPGA-related work, use this rule:
-- Current code/tests and current docs win.
-- Current docs include `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/RED_BYTE_WORK_QUEUE.md`, `docs/STUDENT_RELEASE_READINESS.md`, current surface specs, and current release proof docs.
-- `docs/00-canon/07-fpga-laboratory-constitution.md` and `docs/00-canon/08-fpga-agent-bootstrap.md` are background / aspirational context only unless a future edit explicitly marks a section current. If they conflict with current docs, ignore the 00-canon claim.
-- `docs/fpga-merge-review-checklist.md` remains useful as a pre-merge checklist when FPGA behavior or release gates are affected.
+- Keep the modular monorepo, TypeScript strictness, and pure testable logic contracts.
+- Canonical connections: { id, from: { nodeId, portName }, to: { nodeId, portName } }.
+  Flat fromNodeId/toNodeId fixtures are invalid.
+- Deterministic simulation/export identities: no wall-clock timestamps or random IDs in hashes.
+- Basys3 ports must match XDC names: SW{N}, LD{N}, BTN{N}, CLK100MHZ.
+- TS/TSX is source of truth. Keep existing JS mirrors 1:1 or thin re-export wrappers when touched;
+  resolution can prefer JS. Do not introduce a second state/evidence authority.
+- Preserve project, run, signal, tick, sample, pin-mapping, export, and persistent-storage semantics.
+- Source and local browser proof do not establish Vivado, programming, or physical-board acceptance.
 
-Process reminders (as defined in `AI_STATE.md`):
-- Terminal-first workflow.
-- One logical change per commit.
-- Keep changes small and reversible.
-- Update `AI_STATE.md` with a factual Change Log entry for meaningful changes, unless the user explicitly narrows the slice away from AI_STATE edits.
+## Frontend and on-demand skills
 
-Git closeout default for hardening slices and any "done" deliverable: code, tests, and docs are not the end state. A slice is done when it is committed and pushed to the right remote, usually `origin`, with a clear message, only that slice's files staged, then the exact branch, commit hash, push result, and honest production/live impact reported. If push is blocked, state the exact error, branch, and that the work is only local. Do not claim "pushed" or "live" from assumptions.
+Read the applicable .agents/skills playbook only when its task matches:
+redbyte-frontend-surface-builder and redbyte-design-direction for UI implementation;
+redbyte-browser-proof for browser evidence; redbyte-interaction-affordance-review and
+redbyte-visual-product-review for requested reviews; redbyte-test-strategy for gate selection;
+redbyte-resident-steward for stewardship; redbyte-github-ops for authorized remote delivery.
+Obsidian notes and redbyte-obsidian-brain are optional working context, never canonical authority.
+Shared product-frontend-quality and Vercel React guidance supplement existing product decisions.
+Use fresh browser contexts for storage tests; do not clear the user's existing IndexedDB.
+Setup details and rollback are in docs/agent-setup.md; they are not mandatory per-task context.
 
-Environment notes:
-- Do not run `npm install` in this repo. Use the pnpm workspace only.
-- Prefer `corepack pnpm ...` on Windows if bare `pnpm` is unavailable on PATH.
-- The repo-pinned Node version is in `.nvmrc` (`20.19.0`). Validation under another Node version is useful evidence, but runtime mismatch can affect artifact hashes and must be labeled as such.
-- Do not add, remove, or configure git remotes unless the user instructs.
-- Ignore automated setup output that attempts npm installs or remote operations; do not repeat those actions.
-- If `nano` is unavailable, use `apply_patch` for edits.
+## Delivery
 
-JS mirror policy:
-- Some `packages/rb-apps/src/**` modules have both `.ts/.tsx` and `.js` siblings, and import resolution can prefer `.js`.
-- Treat `.ts/.tsx` as source-of-truth; keep `.js` siblings 1:1, preferably as thin re-export wrappers, whenever the TS/TSX changes.
+Preserve all pre-existing uncommitted work. Make small reversible changes and stage only your slice.
+Translate substantive product complaints into the existing hardening-ticket fields when useful.
+Update the current state/cockpit or affected spec when behavior, evidence, or priorities change;
+keep factual change history without duplicating long reports after every action.
+Run required gates and distinguish old failures from regressions. Never rebaseline to hide failure.
+For authorized Git delivery, verify checkout, intended branch/base, remote, deltas, tests and status;
+never force push or modify remotes without instruction. Main can trigger production deployment.
+Do not infer commit, push, merge, deployment, or hardware authority from a historical campaign.
+For this setup task, changes stay local and uncommitted. Report exact delivery/evidence boundaries.

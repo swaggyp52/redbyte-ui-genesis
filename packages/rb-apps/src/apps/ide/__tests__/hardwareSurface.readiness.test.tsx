@@ -259,7 +259,7 @@ describe('HardwareSurface readiness', () => {
     });
 
     const workspace = getByTestId('ide-hw-board-workspace');
-    expect(workspace.textContent).toContain('Board & Constraints');
+    expect(workspace.textContent).toContain('Board');
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table')).toBeTruthy();
     expect(getByTestId('ide-hw-selected-mapping-editor')).toBeTruthy();
@@ -429,12 +429,12 @@ describe('HardwareSurface readiness', () => {
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     // The behaviour: a manual-event lab with no board oscillator is still handed on to
-    // Build & Export, not held back for a clock. The old assertion read the literal words
+    // Package, not held back for a clock. The old assertion read the literal words
     // 'Ready for export', which were a fourth restatement of MAPPING COMPLETE in the same
     // ribbon; the region now labels itself 'Next' and names the destination. Assert the
     // destination and the absence of a clock demand, which is what the test was for.
     const nextAction = getByTestId('ide-hw-mapping-next-action').textContent ?? '';
-    expect(nextAction).toContain('Build & Export');
+    expect(nextAction).toMatch(/Open Package to|Package will offer/);
     expect(nextAction).not.toMatch(/oscillator|clock/i);
   });
 
@@ -562,7 +562,7 @@ describe('HardwareSurface readiness', () => {
     expect(readiness.textContent).toContain('external E1/E2/E3 evidence');
     expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Vivado proof pending');
     expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain(
-      'Inspect the checked package in Build & Export'
+      'Open Package to inspect the checked package'
     );
     expect(queryByTestId('ide-hardware-program-handoff-cta')).toBeNull();
 

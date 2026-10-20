@@ -1043,7 +1043,7 @@
   color: #c7d6e2 !important;
 }
 
-/* Board & Constraints stays warm and physical in light mode; the legacy
+/* Board stays warm and physical in light mode; the legacy
    planner gradient and dark metric well no longer swallow its labels. */
 .ide-root [data-ide-mode-marker='hardware'] .ide-hw-v3[data-testid='ide-hw-board-workspace'] {
   border-color: var(--rb-border-default);
@@ -1059,7 +1059,7 @@
   border-left-color: var(--rb-border-default);
 }
 
-/* Build & Export uses the same theme surfaces as the rest of the workbench.
+/* Package uses the same theme surfaces as the rest of the workbench.
    The file browser and code viewer remain distinct without forcing dark-mode
    backgrounds under light-mode text tokens. */
 .ide-root [data-ide-mode-marker='export'] .ide-export-v3[data-testid='ide-export-readiness-hero'] {

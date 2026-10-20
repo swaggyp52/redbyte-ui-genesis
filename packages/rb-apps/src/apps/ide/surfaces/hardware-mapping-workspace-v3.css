@@ -803,7 +803,7 @@
 .ide-pin-planner-xdc-line.is-removed { color: var(--rb-warning); }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Constraint sets (Chapter C) — named XDC sets, one active. Board & Constraints.
+   Constraint sets (Chapter C) — named XDC sets, one active. Board.
    ─────────────────────────────────────────────────────────────────────────── */
 
 .ide-constraint-sets {

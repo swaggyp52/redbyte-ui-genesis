@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 /**
- * Board & Constraints secondary-tool recovery.
+ * Board secondary-tool recovery.
  *
  * The v3 assignment workspace no longer renders the legacy Map tab/rail. Board
  * Check and the simulated board remain optional after-mapping tools, and each
@@ -75,7 +75,7 @@ function renderHardware() {
   );
 }
 
-describe('HardwareSurface Board & Constraints recovery navigation', () => {
+describe('HardwareSurface Board recovery navigation', () => {
   it('opens on the unified assignment workspace without the superseded Map tab', () => {
     const { queryByTestId, getByTestId } = renderHardware();
 
@@ -132,7 +132,7 @@ describe('HardwareSurface Board & Constraints recovery navigation', () => {
     const { queryByTestId, getByTestId } = renderHardware();
     expect(queryByTestId('ide-hw-mode-btn-proof')).toBeNull();
     expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
-    // The way on from a complete mapping is Build & Export, on the mapping header itself.
-    expect(getByTestId('ide-hw-continue-export').textContent).toMatch(/build & export/i);
+    // The way on from a complete mapping is Package, on the mapping header itself.
+    expect(getByTestId('ide-hw-continue-export').textContent).toBe('Continue to Package');
   });
 });

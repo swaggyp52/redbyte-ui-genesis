@@ -229,9 +229,9 @@ describe('DesignSurface palette dock redesign', () => {
     expect(xnorDefinition).toBeDefined();
     const xnorFacts = deriveLibraryCardFacts(xnorDefinition!);
 
-    // The card leads with engineering facts: the prose description moves into
-    // the tooltip alongside the port-by-port interface, while the visible
-    // card row shows the compact interface summary.
+    // The card row shows the part's schematic symbol and its name. Everything a
+    // reader would look up - the prose description, the compact interface
+    // summary and the port-by-port interface - is in the tooltip.
     const xnorCard = view.getByTestId('ide-design-palette-xnor');
     expect(xnorCard.getAttribute('title')).toContain(
       `${xnorDefinition?.displayName} - ${xnorDefinition?.description}`
@@ -240,7 +240,8 @@ describe('DesignSurface palette dock redesign', () => {
       expect(xnorCard.getAttribute('title')).toContain(port.displayName);
     }
     expect(xnorCard.textContent).toContain(xnorDefinition?.displayName);
-    expect(xnorCard.textContent).toContain(xnorFacts.portSummary);
+    expect(xnorCard.getAttribute('title')).toContain(xnorFacts.portSummary);
+    expect(xnorCard.querySelector('svg.rb-palette-symbol')).not.toBeNull();
 
     fireEvent.change(view.getByTestId('ide-design-search'), {
       target: { value: xnorDefinition?.category },

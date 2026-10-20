@@ -29,10 +29,13 @@ export interface IdeWorkflowRouteStep extends IdeWorkflowStage {
 export const PROJECT_STAGE_LABEL = 'Project';
 export const DESIGN_STAGE_LABEL = 'Design';
 export const VERIFY_STAGE_LABEL = 'Simulate';
-export const BOARD_CONSTRAINTS_STAGE_LABEL = 'Board & Constraints';
+export const BOARD_CONSTRAINTS_STAGE_LABEL = 'Board';
 /** @deprecated Internal routes may still be named hardware; use the board workspace label in UI. */
 export const MAP_PINS_STAGE_LABEL = BOARD_CONSTRAINTS_STAGE_LABEL;
-export const EXPORT_STAGE_LABEL = 'Build & Export';
+export const EXPORT_STAGE_LABEL = 'Package';
+/** Compatibility aliases for consumers. All workspace labels have one owner. */
+export const BOARD_WORKSPACE_NAME = BOARD_CONSTRAINTS_STAGE_LABEL;
+export const PACKAGE_WORKSPACE_NAME = EXPORT_STAGE_LABEL;
 export const PROGRAM_STAGE_LABEL = 'Program';
 
 export const STUDENT_WORKFLOW_STAGES: readonly IdeWorkflowStage[] = [

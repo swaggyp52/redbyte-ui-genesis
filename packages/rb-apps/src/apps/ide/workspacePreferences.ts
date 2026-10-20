@@ -188,8 +188,10 @@ const AUTHORING_SURFACES = createSurfacePreferences({
     // The library's narrow composition puts the interface below the part name.
     // Keep both supports usable while leaving the circuit most of a laptop workspace.
     // Existing user-resized docks retain their saved dimensions.
-    left: { visible: true, sizePx: 220, expanded: false },
-    right: { visible: true, sizePx: 236, expanded: false },
+    // A compact, labeled library: symbol and name on one line. It keeps this form through
+    // selection, wiring and inspection; widening it is the student's explicit, remembered choice.
+    left: { visible: true, sizePx: 208, expanded: false },
+    right: { visible: true, sizePx: 280, expanded: false },
   },
   verify: {
     left: { visible: true, sizePx: 240, expanded: false },

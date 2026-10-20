@@ -198,7 +198,7 @@ describe('ExportSurface mapping trust', () => {
     expect(within(row).queryByRole('textbox')).toBeNull();
     fireEvent.click(row);
     expect(onOpenDocument).toHaveBeenLastCalledWith({ kind: 'board-io', constraintSetId: 'default' });
-    expect(view.getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Board & Constraints');
+    expect(view.getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Board');
   });
 
   it('keeps live boundary rows visible when labels sanitize differently in artifacts', () => {
@@ -225,7 +225,7 @@ describe('ExportSurface mapping trust', () => {
     });
     const view = render(<ExportSurface project={buildProject()} determinismHash="current-export-hash"
       verifyResult={verifyResult} workflowAuthority={workflowAuthority} />);
-    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Package not built yet — evidence validated');
+    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Package not built yet — the current simulation passes its checks');
     const action = view.getByTestId('ide-export-package-build-v1');
     expect(action.textContent).toBe('Generate & download checked ZIP');
     expect(action.hasAttribute('disabled')).toBe(false);

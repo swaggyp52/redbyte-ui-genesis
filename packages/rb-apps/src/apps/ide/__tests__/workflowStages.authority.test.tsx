@@ -129,7 +129,7 @@ describe('workflow stage authority', () => {
       'export',
     ]);
     expect(STUDENT_WORKFLOW_SUMMARY).toBe(
-      'Project → Design → Simulate → Board & Constraints → Build & Export',
+      'Project → Design → Simulate → Board → Package',
     );
   });
 });

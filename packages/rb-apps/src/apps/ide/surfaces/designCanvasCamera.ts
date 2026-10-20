@@ -203,3 +203,60 @@ export function centerDesignSelectionWithContext(
     zoom: camera.zoom,
   };
 }
+
+export interface DesignCanvasRegion {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/**
+ * The smallest pan that brings a world-space region inside the viewport, at the camera's own
+ * zoom. A region already in view returns the camera untouched; one larger than the viewport is
+ * aligned to its leading edge. The zoom is never changed: opening a pane beside the sheet must
+ * not rescale the work a student is looking at.
+ */
+export function keepRegionInView(
+  camera: DesignCanvasCamera,
+  viewport: DesignCanvasViewport,
+  region: DesignCanvasRegion,
+  inset = 24
+): DesignCanvasCamera {
+  if (!isFiniteCamera(camera) || viewport.width <= 0 || viewport.height <= 0) return camera;
+  const shift = (start: number, end: number, size: number): number => {
+    const pad = Math.min(inset, size / 4);
+    if (end - start > size - pad * 2) return pad - start;
+    if (start < pad) return pad - start;
+    if (end > size - pad) return size - pad - end;
+    return 0;
+  };
+  const dx = shift(region.minX * camera.zoom + camera.x, region.maxX * camera.zoom + camera.x, viewport.width);
+  const dy = shift(region.minY * camera.zoom + camera.y, region.maxY * camera.zoom + camera.y, viewport.height);
+  return dx === 0 && dy === 0 ? camera : { x: camera.x + dx, y: camera.y + dy, zoom: camera.zoom };
+}
+
+/**
+ * Where a student was working, per project and module, for this session. Design unmounts when
+ * another workspace is opened; without this it reframed the whole circuit on every return and
+ * discarded a deliberate zoom. It is view state only and is never saved with the project.
+ */
+const workingCameras = new Map<string, DesignCanvasCamera>();
+
+export function designCameraKey(projectId: string | null | undefined, moduleId: string): string {
+  return `${projectId?.trim() || 'project'}\u0000${moduleId}`;
+}
+
+export function rememberDesignCamera(key: string, camera: DesignCanvasCamera): void {
+  if (isFiniteCamera(camera)) workingCameras.set(key, { x: camera.x, y: camera.y, zoom: camera.zoom });
+}
+
+export function recallDesignCamera(key: string): DesignCanvasCamera | null {
+  const camera = workingCameras.get(key);
+  return camera ? { ...camera } : null;
+}
+
+/** Clears the session memory. Used by tests; the app keeps it for the life of the page. */
+export function forgetDesignCameras(): void {
+  workingCameras.clear();
+}

@@ -125,9 +125,13 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
   const runButtonTestId = await clickEnabledVerifyRunButton(verifyRoot);
   assert(Boolean(runButtonTestId), 'verify missing enabled run action after preparation');
 
-  await page.waitForFunction(() => {
-    return Boolean(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun && document.querySelector('[data-testid="ide-verify-workspace-waveform"]'));
-  }, { timeout: 30000 });
+  await page.waitForFunction(() => Boolean(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun), null, { timeout: 30000 });
+  assert(await visible(verifyRoot.locator('[data-testid="ide-case-lab"]')) ||
+    await visible(verifyRoot.locator('[data-testid="ide-stimulus-canvas"]')), 'recording must preserve the editable instrument');
+  // M4 keeps the authored instrument after Run. Recorded trace remains an explicit choice.
+  const recordedTrace = verifyRoot.locator('[data-testid="ide-verify-view-waveform"]').first();
+  assert(await visible(recordedTrace) && await recordedTrace.isEnabled(), 'a recording must enable the explicit Recorded trace choice');
+  await recordedTrace.click();
   const verifyWaveformVisible = await verifyRoot
     .locator('[data-testid="ide-verify-workspace-waveform"]')
     .first()

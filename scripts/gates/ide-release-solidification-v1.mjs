@@ -65,8 +65,14 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
     }
 
     const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
+    // A control inside a closed <details> is not on screen, but the browser still reports a
+    // rectangle for it where it would be laid out - below the summary, which for the measure
+    // tools at the foot of the trace is below the window. Such a control is not "clipped": it is
+    // not shown. Only rendered controls are counted here; the measure tools are opened and
+    // checked on their own below.
     const bottomClippedButtons = Array.from(document.querySelectorAll('[data-testid="ide-verify-lab-grid"] button'))
       .filter((button) => {
+        if (typeof button.checkVisibility === 'function' && !button.checkVisibility({ contentVisibilityAuto: true })) return false;
         const rect = button.getBoundingClientRect();
         return rect.width > 1 && rect.height > 1 && rect.bottom > window.innerHeight + 1;
       });
@@ -116,6 +122,33 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
   );
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Verify created root overflow ${metrics.rootOverflowX}px`);
 
+  // The measure tools start closed. Opened, every one of their controls must be on screen and
+  // receive the pointer, or sit in something that scrolls.
+  const measureTools = page.getByTestId('ide-verify-waveform-tools').first();
+  assert((await measureTools.evaluate((element) => element.open)) === false, `${viewport.label}: the measure tools start closed`);
+  await measureTools.locator('summary').first().click();
+  await page.waitForTimeout(300);
+  const unreachable = await page.evaluate(() => {
+    const scrolls = (element) => {
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = getComputedStyle(ancestor);
+        if (/(auto|scroll)/.test(style.overflowY) && ancestor.scrollHeight > ancestor.clientHeight + 1) return true;
+      }
+      return false;
+    };
+    const controls = Array.from(document.querySelectorAll('[data-testid="ide-verify-cursor-controls"] button'));
+    const missing = controls.length === 0 ? ['(no cursor controls rendered)'] : [];
+    return missing.concat(controls.filter((button) => {
+      const rect = button.getBoundingClientRect();
+      const inside = rect.width > 1 && rect.height > 1 && rect.top >= 0 && rect.bottom <= window.innerHeight + 1;
+      const hit = inside ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+      const receivesPointer = Boolean(hit) && (hit === button || button.contains(hit));
+      return !(inside && receivesPointer) && !scrolls(button);
+    }).map((button) => button.textContent?.trim() || 'button'));
+  });
+  assert(unreachable.length === 0, `${viewport.label}: opened measure tools must be reachable, these are not: ${unreachable.join(', ')}`);
+  await measureTools.locator('summary').first().click();
+
   await assertNoRootOverflow(page, `${viewport.label}/Verify signals`);
 }
 
@@ -142,7 +175,9 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
   assert(/package/i.test(checklistText), `${viewport.label}: Export checklist must name package readiness`);
   assert(/simulate/i.test(simulationReadiness), `${viewport.label}: Export checklist must name Simulate ownership`);
   assert(/validated|simulated|draft|not run|inconclusive/i.test(simulationReadiness), `${viewport.label}: Export checklist must include simulation evidence state`);
-  assert(/Board & Constraints/i.test(mappingReadiness), `${viewport.label}: Export checklist must name Board & Constraints ownership`);
+  const mappingOwner = await page.locator('[data-testid="ide-export-upstream-mapping"]').first().getAttribute('data-owner');
+  const mappingOwnerShown = normalized(await page.locator('[data-testid="ide-export-upstream-mapping"] span').first().textContent());
+  assert(mappingOwner === 'Board' && mappingOwnerShown === 'Board', `${viewport.label}: Export checklist must name Board as the owner of mapping, got "${mappingOwner}" / "${mappingOwnerShown}"`);
   assert(/Ready|required missing|blocker|assign/i.test(mappingReadiness), `${viewport.label}: Export checklist must include mapping readiness state`);
   assert(/E0/i.test(checklistText), `${viewport.label}: Export checklist must state E0 package boundary`);
   assert(/external|Vivado|Basys3/i.test(checklistText), `${viewport.label}: Export checklist must separate external proof`);

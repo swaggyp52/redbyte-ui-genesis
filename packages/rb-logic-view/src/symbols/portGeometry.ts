@@ -16,6 +16,13 @@ export const GRID = 16;
 export const PIN_PITCH = 32;
 /** Stub length from the body edge to the pin's connection point. */
 export const STUB = 16;
+/**
+ * A boundary symbol is as wide as its name needs. The name is drawn at 12.5 units in the mono
+ * face (about 7.6 units a character) beside a value cell at the tip; these two numbers keep the
+ * last letter of the longest name clear of that cell. They were 7 and 28 for an 11-unit label.
+ */
+const IO_LABEL_CHAR_W = 7.6;
+const IO_LABEL_PAD = 34;
 
 export type SymbolKind =
   | 'and'
@@ -311,7 +318,7 @@ export function resolvePortGeometry(node: Node, metadata?: ChipMetadata): Symbol
     case 'const': {
       // Port symbol: a pentagon pointing into the design; the value cell is the tip.
       const label = instanceName || node.id;
-      const bodyW = Math.max(4 * GRID, GRID * Math.ceil((label.length * 7 + 28) / GRID));
+      const bodyW = Math.max(4 * GRID, GRID * Math.ceil((label.length * IO_LABEL_CHAR_W + IO_LABEL_PAD) / GRID));
       const bodyH = PIN_PITCH;
       const minX = -bodyW / 2;
       const maxX = bodyW / 2;
@@ -320,7 +327,7 @@ export function resolvePortGeometry(node: Node, metadata?: ChipMetadata): Symbol
     }
     case 'io-out': {
       const label = instanceName || node.id;
-      const bodyW = Math.max(4 * GRID, GRID * Math.ceil((label.length * 7 + 28) / GRID));
+      const bodyW = Math.max(4 * GRID, GRID * Math.ceil((label.length * IO_LABEL_CHAR_W + IO_LABEL_PAD) / GRID));
       const bodyH = PIN_PITCH;
       const minX = -bodyW / 2;
       const maxX = bodyW / 2;

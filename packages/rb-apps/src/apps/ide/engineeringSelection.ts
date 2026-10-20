@@ -58,6 +58,13 @@ export type SelectionOrigin =
   | 'problems';
 
 interface EngineeringSelectionState {
+  liveJourney: { projectId: string; instancePath: string[]; nodeId: string | null; port: string; wireId: string | null } | null;
+  inspectLiveJourney: (selection: EngineeringSelectionState['liveJourney']) => void;
+  journey: import('./signalJourney').JourneySelection | null;
+  journeyOpen: boolean;
+  inspectJourney: (selection: import('./signalJourney').JourneySelection | null) => void;
+  seekJourney: (patch: Partial<import('./signalJourney').JourneySelection>) => void;
+  closeJourney: () => void;
   selected: EngineeringObjectRef | null;
   origin: SelectionOrigin | null;
   select: (ref: EngineeringObjectRef, origin: SelectionOrigin) => void;
@@ -65,6 +72,13 @@ interface EngineeringSelectionState {
 }
 
 export const useEngineeringSelection = create<EngineeringSelectionState>((set) => ({
+  liveJourney: null,
+  inspectLiveJourney: liveJourney => set({ liveJourney }),
+  journey: null,
+  journeyOpen: false,
+  inspectJourney: journey => set({ journey, journeyOpen: journey !== null }),
+  seekJourney: patch => set(state => state.journey ? {journey:{...state.journey,...patch}} : {}),
+  closeJourney: () => set({journeyOpen:false}),
   selected: null,
   origin: null,
   select: (ref, origin) => set({ selected: ref, origin }),

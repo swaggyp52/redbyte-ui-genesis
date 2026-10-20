@@ -1,11 +1,6 @@
 
 
-/* Dock tabs are compact rail navigation, not form controls — they keep their
-   own size contract in product-system-v3.css so four labels fit a 180px rail. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(button, input, select, textarea, label):not(.ide-design-dock-tabs button) {
-  font-size: var(--rb-text-head) !important;
-}
+/* Design controls take their size from the workbench primitives, on the one type scale. */
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
   grid-template-columns:
@@ -111,7 +106,7 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-instance-identity {
   margin: 0;
   padding: 4px 8px;
-  border-left: 3px solid var(--rb-action);
+  border: 1px solid color-mix(in srgb, var(--rb-action) 32%, transparent);
   background: color-mix(in srgb, var(--rb-action) 7%, transparent);
   border-radius: 4px;
   color: var(--rb-text-primary);
@@ -472,9 +467,9 @@
   max-width: 390px;
   gap: 7px;
   padding: 12px;
-  border-color: #334155;
-  color: #f2f5f8;
-  background: rgba(16, 22, 31, .94);
+  border-color: var(--rb-border);
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-1);
   pointer-events: none;
 }
 
@@ -484,23 +479,23 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
   margin: 0;
-  color: #f2f5f8;
+  color: var(--rb-text-primary);
   font-size: 17px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary {
   margin: 0;
-  color: #b8c3d1;
+  color: var(--rb-text-secondary);
 }
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-eyebrow { color: #9fb0c3; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-eyebrow { color: var(--rb-text-secondary); }
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button.ide-button-ghost {
-  border-color: #526173;
-  color: #f2f5f8;
-  background: #202a37;
+  border-color: var(--rb-border);
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-2);
 }
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button.ide-button-ghost:hover {
-  border-color: #93a4b8;
-  background: #2b3848;
+  border-color: var(--rb-action);
+  background: var(--rb-surface-2);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions {

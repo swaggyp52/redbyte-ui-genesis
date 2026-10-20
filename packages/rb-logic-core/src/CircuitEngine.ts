@@ -2,8 +2,11 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-import type { Circuit, Connection, Node, NodeInputs, PortRef, Signal } from './types';
+import type { Circuit, Connection, Node, NodeInputs, NodeOutputs, PortRef, Signal } from './types';
 import { NodeRegistry } from './NodeRegistry';
+import type { EngineEvaluationObservation, EngineTickObservationOptions, EvaluationInputRead } from './observation';
+import { isClockCaptureNodeType, canSettleAfterClockCapture } from './clockCapture';
+import { readClockedStateOutputs } from './builtins';
 
 function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
   const fromIsString = typeof conn.from === 'string';
@@ -69,6 +72,8 @@ function validateCircuitShape(circuit: Circuit): void {
 
 export interface CircuitEngineOptions {
   debug?: boolean;
+  /** Includes the constructor's real initial evaluation when explicitly requested. */
+  observation?: EngineTickObservationOptions;
 }
 
 export type SimulationIssueCode = 'COMBINATIONAL_LOOP';
@@ -96,7 +101,7 @@ export class CircuitEngine {
     this.nodeStates = new Map();
     this.signalCache = new Map();
     this.lastIssue = null;
-    this.setCircuit(circuit);
+    this.setCircuit(circuit, options.observation);
   }
 
   /**
@@ -116,7 +121,7 @@ export class CircuitEngine {
   /**
    * Update circuit and reset cached state/signals
    */
-  setCircuit(circuit: Circuit): void {
+  setCircuit(circuit: Circuit, observation?: EngineTickObservationOptions): void {
     validateCircuitShape(circuit);
     const safeCircuit: Circuit = {
       nodes: Array.isArray(circuit.nodes) ? circuit.nodes : [],
@@ -136,7 +141,7 @@ export class CircuitEngine {
     // Without this, the signal cache is empty after setCircuit until the
     // first tick(), causing stale reads in UI and tests.
     if (safeCircuit.nodes.length > 0) {
-      this.tick();
+      this.tick(observation);
     }
   }
 
@@ -257,7 +262,9 @@ export class CircuitEngine {
   private buildNodeInputs(
     nodeId: string,
     fallbackSignals?: Map<string, Signal>,
-    missingSignals?: Set<string>
+    missingSignals?: Set<string>,
+    inputReads?: EvaluationInputRead[],
+    priorStateSignals?: ReadonlySet<string>
   ): NodeInputs {
     const inputs: NodeInputs = {};
 
@@ -281,6 +288,17 @@ export class CircuitEngine {
         }
 
         inputs[normalized.to.portName] = value;
+        if (inputReads) inputReads.push({
+          portName: normalized.to.portName,
+          driver: { ...normalized.from },
+          value,
+          ...(fallback !== undefined ? { previousValue: fallback } : {}),
+          origin: priorStateSignals?.has(key) ? 'prior-state'
+            : cached !== undefined && !Number.isNaN(cached)
+            ? 'current-evaluation'
+            : fallback !== undefined && !Number.isNaN(fallback)
+              ? 'previous-tick' : 'default-zero',
+        });
       }
     }
 
@@ -291,7 +309,7 @@ export class CircuitEngine {
    * Execute one tick of the simulation in topological order
    * Returns true if any state changed
    */
-  tick(): boolean {
+  tick(observation?: EngineTickObservationOptions): boolean {
     this.clearLastIssue();
     const loop = this.detectCombinationalLoop();
     if (loop.hasLoop) {
@@ -300,26 +318,83 @@ export class CircuitEngine {
         message: 'Feedback loop detected — add a Delay or clocked element to break the loop.',
         details: { cycleNodeIds: loop.cycleNodeIds ?? [] },
       });
+      if (observation?.onIssue) {
+        try {
+          observation.onIssue(structuredClone(this.lastIssue!));
+        } catch {
+          this.reportObservationError(observation);
+        }
+      }
     }
 
     const previousSignals = new Map(this.signalCache);
     this.signalCache.clear();
     const missingSignals = new Set<string>();
 
-    const nodesToEval = this.topologicalSort();
+    const clockedNodes = this.circuit.nodes.filter(node => isClockCaptureNodeType(node.type));
+    const clockedNodeIds = new Set(clockedNodes.map(node => node.id));
+    const priorStateSignals = clockedNodes.length > 0 ? new Set<string>() : undefined;
+    for (const node of clockedNodes) {
+      const heldOutputs = readClockedStateOutputs(node.type, this.nodeStates.get(node.id) ?? {}, node.config ?? {});
+      for (const [port, value] of Object.entries(heldOutputs)) {
+        const key = `${node.id}.${port}`;
+        this.signalCache.set(key, value);
+        priorStateSignals!.add(key);
+      }
+    }
+    const nodesToEval = this.topologicalSort(clockedNodeIds);
+    const pending: Array<{
+      nodeId: string;
+      state: Record<string, unknown>;
+      outputs: NodeOutputs;
+    }> = [];
 
-    for (const node of nodesToEval) {
+    const publish = (nodeId: string, state: Record<string, unknown>, outputs: NodeOutputs) => {
+      this.nodeStates.set(nodeId, state);
+      for (const [port, value] of Object.entries(outputs)) {
+        if (typeof value === 'number' && Number.isNaN(value)) {
+          if (this.debug) missingSignals.add(`${nodeId}.${port}`);
+          this.signalCache.set(`${nodeId}.${port}`, 0);
+        } else {
+          this.signalCache.set(`${nodeId}.${port}`, value);
+        }
+      }
+    };
+    const emit = (event: EngineEvaluationObservation) => {
+      try { observation!.observe(event); } catch { this.reportObservationError(observation!); }
+    };
+    const evaluate = (node: Node, order: number, evaluationPhase: EngineEvaluationObservation['evaluationPhase'], deferCommit = false) => {
       const behavior = NodeRegistry.get(node.type);
       if (!behavior) {
         if (this.debug) {
           // eslint-disable-next-line no-console
           console.warn(`[CircuitEngine] Missing behavior for node type: ${node.type}`);
         }
-        continue;
+        return;
       }
 
-      const inputs = this.buildNodeInputs(node.id, previousSignals, missingSignals);
+      let observing = Boolean(observation);
+      if (observing && observation?.isEnabled) {
+        try {
+          observing = observation.isEnabled();
+        } catch {
+          observing = false;
+          this.reportObservationError(observation);
+        }
+      }
+      const inputReads = observing ? [] as EvaluationInputRead[] : undefined;
+      const inputs = this.buildNodeInputs(node.id, previousSignals, missingSignals, inputReads, priorStateSignals);
       const state = this.nodeStates.get(node.id) ?? {};
+      const inputsBefore = observing ? { ...inputs } : undefined;
+      let stateBefore: Record<string, unknown> | undefined;
+      if (observing) {
+        try {
+          stateBefore = structuredClone(state);
+        } catch {
+          observing = false;
+          this.reportObservationError(observation!);
+        }
+      }
       const result = behavior.evaluate(inputs, state, node.config ?? {}, node);
       const outputs = result.outputs ?? {};
 
@@ -330,17 +405,59 @@ export class CircuitEngine {
         console.log(`[CircuitEngine] ${node.id} outputs`, outputs);
       }
 
-      this.nodeStates.set(node.id, result.state ?? {});
-
-      for (const [port, value] of Object.entries(outputs)) {
-        if (typeof value === 'number' && Number.isNaN(value)) {
-          if (this.debug) {
-            missingSignals.add(`${node.id}.${port}`);
+      if (!deferCommit) publish(node.id, result.state ?? {}, outputs);
+      let event: EngineEvaluationObservation | undefined;
+      if (observing && observation) {
+        try {
+          const previousOutputs: NodeOutputs = {};
+          const prefix = `${node.id}.`;
+          for (const [key, previous] of previousSignals) {
+            if (key.startsWith(prefix)) previousOutputs[key.slice(prefix.length)] = previous;
           }
-          this.signalCache.set(`${node.id}.${port}`, 0);
-        } else {
-          this.signalCache.set(`${node.id}.${port}`, value);
+          event = {
+            order,
+            evaluationOrder: order,
+            evaluationPhase,
+            commitPhase: deferCommit ? 'after-capture' : 'immediate',
+            nodeId: node.id,
+            nodeType: node.type,
+            context: { ...observation.context },
+            inputs: inputsBefore!,
+            inputReads: inputReads!,
+            previousOutputs,
+            outputs: Object.fromEntries(Object.entries(outputs).map(([port, value]) =>
+              [port, typeof value === 'number' && Number.isNaN(value) ? 0 : value])),
+            rawOutputs: { ...outputs },
+            invalidOutputPorts: Object.keys(outputs).filter(port =>
+              typeof outputs[port] === 'number' && Number.isNaN(outputs[port])),
+            stateBefore: stateBefore!,
+            stateAfter: structuredClone(result.state ?? {}),
+          };
+        } catch {
+          this.reportObservationError(observation);
         }
+      }
+      if (deferCommit) pending.push({ nodeId: node.id, state: result.state ?? {}, outputs });
+      if (event) emit(event);
+    };
+
+    let order = 0;
+    if (clockedNodes.length === 0) {
+      for (const node of nodesToEval) evaluate(node, order++, 'evaluate');
+    } else {
+      // Present new external inputs and compute D/EN/reset cones from held Q.
+      for (const node of nodesToEval) {
+        if (!clockedNodeIds.has(node.id)) evaluate(node, order++, 'before-capture');
+      }
+      // Every native device reads the same pre-commit signal/state boundary.
+      for (const node of nodesToEval) {
+        if (clockedNodeIds.has(node.id)) evaluate(node, order++, 'capture', true);
+      }
+      for (const entry of pending) publish(entry.nodeId, entry.state, entry.outputs);
+      priorStateSignals!.clear();
+      // Final samples observe committed Q. Never advance temporal devices again.
+      for (const node of nodesToEval) {
+        if (canSettleAfterClockCapture(node.type)) evaluate(node, order++, 'after-capture');
       }
     }
 
@@ -366,9 +483,14 @@ export class CircuitEngine {
     return false;
   }
 
+  private reportObservationError(observation: EngineTickObservationOptions): void {
+    // Observation failure must never affect state, samples, or the tick result.
+    try { observation.onError?.(); } catch { /* A failing observer is isolated. */ }
+  }
+
   /**
-   * Returns node IDs in evaluation order (topological sort, source → sink).
-   * Useful for Design surface eval-order visualization.
+   * Structural dependency preview, source → sink. Actual clock capture and
+   * settling invocations are recorded by tick observation, not this ID list.
    */
   getEvaluationOrder(): string[] {
     return this.topologicalSort().map((n) => n.id);
@@ -377,7 +499,7 @@ export class CircuitEngine {
   /**
    * Topological sort of nodes (simple forward pass, assumes no cycles)
    */
-  topologicalSort(): Node[] {
+  topologicalSort(stateBoundaryNodeIds: ReadonlySet<string> = new Set()): Node[] {
     const nodes = this.circuit.nodes;
     const edges: Map<string, Set<string>> = new Map();
     const inDegree: Map<string, number> = new Map();
@@ -389,8 +511,14 @@ export class CircuitEngine {
 
     for (const conn of this.circuit.connections) {
       const normalized = normalizeConnection(conn);
-      edges.get(normalized.from.nodeId)?.add(normalized.to.nodeId);
-      inDegree.set(normalized.to.nodeId, (inDegree.get(normalized.to.nodeId) ?? 0) + 1);
+      if (stateBoundaryNodeIds.has(normalized.from.nodeId)) continue;
+      const targets = edges.get(normalized.from.nodeId);
+      // Dependency order is per source/target pair, even when the source drives
+      // several input ports. Match the Set edge count used by the dequeue pass.
+      if (targets && !targets.has(normalized.to.nodeId)) {
+        targets.add(normalized.to.nodeId);
+        inDegree.set(normalized.to.nodeId, (inDegree.get(normalized.to.nodeId) ?? 0) + 1);
+      }
     }
 
     const queue: string[] = [];

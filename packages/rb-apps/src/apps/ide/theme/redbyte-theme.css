@@ -39,17 +39,20 @@
   --rb-state-danger-bg: #392126;
   --rb-state-info-bg: #1a2b3b;
 
-  /* Families now come from redbyte-type.css, the single owner. This file used to
+  /* Families now come from redbyte-type.css, the single owner. This file used to
      redefine them with a system stack, which is why IBM Plex never reached the screen. */
 
 
-  --rb-type-metadata: 11px;
-  --rb-type-label: 12px;
-  --rb-type-secondary: 13px;
-  --rb-type-body: 14px;
-  --rb-type-control: 14px;
-  --rb-type-work-heading: 16px;
-  --rb-type-page-heading: 20px;
+  /* Sizes are owned by redbyte-type.css too. These names predate it and held a second,
+     absolute-pixel scale; they now resolve to the one rem scale so text cannot disagree
+     with itself and still follows the reader's text-size setting. */
+  --rb-type-metadata: var(--rb-text-micro);
+  --rb-type-label: var(--rb-text-meta);
+  --rb-type-secondary: var(--rb-text-dense);
+  --rb-type-body: var(--rb-text-body);
+  --rb-type-control: var(--rb-text-body);
+  --rb-type-work-heading: var(--rb-text-head);
+  --rb-type-page-heading: var(--rb-text-title);
 
   --rb-space-0: 0;
   --rb-space-1: 4px;
@@ -119,10 +122,10 @@
   --rb-radius-3: var(--rb-radius-overlay);
   --rb-font-size-1: var(--rb-type-label);
   --rb-font-size-2: var(--rb-type-body);
-  --rb-font-size-3: 15px;
+  --rb-font-size-3: 1rem;
   --rb-font-size-4: var(--rb-type-work-heading);
   --rb-font-size-5: var(--rb-type-page-heading);
-  --rb-font-size-6: 24px;
+  --rb-font-size-6: var(--rb-text-doc);
 
   --ide-bg: var(--rb-canvas);
   --ide-surface-1: var(--rb-surface);

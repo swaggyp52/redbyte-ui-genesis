@@ -5,7 +5,7 @@
 // F-H2: When mapping is complete, the mapping guide collapses rather than occupying prime space
 //       with guidance that no longer applies; an incomplete row is still flagged.
 //
-// F-H3: When mapping is complete, the Board's next step says what Build & Export will offer -
+// F-H3: When mapping is complete, the Board's next step says what Package will offer -
 //       a draft package or a checked one - and, for a draft, the specific reason (no run recorded,
 //       recorded run stale, ...) rather than generic "open Export" copy. These used to read the
 //       hardware command strip, which the mapping workspace no longer draws; the promise moved to
@@ -161,7 +161,7 @@ describe('HardwareSurface trust clarity — F-H2 (guide collapses when complete)
 
 describe('HardwareSurface trust clarity — F-H3 (the next step names the package it leads to)', () => {
   it('names a draft package and the missing run when mapping is complete but nothing has been recorded', () => {
-    // Mapping is 100% complete. Nothing has been run. Build & Export will offer a draft package,
+    // Mapping is 100% complete. Nothing has been run. Package will offer a draft package,
     // and the Board says so - with the reason - instead of "inspect the package".
     const health = makeHealthVerifyNotRun();
     const { getByTestId } = render(
@@ -189,7 +189,7 @@ describe('HardwareSurface trust clarity — F-H3 (the next step names the packag
 
   it('does not fall back to pin-binding guidance once every required signal is mapped', () => {
     // With mapping complete the next-action block must not repeat "select a signal" copy, and the
-    // primary control must lead on to Build & Export rather than to another mapping row.
+    // primary control must lead on to Package rather than to another mapping row.
     const health = makeHealthVerifyNotRun();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -211,11 +211,11 @@ describe('HardwareSurface trust clarity — F-H3 (the next step names the packag
     const next = getByTestId('ide-hw-mapping-next-action');
     expect(next.textContent).not.toMatch(/select a signal/i);
     expect(next.textContent).not.toMatch(/assign /i);
-    expect(getByTestId('ide-hw-continue-export').textContent).toMatch(/build & export/i);
+    expect(getByTestId('ide-hw-continue-export').textContent).toBe('Continue to Package');
   });
 
   it('names a draft package and the stale run when mapping is complete but the recorded run is stale', () => {
-    // Mapping is 100% complete. A run was recorded and the design changed under it. Build & Export
+    // Mapping is 100% complete. A run was recorded and the design changed under it. Package
     // will offer a draft package; the Board names the stale run as the reason.
     const health = makeHealthVerifyStale();
     const { getByTestId } = render(

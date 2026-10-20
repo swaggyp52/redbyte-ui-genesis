@@ -1,12 +1,410 @@
 ---
 doc_status: current
-last_validated: 2026-10-01
+last_validated: 2026-10-08
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
 ---
 
 # RedByte - Active Work Cockpit
+
+## Signal Journey - interactive hierarchy and cancellable execution - 2026-10-08
+
+Current local checkpoint: `claude/redbyte-studio-completion-p2-6-q7m3v8`, HEAD
+`a46d7ed015b8f02d1420eff8e466eeb30a947fe6`, preserving the reviewed dirty tree.
+Input digest `6840f73b5fed4f39a512293a0133a05211077622485ec91f6a6b6de00b8004f3`;
+review `http://127.0.0.1:5206/os/` while its owned preview runs. The 926-file fixed copy is
+`.redbyte/interactive-hierarchy/fixed-dist-delivery-3`; the input delta from the reviewed
+comprehension checkpoint is 13 modified and nine added files, with no removals.
+
+The student can drive supported combinational hierarchy as one parent execution: actual top
+inputs, grouped boundary words, selected carry connection, exact repeated/nested instance and
+its local rule. Parent connection and camera survive the return. Internal boundary inputs and
+loads cannot drive an isolated module copy. Definitions, authored expectations, historical
+recordings and checked-export authority remain unchanged. Ordinary authored reusable-module
+proof complements the starter and imported scale evidence. Sequential module live exploration
+is explicitly unqualified; native register/latch detection uses canonical sequential support,
+including the clockless RSLatch. Existing flat counter capture/hold/nonzero-reset proofs pass.
+
+Explicit Run is asynchronous through a dedicated module worker using the existing engine-v2
+schedule. There is one pending request and one guarded completed-result admission. Cancel
+terminates computation; cancellation, failure and completion stay distinct. Pending status
+skips runtime storage serialization. Controlled response-race/error tests and real bundled-worker
+browser cancellation/retry both pass. Live toggles retain the existing immediate parent input
+owner; the latest input wins and transient exploration cannot create a recording.
+
+Final production authored full-adder/module, hierarchy/source correspondence, counter, camera
+and Save As independence, and actual downloaded ZIP inspection pass. The continuous demonstration
+reopens an unchanged old moment, acknowledges active keyboard cancellation in 107.9 ms, cancels
+on navigation, and completes a new 512-sample/2,560-check recording without reload while keeping
+the original archive byte-identical. The current handoff is `.redbyte/interactive-hierarchy/VALIDATION.md`.
+
+Node 20.19.0: 150 distinct focused tests pass, final app typecheck zero diagnostics, unified build
+and required verify:gates exit 0. The 147 declaration diagnostics are unchanged including locations.
+Final serial scale proof: initial whole Run 455/690/1,051 ms; limit retry 592 ms. Actual limit
+cancellation acknowledgements 20.2/17.2/19.7 ms, busy feedback 51.8/418.6/59.6 ms (one proposed
+100 ms target miss, exact cause not isolated). Full-session heartbeat maximum 722.3 ms. True
+4 MiB trace truncation retains all 512 samples/checks at 8,294 events / 4,194,071 bytes.
+Preparation/publication and rendering are still synchronous boundaries; measured opportunities
+do not qualify all later effects. Older broad-suite debt and owner/student/Vivado/physical
+acceptance remain open. This checkpoint stays local and uncommitted; earlier entries keep their
+original evidence and limitations.
+
+## Signal Journey - comprehension and direct connections - 2026-10-07
+
+This checkpoint continues the existing local candidate on the same branch and HEAD below.
+Frozen input digest `7f3370039ec6b929e15ca2943b662c1775eefecdc94d50e791656e0a3ba7428f`;
+review `http://127.0.0.1:5202/os/` while its owned preview runs. The sealed 794-file copy is
+`.redbyte/signal-journey-comprehension/fixed-dist-delivery`; receipts, ordered screenshots and the
+short handoff are in `.redbyte/signal-journey-comprehension/delivery/VALIDATION.md`.
+The delta from the earlier Signal Journey seal contains 11 changed and 3 added build inputs,
+with no removals and no engine, recording, export-emitter or persistent-storage implementation changes.
+
+The primary task is understanding an actual gate at one recorded moment. The view now leads with
+gate/module identity, actual input values, its local rule and whether its output changed. Native
+storage aliases share one canonical state row; complements and independent outputs stay distinct.
+Capture/hold/reset require retained evidence, and common publication stays separate from capture.
+Revision, raw port aliases and scheduler provenance are secondary details. Drawn wires select their
+exact retained endpoint, drivers and loads remain navigable, and Logic expands one branch at a time.
+Changing an authored case requires Run for a new recording. Ordinary flat Design exploration changes
+only the live simulation input; exact authored cases and recording owners survive Finish exploring.
+Hierarchical top-level Explore remains disabled and explains the authored-case route in Simulate.
+
+All final sealed browser proofs pass: normally authored full adder with independent arithmetic checks,
+fault/repair/history and live-input ownership; repeated-instance 7+1 carry signature and reverse HDL
+selection; counter capture/hold/nonzero reset; camera retention; actual export download; three scale
+fixtures. The 321-node/160-load synthetic fixture recorded 1,926 evaluations and 653 HDL lines.
+Four-node local focus labels measured 21.98 px at 1440x900 Fit; all loads remain reachable in 24-item
+pages. Source uses 120-line pages and cases/time use 50-sample pages. A real byte-limited recording
+truncated at 8,294 evaluations / 4,194,071 bytes while preserving all 512 samples and checks.
+Largest qualified action: 913 ms; largest qualified heartbeat gap: 238.1 ms; complete-session gap:
+756.2 ms. Run took 455/687/1,080 ms for hierarchy/fan-out/limit fixtures respectively. These qualify
+this host and these fixtures, not universal CPU/memory ceilings. Pause, Return/unmount and exact-phase
+Resume pass; synchronous Run still has no execution-cancel control.
+
+Pinned Node 20.19.0: focused 99/99; app typecheck zero diagnostics; unified build and repeated required
+verify:gates exit 0. The 147 declaration diagnostics are unchanged including source locations.
+The first sealed counter run rejected an obsolete raw caption; the strengthened capture/publication
+assertion passes on the final seal. Earlier failed geometry, live-hierarchy and readability iterations
+remain archived. The large historical full-suite campaign was not rerun; its existing failures stay
+open. Current limits also include bounded drawings/expressions, unsupported imported HDL correspondence,
+owner/student acceptance and Vivado/programming/physical-board proof. Local and uncommitted delivery;
+no remote or release action. Previous milestones and previews below remain historical evidence.
+
+## Signal Journey - one circuit, one moment - 2026-10-07
+
+Implemented locally on `claude/redbyte-studio-completion-p2-6-q7m3v8`, HEAD
+`a46d7ed015b8f02d1420eff8e466eeb30a947fe6`, preserving the actual dirty M1-M4 candidate.
+Baseline build input SHA-256 was `a0d75fe7f817dea24dafda8bcfc239aa4be9ab8518d5e05b125f9184f536cbe7`.
+The new frozen input digest is `774cdfbd644f86b76931a659942f37dfe3d1e8d467bd3de2f65cd50f8e81a006`.
+Review the sealed copy at `http://127.0.0.1:5199/os/` while its owned preview remains running;
+files are in `.redbyte/signal-journey/fixed-dist-delivery`, receipts/captures in `.redbyte/signal-journey/final/`.
+
+The circuit-first atlas was selected after two real-data browser compositions. Signal Journey
+is an inspection tool inside the existing studio, with no added workspace. A retained project,
+revision, recording, tick, global captured event, node/port/bit and instance ID path resolve the
+same object across Circuit, expression-primary Logic, Case table/Recorded time, Generated HDL
+and Board boundary. The original followed cone is retained while entering another object.
+Playback, camera/scope, hover and committed selection remain distinct. Returning keeps the
+existing experiment mounted, including its history view, and restores the exact retained run/tick
+after another recording was selected. Case numbers stay stable in tick order
+when the authored table is sorted by input combination.
+
+Actual engine observations are optional and bounded (10,000 events/4 MiB in the app), retaining
+input reads and driver provenance, prior/result outputs, state, schedule and capture/commit phases.
+Playback never reexecutes the circuit. Two independently reproduced scheduler defects were fixed:
+multiple source-to-target port wires count one node dependency; native edge devices capture
+against prior Q before their shared commit and subsequent combinational settlement. This changes
+the browser engine contract to v2. Logical invocation order is not physical propagation delay.
+Legacy recordings keep their samples; old-engine reproduction fails closed. New source metadata
+comes from the existing emitter/export model and stays with its recording, never today's circuit.
+
+Sealed browser evidence demonstrates a full adder authored from blank through ordinary controls,
+eight independent cases/16 checks, deliberate OR fault, repair and reopened old topology. The real
+hierarchical signature is Case 4/t3 `0111 + 0001 = 1000`: pause at the stage-2 carry, inspect actual
+0/1 inputs and unchanged output 1, reveal its generated assignment, reverse-select that exact
+instance and return to the same phase. A subsequent friendly instance rename and added NOT gate
+leave the old complete recording unchanged. The counter records capture, disabled hold and an
+authored reset from 3 to 0 with both registers' actual prior/result state. Retained LD[1:0] values
+are checked against exact output pins. Keyboard, pointer, pause and reduced-motion checks cover
+1440x900, 1366x768 and short/narrow viewports. Empty Project/Package prerequisite truth, accessible
+light Design/Simulate/Board states, and complete palette labels at a saved 180-pixel panel pass.
+
+Pinned Node 20.19.0: 76/76 core focused, 66/66 parent integration, 34/34 context and 10/10 final
+linking-contract/render tests; raw app typecheck zero diagnostics; sealed unified build exit 0. The build
+still emits 147 declaration diagnostics, recorded separately. A broader core run had 327/329 with
+two analog registration failures; comparison against the original HEAD engine reproduced the same
+unregistered-LM358 behavior. Rail/command Resume, divergent-recording Return, camera and actual download
+checks pass against the sealed copy. The 147 declaration diagnostics match M4 including source locations.
+Final required `verify:gates` repeat exits 0. Initial failed iterations, preview-route failures and the
+fixed Return normalization regression remain archived; they are not passes.
+
+Known boundaries: drawing focus 256 nodes, Boolean expansion 48 terms, registers/feedback/unsupported
+primitives stop derivation; missing phase values remain unrecorded. Source links cover deterministic
+generated HDL, not arbitrary authored behavioral code. Board assignment/simulated/selected/physical
+evidence remain separate. Large-graph benchmark, owner/student comprehension, Vivado, programming,
+physical observation and release readiness are unproved. All changes remain local/uncommitted;
+no staging, commit, push, deployment or rc.1-rc.4 replacement.
+
+## Milestone 4 - see the behavior, find the mistake - 2026-10-05
+
+Implemented locally and stopped for owner review on
+`claude/redbyte-studio-completion-p2-6-q7m3v8`, HEAD
+`a46d7ed015b8f02d1420eff8e466eeb30a947fe6`. HEAD alone does not identify this dirty candidate.
+The frozen packages/apps/scripts checkpoint digest is
+`04e500cd3af08a8f6318db150677849d4be37140abd1b90f01683d39973249ad`; the sealed unified
+build input digest is `a0d75fe7f817dea24dafda8bcfc239aa4be9ab8518d5e05b125f9184f536cbe7`.
+These have different documented scopes. Receipts, matched captures and the short handoff are in
+`.redbyte/studio-restart/m4/delivery-final/`. The fixed review build is served at
+`http://127.0.0.1:5448/os/` while the local server remains running.
+
+- Simulate has three levels: experiment/result/currentness and Run; Table or Time instrument;
+  selected case/tick/signal with retained expected/observed values, one failure navigator,
+  recorded inputs, Inspect circuit and an owned authored-expectation edit.
+- Recorded inspection uses the selected recording's topology, names and samples. Gate pin
+  values, derived binary gate rules, connectivity, and sampled prior/current state or clock
+  edges are distinct claims. Missing values remain unrecorded; zero checks are observations.
+  Whole circuit, focused region, Fit and Enlarge remain accessible. User camera choices and
+  older recordings survive navigation and deliberate reruns. Circuit edits belong in Design.
+- Shared drawings give labels a restrained readable treatment. Duplicate first-wire/action
+  success feedback is removed. Escape cancels a transient operation before clearing ordinary
+  selection; explicit tracing and pinned inspection remain intact.
+- Save As validates a friendly, noncolliding copy name, prevents double submission, and switches
+  identity only after durable saving. Cancel/failure preserve the original; retry and independent
+  copy/reload behavior are proven. HDL entities, ports and XDC do not follow display-name edits.
+- Display names are Project, Design, Simulate, Board and Package at workflowStages.ts and its
+  consumers. Stable internal route IDs and engineering terminology remain intact.
+
+Save As uses the workbench surface tokens. Its title, field, explanation and actions meet
+4.5:1 text contrast and remain reachable at all three requested viewport sizes; the injected
+failed-save state also passes. A low-contrast legacy background found during visual review
+was corrected before this final sealed build.
+
+Verification under Node 20.19.0: 351/351 focused tests in 57 files; app raw typecheck 0 diagnostics
+(TypeScript 5.9.3); build:unified and verify:gates exit 0; repo:status --skip-build 38/38 exit 0.
+The working-camera gate, full-adder authoring/fault/repair/history proof, and 15/15 counter steps
+pass on the sealed build. Matched full-adder, counter and retained hierarchical-counter captures
+pass at 1366x768, 1440x900 and 1280x650; those are viewport emulations, not browser zoom. The
+compact hierarchy capture uses the ordinary Circuit focus control. Save As failure is injected
+only in isolated test storage; the Board conflict seed is lower-level fixture setup.
+
+The monorepo build still reports the same 147 nonblocking declaration diagnostics as milestone 3.
+The earlier full 493-file campaign remains 3,427 passing, two skipped and 17 failures in nine
+files; it was not rerun or reclassified here. Protected baselines/goldens are unchanged. The old
+browser assertions were migrated to the new presentation while retaining mismatch, check-edit,
+history and camera assertions; density was independently compared with the preserved before build.
+repo:status's optional strict screenshot baseline check is skipped; matched capture inspection is
+separate evidence. The existing launcher query still boots IDE mode; no shell-launch proof is claimed.
+
+All eight unrelated owner/setup paths and rc.1-rc.4 ZIP/manifest contents are preserved. Existing
+AI_STATE.md bytes are retained beneath this factual entry. Nothing was staged, committed, pushed,
+merged, published, deployed or substituted for a release. Visual inspection and automated local
+behavior are recorded; owner/student acceptance, Vivado, programming, physical hardware and
+release readiness remain open. Next work waits for review; Start/import, Board redesign, external
+toolchain qualification and a release campaign remain separate passes. Entries below are historical.
+
+## Studio restart: the circuit is the product - 2026-10-05
+
+Local, uncommitted work on `claude/redbyte-studio-completion-p2-6-q7m3v8`. HEAD is unchanged at
+`a46d7ed015b8f02d1420eff8e466eeb30a947fe6` (21 ahead of its upstream), so HEAD does not identify
+the candidate: the verified code change set (packages, scripts, contract and surface specs,
+launch entry; new files included) has sha256 `c988c9dd696e2eb2bd9eb733c93a99d531c800d97d018c0960630d14fa9e7668`, recorded in
+`.redbyte/studio-restart/m3/final/`. The eight owner paths are untouched (`AI_STATE.md` was left
+alone because it carries an owner edit), rc.1-rc.4 are unchanged, and nothing was committed,
+pushed, merged, packaged or deployed. **Not visually accepted: Connor has not reviewed it. Not
+release-ready.**
+
+Three milestones, each stopped for review. The first set the type scale, shared schematic
+projection, single frame, Simulate header and count lane, symbol palette, and the Board and
+Package re-skins. The second fixed the recorded-word identity defect, made the circuit more
+readable, made Package handoff-first and took the problem code out of Project's lead sentence.
+The third (2026-10-05) is below. Decisions are in
+[the V1 contract](contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) under 2026-10-04 and 2026-10-05.
+
+### Milestone 3 - implemented
+
+Camera. The Design view is changed by the student and by Fit, and by nothing else.
+
+- Reproduced first, on the unmodified rc.4 build at 1366x768: selecting a part opened the
+  inspector and the circuit was refitted, 135% to 102%. The new gate fails on rc.4 with exactly
+  that message and passes on the candidate.
+- A resized sheet is not rescaled. Selection keeps the zoom and slides the view only as far as
+  needed to keep the selected part on the sheet; a part just placed and released with Escape
+  follows the same rule; an untouched framed view stays centred as panes open and close.
+- The view is remembered per project and module for the session and restored on returning from
+  Simulate, Board or Package, on reopening a project from the saved list, and on entering and
+  leaving a module definition. Save As keeps the view; the copy and the original then keep
+  separate views. New work is framed once. Not saved with the project; a reload starts fresh.
+
+Composition. One arrangement, with or without the inspector.
+
+- The library stays a compact labeled list (208px). It does not collapse to icons. Long names
+  wrap; at the default width no label is cut off (0 of 46; five were). A strip of fixed height
+  under the list shows the focused part's ports, for keyboard focus and pointer alike.
+- Fit, Selection and zoom are a group on the sheet's lower left corner: always visible, not
+  moved by the inspector, clear of the "Show right panel" control a compact window puts lower
+  right (they collided there in the first attempt, found by inspection at 1280x650).
+- The command row is one row of one height (47px). Found while building the authoring proof and
+  fixed: on an unfinished design a status chip made the row wrap to 91px the moment the first
+  part was placed, and a first fix clipped "Test this design" at 1366px. The chip now takes only
+  left-over room. Exploring has a strip of its own, as wiring has, because its clock controls
+  do not fit beside the tools at 1366px; the height changes on that mode change and never on
+  selection.
+- Inspector, one selected part: Value, then Net tracing, then Edit - in the markup, so reading
+  and tab order agree with the screen. Details, Connectivity, Evidence and Related start closed
+  with their content hidden.
+
+Hierarchy leftovers, in the touched surfaces only.
+
+- Instructions to go somewhere use the rail's names: "Continue to Package", "Open Board",
+  "Open in Board". The long stage labels are unchanged where they are titles or the stage
+  authority (`workflowStages.ts`, the mapping document heading inside Board, command palette,
+  shortcut list, public start page).
+- "Package not built yet - evidence validated" is now "Package not built yet - the current
+  simulation passes its checks".
+- Project's explorer keeps Compile Order and the generated files in one closed group,
+  "Technical files"; both still open from there and are found by the filter.
+
+### Measured, device scale 1 (viewport emulation, not real browser zoom)
+
+Effective on-screen size of schematic text in Design (declared size x the drawing's screen
+scale), the counter, before and after selecting EN:
+
+| Viewport | Zoom | Names and values | Pins | Command area | Inspector |
+|---|---|---|---|---|---|
+| 1366x768, nothing selected | 132% | 16.5px | 13.9px | 47px | closed |
+| 1366x768, EN selected | 132% | 16.5px | 13.9px | 47px | open |
+| 1440x900, nothing selected | 143% | 17.9px | 15.0px | 47px | closed |
+| 1440x900, EN selected | 143% | 17.9px | 15.0px | 47px | open |
+| 1280x650, nothing selected | 114% | 14.2px | 12.0px | 47px | closed |
+| 1280x650, EN selected | 114% | 14.2px | 12.0px | 47px | stays closed (compact layout reveals it on request) |
+
+Milestone 2 measured 11.0px / 9.2px for the second row. With the inspector open the right-hand
+part of a wide circuit is off the sheet at the kept zoom; Fit shows it all.
+
+### Verified on the final source (Node 20.19.0)
+
+Run once, in sequence, on the finished source; the code digest was the same before and after.
+Evidence: `.redbyte/studio-restart/m3/final/`.
+
+- Raw rb-apps typecheck: 0 diagnostics, exit 0; stored baseline not re-recorded.
+- `verify:gates` exit 0; `build:unified` exit 0; `git diff --check`, `rb:doc:validate` and
+  `rb:encoding:check` exit 0 (the last three re-run after this entry was written).
+- Every rb-apps unit test, 493 files in 17 sequential chunks: 3,427 pass, 2 skipped, 17 fail in
+  9 files. Each of the 17 fails under the same name on a pristine HEAD worktree; none is new.
+  One HEAD failure now passes (`professionalUiStandards`, migrated in milestone 1), and one
+  stale expectation was corrected (`chromeContract` still expected the Pre-flight exit path
+  retired in `a26378370`).
+- `rb-logic-view`: 18 files / 78 tests pass. `crash-guard.test.tsx` hangs, and hangs the same
+  way with HEAD's sources swapped in; it was excluded and is not counted as passing.
+- Browser gates against the candidate's **production build** (`dist/` from this
+  `build:unified`, served read-only): 25 pass. They are the 20 that passed in milestone 2, the
+  two new ones (camera, full adder), and `ide-release-solidification-v1`,
+  `ide-export-trust-integrity` and `ide-shell-chrome-contract`. The counter journey passes 15 of
+  15 steps against the same build.
+- The camera gate fails on the unmodified rc.4 build with "selecting a part changed the zoom
+  135% -> 102%".
+
+Found by this verification and fixed before the run above:
+
+- On the production build only, a newly opened project was framed 14px off centre: first entry
+  restores twice in a row, and the second pass treated the frame just made as the student's
+  own view, so it stopped following the sheet as the console strip settled. The dev server's
+  double-invoked effects hid it. The gate now passes on both.
+- `ide-design-correctness-contract` read a live value that is now inside the closed Evidence
+  section; it opens the section through its own control. Its 250ms budget holds on a
+  production build (3-10ms here, 2-9ms on rc.4) and is marginal on the dev server (185-289ms,
+  React's development mode), which is why the batch was moved to the production build.
+- `ide-release-solidification-v1` counted buttons inside a closed disclosure as "below the
+  window"; with the larger type their phantom rectangles fell past the fold. The controls were
+  reachable on both builds. The gate now counts only rendered controls and, separately, opens
+  the measure tools and requires each control to be on screen and to receive the pointer.
+- Three gates that matched the long stage label in Package's readiness now read the owner
+  label and `data-owner` exactly ("Board").
+- Unit assertions that named the old inspector order or the long stage labels were migrated one
+  at a time, each to the exact new value rather than a looser match; new tests cover the
+  disclosure walk by keyboard, the technical group and the camera helpers.
+
+### Proofs, each one continuous fresh browser context against the running candidate
+
+- **Full adder from blank** (`scripts/gates/ide-full-adder-authoring-proof.mjs`, asserted,
+  1440x900): blank project; three input pins, two output pins and five gates placed from the
+  library, named with the label editor and joined with twelve port-to-port wires (each wire
+  asserted by its endpoints); eight cases authored by hand in the case table from a truth table
+  computed by arithmetic, "Generate all" not used and no observed value copied into an
+  expectation; run passes 16 of 16. Real fault: the A-AND-B gate swapped to OR in Design; the
+  rerun fails exactly the two cells arithmetic predicts (010 and 100, COUT), and the table
+  marks exactly those. Swapped back; passes 16 of 16; three distinct recordings.
+- **Counter journey** (`.redbyte/studio-restart/journey-m2.mjs`, now asserted, 15 steps,
+  evidence in `.redbyte/studio-restart/m3-journey/`): the milestone 2 steps with required
+  outcomes (verdict, failure text "LD0 t2 expected 0 - got 1", stale recording not called
+  current, an older recording's own values, count 0,1,2,3), then:
+  - Board **prevention**: the resource LD0 holds is disabled for LD1 and says "already
+    assigned"; the keyboard cannot reach it. Past the picker (value set by script, not a student
+    action) the page accepted it and counted a conflict; it did not look valid.
+  - Free resource: LD1 moved to LD2 (U19). Board's constraint detail, Package's `top.xdc`
+    preview and the downloaded ZIP's `top.xdc` hold the same line,
+    `set_property PACKAGE_PIN U19 [get_ports {LD1}]`, and the ZIP's `top.vhd` declares that port.
+  - Board **repair**: the starting conflict was seeded through the runtime
+    (`setMappingPin`, the fixture the maintained conflict gate uses), because the page prevents
+    creating one. Seen: 2 conflicts, both rows flagged, Package blocked and naming Board.
+    Repaired with the normal controls: 0 conflicts, Package no longer blocked. Recovery from a
+    conflict that arrives by **import** was not exercised.
+  - **Save As**: the original was saved, closed and reopened unchanged; Save As made a second
+    saved project; the copy was renamed, its gate changed and a failing run recorded, and it was
+    saved. After a page reload the saved list held both under different names. The original
+    reopened with the fingerprint taken before (name, XOR, passing, 6 recordings, same mapping and
+    cases); the copy reopened as left (XNOR, failing, 7 recordings, the 6 it was made with
+    included).
+- **Camera gate** (`scripts/gates/ide-design-working-camera.mjs`, 1366x768 and 1440x900):
+  selection, manual zoom, wheel-and-drag view, Simulate round trip, Board and Package tour,
+  Fit, exploring, first part on a blank sheet near the edge, Escape, close and reopen, Save As,
+  original versus copy, module definition in and out, and a project not yet looked at.
+
+### Not verified, and inherited failures
+
+- Not run: `classroom:gate`, `verify:gates:classroom`, the packaged-journey campaign.
+- Not exercised: real browser zoom (all sizes above are viewport emulation); import, and
+  repair of a conflict that arrives by import; a fresh machine; Vivado; a physical board. No
+  claim is made about synthesis, a bitstream or hardware.
+- 17 unit tests in 9 files fail identically at HEAD (tracked as a separate repair task):
+  `basys3-port-naming-phase1` (1), `scenario-stale-ui-gate` (2), `vectorEditor` (1),
+  `projectHealth` (2), `projectRuntime.exportHistory` (1), `simulateInstrument.compactGrid` (5),
+  `simulationProviderBar` (2), `verifySimulationStudio.v3` (1), `vhdlImport.diagnostics` (2).
+- `ide-hardware-mapping-conflict-repair` still fails in its 125%-equivalent viewport with a
+  timeout, as it does on rc.4. It is reported as inconclusive, not as passing; the journey's
+  repair step above is the evidence for that path.
+- Ten older scratch and import gates fail on this candidate and on rc.4 with the same final
+  message (list unchanged from milestone 2): `ide-blank-adder-authoring-depth`,
+  `ide-wrong-build-diagnosis-repair-flow`, `ide-wrong-build-recovery-correction-flow`,
+  `ide-scratch-testbench-repair-flow`, `ide-verify-fail-edit-repair`,
+  `ide-export-import-roundtrip-integrity`, `ide-from-scratch-general-workflow`,
+  `ide-testbench-preservation-after-design-edit`, `ide-verify-counter-repeat-compare-stability`,
+  `ide-blank-canvas-product-proof`. Only the first was re-run in this milestone (same message on
+  both builds); the rest carry their milestone 2 classification.
+
+### Known defects and open decisions
+
+- Save As asks for no name: the copy has the original's name until it is renamed, so two saved
+  entries read alike apart from their time and hash. The journey renames the copy by hand.
+- After Escape the inspector can stay open on a signal focus with nothing selected, and that
+  focus survives a reload.
+- At 1366px with the inspector open on an unfinished design the status chip is absent from the
+  command row (the count is in the status bar, the detail in Problems); at 1440px it shows its
+  counts without its words.
+- The long stage labels "Board & Constraints" and "Build & Export" remain in titles, the
+  command palette, the shortcut list and untouched components; whether to retire them
+  everywhere is a product-authority decision (AGENTS.md and `workflowStages.ts` name them).
+- The inspector's and the library's tab rows wrap to two lines at their default widths.
+- A schematic label can sit across a wire (seen on `carry_cin` in the hand-built adder).
+- The whole-circuit recorded view is still an overview (about 7px). The emulated 720x450
+  viewport still starts the Design canvas below the fold.
+- Maintained scratch gates (`ide-blank-adder-authoring-depth` and relatives) still drive a
+  board palette and a stimulus canvas the app no longer shows; they fail on rc.4 the same way.
+
+Open the candidate: the `studio-restart` launch configuration (Vite on `http://localhost:5431`,
+pinned Node 20). Captures: `.redbyte/studio-restart/m3-composition/`, `m3-full-adder/`,
+`m3-journey/`. Milestone 2 pairs: `.redbyte/studio-restart/compare-m2.html`.
 
 ## Overnight contract closure and rc3 owner trial - 2026-10-01
 

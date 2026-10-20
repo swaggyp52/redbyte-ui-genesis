@@ -115,6 +115,10 @@ async function assertMapWorkbench(page, viewportName) {
 
 async function assertSelectedBindingChain(page, viewportName) {
   await page.locator('[data-testid="ide-hw-map-row-sw0"]').click();
+  // The assignment is stated in plain words; the exact chain is one named disclosure away.
+  assert(await visible(page.locator('[data-testid="ide-hw-assignment-summary"]').first()), `${viewportName} selected row must state its assignment`);
+  const detail = page.locator('[data-testid="ide-hw-constraint-detail"]').first();
+  if (!(await detail.evaluate((node) => node.open))) await detail.locator('summary').click();
   const chain = page.locator('[data-testid="ide-hardware-basys3-binding-chain"]').first();
   assert(await visible(chain), `${viewportName} selected row must expose the Basys3 binding chain`);
   await chain.scrollIntoViewIfNeeded();

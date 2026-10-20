@@ -29,6 +29,7 @@ export {
 } from './analysis/componentSupportRegistry';
 export { injectSimClock } from './analysis/injectSimClock';
 export * from './ir';
+export * from './observation';
 
 // Determinism / Event logging (for replay, recording, verification)
 export type { EventLogV1, SimulationEventV1 } from './determinism/eventLog';

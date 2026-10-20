@@ -158,6 +158,9 @@ describe('ExportSurface readiness structure', () => {
   it('keeps generation and artifact preview as distinct work objects', () => {
     const view = renderMapped();
     expect(view.getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');
+    // The preview is a separate object that exists once a file is chosen.
+    expect(view.queryByTestId('ide-export-artifact-preview')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
     expect(view.getByTestId('ide-export-artifact-preview')).toBeTruthy();
     expect(view.getByTestId('ide-export-primary-actions').contains(view.getByTestId('ide-export-artifact-preview'))).toBe(false);
   });

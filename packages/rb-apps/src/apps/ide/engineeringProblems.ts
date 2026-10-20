@@ -120,7 +120,7 @@ function mapDiagnosticSeverity(severity: IdeDiagnostic['severity']): ProblemSeve
 function legacyFixMode(mode: string | undefined): IdeMode | undefined {
   if (!mode) return undefined;
   // The health authority names 'project' for mapping repairs; the workbench
-  // owner for that repair is Board & Constraints.
+  // owner for that repair is Board.
   if (mode === 'project') return 'hardware';
   return mode as IdeMode;
 }

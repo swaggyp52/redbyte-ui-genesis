@@ -207,7 +207,8 @@ export const IdeModal: React.FC<{
   actions: React.ReactNode;
   onClose?: () => void;
   testId?: string;
-}> = ({ title, body, actions, onClose, testId }) => {
+  className?: string;
+}> = ({ title, body, actions, onClose, testId, className }) => {
   const dialogRef = React.useRef<HTMLElement | null>(null);
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
 
@@ -228,9 +229,10 @@ export const IdeModal: React.FC<{
     (focusable?.[0] ?? dialog)?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && onClose) {
+      if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        event.stopPropagation();
+        onClose?.();
         return;
       }
       if (event.key !== 'Tab' || !dialog) return;
@@ -266,7 +268,7 @@ export const IdeModal: React.FC<{
     <div className="ide-modal-backdrop" role="presentation" onClick={onClose}>
       <section
         ref={dialogRef}
-        className="ide-modal"
+        className={`ide-modal${className ? ` ${className}` : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -334,6 +336,9 @@ export const IdeInspectorSection: React.FC<{
   defaultOpen?: boolean;
   accordionId?: string;
   disableCollapse?: boolean;
+  /** Keep a collapsed section's content in the document, hidden, so opening it does not
+   *  rebuild it and anything that refers to it by id still resolves. */
+  keepMounted?: boolean;
   hierarchySurface?: string;
   hierarchyRole?: string;
 }> = ({
@@ -342,6 +347,7 @@ export const IdeInspectorSection: React.FC<{
   testId,
   collapsible = true,
   defaultOpen = true,
+  keepMounted = false,
   accordionId,
   disableCollapse = false,
   hierarchySurface,
@@ -375,6 +381,7 @@ export const IdeInspectorSection: React.FC<{
           type="button"
           className="ide-inspector-toggle"
           onClick={toggleOpen}
+          aria-expanded={open}
           data-testid={testId ? `${testId}-toggle` : undefined}
         >
           <h4 className="ide-inspector-title">{title}</h4>
@@ -383,7 +390,11 @@ export const IdeInspectorSection: React.FC<{
       ) : (
         <h4 className="ide-inspector-title">{title}</h4>
       )}
-      {open ? <div className="ide-inspector-content">{children}</div> : null}
+      {open ? (
+        <div className="ide-inspector-content">{children}</div>
+      ) : keepMounted ? (
+        <div className="ide-inspector-content" hidden>{children}</div>
+      ) : null}
     </section>
   );
 };

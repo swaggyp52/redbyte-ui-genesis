@@ -20,7 +20,59 @@
 .ide-root .ide-hw-dock--live .ide-inline-actions { flex-wrap: wrap; }
 .ide-root [data-testid='ide-hw-simulated-board-readout'] { color: var(--wb-text); font-size: var(--wb-text-sm); }
 
-/* Board & Constraints instrument — the mapping workspace with the board
+/* The board illustration's palette. It is drawn on the same plane as the schematic, in the
+   same ink, and each resource state has exactly one look:
+     idle        thin grey outline
+     compatible  accent outline (while a signal is being assigned)
+     selected    accent outline and tint, the same selection the schematic uses
+     assigned    solid ink outline and a grey fill - a fact about the mapping, not a light
+     conflict    danger outline and tint
+   A logic-high value is shown only by the LED or switch itself, in the schematic's "high"
+   colour, and only when a recording backs it. */
+:root[data-redbyte-mode='ide'] {
+  --rb-board-plane: var(--rb-schematic-bg, #f4f6f9);
+  --rb-board-plane-2: #e6ebf2;
+  --rb-board-ink: var(--rb-schematic-ink, #1c2739);
+  --rb-board-label: var(--rb-schematic-ink-2, #55637a);
+  --rb-board-edge: #8b98ab;
+  --rb-board-rule: #d2dae4;
+  --rb-board-grid: rgba(28, 39, 57, 0.045);
+  --rb-board-idle-fill: #ffffff;
+  --rb-board-idle-stroke: #8b98ab;
+  --rb-board-available-fill: color-mix(in srgb, var(--rb-action) 10%, #ffffff);
+  --rb-board-available-stroke: var(--rb-action);
+  --rb-board-selected-fill: color-mix(in srgb, var(--rb-action) 26%, #ffffff);
+  --rb-board-selected-stroke: var(--rb-action);
+  --rb-board-mapped-fill: #d5dce7;
+  --rb-board-mapped-stroke: var(--rb-schematic-ink, #1c2739);
+  --rb-board-conflict-fill: color-mix(in srgb, var(--rb-state-danger) 16%, #ffffff);
+  --rb-board-conflict-stroke: var(--rb-state-danger);
+  --rb-board-unavailable-fill: transparent;
+  --rb-board-unavailable-stroke: #c3cbd6;
+  --rb-board-unavailable-label: #9aa5b5;
+  --rb-board-led-on: var(--rb-schematic-high, #0f6b5b);
+  --rb-board-led-off: #8b98ab;
+  --rb-board-knob-off: #8b98ab;
+}
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'],
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] {
+  --rb-board-plane-2: #1b2431;
+  --rb-board-edge: #6f7d92;
+  --rb-board-rule: #232e3c;
+  --rb-board-grid: rgba(230, 236, 245, 0.04);
+  --rb-board-idle-fill: #1b2431;
+  --rb-board-idle-stroke: #6f7d92;
+  --rb-board-available-fill: color-mix(in srgb, var(--rb-action) 22%, #1b2431);
+  --rb-board-selected-fill: color-mix(in srgb, var(--rb-action) 42%, #1b2431);
+  --rb-board-mapped-fill: #34404f;
+  --rb-board-conflict-fill: color-mix(in srgb, var(--rb-state-danger) 26%, #1b2431);
+  --rb-board-unavailable-stroke: #3a4656;
+  --rb-board-unavailable-label: #6f7d92;
+  --rb-board-led-off: #6f7d92;
+  --rb-board-knob-off: #6f7d92;
+}
+
+/* Board instrument — the mapping workspace with the board
    central: assignments (left) · Basys3 board (centre) · selected-signal
    editor and XDC consequence (right); the bring-up stage rail as one toolbar.
    Composes wb-* primitives; owns only what is specific to Board. No !important. */
@@ -29,12 +81,12 @@
 .ide-root [data-testid='ide-hardware-panel'] > .ide-panel-body:has(> .rb-board) { display: flex; flex-direction: column; overflow: hidden; }
 
 /* Header: title · progress · metric chips · next action. */
-.ide-root .rb-board-header { flex-wrap: wrap; row-gap: 4px; min-height: var(--wb-toolbar-h); height: auto; padding: 2px var(--wb-space-3); }
+.ide-root .rb-board-header { flex-wrap: wrap; row-gap: 6px; min-height: 3.5rem; height: auto; padding: 8px var(--wb-space-4); }
 .ide-root .rb-board-title { display: inline-flex; align-items: baseline; gap: 10px; min-width: 0; }
-.ide-root .rb-board-title .ide-surface-block-label { margin: 0; color: var(--wb-text); font: 600 var(--wb-text-md) var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
-.ide-root .rb-board-title > strong { color: var(--wb-text-2); font: 600 var(--wb-text-xs) var(--wb-font-mono); letter-spacing: 0.04em; }
+.ide-root .rb-board-title .ide-surface-block-label { margin: 0; color: var(--wb-text); font: var(--rb-weight-title) var(--rb-text-title) / 1.25 var(--wb-font-ui); letter-spacing: 0; text-transform: none; }
+.ide-root .rb-board-title > strong { color: var(--wb-text-2); font: 600 var(--rb-text-dense) var(--wb-font-ui); letter-spacing: 0; text-transform: capitalize; }
 .ide-root .rb-board-metrics { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
-.ide-root .rb-board-metrics > div { display: inline-flex; align-items: baseline; gap: 4px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface-2); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-board-metrics > div { display: inline-flex; align-items: center; gap: 6px; height: 1.75rem; padding: 0 8px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); background: var(--wb-surface-2); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-board-metrics > div span { color: var(--wb-text-3); }
 .ide-root .rb-board-metrics > div strong { color: var(--wb-text); }
 .ide-root .rb-board-metrics > div small { color: var(--wb-text-3); }
@@ -42,7 +94,7 @@
 .ide-root .rb-board-metrics.is-ready > div:first-child strong { color: var(--wb-ok); }
 .ide-root .rb-board-next { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--wb-text-sm); color: var(--wb-text-2); }
 .ide-root .rb-board-next p { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The next step and, when mapping is complete, what Build & Export will offer and why. The header
+/* The next step and, when mapping is complete, what Package will offer and why. The header
    already wraps, so the block takes its own row when the reason needs one; inside it the reason
    wraps rather than pushing the button off the row. */
 .ide-root .rb-board-next-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 34rem; }
@@ -105,11 +157,23 @@
 .ide-root .rb-board-status.is-mapped { color: var(--wb-ok); }
 .ide-root .rb-board-status.is-conflict { color: var(--wb-err); }
 .ide-root .rb-board-status.is-missing { color: var(--wb-warn); }
-.ide-root .rb-board-row-action { min-height: 28px; padding: 0 8px; font-size: var(--wb-text-sm); }
+.ide-root .rb-board-assignment { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0; padding: 10px var(--wb-space-3); color: var(--wb-text); font: var(--rb-text-body) / 1.4 var(--wb-font-ui); }
+.ide-root .rb-board-assignment strong { font: var(--rb-weight-strong) var(--rb-text-head) var(--wb-font-mono); }
+.ide-root .rb-board-assignment-pin { color: var(--wb-text-2); font: var(--rb-text-dense) var(--wb-font-mono); }
+.ide-root .rb-board-constraint-detail { border-top: 1px solid var(--wb-border); }
+.ide-root .rb-board-constraint-detail > summary { min-height: 2.25rem; padding: 6px var(--wb-space-3); color: var(--wb-text-2); font: var(--rb-weight-medium) var(--rb-text-dense) var(--wb-font-ui); cursor: pointer; }
+.ide-root .rb-board-constraint-detail > summary:hover { color: var(--wb-text); }
+.ide-root .rb-board-constraint-detail > summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+/* With the constraint text out of the way the board has the room, and the two side panes are
+   only as wide as their content needs. */
+.ide-root .rb-board-grid { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(260px, 300px); }
+.ide-root .rb-board-row-action { min-height: var(--wb-control-h); padding: 0 10px; font-size: var(--wb-text-sm); }
 .ide-root .rb-board-table tbody tr.is-selected th { background: var(--wb-accent-bg-strong); }
 .ide-root .rb-board-table tbody th strong { overflow-wrap: anywhere; }
 .ide-root .rb-board-table tbody td:nth-child(2) { font-family: var(--wb-font-mono); }
-.ide-root .rb-board-table tbody td:last-child { width: 58px; }
+.ide-root .rb-board-table tbody td:last-child { width: 4.25rem; }
+.ide-root .rb-board-table tbody tr:not(.rb-board-group-row) th strong { font: var(--rb-weight-strong) var(--rb-text-dense) var(--wb-font-mono); overflow-wrap: normal; white-space: nowrap; }
+.ide-root .rb-board-table tbody td { font-size: var(--rb-text-dense); }
 .ide-root .rb-board-table .rb-board-status { text-transform: none; letter-spacing: 0; }
 
 /* Board stage: the Basys3 canvas fills the centre. */
@@ -119,7 +183,7 @@
 /* Semantic density: far out, the board shape reads; the alias labels return as the camera comes in. */
 .ide-root .rb-board-canvas svg[data-density='compact'] text[data-board-alias] { display: none; }
 .ide-root .rb-board-camera-bar { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
-.ide-root .rb-board-camera-tool { height: 20px; min-width: 20px; padding: 0 6px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; cursor: default; }
+.ide-root .rb-board-camera-tool { height: 1.75rem; min-width: 1.75rem; padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); background: var(--wb-surface); color: var(--wb-text-2); font: var(--wb-text-xs) var(--wb-font-ui); white-space: nowrap; cursor: default; }
 .ide-root .rb-board-camera-tool:hover { color: var(--wb-text); border-color: var(--wb-border-strong); }
 .ide-root .rb-board-camera-tool:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
 .ide-root .rb-board-camera-tool:disabled { opacity: 0.45; }

@@ -6,13 +6,16 @@ import { summarizeRepetitions, outputDigest } from '../../runDeterminism';
 import { describeRecordingState, type RecordingState } from './recordingState';
 import './run-identity.css';
 
-export function RunIdentityStrip({ run, archive, changes, recording, onSelect, onDifference }: {
+export function RunIdentityStrip({ run, archive, changes, recording, currencyReason, onSelect, onDifference, onReproduce, reproduceDisabledReason }: {
   run: RuntimeVerifyRun;
   archive: readonly RuntimeVerifyRun[];
   changes: readonly string[];
   recording?: RecordingState;
+  currencyReason?: string | null;
   onSelect?: (runId: string) => void;
   onDifference?: (signal: string, tick: number) => void;
+  onReproduce?: () => void;
+  reproduceDisabledReason?: string;
 }) {
   const repetition = summarizeRepetitions(run, archive);
   const digest = run.outputDigest ?? outputDigest(run);
@@ -26,20 +29,26 @@ export function RunIdentityStrip({ run, archive, changes, recording, onSelect, o
     ['Design', run.identity?.design], ['Stimulus', run.identity?.stimulus],
     ['Engine', run.identity?.engine], ['Output', digest],
   ] as const;
-  return <section className="rb-run-identity" data-testid="ide-run-identity" data-run-id={state.runId ?? ''} data-currency={state.currency} aria-label="Recorded execution identity">
+  return <section className="rb-run-identity" data-testid="ide-run-identity" data-run-id={state.runId ?? ''} data-currency={state.currency} title={currencyReason ?? undefined} aria-label="Recorded execution identity">
     <div className="rb-run-identity__status">
       <strong className="rb-run-identity__label">Recorded {state.ordinal ? `#${state.ordinal}` : 'run'}</strong>
-      {hasRepeats && repeatStatus}
 
       <span data-testid="ide-run-check-result" data-check-status={state.verdict === 'unchecked' ? 'not-configured' : state.verdict}>{state.label}</span>
       {state.currencyLabel && <span data-testid="ide-run-currency">{state.currencyLabel}</span>}
+    <WorkbenchDisclosure className="rb-run-identity__details" data-testid="ide-run-details" summary="Recordings & details">
       {records.length > 1 && onSelect && <label>Recording <select aria-label="Recorded run" value={getRuntimeVerifyRunId(run)} onChange={event => onSelect(event.target.value)}>
         {state.options.map(option => <option key={option.runId} value={option.runId}>
           {option.label} · {option.verdictLabel}
         </option>)}
       </select></label>}
-    <WorkbenchDisclosure className="rb-run-identity__details" data-testid="ide-run-details" summary="Run details">
-      {!hasRepeats && repeatStatus}
+      {onReproduce && <button type="button" className="wb-btn wb-btn--ghost" data-testid="ide-vcb-reproduce" onClick={onReproduce}
+        disabled={Boolean(reproduceDisabledReason)} title={reproduceDisabledReason ?? 'Run this recording’s retained design and stimulus again.'}>Reproduce recording</button>}
+      {reproduceDisabledReason && <p>{reproduceDisabledReason}</p>}
+      {repeatStatus}
+      <p data-testid="ide-run-comparison" data-run-id={state.runId ?? ''}>
+        {state.comparison?.previous ? `Previous checked recording #${state.comparison.previous.ordinal} · ${Math.abs(state.comparison.failedDelta ?? 0)} ${state.comparison.failedDelta === 0 ? 'change in' : (state.comparison.failedDelta ?? 0) < 0 ? 'fewer' : 'more'} failing checks`
+          : 'No previous comparison'}
+      </p>
     <div className="rb-run-identity__equation">
       {values.map(([label, value], index) => <React.Fragment key={label}>
         {index > 0 && <span aria-hidden="true">{index === 3 ? '→' : '+'}</span>}
@@ -62,7 +71,7 @@ export function RunIdentityStrip({ run, archive, changes, recording, onSelect, o
       </li>)}</ol>
     </WorkbenchDisclosure>
     </div>
-    {changes.length > 0 && <p className="rb-run-identity__changes" data-testid="ide-run-input-changes">{changes.join(' · ')}. This recording is retained. Rerun uses current inputs; Reproduce uses this recording’s inputs.</p>}
+    {(changes.length > 0 || state.currency === 'differs') && <p className="rb-run-identity__changes" data-testid="ide-run-input-changes">{currencyReason ?? changes.join(' · ')} This recording is retained. Rerun uses current inputs; Reproduce uses this recording’s inputs.</p>}
     {repetition.divergent && <div role="alert" className="rb-run-identity__alarm" data-testid="ide-run-divergence">
       <strong>Same configuration produced different outputs.</strong>{' '}
       {repetition.difference ? <button type="button" onClick={() => onDifference?.(repetition.difference!.signal, repetition.difference!.tick)}>

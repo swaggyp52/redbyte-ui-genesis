@@ -89,7 +89,7 @@
         "ide:gate:verify-counter-repeat-compare-stability": "node ./scripts/gates/ide-verify-counter-repeat-compare-stability.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",
-        "lint:packages": "pnpm --filter @redbyte/rb-* run lint 2>&1 || true",
+        "lint:packages": "pnpm -r --if-present --filter @redbyte/rb-* run lint",
         "lint:selectors": "node ./scripts/lint-zustand-selectors.js",
         "typecheck": "pnpm -r --if-present run typecheck",
         "test:ci": "pnpm run test:audit",

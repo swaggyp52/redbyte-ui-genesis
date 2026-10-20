@@ -42,8 +42,17 @@ export interface WorkbenchCommandBarProps<TContext> {
   selectionKind?: string | null;
   /** Current run/operation state where relevant. */
   runState?: { label: string; tone: 'ok' | 'warn' | 'error' | 'idle' } | null;
-  /** Target board and part, e.g. "Basys3 · xc7a35tcpg236-1". */
+  /** Target board by its familiar name, e.g. "Basys3". */
   targetLabel?: string | null;
+  /** The exact part behind the board name; shown on hover, not as routine identity. */
+  targetDetail?: string | null;
+  /** Places this session has been. Shown only once there is somewhere to go. */
+  history?: {
+    readonly canBack: boolean;
+    readonly canForward: boolean;
+    readonly onBack: () => void;
+    readonly onForward: () => void;
+  };
 }
 
 /** Default menubar. Every entry is a real registry command; nothing here is inert. */
@@ -184,6 +193,8 @@ export function WorkbenchCommandBar<TContext>({
   selectionKind = null,
   runState = null,
   targetLabel = null,
+  targetDetail = null,
+  history,
 }: WorkbenchCommandBarProps<TContext>): React.ReactElement {
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [activeItemIndex, setActiveItemIndex] = React.useState(0);
@@ -388,6 +399,34 @@ export function WorkbenchCommandBar<TContext>({
           </span>
         )}
       </h1>
+      {history && (history.canBack || history.canForward) ? (
+        // Back and forward belong with the project they move through. They used to open a strip
+        // of their own under this bar the moment there was anywhere to go back to.
+        <div className="wb-cmdbar-history" role="group" aria-label="History">
+          <button
+            type="button"
+            className="wb-cmdbar-history-btn"
+            data-testid="ide-location-back"
+            onClick={history.onBack}
+            disabled={!history.canBack}
+            title="Back"
+            aria-label="Back"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="wb-cmdbar-history-btn"
+            data-testid="ide-location-forward"
+            onClick={history.onForward}
+            disabled={!history.canForward}
+            title="Forward"
+            aria-label="Forward"
+          >
+            ›
+          </button>
+        </div>
+      ) : null}
       <span className="wb-cmdbar-sep" aria-hidden="true" />
 
       <div className="wb-menubar" role="menubar" aria-label="Application menu" data-testid="ide-menubar">
@@ -585,8 +624,13 @@ export function WorkbenchCommandBar<TContext>({
             click for is not a fact you can glance at. The run state is the one that folds,
             because the status bar carries it at the other end of the window. */}
         {targetLabel ? (
-          <span className="wb-cmdbar-fact" data-testid="ide-topbar-target" title="Target board and part">
-            <code>{targetLabel}</code>
+          <span
+            className="wb-cmdbar-fact"
+            data-testid="ide-topbar-target"
+            data-target-part={targetDetail ?? undefined}
+            title={targetDetail ? `Target board · ${targetDetail}` : 'Target board'}
+          >
+            {targetLabel}
           </span>
         ) : null}
         <span className="wb-cmdbar-fact" data-testid="ide-save-state" data-state={saveState} title={saveTitle} aria-label={saveState}>

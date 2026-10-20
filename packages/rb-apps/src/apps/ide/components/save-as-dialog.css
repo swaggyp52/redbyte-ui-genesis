@@ -1,0 +1,21 @@
+/* Save As uses the workbench surface tokens rather than the legacy dark modal gradient. */
+.ide-root .ide-save-as-dialog {
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  border-color: var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  box-shadow: var(--wb-overlay-shadow);
+}
+.ide-root .ide-save-as-fields { display: grid; gap: var(--wb-space-3); }
+.ide-root .ide-save-as-field { display: grid; gap: var(--wb-space-2); }
+.ide-root .ide-save-as-field input {
+  width: 100%;
+  padding: var(--wb-space-1) var(--wb-space-2);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  font: inherit;
+}
+.ide-root .ide-save-as-fields p { margin: 0; }
+.ide-root .ide-save-as-fields [role='alert'] { color: var(--wb-err); }

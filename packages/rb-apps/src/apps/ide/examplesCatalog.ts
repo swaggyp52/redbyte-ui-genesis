@@ -176,7 +176,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       'Observe each gate respond to the same two inputs',
       'Compare AND vs OR vs XOR outputs side-by-side',
       'Run Compare in Simulate to see the full truth table pass',
-      'Build the Vivado package in Build & Export; the gate-level RTL schematic is a Vivado view',
+      'Build the Vivado package in Package; the gate-level RTL schematic is a Vivado view',
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', direction: 'in',  pin: 'V17', required: true },

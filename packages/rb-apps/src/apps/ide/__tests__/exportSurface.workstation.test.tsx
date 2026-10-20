@@ -172,7 +172,10 @@ describe('ExportSurface workstation redesign', () => {
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
-    expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Export');
+    expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Vivado package');
+    // The landing names the next step outside RedByte and mounts no file's source unasked.
+    expect(getByTestId('ide-export-next-step-lead').textContent).toContain('Vivado');
+    expect(queryByTestId('ide-export-preview-code')).toBeNull();
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
     expect(getByTestId('ide-mode-export').getAttribute('data-left-dock-state')).toBe('hidden');
     expect(getByTestId('ide-mode-export').getAttribute('data-right-dock-state')).toBe('hidden');
@@ -213,7 +216,7 @@ describe('ExportSurface workstation redesign', () => {
   });
 
   it('keeps upstream ownership and the generated package workspace visible without opening a support drawer', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
@@ -223,7 +226,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-upstream-design').textContent).toContain('Ready');
     expect(getByTestId('ide-export-upstream-verify').getAttribute('data-owner')).toBe('Simulate');
     expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Draft');
-    expect(getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Board & Constraints');
+    expect(getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Board');
     expect(getByTestId('ide-export-upstream-mapping').textContent).toContain('Ready');
 
     const packageFiles = getByTestId('ide-export-package-files');
@@ -231,7 +234,12 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-file-top-vhd').textContent).toContain('top.vhd');
     expect(getByTestId('ide-export-file-top-xdc').textContent).toContain('top.xdc');
     expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    expect(packageFiles.getAttribute('data-view')).toBe('contents');
+    expect(queryByTestId('ide-export-selected-preview-v1')).toBeNull();
+    fireEvent.click(getByTestId('ide-export-file-top-xdc'));
+    expect(packageFiles.getAttribute('data-view')).toBe('file');
     expect(getByTestId('ide-export-selected-preview-v1')).toBeTruthy();
+    expect(getByTestId('ide-export-preview-path').textContent).toBe('top.xdc');
   });
 
   it('names Map Pins as the blocker owner and routes the one recovery action back to that workspace', () => {
@@ -247,9 +255,10 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     const mappingRow = getByTestId('ide-export-upstream-mapping');
-    expect(mappingRow.getAttribute('data-owner')).toBe('Board & Constraints');
+    expect(mappingRow.getAttribute('data-owner')).toBe('Board');
     expect(mappingRow.textContent).toContain('1 required missing');
-    expect(mappingRow.textContent).toContain('Board & Constraints');
+    // The owner is shown, not only carried as an attribute: its label is the row's first line.
+    expect(mappingRow.querySelector('span')?.textContent).toBe('Board');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
@@ -266,7 +275,7 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     const mappingRow = getByTestId('ide-export-upstream-mapping');
-    expect(mappingRow.getAttribute('data-owner')).toBe('Board & Constraints');
+    expect(mappingRow.getAttribute('data-owner')).toBe('Board');
     expect(mappingRow.textContent).toContain('Resolve mapping blocker');
     expect(mappingRow.textContent).toMatch(/Duplicate pin assignment/i);
     expect(getByTestId('ide-export-blocked-open-map-pins')).toBeTruthy();
@@ -288,7 +297,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
     expect(inspector.textContent).toContain('Draft export available');
     expect(packageContents.textContent).not.toContain('Draft export available');
-    expect(packageContents.textContent).toContain('Generated files');
+    expect(packageContents.textContent).toContain('In this package');
     expect(verifyReadiness.textContent).toContain('Draft');
     expect(verifyReadiness.textContent).toContain('Run the current scenario');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');

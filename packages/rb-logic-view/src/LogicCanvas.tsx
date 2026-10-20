@@ -31,6 +31,7 @@ import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { buildGeometryIndex, pinWorldPoint, unionBounds, type GeometryIndexEntry } from './symbols/portGeometry';
 import { routeBounds, routeCircuit, type RoutedWire } from './routing/orthogonalRouter';
 import { SchematicNodeView, schematicLodForZoom, DEFAULT_SCHEMATIC_LAYERS, type SchematicLayers } from './components/SchematicNodeView';
+import { placeSchematicLabels } from './symbols/schematicLabels';
 import { SchematicBusBrackets, type SchematicBusGroup } from './components/SchematicBusBrackets';
 import { SchematicWireView } from './components/SchematicWireView';
 
@@ -306,6 +307,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     routedNets?.forEach((net) => net.wires.forEach((wire) => map.set(wire.wireId, wire)));
     return map;
   }, [routedNets]);
+  const schematicLabels = React.useMemo(() => geometryIndex && routedNets
+    ? placeSchematicLabels(geometryIndex, routedNets) : null, [geometryIndex, routedNets]);
   const schematicLod = schematicLodForZoom(camera.zoom);
   const nodeById = React.useMemo(() => new Map(circuit.nodes.map((node) => [node.id, node])), [circuit.nodes]);
   const pinScreenPoint = React.useCallback(
@@ -609,7 +612,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
   const [isCtrlPressed, setIsCtrlPressed] = React.useState(false);
   const [hoveredPort, setHoveredPort] = React.useState<{ nodeId: string; portName: string } | null>(null);
-  const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
   const [portClusterPicker, setPortClusterPicker] = React.useState<PortClusterPickerState | null>(null);
   const [wireRewireDraft, setWireRewireDraft] = React.useState<{
@@ -927,14 +929,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       setRewiredWireId(null);
       endWire(); // This sets interactionMode back to 'idle'
 
-      // Show first-wire toast if this is the user's first wire
-      const hasSeenFirstWireToast = localStorage.getItem('rb-logic-view:hasSeenFirstWireToast');
-      if (!hasSeenFirstWireToast && circuit.connections.length === 0) {
-        setShowFirstWireToast(true);
-        localStorage.setItem('rb-logic-view:hasSeenFirstWireToast', 'true');
-        // Auto-hide after 4 seconds
-        setTimeout(() => setShowFirstWireToast(false), 4000);
-      }
     } else if (liveInteractionMode === 'idle') {
       // Start wire - only from idle state
       setWireRewireDraft(null);
@@ -1247,21 +1241,28 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       e.preventDefault();
       onRedo?.();
     } else if (e.key === 'Escape') {
+      if (e.defaultPrevented) return;
       if (interactionMode === 'placing') {
         e.preventDefault();
         e.stopPropagation();
         onPlacementCancel?.();
         return;
       }
-      clearSelectionRef.current();
-      setEditingStateRef.current({ marquee: undefined });
-      if (interactionMode === 'boxSelecting') {
-        setInteractionModeRef.current('idle');
-      }
       if (editingStateRef.current.wireStartPort) {
+        e.preventDefault();
+        e.stopPropagation();
         setWireRewireDraft(null);
         endWireRef.current();
+        return;
       }
+      setEditingStateRef.current({ marquee: undefined });
+      if (interactionMode === 'boxSelecting') {
+        e.preventDefault();
+        e.stopPropagation();
+        setInteractionModeRef.current('idle');
+        return;
+      }
+      clearSelectionRef.current();
     } else if (e.key === 'w' || e.key === 'W') {
       // W: Toggle wire mode
       if (editingStateRef.current.wireStartPort) {
@@ -1539,26 +1540,6 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
             <div><span className="text-cyan-400">Delete/Backspace:</span> Remove selected</div>
             <div className="pt-2 border-t border-gray-700 text-gray-500">
               Selections sync across all views!
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* First Wire Toast */}
-      {showFirstWireToast && (
-        <div
-          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none"
-          data-testid="logic-first-wire-toast"
-        >
-          <div className="bg-blue-600/90 border border-blue-500 rounded-lg px-4 py-3 text-sm text-white shadow-lg animate-fade-in">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎉</span>
-              <div>
-                <div className="font-semibold">First wire created!</div>
-                <div className="text-blue-100 text-xs mt-1">
-                  Press <span className="font-mono bg-blue-700/50 px-1 rounded">Delete</span> to remove wires, or right-click to cancel while drawing
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -2011,6 +1992,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               key={node.id}
               node={node}
               geometry={geometryIndex.get(node.id)!.geometry}
+              labelPosition={schematicLabels?.get(node.id)}
               camera={camera}
               lod={schematicLod}
               isSelected={selection.nodes.has(node.id)}

@@ -245,7 +245,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
             </p>
             {firstBlocker.isHardwareIssue && onGoToHardware && (
               <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-blocker-goto-hardware">
-                Fix in Board &amp; Constraints
+                Fix in Board
               </IdeButton>
             )}
             {firstBlocker.isDesignIssue && onGoToDesign && (
@@ -479,7 +479,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           <div className="ide-inline-actions ide-mt-2">
             {onGoToHardware && (
               <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-go-hardware">
-                Back to Board &amp; Constraints
+                Back to Board
               </IdeButton>
             )}
             {onGoToProject && (
@@ -601,7 +601,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
                   </p>
                   {trustPrimaryCtaIsHardware && onGoToHardware && (
                     <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
-                      Open Board &amp; Constraints
+                      Open Board
                     </IdeButton>
                   )}
                 </div>

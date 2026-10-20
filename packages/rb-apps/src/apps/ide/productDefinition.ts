@@ -1,4 +1,5 @@
 import type { IdeSurfaceMode } from './components/IdeWorkbenchShell';
+import { getIdeModeLabel } from './workflowStages';
 
 export type ProductSpinePageKey = IdeSurfaceMode;
 export type ProductWorkflowStageKey = Exclude<ProductSpinePageKey, 'import'>;
@@ -143,7 +144,7 @@ export const PRODUCT_SPINE_DEFINITIONS: Record<ProductSpinePageKey, ProductSpine
     key: 'hardware',
     kind: 'workflow-stage',
     order: 4,
-    label: 'Board & Constraints',
+    label: getIdeModeLabel('hardware'),
     shortLabel: 'Board',
     job: 'Plan project I/O, clocks, electrical constraints, and Basys3 resource assignments.',
     primaryObject: 'Board and constraints workspace',
@@ -152,21 +153,21 @@ export const PRODUCT_SPINE_DEFINITIONS: Record<ProductSpinePageKey, ProductSpine
     primaryAction: 'Assign the selected signal',
     secondaryActions: ['Clear assignment', 'Open Design for IO repair'],
     emptyState: 'Explain that Design must expose project signals before mapping; do not render an error-report wall.',
-    nextAction: 'What do I do next? Assign required signals, resolve conflicts, then open Build & Export.',
+    nextAction: 'What do I do next? Assign required signals, resolve conflicts, then open Package.',
     doneCondition: 'Every required signal has one coherent Basys3 resource and package-pin assignment.',
     blockedState: 'A required signal is unmapped, conflicting, or assigned to an invalid resource.',
     recovery: 'Select the affected row and choose a valid board resource, or repair the IO boundary in Design.',
     owns: ['Board resource assignment', 'Package pin assignment', 'Mapping conflicts'],
     reads: ['Project signal boundary', 'Board resource catalog'],
     excludes: ['Simulation repair controls', 'After-mapping disclosures', 'Dominant board artwork', 'Hidden conflict diagnostics'],
-    proofBoundary: 'Board & Constraints records browser package intent. Vivado and board proof remain external.',
+    proofBoundary: 'Board records browser package intent. Vivado and board proof remain external.',
   },
   export: {
     key: 'export',
     kind: 'workflow-stage',
     order: 5,
-    label: 'Build & Export',
-    shortLabel: 'Export',
+    label: getIdeModeLabel('export'),
+    shortLabel: getIdeModeLabel('export'),
     job: 'Review readiness, inspect generated artifacts, and download the current handoff package.',
     primaryObject: 'Export package',
     stableRegions: ['Readiness decision', 'Package contents', 'Selected-file preview', 'Submission guidance'],
@@ -177,7 +178,7 @@ export const PRODUCT_SPINE_DEFINITIONS: Record<ProductSpinePageKey, ProductSpine
     nextAction: 'What do I do next? Resolve the named owner-stage blocker, or build and download the package.',
     doneCondition: 'The generated package is current, inspectable, and ready for browser E0 handoff.',
     blockedState: 'Design, Compare, mapping, or generated artifacts are stale or blocked.',
-    recovery: 'Follow the named blocker to Design, Simulate, or Board & Constraints, then return and rebuild.',
+    recovery: 'Follow the named blocker to Design, Simulate, or Board, then return and rebuild.',
     owns: ['Package generation', 'Artifact preview', 'Package download'],
     reads: ['Design readiness', 'Current Compare evidence', 'Pin mapping readiness'],
     excludes: ['Pin editors', 'Dominant proof-debug panels', 'Repeated E0 labels', 'Core file trees hidden in disclosures'],

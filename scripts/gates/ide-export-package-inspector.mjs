@@ -40,6 +40,10 @@ await runIdeGate('IDE Export package inspector satisfied', async ({ page, baseUr
         minWidth: 220,
         minHeight: 180,
       });
+      // The landing is the package's contents; the preview belongs to a chosen file.
+      if ((await page.locator('[data-testid="ide-export-selected-preview-v1"]').count()) === 0) {
+        await page.locator('[data-testid="ide-export-file-top-vhd"]').first().click();
+      }
       await page.locator('[data-testid="ide-export-selected-preview-v1"]').first().scrollIntoViewIfNeeded();
       await assertVisibleRect(page, ['[data-testid="ide-export-selected-preview-v1"]'], `${viewport.label}/Export selected preview`, {
         maxTop: viewport.height === 768 ? 325 : 350,

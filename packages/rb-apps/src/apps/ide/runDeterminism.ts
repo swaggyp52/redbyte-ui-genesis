@@ -8,7 +8,7 @@ import { buildVerifyCircuitEvidenceHash } from './verifyProjectHash';
 import { computeExecutionStimulusHash } from './verifyScenario';
 
 /** Semantic engine revision, independent of UI build SHA. Bump when execution changes. */
-export const BROWSER_ENGINE_VERSION = 'redbyte-browser-v1';
+export const BROWSER_ENGINE_VERSION = 'redbyte-browser-v2';
 
 export interface RunIdentity {
   readonly design: string;

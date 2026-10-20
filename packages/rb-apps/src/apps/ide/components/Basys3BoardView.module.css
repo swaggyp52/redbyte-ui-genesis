@@ -6,20 +6,17 @@
   height: auto;
 }
 
+/* A resource says its state with its outline and fill, which the Board stylesheet owns as
+   tokens. There is no glow: a drop shadow in the "mapped" green was indistinguishable from an
+   LED that is on, and the same halo in three colours carried three unrelated meanings. */
 .resource {
-  transition: fill 140ms ease, stroke 140ms ease, filter 140ms ease;
+  transition: fill 140ms ease, stroke 140ms ease;
 }
 
-.resourceSelected {
-  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.95));
-}
-
-.resourceMapped {
-  filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.72));
-}
-
+.resourceSelected,
+.resourceMapped,
 .resourceConflict {
-  filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.85));
+  filter: none;
 }
 
 .board[data-layer-labels='0'] .aliasLabel {
@@ -31,20 +28,22 @@
 }
 
 .resourceUnavailable {
-  opacity: 0.48;
+  opacity: 0.55;
 }
 
+/* Labels keep a hairline of the board's own colour behind them so a name stays legible where
+   it crosses an outline. */
 .aliasLabel,
 .secondaryLabel,
 .sectionLabel {
   paint-order: stroke fill;
-  stroke: rgba(3, 10, 22, 0.92);
+  stroke: var(--rb-board-plane, #f4f6f9);
   stroke-linejoin: round;
 }
 
 .aliasLabel {
-  font-weight: 750;
-  stroke-width: 1.35px;
+  font-weight: 600;
+  stroke-width: 2px;
 }
 
 .secondaryLabel {
@@ -53,7 +52,7 @@
 }
 
 .sectionLabel {
-  font-weight: 700;
+  font-weight: 600;
   stroke-width: 0.9px;
 }
 

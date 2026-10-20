@@ -174,7 +174,7 @@ describe('TimingLab', () => {
 
     expect(view.getByText('testbench.vhd')).toBeTruthy();
     expect(view.getByText('Full Adder truth table')).toBeTruthy();
-    expect(view.getByText('Same source packaged by Build & Export')).toBeTruthy();
+    expect(view.getByText('Same source that Package exports')).toBeTruthy();
     expect(view.getByText('entity testbench is')).toBeTruthy();
   });
 });

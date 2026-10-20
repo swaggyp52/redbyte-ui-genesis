@@ -14,8 +14,8 @@ describe('KeyboardShortcutsModal stage contract', () => {
       ['Switch to Project', '1'],
       ['Switch to Design', '2'],
       ['Switch to Simulate', '3'],
-      ['Switch to Board & Constraints', '4'],
-      ['Switch to Build & Export', '5'],
+      ['Switch to Board', '4'],
+      ['Switch to Package', '5'],
     ] as const;
 
     for (const [action, key] of expectedRows) {

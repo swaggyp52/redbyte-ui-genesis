@@ -16,7 +16,7 @@
 | Date | 2026-09-16 |
 | Release posture | Stable Preview - Browser-E0; no Vivado, bitstream, board, or classroom-reliability claim |
 | PDF artifact | Pending regeneration for this Markdown revision; the committed PDF and `RedByte_Product_Manual_print.html` still describe v1.4 (2026-08-01) |
-| Source checkpoint | `f38221195` on `claude/redbyte-studio-completion-p2-6-q7m3v8` (P2.6C validation closeout). The Design and Simulate sections were reconciled against `DesignSurface.tsx`, `VerifySurface.tsx`, `verify/VerifyCommandBar.tsx`, `verify/RunIdentityStrip.tsx`, `verify/RecordedCircuitInspector.tsx`, `verify/TimingLab.tsx` and `verify/TimingLanes.tsx` |
+| Source checkpoint | Local milestone 4 candidate on `claude/redbyte-studio-completion-p2-6-q7m3v8`, HEAD `a46d7ed01` plus uncommitted work. Exact candidate identity and evidence are in `docs/ACTIVE_WORK.md`. Design/Simulate, Save As and canonical workspace names were reconciled against their current source owners. |
 | Classification | Product Reference |
 | Repository | `redbyte-ui` monorepo |
 | Primary Package | `packages/rb-apps` |
@@ -25,6 +25,13 @@
 ---
 
 ## Table of Contents
+
+> Milestone 4, 2026-10-05: **File → Save As** asks for the independent copy's friendly name,
+> starting with a noncolliding `<name> Copy`. Cancel and failed saves keep the original work
+> open. The active identity changes after the repository confirms a successful save; scenarios
+> and recordings are retained. Friendly names leave the HDL top, ports and constraints intact.
+> Simulate now presents one experiment, its instrument and one selected result, with direct
+> recorded-gate inspection and separate authored-check/Design editing actions.
 
 > Local finish continuation, 2026-09-30: the candidate remains on the inspected P2.6C
 > feature branch with local uncommitted changes. Save/Open, Save As, Duplicate, recovery
@@ -48,8 +55,8 @@
    - 7.1 Project Surface
    - 7.2 Design Surface
    - 7.3 Simulate Surface
-   - 7.4 Board & Constraints Surface
-   - 7.5 Build & Export Surface
+   - 7.4 Board Surface
+   - 7.5 Package Surface
    - 7.6 Import Surface
 8. [Circuit Design Workflow](#8-circuit-design-workflow)
 9. [Simulation and Verification Workflow](#9-simulation-and-verification-workflow)
@@ -84,7 +91,7 @@ Students beginning their first project should read Sections 2 through 6, then fo
 
 Throughout this manual, the following conventions apply:
 
-- **Stage names** are capitalized (Project, Design, Simulate, Board & Constraints, Build & Export) and refer to the five RedByte-owned workflow stages. **Import / Recover** is a recovery/restore utility, not a sixth progress stage.
+- **Stage names** are capitalized (Project, Design, Simulate, Board, Package) and refer to the five RedByte-owned workflow stages. **Import / Recover** is a recovery/restore utility, not a sixth progress stage.
 - **Bold terms** on first use indicate entries defined in the Glossary (Section 17).
 - Procedural steps are numbered. Substeps use letters.
 - "Result:" after a procedure indicates what the user should observe upon completion.
@@ -116,7 +123,7 @@ RedByte provides these capabilities in a single integrated environment:
 
 **Truth Table Verification.** An automated verification engine that runs the student's circuit against expected truth table vectors and reports pass/fail results per vector row. Verification supports both combinational circuits (single-tick evaluation) and sequential circuits (multi-tick clocked evaluation).
 
-**Hardware Pin Mapping.** The Board & Constraints stage assigns circuit input and output ports to physical Basys 3 board resources and package pins — switches, LEDs, push buttons, seven-segment display segments, and the on-board clock.
+**Hardware Pin Mapping.** The Board stage assigns circuit input and output ports to physical Basys 3 board resources and package pins — switches, LEDs, push buttons, seven-segment display segments, and the on-board clock.
 
 **Vivado Export.** A complete export pipeline that generates synthesizable VHDL (`top.vhd`), pin constraints (`top.xdc`), and a VHDL testbench (`testbench.vhd`), along with automation scripts and documentation files, packaged in a ZIP file ready for import into AMD Vivado.
 
@@ -138,7 +145,7 @@ RedByte operates under several core principles that shape its behavior:
 
 ### 2.5 Product System v3 Candidate Authority Summary
 
-The current candidate unifies the student flow as **Project -> Design (authoring plus an explicitly unrecorded Explore) -> Simulate (one Run that records an experiment and evaluates optional saved checks, with Reproduce) -> Board & Constraints -> Build & Export**, with **Import / Recover** as a separate recovery utility. Internal `verify`, `hardware`, and `export` route IDs remain for compatibility; current student-facing copy uses the Product System v3 stage names. Design has no peer Edit / Live / Replay workspace modes, Simulate has no Observe / Compare run modes, and there are no separate Timeline / Waveform / Live I/O destinations; dated history sections that describe those modes are historical.
+The current candidate unifies the student flow as **Project -> Design (authoring plus an explicitly unrecorded Explore) -> Simulate (one Run that records an experiment and evaluates optional saved checks, with Reproduce) -> Board -> Package**, with **Import / Recover** as a separate recovery utility. Internal `verify`, `hardware`, and `export` route IDs remain for compatibility; current student-facing copy uses the Product System v3 stage names. Design has no peer Edit / Live / Replay workspace modes, Simulate has no Observe / Compare run modes, and there are no separate Timeline / Waveform / Live I/O destinations; dated history sections that describe those modes are historical.
 
 The Studio shell presents project identity and all five stages in one compact
 application bar. Project uses a source explorer, live circuit overview, and one
@@ -148,8 +155,8 @@ instruments; their surrounding workspaces use the same Studio surface system.
 - Project explains the loaded student's design, proof, mapping, package state, and one recommended next action.
 - Design keeps the circuit grid dominant and gives ports direct, keyboard-reachable wiring targets. Its **Explore** action drives inputs on the current circuit under the note **Exploring · not recorded**; **Clock edge** applies one edge when asked (circuits with state only) and **Reset values** returns to the starting state. **Test this design** hands off to Simulate for recorded evidence.
 - Simulate owns named scenarios, authored stimulus, optional saved checks, per-document sequential execution policy, one **Run** that records an immutable, selectable recording and evaluates any saved checks automatically, **Reproduce** for re-executing a selected recording's retained design, stimulus and engine, the **Time instrument** (sequential) or **Table** with **Recorded trace** (combinational), the explicit **Details** and **Recorded circuit** auxiliary views, and current-versus-stale evidence authority.
-- Board & Constraints owns a semantic signal-to-resource projection that must agree with generated XDC and Build & Export.
-- Build & Export separates structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded`; the current download receipt identifies the exact package.
+- Board owns a semantic signal-to-resource projection that must agree with generated XDC and Package.
+- Package separates structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded`; the current download receipt identifies the exact package.
 - Import is manifest-first for RedByte ZIPs and preserves exact scalar/vector-bit identities through recovery.
 
 Named sequential policy remains browser-local and outside portable `RBProject`, but it is not package-neutral. RedByte materializes authored rows and policy into one shared execution-vector sequence consumed by runtime Verify, bring-up expectations, and generated `testbench.vhd` together with the resolved clock/schedule projection. Auto `runCycles`, automatic reset behavior, resolved clock data, starting level, and authored stimulus may therefore change package bytes, stale Export, and invalidate a prior receipt. UI status, waveform, and check-result objects do not generate bytes. This remains Browser-E0/software-artifact behavior; it is not Vivado or board proof.
@@ -196,18 +203,18 @@ The IdeApp is the primary context documented in this manual. The SubmissionInspe
 RedByte organizes work into a product spine that carries a project from browser authoring to real FPGA evidence:
 
 ```
-Project -> Design -> Simulate -> Board & Constraints -> Build & Export -> Vivado -> Program Board -> Observe
+Project -> Design -> Simulate -> Board -> Package -> Vivado -> Program Board -> Observe
 ```
 
-The five numbered IDE stages cover the RedByte-owned portion of that spine: Project, Design, Simulate, Board & Constraints, and Build & Export. The implementation retains `verify`, `hardware`, and `export` route IDs for compatibility; they are not the student-facing stage names. Import / Recover is a separate utility for restoring RedByte work or inspecting external HDL/XDC; it is not a stage-completion requirement. Vivado build, board programming, and physical observation happen outside RedByte but are part of the product proof model.
+The five numbered IDE stages cover the RedByte-owned portion of that spine: Project, Design, Simulate, Board, and Package. The implementation retains `verify`, `hardware`, and `export` route IDs for compatibility; they are not the student-facing stage names. Import / Recover is a separate utility for restoring RedByte work or inspecting external HDL/XDC; it is not a stage-completion requirement. Vivado build, board programming, and physical observation happen outside RedByte but are part of the product proof model.
 
 The workflow proceeds as follows:
 
 1. **Project.** The user creates or opens a project, reviews its metadata, and selects a starter example if desired.
 2. **Design.** The user constructs a digital circuit on the visual canvas by placing logic primitives and wiring them together.
 3. **Simulate.** The user authors stimulus and presses **Run**, which records the experiment and evaluates any saved checks automatically. Checks are optional; a recording without checks reads **No checks · outputs recorded** and is never a PASS. The user reads the recording in the Time instrument or Table, may open **Details** or the **Recorded circuit** view, and may **Reproduce** a selected recording.
-4. **Board & Constraints.** The user maps each circuit input and output port to a physical Basys 3 board resource and package pin (switches, LEDs, buttons, clock).
-5. **Build & Export.** The system generates synthesizable VHDL, pin constraints, a testbench, Tcl, README/bring-up files, and the project manifest. The user downloads a ZIP file for use in Vivado.
+4. **Board.** The user maps each circuit input and output port to a physical Basys 3 board resource and package pin (switches, LEDs, buttons, clock).
+5. **Package.** The system generates synthesizable VHDL, pin constraints, a testbench, Tcl, README/bring-up files, and the project manifest. The user downloads a ZIP file for use in Vivado.
 6. **Vivado.** The user opens/builds the exported project in Vivado; synthesis, implementation, and bitstream generation are Vivado responsibilities.
 7. **Program Board.** The user programs a Basys 3 target with the Vivado-generated bitstream when E2 proof is required.
 8. **Observe.** The user records board behavior against an explicit procedure when E3 proof is required.
@@ -360,10 +367,10 @@ This walkthrough produces a working AND gate, verifies it, maps it to hardware, 
 7. Navigate to the **Simulate** surface.
 8. Build a small stimulus scenario in the **Table** (edit the input cells directly) or load the starter rows for AND logic.
 9. Click **Run**. The recording header reads **Recorded #1** with **No checks · outputs recorded** while no checks are saved. Read the recorded outputs, and optionally open **Details** or **Inspect** (the Recorded circuit view). If a trusted handoff is required, save expected outputs as checks (**Check…** on a selected observed output), press **Rerun** and confirm the header reads **N checks passed**. **Reproduce** re-executes the selected recording's retained inputs and reports **2 runs · 2 identical** when the output digest repeats.
-10. Navigate to **Board & Constraints**.
+10. Navigate to **Board**.
 11. Assign each Switch port to a Basys 3 slide switch (e.g., SW0, SW1).
 12. Assign the Lamp port to an LED (e.g., LD0).
-13. Navigate to the **Build & Export** surface.
+13. Navigate to the **Package** surface.
 14. Review the readiness checklist. All items should show as complete.
 15. Click **Download Package**.
 16. Extract the downloaded ZIP. It contains `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts, and documentation files (see Section 11.2 for the complete file list).
@@ -380,7 +387,7 @@ The RedByte IDE shell is present on every surface and consists of three persiste
 
 **Top Bar.** Displays the RedByte product mark, editable current-project identity, board target, save state, Import / Recover utility, and Help. Run, mapping, and export actions remain inside the surfaces that own them.
 
-**Horizontal Stage Navigator.** Contains exactly five workflow stages: Project, Design, Simulate, Board & Constraints, and Build & Export. Each stage may show current, complete, attention, or blocked. Import / Recover appears separately in the top bar and never receives a stage number or completion state.
+**Horizontal Stage Navigator.** Contains exactly five workflow stages: Project, Design, Simulate, Board, and Package. Each stage may show current, complete, attention, or blocked. Import / Recover appears separately in the top bar and never receives a stage number or completion state.
 
 **Main Content Area.** Occupies the remaining workbench and displays the active surface's primary work object. The shell does not add a proof ribbon, bottom status footer, or injected product-spine header above every surface; readiness and result decisions stay with the surface that owns them.
 
@@ -411,7 +418,7 @@ Pills are reserved for a small number of semantic states such as PASS, FAIL, sta
 **Major UI Regions.**
 
 - *First launch:* `Start your circuit` with one primary lab/start action and secondary Build Fresh, Open Starter, Import Project, and Open Existing paths.
-- *Loaded project:* A live engineering overview for identity, Design, Simulate, Board & Constraints, Build & Export, blocker, and one recommended next action.
+- *Loaded project:* A live engineering overview for identity, Design, Simulate, Board, Package, blocker, and one recommended next action.
 - *Project-changing actions:* Start Lab, Build Fresh, Open Starter, Import, and Open Existing remain together in one secondary section.
 
 **Primary Controls.**
@@ -419,7 +426,7 @@ Pills are reserved for a small number of semantic states such as PASS, FAIL, sta
 - Edit project name and description.
 - Open a starter example (with overwrite confirmation if unsaved work exists). Loading a starter opens Design immediately after the starter becomes authoritative.
 - Review readiness, mapping, testbench, and export summaries directly in the loaded-project overview without turning them into competing cards or first-viewport actions.
-- Use the Project mapping summary as the same authoritative pin map consumed by Board & Constraints and Build & Export; if a top-level port is renamed in Design, the renamed port remains the current mapping target instead of creating a second hidden/export-only port identity.
+- Use the Project mapping summary as the same authoritative pin map consumed by Board and Package; if a top-level port is renamed in Design, the renamed port remains the current mapping target instead of creating a second hidden/export-only port identity.
 
 **Typical Workflow.** Create or open a project → review metadata → optionally load a starter example → Design opens with the loaded starter name and next action.
 
@@ -489,7 +496,7 @@ This is the student-authoring palette, not the runtime-registry count. The logic
 
 2. **Compiler diagnostics** (dedicated diagnostics view): The IR elaborator runs on every circuit change and detects structural errors including unknown primitives (IR001), multiple driver conflicts (IR002), floating output ports (IR003), missing clock connections on sequential elements (IR004), disconnected required inputs (IR005), and combinational feedback loops (IR006). Each diagnostic shows severity, code, title, hint, and a focus action.
 
-The inspector panel shows per-selection health: primary issue with severity pill, fix hint, and focus button. Issues found during design will also block Simulate and Build & Export downstream.
+The inspector panel shows per-selection health: primary issue with severity pill, fix hint, and focus button. Issues found during design will also block Simulate and Package downstream.
 
 **Common Mistakes.**
 
@@ -509,11 +516,11 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Major UI Regions.**
 
-- *Command bar:* The scenario name, an **N optional checks** fact (its tooltip reads **N saved checks are evaluated automatically.** or **No checks configured · records outputs without a pass/fail verdict.**), the primary **Run** button (**Rerun** once a recording exists, **Running…** while executing) and the secondary **Reproduce** button. There is no Observe / Compare selector, no Live I/O toggle and no peer Timeline / Waveform destination.
-- *Recording header:* **Recorded #N** with the check result (**Checks not evaluated**, **No checks · outputs recorded**, **N checks passed** or **M of N checks failed**), a **Recording** selector that lists every retained recording of the scenario as `N · No checks | Checks passed | Checks failed · digest`, and the **Run details** disclosure holding the Design + Stimulus + Engine → Output identity, the repetition count (**1 run · no repeat yet** or **N runs · M identical**), the FNV-1a output-digest definition and the retained-recording list. An older recording without identity reads **Older recording · identity unavailable**.
+- *Experiment:* The scenario name, one recording verdict/currentness and the primary **Run** button (**Rerun** once a recording exists, **Running…** while executing). Before execution it says **No recording yet** and shows the authored optional-check count. A generator prepares inputs; it does not supply expected answers from observations.
+- *Recording header:* **Recorded #N** with **Checks not evaluated**, **No checks · outputs recorded**, **N checks passed** or **M of N checks failed**. **Recordings & details** holds the retained-recording selector, **Reproduce recording**, comparison, repetition and Design + Stimulus + Engine → Output identity. History selection never executes. An older recording without identity reads **Older recording · identity unavailable**. Older or edited-since-recording evidence cannot certify the current draft.
 - *Primary instrument:* A sequential scenario draws the **Time instrument**: one lane per signal on a tick axis with authored input lanes, generated clock/reset lanes and recorded output/internal lanes, the cursor, edge navigation, A/B measurement, transition and failure navigation, and recorded playback; **Run length** sets the automatic board-clock cycle count. A combinational scenario draws the **Table** (one row per case with directly editable input cells) and may switch to **Recorded trace** once a recording exists. Expected values are an optional overlay and never replace recorded samples.
-- *Auxiliary views:* **Details** and **Inspect** (the **Recorded circuit** investigation) are explicit, mutually exclusive views beside the instrument; before a run the switch notes **no recorded run yet** and the run line reads **No run recorded yet**. Named scenario documents remain selectable above the instrument. Imported VCD evidence is a separate disclosure and is always external evidence.
-- *Failure focus row:* After a recording with failing checks, the **Fail** group names the signal and tick with `expected X · got Y`, offers **First** / **Previous** / **Next** with a position readout, and **Trace in Design**.
+- *Selected result:* The selected signal and case/tick show retained **expected** and **observed** values, an explicit mismatch marker when appropriate, and recorded inputs. Eight cases with two checked outputs are sixteen checks. Unrecorded or missing values stay missing. **First / Previous / Next** appears once here and moves through exact tick/signal failures, including different failing outputs at the same tick. **Edit expectation** changes the current authored check while the recording remains unchanged; rerun deliberately to evaluate it.
+- *Recorded circuit:* **Inspect circuit** opens the selected recording's schematic beside the same instrument. Click a gate for its retained input/output values. Highlighted fan-in connections are a place to inspect; they do not identify the mistake. A supported local rule is labeled **Derived local rule**. Sequential gates show actual prior/current samples and a sampled clock edge only when the retained recording supports it. **Whole circuit**, instance selection, **Fit circuit** and **Enlarge** provide explicit viewing choices. **Edit in Design** returns to the editable circuit with the selected context; a subsequent rerun creates a distinct recording and retains the old one. Imported VCD remains separate external evidence.
 
 **Primary Controls.**
 
@@ -546,7 +553,7 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 1. **No recording.** The instrument shows the authored stimulus, the representation switch notes **no recorded run yet** and the run line reads **No run recorded yet**.
 2. **Recorded without checks.** The header reads **No checks · outputs recorded**: a retained recording, never a verdict.
-3. **Checks passed.** The header reads **N checks passed**; only this state, while current, supports Build & Export `verificationTrust: trusted`.
+3. **Checks passed.** The header reads **N checks passed**; only this state, while current, supports Package `verificationTrust: trusted`.
 4. **Checks failed.** The header reads **M of N checks failed** and the failure focus row appears.
 5. **Design changed since the selected recording.** The evidence word becomes **STALE** with **Design changed — run again to record the current circuit.** (or **Checks changed — run again before trusting the previous verdict.**, or **Browser reloaded — run again before trusting this recording as current evidence.**), the workspace status reads **Simulation stale**, and the recording header lists what changed (for example **Design changed**, **Stimulus changed**, **Engine changed**) followed by **This recording is retained. Rerun uses current inputs; Reproduce uses this recording’s inputs.**
 
@@ -562,11 +569,11 @@ Underneath these labels the evidence model still distinguishes `current`, `missi
 
 ---
 
-### 7.4 Board & Constraints Surface
+### 7.4 Board Surface
 
 **Mode ID:** `hardware`
 
-**Purpose.** Board & Constraints maps circuit input and output ports to physical resources and package pins on the Basys 3 development board. This mapping is required before the export pipeline can generate valid constraint files.
+**Purpose.** Board maps circuit input and output ports to physical resources and package pins on the Basys 3 development board. This mapping is required before the export pipeline can generate valid constraint files.
 
 **When to Use.** After the circuit is designed and (ideally) verified. Pin mapping must be complete before exporting the Vivado kit.
 
@@ -602,7 +609,7 @@ See Appendix B for the complete pin reference table.
 
 **Semantic mapping projection.** Each mapping row carries one coherent projection of logical signal ID/label, direction, generated artifact port name, board resource ID/label, package pin, I/O standard, exact XDC line, required state, and conflict state. The preview, saved mapping, generated `top.xdc`, embedded manifest, and Export receipt must agree. Conflicts are attached to the affected row and name the conflicting resource or identity.
 
-**Proof Boundary.** Board & Constraints proves the saved signal-to-resource-to-package-pin assignment used for XDC generation. It does not prove Vivado build, programming, or physical board behavior.
+**Proof Boundary.** Board proves the saved signal-to-resource-to-package-pin assignment used for XDC generation. It does not prove Vivado build, programming, or physical board behavior.
 
 **Common Mistakes.**
 
@@ -612,13 +619,13 @@ See Appendix B for the complete pin reference table.
 
 ---
 
-### 7.5 Build & Export Surface
+### 7.5 Package Surface
 
 **Mode ID:** `export`
 
-**Purpose.** The Build & Export surface validates package readiness, previews generated artifacts, and produces the Vivado Kit ZIP file containing synthesizable VHDL, constraint files, and a testbench.
+**Purpose.** The Package surface validates package readiness, previews generated artifacts, and produces the Vivado Kit ZIP file containing synthesizable VHDL, constraint files, and a testbench.
 
-**When to Use.** After the circuit has been designed, simulated, and all required signals have been assigned in Board & Constraints.
+**When to Use.** After the circuit has been designed, simulated, and all required signals have been assigned in Board.
 
 **Major UI Regions.**
 
@@ -630,7 +637,7 @@ See Appendix B for the complete pin reference table.
 
 **Primary Controls.**
 
-- **Open Build & Export:** Stage-owned actions elsewhere in the product route package work into this workspace rather than duplicating package controls.
+- **Open Package:** Stage-owned actions elsewhere in the product route package work into this workspace rather than duplicating package controls.
 - **Download Package:** Primary action for a trusted current package. A structurally valid but untrusted project exposes the separate **Download draft** action; a draft download never inherits trusted labeling.
 - **File browser:** Select a generated file to preview its exact content, then use **Copy file** or **Download file** for that file.
 - **Open technical evidence:** Open and close the secondary evidence dialog without hiding or replacing the package decision and file browser.
@@ -694,7 +701,7 @@ Each blocking issue includes a direct navigation link to the surface where the i
 - **Reconstruction:** Vivado ZIP or HDL without a RedByte manifest. RedByte reconstructs supported gate-level structure, including its supported generated concurrent-assignment subset, and reports metadata/layout/testbench limits.
 - **Partial / blocked:** Behavioral or unsupported HDL may recover ports only or stay blocked. The current project is not replaced on failure.
 
-Scalar and vector-bit ports retain exact logical identity through parse, Review, Apply, Board & Constraints, and re-export. For example, `SW[1]` and `LED[1]` must not collapse into different scalar or ghost ports.
+Scalar and vector-bit ports retain exact logical identity through parse, Review, Apply, Board, and re-export. For example, `SW[1]` and `LED[1]` must not collapse into different scalar or ghost ports.
 
 | Source | Expected Fidelity | Notes |
 |--------|-------------------|-------|
@@ -769,7 +776,7 @@ For T flip-flops, the T input controls toggling: T=1 toggles Q on each clock edg
 
 For JK flip-flops: J=1,K=0 sets Q to 1; J=0,K=1 resets Q to 0; J=1,K=1 toggles Q; J=0,K=0 holds Q.
 
-**Sequential Support Boundary.** The stable preview supports Register1 with one clock, rising-edge capture, active-high asynchronous reset, and supported enable semantics. RegisterBus, StateBank, falling-edge capture, multi-clock designs, active-low reset, and unsupported register modes are explicitly blocked by Simulate and Build & Export.
+**Sequential Support Boundary.** The stable preview supports Register1 with one clock, rising-edge capture, active-high asynchronous reset, and supported enable semantics. RegisterBus, StateBank, falling-edge capture, multi-clock designs, active-low reset, and unsupported register modes are explicitly blocked by Simulate and Package.
 
 Register1 captures D on the rising clock transition and holds Q between rising
 edges. An authored high-to-low transition is valid stimulus but must hold
@@ -846,11 +853,11 @@ Recordings are deterministic. Running the same retained design and stimulus with
 Hardware mapping is the process of assigning each circuit port to a physical pin on the Basys 3 FPGA board. This determines which physical switch controls which circuit input, and which LED or display segment shows which circuit output.
 
 The mapping is stored as part of the project and used by the export pipeline to generate the XDC constraint file.
-Renaming a top-level input or output does not create a second mapping identity. Project, Board & Constraints, and Build & Export all continue to reflect the same live port record after the rename.
+Renaming a top-level input or output does not create a second mapping identity. Project, Board, and Package all continue to reflect the same live port record after the rename.
 
 ### 10.2 Mapping Procedure
 
-1. Navigate to **Board & Constraints**.
+1. Navigate to **Board**.
 2. Select one signal in the grouped signal list or assignment table.
 3. Choose a compatible **Basys3 resource** in the inspector, or click a highlighted compatible resource on the interactive board. Inputs show switches, buttons, and clock resources; outputs show LEDs and display segments. Occupied resources are unavailable.
 4. Review the resource, package pin, I/O standard, and generated `top.xdc` consequence. Both assignment paths update the same saved mapping authority.
@@ -958,9 +965,9 @@ Changing Auto `runCycles`, automatic reset behavior, resolved clock/schedule dat
 
 | Vivado Error | Likely Cause | Resolution |
 |--------------|-------------|------------|
-| "Port X not found in entity" | Port name mismatch between XDC and top.vhd | Return to Board & Constraints, re-map, and re-export. |
+| "Port X not found in entity" | Port name mismatch between XDC and top.vhd | Return to Board, re-map, and re-export. |
 | "Multiple drivers on net" | Combinational loop in circuit | Fix the loop in the Design surface, re-verify, and re-export. |
-| "No valid object(s) found for PACKAGE_PIN" | Incorrect pin number in XDC | Check Board & Constraints assignments against the Basys 3 pin reference. |
+| "No valid object(s) found for PACKAGE_PIN" | Incorrect pin number in XDC | Check Board assignments against the Basys 3 pin reference. |
 | "Timing not met" | Excessive combinational logic depth | Simplify the circuit or add pipeline registers. |
 
 ### 11.6 Official References Used for Vivado Truth
@@ -1021,13 +1028,13 @@ Result: Pin assignments imported. Requires an existing circuit with matching por
 
 ### 13.1 Student Submission
 
-Students use Build & Export for the normal downloadable project handoff. The generated project ZIP includes the RedByte project snapshot and the current browser-E0 artifact set; any separate LMS or instructor acceptance rule remains course policy.
+Students use Package for the normal downloadable project handoff. The generated project ZIP includes the RedByte project snapshot and the current browser-E0 artifact set; any separate LMS or instructor acceptance rule remains course policy.
 
 1. Complete the circuit design and verification.
-2. Navigate to Build & Export, or use a state-owned **Open Build & Export** action.
+2. Navigate to Package, or use a state-owned **Open Package** action.
 3. Confirm whether the package is trusted/current or draft. Choose **Download Package** for the trusted current handoff; choose **Download draft** only when the course accepts an explicitly untrusted package.
 4. Read **What should I submit?** and verify that the available action matches the course requirement.
-5. The grouped Build & Export source tree shows the current generated project files before download. **Validate package** performs Browser-E0 structural checks only; **Open technical evidence** exposes secondary diagnostics and provenance. Vivado remains the authority for synthesis and implementation.
+5. The grouped Package source tree shows the current generated project files before download. **Validate package** performs Browser-E0 structural checks only; **Open technical evidence** exposes secondary diagnostics and provenance. Vivado remains the authority for synthesis and implementation.
 6. Check the package receipt for the selected download kind, trust state, source fingerprint, project/Verify hashes, mapping currentness, and SHA-256.
 7. Upload the downloaded project ZIP according to the institutional LMS or course instructions.
 
@@ -1252,7 +1259,7 @@ submission.rbproj.zip
 
 **Sequential circuit.** A circuit whose outputs depend on both current inputs and stored state. Contains flip-flops or other memory elements.
 
-**Stage.** One of the five student workflow destinations in the horizontal navigator: Project, Design, Simulate, Board & Constraints, or Build & Export. Import / Recover is a separate utility backed by an internal application mode, not a sixth stage.
+**Stage.** One of the five student workflow destinations in the horizontal navigator: Project, Design, Simulate, Board, or Package. Import / Recover is a separate utility backed by an internal application mode, not a sixth stage.
 
 **Test vector.** A row in the verification truth table specifying input values and expected output values for one test case.
 
@@ -1262,7 +1269,7 @@ submission.rbproj.zip
 
 **Topological sort.** The algorithm RedByte uses to determine the evaluation order of nodes. Guarantees that a node is evaluated only after all its input dependencies have been evaluated.
 
-**Vivado Kit.** The ZIP file produced by Build & Export, containing `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts (`vivado_import.tcl`, `program_and_test.tcl`), and documentation files.
+**Vivado Kit.** The ZIP file produced by Package, containing `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts (`vivado_import.tcl`, `program_and_test.tcl`), and documentation files.
 
 **XDC.** Xilinx Design Constraints file format. Specifies physical pin assignments and I/O standards for FPGA synthesis.
 
@@ -1391,7 +1398,7 @@ submission.rbproj.zip
 
 - **Entity name:** `top`
 - **Architecture:** Structural VHDL or concurrent signal assignments depending on circuit complexity.
-- **Ports:** Match the student's circuit ports as named in Board & Constraints.
+- **Ports:** Match the student's circuit ports as named in Board.
 - **Synthesizable:** Yes. No behavioral `process` blocks that prevent synthesis.
 - **I/O Standard:** All ports expect LVCMOS33 (defined in XDC, not in VHDL).
 
@@ -1418,10 +1425,11 @@ submission.rbproj.zip
 
 | Action | Shortcut |
 |--------|----------|
-| Switch to Design | 1 |
-| Switch to Simulate | 2 |
-| Switch to Build & Export | 3 |
-| Switch to Board & Constraints | 4 |
+| Switch to Project | 1 |
+| Switch to Design | 2 |
+| Switch to Simulate | 3 |
+| Switch to Board | 4 |
+| Switch to Package | 5 |
 | Save project | Ctrl+S |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |

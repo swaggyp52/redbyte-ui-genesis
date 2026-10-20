@@ -32,6 +32,10 @@ export interface CaseLabProps {
   readonly focusFieldId?: string | null;
   /** Clicking an output column makes that signal the followed one. */
   readonly onFocusField?: (fieldId: string) => void;
+  /** Exact recorded cell selection, distinct from editing an authored expectation. */
+  readonly onSelectObservation?: (tick: number, fieldId: string) => void;
+  /** Failures belong to the selected recording's checks, including after a draft edit. */
+  readonly recordedMismatchCells?: ReadonlySet<string>;
   readonly onGenerateExhaustive?: () => void;
   readonly onAddCase?: () => void;
   readonly onDuplicateCase?: (tick: number) => void;
@@ -93,6 +97,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   onSetExpectedMany,
   focusFieldId = null,
   onFocusField,
+  onSelectObservation,
+  recordedMismatchCells,
   onGenerateExhaustive,
   onAddCase,
   onDuplicateCase,
@@ -115,10 +121,10 @@ export const CaseLab: React.FC<CaseLabProps> = ({
   const [anchorTick, setAnchorTick] = useState<number | null>(null);
   const [bulkField, setBulkField] = useState<string>('');
 
-  const failCount = useMemo(
-    () => vectors.filter((v) => caseEvidenceByTick[v.tick] === 'fail').length,
-    [vectors, caseEvidenceByTick]
-  );
+  const failureTicks = useMemo(() => new Set(vectors.filter(vector =>
+    recordedMismatchCells ? outputFields.some(field => recordedMismatchCells.has(`${vector.tick}:${field.id}`))
+      : caseEvidenceByTick[vector.tick] === 'fail').map(vector => vector.tick)), [vectors, recordedMismatchCells, outputFields, caseEvidenceByTick]);
+  const failCount = failureTicks.size;
 
   /**
    * The rows on screen, in the order the experiment is actually in.
@@ -137,8 +143,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
         ? a.tick - b.tick
         : comboValue(a, inputFields) - comboValue(b, inputFields) || a.tick - b.tick
     );
-    return failuresOnly ? sorted.filter((v) => caseEvidenceByTick[v.tick] === 'fail') : sorted;
-  }, [vectors, inputFields, failuresOnly, caseEvidenceByTick, caseOrder]);
+    return failuresOnly ? sorted.filter((v) => failureTicks.has(v.tick)) : sorted;
+  }, [vectors, inputFields, failuresOnly, failureTicks, caseOrder]);
 
   /**
    * One order authority. Case stepping, failure stepping, Home/End and the arrow keys walked a
@@ -150,8 +156,8 @@ export const CaseLab: React.FC<CaseLabProps> = ({
    */
   const visibleTicks = useMemo(() => rows.map((vector) => vector.tick), [rows]);
   const failingTicks = useMemo(
-    () => visibleTicks.filter((tick) => caseEvidenceByTick[tick] === 'fail'),
-    [caseEvidenceByTick, visibleTicks]
+    () => visibleTicks.filter((tick) => failureTicks.has(tick)),
+    [failureTicks, visibleTicks]
   );
   const stepCase = (direction: 1 | -1) => {
     if (visibleTicks.length === 0) return;
@@ -196,9 +202,6 @@ export const CaseLab: React.FC<CaseLabProps> = ({
     if (onSetExpectedMany) onSetExpectedMany(edits);
     else for (const edit of edits) onSetExpected(edit.tick, edit.signalId, edit.next);
   };
-  const comparison = recording?.comparison;
-  const previousRun = comparison?.previous;
-  const historyDelta = comparison?.failedDelta ?? null;
   const caseNumberByTick = new Map([...vectors].sort((a, b) => a.tick - b.tick).map((vector, index) => [vector.tick, index + 1]));
 
   const cycleExpected = (tick: number, signalId: string, current: '0' | '1' | '') => {
@@ -214,20 +217,6 @@ export const CaseLab: React.FC<CaseLabProps> = ({
           {vectors.length}
           {failCount ? ` · ${failCount} failing` : ''}
         </span>
-        {comparison ? (
-          <span className="ide-case-lab-history" data-testid="ide-case-lab-history" data-run-id={comparison.runId} aria-label="Comparison history" title={previousRun ? `Compared with recording ${previousRun.ordinal}: ${previousRun.passed} passed · ${previousRun.failed} failed` : 'No preceding checked recording retained'}>
-            <span>Recording {comparison.ordinal ?? ''}</span>
-            <code>{comparison.verdict.toUpperCase()}</code>
-            {recording?.currencyLabel && <span>{recording.currencyLabel}</span>}
-            {historyDelta !== null ? (
-              <span className={historyDelta < 0 ? 'is-better' : historyDelta > 0 ? 'is-worse' : ''}>
-                {historyDelta === 0 ? 'same as previous' : historyDelta < 0 ? `${-historyDelta} fewer failing than previous` : `${historyDelta} more failing than previous`}
-              </span>
-            ) : (
-              <span>no previous comparison</span>
-            )}
-          </span>
-        ) : null}
         <span className="ide-case-lab-spacer" />
         {onAddCase ? (
           <IdeButton tone="ghost" onClick={onAddCase} testId="ide-case-lab-add">
@@ -249,27 +238,11 @@ export const CaseLab: React.FC<CaseLabProps> = ({
         >
           Failures only
         </button>
-        <button
-          type="button"
-          className="wb-btn wb-btn--ghost"
-          onClick={() => stepFailure(-1)}
-          disabled={failingTicks.length === 0}
-          data-testid="ide-case-lab-prev-failure"
-          title="Select the previous failing case"
-        >
-          ‹ Fail
-        </button>
-        <button
-          type="button"
-          className="wb-btn wb-btn--ghost"
-          onClick={() => stepFailure(1)}
-          disabled={failingTicks.length === 0}
-          data-testid="ide-case-lab-next-failure"
-          title="Select the next failing case"
-        >
-          Fail ›
-        </button>
       </header>
+
+      {recording?.currency === 'differs' && <div className="ide-case-lab-note" data-testid="ide-case-lab-draft-note">
+        Inputs and expectations are the current draft. Observations and ≠ markers belong to Recording {recording.ordinal ?? 'selected'}.
+      </div>}
 
       {vectorsAreAutoGenerated && !autoVectorNoticeDismissed ? (
         <div className="ide-case-lab-note" data-testid="ide-verify-auto-vector-notice">
@@ -283,7 +256,7 @@ export const CaseLab: React.FC<CaseLabProps> = ({
       ) : null}
       {isUsingFallbackSignals ? (
         <div className="ide-case-lab-note is-warn" data-testid="ide-verify-sync-warning">
-          <span>No mapped inputs yet — these input columns are placeholders until Board &amp; Constraints maps the circuit's signals.</span>
+          <span>No mapped inputs yet — these input columns are placeholders until the circuit's signals are mapped in Board.</span>
           {onGoToHardware ? (
             <button type="button" className="ide-case-lab-note-dismiss" data-testid="ide-verify-sync-go-hardware" onClick={onGoToHardware}>
               Open Board
@@ -430,8 +403,10 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                     ))}
                     {outputFields.map((field) => {
                       const exp = asBit(vector.expected?.[field.id]);
-                      const obs = asBit(observedByTick[vector.tick]?.[field.id]);
-                      const cellFail = evidence === 'fail' && exp !== '' && obs !== '' && exp !== obs;
+                      const observed = observedByTick[vector.tick]?.[field.id];
+                      const obs = observed && observed !== '-' ? observed : '';
+                      const cellFail = recordedMismatchCells?.has(`${vector.tick}:${field.id}`)
+                        ?? (evidence === 'fail' && exp !== '' && obs !== '' && exp !== obs);
                       return (
                         <React.Fragment key={field.id}>
                           <td className={`ide-case-lab-exp${field.id === focusFieldId ? ' is-followed' : ''}`}>
@@ -448,8 +423,13 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                               <code>{exp || '·'}</code>
                             </button>
                           </td>
-                          <td className={`ide-case-lab-obs${field.id === focusFieldId ? ' is-followed' : ''}${cellFail ? ' is-fail' : ''}`}>
-                            <code>{obs || '·'}</code>
+                          <td className={`ide-case-lab-obs${field.id === focusFieldId ? ' is-followed' : ''}${cellFail ? ' is-fail' : ''}${field.id === focusFieldId && vector.tick === selectedTick ? ' is-selected-result' : ''}`}>
+                            <button type="button" className="ide-case-lab-observation" data-testid={`ide-case-lab-obs-${vector.tick}-${field.id}`}
+                              aria-pressed={field.id === focusFieldId && vector.tick === selectedTick}
+                              aria-label={`Inspect recorded ${field.label ?? field.id}, Case ${caseNumberByTick.get(vector.tick)}, ${obs || 'unrecorded'}${cellFail ? ', mismatch' : ''}`}
+                              onClick={event => { event.stopPropagation(); onSelectObservation?.(vector.tick, field.id); }}>
+                              <code>{obs || '—'}</code>{cellFail && <span aria-hidden="true"> ≠</span>}
+                            </button>
                           </td>
                         </React.Fragment>
                       );

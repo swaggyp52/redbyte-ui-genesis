@@ -1,5 +1,115 @@
 # AI State
 
+## Signal Journey - interactive hierarchy and cancellable execution - 2026-10-08
+
+Continued the preserved local, uncommitted candidate on the same branch and HEAD below.
+Frozen input digest `6840f73b5fed4f39a512293a0133a05211077622485ec91f6a6b6de00b8004f3`
+(2,409 inputs); fixed review copy `.redbyte/interactive-hierarchy/fixed-dist-delivery-3`,
+served at `http://127.0.0.1:5206/os/` while its owned preview runs. The copy has 926 files;
+the baseline-relative input delta is 13 modified, nine added and none removed. Earlier seals remain.
+
+Supported combinational hierarchy now exposes actual parent boundary inputs, readable words,
+exact repeated/nested instance projection and local gate rules. Returning restores the selected
+parent connection and authoring camera. Internal boundaries remain inspection targets. The normally
+authored full adder is also created as a reusable module and explored through ordinary controls.
+Sequential module live exploration remains explicitly unqualified, including Register1, DLatch
+and RSLatch; the flat counter's captured edge, hold, nonzero reset and publication proofs pass.
+
+Run uses a dedicated module worker around the same engine-v2 execution. Immutable requests and
+guarded atomic admission reject cancelled, obsolete and duplicate results. Cancel terminates the
+worker and retains the complete old recording; pending status does not serialize persistent storage.
+Preparation, transfer, computation, construction, admission and rendering opportunities are timed
+separately. Synchronous preparation/publication and large result rendering remain performance limits.
+
+Pinned Node 20.19.0: 150 distinct focused tests pass (147-test batch plus three new sequential
+qualification cases; the six-test hierarchy follow-up includes three repeats). Final app typecheck
+has zero diagnostics; unified build and required verify:gates exit 0. All 147 emitted declaration
+diagnostics remain identical, including duplicate occurrences and source locations. Final fixed-copy
+authored module, hierarchy, counter, camera/Save As and actual ZIP-download proofs pass.
+The continuous workflow retains a byte-identical old recording, cancels during actual computation
+(107.9 ms acknowledgement), cancels by navigation and retries without reload: 512 samples and
+2,560 independent arithmetic checks. Its successful retry reaches two rendering opportunities in
+766.8 ms; that boundary does not establish all subsequent paint/effect completion.
+
+Final scale proof passes alone. Initial whole UI Run is 455/690/1,051 ms for hierarchy/fan-out/
+trace-limit; limit retry is 592 ms. Three real cancellation acknowledgements are 20.2/17.2/19.7 ms,
+while busy visibility is 51.8/418.6/59.6 ms: one proposed 100 ms target miss remains, with exact
+cause not isolated by whole-action instrumentation. Full-session heartbeat maximum is 722.3 ms;
+the actual 4 MiB trace truncates at 8,294 events / 4,194,071 bytes and retains all 512 samples/checks.
+The inherited 5 s action/2 s heartbeat bounds are boundedness checks, not smoothness standards.
+
+Receipts and the short handoff live in `.redbyte/interactive-hierarchy/`. Prior 493-file broad-suite
+debt (17 failures in nine files), owner/student acceptance, Vivado and physical-board acceptance
+remain open. No staging, Git delivery, deployment, release replacement or hardware action.
+
+## Signal Journey - comprehension and direct connections - 2026-10-07
+
+Continued the preserved candidate locally and uncommitted. Frozen build inputs SHA-256
+`7f3370039ec6b929e15ca2943b662c1775eefecdc94d50e791656e0a3ba7428f` (2,400 inputs).
+Sealed review copy `.redbyte/signal-journey-comprehension/fixed-dist-delivery`, served at
+`http://127.0.0.1:5202/os/`; handoff and ordered screenshots are in
+`.redbyte/signal-journey-comprehension/delivery/VALIDATION.md`. Prior candidates remain intact.
+Primary inspection leads with friendly gate/module identity, actual inputs, local rule and effect.
+Exact connections are selectable, Logic expands one branch at a time, native output aliases are
+grouped by semantics, and captured state is distinct from common publication. Large drawings offer
+a readable four-node local focus; loads, source and cases are paged without rewriting the recording.
+
+Node 20.19.0: 99/99 focused regressions and clean app typecheck; unified build and repeated required
+verify:gates exit 0. All 147 declaration diagnostics match the previous candidate, including locations.
+Final sealed ordinary full-adder, hierarchy, counter, camera, export-download and complexity proofs
+exit 0. Final stress measured a 913 ms largest qualified action and 756.2 ms session heartbeat gap;
+the actual 4 MiB capture limit retained all 512 samples/checks. These are local-host measurements.
+Top-level module live Design exploration remains unavailable; authored cases run in Simulate, and
+live-input ownership passes separately on the normally authored flat full adder. Run is synchronous
+and has no execution-cancel control; playback cancellation passes. Owner/student, Vivado and physical
+acceptance remain open. No engine/storage changes, Git delivery, deployment or release replacement.
+Earlier entries retain their original evidence, including failed iterations and broader test debt.
+
+## Signal Journey - one circuit, one moment - 2026-10-07
+
+Local uncommitted candidate on the preserved M1-M4 branch and HEAD below. Actual build input
+SHA-256 `774cdfbd644f86b76931a659942f37dfe3d1e8d467bd3de2f65cd50f8e81a006`;
+sealed review copy `.redbyte/signal-journey/fixed-dist-delivery`, served at `http://127.0.0.1:5199/os/`.
+The capability lives inside Simulate: recorded circuit/instance, bounded Boolean rule, cases/time
+and retained word values, emitter-mapped generated HDL, and real recorded board assignments share
+one inspection and phase. Return retains the mounted experiment/history. Logical playback does
+not reevaluate or establish physical delay. Core scheduler regressions cover unique dependency
+counting and native edge devices capturing before a common commit; engine contract is browser-v2.
+
+Pinned Node 20.19.0: core focused 76/76; parent integration 66/66; context 34/34; final linking
+contract 10/10; app typecheck zero diagnostics. Sealed unified build exit 0, retaining 147 declaration
+diagnostics. Normal authored full-adder fault/repair/old failure and hierarchical 7+1/rename/history
+proofs pass against the sealed copy; counter capture/hold/nonzero reset and first-use/saved palette
+proofs also pass. Rail/command Resume, Return after a different recording, working camera and actual
+export-download checks pass on this sealed copy. The 147 declaration diagnostics are identical to M4.
+Final required `verify:gates` repeat exits 0. Receipts are in
+`.redbyte/signal-journey/final/`; current scope and remaining limits are in docs/ACTIVE_WORK.md.
+No Git delivery, release replacement or hardware action. Owner/student and physical acceptance
+remain open. Earlier milestone entries below retain their original evidence and URLs.
+
+## Milestone 4 - see the behavior, find the mistake - 2026-10-05
+
+Local, uncommitted candidate on `claude/redbyte-studio-completion-p2-6-q7m3v8`; HEAD
+`a46d7ed015b8f02d1420eff8e466eeb30a947fe6`. Simulate consolidates experiment, instrument
+and exact selected result; recorded gate inspection retains its own topology/samples and
+distinguishes connectivity, derived gate rules and sampled sequential state. Save As names an
+independent durable copy with readable cancel/failure/retry states. Workspace display names are
+Project, Design, Simulate, Board and Package. Camera, recording history and owner work are preserved.
+
+Frozen packages/apps/scripts SHA-256 `04e500cd3af08a8f6318db150677849d4be37140abd1b90f01683d39973249ad`.
+Sealed build input SHA-256 `a0d75fe7f817dea24dafda8bcfc239aa4be9ab8518d5e05b125f9184f536cbe7` (different scope).
+Review build: `http://127.0.0.1:5448/os/`; receipts/captures/handoff:
+`.redbyte/studio-restart/m4/delivery-final/`. Details and remaining work are in docs/ACTIVE_WORK.md.
+
+Node 20.19.0: 351/351 focused tests; raw app typecheck zero diagnostics; unified build and
+verify:gates exit 0; repo:status --skip-build 38/38. Working camera, full-adder fault/repair/history,
+15/15 counter steps, three-fixture matched captures and Save As contrast/recovery pass locally.
+The 147 unchanged nonblocking declaration diagnostics and milestone 3's 17 full-suite failures
+remain recorded; the 493-file campaign was not rerun. Strict screenshot baselines are not claimed.
+No staging, commit, push, deployment or release replacement. rc.1-rc.4 remain intact. Stopped for
+review; owner/student acceptance, Vivado, programming, physical hardware and release readiness
+remain open. Earlier entries below are historical.
+
 ## Sustained student confidence - 2026-10-01
 
 The rc.2 continuation preserves the rc.1 archive and its complete dirty baseline.
@@ -69,6 +179,13 @@ commit, push, PR mutation, merge, public deployment or board operation occurred.
 The exact checklist, before/after evidence and stacked #85/#86 integration plan are
 in `docs/release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md`;
 owner instructions are in `docs/release/local-candidate-quickstart.md`.
+
+## Agent setup - 2026-09-21
+
+Root agent guidance now uses current status sections and task-specific document routing.
+CLAUDE.md is a thin shared-guide import; historical status entries remain intact.
+This is local documentation/tooling work only, with no application release, commit, push,
+deployment or hardware validation. Setup evidence and rollback: docs/agent-setup.md.
 
 ## P2.6C validation closeout - 2026-09-14
 

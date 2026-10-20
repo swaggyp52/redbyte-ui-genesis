@@ -93,13 +93,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  padding: 18px 20px;
-  min-height: 76px;
+  padding: 20px 24px;
+  min-height: 84px;
   background: var(--wb-surface);
   flex: none;
 }
-.ide-root .rb-project-identity .rb-doc-title { font: 650 var(--wb-text-title) / 1.25 var(--wb-font-ui); }
-.ide-root .rb-project-identity .rb-project-continue { min-height: var(--wb-control-h-lg); padding-inline: 12px; }
+.ide-root .rb-project-identity .rb-doc-title { font: var(--rb-weight-title) var(--rb-text-doc) / 1.2 var(--wb-font-ui); }
+.ide-root .rb-project-identity .rb-project-continue { min-height: 2.75rem; padding-inline: 20px; font-size: var(--rb-text-body); }
 .ide-root .rb-project-saved {
   color: var(--wb-text-3);
   font: var(--wb-text-sm) var(--wb-font-ui);
@@ -113,12 +113,14 @@
   container-type: inline-size;
   container-name: rb-project-doc;
 }
+/* The stage takes the height the document has left, so the drawing fills the page instead of
+   sitting in a strip above an empty one. */
 .ide-root .rb-project-stage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 28%);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 30%);
   align-items: stretch;
-  flex: none;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: min(24rem, 60vh);
 }
 .ide-root .rb-project-canvas {
   display: flex;
@@ -128,25 +130,14 @@
   overflow: hidden;
   border-right: 1px solid var(--wb-border);
 }
-/* The drawing takes the room it is given rather than the room its viewBox wants. */
-/* The drawing takes the room it is given rather than the room its viewBox wants: the figure
-   grows, but the svg inside it was sized by its own aspect ratio and sat against the top edge,
-   which is how a 200px-tall circuit ended up in the corner of a 610px pane. Filling the box
-   lets `xMidYMid meet` do what it is for and centre the circuit in the space it has. */
-.ide-root .rb-project-canvas .rb-arch {
-  flex: 0 1 auto;
-  min-height: 0;
-  display: flex;
-  margin: 0;
-  padding: var(--wb-space-3);
-  overflow: auto;
+/* The schematic is the student's own drawing at the student's own proportions, so it is given
+   the whole region and centred in it; the sheet behind it is the same plane Design draws on. */
+.ide-root .rb-project-canvas .rb-schematic-projection {
+  flex: 1 1 auto;
+  min-height: 16rem;
+  padding: var(--wb-space-4);
+  background: var(--rb-schematic-bg);
 }
-/* Full width, natural height: this counter's drawing is about 5.7:1, so a pane that claimed
-   every remaining pixel put a 160px circuit in the middle of 610px of nothing. The region is
-   as tall as its drawing needs, capped so a deep hierarchy scrolls instead of pushing the
-   project's state off the screen. */
-.ide-root .rb-project-canvas .rb-arch svg { width: 100%; height: auto; max-height: 52vh; }
-.ide-root .rb-project-canvas .rb-arch { min-height: min(18rem, 38vh); background: var(--wb-surface); align-items: center; }
 .ide-root .rb-project-canvas-empty {
   display: flex;
   flex: 1 1 auto;
@@ -164,9 +155,19 @@
   align-items: center;
   gap: var(--wb-space-2);
   flex: none;
-  min-height: var(--wb-toolbar-h);
-  padding: 0 var(--wb-space-3);
+  min-height: 3.25rem;
+  padding: 0 var(--wb-space-4);
   border-top: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+}
+.ide-root .rb-project-canvas-caption { color: var(--wb-text-2); font: var(--rb-text-dense) var(--wb-font-ui); }
+.ide-root .rb-project-top-row {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-3);
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface);
 }
 
 .ide-root .rb-project-context {
@@ -177,26 +178,51 @@
   overflow-y: auto;
   background: var(--wb-surface-2);
 }
-.ide-root .rb-project-status { display: block; margin: 0; padding: 0; flex: none; }
+.ide-root .rb-project-context-title {
+  margin: 0;
+  padding: 20px 20px 4px;
+  color: var(--wb-text);
+  font: var(--rb-weight-strong) var(--rb-text-section) / 1.3 var(--wb-font-ui);
+}
+.ide-root .rb-project-status { display: block; margin: 0; padding: 0 0 8px; flex: none; }
+/* Each line names the workspace that owns the state and says the state in a sentence. The
+   tone is a small dot beside the name, so a warning is visible without recolouring the text;
+   the sentence itself always says what the dot means. */
 .ide-root .rb-project-status-row {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--wb-space-2);
-  padding: 12px 16px;
+  gap: 2px;
+  margin: 10px 20px 0;
+  padding: 0 0 0 18px;
 }
+.ide-root .rb-project-status-row::before {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--wb-border-strong);
+  border-radius: 50%;
+  background: transparent;
+}
+.ide-root .rb-project-status-row[data-tone='ok']::before { border-color: var(--wb-ok); background: var(--wb-ok); }
+.ide-root .rb-project-status-row[data-tone='warn']::before { border-color: var(--wb-warn); background: var(--wb-warn); }
+.ide-root .rb-project-status-row[data-tone='error']::before { border-color: var(--wb-err); background: var(--wb-err); }
 .ide-root .rb-project-status-row dt {
   flex: none;
-  min-width: 5.5rem;
-  color: var(--wb-text-3);
-  font: var(--wb-text-sm) var(--wb-font-ui);
+  color: var(--wb-text-2);
+  font: var(--rb-weight-strong) var(--rb-text-dense) / 1.3 var(--wb-font-ui);
 }
 .ide-root .rb-project-status-row dd {
   margin: 0;
   min-width: 0;
   color: var(--wb-text);
-  font: var(--wb-text-md) / 1.35 var(--wb-font-ui);
+  font: var(--rb-text-body) / 1.4 var(--wb-font-ui);
 }
+.ide-root .rb-project-status-row dd .wb-link { font: inherit; text-align: left; white-space: normal; }
 .ide-root .rb-project-status-row[data-tone='ok'] dd { color: var(--wb-ok-text, var(--wb-text)); }
 .ide-root .rb-project-status-row[data-tone='warn'] dd { color: var(--wb-warn-text, var(--wb-text)); }
 .ide-root .rb-project-status-row[data-tone='error'] dd { color: var(--wb-error-text, var(--wb-text)); }
@@ -204,13 +230,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--wb-space-2);
-  padding: var(--wb-space-3);
+  margin-top: 4px;
+  padding: 0 0 20px;
+  border-top: 1px solid var(--wb-border);
 }
 .ide-root .rb-project-attention-lead {
   margin: 0;
+  padding: 0 20px;
   color: var(--wb-text-2);
-  font: var(--wb-text-md) / 1.45 var(--wb-font-ui);
+  font: var(--rb-text-body) / 1.45 var(--wb-font-ui);
 }
+.ide-root .rb-project-attention > .rb-project-attention-lead:first-child { padding-top: 20px; }
+.ide-root .rb-project-attention-lead code { color: var(--wb-text-3); font: var(--rb-text-meta) var(--wb-font-mono); white-space: nowrap; }
+.ide-root .rb-project-attention-actions { padding: 4px 20px 0; flex-wrap: wrap; }
 .ide-root .rb-project-attention-lead[data-tone='error'] { color: var(--wb-error-text, var(--wb-text)); }
 .ide-root .rb-project-attention-lead[data-tone='warn'] { color: var(--wb-warn-text, var(--wb-text)); }
 .ide-root .rb-project-attention-actions { display: flex; align-items: center; gap: var(--wb-space-2); }
@@ -493,8 +525,7 @@
   background: var(--wb-surface);
   overflow: hidden;
 }
-.ide-root .rb-start-figure .rb-arch { margin: 0; height: 100%; }
-.ide-root .rb-start-figure .rb-arch svg { width: 100%; height: 100%; max-height: 358px; }
+.ide-root .rb-start-figure .rb-schematic-projection { height: 100%; min-height: 218px; padding: var(--wb-space-3); background: var(--rb-schematic-bg); }
 .ide-root .rb-start-figure--empty { display: flex; align-items: center; justify-content: center; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
 .ide-root .rb-start-figure--truth { display: flex; align-items: center; justify-content: center; padding: var(--wb-space-3); }
 .ide-root .rb-start-truth { border-collapse: collapse; font: var(--wb-text-sm) var(--wb-font-mono); }

@@ -97,7 +97,7 @@ describe('IDE landmark contract: exactly one visible <main> per surface', () => 
     ['project', 'Project'],
     ['design', 'Design'],
     ['verify', 'Simulate'],
-    ['hardware', 'Board & Constraints'],
+    ['hardware', 'Board'],
     ['export', 'Package & Handoff'],
   ] as const;
 

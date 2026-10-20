@@ -8,16 +8,6 @@ export interface WorkspaceRailProps {
   stepsBlocked?: Partial<Record<IdeMode, boolean>>;
 }
 
-// Compact rail labels. The full stage names (Board & Constraints, Build &
-// Export) are the document titles inside each workspace; the rail stays terse.
-const RAIL_LABELS: Record<Exclude<IdeMode, 'import'>, string> = {
-  project: 'Project',
-  design: 'Design',
-  verify: 'Simulate',
-  hardware: 'Board',
-  export: 'Package',
-};
-
 const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 const RAIL_ICONS: Record<IdeMode, React.ReactNode> = {
@@ -95,7 +85,7 @@ export const WorkspaceRail: React.FC<WorkspaceRailProps> = ({ currentMode, onMod
             onClick={() => onModeChange(stage.id)}
           >
             {RAIL_ICONS[stage.id]}
-            <span>{RAIL_LABELS[stage.id]}</span>
+            <span>{stage.label}</span>
             {isBlocked ? <span className="wb-rail-dot" aria-label="needs attention" /> : null}
           </button>
         );

@@ -38,6 +38,9 @@ import {
   type DesignFocusContext,
 } from '../components/DesignFocusBanner';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
+import { PaletteSymbol } from '../components/PaletteSymbol';
+import { LiveHierarchyExplorer } from '../components/LiveHierarchyExplorer';
+import { buildLiveHierarchy } from '../liveHierarchy';
 import { buildDesignDebugSignalTrace, getFaninCone, getFanoutCone } from '../pathTrace';
 import { arrangeCircuitByDependency, hasRunnableBoundaryPath } from '../designGraphLayout';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
@@ -119,6 +122,10 @@ import {
   centerDesignSelectionWithContext,
   readDesignCanvasViewport,
   reconcileDesignCanvasCamera,
+  keepRegionInView,
+  designCameraKey,
+  rememberDesignCamera,
+  recallDesignCamera,
   type DesignCanvasGraphAnchor,
   type DesignCanvasViewport,
 } from './designCanvasCamera';
@@ -255,6 +262,7 @@ export interface DesignSurfaceProps {
   designFocusRequest?: DesignFocusRequest | null;
   onClearDesignFocus?: () => void;
   runtimeSim: RuntimeSimState;
+  liveTopCircuit?: Circuit;
   /**
    * Apply one clock edge while exploring. There is no Run: a free-running clock in Design is a
    * simulation session that records nothing, and Simulate is where a run happens.
@@ -490,7 +498,7 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
     id: 'board',
     title: 'Board Resources',
     description:
-      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Board & Constraints.',
+      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Board.',
   },
   {
     id: 'io',
@@ -516,6 +524,11 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
   },
 ];
 
+/** Three-input variants of a two-input gate; offered one step away in the library. */
+const WIDE_GATE_TYPE = /^(AND|OR|NAND|NOR|XOR|XNOR)3$/i;
+/** World-space room kept around a selected part when a pane opens beside the sheet. */
+const SELECTION_VIEW_PAD = 72;
+
 const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   key: 'sequentialRegisters' | 'sequentialTiming' | 'sequentialLegacy';
   title: string;
@@ -531,7 +544,7 @@ const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   {
     key: 'sequentialTiming',
     title: 'Timing',
-    description: 'Clock sources that drive sequential updates (map to board timing in Board & Constraints).',
+    description: 'Clock sources that drive sequential updates (map to board timing in Board).',
     testId: 'ide-design-palette-sequential-timing',
   },
   {
@@ -592,13 +605,13 @@ function groupBoardPaletteItems(
     {
       id: 'switches',
       title: 'Switches (SW0–SW15)',
-      description: 'Adds a pre-named input pin. Assign its board mapping in Board & Constraints.',
+      description: 'Adds a pre-named input pin. Assign its board mapping in Board.',
       entries: inputs.filter((entry) => entry.kind === 'switch'),
     },
     {
       id: 'buttons',
       title: 'Buttons (BTNC/U/L/R/D)',
-      description: 'Adds a pre-named button input. Assign its board mapping in Board & Constraints.',
+      description: 'Adds a pre-named button input. Assign its board mapping in Board.',
       entries: inputs.filter((entry) => entry.kind === 'button'),
     },
     {
@@ -613,13 +626,13 @@ function groupBoardPaletteItems(
     {
       id: 'leds',
       title: 'LEDs (LD0–LD15)',
-      description: 'Adds a pre-named output pin. Assign its board mapping in Board & Constraints.',
+      description: 'Adds a pre-named output pin. Assign its board mapping in Board.',
       entries: outputs.filter((entry) => entry.kind === 'led'),
     },
     {
       id: 'display',
       title: 'Seven Segment Display',
-      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Board & Constraints.',
+      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Board.',
       entries: outputs.filter(
         (entry) => entry.kind === 'segment' || entry.kind === 'anode' || entry.kind === 'dp'
       ),
@@ -800,14 +813,14 @@ function resolveNodeInspectionTeachingProfile(
     if (node.type === 'INPUT' || node.type === 'Switch') {
       return {
         partKind: 'Board I/O',
-        whatItIs: 'Drives a test or board input into the schematic — Board & Constraints ties it to a physical switch or pin when you go to the board.',
+        whatItIs: 'Drives a test or board input into the schematic — the Board workspace ties it to a physical switch or pin.',
         structureHint: null,
       };
     }
     if (node.type === 'OUTPUT' || node.type === 'Lamp') {
       return {
         partKind: 'Board I/O',
-        whatItIs: 'Receives a net that should reach an LED or other board output; Board & Constraints assigns the Basys3 pin name.',
+        whatItIs: 'Receives a net that should reach an LED or other board output; the Board workspace assigns the Basys3 pin.',
         structureHint: null,
       };
     }
@@ -894,6 +907,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   designFocusRequest,
   onClearDesignFocus,
   runtimeSim,
+  liveTopCircuit,
   onRuntimeSimStep,
   onRuntimeSimReset,
   onRuntimeSimSetInput,
@@ -1062,6 +1076,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [circuit, topEntityName, ioRows]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
+  // The part under keyboard focus or the pointer, for the one-line interface readout below
+  // the library. A native tooltip carried this before, which a keyboard cannot summon.
+  const [libraryDetail, setLibraryDetail] = useState<{ title: string; ports: string | null } | null>(null);
   /**
    * Collapsed library sections persist per browser so a student's rail
    * arrangement survives reloads. Storage failures degrade to all-open.
@@ -1291,6 +1308,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [designView, setSplitRatio, splitRatio]);
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
+  const lastSeedProjectRef = useRef<string | null>(null);
   const pendingDebugToggleRef = useRef<DesignDebugToggleSample | null>(null);
   const [staleReplayBreadcrumb, setStaleReplayBreadcrumb] = useState<StaleReplayBreadcrumb | null>(null);
   const [replayPlaying, setReplayPlaying] = useState(false);
@@ -2005,7 +2023,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const current = editorCircuit.connections.length;
     if (current > previous) {
       setWireFeedback(null);
-      setActionToast(previous === 0 ? 'First wire linked.' : 'Wire linked.');
     }
     previousWireCountRef.current = current;
   }, [editorCircuit.connections.length]);
@@ -2751,6 +2768,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const cameraGraphAnchorsRef = useRef(cameraGraphAnchors);
   cameraGraphAnchorsRef.current = cameraGraphAnchors;
+  const editorNodesRef = useRef(editorCircuit.nodes);
+  editorNodesRef.current = editorCircuit.nodes;
+  // The parts most recently selected, kept after the selection is cleared.
+  const lastTouchedNodeIdsRef = useRef<ReadonlySet<string>>(new Set());
+  if (selection.nodes.size > 0) lastTouchedNodeIdsRef.current = selection.nodes;
+  // Which parts are on the sheet, and where. Save As gives the open work a new project
+  // identity without changing a single part; this is how that is told apart from a different
+  // project arriving.
+  const sheetWorkIdentity = useMemo(
+    () => editorCircuit.nodes
+      .map((node) => `${node.id}@${node.position?.x ?? node.x ?? 0},${node.position?.y ?? node.y ?? 0}`)
+      .sort()
+      .join('\u0001'),
+    [editorCircuit.nodes]
+  );
+  const shownSheetWorkIdentityRef = useRef(sheetWorkIdentity);
 
   useLayoutEffect(() => {
     if (!canvasHostElement) return;
@@ -2779,15 +2812,70 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCanvasSize(nextViewport);
       if (!previousViewport) return;
 
-      const currentCamera = useLogicViewStore.getState().camera;
-      const fittedCamera = lastFittedCameraRef.current;
-      // Fit follows a resized sheet only while the user has left that fitted view untouched.
-      // A deliberate pan or zoom remains owned by the user across Split and dock changes.
-      if (fittedCamera && currentCamera.x === fittedCamera.x &&
-          currentCamera.y === fittedCamera.y && currentCamera.zoom === fittedCamera.zoom) {
-        fitToCircuitRef.current(nextViewport);
+      const viewState = useLogicViewStore.getState();
+      const currentCamera = viewState.camera;
+      // A resized sheet never rescales the work. Selecting a part opens the inspector, which
+      // narrows the sheet; refitting the whole circuit into what was left turned a readable
+      // schematic into a small one at the moment a student wanted to look closely. The camera
+      // stays where it is. If the selection would now be off the sheet it is panned back in by
+      // the least amount; the zoom is the student's until they press Fit.
+      const selectedIds = viewState.selection.nodes;
+      const regionOf = (ids: { has(id: string): boolean }, pad: number) => {
+        let region: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+        for (const node of editorNodesRef.current) {
+          if (!ids.has(node.id)) continue;
+          const x = node.position?.x ?? node.x ?? 0;
+          const y = node.position?.y ?? node.y ?? 0;
+          region = region
+            ? { minX: Math.min(region.minX, x - pad), minY: Math.min(region.minY, y - pad), maxX: Math.max(region.maxX, x + pad), maxY: Math.max(region.maxY, y + pad) }
+            : { minX: x - pad, minY: y - pad, maxX: x + pad, maxY: y + pad };
+        }
+        return region;
+      };
+      if (selectedIds.size > 0) {
+        const region = regionOf(selectedIds, SELECTION_VIEW_PAD);
+        if (region) {
+          const kept = keepRegionInView(currentCamera, nextViewport, region);
+          if (kept !== currentCamera) setCamera(kept);
+          return;
+        }
+      }
+      // Nothing is selected, but the part last worked on still matters: a part placed a moment
+      // ago and released with Escape while the inspector was opening has no selection to follow.
+      // If it was on the sheet before this resize and would not be after it, it is slid back.
+      // A part that was already out of view is left where the student left it.
+      const touched = lastTouchedNodeIdsRef.current;
+      if (touched.size > 0) {
+        const spot = regionOf(touched, 8);
+        if (spot && keepRegionInView(currentCamera, previousViewport, spot, 0) === currentCamera) {
+          const region = regionOf(touched, SELECTION_VIEW_PAD);
+          const kept = region ? keepRegionInView(currentCamera, nextViewport, region) : currentCamera;
+          if (kept !== currentCamera) {
+            setCamera(kept);
+            return;
+          }
+        }
+      }
+      // A framed view nobody has touched stays centred as the sheet settles or a pane is
+      // shown or hidden: it slides by half the change in size. It is not rescaled.
+      const framedCamera = lastFittedCameraRef.current;
+      if (framedCamera && currentCamera.x === framedCamera.x &&
+          currentCamera.y === framedCamera.y && currentCamera.zoom === framedCamera.zoom) {
+        const centred = {
+          x: currentCamera.x + (nextViewport.width - previousViewport.width) / 2,
+          y: currentCamera.y + (nextViewport.height - previousViewport.height) / 2,
+          zoom: currentCamera.zoom,
+        };
+        lastFittedCameraRef.current = centred;
+        setCamera(centred);
         return;
       }
+      const stillShowsWork = cameraGraphAnchorsRef.current.some((anchor) => {
+        const screenX = anchor.x * currentCamera.zoom + currentCamera.x;
+        const screenY = anchor.y * currentCamera.zoom + currentCamera.y;
+        return screenX >= 0 && screenX <= nextViewport.width && screenY >= 0 && screenY <= nextViewport.height;
+      });
+      if (stillShowsWork) return;
       const reconciledCamera = reconcileDesignCanvasCamera(
         currentCamera,
         previousViewport,
@@ -2833,19 +2921,54 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     };
   }, [canvasHostElement, setCamera]);
 
-  // Auto-fit on mode entry: whenever Design mounts with an existing circuit,
-  // frame it immediately. Runs once per mount; does not fight subsequent user pan/zoom.
+  // Entering Design: return to where this project and module were last being worked on. Work
+  // that has not been viewed yet in this session is framed once. This used to frame the whole
+  // circuit on every entry, which threw away a deliberate zoom each time a student came back
+  // from Simulate.
+  const designCameraKeyValue = designCameraKey(projectId, hierarchy?.activeModuleId ?? TOP_MODULE_ID);
+  const designCameraKeyRef = useRef(designCameraKeyValue);
+  designCameraKeyRef.current = designCameraKeyValue;
+  const cameraEstablishedRef = useRef(false);
+  const restoreOrFrameRef = useRef<() => void>(() => {});
+  restoreOrFrameRef.current = () => {
+    const remembered = recallDesignCamera(designCameraKeyRef.current);
+    if (remembered && editorNodesRef.current.length > 0) {
+      // On first entry this runs twice in a row (mount, then the first frame request): the
+      // second finds the frame the first one just made, already remembered. That view is still
+      // an untouched frame and must go on being centred as the sheet settles; only a view that
+      // differs from the last frame is the student's own. Clearing it here unconditionally left
+      // a newly opened project 14px off centre in the production build, where the console strip
+      // moves into the status bar one frame after the fit.
+      const framed = lastFittedCameraRef.current;
+      if (!framed || framed.x !== remembered.x || framed.y !== remembered.y || framed.zoom !== remembered.zoom) {
+        lastFittedCameraRef.current = null;
+      }
+      setCamera(remembered);
+    } else if (editorNodesRef.current.length > 0) {
+      fitToCircuitRef.current();
+    } else {
+      return;
+    }
+    hasAutoFitRef.current = true;
+    cameraEstablishedRef.current = true;
+  };
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const frame = window.requestAnimationFrame(() => {
-      if (editorCircuit.nodes.length > 0) {
-        fitToCircuitRef.current();
-        hasAutoFitRef.current = true;
-      }
-    });
+    const frame = window.requestAnimationFrame(() => restoreOrFrameRef.current());
     return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount only
+  // Remember the working camera as it changes, under the project and module it belongs to. A
+  // change of key is the moment another view is being restored, so that run records nothing.
+  const rememberedCameraKeyRef = useRef(designCameraKeyValue);
+  useEffect(() => {
+    if (rememberedCameraKeyRef.current !== designCameraKeyValue) {
+      rememberedCameraKeyRef.current = designCameraKeyValue;
+      return;
+    }
+    if (!cameraEstablishedRef.current || editorCircuit.nodes.length === 0) return;
+    rememberDesignCamera(designCameraKeyValue, { x: camera.x, y: camera.y, zoom: camera.zoom });
+  }, [camera.x, camera.y, camera.zoom, designCameraKeyValue, editorCircuit.nodes.length]);
 
   // The measured viewport observer owns resize reconciliation; changing representation
   // does not discard a deliberate pan or zoom. Explicit Fit remains available.
@@ -2966,9 +3089,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       Math.abs(camera.zoom - 1) < 0.001;
     if (!cameraIsDefault) {
       hasAutoFitRef.current = true;
+      cameraEstablishedRef.current = true;
       return;
     }
     hasAutoFitRef.current = true;
+    cameraEstablishedRef.current = true;
     fitToCircuit();
   }, [camera.x, camera.y, camera.zoom, editorCircuit.nodes.length, fitToCircuit]);
 
@@ -2981,16 +3106,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   useEffect(() => {
     if (!viewportSeed) return;
     if (lastViewportSeedRef.current === viewportSeed) return;
+    const firstSeed = lastViewportSeedRef.current === undefined;
+    const sameProject = lastSeedProjectRef.current === (projectId ?? null);
     lastViewportSeedRef.current = viewportSeed;
+    lastSeedProjectRef.current = projectId ?? null;
+    // Save As: the identity changed under a sheet whose parts did not. The student is still
+    // looking at the same work, so the view stays put and becomes the copy's remembered view.
+    if (!firstSeed && !sameProject && editorNodesRef.current.length > 0 &&
+        shownSheetWorkIdentityRef.current === sheetWorkIdentity && cameraEstablishedRef.current) {
+      const kept = useLogicViewStore.getState().camera;
+      rememberDesignCamera(designCameraKeyRef.current, { x: kept.x, y: kept.y, zoom: kept.zoom });
+      return;
+    }
     hasAutoFitRef.current = false;
+    cameraEstablishedRef.current = false;
     const frame = window.requestAnimationFrame(() => {
-      fitToCircuitRef.current();
+      // The same project asking for a new frame (a lab step) is reframed. Arriving at a project,
+      // on mount or by switching, returns to that project's own remembered view if it has one.
+      if (!firstSeed && sameProject) {
+        fitToCircuitRef.current();
+        hasAutoFitRef.current = true;
+        cameraEstablishedRef.current = true;
+      } else {
+        restoreOrFrameRef.current();
+      }
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewportSeed]);
+  // Declared after the effect above so that effect compares against the sheet as it was.
+  useEffect(() => {
+    shownSheetWorkIdentityRef.current = sheetWorkIdentity;
+  }, [sheetWorkIdentity]);
 
   useEffect(() => {
     const previousView = previousDesignViewRef.current;
@@ -3571,10 +3720,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? 'Wire Mode'
       : 'Select Mode';
   const showBlankStateCard = editorCircuit.nodes.length === 0 && !isPlacementMode;
-  const hasRunnablePath = useMemo(
-    () => hasRunnableBoundaryPath(editorCircuit),
-    [editorCircuit]
-  );
+  const hierarchicalLive = useMemo(() => hierarchy?.modules.length && liveTopCircuit
+    ? buildLiveHierarchy(liveTopCircuit, hierarchy) : null, [liveTopCircuit, hierarchy]);
+  const hasRunnablePath = hierarchicalLive ? hierarchicalLive.supported && hasRunnableBoundaryPath(hierarchicalLive.circuit) : hasRunnableBoundaryPath(editorCircuit);
   const blankWorkflowResetAppliedRef = useRef(false);
   useEffect(() => {
     if (editorCircuit.nodes.length !== 0) {
@@ -3932,7 +4080,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         ? 'warn'
         : 'ok';
   const designCommandDescription = totalAuthoringErrors > 0 && primaryDesignIssueSummary
-    ? `${primaryDesignIssueSummary} Repair this Design blocker before Simulate or Build & Export.`
+    ? `${primaryDesignIssueSummary} Repair this Design blocker before Simulate or Package.`
     : effectiveExternalDebugTick != null
       ? 'Replay focus is active below. Scrub cases and inspect propagation before resuming live edits.'
       : activeVerifySignal
@@ -4200,12 +4348,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
    * Per-hierarchy-location camera memory: leaving a module stores its camera,
    * returning restores it, and a first visit frames the module's content.
    */
-  const moduleCameraMemoryRef = useRef(new Map<string, { x: number; y: number; zoom: number }>());
   const lastCameraLocationRef = useRef<string | null>(null);
   const restoreCameraForLocationRef = useRef<() => void>(() => {});
   restoreCameraForLocationRef.current = () => {
-    const stored = moduleCameraMemoryRef.current.get(activeModuleKey);
+    const stored = recallDesignCamera(designCameraKey(projectId, activeModuleKey));
     if (stored) {
+      lastFittedCameraRef.current = null;
       setCamera(stored);
     } else {
       fitToCircuit();
@@ -4214,7 +4362,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   useEffect(() => {
     const previous = lastCameraLocationRef.current;
     if (previous !== null && previous !== activeModuleKey) {
-      moduleCameraMemoryRef.current.set(previous, useLogicViewStore.getState().camera);
+      rememberDesignCamera(designCameraKey(projectId, previous), useLogicViewStore.getState().camera);
       restoreCameraForLocationRef.current();
     }
     lastCameraLocationRef.current = activeModuleKey;
@@ -4914,6 +5062,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!isPlacementMode) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (event.defaultPrevented || (event.target instanceof Element && event.target.closest('[role="dialog"]'))) return;
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
@@ -4961,6 +5110,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // Exploration owns only inputs and inspection, including when an authoring
+      // selection remains in the canvas store. Its shape controls handle their keys.
+      if (effectiveLearningMode === 'live') return;
+      if (event.defaultPrevented || (event.target instanceof Element && event.target.closest('[role="dialog"]'))) return;
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
@@ -5128,7 +5281,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodeLabelEdit, beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
+  }, [effectiveLearningMode, beginNodeLabelEdit, beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -5195,6 +5348,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       options?.title ??
       [
         `${item.title} - ${item.subtitle}`,
+        item.portSummary ? `Ports: ${item.portSummary}` : null,
         item.interfaceDetail || null,
         item.capabilityTitle || null,
         'Click to arm placement, or drag onto the canvas.',
@@ -5214,11 +5368,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         }
         data-testid={options?.testId ?? `ide-design-palette-${item.type.toLowerCase()}`}
         aria-pressed={isPending}
+        aria-describedby="rb-lib-detail"
+        onFocus={() => setLibraryDetail({ title: item.title, ports: item.portSummary ?? null })}
+        onPointerEnter={() => setLibraryDetail({ title: item.title, ports: item.portSummary ?? null })}
         title={tooltip}
       >
-        <span className="rb-lib-glyph" aria-hidden="true">{item.glyph}</span>
+        <span className="rb-lib-glyph" aria-hidden="true"><PaletteSymbol type={item.type} fallback={item.glyph} /></span>
         <span className="rb-lib-name ide-design-component-tile-title">{item.title}</span>
-        <code className="rb-lib-pins">{item.portSummary}</code>
         {item.capabilityBadge ? (
           <span className="rb-lib-cap" title={item.capabilityTitle ?? undefined}>{item.capabilityBadge}</span>
         ) : null}
@@ -5636,6 +5792,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return (
       <div className="rb-insp-selection-details-content">
         {selectedNodeTeachingProfile ? (
+          <details className="rb-insp-about" data-testid="ide-design-inspector-about">
+          <summary>About this part</summary>
           <div className="rb-insp-meaning" data-testid="ide-design-inspector-meaning">
             <p
               className="rb-insp-what-it-is"
@@ -5652,6 +5810,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </p>
             ) : null}
           </div>
+          </details>
         ) : null}
         <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
           {nextStep}
@@ -5722,42 +5881,87 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (hasSingleSelectedNode && selectedNode) {
       return (
         <div className="rb-insp-section-stack">
-          <div className="rb-insp-action-group" data-testid="ide-design-inspector-edit-group">
-            <span className="rb-insp-group-label">Edit</span>
-            <div className="rb-insp-action-grid">
-              <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
-                Copy
-              </IdeButton>
-              <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
-                Duplicate
-              </IdeButton>
-              {/* Delete is an edit like the two beside it, undoable like them, and red says what it
-                  is; a "Danger" group of one button cost a labelled row of its own. */}
-              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                Delete
-              </IdeButton>
+          {/* Reading order is the order of use: the value a student sets, the step and the
+              tracing that explain it, then the module and editing commands. The markup is in
+              this order so keyboard and screen-reader order agree with what is seen. */}
+          {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
+            <div className="rb-insp-action-group" data-testid="ide-design-inspector-input-control">
+              <span className="rb-insp-group-label">Value</span>
+              <div className="rb-insp-action-grid">
+                {(() => {
+                  const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
+                  return (
+                    <button
+                      type="button"
+                      className={`ide-design-input-control ${currentVal === 1 ? 'is-on' : 'is-off'}`}
+                      data-testid="ide-design-inspector-input-toggle"
+                      aria-pressed={currentVal === 1}
+                      onClick={handleInspectorInputToggle}
+                    >
+                      <span className="rb-bit-switch-track" aria-hidden="true"><span className="rb-bit-switch-thumb" /></span>
+                      <span className="rb-bit-switch-value">{currentVal}</span>
+                      <span className="rb-bit-switch-word">{currentVal === 1 ? 'HIGH' : 'LOW'}</span>
+                      <span className="rb-bit-switch-note">Exploring · not recorded</span>
+                    </button>
+                  );
+                })()}
+              </div>
             </div>
-            {(() => {
-              const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
-              return swapTargets && swapTargets.length > 0 ? (
-                <div className="rb-insp-subgroup" data-testid="ide-design-swap-group">
-                  <span className="rb-insp-group-label">Swap type</span>
-                  <div className="ide-design-swap-chips">
-                    {swapTargets.map((targetType) => (
-                      <button
-                        key={targetType}
-                        type="button"
-                        className="ide-design-swap-chip"
-                        data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
-                        onClick={() => handleGateSwap(targetType)}
-                      >
-                        {targetType}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null;
-            })()}
+          ) : null}
+          {selectedSequentialInspector?.actionLabel &&
+          ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
+            (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
+            <div className="rb-insp-action-group" data-testid="ide-design-sequential-action-group">
+              <span className="rb-insp-group-label">Sequential next step</span>
+              <div className="rb-insp-action-grid">
+                  {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={() => {
+                        const actionPort = selectedSequentialInspector.actionPort;
+                        if (actionPort) handlePortClick(selectedNode.id, actionPort);
+                      }}
+                    testId="ide-design-context-sequential-action"
+                  >
+                    {selectedSequentialInspector.actionLabel}
+                  </IdeButton>
+                ) : null}
+                {selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={onGoToHardware}
+                    testId="ide-design-context-sequential-action"
+                  >
+                    {selectedSequentialInspector.actionLabel}
+                  </IdeButton>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Net tracing</span>
+            <div className="rb-insp-action-grid">
+              {primarySelectionIssue ? (
+                <IdeButton tone="secondary" onClick={() => focusDesignIssue(primarySelectionIssue)}>
+                  Focus issue
+                </IdeButton>
+              ) : null}
+              <IdeButton tone="secondary" onClick={focusSelectedPath} disabled={!selectedNode} testId="ide-design-context-focus-path">
+                Focus path
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
+                Trace net
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
+                {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
+                Clear
+              </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
+            </div>
           </div>
           {selectedNativeModule ? (
             <div className="rb-insp-action-group" data-testid="ide-design-module-instance-actions">
@@ -5814,82 +6018,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </p>
             </div>
           ) : null}
-          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
-            <span className="rb-insp-group-label">Net tracing</span>
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="rb-insp-group-label">Edit</span>
             <div className="rb-insp-action-grid">
-              {primarySelectionIssue ? (
-                <IdeButton tone="secondary" onClick={() => focusDesignIssue(primarySelectionIssue)}>
-                  Focus issue
-                </IdeButton>
-              ) : null}
-              <IdeButton tone="secondary" onClick={focusSelectedPath} disabled={!selectedNode} testId="ide-design-context-focus-path">
-                Focus path
+              <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                Copy
               </IdeButton>
-              <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
-                Trace net
+              <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                Duplicate
               </IdeButton>
-              <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
-                {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
+              {/* Delete is an edit like the two beside it, undoable like them, and red says what it
+                  is; a "Danger" group of one button cost a labelled row of its own. */}
+              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
+                Delete
               </IdeButton>
-              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
-                Clear
-              </IdeButton>
-              {designRelated ? (
-                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
-              ) : null}
             </div>
+            {(() => {
+              const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
+              return swapTargets && swapTargets.length > 0 ? (
+                <div className="rb-insp-subgroup" data-testid="ide-design-swap-group">
+                  <span className="rb-insp-group-label">Swap type</span>
+                  <div className="ide-design-swap-chips">
+                    {swapTargets.map((targetType) => (
+                      <button
+                        key={targetType}
+                        type="button"
+                        className="ide-design-swap-chip"
+                        data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
+                        onClick={() => handleGateSwap(targetType)}
+                      >
+                        {targetType}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
-          {selectedSequentialInspector?.actionLabel &&
-          ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
-            (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
-            <div className="rb-insp-action-group" data-testid="ide-design-sequential-action-group">
-              <span className="rb-insp-group-label">Sequential next step</span>
-              <div className="rb-insp-action-grid">
-                  {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
-                    <IdeButton
-                      tone="secondary"
-                      onClick={() => {
-                        const actionPort = selectedSequentialInspector.actionPort;
-                        if (actionPort) handlePortClick(selectedNode.id, actionPort);
-                      }}
-                    testId="ide-design-context-sequential-action"
-                  >
-                    {selectedSequentialInspector.actionLabel}
-                  </IdeButton>
-                ) : null}
-                {selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={onGoToHardware}
-                    testId="ide-design-context-sequential-action"
-                  >
-                    {selectedSequentialInspector.actionLabel}
-                  </IdeButton>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-          {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
-            <div className="rb-insp-action-group" data-testid="ide-design-inspector-input-control">
-              <span className="rb-insp-group-label">Input control</span>
-              <div className="rb-insp-action-grid">
-                {(() => {
-                  const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
-                  return (
-                    <button
-                      type="button"
-                      className={`ide-design-input-control ${currentVal === 1 ? 'is-on' : 'is-off'}`}
-                      data-testid="ide-design-inspector-input-toggle"
-                      aria-pressed={currentVal === 1}
-                      onClick={handleInspectorInputToggle}
-                    >
-                      {currentVal === 1 ? 'HIGH — click to set LOW' : 'LOW — click to set HIGH'}
-                    </button>
-                  );
-                })()}
-              </div>
-            </div>
-          ) : null}
         </div>
       );
     }
@@ -6380,7 +6545,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <p className="rb-insp-note" data-testid="ide-design-inspector-mapping-note">
             {pin
               ? 'The constraint lines are written when the package is built.'
-              : 'Assign a pin in Board & Constraints to write the constraint lines.'}
+              : 'Assign a pin in Board to write the constraint lines.'}
           </p>
         )}
         <div className="ide-inline-actions">
@@ -6389,7 +6554,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             testId="ide-design-inspector-mapping-open"
             onClick={() => followSelectedRelation({ kind: 'board-io', constraintSetId: board?.constraintSetId ?? 'default' })}
           >
-            Open in Board &amp; Constraints
+            Open in Board
           </IdeButton>
         </div>
       </div>
@@ -6790,7 +6955,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           primaryAction={
             onGoToHardware ? (
               <IdeButton tone="secondary" onClick={onGoToHardware}>
-                Open Board &amp; Constraints
+                Open Board
               </IdeButton>
             ) : undefined
           }
@@ -6858,7 +7023,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </IdeButton>
           {onGoToHardware ? (
             <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-inline-board-open-board">
-              Open Board &amp; Constraints
+              Open Board
             </IdeButton>
           ) : null}
         </div>
@@ -6894,7 +7059,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-design-console-readout">
             <strong>{liveHdlResult.error ? 'HDL generation stopped' : 'HDL preview is current'}</strong>
             <span>{editorCircuit.nodes.length} nodes · {editorCircuit.connections.length} connections · {liveHdlResult.warnings.length} HDL warnings</span>
-            <p>{liveHdlResult.error ?? 'Generated previews are current for this browser session. Build & Export owns the handoff package.'}</p>
+            <p>{liveHdlResult.error ?? 'Generated previews are current for this browser session. Package holds the handoff files.'}</p>
           </div>
         ) : (
           <div className="ide-design-simulation-readout">
@@ -6932,9 +7097,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       <IdeSurfaceLayout
         mode="design"
         layoutIntent="workbench"
-        leftDockMode={workspacePreset.leftDockMode}
+        leftDockMode={effectiveLearningMode === 'live' && hierarchicalLive ? 'hidden' : workspacePreset.leftDockMode}
         rightDockMode={
-          hasInspectorSelectionContext || focusedAssetContext
+          !(effectiveLearningMode === 'live' && hierarchicalLive) && (hasInspectorSelectionContext || focusedAssetContext)
             ? workspacePreset.rightDockMode
             : 'hidden'
         }
@@ -7073,7 +7238,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </header>
                   {librarySectionOpen('logic') ? (
                     <div className="rb-lib-list">
-                      {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
+                      {filteredPaletteByCategory.logic
+                        .filter((item) => paletteQuery.trim().length > 0 || !WIDE_GATE_TYPE.test(item.type))
+                        .map((item) => renderNodePaletteCard(item))}
+                      {paletteQuery.trim().length === 0 && filteredPaletteByCategory.logic.some((item) => WIDE_GATE_TYPE.test(item.type)) ? (
+                        <details className="rb-lib-more" data-testid="ide-design-palette-wide-gates">
+                          <summary>3-input gates</summary>
+                          {filteredPaletteByCategory.logic
+                            .filter((item) => WIDE_GATE_TYPE.test(item.type))
+                            .map((item) => renderNodePaletteCard(item))}
+                        </details>
+                      ) : null}
                     </div>
                   ) : null}
                 </section>
@@ -7205,6 +7380,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null}
 
             </div>
+            {/* The interface of the part in focus, in a strip of fixed height: it never changes
+                size, so the list above it does not move. */}
+            <p className="rb-lib-detail" id="rb-lib-detail" data-testid="ide-design-palette-detail" aria-live="polite">
+              {libraryDetail ? (
+                <>
+                  <strong>{libraryDetail.title}</strong>
+                  {libraryDetail.ports ? <code>{libraryDetail.ports}</code> : null}
+                </>
+              ) : (
+                <>
+                  <strong>Ports</strong>
+                  <span>Focus or point at a part</span>
+                </>
+              )}
+            </p>
 
             {!hasPaletteResults && paletteHasQuery ? (
               <IdeEmptyState
@@ -7450,7 +7640,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <IdeEmptyState title="No top-level I/O" body="Place an input or output pin to create a board-assignable signal." primaryAction={null} />
               ) : null}
               {onGoToHardware ? (
-                <IdeButton tone="secondary" onClick={onGoToHardware}>Open Board &amp; Constraints</IdeButton>
+                <IdeButton tone="secondary" onClick={onGoToHardware}>Open Board</IdeButton>
               ) : null}
             </SurfacePanel>
           )}
@@ -7496,9 +7686,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           })()}
           {hasSingleSelectedNode && selectedNode ? (
             <IdeInspectorSection
-              title="Selection details"
+              title="Details"
               testId="ide-design-inspector-selection-details"
-              collapsible={false}
+              defaultOpen={false}
+              keepMounted
             >
               {renderSelectedNodeDetails()}
             </IdeInspectorSection>
@@ -7506,14 +7697,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           {(() => {
             const content = renderConnectivitySection();
             return content ? (
-              <IdeInspectorSection title="Connectivity" testId="ide-design-inspector-connectivity" defaultOpen>
+              <IdeInspectorSection title="Connectivity" testId="ide-design-inspector-connectivity" defaultOpen={false} keepMounted>
                 {content}
               </IdeInspectorSection>
             ) : null;
           })()}
           {hasInspectorSelectionContext ? (
             <React.Fragment key="design-inspector-selection-context">
-              <IdeInspectorSection title="Evidence" testId="ide-design-context-inspector" collapsible={false}>
+              <IdeInspectorSection title="Evidence" testId="ide-design-context-inspector" defaultOpen={false} keepMounted>
                 {renderSelectionState()}
                 {selectedSignalKey ? (
                   <div className="ide-inline-actions ide-copy-top-gap">
@@ -7685,7 +7876,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           {(() => {
             const content = renderRelatedSection();
             return content ? (
-              <IdeInspectorSection title="Related" testId="ide-design-inspector-related" defaultOpen>
+              <IdeInspectorSection title="Related" testId="ide-design-inspector-related" defaultOpen={false} keepMounted>
                 {content}
               </IdeInspectorSection>
             ) : null;
@@ -7787,16 +7978,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null}
               <span className="wb-toolbar-spacer" />
               {!isCodeWorkspace ? (
-                <div
-                  className={`rb-design-health ${authoringStatusToneClass}`}
-                  data-testid="ide-design-authoring-summary"
-                  title={designStatusNote ?? authoringStatusLabel}
-                >
-                  <span className="rb-design-health-dot" aria-hidden="true" />
-                  <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</span>
-                  <code className="rb-design-health-counts" data-testid="ide-design-authoring-summary-counts">
-                    {totalAuthoringErrors}E {totalAuthoringWarnings}W
-                  </code>
+                // The slot takes only the room the commands leave, so the chip can never push
+                // them onto a second row or out of the pane.
+                <div className="rb-design-health-slot">
+                  <div
+                    className={`rb-design-health ${authoringStatusToneClass}`}
+                    data-testid="ide-design-authoring-summary"
+                    title={designStatusNote ?? authoringStatusLabel}
+                  >
+                    <span className="rb-design-health-dot" aria-hidden="true" />
+                    <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</span>
+                    <code className="rb-design-health-counts" data-testid="ide-design-authoring-summary-counts">
+                      {totalAuthoringErrors}E {totalAuthoringWarnings}W
+                    </code>
+                  </div>
                 </div>
               ) : null}
               {effectiveLearningMode === 'live' ? (
@@ -7851,10 +8046,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       className="wb-btn wb-btn--ghost"
                       aria-pressed={effectiveLearningMode === 'live'}
                       disabled={!hasRunnablePath}
-                      title="Drive inputs and inspect exploratory values. Nothing is recorded or checked."
+                      title={hasRunnablePath ? 'Drive inputs and inspect exploratory values. Nothing is recorded or checked.'
+                        : hierarchicalLive?.reason || 'Connect an input to an output before exploring.'}
                       onClick={() => {
                         if (effectiveLearningMode === 'live') handleResumeLiveEditing();
-                        else { onClearExternalDebug?.(); setDesignLearningMode('live'); }
+                        else { onClearExternalDebug?.(); onOpenModule?.(TOP_MODULE_ID); setDesignLearningMode('live'); }
                       }}
                       data-testid="ide-design-explore"
                     >
@@ -7929,7 +8125,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </section>
             ) : null}
             {/* ── Schematic toolbar: tool · history · view · camera · layout ── */}
-            <div className="wb-toolbar rb-design-toolbar" data-testid="ide-design-toolbar">
+            <div style={effectiveLearningMode === 'live' && hierarchicalLive ? {display:'none'} : undefined} className="wb-toolbar rb-design-toolbar" data-testid="ide-design-toolbar">
               {isCodeWorkspace ? (
                 <span className="wb-toolbar-title" data-testid="ide-design-code-context">
                   <code data-testid="ide-design-code-context-primary-artifact">{primaryArtifactFileName}</code>
@@ -7969,17 +8165,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {workspacePreset.showCanvasTools ? (
                 <>
                   <span className="wb-toolbar-sep" />
-                  <button type="button" className="wb-btn wb-btn--ghost" onClick={() => fitToCircuit()} data-testid="ide-design-fit-circuit-canvas" title="Fit design">Fit</button>
-                  <button type="button" className="wb-btn wb-btn--ghost" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-center-selection-canvas" title="Fit selection">Selection</button>
-                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomOut} data-testid="ide-design-zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
-                  <button type="button" className="wb-btn wb-btn--ghost rb-design-zoom" onClick={zoomTo100} data-testid="ide-design-zoom-readout" title="Zoom — click to return to 100%">
-                    <code data-testid="ide-design-canvas-stat-zoom">{Math.round(camera.zoom * 100)}%</code>
-                  </button>
-                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomIn} data-testid="ide-design-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
-                  <span className="wb-toolbar-sep" />
-                  {designRelated ? (
-                    <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-trace-related" />
-                  ) : null}
+                  {/* "Related…" for the selected object is offered once, in its inspector. */}
                   <details className="rb-design-menu" data-testid="ide-design-toolbar-overflow" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
                     <summary className="wb-btn wb-btn--ghost" title="Layers, arrangement and canvas appearance">View ▾</summary>
                     <div className="wb-menu rb-design-menu-popup" aria-label="Layers, layout and canvas">
@@ -8553,6 +8739,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               data-work-object="circuit"
               aria-label="Circuit authoring workspace"
             >
+              {/* Fit and zoom sit on the sheet they act on, always in its lower left corner. In the
+                  toolbar they were the first things folded away when a pane opened, and they
+                  were what made the command row wrap. */}
+              {workspacePreset.showCanvasTools ? (
+                <div style={effectiveLearningMode === 'live' && hierarchicalLive ? {display:'none'} : undefined} className="rb-design-viewdock" role="group" aria-label="Sheet view" data-testid="ide-design-viewdock"
+                  data-blocks-canvas-placement="1" data-blocks-macro-placement="1"
+                  onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={() => fitToCircuit()} data-testid="ide-design-fit-circuit-canvas" title="Fit the whole circuit on the sheet">Fit</button>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-center-selection-canvas" title="Bring the selection to the centre of the sheet">Selection</button>
+                  <span className="rb-design-viewdock-sep" aria-hidden="true" />
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomOut} data-testid="ide-design-zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+                  <button type="button" className="wb-btn wb-btn--ghost rb-design-zoom" onClick={zoomTo100} data-testid="ide-design-zoom-readout" title="Zoom — click to return to 100%">
+                    <code data-testid="ide-design-canvas-stat-zoom">{Math.round(camera.zoom * 100)}%</code>
+                  </button>
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomIn} data-testid="ide-design-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+                </div>
+              ) : null}
               {pinnedProbeRows.length > 0 && (
                 <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
                   {pinnedProbeRows.map((probe) => (
@@ -8780,7 +8983,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         )}
                       </div>
                     )}
-                    <LogicCanvas
+                    {effectiveLearningMode === 'live' && hierarchy?.modules.length && liveTopCircuit ? (
+                      <LiveHierarchyExplorer projectId={projectId ?? 'project'} circuit={liveTopCircuit} hierarchy={hierarchy} sim={runtimeSim} onSetInput={onRuntimeSimSetInput} />
+                    ) : <LogicCanvas
                       showMinimap={designLayers.minimap}
                       engine={tickEngine}
                       circuit={editorCircuit}
@@ -8896,6 +9101,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         });
                       }}
                     />
+                    }
                     {pendingPlacement && !activeInsertionMacro ? (
                       <div
                         className="ide-design-placement-hit-layer"
@@ -10613,7 +10819,7 @@ function buildSequentialInspectorContext(input: {
       stateSummary: `${fanout} downstream ${fanout === 1 ? 'path' : 'paths'}`,
       timingContext: boardSummary,
       actionKind: ioRow ? null : 'go-to-hardware',
-      actionLabel: ioRow ? null : 'Go to Board & Constraints',
+      actionLabel: ioRow ? null : 'Go to Board',
       actionPort: null,
     };
   }
@@ -10675,7 +10881,7 @@ function buildSequentialInspectorContext(input: {
       roleLabel,
       behaviorSummary,
       nextStep: controlSource
-        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Simulate / Board & Constraints.`
+        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Simulate / Board.`
         : 'Wire CLK to a clock or manual step source before expecting updates.',
       controlLabel: 'Clock',
       ioSummaryLabel: 'Inputs',

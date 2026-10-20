@@ -29,3 +29,27 @@ it('uses the selected lane and exact tick for keyboard authoring without editing
   fireEvent.keyDown(view.getByRole('grid'), { key: 'ArrowRight' });
   expect(tick).toHaveBeenLastCalledWith(3);
 });
+
+it('keeps a recording\'s word lane, under its recorded names, after the design renames a member', async () => {
+  const { deriveRecordedWordLanes } = await import('../surfaces/verify/recordedWordLanes');
+  // Recorded with LD0 and LD1; the design has since renamed LD1 to RESULT.
+  const recordedWords = deriveRecordedWordLanes({
+    report: { signalRoles: { LD0: 'output', LD1: 'output' } },
+    waveform: [{ tick: 0, signals: { LD0: '0', LD1: '0' } }, { tick: 1, signals: { LD0: '0', LD1: '1' } }],
+  });
+  const view = render(<TimingLanes vectors={[{ id: 'v0', tick: 0, inputs: {}, expected: {} }]} inputFields={[]}
+    outputFields={[{ id: 'q0', label: 'LD0' }, { id: 'q1', label: 'RESULT' }]} clockFieldIds={new Set()} selectedTick={1}
+    observedValuesByTick={{ 0: { q0: '0', q1: '0' }, 1: { q0: '0', q1: '1' } }} recordedWords={recordedWords}
+    editable={false} onSelectTick={vi.fn()} onDriveInput={vi.fn()} onCycleExpected={vi.fn()} />);
+  const lane = view.getByTestId('ide-timing-word-lane-LD');
+  expect(lane.getAttribute('data-as-recorded')).toBe('true');
+  expect(view.getByTestId('ide-timing-word-LD-1').getAttribute('data-word-value')).toBe('2');
+  const readout = view.getByTestId('ide-time-selected-word');
+  expect(readout.getAttribute('data-word')).toBe('LD[1:0]');
+  expect(readout.textContent).toContain('as recorded');
+  // With no recording-owned lanes, live labels alone never produce one.
+  view.rerender(<TimingLanes vectors={[]} inputFields={[]} outputFields={[{ id: 'q0', label: 'LD0' }, { id: 'q1', label: 'LD1' }]}
+    clockFieldIds={new Set()} selectedTick={0} observedValuesByTick={{ 0: { q0: '1', q1: '1' } }}
+    editable={false} onSelectTick={vi.fn()} onDriveInput={vi.fn()} onCycleExpected={vi.fn()} />);
+  expect(view.queryByTestId('ide-timing-word-lane-LD')).toBeNull();
+});

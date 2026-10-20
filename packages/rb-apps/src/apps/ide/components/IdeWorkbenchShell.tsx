@@ -1,4 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+import { STATUS_CONSOLE_SLOT_ID } from './WorkbenchStatusBar';
 import {
   WORKSPACE_DOCK_SIZE_LIMITS,
   workspacePreferencesStore,
@@ -219,6 +221,15 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     );
   };
 
+  // The status line offers a slot for the collapsed bottom-panel handle. Where there is no
+  // status line (a surface rendered on its own) the handle stays in place, as before.
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setStatusSlot(window.document.getElementById(STATUS_CONSOLE_SLOT_ID));
+  }, []);
+  const inStatusLine = (handle: React.ReactElement, collapsed: boolean) =>
+    collapsed && statusSlot ? createPortal(handle, statusSlot) : handle;
+
   return (
     <section
       ref={shellRef}
@@ -343,9 +354,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           data-console-state={
             consoleHasBlocking ? 'blocking' : consoleIsExpanded ? 'expanded' : 'collapsed'
           }
+          data-console-handle={statusSlot && !consoleHasBlocking && !consoleIsExpanded ? 'status-line' : undefined}
           aria-label={consoleHasBlocking ? 'Blocking diagnostics' : 'Compiler output'}
         >
-          {!consoleHasBlocking ? (
+          {!consoleHasBlocking ? inStatusLine(
             <div className="ide-workbench-console-bar">
               <button
                 type="button"
@@ -368,7 +380,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
               >
                 &#x2304;
               </button>
-            </div>
+            </div>,
+            !consoleIsExpanded,
           ) : null}
           <div
             className="ide-workbench-resize-handle ide-workbench-resize-handle--bottom"
@@ -386,7 +399,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           <div className="ide-workbench-console-content">{console}</div>
         </section>
       ) : null}
-      {console && !showConsole && consoleMode !== 'hidden' ? (
+      {console && !showConsole && consoleMode !== 'hidden' ? inStatusLine(
         <div className="ide-workbench-console-bar ide-workbench-console-bar--restore">
           <button
             type="button"
@@ -397,7 +410,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             <span className="ide-workbench-console-toggle-caret" aria-hidden="true">{'\u25B4'}</span>
             <span>Show bottom panel</span>
           </button>
-        </div>
+        </div>,
+        true,
       ) : null}
     </section>
   );

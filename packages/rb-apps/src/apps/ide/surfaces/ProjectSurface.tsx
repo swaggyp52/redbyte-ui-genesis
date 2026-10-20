@@ -315,23 +315,24 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
   const simulation = useMemo(() => {
     const state = resolvedWorkflowAuthority.verifyState;
-    if (state === 'assertions-match') return { label: 'current · pass', tone: 'ok' as const };
-    if (state === 'trace') return { label: 'observed', tone: 'ok' as const };
-    if (state === 'stale') return { label: 'stale', tone: 'warn' as const };
-    if (state === 'assertions-differ') return { label: 'failing', tone: 'error' as const };
-    if (state === 'verify-error') return { label: 'error', tone: 'error' as const };
-    return { label: 'not run', tone: undefined };
+    if (state === 'assertions-match') return { label: 'Current — all checks pass', tone: 'ok' as const };
+    if (state === 'trace') return { label: 'Recorded — no checks added', tone: 'ok' as const };
+    if (state === 'stale') return { label: 'Stale — the design changed since this recording', tone: 'warn' as const };
+    if (state === 'assertions-differ') return { label: 'A check is failing', tone: 'error' as const };
+    if (state === 'verify-error') return { label: 'The last run stopped with an error', tone: 'error' as const };
+    return { label: 'Not run yet', tone: undefined };
   }, [resolvedWorkflowAuthority.verifyState]);
   const packageState = useMemo(() => {
     if (!health.lastExport) {
+      if (!circuit?.nodes.length) return { label: 'Start in Design — add a circuit before packaging', tone: undefined };
       return resolvedWorkflowAuthority.exportAvailable
-        ? { label: 'draft available · not built', tone: undefined }
-        : { label: 'blocked', tone: 'warn' as const };
+        ? { label: 'Draft ready — not downloaded yet', tone: undefined }
+        : { label: 'Blocked — fix the open problems first', tone: 'warn' as const };
     }
-    if (health.lastExport.status === 'blocked') return { label: 'last build blocked', tone: 'error' as const };
-    if (health.dirtySinceExport || !resolvedWorkflowAuthority.exportPackageCurrent) return { label: 'stale · rebuild', tone: 'warn' as const };
-    return { label: 'current', tone: 'ok' as const };
-  }, [health.dirtySinceExport, health.lastExport, resolvedWorkflowAuthority.exportAvailable, resolvedWorkflowAuthority.exportPackageCurrent]);
+    if (health.lastExport.status === 'blocked') return { label: 'The last package was blocked', tone: 'error' as const };
+    if (health.dirtySinceExport || !resolvedWorkflowAuthority.exportPackageCurrent) return { label: 'Stale — the design changed since this package', tone: 'warn' as const };
+    return { label: 'Current — matches the design', tone: 'ok' as const };
+  }, [circuit?.nodes.length, health.dirtySinceExport, health.lastExport, resolvedWorkflowAuthority.exportAvailable, resolvedWorkflowAuthority.exportPackageCurrent]);
 
   const savedLabel = useMemo(() => {
     if (saveState === 'unsaved') return 'unsaved changes';
@@ -386,9 +387,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       case 'verify':
         return { label: 'Resume simulation', hint: 'Where you were last working.', onActivate: () => navigateMode('verify') };
       case 'hardware':
-        return { label: 'Continue in Board & Constraints', hint: 'Where you were last working.', onActivate: () => navigateMode('hardware') };
+        return { label: 'Continue in Board', hint: 'Where you were last working.', onActivate: () => navigateMode('hardware') };
       case 'export':
-        return { label: 'Continue in Build & Export', hint: 'Where you were last working.', onActivate: () => navigateMode('export') };
+        return { label: 'Continue in Package', hint: 'Where you were last working.', onActivate: () => navigateMode('export') };
       default:
         return {
           label: 'Continue in Design',
@@ -523,6 +524,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             circuit={circuit}
             ioLabelByNodeId={ioLabelByNodeId}
             moduleNameByNodeId={moduleNameByNodeId}
+            modules={hierarchy?.modules}
             mappingRows={sortedMappingRows}
             problems={problems}
             selected={selected}

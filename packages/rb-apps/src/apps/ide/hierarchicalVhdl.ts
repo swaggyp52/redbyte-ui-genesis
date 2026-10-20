@@ -1,7 +1,7 @@
 import type { Circuit, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { netlistFromCircuit } from '../../export/netlistExport';
-import { emitRegisterVhdl, vhdlFromNetlist, type VhdlTopPort } from '../../export/vhdlExport';
+import { emitRegisterVhdl, vhdlFromNetlist, type VhdlTopPort, type VhdlNodeSourceSpan } from '../../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../../fpga/boards/basys3/basys3Bundle';
 import type { RBProject } from '../../export/projectFormat';
 import type { NativeVisualModuleDefinition, ModulePort } from './projectHierarchy';
@@ -9,25 +9,33 @@ import { modulePortVhdlType, modulePortWidth } from './projectHierarchy';
 
 export interface HierarchicalVhdlProject {
   topVhd: string;
+  sourceMap: Array<VhdlNodeSourceSpan & { path: string; definitionId: string }>;
   moduleSources: Array<{ path: string; entityName: string; text: string }>;
 }
 
-export function generateHierarchicalVhdlProject(project: RBProject): HierarchicalVhdlProject | null {
+export function generateHierarchicalVhdlProject(project: RBProject | Pick<RBProject, 'circuit' | 'hierarchy' | 'ioMapping' | 'hdl' | 'fpga'>): HierarchicalVhdlProject | null {
   const hierarchy = project.hierarchy;
   const ioMapping = project.ioMapping;
   if (!hierarchy || hierarchy.modules.length === 0 || !ioMapping) return null;
   const topEntity = safeIdentifier(project.hdl?.top ?? project.fpga?.top ?? 'top');
   const moduleById = new Map(hierarchy.modules.map((module) => [module.id, module]));
   const moduleByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
+  const sourceMap: HierarchicalVhdlProject['sourceMap'] = [];
+  const topMap: VhdlNodeSourceSpan[] = [];
+  const topVhd = generateStructuralTop(project.circuit, hierarchy.modules, ioMapping, topEntity, topMap);
+  sourceMap.push(...topMap.map(span => ({ ...span, path: 'top.vhd', definitionId: 'top' })));
   return {
-    topVhd: generateStructuralTop(project.circuit, hierarchy.modules, ioMapping, topEntity),
+    topVhd,
+    sourceMap,
     // Leaf definitions first so a module that instantiates another is analyzed
     // after its dependency (Vivado compile order follows source order).
-    moduleSources: orderModulesLeafFirst(hierarchy.modules, moduleById, moduleByName).map((module) => ({
-      path: `${snakeCase(module.name)}.vhd`,
-      entityName: module.name,
-      text: generateModuleSource(module, moduleById, moduleByName),
-    })),
+    moduleSources: orderModulesLeafFirst(hierarchy.modules, moduleById, moduleByName).map((module) => {
+      const map: VhdlNodeSourceSpan[] = [];
+      const text = generateModuleSource(module, moduleById, moduleByName, map);
+      const path = `${snakeCase(module.name)}.vhd`;
+      sourceMap.push(...map.map(span => ({ ...span, path, definitionId: module.id })));
+      return { path, entityName: module.name, text };
+    }),
   };
 }
 
@@ -74,6 +82,7 @@ function generateModuleSource(
   module: NativeVisualModuleDefinition,
   moduleById: Map<string, NativeVisualModuleDefinition>,
   moduleByName: Map<string, NativeVisualModuleDefinition>,
+  sourceMap: VhdlNodeSourceSpan[] = [],
 ): string {
   // A definition that itself instantiates another module needs a STRUCTURAL
   // architecture (component instantiations), not the gate-only netlist path —
@@ -84,7 +93,7 @@ function generateModuleSource(
       resolveChildModule(node, moduleById, moduleByName) !== null,
   );
   if (containsInstance) {
-    return generateStructuralModuleSource(module, moduleById, moduleByName);
+    return generateStructuralModuleSource(module, moduleById, moduleByName, sourceMap);
   }
   const boundaryIds = new Set(
     module.circuit.nodes
@@ -129,14 +138,16 @@ function generateModuleSource(
       fromNodeId: ref.nodeId,
       fromPort: ref.portName,
     }))));
-  return vhdlFromNetlist(netlistFromCircuit(internalCircuit), {
+  const emitted = vhdlFromNetlist(netlistFromCircuit(internalCircuit), {
     entityName: module.name,
     topPorts,
     topInputBindings,
     topOutputBindings,
     includeFileHeader: true,
     labTitle: `${module.displayName} project component`,
-  }).vhd;
+  });
+  sourceMap.push(...emitted.sourceMap);
+  return emitted.vhd;
 }
 
 /**
@@ -150,6 +161,7 @@ function generateStructuralModuleSource(
   module: NativeVisualModuleDefinition,
   moduleById: Map<string, NativeVisualModuleDefinition>,
   moduleByName: Map<string, NativeVisualModuleDefinition>,
+  sourceMap: VhdlNodeSourceSpan[] = [],
 ): string {
   const circuit = module.circuit;
   const portById = new Map(module.ports.map((port) => [port.id, port]));
@@ -189,7 +201,10 @@ function generateStructuralModuleSource(
   };
 
   const statements: string[] = [];
+  const mappedStatements = new StatementSourceMap(statements, sourceMap);
   for (const node of circuit.nodes) {
+    const before = statements.length;
+    try {
     if (boundaryByNode.has(node.id)) continue;
     const child = resolveChildModule(node, moduleById, moduleByName);
     if (child) {
@@ -213,22 +228,25 @@ function generateStructuralModuleSource(
     const b = sourceForInput(node.id, firstConnectedPort(node, incoming, ['b']) ?? 'b');
     const c = sourceForInput(node.id, firstConnectedPort(node, incoming, ['c']) ?? 'c');
     statements.push(`  ${target} <= ${gateExpression(node.type, a, b, c)};`);
+    } finally { mappedStatements.add(node.id, before, resolveChildModule(node, moduleById, moduleByName) ? 'instance' : 'evaluation'); }
   }
   // Drive each output port bit from whatever feeds its boundary node.
   for (const node of circuit.nodes) {
     const boundary = boundaryByNode.get(node.id);
     if (boundary?.direction !== 'output') continue;
+    const before = statements.length;
     const ref = incoming.get(`${node.id}.in`);
     const driver = ref
       ? (boundaryByNode.get(ref.nodeId)?.expr ?? signalFor(ref.nodeId, ref.portName))
       : "'0'";
     statements.push(`  ${boundary.expr} <= ${driver};`);
+    mappedStatements.add(node.id, before, 'boundary');
   }
 
   const ports = module.ports.map((port) =>
     `    ${port.name} : ${port.direction === 'input' ? 'IN' : 'OUT'} ${modulePortVhdlType(port)}`,
   );
-  return [
+  const header = [
     '-- Generated by RedByte from a native visual module (structural).',
     'library IEEE;',
     'use IEEE.STD_LOGIC_1164.ALL;',
@@ -242,7 +260,9 @@ function generateStructuralModuleSource(
     `architecture structural of ${module.name} is`,
     ...[...signalNames].sort().map((signal) => `  signal ${signal} : STD_LOGIC := '0';`),
     'begin',
-    ...statements,
+  ];
+  mappedStatements.offset(header);
+  return [...header, ...statements,
     'end structural;',
     '',
   ].filter((line) => line !== '').join('\n');
@@ -253,6 +273,7 @@ function generateStructuralTop(
   modules: readonly NativeVisualModuleDefinition[],
   ioMapping: IoMapping,
   entityName: string,
+  sourceMap: VhdlNodeSourceSpan[] = [],
 ): string {
   const bindings = buildVhdlTopLevelBindings(ioMapping);
   const moduleById = new Map(modules.map((module) => [module.id, module]));
@@ -288,7 +309,10 @@ function generateStructuralTop(
   };
 
   const statements: string[] = [];
+  const mappedStatements = new StatementSourceMap(statements, sourceMap);
   for (const node of circuit.nodes) {
+    const before = statements.length;
+    try {
     const module = moduleById.get(readString(node.config?.moduleDefinitionId)) ?? moduleByName.get(node.type);
     if (module) {
       const associations = module.ports.map((port) => {
@@ -313,18 +337,21 @@ function generateStructuralTop(
     const c = sourceForInput(node.id, firstConnectedPort(node, incoming, ['c']) ?? 'c');
     const expression = gateExpression(node.type, a, b, c);
     statements.push(`  ${target} <= ${expression};`);
+    } finally { mappedStatements.add(node.id, before, resolveChildModule(node, moduleById, moduleByName) ? 'instance' : 'evaluation'); }
   }
   for (const [nodeId, portName] of outputPortByNode) {
+    const before = statements.length;
     const node = nodeById.get(nodeId);
     const inputPort = node && isBoundaryOutput(node) ? 'in' : 'out';
     const ref = incoming.get(`${nodeId}.${inputPort}`);
     statements.push(`  ${portName} <= ${ref ? (inputPortByNode.get(ref.nodeId) ?? signalFor(ref.nodeId, ref.portName)) : "'0'"};`);
+    mappedStatements.add(nodeId, before, 'boundary');
   }
 
   const ports = bindings.topPorts.map((port) =>
     `    ${port.name} : ${port.dir.toUpperCase()} ${port.vhdlType ?? 'STD_LOGIC'}`,
   );
-  return [
+  const header = [
     '-- Generated by RedByte from the native visual project hierarchy.',
     'library IEEE;',
     'use IEEE.STD_LOGIC_1164.ALL;',
@@ -338,10 +365,32 @@ function generateStructuralTop(
     `architecture structural of ${entityName} is`,
     ...[...signalNames].sort().map((signal) => `  signal ${signal} : STD_LOGIC := '0';`),
     'begin',
-    ...statements,
+  ];
+  mappedStatements.offset(header);
+  const declarationStart = header.slice(0,6).filter(line=>line!=='').join('\n').split('\n').length+1;
+  for(const binding of bindings.topInputBindings){
+    const index=bindings.topPorts.findIndex(port=>port.name===binding.portName);
+    if(index>=0)sourceMap.push({nodeId:binding.toNodeId,kind:'boundary',startLine:declarationStart+index,endLine:declarationStart+index});
+  }
+  return [...header, ...statements,
     'end structural;',
     '',
   ].filter((line) => line !== '').join('\n');
+}
+
+/** Line spans recorded at emission; no searching generated text for labels. */
+class StatementSourceMap {
+  constructor(private statements: string[], private spans: VhdlNodeSourceSpan[]) {}
+  add(nodeId: string, before: number, kind: VhdlNodeSourceSpan['kind']) {
+    if (this.statements.length === before) return;
+    const lineCount = (items: string[]) => items.filter(line => line !== '').join('\n').split('\n').length;
+    this.spans.push({ nodeId, kind, startLine: before ? lineCount(this.statements.slice(0, before)) + 1 : 1,
+      endLine: lineCount(this.statements) });
+  }
+  offset(header: string[]) {
+    const count = header.filter(line => line !== '').join('\n').split('\n').length;
+    for (const span of this.spans) { span.startLine += count; span.endLine += count; }
+  }
 }
 
 function isStructuralRegister(node: Node | undefined): boolean {

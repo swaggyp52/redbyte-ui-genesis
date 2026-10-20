@@ -31,7 +31,7 @@ interface AppliedSnapshot {
 
 /**
  * Bulk bus mapping over the explicit `Base[N]` label convention — the same
- * convention Build & Export vectorizes, so a bus planned here ships as one
+ * convention Package vectorizes, so a bus planned here ships as one
  * VHDL vector. Each apply is previewed member-by-member first and can be
  * reverted as a single action.
  */

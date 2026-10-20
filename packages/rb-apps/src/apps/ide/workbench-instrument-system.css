@@ -23,17 +23,17 @@
      replaces, so the 100% appearance does not move. Spacing and radius stay in
      pixels on purpose - a wider gap is not what a reader needs at 200%, room for
      the words is. */
-  --wb-cmdbar-h: 2rem;              /* 32px */
-  --wb-status-h: 1.375rem;          /* 22px */
-  --wb-rail-w: 3.5rem;              /* 56px */
+  --wb-cmdbar-h: 3rem;              /* 48px */
+  --wb-status-h: 2rem;              /* 32px */
+  --wb-rail-w: 5rem;                /* 80px */
   --wb-tabstrip-h: max(28px, 1.25rem);
-  --wb-toolbar-h: 1.875rem;         /* 30px */
-  --wb-toolwindow-header-h: 1.75rem;/* 28px */
-  --wb-row-h: 1.625rem;             /* 26px */
-  --wb-row-h-dense: 1.5rem;         /* 24px */
-  --wb-control-h: 1.5rem;           /* 24px */
-  --wb-control-h-lg: 1.75rem;       /* 28px */
-  --wb-indent: 0.875rem;            /* 14px */
+  --wb-toolbar-h: 2.75rem;          /* 44px */
+  --wb-toolwindow-header-h: 2.5rem; /* 40px */
+  --wb-row-h: 2.125rem;             /* 34px */
+  --wb-row-h-dense: 1.875rem;       /* 30px */
+  --wb-control-h: 2rem;             /* 32px */
+  --wb-control-h-lg: 2.375rem;      /* 38px */
+  --wb-indent: 1rem;                /* 16px */
   --wb-space-1: 4px;
   --wb-space-2: 8px;
   --wb-space-3: 12px;
@@ -48,9 +48,9 @@
      set of numbers, which is how labels ended up at 11px next to labels at 12px doing the
      same job. Every step now points at redbyte-type.css. */
   --wb-text-xs: var(--rb-text-meta);
-  --wb-text-sm: var(--rb-text-body);
-  --wb-text-md: var(--rb-text-head);
-  --wb-text-lg: var(--rb-text-body);
+  --wb-text-sm: var(--rb-text-dense);
+  --wb-text-md: var(--rb-text-body);
+  --wb-text-lg: var(--rb-text-section);
   --wb-text-title: var(--rb-text-title);
 
   /* surfaces + separators (light) */
@@ -197,6 +197,23 @@
   color: var(--wb-frame-text);
   background: var(--wb-frame-bg);
 }
+.ide-root .wb-cmdbar-history { display: inline-flex; flex: none; align-items: center; gap: 2px; }
+.ide-root .wb-cmdbar-history-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-frame-text-2);
+  background: transparent;
+  font: var(--rb-text-title) / 1 var(--wb-font-ui);
+  cursor: pointer;
+}
+.ide-root .wb-cmdbar-history-btn:hover:not(:disabled) { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
+.ide-root .wb-cmdbar-history-btn:disabled { opacity: 0.35; cursor: default; }
+.ide-root .wb-cmdbar-history-btn:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
 .ide-root .wb-cmdbar-brand {
   display: inline-flex;
   flex: none;
@@ -455,18 +472,24 @@
   justify-content: center;
   gap: 3px;
   width: 100%;
-  height: 50px;
+  height: 4rem;
   padding: 0;
   border: 0;
-  border-left: 2px solid transparent;
-  border-right: 2px solid transparent;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
   color: var(--wb-text-2);
   background: transparent;
-  font: 500 var(--rb-text-micro) / 1 var(--wb-font-ui);
-  letter-spacing: 0.01em;
+  font: 500 var(--rb-text-meta) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
   cursor: pointer;
 }
-.ide-root .wb-rail-btn svg { width: 18px; height: 18px; }
+.ide-root .wb-rail-btn svg { width: 22px; height: 22px; }
+/* A short window (a laptop at high browser zoom) keeps all five workspaces and Import in view
+   by giving each a little less height, never by dropping one. */
+@media (max-height: 520px) {
+  .ide-root .wb-rail-btn { height: 3rem; gap: 2px; }
+  .ide-root .wb-rail-btn svg { width: 18px; height: 18px; }
+}
 .ide-root .wb-rail-btn:hover { color: var(--wb-frame-text); background: var(--wb-frame-bg-2); }
 .ide-root .wb-rail-btn[data-state='current'] { color: #ffffff; background: rgba(255, 255, 255, 0.08); border-left-color: var(--wb-accent); }
 .ide-root .wb-rail-btn[data-state='current'] svg { color: var(--wb-accent); }
@@ -632,12 +655,50 @@
 .ide-root .wb-status-item code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .wb-status-item strong { color: var(--wb-text); font-weight: 600; }
 .ide-root .wb-status-spacer { flex: 1 1 auto; min-width: 0; }
+/* Collapsed, the bottom panel's handle sits in the status line and the panel takes no room:
+   one line at the bottom of the window instead of a status line under an empty strip. */
+.ide-root .wb-status-console-slot { display: inline-flex; align-items: center; min-width: 0; }
+.ide-root .wb-status-console-slot .ide-workbench-console-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.ide-root .wb-status-console-slot .ide-workbench-console-toggle {
+  height: 1.625rem;
+  min-height: 0;
+  padding: 0 8px;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  font: var(--wb-text-sm) / 1 var(--wb-font-ui);
+}
+.ide-root .wb-status-console-slot .ide-workbench-console-toggle:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .wb-status-console-slot .ide-workbench-dock-collapse--bottom {
+  position: static;
+  width: 1.625rem;
+  height: 1.625rem;
+  min-height: 0;
+  border: 0;
+  color: var(--wb-text-3);
+  background: transparent;
+}
+.ide-root .ide-workbench-console[data-console-handle='status-line'] {
+  height: 0;
+  min-height: 0;
+  max-height: 0;
+  padding: 0;
+  border: 0;
+}
 .ide-root .wb-status-btn {
   display: inline-flex;
-  height: 18px;
+  height: 1.625rem;
   align-items: center;
   gap: 5px;
-  padding: 0 6px;
+  padding: 0 8px;
   border: 0;
   border-radius: var(--wb-radius);
   color: var(--wb-text-2);

@@ -6,7 +6,7 @@ import { collectPinAssignments } from './hardwarePinPlanner';
  * current document, emit the per-assignment `set_property` lines (PACKAGE_PIN +
  * IOSTANDARD) exactly as the Basys3 constraints will carry them, so the planner
  * can show the precise before/after consequence of a pin edit without leaving
- * Board & Constraints. This is a read-model preview — Build & Export remains the
+ * Board. This is a read-model preview — Package remains the
  * authority for the final packaged XDC.
  */
 

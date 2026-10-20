@@ -24,7 +24,7 @@ describe('PageProductHeader', () => {
 
     expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('What do I do next?');
     expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('Assign required signals');
-    expect(getByTestId('ide-product-spine-hardware').textContent).toContain('Board & Constraints');
+    expect(getByTestId('ide-product-spine-hardware').textContent).toContain('Board');
     expect(getByTestId('ide-product-spine-status-hardware').textContent).toContain('Mapping missing');
     expect(getByTestId('ide-product-spine-next-hardware').textContent).toContain('Map SW0 and LD0');
     expect(getByTestId('ide-product-spine-boundary-hardware').textContent).toContain('Vivado');

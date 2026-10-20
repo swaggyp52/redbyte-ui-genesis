@@ -38,7 +38,7 @@ export interface ArtifactDependencyGraph {
 
 export const ARTIFACT_GRAPH_INPUTS: readonly ArtifactGraphInput[] = Object.freeze([
   { id: 'design', label: 'Design', detail: 'Circuit, hierarchy and the top entity' },
-  { id: 'board', label: 'Board & Constraints', detail: 'Pin assignments and the active constraint set' },
+  { id: 'board', label: 'Board', detail: 'Pin assignments and the active constraint set' },
   { id: 'simulate', label: 'Simulate', detail: 'The active scenario and its recorded run' },
   { id: 'project', label: 'Project', detail: 'Project identity, sources and package settings' },
 ]);

@@ -1,21 +1,18 @@
 # AI usage rules (repo-local)
 
 ## Authority
-- `AI_STATE.md` at the repo root is authoritative. If anything conflicts, `AI_STATE.md` wins.
+- Current owner instructions and `AGENTS.md` govern scope. Current code and tests establish behavior;
+  `AI_STATE.md` and `docs/ACTIVE_WORK.md` record status and evidence, including historical entries.
 
 ## Architectural invariants
 - IDE-first product truth is canonical: default `/` boots the six-surface IDE, while `/?launcher=1` is an explicit legacy/dev shell path and not the default product narrative.
 - Monorepo structure is permanent; packages remain modular and independent
-- Terminal-first development only
+- Use the terminal for source/build checks and the available native browser for hands-on product inspection.
 - `main` is production (Cloudflare Pages auto-deploy)
 
-For product, UX, workflow, or surface work, the minimum read order after `AI_STATE.md` is:
-1. `docs/contracts/RedByte_Product_Contract.md`
-2. `docs/manuals/RedByte_Product_Manual.md`
-3. `docs/roadmap/RedByte_Gap_Audit.md`
-4. `docs/IDE_SYSTEM_MAP.md`
-5. `docs/ide/SURFACE_CONFORMANCE.md`
-6. the relevant proof doc (`docs/release/manual-assignment-qa-script.md`, `docs/release/v1-release-checklist.md`, `docs/release/product-hardening-ticket-template.md`, or `docs/rehearsal/failure-ticket-template.md`)
+For product work, use the task-specific routing in `AGENTS.md`: relevant product contract/manual
+sections, affected surface spec, and applicable proof obligations. Read system maps for cross-surface
+changes and release checklists for release work; do not load the full history or every reference.
 
 Do not use the stale / OS-era docs listed in `docs/DOC_INDEX.md` as default context unless the task explicitly targets historical cleanup or legacy shell behavior.
 

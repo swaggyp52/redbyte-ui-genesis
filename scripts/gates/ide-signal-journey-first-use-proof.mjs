@@ -1,0 +1,44 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { assert, runIdeGate } from './_gateHarness.mjs';
+const out=path.resolve(process.env.RB_JOURNEY_FIRST_USE_OUT??'.redbyte/signal-journey/first-use-dev');
+await mkdir(out,{recursive:true});
+await runIdeGate('Signal Journey supporting first-use and saved palette widths',async({page,baseUrl})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.addInitScript(()=>localStorage.setItem('rb-onboarding-v1-seen','1'));
+ await page.setViewportSize({width:1366,height:768});
+ await page.goto(`${baseUrl}/?mode=project&e2e=1`);
+ await page.getByTestId('ide-project-build-fresh-primary').click();
+ await page.getByTestId('ide-design-live-canvas').waitFor();
+ const shot=async(name)=>page.screenshot({path:path.join(out,`${name}.png`)});
+ const records=[];
+ for(const mode of ['design','verify','hardware','export','project']){
+  await page.getByTestId(`mode-button-${mode}`).click();
+  await page.waitForFunction(()=>!document.body.innerText.includes('Loading Board workspace')&&!document.body.innerText.includes('Loading Package workspace'));
+  await page.getByTestId(`ide-mode-${mode}`).waitFor({state:'visible'});
+  const text=await page.getByTestId('ide-root').innerText();
+  await writeFile(path.join(out,`blank-${mode}.txt`),text);
+  await shot(`blank-${mode}-1366`);
+  if(mode==='project')assert(text.includes('add a circuit before packaging')&&!text.includes('fix the open problems first'),'blank Project distinguishes prerequisite from problems');
+  if(mode==='export')assert((text.includes('Start in Design')||text.includes('Generated scaffolding'))&&!/8 of 9 files ready/.test(text),'blank Package does not claim eight ready artifacts');
+  const colors=await page.locator('.ide-empty-state,.ide-design-empty-card,.ide-verify-studio-empty').evaluateAll(nodes=>nodes.map(el=>({text:el.innerText,bg:getComputedStyle(el).backgroundColor,color:getComputedStyle(el).color})));
+  records.push({mode,colors});await shot(`blank-${mode}-1366`);
+ }
+ await page.getByTestId('mode-button-design').click();
+ await page.setViewportSize({width:1440,height:900});
+ const separator=page.getByRole('separator',{name:'Resize left panel',exact:true});
+ await separator.focus();
+ for(let i=0;i<8;i++)await separator.press('ArrowLeft');
+ const measure=()=>page.locator('.rb-lib-name').evaluateAll(nodes=>nodes.filter(el=>el.getBoundingClientRect().width>0).map(el=>({text:el.innerText,width:el.clientWidth,scrollWidth:el.scrollWidth,height:el.clientHeight,scrollHeight:el.scrollHeight,whiteSpace:getComputedStyle(el).whiteSpace})));
+ let labels=await measure();assert(labels.length>5,'ordinary palette labels are visible');
+ assert(labels.every(l=>l.scrollWidth<=l.width+1&&l.scrollHeight<=l.height+1),'saved narrow palette must wrap complete ordinary labels');
+ const savedWidth=await separator.getAttribute('aria-valuenow');
+ await shot('palette-saved-narrow-1440');
+ await page.reload();await page.getByTestId('ide-design-live-canvas').waitFor();
+ assert(await page.getByRole('separator',{name:'Resize left panel',exact:true}).getAttribute('aria-valuenow')===savedWidth,'palette width survives reload');
+ await page.setViewportSize({width:1000,height:650});labels=await measure();
+ assert(labels.every(l=>l.scrollWidth<=l.width+1&&l.scrollHeight<=l.height+1),'short window keeps ordinary labels complete');
+ await shot('palette-saved-narrow-1000x650');
+ assert(errors.length===0,`first use errors ${JSON.stringify(errors)}`);
+ await writeFile(path.join(out,'first-use-proof.json'),JSON.stringify({baseUrl,viewports:[[1366,768],[1440,900],[1000,650]],savedWidth,labels,records,errors},null,2));
+});

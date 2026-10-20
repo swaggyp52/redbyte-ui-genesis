@@ -391,7 +391,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
             />
             <figcaption>
               Figure {figBoard} — {boardLabel} with the {mapped} mapped resources highlighted.
-              {linkable ? <span className="rb-handoff-click"> Click a resource to open its signal in Board & Constraints.</span> : null}
+              {linkable ? <span className="rb-handoff-click"> Click a resource to open its signal in Board.</span> : null}
             </figcaption>
           </figure>
           <div className="wb-table-frame">
@@ -418,7 +418,7 @@ export const HandoffOverviewDocument: React.FC<HandoffOverviewDocumentProps> = (
             </table>
             <p className="wb-toolbar-meta">
               Table {tableMapping} — Logical signals, their artifact ports and package pins.
-              {linkable ? <span className="rb-handoff-click"> A row opens the signal in Board & Constraints.</span> : null}
+              {linkable ? <span className="rb-handoff-click"> A row opens the signal in Board.</span> : null}
             </p>
           </div>
         </section>

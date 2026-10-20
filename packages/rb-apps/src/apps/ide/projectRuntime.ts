@@ -21,6 +21,9 @@ import {
 import { restampRunEvidenceProject, scopeRunEvidenceToProject } from './runScope';
 import { BROWSER_ENGINE_VERSION, buildRunIdentity, configurationDigest, outputDigest, compactNativeTrace, type NativeRecordingTrace, type RunIdentity, type RecordedExecutionInput } from './runDeterminism';
 import { appendRecordedRun, findVerifyRunLedgerEntry, getRuntimeVerifyRunId, latestRecordedScenarioRun } from './runArchive';
+import { generateJourneySource } from './signalJourney';
+import { startVerificationWorker, type VerificationJob } from './sim/verificationWorker';
+import type { VerificationComputeRequest } from './sim/verificationCompute';
 import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import {
   createEmptyProjectSourceModel,
@@ -295,6 +298,11 @@ export interface ProjectWorkspaceSnapshot {
 }
 
 export interface RuntimeVerifyRun {
+  hierarchySnapshot?: { topCircuit: Circuit; hierarchy?: import('./projectHierarchy').ProjectHierarchyDocument };
+  evaluationTrace?: import('@redbyte/rb-logic-core').EvaluationTrace;
+  elaborationSources?: import('./projectHierarchy').ElaborationSources;
+  /** Matching generated source retained with this circuit, independent of later edits. */
+  generatedSource?: import('./signalJourney').JourneyGeneratedSource;
   /** Produced at execution, not reconstructed from today's engine for old recordings. */
   identity?: RunIdentity;
   outputDigest?: string;
@@ -365,6 +373,7 @@ export function getRuntimeVerifyRunKind(
 }
 
 export interface RunVerificationInput {
+  captureEvaluations?: boolean;
   /** Resolve retained inputs at the owner; callers cannot substitute a historical topology. */
   reproduceRunId?: string;
   scenarioId: string;
@@ -387,6 +396,16 @@ export interface RunVerificationInput {
   ranAtIso?: string;
   // Legacy no-op: authoritative verification always uses deterministic circuit evaluation.
   useRuntimeTrace?: boolean;
+}
+
+export interface VerificationExecutionState {
+  status: 'idle' | 'preparing' | 'computing' | 'publishing' | 'complete' | 'cancelled' | 'error';
+  requestId?: string;
+  completedCases?: number;
+  admittedRunId?: string;
+  message?: string;
+  timings?: { prepareMs: number; requestTransferMs: number; computeMs: number; responseTransferMs: number;
+    publicationMs: number; admissionMs?: number; renderOpportunityMs?: number; wholeMs: number; visibleOpportunityMs?: number };
 }
 
 export interface ProjectRuntimeActions {
@@ -541,6 +560,9 @@ export interface ProjectRuntimeState {
     toPort: string;
   }) => void;
   runVerification: (input: RunVerificationInput) => RuntimeVerifyRun;
+  verificationExecution: VerificationExecutionState;
+  startVerification: (input: RunVerificationInput) => void;
+  cancelVerification: (reason?: string) => void;
   selectRecordedRun: (runId: string) => void;
   clearVerification: () => void;
   recordExport: (result: ProjectHealthExportResult) => void;
@@ -686,10 +708,20 @@ interface RuntimeSeedState extends PersistedRuntimeState {
   designRevision: number;
 }
 
+let transientVerificationMutation = false;
+const projectRuntimeStorage = createRuntimeJsonStorage<PersistedRuntimeState>({ replacer: recordingStorageReplacer, reviver: recordingStorageReviver });
+const verificationAwareStorage: typeof projectRuntimeStorage = {
+  ...projectRuntimeStorage,
+  setItem: (name, value) => transientVerificationMutation ? undefined : projectRuntimeStorage.setItem(name, value),
+};
+
 export const useProjectRuntime = create<ProjectRuntimeState>()(
   persist(
     (set, get) => ({
       ...createEmptyProjectState(),
+      verificationExecution: { status: 'idle' },
+      startVerification: input => startRuntimeVerification(input),
+      cancelVerification: reason => cancelRuntimeVerification(reason),
       actions: {
         verify: {
           run: (input) => get().runVerification(input),
@@ -1918,327 +1950,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         });
       },
       runVerification: (input) => {
-        let runtimeRun: RuntimeVerifyRun | undefined;
-        set((state) => {
-          const source = input.reproduceRunId
-            ? state.verifyRunArchive.find(run => getRuntimeVerifyRunId(run) === input.reproduceRunId && run.projectId === state.projectId)
-            : undefined;
-          if (input.reproduceRunId && (!source?.executionInput || !source.circuitSnapshot || source.identity?.engine !== BROWSER_ENGINE_VERSION)) {
-            throw new Error('This recording cannot be reproduced: its retained inputs or engine version are unavailable.');
-          }
-          const executionIoRows = source?.executionInput?.ioRows ?? state.projectIoRows;
-          const simulationCircuit = source?.circuitSnapshot ?? elaborateProjectHierarchy(state.circuit, state.hierarchy);
-          const scenarioId = source?.scenarioId ?? (input.scenarioId.trim() || 'runtime-verify');
-          const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
-          const scenarioName =
-            source?.scenarioName ?? matchedScenario?.name ?? (input.scenarioName.trim() || 'Runtime verification');
-          const scenarioVersion = source ? source.scenarioVersion : matchedScenario
-            ? matchedScenario.version
-            : Number.isFinite(input.scenarioVersion)
-              ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
-              : undefined;
-          const circuitHash = buildVerifyCircuitEvidenceHash(simulationCircuit);
-          const ioMapping = toIoMapping(executionIoRows);
-          const mappingEvidenceHash = source?.mappingEvidenceHash ?? buildVerifyMappingEvidenceHash(
-            resolveIoMappingFromProjectFields({
-              ioMapping,
-              hardwareMappingV2: state.hardwareMappingV2,
-            }) ?? ioMapping
-          );
-          const verifyContext = buildDeterministicVerifyContext(
-            simulationCircuit,
-            ioMapping
-          );
-          const scheduleContract = source?.scheduleContract ? cloneVerifyScheduleContract(source.scheduleContract) : input.scheduleContract
-            ? cloneVerifyScheduleContract(input.scheduleContract)
-            : verifyContext.schedule;
-          const model = verifyContext.simModel;
-          const clockPolicy =
-            source?.clockPolicy ?? input.clockPolicy ??
-            detectVerifyClockPolicy({
-              circuit: simulationCircuit,
-              ioRows: executionIoRows,
-              scheduleContract,
-            });
-          const authoredVectors = normalizeVectorsForLiveIo(
-            cloneVectors(source?.executionInput?.vectors ?? input.vectors ?? resolveActiveScenarioVectors(state)),
-            executionIoRows,
-            clockPolicy
-          );
-          // This binds the run to the scenario document version. Exact run-input
-          // authority remains separate in scenarioStimulusHash + report.vectors,
-          // so appended custom rows cannot become Export authority by inheritance.
-          const scenarioContentHash = source ? source.scenarioContentHash : matchedScenario
-            ? computeScenarioContentHash(matchedScenario)
-            : undefined;
-          const scenarioStimulusHash = computeExecutionStimulusHash(
-            authoredVectors,
-            clockPolicy
-          );
-          const runtimeVectors = materializeVectorsForClockPolicy({
-            vectors: authoredVectors,
-            ioRows: executionIoRows,
-            policy: clockPolicy,
-          });
-          const requestedVerifyRows = (input.rows ?? []).length > 0;
-          const hasExpectedVectorAssertions = runtimeVectors.some(
-            (vector) => Object.keys(vector.expected ?? {}).length > 0
-          );
-          const runKind =
-            source?.runKind ?? input.runKind ??
-            (input.assertionMode === true
-              ? 'verify'
-              : input.assertionMode === false
-                ? 'trace'
-                : requestedVerifyRows || hasExpectedVectorAssertions
-                  ? 'verify'
-                  : 'trace');
-          // Trace runs must not consume expected values — strip them so the engine
-          // produces observed-only rows with no comparison failures.
-          const deterministicVectors =
-            runKind === 'trace'
-              ? runtimeVectors.map((v) => ({ ...v, expected: {} as Record<string, boolean | number> }))
-              : runtimeVectors;
-          const deterministicResult =
-            deterministicVectors.length > 0
-              ? runDeterministicVerifyFromModel(
-                  simulationCircuit,
-                  model,
-                  executionIoRows,
-                  deterministicVectors,
-                  scheduleContract,
-                  clockPolicy ?? undefined
-                )
-              : null;
-          const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
-          const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
-          const preflightIssues = deterministicResult?.evidence.preflight ?? [];
-          const blockingPreflightIssues = preflightIssues.filter((issue) => issue.blocking !== false);
-          const status: 'pass' | 'fail' =
-            failedRows.length > 0 || blockingPreflightIssues.length > 0 ? 'fail' : 'pass';
-          const simulationStatus: 'complete' = 'complete';
-          const assertionStatus: NonNullable<RuntimeVerifyRun['assertionStatus']> =
-            runKind === 'trace'
-              ? 'not-configured'
-              : blockingPreflightIssues.length > 0 && normalizedRows.length === 0
-                ? 'not-evaluated'
-                : failedRows.length > 0
-                  ? 'failing'
-                  : 'passing';
-          const ranAtIso = input.ranAtIso ?? new Date().toISOString();
-          const vectors = toVerifyVectors(runtimeVectors);
-          const signalRoles = deriveIoSignalRoles(executionIoRows, scheduleContract);
-          const report = buildVerifyReport({
-            scenarioId,
-            scenarioName,
-            status,
-            deterministicHash: input.deterministicHash,
-            rows: normalizedRows,
-            vectors,
-            generatedAtIso: ranAtIso,
-            signalRoles,
-          });
-          // Preserve the provider's observations separately from report display aliases.
-          // Optional checks can add names to the display projection without changing an output.
-          const traceWaveform = deterministicResult
-            ? buildVerifyWaveSamplesFromRuntimeTrace(deterministicResult.trace) : undefined;
-          const nativeTrace = traceWaveform ? compactNativeTrace(traceWaveform) : undefined;
-          const waveform = buildCanonicalVerifyWaveSamples(
-            report,
-            deterministicResult?.trace ?? []
-          );
-          const evidence =
-            deterministicResult !== null
-              ? ({
-                  ...deterministicResult.evidence,
-                  circuitHash,
-                } satisfies VerifyEvidenceCapsule)
-              : undefined;
-          const identity = buildRunIdentity({ circuit: simulationCircuit, ioRows: executionIoRows,
-            vectors: authoredVectors, clockPolicy, schedule: scheduleContract, runKind });
-          const sequence = Math.max(0, ...state.verifyRunHistory.map(run => run.sequence ?? 0), ...state.verifyRunArchive.map(run => run.sequence ?? 0)) + 1;
-          const runId = 'run-' + configurationDigest(identity).slice(0, 12) + '-' + sequence;
-          runtimeRun = {
-            identity,
-            outputDigest: outputDigest({ waveform, nativeTrace }),
-            sequence,
-            reproducedFromRunId: source?.runId,
-            runId,
-            projectId: state.projectId,
-            scenarioId: report.scenarioId,
-            scenarioName: report.scenarioName,
-            runKind,
-            scenarioVersion,
-            scenarioContentHash,
-            scenarioStimulusHash,
-            mappingEvidenceHash,
-            status: report.status,
-            simulationStatus,
-            assertionStatus,
-            qualification: detectIncompleteMappingQualification(executionIoRows, report.status),
-            deterministicHash: report.deterministicHash,
-            reportHash: report.reportHash,
-            firstFailingTick: report.firstFailingTick,
-            generatedAtIso: report.generatedAtIso,
-            schedule: scheduleContract.schedule,
-            scheduleContract: cloneVerifyScheduleContract(scheduleContract),
-            clockPolicy: clockPolicy ? { ...clockPolicy } : undefined,
-            meta: buildVerifyRunMeta(
-              scheduleContract,
-              clockPolicy,
-              authoredVectors,
-              executionIoRows
-            ),
-            report,
-            waveform,
-            nativeTrace,
-            evidence,
-            circuitSnapshot: structuredClone(simulationCircuit),
-          };
-
-          // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
-          const vectorsHash = digestValue(stableSerialize(runtimeVectors));
-          const mappingHash = mappingEvidenceHash;
-          // Use the same hash function as buildCurrentVerifyProjectHash in IdeApp so that
-          // deriveVerifyCurrent's ledger comparison always resolves correctly.
-          // The prior inline computation included vector `id` fields (via cloneVectors spread)
-          // while buildCurrentVerifyProjectHash strips them — causing a permanent stale loop
-          // whenever vectors carried an `id` (e.g., after inserting a clock pattern).
-          const projectHash = source?.executionInput?.projectHash ?? buildCurrentVerifyProjectHash({
-            circuit: simulationCircuit,
-            projectVectors: state.projectVectors,
-            customVectors: state.customVectors,
-            projectIoRows: executionIoRows,
-          });
-          runtimeRun.executionInput = { ioRows: structuredClone(executionIoRows), vectors: structuredClone(authoredVectors), projectHash };
-          const prevEntry = state.verifyRunHistory[state.verifyRunHistory.length - 1] ?? null;
-          const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
-          const ledgerEntry: VerifyRunLedgerEntry = {
-            runId,
-            identity,
-            outputDigest: runtimeRun.outputDigest,
-            sequence,
-            projectId: state.projectId,
-            scenarioId: runtimeRun.scenarioId,
-            scenarioName: runtimeRun.scenarioName,
-            runKind,
-            tickCount: runtimeRun.waveform?.length ?? 0,
-            failedSignals: Array.from(new Set(report.rows.filter((row) => row.status === 'fail').map((row) => row.signal))),
-            ranAtIso,
-            status: report.status,
-            passedRows: report.rows.filter((row) => row.status === 'pass').length,
-            failedRows: report.rows.filter((row) => row.status === 'fail').length,
-            firstFailure: firstFailRow
-              ? { tick: firstFailRow.tick, signal: firstFailRow.signal, expected: firstFailRow.expected, actual: firstFailRow.actual }
-              : null,
-            circuitHash,
-            vectorsHash,
-            mappingHash,
-            projectHash,
-            didCircuitChangeSinceLast: prevEntry ? prevEntry.circuitHash !== circuitHash : false,
-            didVectorsChangeSinceLast: prevEntry ? prevEntry.vectorsHash !== vectorsHash : false,
-            didMappingChangeSinceLast: prevEntry ? prevEntry.mappingHash !== mappingHash : false,
-          };
-          const nextHistory = [...state.verifyRunHistory, ledgerEntry];
-
-          return {
-            verifyLastRun: runtimeRun,
-            verifyRunHistory: nextHistory,
-            verifyRunArchive: appendRecordedRun(
-              normalizeRecordedRunArchive(state.verifyRunArchive, state.projectId, state.verifyLastRun),
-              cloneVerifyRun(runtimeRun),
-            ),
-            scenarioAuthority: source ? state.scenarioAuthority :
-              report.status === 'pass' && runKind === 'verify'
-                ? 'verified'
-                : deriveScenarioAuthority({
-                    projectKind: state.projectKind,
-                    activeExampleId: state.activeExampleId,
-                    hasVectors: runtimeVectors.length > 0,
-                    hasAssertions: runtimeVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
-                    dirtySinceVerify: false,
-                    verifyStatus: report.status,
-                    vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
-                  }),
-            sim: {
-              ...state.sim,
-              running: false,
-            },
-            projectHealthCore: {
-              ...state.projectHealthCore,
-              lastVerify: {
-                status: report.status,
-                hash: report.deterministicHash,
-                runKind,
-                reportHash: report.reportHash,
-                report,
-                failingTick: report.firstFailingTick,
-                ranAtIso: report.generatedAtIso,
-              },
-              dirtySinceVerify: source ? (
-                source.scenarioId !== state.activeScenarioId ||
-                source.scenarioContentHash !== (matchedScenario ? computeScenarioContentHash(matchedScenario) : undefined) ||
-                projectHash !== buildCurrentVerifyProjectHash({ circuit: elaborateProjectHierarchy(state.circuit, state.hierarchy),
-                  projectVectors: state.projectVectors, customVectors: state.customVectors, projectIoRows: state.projectIoRows })
-              ) : false,
-              dirtySinceExport: true,
-            },
-          };
-        });
-        return runtimeRun ?? {
-          scenarioId: input.scenarioId,
-          scenarioName: input.scenarioName,
-          runKind:
-            input.runKind ??
-            (input.assertionMode === true
-              ? 'verify'
-              : input.assertionMode === false
-                ? 'trace'
-                : (input.rows ?? []).length > 0
-                  ? 'verify'
-                  : 'trace'),
-          scenarioVersion:
-            Number.isFinite(input.scenarioVersion)
-              ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
-              : undefined,
-          scenarioContentHash:
-            typeof input.scenarioContentHash === 'string' &&
-            input.scenarioContentHash.trim().length > 0
-              ? input.scenarioContentHash.trim()
-              : undefined,
-          scenarioStimulusHash:
-            typeof input.scenarioStimulusHash === 'string' &&
-            input.scenarioStimulusHash.trim().length > 0
-              ? input.scenarioStimulusHash.trim()
-              : undefined,
-          status: 'fail',
-          simulationStatus: 'blocked',
-          assertionStatus:
-            input.runKind === 'trace' || input.assertionMode === false
-              ? 'not-configured'
-              : 'not-evaluated',
-          deterministicHash: input.deterministicHash,
-          reportHash: 'pending',
-          generatedAtIso: input.ranAtIso ?? new Date().toISOString(),
-          schedule: 'combinational',
-          meta: {
-            circuitKind: 'combinational',
-            clockingProtocol: null,
-            samplePoint: 'steady-state',
-            tick0Meaning: null,
-            clockSignalName: null,
-          },
-          report: buildVerifyReport({
-            scenarioId: input.scenarioId,
-            scenarioName: input.scenarioName,
-            status: 'fail',
-            deterministicHash: input.deterministicHash,
-            rows: [],
-            vectors: [],
-            generatedAtIso: input.ranAtIso ?? new Date().toISOString(),
-          }),
-          waveform: [],
-        };
+        const prepared = prepareRuntimeVerification(get(), input);
+        const result = computeReferenceVerification(prepared, input);
+        let run!: RuntimeVerifyRun;
+        set(state => { const update = buildRuntimeVerificationUpdate(state, input, prepared, result); run = update.runtimeRun; return update.patch; });
+        return run;
       },
       clearVerification: () => {
         set((state) => ({
@@ -2885,7 +2601,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createRuntimeJsonStorage<PersistedRuntimeState>({ replacer: recordingStorageReplacer, reviver: recordingStorageReviver }),
+      storage: verificationAwareStorage,
       onRehydrateStorage: () => (_state, error) => { if (error) runtimePersistence.hydrationFailed(error); },
       // Keep the existing persistence envelope version: hierarchy is an additive,
       // optional field normalized by mergePersistedRuntimeState for legacy saves.
@@ -4905,6 +4621,10 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
   return {
     ...run,
     circuitSnapshot: run.circuitSnapshot ? structuredClone(run.circuitSnapshot) : undefined,
+    evaluationTrace: run.evaluationTrace ? structuredClone(run.evaluationTrace) : undefined,
+    elaborationSources: run.elaborationSources ? structuredClone(run.elaborationSources) : undefined,
+    hierarchySnapshot: run.hierarchySnapshot ? structuredClone(run.hierarchySnapshot) : undefined,
+    generatedSource: run.generatedSource ? structuredClone(run.generatedSource) : undefined,
     identity: run.identity ? { ...run.identity } : undefined,
     nativeTrace: run.nativeTrace ? structuredClone(run.nativeTrace) : undefined,
     executionInput: run.executionInput ? structuredClone(run.executionInput) : undefined,
@@ -5770,4 +5490,392 @@ export function createProjectId(seed: string): string {
 // E2E test hook: expose project runtime store for programmatic access (gates/dev/test).
 if (typeof window !== 'undefined') {
   (window as any).__RB_PROJECT_RUNTIME__ = useProjectRuntime;
+}
+
+function prepareRuntimeVerification(state: ProjectRuntimeState, input: RunVerificationInput) {
+  const source = input.reproduceRunId
+    ? state.verifyRunArchive.find(run => getRuntimeVerifyRunId(run) === input.reproduceRunId && run.projectId === state.projectId)
+    : undefined;
+  if (input.reproduceRunId && (!source?.executionInput || !source.circuitSnapshot || source.identity?.engine !== BROWSER_ENGINE_VERSION)) {
+    throw new Error('This recording cannot be reproduced: its retained inputs or engine version are unavailable.');
+  }
+  const executionIoRows = source?.executionInput?.ioRows ?? state.projectIoRows;
+  const elaborationSources: import('./projectHierarchy').ElaborationSources = source?.elaborationSources ? structuredClone(source.elaborationSources) : {};
+  const simulationCircuit = source?.circuitSnapshot ?? elaborateProjectHierarchy(state.circuit, state.hierarchy, elaborationSources);
+  const scenarioId = source?.scenarioId ?? (input.scenarioId.trim() || 'runtime-verify');
+  const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
+  const scenarioName =
+    source?.scenarioName ?? matchedScenario?.name ?? (input.scenarioName.trim() || 'Runtime verification');
+  const scenarioVersion = source ? source.scenarioVersion : matchedScenario
+    ? matchedScenario.version
+    : Number.isFinite(input.scenarioVersion)
+      ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
+      : undefined;
+  const circuitHash = buildVerifyCircuitEvidenceHash(simulationCircuit);
+  const ioMapping = toIoMapping(executionIoRows);
+  const mappingEvidenceHash = source?.mappingEvidenceHash ?? buildVerifyMappingEvidenceHash(
+    resolveIoMappingFromProjectFields({
+      ioMapping,
+      hardwareMappingV2: state.hardwareMappingV2,
+    }) ?? ioMapping
+  );
+  const verifyContext = buildDeterministicVerifyContext(
+    simulationCircuit,
+    ioMapping
+  );
+  const scheduleContract = source?.scheduleContract ? cloneVerifyScheduleContract(source.scheduleContract) : input.scheduleContract
+    ? cloneVerifyScheduleContract(input.scheduleContract)
+    : verifyContext.schedule;
+  const model = verifyContext.simModel;
+  const clockPolicy =
+    source?.clockPolicy ?? input.clockPolicy ??
+    detectVerifyClockPolicy({
+      circuit: simulationCircuit,
+      ioRows: executionIoRows,
+      scheduleContract,
+    });
+  const authoredVectors = normalizeVectorsForLiveIo(
+    cloneVectors(source?.executionInput?.vectors ?? input.vectors ?? resolveActiveScenarioVectors(state)),
+    executionIoRows,
+    clockPolicy
+  );
+  // This binds the run to the scenario document version. Exact run-input
+  // authority remains separate in scenarioStimulusHash + report.vectors,
+  // so appended custom rows cannot become Export authority by inheritance.
+  const scenarioContentHash = source ? source.scenarioContentHash : matchedScenario
+    ? computeScenarioContentHash(matchedScenario)
+    : undefined;
+  const scenarioStimulusHash = computeExecutionStimulusHash(
+    authoredVectors,
+    clockPolicy
+  );
+  const runtimeVectors = materializeVectorsForClockPolicy({
+    vectors: authoredVectors,
+    ioRows: executionIoRows,
+    policy: clockPolicy,
+  });
+  const requestedVerifyRows = (input.rows ?? []).length > 0;
+  const hasExpectedVectorAssertions = runtimeVectors.some(
+    (vector) => Object.keys(vector.expected ?? {}).length > 0
+  );
+  const runKind =
+    source?.runKind ?? input.runKind ??
+    (input.assertionMode === true
+      ? 'verify'
+      : input.assertionMode === false
+        ? 'trace'
+        : requestedVerifyRows || hasExpectedVectorAssertions
+          ? 'verify'
+          : 'trace');
+  // Trace runs must not consume expected values — strip them so the engine
+  // produces observed-only rows with no comparison failures.
+  const deterministicVectors =
+    runKind === 'trace'
+      ? runtimeVectors.map((v) => ({ ...v, expected: {} as Record<string, boolean | number> }))
+      : runtimeVectors;
+
+  const snapshot = {circuit: state.circuit, hierarchy: state.hierarchy, activeTop: state.activeTop, projectVectors: state.projectVectors, customVectors: state.customVectors};
+  return {source, executionIoRows, elaborationSources, simulationCircuit, scenarioId, matchedScenario, scenarioName, scenarioVersion, circuitHash, mappingEvidenceHash, scheduleContract, model, clockPolicy, authoredVectors, scenarioContentHash, scenarioStimulusHash, runtimeVectors, runKind, deterministicVectors, snapshot};
+}
+
+type PreparedRuntimeVerification = ReturnType<typeof prepareRuntimeVerification>;
+
+let executionSequence = 0;
+let pendingVerification: { requestId: string; job?: VerificationJob; unsubscribe: () => void; timer?: ReturnType<typeof setTimeout> } | null = null;
+
+function setTransientVerification(verificationExecution: VerificationExecutionState) {
+  // This status is deliberately outside the persistence envelope. Do not serialize
+  // the complete archive merely to acknowledge worker progress or cancellation.
+  transientVerificationMutation = true;
+  try { useProjectRuntime.setState({ verificationExecution }); }
+  finally { transientVerificationMutation = false; }
+}
+
+/** Identity references change on edits AND same-ID reloads. Navigation/history selection are read-only. */
+function verificationAdmissionContext(state: ProjectRuntimeState) {
+  return [state.projectId, state.circuit, state.hierarchy, state.designRevision, state.projectIoRows,
+    state.hardwareMappingV2, state.projectVectors, state.customVectors, state.scenarios, state.activeScenarioId,
+    state.activeTop, state.verifyRunHistory, state.verifyRunArchive];
+}
+
+function cancelRuntimeVerification(reason = 'Simulation cancelled. Last completed recording kept.') {
+  const pending = pendingVerification;
+  if (!pending) return;
+  // Invalidate admission before terminating; queued messages cannot reclaim this token.
+  pendingVerification = null;
+  pending.unsubscribe();
+  if (pending.timer) clearTimeout(pending.timer);
+  pending.job?.cancel();
+  setTransientVerification({ status: 'cancelled', requestId: pending.requestId, message: reason });
+}
+
+function startRuntimeVerification(input: RunVerificationInput) {
+  if (pendingVerification) return; // Explicit Runs are single-flight, including Reproduce/commands.
+  const snapshot = useProjectRuntime.getState();
+  const guard = verificationAdmissionContext(snapshot);
+  const requestId = `execution-${++executionSequence}`;
+  const startedAt = performance.now();
+  let ownedInput: RunVerificationInput;
+  try { ownedInput = structuredClone(input); }
+  catch (error) {
+    setTransientVerification({ status: 'error', requestId, message: error instanceof Error ? error.message : String(error) });
+    return;
+  }
+  const pending = { requestId, unsubscribe: () => {}, job: undefined as VerificationJob | undefined, timer: undefined as ReturnType<typeof setTimeout> | undefined };
+  pendingVerification = pending;
+  setTransientVerification({ status: 'preparing', requestId });
+  pending.unsubscribe = useProjectRuntime.subscribe(state => {
+    if (pendingVerification !== pending) return;
+    const current = verificationAdmissionContext(state);
+    if (current.some((item, index) => item !== guard[index])) cancelRuntimeVerification('Simulation cancelled because its project, design or test inputs changed. Last completed recording kept.');
+  });
+  // Give busy/cancel controls a render opportunity before bounded request preparation.
+  pending.timer = setTimeout(() => {
+    if (pendingVerification !== pending) return;
+    const fail = (error: unknown) => {
+      if (pendingVerification !== pending) return;
+      pendingVerification = null; pending.unsubscribe(); pending.job?.cancel();
+      setTransientVerification({ status: 'error', requestId, message: error instanceof Error ? error.message : String(error) });
+    };
+    try {
+      const prepared = prepareRuntimeVerification(snapshot, ownedInput);
+      const prepareMs = performance.now() - startedAt;
+      const request: VerificationComputeRequest = { circuit: prepared.simulationCircuit, model: prepared.model,
+        ioRows: prepared.executionIoRows, vectors: prepared.deterministicVectors, schedule: prepared.scheduleContract,
+        clockPolicy: prepared.clockPolicy ?? undefined,
+        capture: ownedInput.captureEvaluations ? { maxEvents: 10000, maxBytes: 4 * 1024 * 1024 } : undefined };
+      pending.job = startVerificationWorker(requestId, request, (_startedAt, completedCases) => {
+        if (pendingVerification === pending) setTransientVerification({ status: 'computing', requestId, completedCases });
+      });
+      pending.job.result.then(completion => {
+        if (pendingVerification !== pending) return;
+        const state = useProjectRuntime.getState();
+        if (verificationAdmissionContext(state).some((item, index) => item !== guard[index])) { cancelRuntimeVerification(); return; }
+        if (prepared.deterministicVectors.length && completion.result === null) throw new Error('Simulation returned no completed samples. Try Run again.');
+        const publicationStart = performance.now();
+        setTransientVerification({ status: 'publishing', requestId });
+        const update = buildRuntimeVerificationUpdate(state, ownedInput, prepared, completion.result);
+        // Allocate run/ledger sequence at admission against the current archive, never in the worker.
+        pendingVerification = null; pending.unsubscribe();
+        const completed: VerificationExecutionState = { status: 'complete', requestId, admittedRunId: update.runtimeRun.runId,
+          timings: { prepareMs, requestTransferMs: completion.requestTransferMs, computeMs: completion.computeMs,
+            responseTransferMs: completion.receivedAt - completion.completedAt,
+            publicationMs: performance.now() - publicationStart, wholeMs: performance.now() - startedAt } };
+        const admissionStart = performance.now();
+        useProjectRuntime.setState({ ...update.patch, verificationExecution: completed });
+        const admittedAt = performance.now();
+        const measured = { ...completed, timings: { ...completed.timings!, admissionMs: admittedAt - admissionStart, wholeMs: admittedAt - startedAt } };
+        if (useProjectRuntime.getState().verificationExecution.requestId === requestId) setTransientVerification(measured);
+        // Two paint opportunities include queued React work. This is a host timing,
+        // not a claim that every pixel or later effect has finished rendering.
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => {
+          const current = useProjectRuntime.getState().verificationExecution;
+          if (current.requestId === requestId && current.status === 'complete') setTransientVerification({ ...measured,
+            timings: { ...measured.timings, renderOpportunityMs: performance.now() - admittedAt, visibleOpportunityMs: performance.now() - startedAt } });
+        }));
+      }).catch(fail);
+    } catch (error) { fail(error); }
+  }, 0);
+}
+
+function computeReferenceVerification(prepared: PreparedRuntimeVerification, input: RunVerificationInput) {
+  const { executionIoRows, simulationCircuit, scheduleContract, model, clockPolicy, deterministicVectors } = prepared;
+  const deterministicResult =
+    deterministicVectors.length > 0
+      ? runDeterministicVerifyFromModel(
+          simulationCircuit,
+          model,
+          executionIoRows,
+          deterministicVectors,
+          scheduleContract,
+          clockPolicy ?? undefined,
+          input.captureEvaluations ? { maxEvents: 10000, maxBytes: 4 * 1024 * 1024 } : undefined
+        )
+      : null;
+
+  return deterministicResult;
+}
+
+function buildRuntimeVerificationUpdate(state: ProjectRuntimeState, input: RunVerificationInput, prepared: PreparedRuntimeVerification, deterministicResult: ReturnType<typeof computeReferenceVerification>) {
+  const {source, executionIoRows, elaborationSources, simulationCircuit, scenarioId, matchedScenario, scenarioName, scenarioVersion, circuitHash, mappingEvidenceHash, scheduleContract, clockPolicy, authoredVectors, scenarioContentHash, scenarioStimulusHash, runtimeVectors, runKind, snapshot} = prepared;
+  const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
+  const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
+  const preflightIssues = deterministicResult?.evidence.preflight ?? [];
+  const blockingPreflightIssues = preflightIssues.filter((issue) => issue.blocking !== false);
+  const status: 'pass' | 'fail' =
+    failedRows.length > 0 || blockingPreflightIssues.length > 0 ? 'fail' : 'pass';
+  const simulationStatus: 'complete' = 'complete';
+  const assertionStatus: NonNullable<RuntimeVerifyRun['assertionStatus']> =
+    runKind === 'trace'
+      ? 'not-configured'
+      : blockingPreflightIssues.length > 0 && normalizedRows.length === 0
+        ? 'not-evaluated'
+        : failedRows.length > 0
+          ? 'failing'
+          : 'passing';
+  const ranAtIso = input.ranAtIso ?? new Date().toISOString();
+  const vectors = toVerifyVectors(runtimeVectors);
+  const signalRoles = deriveIoSignalRoles(executionIoRows, scheduleContract);
+  const report = buildVerifyReport({
+    scenarioId,
+    scenarioName,
+    status,
+    deterministicHash: input.deterministicHash,
+    rows: normalizedRows,
+    vectors,
+    generatedAtIso: ranAtIso,
+    signalRoles,
+  });
+  // Preserve the provider's observations separately from report display aliases.
+  // Optional checks can add names to the display projection without changing an output.
+  const traceWaveform = deterministicResult
+    ? buildVerifyWaveSamplesFromRuntimeTrace(deterministicResult.trace) : undefined;
+  const nativeTrace = traceWaveform ? compactNativeTrace(traceWaveform) : undefined;
+  const waveform = buildCanonicalVerifyWaveSamples(
+    report,
+    deterministicResult?.trace ?? []
+  );
+  const evidence =
+    deterministicResult !== null
+      ? ({
+          ...deterministicResult.evidence,
+          circuitHash,
+        } satisfies VerifyEvidenceCapsule)
+      : undefined;
+  const identity = buildRunIdentity({ circuit: simulationCircuit, ioRows: executionIoRows,
+    vectors: authoredVectors, clockPolicy, schedule: scheduleContract, runKind });
+  const sequence = Math.max(0, ...state.verifyRunHistory.map(run => run.sequence ?? 0), ...state.verifyRunArchive.map(run => run.sequence ?? 0)) + 1;
+  const runId = 'run-' + configurationDigest(identity).slice(0, 12) + '-' + sequence;
+  const runtimeRun: RuntimeVerifyRun = {
+    identity,
+    outputDigest: outputDigest({ waveform, nativeTrace }),
+    sequence,
+    reproducedFromRunId: source?.runId,
+    runId,
+    projectId: state.projectId,
+    scenarioId: report.scenarioId,
+    scenarioName: report.scenarioName,
+    runKind,
+    scenarioVersion,
+    scenarioContentHash,
+    scenarioStimulusHash,
+    mappingEvidenceHash,
+    status: report.status,
+    simulationStatus,
+    assertionStatus,
+    qualification: detectIncompleteMappingQualification(executionIoRows, report.status),
+    deterministicHash: report.deterministicHash,
+    reportHash: report.reportHash,
+    firstFailingTick: report.firstFailingTick,
+    generatedAtIso: report.generatedAtIso,
+    schedule: scheduleContract.schedule,
+    scheduleContract: cloneVerifyScheduleContract(scheduleContract),
+    clockPolicy: clockPolicy ? { ...clockPolicy } : undefined,
+    meta: buildVerifyRunMeta(
+      scheduleContract,
+      clockPolicy,
+      authoredVectors,
+      executionIoRows
+    ),
+    report,
+    waveform,
+    nativeTrace,
+    evidence,
+    circuitSnapshot: structuredClone(simulationCircuit),
+    evaluationTrace: deterministicResult?.evaluationTrace,
+    elaborationSources,
+    hierarchySnapshot: source ? (source.hierarchySnapshot ? structuredClone(source.hierarchySnapshot) : undefined) : { topCircuit: structuredClone(snapshot.circuit), hierarchy: structuredClone(snapshot.hierarchy) },
+    generatedSource: source ? (source.generatedSource ? structuredClone(source.generatedSource) : undefined) : generateJourneySource(snapshot.circuit, snapshot.hierarchy, executionIoRows, snapshot.activeTop),
+  };
+
+  // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
+  const vectorsHash = digestValue(stableSerialize(runtimeVectors));
+  const mappingHash = mappingEvidenceHash;
+  // Use the same hash function as buildCurrentVerifyProjectHash in IdeApp so that
+  // deriveVerifyCurrent's ledger comparison always resolves correctly.
+  // The prior inline computation included vector `id` fields (via cloneVectors spread)
+  // while buildCurrentVerifyProjectHash strips them — causing a permanent stale loop
+  // whenever vectors carried an `id` (e.g., after inserting a clock pattern).
+  const projectHash = source?.executionInput?.projectHash ?? buildCurrentVerifyProjectHash({
+    circuit: simulationCircuit,
+    projectVectors: snapshot.projectVectors,
+    customVectors: snapshot.customVectors,
+    projectIoRows: executionIoRows,
+  });
+  runtimeRun.executionInput = { ioRows: structuredClone(executionIoRows), vectors: structuredClone(authoredVectors), projectHash };
+  const prevEntry = state.verifyRunHistory[state.verifyRunHistory.length - 1] ?? null;
+  const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
+  const ledgerEntry: VerifyRunLedgerEntry = {
+    runId,
+    identity,
+    outputDigest: runtimeRun.outputDigest,
+    sequence,
+    projectId: state.projectId,
+    scenarioId: runtimeRun.scenarioId,
+    scenarioName: runtimeRun.scenarioName,
+    runKind,
+    tickCount: runtimeRun.waveform?.length ?? 0,
+    failedSignals: Array.from(new Set(report.rows.filter((row) => row.status === 'fail').map((row) => row.signal))),
+    ranAtIso,
+    status: report.status,
+    passedRows: report.rows.filter((row) => row.status === 'pass').length,
+    failedRows: report.rows.filter((row) => row.status === 'fail').length,
+    firstFailure: firstFailRow
+      ? { tick: firstFailRow.tick, signal: firstFailRow.signal, expected: firstFailRow.expected, actual: firstFailRow.actual }
+      : null,
+    circuitHash,
+    vectorsHash,
+    mappingHash,
+    projectHash,
+    didCircuitChangeSinceLast: prevEntry ? prevEntry.circuitHash !== circuitHash : false,
+    didVectorsChangeSinceLast: prevEntry ? prevEntry.vectorsHash !== vectorsHash : false,
+    didMappingChangeSinceLast: prevEntry ? prevEntry.mappingHash !== mappingHash : false,
+  };
+  const nextHistory = [...state.verifyRunHistory, ledgerEntry];
+
+  const patch: Partial<ProjectRuntimeState> = {
+    verifyLastRun: runtimeRun,
+    verifyRunHistory: nextHistory,
+    verifyRunArchive: appendRecordedRun(
+      normalizeRecordedRunArchive(state.verifyRunArchive, state.projectId, state.verifyLastRun),
+      cloneVerifyRun(runtimeRun),
+    ),
+    scenarioAuthority: source ? state.scenarioAuthority :
+      report.status === 'pass' && runKind === 'verify'
+        ? 'verified'
+        : deriveScenarioAuthority({
+            projectKind: state.projectKind,
+            activeExampleId: state.activeExampleId,
+            hasVectors: runtimeVectors.length > 0,
+            hasAssertions: runtimeVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
+            dirtySinceVerify: false,
+            verifyStatus: report.status,
+            vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+          }),
+    sim: {
+      ...state.sim,
+      running: false,
+    },
+    projectHealthCore: {
+      ...state.projectHealthCore,
+      lastVerify: {
+        status: report.status,
+        hash: report.deterministicHash,
+        runKind,
+        reportHash: report.reportHash,
+        report,
+        failingTick: report.firstFailingTick,
+        ranAtIso: report.generatedAtIso,
+      },
+      dirtySinceVerify: source ? (
+        source.scenarioId !== state.activeScenarioId ||
+        source.scenarioContentHash !== (matchedScenario ? computeScenarioContentHash(matchedScenario) : undefined) ||
+        projectHash !== buildCurrentVerifyProjectHash({ circuit: elaborateProjectHierarchy(state.circuit, state.hierarchy),
+          projectVectors: state.projectVectors, customVectors: state.customVectors, projectIoRows: state.projectIoRows })
+      ) : false,
+      dirtySinceExport: true,
+    },
+  };
+  return { runtimeRun, patch };
+
 }

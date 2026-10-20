@@ -178,11 +178,17 @@ describe('DesignSurface Unified Workbench v3 chrome', () => {
   it('keeps direct view controls stable without a reveal toggle or disclosure', () => {
     const view = renderSurface();
 
-    const tray = view.getByTestId('ide-design-toolbar');
+    // The view controls are one always-present group on the sheet they act on. They are not
+    // in the command row, where a narrower row used to fold them away.
+    const tray = view.getByTestId('ide-design-viewdock');
     const toolbar = view.getByTestId('ide-design-toolbar');
-    const liveCanvas = view.getByTestId('ide-design-live-canvas');
-    expect(toolbar.contains(tray)).toBe(true);
-    expect(liveCanvas.contains(tray)).toBe(false);
+    expect(tray.getAttribute('role')).toBe('group');
+    expect(toolbar.contains(tray)).toBe(false);
+    expect(view.getByTestId('ide-design-canvas-wrap').contains(tray)).toBe(true);
+    for (const id of ['ide-design-fit-circuit-canvas', 'ide-design-zoom-in', 'ide-design-zoom-out', 'ide-design-zoom-readout']) {
+      expect(view.getAllByTestId(id)).toHaveLength(1);
+      expect(toolbar.contains(view.getByTestId(id))).toBe(false);
+    }
     expect(tray.contains(view.getByTestId('ide-design-fit-circuit-canvas'))).toBe(true);
     expect(tray.contains(view.getByTestId('ide-design-center-selection-canvas'))).toBe(true);
     expect(tray.contains(view.getByTestId('ide-design-zoom-out'))).toBe(true);

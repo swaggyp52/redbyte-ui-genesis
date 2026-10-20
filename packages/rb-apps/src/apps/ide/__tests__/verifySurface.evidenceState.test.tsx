@@ -77,9 +77,9 @@ afterEach(cleanup);
 describe('Simulate evidence state word', () => {
   it('reads RECORDED · CURRENT for a run whose inputs are unchanged', () => {
     const { getByTestId } = renderSurface();
-    const chip = getByTestId('ide-verify-evidence-state');
-    expect(chip.getAttribute('data-state')).toBe('recorded');
-    expect(chip.textContent).toContain('RECORDED · CURRENT');
+    const chip = getByTestId('ide-run-identity');
+    expect(chip.getAttribute('data-currency')).toBe('current');
+    expect(chip.textContent).toContain('Recorded');
     expect(chip.getAttribute('title')).toContain('unchanged');
   });
 
@@ -88,10 +88,10 @@ describe('Simulate evidence state word', () => {
       forceRunStale: true,
       runStaleDetail: 'The design changed after this run.',
     });
-    const chip = getByTestId('ide-verify-evidence-state');
-    expect(chip.getAttribute('data-state')).toBe('stale');
-    expect(chip.textContent).toContain('STALE');
-    expect(getByTestId('ide-verify-evidence-state-reason').textContent).toBe('The design changed after this run.');
+    const chip = getByTestId('ide-run-identity');
+    expect(chip.getAttribute('data-currency')).toBe('differs');
+    expect(chip.textContent).toContain('Current work differs');
+    expect(getByTestId('ide-run-input-changes').textContent).toContain('The design changed after this run.');
   });
 
   it('renders one selected recording verdict across the header and table, including stale historical evidence', () => {
@@ -104,20 +104,20 @@ describe('Simulate evidence state word', () => {
     const archive = [first, second, third];
     const props = { hasVectors: true, vectors: VECTORS, mappedSignals: SIGNALS, deterministicHash: 'evidence-state', runArchive: archive, onOpenProjectVectors: vi.fn() };
     const view = render(<VerifySurface {...props} lastRun={third} />);
-    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('PASS');
-    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('1 fewer failing');
+    expect(view.queryByTestId('ide-case-lab-history')).toBeNull();
+    expect(view.getByTestId('ide-run-check-result')).toHaveAttribute('data-check-status','pass');
+    expect(view.getByTestId('ide-run-comparison').textContent).toContain('1 fewer failing');
     expect(view.getByTestId('ide-run-identity').getAttribute('data-run-id')).toBe('third');
     view.rerender(<VerifySurface {...props} lastRun={second} runIsStale />);
     expect(view.getByTestId('ide-run-check-result').textContent).toContain('checks failed');
-    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('FAIL');
-    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('1 more failing');
-    expect(view.getByTestId('ide-case-lab-history').getAttribute('data-run-id')).toBe('second');
+    expect(view.getByTestId('ide-run-check-result')).toHaveAttribute('data-check-status','fail');
+    expect(view.getByTestId('ide-run-comparison').textContent).toContain('1 more failing');
+    expect(view.getByTestId('ide-run-comparison').getAttribute('data-run-id')).toBe('second');
     expect(view.getByTestId('ide-run-currency').textContent).toBe('Current work differs');
-    expect(view.getByTestId('ide-verify-evidence-state').getAttribute('data-state')).toBe('stale');
     expect(view.getByTestId('ide-run-identity').getAttribute('data-currency')).toBe('differs');
     // The first recording has no predecessor even though later recordings exist.
     view.rerender(<VerifySurface {...props} lastRun={first} />);
-    expect(view.getByTestId('ide-case-lab-history').textContent).toContain('no previous comparison');
+    expect(view.getByTestId('ide-run-comparison').textContent).toContain('No previous comparison');
     expect(view.getByTestId('ide-run-check-result').textContent).toContain('checks passed');
   });
 });

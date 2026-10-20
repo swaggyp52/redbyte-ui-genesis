@@ -6,6 +6,7 @@ import type {
 } from '../ScenarioBuilderPanel';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
 import { TimingLanes } from './TimingLanes';
+import type { RecordedWordLane } from './recordedWordLanes';
 
 // Timing Lab — the sequential simulation instrument. Events are rows in time:
 // one row per stimulus event (t), one column per driven input and per
@@ -20,7 +21,10 @@ export interface TimingLabProps {
   readonly inputFields: readonly VerifyVectorDraftInput[];
   readonly outputFields: readonly VerifyVectorDraftInput[];
   readonly extraObservedFields?: readonly VerifyVectorDraftInput[];
+  /** Word lanes of the selected recording, from that recording's own names and samples. */
+  readonly recordedWords?: readonly RecordedWordLane[];
   readonly playbackControls?: React.ReactNode;
+  readonly selectionReadout?: boolean;
   readonly navigationControls?: React.ReactNode;
   readonly formatObservedValue?: (value: string) => string;
   readonly showExpectedOverlay?: boolean;
@@ -84,9 +88,10 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   inputFields,
   outputFields,
   extraObservedFields = [],
+  recordedWords,
   selectedTick,
   selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
-  playbackControls, navigationControls, formatObservedValue = value => value, showExpectedOverlay = true,
+  playbackControls, navigationControls, selectionReadout = true, formatObservedValue = value => value, showExpectedOverlay = true,
   lens,
   onSelectTick,
   onVectorsChange,
@@ -112,6 +117,8 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   const selectedVector =
     orderedVectors.find((vector) => vector.tick === selectedTick) ?? null;
   const [timeError, setTimeError] = useState<string | null>(null);
+  // The toolbar slot the lanes render their selection tools into.
+  const [contextHost, setContextHost] = useState<HTMLDivElement | null>(null);
   const editable = Boolean(onVectorsChange);
 
   const commitVector = (id: string, patch: Partial<VerifyAuthorVector>) => {
@@ -241,7 +248,42 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       aria-label={`Timing Lab — ${scenarioName}`}
     >
       <header className="rb-timing-bar" data-testid="ide-timing-lab-bar">
-        {navigationControls}
+        {/* One toolbar: what is selected and how to move through the recording on the left, the
+            event being edited in the middle, the views on the right. The selection tools are
+            rendered by the lanes, which own the selection, into this slot. */}
+        <div className="rb-timing-selection" ref={setContextHost} />
+        <span className="rb-timing-spacer" />
+        <div className="rb-timing-edit" role="group" aria-label="Events">
+        <button
+          type="button"
+          className="wb-btn wb-btn--ghost"
+          onClick={addEvent}
+          disabled={!editable}
+          data-testid="ide-scenario-composer-add-event"
+          aria-label="Add event"
+          title="Add an event one tick after the last one, carrying the current stimulus forward"
+        >
+          + Event
+        </button>
+        <button
+          type="button"
+          className="wb-btn wb-btn--ghost"
+          onClick={duplicateEvent}
+          disabled={!editable || !selectedVector}
+          data-testid="ide-scenario-duplicate-event"
+        >
+          Duplicate
+        </button>
+        <button
+          type="button"
+          className="wb-btn wb-btn--ghost rb-timing-danger"
+          onClick={deleteEvent}
+          disabled={!editable || !selectedVector}
+          data-testid="ide-scenario-delete-event"
+        >
+          Delete
+        </button>
+        </div>
         <WorkbenchDisclosure className="rb-timing-settings" data-testid="ide-timing-settings"
           summary={<>{orderedVectors.length} events{typeof runCycles === 'number' ? ' · ' + runCycles + ' cycles' : ''}</>}>
           <div className="rb-timing-settings-body">
@@ -272,39 +314,11 @@ export const TimingLab: React.FC<TimingLabProps> = ({
 
           </div>
         </WorkbenchDisclosure>
-        <span className="rb-timing-spacer" />
-        <button
-          type="button"
-          className="wb-btn wb-btn--ghost"
-          onClick={addEvent}
-          disabled={!editable}
-          data-testid="ide-scenario-composer-add-event"
-          aria-label="Add event"
-          title="Add an event one tick after the last one, carrying the current stimulus forward"
-        >
-          + Event
-        </button>
-        <button
-          type="button"
-          className="wb-btn wb-btn--ghost"
-          onClick={duplicateEvent}
-          disabled={!editable || !selectedVector}
-          data-testid="ide-scenario-duplicate-event"
-        >
-          Duplicate
-        </button>
-        <button
-          type="button"
-          className="wb-btn wb-btn--ghost rb-timing-danger"
-          onClick={deleteEvent}
-          disabled={!editable || !selectedVector}
-          data-testid="ide-scenario-delete-event"
-        >
-          Delete
-        </button>
+        {navigationControls}
       </header>
 
       <TimingLanes
+        selectionReadout={selectionReadout}
         vectors={orderedVectors}
         inputFields={orderedInputs}
         outputFields={[...outputFields, ...extraObservedFields]}
@@ -322,6 +336,8 @@ export const TimingLab: React.FC<TimingLabProps> = ({
         generatedFieldIds={generatedFieldIds}
         generatedValueAt={generatedValueAt}
         generatedNote={generatedNote}
+        recordedWords={recordedWords}
+        contextHost={contextHost}
       />
 
       <details className="rb-timing-table-details" data-testid="ide-scenario-table-disclosure">

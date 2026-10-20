@@ -6,7 +6,7 @@ import {
 } from '../../artifactDependencyGraph';
 
 /**
- * Package provenance figure — inputs on the left (Design, Board & Constraints,
+ * Package provenance figure — inputs on the left (Design, Board,
  * Simulate, Project), generated files on the right, one curve per dependency.
  * Every node is operable: inputs open their workspace document, files select
  * the artifact. Files that changed against the previous recorded package are

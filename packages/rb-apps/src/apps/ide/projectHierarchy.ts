@@ -435,6 +435,15 @@ export function placeModuleInstance(
 
 const MAX_ELABORATION_DEPTH = 64;
 
+/** Captured during expansion, never recovered by splitting labels or prefixed ids. */
+export interface ElaboratedNodeSource {
+  instancePath: string[];
+  definitionId: string;
+  localNodeId: string;
+  displayPath: string[];
+}
+export type ElaborationSources = Record<string, ElaboratedNodeSource>;
+
 /**
  * Flatten one level of module instances in `circuit`. Each instance's
  * definition is inlined with an `instanceId__` prefix (boundary nodes dropped),
@@ -447,6 +456,7 @@ function expandInstancesOnce(
   circuit: Circuit,
   modulesById: Map<string, NativeVisualModuleDefinition>,
   modulesByName: Map<string, NativeVisualModuleDefinition>,
+  sources?: ElaborationSources,
 ): { circuit: Circuit; expanded: boolean } {
   const instanceNodes = circuit.nodes.filter((node) => resolveModuleForNode(node, modulesById, modulesByName));
   if (instanceNodes.length === 0) return { circuit: cloneCircuit(circuit), expanded: false };
@@ -460,6 +470,7 @@ function expandInstancesOnce(
     const prefix = `${instance.id}__`;
     const parentPath = readString(instance.config?.hierarchyPath) || 'top';
     const instancePath = `${parentPath}.${readInstanceName(instance)}`;
+    const parentSource = sources?.[instance.id];
     const boundaryNodeIds = new Set(
       definition.circuit.nodes
         .filter((node) => readString(node.config?.moduleBoundary))
@@ -468,14 +479,21 @@ function expandInstancesOnce(
     nodes.push(
       ...definition.circuit.nodes
         .filter((node) => !boundaryNodeIds.has(node.id))
-        .map((node) => ({
+        .map((node) => {
+          if (sources) sources[`${prefix}${node.id}`] = {
+            instancePath: [...(parentSource?.instancePath ?? []), parentSource?.localNodeId ?? instance.id],
+            definitionId: definition.id,
+            localNodeId: node.id,
+            displayPath: [...(parentSource?.displayPath ?? []), readInstanceName(instance)],
+          };
+          return ({
           ...cloneNode(node),
           id: `${prefix}${node.id}`,
           label: `${readInstanceName(instance)}.${node.label ?? node.id}`,
           // Compose the path so a nested instance carries top.u_outer.u_inner…;
           // the next expansion pass reads this to keep composing.
           config: { ...(node.config ?? {}), hierarchyPath: instancePath },
-        })),
+        }); }),
     );
     connections.push(
       ...definition.circuit.connections
@@ -535,15 +553,22 @@ function expandInstancesOnce(
 export function elaborateProjectHierarchy(
   topCircuit: Circuit,
   hierarchy: ProjectHierarchyDocument | undefined,
+  sources?: ElaborationSources,
 ): Circuit {
+  if (sources) for (const node of topCircuit.nodes) sources[node.id] = {
+    instancePath: [], definitionId: 'top', localNodeId: node.id, displayPath: [],
+  };
   if (!hierarchy || hierarchy.modules.length === 0) return cloneCircuit(topCircuit);
   const modulesById = new Map(hierarchy.modules.map((module) => [module.id, module]));
   const modulesByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
 
   let current = topCircuit;
   for (let depth = 0; depth < MAX_ELABORATION_DEPTH; depth += 1) {
-    const { circuit: next, expanded } = expandInstancesOnce(current, modulesById, modulesByName);
-    if (!expanded) return next;
+    const { circuit: next, expanded } = expandInstancesOnce(current, modulesById, modulesByName, sources);
+    if (!expanded) {
+      if (sources) for (const id of Object.keys(sources)) if (!next.nodes.some(node => node.id === id)) delete sources[id];
+      return next;
+    }
     current = next;
   }
   // Depth cap reached — a recursive/cyclic definition. Return the last

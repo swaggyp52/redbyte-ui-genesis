@@ -111,13 +111,13 @@ function regionFill(
   conflictAliases?: Set<string>
 ): string {
   const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
-  if (state === 'unavailable') return 'rgba(100,116,139,0.14)';
-  if (state === 'selected') return 'rgba(245,158,11,0.94)';
-  if (state === 'conflict') return 'rgba(239,68,68,0.86)';
-  if (state === 'mapped') return 'rgba(34,197,94,0.86)';
-  if (state === 'mapped-unavailable') return 'rgba(34,197,94,0.42)';
-  if (state === 'available') return 'rgba(56,189,248,0.3)';
-  return 'rgba(148,163,184,0.26)';
+  if (state === 'unavailable') return 'var(--rb-board-unavailable-fill)';
+  if (state === 'selected') return 'var(--rb-board-selected-fill)';
+  if (state === 'conflict') return 'var(--rb-board-conflict-fill)';
+  if (state === 'mapped') return 'var(--rb-board-mapped-fill)';
+  if (state === 'mapped-unavailable') return 'var(--rb-board-mapped-fill)';
+  if (state === 'available') return 'var(--rb-board-available-fill)';
+  return 'var(--rb-board-idle-fill)';
 }
 
 function regionStroke(
@@ -129,13 +129,13 @@ function regionStroke(
   conflictAliases?: Set<string>
 ): string {
   const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
-  if (state === 'unavailable') return 'rgba(100,116,139,0.34)';
-  if (state === 'selected') return '#fff7d6';
-  if (state === 'conflict') return '#fecaca';
-  if (state === 'mapped') return '#86efac';
-  if (state === 'mapped-unavailable') return 'rgba(134,239,172,0.6)';
-  if (state === 'available') return '#7dd3fc';
-  return '#94a3b8';
+  if (state === 'unavailable') return 'var(--rb-board-unavailable-stroke)';
+  if (state === 'selected') return 'var(--rb-board-selected-stroke)';
+  if (state === 'conflict') return 'var(--rb-board-conflict-stroke)';
+  if (state === 'mapped') return 'var(--rb-board-mapped-stroke)';
+  if (state === 'mapped-unavailable') return 'var(--rb-board-mapped-stroke)';
+  if (state === 'available') return 'var(--rb-board-available-stroke)';
+  return 'var(--rb-board-idle-stroke)';
 }
 
 function regionStrokeWidth(
@@ -163,13 +163,13 @@ function labelFill(
   conflictAliases?: Set<string>
 ): string {
   const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
-  if (state === 'unavailable') return '#aabbd0';
-  if (state === 'selected') return '#fff7d6';
-  if (state === 'conflict') return '#fecaca';
-  if (state === 'mapped') return '#bbf7d0';
-  if (state === 'mapped-unavailable') return '#bbd0c8';
-  if (state === 'available') return '#e0f2fe';
-  return '#cbd5e1';
+  if (state === 'unavailable') return 'var(--rb-board-unavailable-label)';
+  if (state === 'selected') return 'var(--rb-board-selected-stroke)';
+  if (state === 'conflict') return 'var(--rb-board-conflict-stroke)';
+  if (state === 'mapped') return 'var(--rb-board-ink)';
+  if (state === 'mapped-unavailable') return 'var(--rb-board-label)';
+  if (state === 'available') return 'var(--rb-board-ink)';
+  return 'var(--rb-board-label)';
 }
 
 function boardCursor(alias: string, allowedAliases?: Set<string>): React.CSSProperties {
@@ -260,11 +260,11 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
      role="listbox" aria-label="Basys3 board resources">
       <defs>
         <pattern id="mapPcbGrid" width="12" height="12" patternUnits="userSpaceOnUse">
-          <path d="M12 0 L0 0 0 12" fill="none" stroke="rgba(0,200,100,0.05)" strokeWidth="0.4" />
+          <path d="M12 0 L0 0 0 12" fill="none" stroke="var(--rb-board-grid)" strokeWidth="0.4" />
         </pattern>
         <linearGradient id="mapChipGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0d2035" />
-          <stop offset="100%" stopColor="#070f1c" />
+          <stop offset="0%" stopColor="var(--rb-board-plane-2)" />
+          <stop offset="100%" stopColor="var(--rb-board-plane-2)" />
         </linearGradient>
         <style>{`
           @keyframes mapHlPulse { 0%,100%{opacity:0.65} 50%{opacity:1} }
@@ -277,33 +277,33 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
           the LED bank. Keep it in a dedicated reference strip so its alias,
           package pin, and frequency remain readable at the native board zoom. */}
       <rect x="10" y="-42" width="600" height="36" rx="8" ry="8"
-        fill="#09192e" stroke="rgba(94,234,212,0.36)" strokeWidth="1.5" />
-      <text x="26" y="-19" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10"
-        fill="#93a9c3" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
+        fill="var(--rb-board-plane-2)" stroke="var(--rb-board-edge)" strokeWidth="1.5" />
+      <text x="26" y="-19" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="11"
+        fill="var(--rb-board-label)" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
         SYSTEM CLOCK
       </text>
 
       {/* Board body */}
-      <rect x="10" y="10" width="600" height="240" rx="8" ry="8" fill="#0b203d" />
+      <rect x="10" y="10" width="600" height="240" rx="8" ry="8" fill="var(--rb-board-plane)" />
       <rect x="10" y="10" width="600" height="240" rx="8" ry="8" fill="url(#mapPcbGrid)" opacity="0.9" />
       <rect x="10" y="10" width="600" height="240" rx="8" ry="8"
-        fill="none" stroke="rgba(94,234,212,0.36)" strokeWidth="1.5" />
+        fill="none" stroke="var(--rb-board-edge)" strokeWidth="1.5" />
 
       {/* Section dividers */}
-      <line x1="18" y1="55" x2="602" y2="55" stroke="rgba(0,200,100,0.07)" strokeWidth="1" />
-      <line x1="18" y1="175" x2="602" y2="175" stroke="rgba(0,200,100,0.07)" strokeWidth="1" />
+      <line x1="18" y1="55" x2="602" y2="55" stroke="var(--rb-board-rule)" strokeWidth="1" />
+      <line x1="18" y1="175" x2="602" y2="175" stroke="var(--rb-board-rule)" strokeWidth="1" />
 
       {/* Silkscreen labels */}
-      <text x="20" y="23" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9"
-        fill="#93a9c3" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
+      <text x="20" y="23" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10.5"
+        fill="var(--rb-board-label)" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
         LED OUTPUTS
       </text>
-      <text x="20" y="185" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9"
-        fill="#93a9c3" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
+      <text x="20" y="185" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10.5"
+        fill="var(--rb-board-label)" letterSpacing="0.8" style={{ pointerEvents: 'none' }}>
         SLIDE SWITCH INPUTS
       </text>
-      <text x="20" y="118" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9"
-        fill="#93a9c3" style={{ pointerEvents: 'none' }}>BUTTONS</text>
+      <text x="20" y="118" className={styles.sectionLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10.5"
+        fill="var(--rb-board-label)" style={{ pointerEvents: 'none' }}>BUTTONS</text>
 
       {/* === 100 MHz oscillator / system clock === */}
       <g {...resourceProps('CLK100MHZ', 'Board resource CLK100MHZ, 100 MHz system clock')}>
@@ -330,7 +330,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
           fill="transparent"
         />
         <text data-testid="ide-hw-map-clock-alias" data-board-alias="CLK100MHZ" data-board-alias-kind="clock"
-          x="458" y="-24" className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace" fontSize="13"
+          x="458" y="-24" className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace" fontSize="13.5"
           fill={labelFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
           textAnchor="middle" style={{ pointerEvents: 'none' }}>
           CLK100MHZ · W5 · 100 MHz
@@ -339,23 +339,23 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
 
       {/* FPGA chip */}
       <rect x="238" y="78" width="144" height="104" rx="6" ry="6"
-        fill="url(#mapChipGrad)" stroke="rgba(0,180,150,0.22)" strokeWidth="1.5" />
+        fill="url(#mapChipGrad)" stroke="var(--rb-board-edge)" strokeWidth="1.5" />
       <rect x="242" y="82" width="136" height="96" rx="4" ry="4"
-        fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+        fill="none" stroke="var(--rb-board-rule)" strokeWidth="1" />
       <text x="310" y="117" className={styles.secondaryLabel} fontFamily="IBM Plex Mono, monospace" fontSize="10"
-        fill="#5eead4" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+        fill="var(--rb-board-ink)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
         ARTIX-7
       </text>
       <text x="310" y="132" className={styles.secondaryLabel} fontFamily="IBM Plex Mono, monospace" fontSize="8.5"
-        fill="#6fa9aa" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+        fill="var(--rb-board-label)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
         XC7A35T-1CPG236C
       </text>
 
       {/* === 7-Segment Display === */}
       <rect x="396" y="72" width="144" height="118" rx="6" ry="6"
-        fill="rgba(0,0,0,0.55)" stroke="rgba(255,200,0,0.25)" strokeWidth="1" />
+        fill="var(--rb-board-plane-2)" stroke="var(--rb-board-edge)" strokeWidth="1" />
       <text x="468" y="86" className={styles.secondaryLabel} fontFamily="IBM Plex Mono, monospace" fontSize="9.5"
-        fill="#f9cf74" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+        fill="var(--rb-board-label)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
         7-SEG
       </text>
 
@@ -363,7 +363,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         <g key={an}>
           {/* Digit background */}
           <rect x={cx - 16} y={cy - 23} width={32} height={42} rx={3}
-            fill="rgba(0,0,0,0.5)" stroke="rgba(255,200,0,0.1)" strokeWidth="0.5" />
+            fill="var(--rb-board-plane)" stroke="var(--rb-board-rule)" strokeWidth="0.5" />
 
           {/* Segments — all digits share the same segment signals (CA-CG) */}
           {SEG_DEFS.map((seg) => (
@@ -472,7 +472,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               fill="transparent"
             />
             <text data-testid={`ide-hw-map-ld-${idx}-alias`} data-board-alias={alias} data-board-alias-kind="led"
-              x={cx} y={65} fontSize={12} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
+              x={cx} y={65} fontSize={13.5} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
               fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
               textAnchor="middle" style={{ pointerEvents: 'none' }}>
               {alias}
@@ -504,7 +504,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               fill="transparent"
             />
             <text data-testid={`ide-hw-map-btn-${label.toLowerCase()}-alias`} data-board-alias={alias} data-board-alias-kind="button"
-              x={labelX} y={labelY} fontSize={11} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
+              x={labelX} y={labelY} fontSize={13} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
               fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
               textAnchor="middle" style={{ pointerEvents: 'none' }}>
               {alias}
@@ -554,7 +554,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               x={trackX - 11} y={trackY - 8} width={trackW + 22} height={trackH + 16}
               rx={6} fill="transparent" />
             <text data-testid={`ide-hw-map-sw-${idx}-alias`} data-board-alias={alias} data-board-alias-kind="switch"
-              x={centerX} y={230} fontSize={12} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
+              x={centerX} y={230} fontSize={13.5} className={styles.aliasLabel} fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"
               fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases)}
               style={{ pointerEvents: 'none' }}>

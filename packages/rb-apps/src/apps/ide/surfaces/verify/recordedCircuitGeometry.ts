@@ -85,3 +85,80 @@ export function createRecordedPortResolver(
     return incoming.length === 1 ? lookup(incoming[0].from.nodeId, incoming[0].from.port) : null;
   };
 }
+
+/** Connectivity only. A fan-in region is a place to inspect, never a root-cause verdict. */
+export function recordedFanInRegion(circuit: Circuit, roots: ReadonlySet<string>): Set<string> {
+  const region = new Set(roots);
+  const queue = [...roots];
+  while (queue.length) {
+    const id = queue.pop()!;
+    for (const wire of circuit.connections) {
+      const { from, to } = connectionEndpoints(wire);
+      if (to.nodeId !== id || region.has(from.nodeId)) continue;
+      region.add(from.nodeId);
+      queue.push(from.nodeId);
+    }
+  }
+  return region;
+}
+
+/** The nearest available gate on the recorded signal, or its incoming driver. */
+export function recordedInspectionGate(circuit: Circuit, roots: ReadonlySet<string>) {
+  const geometry = buildRecordedCircuitGeometry(circuit.nodes);
+  const visited = new Set<string>();
+  const queue = [...roots];
+  while (queue.length) {
+    const id = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    const entry = geometry.get(id);
+    if (entry && !['io-in', 'io-out', 'clock'].includes(entry.geometry.kind)) return entry.node;
+    for (const wire of circuit.connections) {
+      const { from, to } = connectionEndpoints(wire);
+      if (to.nodeId === id) queue.push(from.nodeId);
+    }
+  }
+  return circuit.nodes.find(node => roots.has(node.id));
+}
+
+/** Exact sampled pins, with no simulation and no borrowing from the current design. */
+export function recordedGateReadout(
+  node: Circuit['nodes'][number],
+  samples: readonly { tick: number; signals: Readonly<Record<string, string>> }[],
+  tick: number | null,
+  resolve: (nodeId: string, port: string) => string | null,
+) {
+  const geometry = buildRecordedCircuitGeometry([node]).get(node.id)?.geometry;
+  const current = samples.find(sample => sample.tick === tick);
+  const previous = tick == null ? undefined : [...samples].filter(sample => sample.tick < tick).sort((a, b) => b.tick - a.tick)[0];
+  const pins = (geometry?.pins ?? []).map(pin => {
+    const signal = resolve(node.id, pin.id);
+    return { ...pin, signal, value: signal ? current?.signals[signal] ?? null : null, previous: signal ? previous?.signals[signal] ?? null : null };
+  });
+  const inputs = pins.filter(pin => pin.direction === 'in');
+  const outputs = pins.filter(pin => pin.direction === 'out');
+  // Deliberately bounded to the actual scalar primitive rules and complete binary evidence.
+  // A derived rule is kept separate from the recorded output; it does not diagnose a fault.
+  let derived: string | null = null;
+  if (inputs.length && inputs.every(pin => pin.value === '0' || pin.value === '1')) {
+    const bits = inputs.map(pin => Number(pin.value));
+    const type = node.type.toUpperCase();
+    let result: number | undefined;
+    if (inputs.length === 2) {
+      if (type === 'AND' || type === 'NAND') result = bits[0] & bits[1];
+      if (type === 'OR' || type === 'NOR') result = bits[0] | bits[1];
+      if (type === 'XOR' || type === 'XNOR') result = bits[0] ^ bits[1];
+      if (result != null && ['NAND', 'NOR', 'XNOR'].includes(type)) result = 1 - result;
+    } else if (inputs.length === 1) {
+      if (type === 'NOT') result = 1 - bits[0];
+      if (type === 'BUFFER') result = bits[0];
+    }
+    if (result != null) derived = `${node.type}(${inputs.map(pin => pin.value).join(', ')}) = ${result}`;
+  }
+  const sequential = geometry?.kind === 'register';
+  const clock = inputs.find(pin => /^(clk|clock)$/i.test(pin.id));
+  const clockEdge = sequential && previous && current && previous.tick === current.tick - 1 && clock
+    ? clock.previous === '0' && clock.value === '1' ? 'rising' : clock.previous === '1' && clock.value === '0' ? 'falling' : null
+    : null;
+  return { pins, inputs, outputs, derived, sequential, previousTick: previous?.tick ?? null, clockEdge };
+}

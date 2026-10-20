@@ -161,6 +161,10 @@ async function assertArtifactWorkspace(page) {
   for (const fileName of REQUIRED_ARTIFACTS) {
     assert(artifactText.includes(fileName.toLowerCase()), `artifact workspace must include ${fileName}`);
   }
+  // Choosing a file is what opens its preview.
+  if (!(await visible(page.locator('[data-testid="ide-export-selected-preview-v1"]').first()))) {
+    await page.locator('[data-testid="ide-export-file-top-vhd"]').first().click();
+  }
   assert(
     await visible(page.locator('[data-testid="ide-export-selected-preview-v1"]').first()),
     'selected generated artifact preview must be visible after disclosure'
@@ -186,9 +190,11 @@ async function assertMappingSummary(page) {
   const readiness=page.getByTestId('ide-export-readiness-disclosure');
   if(!await readiness.evaluate(e=>e.open))await readiness.locator('summary').click();
   const mapping = page.locator('[data-testid="ide-export-upstream-mapping"]').first();
-  assert(await visible(mapping), 'upstream readiness must expose Board & Constraints status');
+  assert(await visible(mapping), 'upstream readiness must expose the Board mapping status');
   const mappingText = await normalizedText(mapping);
-  assert(/Board & Constraints/i.test(mappingText), `mapping summary must name its owning workspace, got "${mappingText}"`);
+  const mappingOwner = await mapping.getAttribute('data-owner');
+  const mappingOwnerShown = (await mapping.locator('span').first().textContent())?.trim();
+  assert(mappingOwner === 'Board' && mappingOwnerShown === 'Board', `mapping summary must name its owning workspace, got "${mappingOwner}" / "${mappingOwnerShown}" in "${mappingText}"`);
   assert(/Ready|required missing|blocker|assign/i.test(mappingText), `mapping summary must expose readiness, got "${mappingText}"`);
 }
 

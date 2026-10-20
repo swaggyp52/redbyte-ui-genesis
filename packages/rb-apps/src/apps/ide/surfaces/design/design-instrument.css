@@ -2,6 +2,45 @@
    the compact component library rows, and the starter strip. Composes the
    shared wb-* primitives; owns only what is specific to Design. No !important. */
 
+/* One command line. The tools sit on the left and Explore / Test on the right of the same row;
+   they were two full-width strips, the upper one mostly a module name and a health chip. A
+   wire cue or a narrow pane still wraps the right-hand group onto its own line. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+}
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-toolbar { order: 1; flex: 0 1 auto; min-width: 0; border-bottom: 0; background: transparent; }
+/* The command row keeps its height whatever the design's state. Explore and Test never
+   shrink and are never clipped. The status chip beside them lives in a slot that claims no
+   width of its own and is given whatever the row has left: with room it shows in full, with
+   less it drops its words and keeps the counts, with none it is absent - the same count is in
+   the status bar and the detail is in Problems. Measured at 1440x900 with the inspector open
+   on an unfinished design: the chip made the group 380px, the row wrapped, and the command
+   area went from 47px to 91px the moment the first part was placed. The row wraps only when
+   the commands themselves cannot fit. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header { order: 2; flex: 1 0 auto; min-width: 0; justify-content: flex-end; flex-wrap: nowrap; border-bottom: 0; background: transparent; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > * { flex: none; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > .rb-design-health-slot { flex: 1 1 0; display: flex; justify-content: flex-end; width: 0; min-width: 0; container-type: inline-size; }
+.ide-root .rb-design-health-slot > .rb-design-health { max-width: 100%; overflow: hidden; white-space: nowrap; }
+.ide-root .rb-design-health-slot .rb-design-health-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-design-health-slot .rb-design-health-dot,
+.ide-root .rb-design-health-slot .rb-design-health-counts { flex: none; }
+@container (max-width: 11rem) { .ide-root .rb-design-health-slot .rb-design-health-label { display: none; } }
+@container (max-width: 4.5rem) { .ide-root .rb-design-health-slot > .rb-design-health { display: none; } }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has(.rb-design-wirecue) { flex: 1 0 100%; border-top: 1px solid var(--wb-border); }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > :not(.rb-design-toolbar):not(.rb-design-header) { order: 3; flex: 1 0 100%; }
+/* At the top level the trail is the project's own name, which the application bar already
+   shows. It appears once there is a module to come back from. */
+.ide-root .rb-design-header .rb-design-breadcrumb:not(:has(.wb-sep)) { display: none; }
+/* A clean design needs no badge; anything that needs attention keeps its place. */
+.ide-root .rb-design-header .rb-design-health.is-clean { display: none; }
+.ide-root .rb-design-header > .wb-toolbar-spacer { display: none; }
+.ide-root .rb-design-mode .wb-btn--primary { padding-inline: 16px; font-size: var(--rb-text-body); }
+
 /* Header: module trail · wire cue · mode segment. */
 .ide-root .rb-design-header { padding-left: var(--wb-space-3); }
 .ide-root .rb-design-header:has(.rb-design-wirecue) { flex-wrap: nowrap; }
@@ -50,7 +89,8 @@
 .ide-root .ide-design-replay-controls :is(button, select, input) { color: var(--wb-text); background: var(--wb-surface); }
 
 /* Toolbar. */
-.ide-root .rb-design-toolbar { padding-left: var(--wb-space-2); }
+.ide-root .rb-design-toolbar { padding-left: var(--wb-space-2); gap: 4px; }
+.ide-root .rb-design-toolbar .wb-toolbar-sep { margin-inline: 2px; }
 .ide-root .rb-design-toolbar .wb-btn svg { flex: none; }
 .ide-root .rb-design-zoom { min-width: 48px; }
 .ide-root .rb-design-zoom code { font: var(--wb-text-sm) var(--wb-font-mono); }
@@ -113,7 +153,7 @@
   display: grid;
   /* The glyph is a type chip, and NAND3/XNOR are five characters wide: a fixed 34px cut the
      last letter off the longest of them. */
-  grid-template-columns: minmax(34px, auto) minmax(6.5rem, 1fr) minmax(0, auto);
+  grid-template-columns: 2.75rem minmax(6rem, 1fr);
   /* A row may also carry a capability badge and a palette badge; let them take
      implicit columns on the same line instead of wrapping into the next row. */
   grid-auto-flow: column;
@@ -122,10 +162,10 @@
   grid-auto-columns: minmax(0, max-content);
   overflow: hidden;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  height: 28px;
-  padding: 0 var(--wb-space-2) 0 6px;
+  height: 2.5rem;
+  padding: 0 var(--wb-space-2) 0 10px;
   border: 0;
   border-radius: 0;
   color: var(--wb-text);
@@ -138,21 +178,50 @@
 .ide-root .rb-lib-row:hover { background: var(--wb-hover-bg); }
 .ide-root .rb-lib-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
 .ide-root .rb-lib-row.is-placement-active { background: var(--wb-accent-bg-strong); }
-.ide-root .rb-lib-glyph {
-  display: inline-grid;
-  place-items: center;
-  height: 20px;
-  padding: 0 4px;
-  border: 1px solid var(--wb-border-strong);
-  border-radius: var(--wb-radius);
+/* The glyph is the part's schematic symbol, drawn in the schematic's own ink. */
+.ide-root .rb-lib-glyph { display: inline-grid; place-items: center; width: 2.75rem; height: 1.75rem; color: var(--rb-schematic-ink, var(--wb-text)); }
+.ide-root .rb-palette-symbol { width: 100%; height: 100%; overflow: visible; }
+.ide-root .rb-palette-symbol :is(path, rect, circle) { fill: var(--rb-schematic-fill, var(--wb-surface)); stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ide-root .rb-palette-symbol line { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ide-root .rb-palette-symbol text { fill: currentColor; stroke: none; font: 600 7px var(--wb-font-mono); }
+.ide-root .rb-lib-row:hover .rb-palette-symbol,
+.ide-root .rb-lib-row.is-placement-active .rb-palette-symbol { color: var(--wb-accent); }
+/* The interface of the part in focus: its name, then its ports, in a strip of fixed height
+   under the list. On one line the ports - the point of the strip - were the part cut off. */
+.ide-root .rb-lib-detail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 3.25rem;
+  margin: 0;
+  padding: 0 var(--wb-space-2) 0 10px;
+  overflow: hidden;
+  border-top: 1px solid var(--wb-border);
   color: var(--wb-text-2);
-  background: var(--wb-surface);
-  font: 600 var(--rb-text-micro) var(--wb-font-mono);
+  font: var(--rb-text-meta) / 1.35 var(--wb-font-ui);
 }
-/* The row is a fixed 28px and declares nowrap, but a later rule set the name back to
-   `normal`, so once the port signature took its column the name wrapped to 35px inside
-   a 28px row and the list rows visibly overlapped each other. */
-.ide-root .rb-lib-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--rb-text-body); font-weight: 500; }
+.ide-root .rb-lib-detail > * { white-space: nowrap; }
+.ide-root .rb-lib-detail strong { flex: none; color: var(--wb-text); font-weight: var(--rb-weight-strong); }
+.ide-root .rb-lib-detail code,
+.ide-root .rb-lib-detail > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-lib-detail code { font: var(--rb-text-meta) var(--wb-font-mono); }
+/* Variants one step away: the same gates with a third input. */
+.ide-root .rb-lib-more > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 2.25rem;
+  padding: 0 var(--wb-space-2) 0 10px;
+  color: var(--wb-text-2);
+  font: var(--rb-weight-medium) var(--rb-text-dense) var(--wb-font-ui);
+  cursor: pointer;
+}
+.ide-root .rb-lib-more > summary:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .rb-lib-more > summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+/* Names wrap at the saved pane width; rows grow with them rather than clipping or overlapping. */
+.ide-root .rb-lib-row { height: auto; min-height: 2.5rem; padding-block: 6px; }
+.ide-root .rb-lib-name { min-width: 0; overflow-wrap: anywhere; white-space: normal; line-height: 1.35; font-size: var(--rb-text-body); font-weight: 500; }
 .ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-lib-cap,
 .ide-root .rb-lib-badge {
@@ -179,7 +248,8 @@
     grid-template-columns: minmax(34px, auto) minmax(0, 1fr);
     grid-template-areas: 'glyph name' 'glyph pins';
     align-content: center;
-    height: 2.5rem;
+    height: auto;
+    min-height: 2.5rem;
     row-gap: 0;
   }
   .ide-root .rb-lib-glyph { grid-area: glyph; }
@@ -218,13 +288,12 @@
   margin: 0;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   color: var(--wb-text-2);
-  font: 600 var(--wb-text-xs) / 1 var(--wb-font-ui);
+  font: 600 var(--wb-text-xs) / 1.35 var(--wb-font-ui);
   letter-spacing: 0;
   text-transform: none;
-  white-space: nowrap;
+  white-space: normal;
 }
 .ide-root .rb-lib-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
 .ide-root .rb-lib-toggle {
@@ -571,52 +640,85 @@
 }
 .ide-root .rb-design-dock-tabs .wb-toolwindow-tab {
   min-width: 0;
-  min-height: 2rem;
-  padding: 4px 7px;
-  white-space: normal;
+  min-height: 2.25rem;
+  padding: 4px 6px;
+  font-size: var(--rb-text-meta);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The library and the inspector get the width their labels need. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: clamp(200px, var(--rb-workbench-pref-left-width, 208px), 400px);
+  --ide-workbench-right-width: clamp(256px, var(--rb-workbench-pref-right-width, 280px), 440px);
 }
 
-/* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
-/* ── The schematic toolbar keeps one row ────────────────────────────────────
-   Measured at 1366x768 with the inspector open: the bar is 734px and its groups need 805px
-   the moment the Related control appears after a run - so it wrapped, and the View menu
-   dropped to a second row. Wrapping was the fallback; a budget is the fix. The bar composes
-   against its OWN width, so a wide window with a narrow canvas is treated as narrow, and
-   the thresholds are in rem so a larger text size counts as narrowness too.
-
-   What yields, in order: the camera buttons, because both are in the View menu already and
-   both have keyboard shortcuts. Nothing yields that has no other way to reach it. */
-.ide-root .rb-design-toolbar {
-  container-type: inline-size;
-  container-name: design-bar;
-  /* Inline-size containment means the box can no longer take its width from its contents, so
-     it has to be told to fill the row - without this it collapsed to 230px at 200% text. */
+/* An input's value is a switch. It is the same unrecorded Explore value the canvas toggles. */
+.ide-root .ide-design-input-control {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 12px;
   width: 100%;
+  min-height: 3.5rem;
+  padding: 8px 12px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .ide-design-input-control:hover { border-color: var(--wb-accent); }
+.ide-root .ide-design-input-control:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+.ide-root .rb-bit-switch-track { grid-row: 1 / span 2; position: relative; width: 3rem; height: 1.625rem; border: 1.5px solid var(--rb-schematic-ink, var(--wb-text)); border-radius: 999px; background: var(--wb-surface-2); }
+.ide-root .rb-bit-switch-thumb { position: absolute; top: 2px; left: 2px; width: calc(1.625rem - 7px); height: calc(1.625rem - 7px); border-radius: 50%; background: var(--rb-schematic-ink, var(--wb-text)); transition: transform var(--rb-motion-fast, 120ms) var(--rb-ease-standard, ease); }
+.ide-root .ide-design-input-control.is-on .rb-bit-switch-track { border-color: var(--rb-schematic-high, var(--wb-ok)); background: color-mix(in srgb, var(--rb-schematic-high, var(--wb-ok)) 18%, var(--wb-surface)); }
+.ide-root .ide-design-input-control.is-on .rb-bit-switch-thumb { transform: translateX(1.375rem); background: var(--rb-schematic-high, var(--wb-ok)); }
+.ide-root .rb-bit-switch-value { grid-row: 1 / span 2; font: var(--rb-weight-title) var(--rb-text-doc) / 1 var(--wb-font-mono); }
+.ide-root .rb-bit-switch-word { align-self: end; font: var(--rb-weight-strong) var(--rb-text-body) / 1.2 var(--wb-font-ui); }
+.ide-root .rb-bit-switch-note { grid-column: 3; align-self: start; color: var(--wb-text-2); font: var(--rb-text-meta) / 1.2 var(--wb-font-ui); }
+@media (prefers-reduced-motion: reduce) { .ide-root .rb-bit-switch-thumb { transition: none; } }
+
+/* The explanation of a part is reference: named, closed, one step away. */
+.ide-root .rb-insp-about > summary { min-height: 2rem; color: var(--wb-text-2); font: var(--rb-weight-medium) var(--rb-text-dense) var(--wb-font-ui); cursor: pointer; }
+.ide-root .rb-insp-about > summary:hover { color: var(--wb-text); }
+.ide-root .rb-insp-about > summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+
+/* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
+/* ── The command row is one row, with or without the inspector ───────────────
+   The tools a student edits with (Select, Wire, undo, redo, the representation switch, View)
+   and Explore / Test fit beside each other at laptop widths because the view controls - Fit,
+   Selection and zoom - are on the sheet itself, in its lower left corner. They used to be in
+   this bar, where they were folded away one by one as the bar narrowed and made it wrap to a
+   second and third row whenever a part was selected. Wrapping remains only as the fallback for
+   a genuinely narrow window. */
+.ide-root .rb-design-toolbar {
   min-width: 0;
   flex-wrap: wrap;
   height: auto;
   min-height: var(--wb-toolbar-h);
   row-gap: 2px;
 }
-@container design-bar (max-width: 48rem) {
-  /* Fit selection folds first: it is the rarer of the two and needs a selection anyway. */
-  .ide-root .rb-design-toolbar > [data-testid='ide-design-center-selection-canvas'] { display: none; }
+/* Lower left, not lower right: the sheet's left edge does not move when the inspector opens,
+   so the dock stays exactly where it was, and the "Show right panel" reveal that a compact
+   window puts in the lower right corner cannot cover it. */
+.ide-root .rb-design-viewdock {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  background: var(--wb-surface);
 }
-/* At an enlarged text size on a 1366px window the schematic column measured 539px and the bar
-   wrapped to three rows, leaving the canvas 317px of height. The zoom stepper is a secondary view
-   command - the View menu now carries Zoom in, Zoom out and Actual size, with the percentage
-   beside the last - so below the width that can hold it, the stepper folds there. The active
-   tool, the edit history and the representation switch stay on the bar. */
-@container design-bar (max-width: 34rem) {
-  .ide-root .rb-design-toolbar > [data-testid='ide-design-zoom-out'],
-  .ide-root .rb-design-toolbar > [data-testid='ide-design-zoom-readout'],
-  .ide-root .rb-design-toolbar > [data-testid='ide-design-zoom-in'] { display: none; }
-}
-@container design-bar (max-width: 42rem) {
-  /* Then Fit itself, and the separator that introduced the pair. */
-  .ide-root .rb-design-toolbar > [data-testid='ide-design-fit-circuit-canvas'] { display: none; }
-  .ide-root .rb-design-toolbar > .wb-toolbar-sep:nth-of-type(3) { display: none; }
-}
+.ide-root .rb-design-viewdock .wb-btn { height: var(--wb-control-h); }
+.ide-root .rb-design-viewdock-sep { width: 1px; height: 1.25rem; margin-inline: 2px; background: var(--wb-border-strong); }
 .ide-root .rb-design-toolbar .wb-btn, .ide-root .rb-design-toolbar .wb-segment, .ide-root .rb-design-toolbar .rb-design-menu, .ide-root .rb-design-toolbar .rb-design-trace { flex: none; }
 
 /* Inspector named sections: mapping constraint lines, source lines, related documents. */
@@ -706,3 +808,15 @@
   background: var(--wb-surface-1) !important;
   border-color: var(--wb-border-strong) !important;
 }
+
+/* Exploring is a mode, and its controls have a row of their own - as the wire cue does. At
+   1366px with the inspector open the clock controls, "Finish exploring" and Test need 365px
+   beside tools that leave 276px, so on one row they wrapped or not depending on whether a part
+   was selected. Now the height changes once, when the student presses Explore, and is the same
+   at every width and with or without a selection. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has([data-testid='ide-design-live-transport']) { flex: 1 0 100%; border-top: 1px solid var(--wb-border); }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] > * { flex: none; }
+/* "Exploring - not recorded" is the claim that keeps this honest, so it stays whole; when the
+   strip is short of room the running count of clock edges gives way, number first. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] > [data-testid='ide-design-live-tick'] { flex: 0 1 auto; min-width: 2.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

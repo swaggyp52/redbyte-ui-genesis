@@ -114,7 +114,9 @@ describe('Verify Simulation Studio', () => {
       />
     );
 
-    expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('2');
+    expect(view.queryByTestId('ide-vcb-check-count')).toBeNull();
+    expect(view.getByTestId('ide-case-lab-exp-0-ld0').textContent).toBe('0');
+    expect(view.getByTestId('ide-case-lab-exp-1-ld0').textContent).toBe('1');
     expect(view.getByTestId('ide-run-check-result').textContent).toBe('Checks not evaluated');
     expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-evaluated');
   });

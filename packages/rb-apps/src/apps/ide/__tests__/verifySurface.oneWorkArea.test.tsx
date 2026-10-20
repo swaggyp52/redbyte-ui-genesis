@@ -94,11 +94,12 @@ describe('Simulate composition — one experiment, one primary working area', ()
     cleanup();
   });
 
-  it('has one primary region and one run line, and no deck to divide between them', () => {
+  it('has one primary region and one selected result, and no deck to divide between them', () => {
     const { getByTestId, queryByTestId } = renderSurface();
 
     expect(getByTestId('ide-verify-lab-grid')).toBeTruthy();
-    expect(getByTestId('ide-verify-run-line')).toBeTruthy();
+    expect(getByTestId('ide-verify-selected-result')).toBeTruthy();
+    expect(queryByTestId('ide-verify-run-line')).toBeNull();
 
     // The splitter, the collapse, the two maximize buttons and the collapsed strip went out
     // with the deck they divided. None of them has a replacement.
@@ -126,10 +127,8 @@ describe('Simulate composition — one experiment, one primary working area', ()
     expect(withoutRun.getByTestId('ide-verify-representation-note').textContent).toContain(
       'no recorded run yet'
     );
-    // Unrecorded is not zero: the run line says which it is.
-    expect(withoutRun.getByTestId('ide-verify-run-line-empty').textContent).toContain(
-      'No run recorded yet'
-    );
+    expect(withoutRun.getByTestId('ide-vcb-unrecorded').textContent).toBe('No recording yet');
+    expect(withoutRun.getByTestId('ide-selected-result-observed').textContent).toBe('—');
     cleanup();
 
     const withRun = renderSurface(makeRun());
@@ -167,18 +166,18 @@ describe('Simulate composition — one experiment, one primary working area', ()
     expect(getByTestId('ide-case-lab')).toBeTruthy();
   });
 
-  it('keeps the run line in every representation, because it is what the run did', () => {
+  it('keeps one selected result in every representation, with the recording verdict in the experiment header', () => {
     const { getByTestId } = renderSurface(makeRun());
 
-    expect(getByTestId('ide-verify-run-line')).toBeTruthy();
+    expect(getByTestId('ide-verify-selected-result')).toBeTruthy();
     act(() => {
       fireEvent.click(getByTestId('ide-verify-view-table'));
     });
-    expect(getByTestId('ide-verify-run-line')).toBeTruthy();
+    expect(getByTestId('ide-verify-selected-result')).toBeTruthy();
     act(() => {
       fireEvent.click(getByTestId('ide-verify-view-waveform'));
     });
-    expect(getByTestId('ide-verify-run-line')).toBeTruthy();
+    expect(getByTestId('ide-verify-selected-result')).toBeTruthy();
     expect(getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('pass');
   });
 });

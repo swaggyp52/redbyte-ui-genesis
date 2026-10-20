@@ -2,6 +2,7 @@
 // Use without permission prohibited.
 
 import React from 'react';
+import { useProjectRuntime } from '../../projectRuntime';
 import { IdeButton } from '../../components/IdePrimitives';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -19,6 +20,8 @@ export interface VerifyCommandBarProps {
   readonly onRun: () => void;
   readonly onReproduce?: () => void;
   readonly reproduceDisabledReason?: string;
+  /** The selected recording's state. It reads in this row, beside the scenario it belongs to. */
+  readonly recordingSlot?: React.ReactNode;
   readonly runBlockedReason?: string;
   readonly runLabel: string;
   readonly runDisabled: boolean;
@@ -116,6 +119,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onRun,
   onReproduce,
   reproduceDisabledReason,
+  recordingSlot,
   runBlockedReason,
   experimentScenarioName,
   runLabel,
@@ -131,6 +135,10 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onToggleLiveIo,
 }) => {
   const commandBarRef = React.useRef<HTMLDivElement>(null);
+  const status = useProjectRuntime(state => state.verificationExecution.status);
+  const message = useProjectRuntime(state => state.verificationExecution.message);
+  const cancelExecution = useProjectRuntime(state => state.cancelVerification);
+  const computing = ['preparing', 'computing', 'publishing'].includes(status);
   const restoreRunFocusRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -206,13 +214,19 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       data-hierarchy-role="primary"
     >
       <strong className="rb-sim-scenario-name">{experimentScenarioName || 'Current scenario'}</strong>
-      <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title={explainerText}>{configuredCheckCount} optional checks</span>
+      {!recordingSlot && <span className="wb-toolbar-fact" data-testid="ide-vcb-unrecorded">No recording yet</span>}
+      {!recordingSlot && <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title={explainerText}>{configuredCheckCount} optional checks</span>}
+      {recordingSlot}
+      {/* Reproduce re-executes this recording's own inputs, so it sits with the recording. Run is
+          the one primary action and uses the scenario as it is now. */}
+      {onReproduce && !recordingSlot && <details className="rb-sim-recording-actions"><summary>Recording actions</summary><IdeButton tone="secondary" onClick={onReproduce} disabled={runDisabled || Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
+        title={reproduceDisabledReason || 'Run this recording\'s own design and stimulus again with the same engine.'}>Reproduce recording</IdeButton></details>}
       <span className="wb-toolbar-spacer" />
       <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
         <IdeButton
           tone="primary"
           onClick={handleRun}
-          disabled={runDisabled}
+          disabled={runDisabled || computing}
           testId="ide-vcb-run"
           className={`wb-btn wb-btn--primary${runPulsing ? ' is-pulsing' : ''}`}
           hierarchySurface="verify"
@@ -220,11 +234,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         >
           {runLabel}
         </IdeButton>
-        {onReproduce && <IdeButton tone="secondary" className="wb-btn" onClick={onReproduce} disabled={Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
-          title={reproduceDisabledReason || 'Run the retained design and stimulus again with the same engine.'}>Reproduce</IdeButton>}
+        {computing ? <IdeButton tone="secondary" testId="ide-verify-cancel-execution" onClick={() => cancelExecution()}>Cancel Run</IdeButton> : null}
       </div>
+      {computing || status === 'cancelled' || status === 'error' ? <span role="status" data-testid="ide-verify-execution-status" data-status={status} className="wb-toolbar-meta">
+        {computing ? `${status === 'preparing' ? 'Preparing' : status === 'publishing' ? 'Publishing' : 'Computing'} · last recording kept` : message}
+      </span> : null}
       <span className={`wb-toolbar-meta rb-sim-explainer${runBlockedReason ? ' is-blocked-reason' : ''}`} hidden={!runBlockedReason} title={explainerText} data-testid="ide-vcb-mode-explainer">{explainerText}</span>
-      {reproduceDisabledReason && <span className="wb-toolbar-meta">{reproduceDisabledReason}</span>}
     </div>
   );
 };

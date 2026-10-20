@@ -154,7 +154,6 @@ export function deriveProjectExplorer(input: ProjectExplorerInput): readonly Pro
       { key: 'doc:sources', kind: 'document', label: 'Sources', meta: `${(input.sourceModel?.files.length ?? 0) + modules.length + 1} units`, depth: 0, select: { kind: 'project' }, open: { kind: 'sources' } },
       { key: 'doc:architecture', kind: 'document', label: 'Architecture', meta: input.hierarchy ? `${input.hierarchy.modules.length + 1} modules` : undefined, depth: 0, select: { kind: 'project' }, open: { kind: 'architecture' } },
       { key: 'doc:runs', kind: 'document', label: 'Runs', meta: input.runs.length ? `${input.runs.length}` : undefined, depth: 0, select: { kind: 'project' }, open: { kind: 'runs' } },
-      { key: 'doc:compile-order', kind: 'document', label: 'Compile Order', depth: 0, select: { kind: 'project' }, open: { kind: 'compile-order' } },
     ],
   });
 
@@ -295,7 +294,11 @@ export function deriveProjectExplorer(input: ProjectExplorerInput): readonly Pro
   }
   groups.push({ id: 'constraints', label: 'Constraints', count: constraints.length, rows: constraints });
 
-  // ── Generated Files ───────────────────────────────────────────────────────
+  // ── Technical files ───────────────────────────────────────────────────────
+  // The order units compile in and the files RedByte generates are what a student opens to
+  // inspect the build, not what they work on. They are one group, closed until asked for, and
+  // still found by the filter. Nothing is removed: the Compile Order document and every
+  // generated file open from here exactly as before.
   const generated: ProjectExplorerRow[] = input.artifacts.map((artifact) => ({
     key: `artifact:${artifact.path}`,
     kind: 'artifact',
@@ -305,7 +308,11 @@ export function deriveProjectExplorer(input: ProjectExplorerInput): readonly Pro
     select: { kind: 'artifact', artifactId: artifact.path },
     open: { kind: 'package-artifact' },
   }));
-  groups.push({ id: 'generated', label: 'Generated Files', count: generated.length, rows: generated });
+  const technical: ProjectExplorerRow[] = [
+    { key: 'doc:compile-order', kind: 'document', label: 'Compile Order', depth: 0, select: { kind: 'project' }, open: { kind: 'compile-order' } },
+    ...generated,
+  ];
+  groups.push({ id: 'generated', label: 'Technical files', count: technical.length, rows: technical });
 
   // ── Runs ──────────────────────────────────────────────────────────────────
   const runs: ProjectExplorerRow[] = [...input.runs]

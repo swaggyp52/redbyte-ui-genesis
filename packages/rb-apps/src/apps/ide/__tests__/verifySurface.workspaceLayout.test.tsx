@@ -89,7 +89,8 @@ describe('VerifySurface workspace layout', () => {
     expect(labGrid.contains(getByTestId('ide-verify-region-waveform'))).toBe(true);
     // Before a run the second region is the run line, and it says so rather than standing in
     // for a trace instrument that is not the primary working area here.
-    expect(getByTestId('ide-verify-run-line-empty').textContent).toContain('No run recorded yet');
+    expect(getByTestId('ide-vcb-unrecorded').textContent).toBe('No recording yet');
+    expect(labGrid.contains(getByTestId('ide-verify-selected-result'))).toBe(true);
   });
 
   it('keeps the header and result regions outside the workspace container', () => {

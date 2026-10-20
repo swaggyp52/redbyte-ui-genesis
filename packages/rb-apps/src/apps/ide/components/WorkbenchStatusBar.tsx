@@ -1,7 +1,11 @@
 import React from 'react';
 
+/** Where a workspace shell places its collapsed bottom-panel handle. */
+export const STATUS_CONSOLE_SLOT_ID = 'rb-status-console-slot';
+
 export interface WorkbenchStatusBarProps {
   problemsCount: number;
+  problemScope?: string;
   /** Informational entries in the same ledger. Counted apart: a note is not a problem. */
   noteCount?: number;
   onShowProblems?: () => void;
@@ -17,6 +21,7 @@ export interface WorkbenchStatusBarProps {
  */
 export const WorkbenchStatusBar: React.FC<WorkbenchStatusBarProps> = ({
   problemsCount,
+  problemScope,
   noteCount = 0,
   onShowProblems,
   runState = null,
@@ -40,8 +45,11 @@ export const WorkbenchStatusBar: React.FC<WorkbenchStatusBarProps> = ({
         onClick={onShowProblems}
         title="Show problems"
       >
-        {problemsLabel}
+        {problemScope ? `${problemScope} · ${problemsLabel}` : problemsLabel}
       </button>
+      {/* While the Problems panel is collapsed its handle lives here, so the bottom of the
+          window is one line rather than a status line under a second, empty strip. */}
+      <span className="wb-status-console-slot" id={STATUS_CONSOLE_SLOT_ID} data-testid="ide-status-console-slot" />
       <span className="wb-status-spacer" />
       {runState ? (
         <span className="wb-status-item" data-testid="ide-status-run" data-tone={runState.tone === 'idle' ? undefined : runState.tone}>

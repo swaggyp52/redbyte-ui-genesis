@@ -98,9 +98,11 @@ describe('Simulate scenario selection integration', () => {
     expect(view.queryByTestId('ide-verify-region-inspector')).toBeNull();
     // Duplicate labels retain the exact instance node IDs as their canonical display names.
     fireEvent.change(view.getByLabelText('Recorded circuit signal'), { target: { value: 'left__x1' } });
-    expect(view.getByTestId('ide-recorded-circuit-context').textContent).toContain('left__x1 = 0');
+    expect(view.getByTestId('ide-recorded-circuit-context').textContent).toContain('left__x1');
+    expect(view.getByTestId('ide-selected-result-observed').textContent).toBe('0');
     fireEvent.change(view.getByLabelText('Recorded circuit signal'), { target: { value: 'right__x1' } });
-    expect(view.getByTestId('ide-recorded-circuit-context').textContent).toContain('right__x1 = 1');
+    expect(view.getByTestId('ide-recorded-circuit-context').textContent).toContain('right__x1');
+    expect(view.getByTestId('ide-selected-result-observed').textContent).toBe('1');
     fireEvent.click(view.getByRole('button', { name: 'Close circuit investigation' }));
     expect(view.getByTestId('ide-verify-details').getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(view.getByTestId('ide-verify-details'));

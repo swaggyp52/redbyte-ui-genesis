@@ -193,7 +193,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    expect(getByTestId('ide-vcb-check-count').textContent).toContain('1 optional checks');
+    expect(getByTestId('ide-case-lab-exp-0-ld0').textContent).toBe('1');
     expect(getByTestId('ide-case-lab-exp-0-ld0').getAttribute('title')).toContain(
       '1'
     );

@@ -159,7 +159,11 @@ describe('Project workbench — loaded project', () => {
     const onNavigateMode = vi.fn();
     const onOpenProblems = vi.fn();
     const view = render(<ProjectSurface {...baseProps({ onNavigateMode, onOpenProblems })} />);
-    expect(view.getByTestId('ide-project-attention').textContent).toContain('RBP1005');
+    // The lead says what is wrong in words; its code identifies it without being the sentence.
+    const lead = view.getByTestId('ide-project-attention').querySelector('.rb-project-attention-lead');
+    expect(lead?.getAttribute('data-problem-code')).toBe('RBP1005');
+    expect(lead?.textContent).not.toContain('RBP1005');
+    expect((lead?.textContent ?? '').trim().length).toBeGreaterThan(10);
     expect(view.queryByTestId('ide-project-problems')).toBeNull();
     fireEvent.click(view.getByTestId('ide-project-open-problems'));
     expect(onOpenProblems).toHaveBeenCalledOnce();
@@ -190,6 +194,53 @@ describe('Project workbench — loaded project', () => {
     expect(rows[0].textContent).toContain('FullAdder.vhd');
     expect(rows[1].textContent).toContain('full_adder.vhd');
     expect(rows[1].textContent).toContain('FullAdder');
+  });
+
+  // Compile order and the generated files are for inspecting the build. They sit in one
+  // group that starts closed; this walks the way in rather than only checking they exist.
+  it('keeps compile order and generated files one deliberate step away, and still reachable', () => {
+    const onOpenDocument = vi.fn();
+    const view = render(<ProjectSurface {...baseProps({ onOpenDocument })} />);
+    const group = view.getByTestId('ide-project-explorer-group-generated');
+    const toggle = group.querySelector('.wb-tree-heading button') as HTMLButtonElement;
+
+    // Closed on arrival: named, counted, and none of its rows in the document.
+    expect(group.getAttribute('aria-label')).toBe('Technical files');
+    expect(group.querySelector('.wb-toolwindow-count')?.textContent).toBe('3');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toBe('Expand Technical files');
+    expect(view.queryByTestId('ide-project-row-doc:compile-order')).toBeNull();
+    expect(view.queryByTestId('ide-project-row-artifact:top.vhd')).toBeNull();
+    // It is not left behind among the documents a student works in.
+    const projectGroup = view.getByTestId('ide-project-explorer-group-project');
+    expect(projectGroup.textContent).not.toContain('Compile Order');
+    expect(projectGroup.textContent).toContain('Overview');
+
+    // Opened by its own control.
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const compileOrder = view.getByTestId('ide-project-row-doc:compile-order');
+    expect(group.contains(compileOrder)).toBe(true);
+    expect(group.contains(view.getByTestId('ide-project-row-artifact:top.vhd'))).toBe(true);
+    expect(group.contains(view.getByTestId('ide-project-row-artifact:top.xdc'))).toBe(true);
+
+    // And the row still opens the document.
+    fireEvent.click(compileOrder);
+    expect(onOpenDocument).toHaveBeenCalledWith({ kind: 'compile-order' });
+
+    // Closing it puts the rows away again.
+    fireEvent.click(toggle);
+    expect(view.queryByTestId('ide-project-row-doc:compile-order')).toBeNull();
+  });
+
+  it('finds a technical file through the filter without opening the group first', () => {
+    const view = render(<ProjectSurface {...baseProps()} />);
+    expect(view.queryByTestId('ide-project-row-doc:compile-order')).toBeNull();
+    fireEvent.change(view.getByTestId('ide-project-explorer-filter'), { target: { value: 'compile' } });
+    expect(view.getByTestId('ide-project-row-doc:compile-order')).toBeTruthy();
+    fireEvent.change(view.getByTestId('ide-project-explorer-filter'), { target: { value: 'top.xdc' } });
+    expect(view.getByTestId('ide-project-row-artifact:top.xdc')).toBeTruthy();
+    expect(view.queryByTestId('ide-project-row-doc:compile-order')).toBeNull();
   });
 
   it('exposes the hierarchy group with instances that open their definition', () => {

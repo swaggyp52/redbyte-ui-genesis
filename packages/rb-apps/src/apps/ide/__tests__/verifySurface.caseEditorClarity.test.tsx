@@ -56,8 +56,8 @@ describe('Verify first-run composition', () => {
     // The empty state replaces the passive instruction text (no-vectors path). It is one line
     // in the run line rather than a panel, because the case table above it is already the
     // instrument this reader is working in.
-    expect(getByTestId('ide-verify-run-line-empty').textContent).toContain('No run recorded yet');
-    expect(getByTestId('ide-verify-run-line-empty').textContent).toContain('Author stimulus above');
+    expect(getByTestId('ide-vcb-unrecorded').textContent).toBe('No recording yet');
+    expect(getByTestId('ide-selected-result-observed').textContent).toBe('—');
   });
 
   it('keeps the stimulus canvas visible when vectors exist without a hero panel', () => {

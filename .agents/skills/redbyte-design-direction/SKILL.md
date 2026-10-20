@@ -12,7 +12,7 @@ RedByte should feel like a serious course lab workbench:
 - a real circuit canvas, proof bench, board map, and Vivado handoff path
 - calm density, clear hierarchy, and engineering credibility
 - educational language without toy styling
-- dark UI used for focus, not generic cyberpunk decoration
+- a quiet technical drawing surface with legible symbols, values and module boundaries
 - hardware and Vivado claims tied to evidence tiers
 
 ## Design Rules
@@ -23,17 +23,18 @@ RedByte should feel like a serious course lab workbench:
 4. Make primary actions obvious in the first viewport.
 5. Make stale, draft, ready, pass, fail, and trusted states visually distinct.
 6. Reduce duplicated chips, badges, and pill labels when they repeat the same state.
-7. Normalize typography and spacing through shared primitives before per-surface polish.
+7. Preserve existing typography and tokens unless a rendered comparison demonstrates a concrete problem.
+8. Make the circuit, its behavior and its representations understandable together. Keep selection, logic values, mismatch and brand accents distinct.
 
 ## Surface Targets
 
 - Project: course mission control, not a landing page.
 - Design: circuit canvas is the workbench, palette and inspector are tools.
-- Verify: proof bench with Compare result, waveform evidence, and repair path.
-- Hardware / Map Pins: Basys3 board and binding table are the focal objects.
-- Export: Vivado package handoff with trust state and primary build/download action.
+- Simulate: one recorded experiment with connected circuit, logic, table/time and repair views.
+- Board: Basys3 board and binding table are the focal objects.
+- Package: Vivado package handoff with trust state and primary build/download action.
 - Import: utility route with clear recovery and project identity.
 
 ## Implementation Order
 
-Start with tokens and shared primitives, then fix Project/Design/Hardware/Export/Verify surface hierarchy in narrow slices with browser proof.
+Start with the primary student task and a working interaction concept. For a substantial change, render materially different compositions using the same real circuit data and compare them in the browser. Choose a short design thesis, then implement the connected behavior with existing architecture and primitives. Refine the visual system after the concept works. Use `redbyte-linked-representations` for circuit correspondence and execution playback.

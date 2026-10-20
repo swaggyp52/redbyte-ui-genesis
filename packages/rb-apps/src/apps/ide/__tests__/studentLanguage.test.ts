@@ -11,16 +11,16 @@ import { getIdeModeLabel, IDE_MODE_LABELS } from '../workflowStages';
 
 describe('student-facing language contracts', () => {
   describe('surface name consistency', () => {
-    it('maps hardware mode to "Board & Constraints" label', () => {
-      expect(getIdeModeLabel('hardware')).toBe('Board & Constraints');
-      expect(IDE_MODE_LABELS.hardware).toBe('Board & Constraints');
+    it('maps hardware mode to "Board" label', () => {
+      expect(getIdeModeLabel('hardware')).toBe('Board');
+      expect(IDE_MODE_LABELS.hardware).toBe('Board');
     });
 
     it('maps all modes to student-facing labels', () => {
       expect(getIdeModeLabel('project')).toBe('Project');
       expect(getIdeModeLabel('design')).toBe('Design');
       expect(getIdeModeLabel('verify')).toBe('Simulate');
-      expect(getIdeModeLabel('export')).toBe('Build & Export');
+      expect(getIdeModeLabel('export')).toBe('Package');
       expect(getIdeModeLabel('import')).toBe('Import');
     });
   });

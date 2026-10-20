@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getIdeModeLabel } from '../workflowStages';
 import type {
   IdeCommandCategory,
   IdeCommandId,
@@ -18,8 +19,8 @@ const COMMAND_CATEGORY_LABELS: Readonly<Record<IdeCommandCategory, string>> = {
   edit: 'Edit',
   design: 'Design',
   simulation: 'Simulation',
-  board: 'Board',
-  export: 'Build & Export',
+  board: getIdeModeLabel('hardware'),
+  export: getIdeModeLabel('export'),
   workspace: 'Workspace',
   theme: 'Theme',
   help: 'Help',

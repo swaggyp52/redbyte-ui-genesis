@@ -22,7 +22,7 @@ export const ScenarioTestbenchPreview: React.FC<ScenarioTestbenchPreviewProps> =
         <h3 className="rb-tb-preview-file">testbench.vhd</h3>
         <span className="wb-toolbar-spacer" />
         <strong className="rb-tb-preview-scenario">{scenarioName}</strong>
-        <small className="rb-tb-preview-note">Same source packaged by Build &amp; Export</small>
+        <small className="rb-tb-preview-note">Same source that Package exports</small>
       </header>
       <div className="rb-tb-preview-code" role="region" aria-label="Generated VHDL testbench">
         {lines.map((line, index) => (
