@@ -287,3 +287,15 @@ export const Counter4BitDef: CompositeNodeDef = {
     Q3: 'q3.out',
   },
 };
+
+/**
+ * The composite parts the package registers as node behaviours (index.ts). The builtin
+ * DFlipFlop and JKFlipFlop behaviours replace DFlipFlopDef and JKFlipFlopDef, which stay
+ * exported for reference only.
+ */
+export const BUILTIN_COMPOSITE_DEFS: readonly CompositeNodeDef[] = [
+  RSLatchDef,
+  DLatchDef,
+  FullAdderDef,
+  Counter4BitDef,
+];
