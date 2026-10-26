@@ -21,7 +21,7 @@
 //
 // Reads go through window.__RB_PROJECT_RUNTIME__.getState() and read-only IndexedDB
 // transactions for assertions only. No runtime method is called to drive the task.
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
@@ -366,6 +366,8 @@ try {
   const cell = page.getByRole('gridcell', { name: /^EN at t2:/ });
   await cell.waitFor({ state: 'visible' });
   const cellBefore = await cell.getAttribute('aria-label');
+  // A recording is on screen: editing its stimulus is the explicit mode (RB-DEBT-020).
+  await editStimulus(page);
   await cell.click();
   await page.waitForFunction((label) =>
     document.querySelector(`[role="gridcell"][aria-label^="EN at t2:"]`)?.getAttribute('aria-label') !== label, cellBefore);
@@ -418,6 +420,7 @@ try {
   // current authored values and the complete immutable recording archive.
   await tid('mode-button-verify').click();
   const recoveryCell = page.getByRole('gridcell', { name: /^EN at t2:/ });
+  await editStimulus(page);
   await recoveryCell.click();
   const recoveryExpected = await readSession(page);
   await fileMenu(page, 'project.build-fresh');

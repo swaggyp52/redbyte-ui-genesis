@@ -1,5 +1,5 @@
 // Authoring/exploration and panel ownership, through visible controls.
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -67,6 +67,8 @@ try {
     await tid('ide-run-repetition').waitFor();
     assert.equal(await tid('ide-run-repetition').innerText(), '1 run · no repeat yet');
     await tid('ide-run-details').locator('summary').press('Escape');
+    // The recording is on screen: editing its stimulus is the explicit mode (RB-DEBT-020).
+    await editStimulus(page);
     await page.getByRole('gridcell', { name: /^EN at t2:/ }).click();
     await tid('ide-vcb-run').click();
     await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.status === 'fail');

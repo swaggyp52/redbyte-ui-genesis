@@ -1,6 +1,6 @@
 // A visual comparison tool, not a functional acceptance gate. The same starter,
 // authored edit, selected tick and viewport are used on both source revisions.
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 const label=process.env.RB_SHOT_LABEL??'after';const out=evidenceDir('studio-matched',label);
@@ -33,7 +33,8 @@ try {
  if(await tid('ide-vcb-use-saved-checks').count())await tid('ide-vcb-use-saved-checks').click();await run();
  assert.equal(await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun.status),'pass','Same starter passes its authored checks');
  await shot('04-simulate-passing-1440x900');
- const cell=page.getByRole('gridcell',{name:/^EN at t2:/});await cell.click();await run();
+ // The recording is on screen: editing its stimulus is the explicit mode (RB-DEBT-020).
+ const cell=page.getByRole('gridcell',{name:/^EN at t2:/});await editStimulus(page);await cell.click();await run();
  assert.equal(await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun.status),'fail','Same EN edit fails the retained expected values');
  await shot('05-simulate-failing-1440x900');
  const inspect=await tid('ide-verify-inspect-circuit').count()?tid('ide-verify-inspect-circuit'):tid('ide-verify-open-circuit-replay');await inspect.click();
