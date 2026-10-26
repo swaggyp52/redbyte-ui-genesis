@@ -894,7 +894,10 @@ export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }:
   const warnings: string[] = [];
   const inv = invSignal ?? `${signal}_inv`;
   const registerConfig = config ?? {};
-  const isConfiguredRegister1 = type === 'Register1';
+  // The configuration is the authority for a register-family part's EN and RST, as in the
+  // simulator (evaluateRegisterFamily): a pin the configuration disables is ignored even when
+  // wired. A DFlipFlop has no configuration and always uses a wired EN and RST.
+  const isConfiguredRegister = type === 'Register1' || type === 'RegisterBus' || type === 'StateBank';
   const registerResetKind = String(registerConfig.resetKind ?? 'none').toLowerCase();
   const registerHasEnable = registerConfig.hasEnable === true;
   const d =
@@ -913,12 +916,12 @@ export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }:
     input('en') ??
     input('enable') ??
     input('ce');
-  const rst = isConfiguredRegister1
+  const rst = isConfiguredRegister
     ? registerResetKind === 'async_clear'
       ? connectedRst
       : null
     : connectedRst;
-  const en = isConfiguredRegister1
+  const en = isConfiguredRegister
     ? registerHasEnable
       ? connectedEn
       : null
@@ -931,11 +934,11 @@ export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }:
     return { lines, warnings };
   }
 
-  if (isConfiguredRegister1 && registerResetKind === 'async_clear' && !rst) {
-    warnings.push(`Register1 "${id}" enables async clear but has no reset input; reset will remain inactive`);
+  if (isConfiguredRegister && registerResetKind === 'async_clear' && !rst) {
+    warnings.push(`${type} "${id}" enables async clear but has no reset input; reset will remain inactive`);
   }
-  if (isConfiguredRegister1 && registerHasEnable && !en) {
-    warnings.push(`Register1 "${id}" enables clock enable but has no EN/CE input; the register will hold its initial value`);
+  if (isConfiguredRegister && registerHasEnable && !en) {
+    warnings.push(`${type} "${id}" enables clock enable but has no EN/CE input; the register will hold its initial value`);
   }
 
   if (rst) {
@@ -954,7 +957,7 @@ export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }:
     lines.push(`      if ${en} = '1' then`);
     lines.push(`        ${signal} <= ${d};`);
     lines.push('      end if;');
-  } else if (isConfiguredRegister1 && registerHasEnable) {
+  } else if (isConfiguredRegister && registerHasEnable) {
     lines.push('      null; -- enabled register with no EN/CE input holds state');
   } else {
     lines.push(`      ${signal} <= ${d};`);
