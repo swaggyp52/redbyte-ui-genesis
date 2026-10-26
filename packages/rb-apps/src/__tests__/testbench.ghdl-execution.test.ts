@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -11,7 +11,7 @@ import {
   createFromScratchSeqTwoBitCounterBasys3Project,
 } from '../apps/ide/fixtures/fromScratchBasys3CertProjects';
 import { exportProjectAsBasys3 } from '../fpga/boards/basys3/basys3ExportService';
-import { generateTestbenchVhdl } from '../fpga/boards/basys3/testbenchGenerator';
+import { generateTestbenchVhdl, TESTBENCH_RESULT_FILE } from '../fpga/boards/basys3/testbenchGenerator';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
 
 /**
@@ -37,7 +37,27 @@ interface GhdlOutcome {
   runStatus: number | null;
   timedOut: boolean;
   log: string;
-  results: Array<{ tb: string; status: string; checks: number; failures: number }>;
+  /** Summary lines the simulator printed. */
+  results: TbResult[];
+  /** Summary lines the testbench wrote to its result file (what harnesses read). */
+  fileResults: TbResult[];
+}
+
+type TbResult = { tb: string; status: string; checks: number; failures: number };
+
+function parseResults(text: string): TbResult[] {
+  return [...text.matchAll(/REDBYTE_TB_RESULT v=1 tb=(\w+) status=(\w+) checks=(\d+) failures=(\d+)/g)].map((m) => ({
+    tb: m[1],
+    status: m[2],
+    checks: Number(m[3]),
+    failures: Number(m[4]),
+  }));
+}
+
+/** The printed line and the result file must agree, and both must say exactly this. */
+function expectResults(outcome: GhdlOutcome, expected: TbResult[]): void {
+  expect(outcome.results, outcome.log).toEqual(expected);
+  expect(outcome.fileResults, outcome.log).toEqual(expected);
 }
 
 function runGhdl(files: Array<{ name: string; text: string }>, tbEntity: string, std: '08' | '93c' = '08'): GhdlOutcome {
@@ -49,9 +69,9 @@ function runGhdl(files: Array<{ name: string; text: string }>, tbEntity: string,
     const elaborate = spawnSync(GHDL, ['-e', `--std=${std}`, tbEntity], { ...common, timeout: 60_000 });
     const run = spawnSync(GHDL, ['-r', `--std=${std}`, tbEntity], { ...common, timeout: RUN_TIMEOUT_MS });
     const log = [analyze, elaborate, run].map((r) => `${r.stdout ?? ''}${r.stderr ?? ''}`).join('\n');
-    const results = [...`${run.stdout ?? ''}${run.stderr ?? ''}`.matchAll(
-      /REDBYTE_TB_RESULT v=1 tb=(\w+) status=(\w+) checks=(\d+) failures=(\d+)/g,
-    )].map((m) => ({ tb: m[1], status: m[2], checks: Number(m[3]), failures: Number(m[4]) }));
+    const results = parseResults(`${run.stdout ?? ''}${run.stderr ?? ''}`);
+    const resultPath = join(dir, TESTBENCH_RESULT_FILE);
+    const fileResults = existsSync(resultPath) ? parseResults(readFileSync(resultPath, 'utf8')) : [];
     return {
       analyzeStatus: analyze.status,
       elaborateStatus: elaborate.status,
@@ -59,6 +79,7 @@ function runGhdl(files: Array<{ name: string; text: string }>, tbEntity: string,
       timedOut: run.error !== undefined && /ETIMEDOUT/.test(String(run.error)),
       log,
       results,
+      fileResults,
     };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -121,7 +142,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
     const outcome = runGhdl(files, tb, std);
     expect(outcome.analyzeStatus, outcome.log).toBe(0);
     expect(outcome.runStatus, outcome.log).toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'PASS', checks: 4, failures: 0 }]);
+    expectResults(outcome, [{ tb, status: 'PASS', checks: 4, failures: 0 }]);
   }, 120_000);
 
   it('combinational wrong expectation fails with a nonzero exit', () => {
@@ -129,7 +150,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
     const { files, tb } = exportedFiles(withVectors(base, flipFirstExpectation(base.vectors ?? [], 3)));
     const outcome = runGhdl(files, tb);
     expect(outcome.runStatus, outcome.log).not.toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'FAIL', checks: 4, failures: 1 }]);
+    expectResults(outcome, [{ tb, status: 'FAIL', checks: 4, failures: 1 }]);
   }, 120_000);
 
   it('stimulus-only testbench reports NO_CHECKS with a nonzero exit', () => {
@@ -137,7 +158,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
     const { files, tb } = exportedFiles(withVectors(base, (base.vectors ?? []).map((v) => ({ ...v, expected: {} }))));
     const outcome = runGhdl(files, tb);
     expect(outcome.runStatus, outcome.log).not.toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'NO_CHECKS', checks: 0, failures: 0 }]);
+    expectResults(outcome, [{ tb, status: 'NO_CHECKS', checks: 0, failures: 0 }]);
   }, 120_000);
 
   it('auto board-clock counter terminates on its own and passes', () => {
@@ -145,7 +166,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
     const outcome = runGhdl(files, tb);
     expect(outcome.timedOut, outcome.log).toBe(false);
     expect(outcome.runStatus, outcome.log).toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'PASS', checks: 14, failures: 0 }]);
+    expectResults(outcome, [{ tb, status: 'PASS', checks: 14, failures: 0 }]);
   }, 120_000);
 
   it('auto board-clock counter with a wrong expectation terminates and fails', () => {
@@ -154,14 +175,14 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
     const outcome = runGhdl(files, tb);
     expect(outcome.timedOut, outcome.log).toBe(false);
     expect(outcome.runStatus, outcome.log).not.toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'FAIL', checks: 14, failures: 1 }]);
+    expectResults(outcome, [{ tb, status: 'FAIL', checks: 14, failures: 1 }]);
   }, 120_000);
 
   it('auto board-clock sampling waits for logic after the flip-flop to settle', () => {
     const { files, tb } = exportedFiles(deepOutputCounter());
     const outcome = runGhdl(files, tb);
     expect(outcome.runStatus, outcome.log).toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'PASS', checks: 14, failures: 0 }]);
+    expectResults(outcome, [{ tb, status: 'PASS', checks: 14, failures: 0 }]);
   }, 120_000);
 
   it.each([
@@ -184,7 +205,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
     const outcome = runGhdl([{ name: 'top.vhd', text: topVhd }, { name: 'testbench.vhd', text: testbench }], tb);
     expect(outcome.timedOut, outcome.log).toBe(false);
     expect(outcome.runStatus === 0, outcome.log).toBe(status === 'PASS');
-    expect(outcome.results).toEqual([{ tb, status, checks: 8, failures }]);
+    expectResults(outcome, [{ tb, status, checks: 8, failures }]);
   }, 120_000);
 
   it('the exported view-model artifacts (with provenance headers) simulate and pass', () => {
@@ -199,7 +220,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
       tb,
     );
     expect(outcome.runStatus, outcome.log).toBe(0);
-    expect(outcome.results).toEqual([{ tb, status: 'PASS', checks: 14, failures: 0 }]);
+    expectResults(outcome, [{ tb, status: 'PASS', checks: 14, failures: 0 }]);
   }, 120_000);
 });
 

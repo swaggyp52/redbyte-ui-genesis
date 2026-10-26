@@ -18,6 +18,9 @@ param(
   [ValidateSet('ExistingZipDir', 'LocalGenerated', 'Production')]
   [string]$PackageSource = 'ExistingZipDir',
 
+  # Wall-clock limit for one design's Vivado batch run; a hung run is TIMEOUT, never a pass.
+  [double]$TimeoutMinutes = 45,
+
   [Alias('PackageDir')]
   [string]$ZipDir = '.redbyte/product-immersion/vivado-grade-export-audit/downloads',
   [string]$OutputRoot = '.redbyte/vivado-e1',
@@ -49,8 +52,67 @@ function New-Directory([string]$Path) {
   }
 }
 
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
 function Write-JsonFile($Value, [string]$Path) {
-  $Value | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $Path -Encoding UTF8
+  [System.IO.File]::WriteAllText($Path, ($Value | ConvertTo-Json -Depth 50), $Utf8NoBom)
+}
+
+# Every classification redbyte-e1-certify.tcl may write, with the exit code it must exit with.
+$TclClassificationExitCodes = @{
+  'PASS_E1' = 0
+  'FAIL_IMPORT' = 2
+  'FAIL_COMPILE' = 3
+  'FAIL_SYNTH' = 5
+  'FAIL_IMPL_DRY_RUN' = 6
+  'HARNESS_ERROR' = 10
+  'BLOCKED_NO_SIM' = 20
+  'BLOCKED_NO_TESTBENCH' = 21
+  'FAIL_TESTBENCH_COMPILE' = 22
+  'FAIL_TESTBENCH_ELAB' = 23
+  'FAIL_TESTBENCH_LAUNCH' = 24
+  'FAIL_TESTBENCH_RUNTIME' = 25
+  'FAIL_TESTBENCH_TIMEOUT' = 26
+  'FAIL_TESTBENCH_CONTRACT' = 27
+  'FAIL_TESTBENCH_ASSERTION' = 28
+  'FAIL_TESTBENCH_NO_CHECKS' = 29
+}
+
+# Classifications that are failures of the run itself rather than of one stage.
+$RunFailureClassifications = @('TIMEOUT', 'INTERRUPTED', 'HARNESS_ERROR', 'EVIDENCE_CONFLICT')
+
+function Read-JsonFileOrNull([string]$Path) {
+  if (!(Test-Path -LiteralPath $Path)) { return $null }
+  try {
+    return Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+  } catch {
+    return $null
+  }
+}
+
+function Get-StagePassed($TclResult, [string]$Stage) {
+  if ($null -eq $TclResult -or $null -eq $TclResult.stages) { return $false }
+  $entry = $TclResult.stages.PSObject.Properties[$Stage]
+  return ($null -ne $entry -and $entry.Value.status -eq 'pass')
+}
+
+function Quote-ProcessArgument([string]$Value) {
+  return '"' + ($Value -replace '"', '\"') + '"'
+}
+
+# Runs Vivado with its console redirected to files (so output never leaks into this script's
+# pipeline) and a wall-clock limit. Returns exit code, or timedOut when the process was killed.
+function Invoke-VivadoBatch([string]$VivadoExe, [string[]]$Arguments, [string]$StdoutPath, [string]$StderrPath, [int]$TimeoutMs) {
+  $process = Start-Process -FilePath $VivadoExe -ArgumentList ($Arguments | ForEach-Object { Quote-ProcessArgument $_ }) `
+    -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath -NoNewWindow -PassThru
+  $null = $process.Handle
+  if (!$process.WaitForExit($TimeoutMs)) {
+    & taskkill.exe /PID $process.Id /T /F 2>&1 | Out-Null
+    $null = $process.WaitForExit(30000)
+    return [ordered]@{ exitCode = $null; timedOut = $true }
+  }
+  $process.WaitForExit()
+  return [ordered]@{ exitCode = $process.ExitCode; timedOut = $false }
 }
 
 function Get-CommandText([string]$Command, [string[]]$Arguments = @()) {
@@ -277,6 +339,13 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
   $xprTop = Get-RegexValue $xprText '<FileSet\s+Name="sources_1"[\s\S]*?<Option\s+Name="TopModule"\s+Val="([^"]+)"'
   $xprPart = Get-RegexValue $xprText '<Option\s+Name="Part"\s+Val="([^"]+)"'
   $tclTop = Get-RegexValue $tclText 'set\s+top_module\s+"([^"]+)"'
+  $tbEntity = Get-RegexValue $tbText '(?m)^\s*entity\s+([A-Za-z][A-Za-z0-9_]*)\s+is\b'
+  $xprSimTop = Get-RegexValue $xprText '<FileSet\s+Name="sim_1"[\s\S]*?<Option\s+Name="TopModule"\s+Val="([^"]+)"'
+  $tclSimTop = Get-RegexValue $tclText 'set_property\s+top\s+"([^"]+)"\s+\[get_filesets\s+sim_1\]'
+  $tbHasContract = $tbText.Contains('REDBYTE_TB_RESULT v=1')
+  $tbVectorCount = [regex]::Matches($tbText, '--\s*Vector\s+\d+').Count
+  # Simulation-time bound: each generated vector takes at most ~11 ns; allow a wide margin.
+  $simBoundNs = 2000 + (100 * $tbVectorCount)
   $pins = @(Get-PackagePins $xdcText)
   $duplicatePins = @($pins | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
   $xdcPorts = @(Get-XdcPorts $xdcText)
@@ -297,8 +366,21 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
   if ($xdcPorts.Count -eq 0) {
     $issues += 'No [get_ports {...}] constraints found in top.xdc.'
   }
-  if ($tbText.Trim().Length -gt 0 -and ![regex]::IsMatch($tbText, '\bassert\b', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
-    $warnings += 'testbench.vhd is present but has no assert statements.'
+  $contractIssue = $null
+  if ($tbText.Trim().Length -gt 0) {
+    if ($null -eq $tbEntity) {
+      $issues += 'Could not detect the testbench entity in testbench.vhd.'
+    } else {
+      if ($null -eq $xprSimTop -or $tbEntity.ToLowerInvariant() -ne $xprSimTop.ToLowerInvariant()) {
+        $issues += "Testbench entity $tbEntity does not match .xpr sim_1 TopModule $xprSimTop."
+      }
+      if ($null -eq $tclSimTop -or $tbEntity.ToLowerInvariant() -ne $tclSimTop.ToLowerInvariant()) {
+        $issues += "Testbench entity $tbEntity does not match the vivado_import.tcl sim_1 top $tclSimTop."
+      }
+    }
+    if (!$tbHasContract) {
+      $contractIssue = 'testbench.vhd has no REDBYTE_TB_RESULT self-check (exported by an older RedByte); re-export the package.'
+    }
   }
   if ($readmeText.Trim().Length -gt 0 -and ![regex]::IsMatch($readmeText, 'E0 export package|does not prove Vivado|E1/E2/E3', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
     $warnings += 'README.txt does not clearly state the E0/no-E1 boundary.'
@@ -328,16 +410,27 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
     $issues += "Unsupported top-level construct(s): $($unsupported -join ', ')"
   } elseif ($issues.Count -gt 0) {
     $classification = 'FAIL_IMPORT'
+  } elseif ($null -ne $contractIssue) {
+    $classification = 'FAIL_TESTBENCH_CONTRACT'
+    $issues += $contractIssue
   } elseif ($VivadoInfo.found -and $Mode -eq 'DryRun') {
     $classification = 'READY_FOR_E1_RUN'
   }
 
   $vivadoRun = [ordered]@{
     attempted = $false
+    runId = $null
     exitCode = $null
+    timedOut = $false
     resultFile = $null
     log = $null
+    stdout = $null
+    lastStage = $null
+    resultLinesInLog = $null
+    acceptance = $null
   }
+  $tclResult = $null
+  $stageSource = $null
 
   if ($Mode -eq 'Certify' -and $classification -eq 'BLOCKED_NO_VIVADO' -and $VivadoInfo.found) {
     $classification = 'READY_FOR_E1_RUN'
@@ -346,6 +439,15 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
   if ($Mode -eq 'Certify' -and $classification -eq 'READY_FOR_E1_RUN') {
     $tcl = Join-Path $PSScriptRoot 'redbyte-e1-certify.tcl'
     $logPath = Join-Path $logsRoot 'vivado-e1.log'
+    $stdoutPath = Join-Path $logsRoot 'vivado-console.out.log'
+    $stderrPath = Join-Path $logsRoot 'vivado-console.err.log'
+    $tclResultPath = Join-Path $designOut 'e1-result.json'
+    $progressPath = Join-Path $designOut 'e1-progress.json'
+    # A run identity, not a hash input: it ties the result file to this invocation.
+    $runId = [guid]::NewGuid().ToString('N')
+    foreach ($stale in @($tclResultPath, "$tclResultPath.tmp", $progressPath, "$progressPath.tmp")) {
+      if (Test-Path -LiteralPath $stale) { Remove-Item -LiteralPath $stale -Force }
+    }
     $vivadoArgs = @(
       '-mode', 'batch',
       '-source', $tcl,
@@ -355,23 +457,60 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
       '-tclargs',
       $xpr.FullName,
       $designOut,
+      $runId,
       ([string]$Jobs),
-      ([string]([bool]$IncludeImplementation)).ToLowerInvariant()
+      ([string]([bool]$IncludeImplementation)).ToLowerInvariant(),
+      ([string]$simBoundNs)
     )
     $vivadoRun.attempted = $true
+    $vivadoRun.runId = $runId
     $vivadoRun.log = $logPath
-    & $VivadoInfo.path @vivadoArgs
-    $vivadoRun.exitCode = $LASTEXITCODE
-
-    $tclResultPath = Join-Path $designOut 'e1-result.json'
+    $vivadoRun.stdout = $stdoutPath
     $vivadoRun.resultFile = $tclResultPath
-    if (Test-Path -LiteralPath $tclResultPath) {
-      $tclResult = Get-Content -LiteralPath $tclResultPath -Raw | ConvertFrom-Json
-      $classification = $tclResult.classification
-    } elseif ($LASTEXITCODE -eq 0) {
-      $classification = 'PASS_E1'
+    $invocation = Invoke-VivadoBatch $VivadoInfo.path $vivadoArgs $stdoutPath $stderrPath ($TimeoutMinutes * 60 * 1000)
+    $vivadoRun.exitCode = $invocation.exitCode
+    $vivadoRun.timedOut = $invocation.timedOut
+    $progress = Read-JsonFileOrNull $progressPath
+    if ($null -ne $progress -and $progress.runId -eq $runId) { $vivadoRun.lastStage = $progress.stage }
+
+    $tclResult = Read-JsonFileOrNull $tclResultPath
+    if ($invocation.timedOut) {
+      $classification = 'TIMEOUT'
+      $vivadoRun.acceptance = "Vivado exceeded $TimeoutMinutes minutes at stage $($vivadoRun.lastStage) and was stopped."
+      $tclResult = $null
+    } elseif ($null -eq $tclResult) {
+      $classification = 'INTERRUPTED'
+      $vivadoRun.acceptance = "No readable e1-result.json from this run (exit $($invocation.exitCode), last stage $($vivadoRun.lastStage))."
+    } elseif ($tclResult.schema -ne 'redbyte.vivado-e1.tcl-result.v2' -or $tclResult.runId -ne $runId) {
+      $classification = 'HARNESS_ERROR'
+      $vivadoRun.acceptance = "e1-result.json is not this run's v2 result (schema $($tclResult.schema), runId $($tclResult.runId))."
+      $tclResult = $null
+    } elseif (!$TclClassificationExitCodes.ContainsKey([string]$tclResult.classification)) {
+      $classification = 'HARNESS_ERROR'
+      $vivadoRun.acceptance = "Unknown classification '$($tclResult.classification)'."
+      $tclResult = $null
+    } elseif ($TclClassificationExitCodes[[string]$tclResult.classification] -ne $invocation.exitCode -or [int]$tclResult.exitCode -ne $invocation.exitCode) {
+      $classification = 'HARNESS_ERROR'
+      $vivadoRun.acceptance = "Classification $($tclResult.classification) disagrees with Vivado exit code $($invocation.exitCode)."
+      $tclResult = $null
     } else {
-      $classification = 'FAIL_SYNTH'
+      $classification = [string]$tclResult.classification
+      $vivadoRun.acceptance = 'accepted'
+      $stageSource = $tclResult
+    }
+
+    # Independent cross-check of a pass against everything Vivado printed.
+    $consoleText = (@($logPath, $stdoutPath) | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join "`n"
+    $logResultLines = @([regex]::Matches($consoleText, 'REDBYTE_TB_RESULT v=1 tb=\S+ status=(\S+) checks=\d+ failures=\d+') | ForEach-Object { $_.Value })
+    $vivadoRun.resultLinesInLog = $logResultLines
+    if ($classification -eq 'PASS_E1') {
+      $nonPass = @($logResultLines | Where-Object { $_ -notmatch 'status=PASS ' })
+      $mismatchCount = [regex]::Matches($consoleText, 'Vector \d+ failed on ').Count
+      if ($nonPass.Count -gt 0 -or $mismatchCount -gt 0) {
+        $classification = 'EVIDENCE_CONFLICT'
+        $stageSource = $null
+        $vivadoRun.acceptance = "PASS_E1 contradicted by the Vivado log: $($nonPass.Count) non-PASS result line(s), $mismatchCount mismatch report(s)."
+      }
     }
   }
 
@@ -389,6 +528,12 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
       topEntity = $topEntity
       xprTopModule = $xprTop
       tclTopModule = $tclTop
+      testbenchEntity = $tbEntity
+      xprSimulationTopModule = $xprSimTop
+      tclSimulationTop = $tclSimTop
+      testbenchHasResultContract = $tbHasContract
+      testbenchVectorCount = $tbVectorCount
+      simBoundNs = $simBoundNs
       constrainedPorts = $xdcPorts
       packagePins = $pins
       duplicatePins = $duplicatePins
@@ -400,12 +545,15 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
     issues = $issues
     warnings = $warnings
     vivadoRun = $vivadoRun
+    e1c = if ($null -ne $tclResult) { $tclResult.e1c } else { $null }
+    # Stage flags come from the accepted result's own stages, never from the classification
+    # alone, and are all false unless this run's result was accepted.
     e1 = [ordered]@{
-      import = ($classification -eq 'PASS_E1')
-      compile = ($classification -eq 'PASS_E1')
-      testbench = ($classification -eq 'PASS_E1')
-      synthesis = ($classification -eq 'PASS_E1')
-      implementationDryRun = (($classification -eq 'PASS_E1') -and [bool]$IncludeImplementation)
+      import = (Get-StagePassed $stageSource 'E1a')
+      compile = (Get-StagePassed $stageSource 'E1b')
+      testbench = (Get-StagePassed $stageSource 'E1c')
+      synthesis = (Get-StagePassed $stageSource 'E1d')
+      implementationDryRun = (Get-StagePassed $stageSource 'E1e')
     }
   }
 }
@@ -440,10 +588,10 @@ function Write-ResultsMarkdown($Manifest, [string]$Path) {
   $lines.Add('')
   $lines.Add('## Boundary')
   $lines.Add('')
-  $lines.Add('- E1 means Vivado import, VHDL compile/elaboration readiness, behavioral simulation/testbench when present, and synthesis.')
+  $lines.Add('- E1 means Vivado import, VHDL compile/elaboration readiness, a self-checking behavioral simulation whose REDBYTE_TB_RESULT line says PASS, and synthesis.')
   $lines.Add('- E1 does not mean bitstream generation, board programming, or observed Basys3 behavior.')
   $lines.Add('- E2 and E3 must be collected separately.')
-  Set-Content -LiteralPath $Path -Value $lines -Encoding UTF8
+  [System.IO.File]::WriteAllLines($Path, $lines, $Utf8NoBom)
 }
 
 if ($OutDir.Trim().Length -gt 0) {
@@ -528,7 +676,7 @@ Write-JsonFile ([ordered]@{
     designs = $results
   }) (Join-Path $RunRoot 'package-summary.json')
 
-$failureCount = @($results | Where-Object { $_.classification -like 'FAIL_*' }).Count
+$failureCount = @($results | Where-Object { $_.classification -like 'FAIL_*' -or $RunFailureClassifications -contains $_.classification }).Count
 $passCount = @($results | Where-Object { $_.classification -eq 'PASS_E1' }).Count
 $blockedCount = @($results | Where-Object { $_.classification -like 'BLOCKED_*' }).Count
 $readyCount = @($results | Where-Object { $_.classification -eq 'READY_FOR_E1_RUN' }).Count
@@ -576,7 +724,9 @@ foreach ($result in $results) {
   Write-Host ("RedByte E1: {0} => {1}" -f $result.designId, $result.classification)
 }
 
-if ($Mode -eq 'Certify' -and $failureCount -gt 0) {
+# Certify succeeds only when every requested design earned PASS_E1; blocked, ready and
+# inconclusive runs are not passes.
+if ($Mode -eq 'Certify' -and $verdict -ne 'pass-e1') {
   exit 1
 }
 exit 0

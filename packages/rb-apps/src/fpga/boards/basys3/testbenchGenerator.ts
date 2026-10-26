@@ -412,6 +412,8 @@ interface SelfCheckNames {
   expectedChecks: string;
   checkVar: string;
   failureVar: string;
+  resultFile: string;
+  finish: string;
 }
 
 function allocateSelfCheckNames(taken: Iterable<string>): SelfCheckNames {
@@ -433,8 +435,17 @@ function allocateSelfCheckNames(taken: Iterable<string>): SelfCheckNames {
     expectedChecks: pick('RB_TB_EXPECTED_CHECKS'),
     checkVar: pick('rb_checks'),
     failureVar: pick('rb_failures'),
+    resultFile: pick('rb_result_file'),
+    finish: pick('rb_finish'),
   };
 }
+
+/**
+ * The file every generated testbench writes its one summary line to, in the
+ * simulator's working directory. Harnesses read this file instead of guessing
+ * which log a simulator routes report messages to.
+ */
+export const TESTBENCH_RESULT_FILE = 'redbyte_tb_result.txt';
 
 function countExpectedChecks(vectors: TestVector[]): number {
   return vectors.reduce((total, vector) => total + Object.keys(vector.expected ?? {}).length, 0);
@@ -455,7 +466,8 @@ interface TestbenchTemplate {
 
 /**
  * Shared body for both generator paths. Every testbench counts its checks and
- * failures, stops its own clock and ends with exactly one summary line:
+ * failures, stops its own clock and ends with exactly one summary line, both
+ * reported and written to TESTBENCH_RESULT_FILE:
  *   REDBYTE_TB_RESULT v=1 tb=<entity> status=PASS|FAIL|NO_CHECKS checks=<n> failures=<m>
  * FAIL and NO_CHECKS report at severity failure, so a simulator exits nonzero
  * and a testbench without checks can never read as a pass.
@@ -463,8 +475,6 @@ interface TestbenchTemplate {
 function renderTestbench(t: TestbenchTemplate): string {
   const tbEntity = testbenchEntityNameFor(t.dutEntity);
   const { names } = t;
-  const summary = `REDBYTE_TB_RESULT v=1 tb=${tbEntity}`;
-  const counts = `" checks=" & integer'image(${names.checkVar}) & " failures=" & integer'image(${names.failureVar})`;
   const sequence = t.authoredClock
     ? 'authored-vectors'
     : t.scheduleContract.schedule === 'clocked_macro'
@@ -474,6 +484,7 @@ function renderTestbench(t: TestbenchTemplate): string {
   return `library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
 entity ${tbEntity} is
 end entity ${tbEntity};
@@ -505,6 +516,17 @@ ${t.clockProcess}
   stim: process
     variable ${names.checkVar} : natural := 0;
     variable ${names.failureVar} : natural := 0;
+    file ${names.resultFile} : text open write_mode is "${TESTBENCH_RESULT_FILE}";
+    procedure ${names.finish}(status : in string; level : in severity_level) is
+      constant summary : string := "REDBYTE_TB_RESULT v=1 tb=${tbEntity} status=" & status
+        & " checks=" & integer'image(${names.checkVar}) & " failures=" & integer'image(${names.failureVar});
+      variable result_line : line;
+    begin
+      write(result_line, summary);
+      writeline(${names.resultFile}, result_line);
+      file_close(${names.resultFile});
+      report summary severity level;
+    end procedure;
   begin
 ${t.stimulus}
     ${names.checks} <= ${names.checkVar};
@@ -512,14 +534,11 @@ ${t.stimulus}
     ${names.done} <= true;
     wait for 0 ns;
     if ${names.failureVar} /= 0 or ${names.checkVar} /= ${names.expectedChecks} then
-      report "${summary} status=FAIL" & ${counts}
-        severity failure;
+      ${names.finish}("FAIL", failure);
     elsif ${names.expectedChecks} = 0 then
-      report "${summary} status=NO_CHECKS" & ${counts}
-        severity failure;
+      ${names.finish}("NO_CHECKS", failure);
     else
-      report "${summary} status=PASS" & ${counts}
-        severity note;
+      ${names.finish}("PASS", note);
     end if;
     wait;
   end process;

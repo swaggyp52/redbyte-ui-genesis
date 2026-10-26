@@ -10,6 +10,7 @@ import { buildExportViewModel } from '../../../../apps/ide/viewmodels/buildExpor
 import {
   detectTestbenchEntityName,
   generateTestbenchVhdl,
+  TESTBENCH_RESULT_FILE,
   testbenchEntityNameFor,
 } from '../testbenchGenerator';
 
@@ -101,12 +102,17 @@ describe('generated testbench self-check contract', () => {
     const tb = generateTestbenchVhdl(project, vectors, path.options);
 
     it('ends with exactly one PASS, one FAIL and one NO_CHECKS summary branch', () => {
-      expect(countMatches(tb, /REDBYTE_TB_RESULT v=1 tb=\w+ status=PASS/g)).toBe(1);
-      expect(countMatches(tb, /REDBYTE_TB_RESULT v=1 tb=\w+ status=FAIL/g)).toBe(1);
-      expect(countMatches(tb, /REDBYTE_TB_RESULT v=1 tb=\w+ status=NO_CHECKS/g)).toBe(1);
-      expect(tb).toMatch(/status=FAIL[^;]*\n?[^;]*severity failure;/);
-      expect(tb).toMatch(/status=NO_CHECKS[^;]*severity failure;/);
-      expect(tb).toMatch(/status=PASS[^;]*severity note;/);
+      expect(countMatches(tb, /"REDBYTE_TB_RESULT v=1 tb=\w+ status=" & status/g)).toBe(1);
+      expect(countMatches(tb, /rb_finish\("FAIL", failure\);/g)).toBe(1);
+      expect(countMatches(tb, /rb_finish\("NO_CHECKS", failure\);/g)).toBe(1);
+      expect(countMatches(tb, /rb_finish\("PASS", note\);/g)).toBe(1);
+      expect(tb).toMatch(/report summary severity level;/);
+    });
+
+    it('writes the summary line to the result file before reporting it', () => {
+      expect(tb).toContain('use std.textio.all;');
+      expect(tb).toContain(`file rb_result_file : text open write_mode is "${TESTBENCH_RESULT_FILE}";`);
+      expect(tb).toMatch(/writeline\(rb_result_file, result_line\);\s+file_close\(rb_result_file\);\s+report summary severity level;/);
     });
 
     it('counts one check per expected key and pins the expected total', () => {
@@ -127,7 +133,7 @@ describe('generated testbench self-check contract', () => {
     it('uses the shared testbench entity name authority', () => {
       const entity = detectTestbenchEntityName(tb);
       expect(entity).toBe(testbenchEntityNameFor('top'));
-      expect(tb).toContain(`REDBYTE_TB_RESULT v=1 tb=${entity} status=PASS`);
+      expect(tb).toContain(`"REDBYTE_TB_RESULT v=1 tb=${entity} status=" & status`);
     });
 
     it('is byte-identical across generations', () => {
