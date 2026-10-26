@@ -14,7 +14,7 @@ import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
 import { resolveIoMappingFromProjectFields, type IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../../export/projectFormat';
-import { generateTestbenchVhdl } from './testbenchGenerator';
+import { generateTestbenchVhdl, TESTBENCH_UNRESOLVED_MARKER } from './testbenchGenerator';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { compareCodepoint } from '../../../export/codepointSort';
 import {
@@ -596,9 +596,23 @@ export function validateArtifactConsistency(topVhd: string, testbenchVhd: string
 
   inconsistencies.push(
     ...validateTestbenchSignalTargets(testbenchVhd, entityPorts),
+    ...validateTestbenchUnresolvedKeys(testbenchVhd),
   );
 
   return inconsistencies;
+}
+
+/** A testbench that could not check or drive a vector key must never be exported as trustworthy. */
+function validateTestbenchUnresolvedKeys(testbenchVhd: string): string[] {
+  return Array.from(testbenchVhd.matchAll(TESTBENCH_UNRESOLVED_MARKER), (match) => {
+    const [, kind, vector, key, reason] = match;
+    const role = kind === 'EXPECTATION' ? 'expected key' : 'stimulus key';
+    const problem =
+      reason === 'non-binary'
+        ? 'has a value that is not 0 or 1'
+        : `does not match any top-level ${kind === 'EXPECTATION' ? 'output' : 'input'} port`;
+    return `Artifact consistency: testbench vector ${vector} ${role} "${key}" ${problem}. Fix: map the signal in Board & Constraints or correct the vector.`;
+  });
 }
 
 function extractVhdlEntityPortNames(vhdlText: string): string[] {
@@ -619,7 +633,8 @@ interface VhdlSignalInfo {
 }
 
 function extractVhdlEntityPortInfos(vhdlText: string): VhdlPortInfo[] {
-  const portBlock = vhdlText.match(/Port\s*\(([^]*?)\)\s*;\s*end\s+entity/i);
+  // `end entity top;`, `end top;` and `end;` are all legal VHDL-93 entity endings.
+  const portBlock = vhdlText.match(/Port\s*\(([^]*?)\)\s*;\s*end\b/i);
   if (!portBlock) return [];
   return parseVhdlPortInfos(portBlock[1]);
 }

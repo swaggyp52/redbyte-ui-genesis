@@ -444,4 +444,24 @@ describe('IDE Vivado project folder contract', () => {
     expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
     expect(importTclText).toContain(`${slug}.srcs/constrs_1/new/top.xdc`);
   });
+
+  it.each(['top', 'counter2'])(
+    'sets the sim_1 top to the entity testbench.vhd declares (design top %s)',
+    async (designTop) => {
+      const base = buildClockedFixtureProject();
+      const project: RBProject = { ...base, fpga: { ...base.fpga!, top: designTop } };
+      const slug = deriveVivadoProjectSlug(project.meta?.projectId ?? project.name);
+      const loaded = await JSZip.loadAsync(await buildProjectFolderZip(project));
+      const testbench = await loaded.file(`${slug}/${slug}.srcs/sim_1/new/testbench.vhd`)!.async('string');
+      const xprText = await loaded.file(`${slug}/${slug}.xpr`)!.async('string');
+      const importTclText = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
+      const tbEntity = `tb_${designTop}`;
+
+      expect(testbench).toMatch(new RegExp(`^entity ${tbEntity} is$`, 'm'));
+      expect(xprText).toMatch(
+        new RegExp(`<FileSet Name="sim_1"[\\s\\S]*?<Option Name="TopModule" Val="${tbEntity}"/>`),
+      );
+      expect(importTclText).toContain(`set_property top "${tbEntity}" [get_filesets sim_1]`);
+    },
+  );
 });

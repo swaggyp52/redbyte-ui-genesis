@@ -12,7 +12,9 @@ import type {
 } from '../../../fpga/boards/basys3/basys3ExportContract';
 import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
 import {
+  detectTestbenchEntityName,
   generateTestbenchVhdl,
+  testbenchEntityNameFor,
   type TestbenchClockDriveView,
 } from '../../../fpga/boards/basys3/testbenchGenerator';
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
@@ -164,7 +166,7 @@ export interface ExportTopAuthority {
   /** The synthesizable top-entity name used for top.vhd, top.xdc, .xpr, and vivado_import.tcl.
    *  This is the canonical design authority and must never be redefined by simulation artifacts. */
   designTop: string;
-  /** The testbench entity name used for testbench.vhd (typically <designTop>_tb).
+  /** The testbench entity name declared by testbench.vhd (tb_<designTop>), read back from its text.
    *  Simulation-only. Must not appear in the design source set. */
   simulationTop: string;
 }
@@ -257,7 +259,10 @@ export function buildExportViewModel(
     exportResult.mappingProjection,
   );
   const designTop = resolveTopEntity(flattenedProject);
-  const simulationTop = `${designTop}_tb`;
+  // The shipped testbench text is the authority for its own entity name.
+  const shippedTestbench = runtimeBackedTestbench?.content ?? exportResult.bundle?.testbench;
+  const simulationTop =
+    (shippedTestbench ? detectTestbenchEntityName(shippedTestbench) : undefined) ?? testbenchEntityNameFor(designTop);
   const topAuthority: ExportTopAuthority = { designTop, simulationTop };
   const artifacts = buildArtifacts(
     flattenedProject,
@@ -553,6 +558,7 @@ function buildArtifacts(
     sourcePaths: vhdlSourcePaths,
     constraintsPath: 'top.xdc',
     simulationPath: 'testbench.vhd',
+    simulationTop: topAuthority?.simulationTop,
   });
   const bringUpProject = verifyAuthority
     ? { ...projectedProject, vectors: verifyAuthority.executionVectors }
@@ -629,7 +635,7 @@ function buildArtifacts(
     // exist, regardless of whether the last Verify run passed, failed, or is stale.
     const tbHeader = buildProvenanceHeader('--', {
       ...provenanceBase,
-      simulationTop: topAuthority?.simulationTop ?? `${topEntity}_tb`,
+      simulationTop: topAuthority?.simulationTop ?? testbenchEntityNameFor(topEntity),
     });
     if (runtimeBackedTestbench) {
       artifacts.push({

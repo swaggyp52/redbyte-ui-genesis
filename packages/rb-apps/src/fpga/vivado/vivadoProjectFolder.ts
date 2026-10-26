@@ -3,6 +3,7 @@ import { buildDeterministicZip, sha256Hex } from '../../export/deterministicZip'
 import { compareCodepoint } from '../../export/codepointSort';
 import { hashString } from '../../utils/digest';
 import { generateVivadoImportTcl } from '../boards/basys3/vivadoImportTcl';
+import { detectTestbenchEntityName, testbenchEntityNameFor } from '../boards/basys3/testbenchGenerator';
 import { BASYS3_ALLOWED_PACKAGE_PINS } from '../boards/basys3/basys3Pins';
 
 export interface VivadoProjectFolderArtifact {
@@ -38,7 +39,6 @@ export interface VivadoArtifactConsistencyInput {
 
 const BASYS3_PART = 'xc7a35tcpg236-1';
 const READABLE_TOOL_VERSION = 'Vivado 2024.2+';
-const TESTBENCH_TOP_MODULE = 'tb_top';
 const VIVADO_PROJECT_VERSION_MINOR = '68';
 const VIVADO_FILESETS_MINOR = '32';
 const VIVADO_RUNS_MINOR = '22';
@@ -100,6 +100,9 @@ export async function buildVivadoProjectFolderEntries(
   const simDirPath = `${slug}/${slug}.sim/`;
   const ipUserFilesDirPath = `${slug}/${slug}.ip_user_files/`;
   const topModule = resolveVivadoTopModule(sourceText, input.topModule);
+  // sim_1 must elaborate the entity testbench.vhd actually declares.
+  const simulationTopModule =
+    testbenchText.length > 0 ? detectTestbenchEntityName(testbenchText) ?? testbenchEntityNameFor(topModule) : undefined;
   const xprId = await buildVivadoProjectId(manifestText);
 
   const importedVhdArtifacts = input.artifacts
@@ -135,6 +138,7 @@ export async function buildVivadoProjectFolderEntries(
     part,
     xprId,
     includeSimulation: testbenchText.length > 0,
+    simulationTopModule,
     extraDesignSourcePaths,
   });
   const readmeText = buildVivadoProjectFolderReadme({
@@ -156,6 +160,7 @@ export async function buildVivadoProjectFolderEntries(
     sourcePaths: [...importedTclPaths, topVhdTclPath],
     constraintsPath: `${slug}.srcs/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
     simulationPath: testbenchText.length > 0 ? `${slug}.srcs/sim_1/new/testbench.vhd` : undefined,
+    simulationTop: simulationTopModule,
   });
 
   const artifactConsistencyIssues = validateVivadoArtifactConsistency({
@@ -228,6 +233,8 @@ export interface BuildVivadoXprInput {
   part?: string;
   xprId: string;
   includeSimulation?: boolean;
+  /** The entity testbench.vhd declares; defaults to the generator's tb_<top> name. */
+  simulationTopModule?: string;
   /** Paths under `sources_1/` (e.g. `imported/pkg.vhd`), listed before `new/top.vhd` in the fileset. */
   extraDesignSourcePaths?: string[];
 }
@@ -268,7 +275,9 @@ export function buildVivadoXpr(input: BuildVivadoXprInput): string {
       ]
     : [];
 
-  const simulationConfigTop = includeSimulation ? TESTBENCH_TOP_MODULE : topModule;
+  const simulationConfigTop = includeSimulation
+    ? sanitizeIdentifier(input.simulationTopModule ?? testbenchEntityNameFor(topModule), testbenchEntityNameFor(topModule))
+    : topModule;
   const synthRunBlock = buildVivadoSynthRunBlock(part);
   const implRunBlock = buildVivadoImplRunBlock(part);
   const extraDesignBlocks = buildExtraDesignVhdlXmlBlocks(input.extraDesignSourcePaths);
@@ -737,6 +746,23 @@ export function validateVivadoArtifactConsistency(input: VivadoArtifactConsisten
 
   const testbenchText = (input.testbenchVhd ?? '').trim();
   if (testbenchText.length > 0) {
+    const tbEntity = detectTestbenchEntityName(testbenchText);
+    if (!tbEntity) {
+      issues.push('Could not extract the testbench entity name from testbench.vhd.');
+    } else {
+      const xprSimTop = extractXprSimulationTopModule(input.xprText);
+      if (!xprSimTop) {
+        issues.push('Could not extract sim_1 TopModule from .xpr.');
+      } else {
+        assertSameIdentifier(tbEntity, xprSimTop, 'testbench.vhd entity', '.xpr sim_1 TopModule', issues);
+      }
+      const tclSimTop = extractTclSimulationTop(input.vivadoImportTcl);
+      if (!tclSimTop) {
+        issues.push('vivado_import.tcl does not set the sim_1 top.');
+      } else {
+        assertSameIdentifier(tbEntity, tclSimTop, 'testbench.vhd entity', 'vivado_import.tcl sim_1 top', issues);
+      }
+    }
     const tbComponent = extractTestbenchComponent(testbenchText);
     if (!tbComponent) {
       issues.push('Could not extract DUT component declaration from testbench.vhd.');
@@ -854,6 +880,18 @@ function extractXprSourcesTopModule(xprText: string): string | null {
   const match = xprText.match(
     /<FileSet\s+Name="sources_1"[\s\S]*?<Option\s+Name="TopModule"\s+Val="([^"]+)"/i
   );
+  return match?.[1]?.trim() ?? null;
+}
+
+function extractXprSimulationTopModule(xprText: string): string | null {
+  const match = xprText.match(
+    /<FileSet\s+Name="sim_1"[\s\S]*?<Option\s+Name="TopModule"\s+Val="([^"]+)"/i
+  );
+  return match?.[1]?.trim() ?? null;
+}
+
+function extractTclSimulationTop(vivadoImportTcl: string): string | null {
+  const match = vivadoImportTcl.match(/set_property\s+top\s+"([^"]+)"\s+\[get_filesets\s+sim_1\]/i);
   return match?.[1]?.trim() ?? null;
 }
 
