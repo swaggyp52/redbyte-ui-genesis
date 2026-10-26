@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { ThemeProvider } from '@redbyte/rb-theme';
 import { IdeApp } from '../../IdeApp';
 import { deriveIdeBlockingDesignIssue } from '../ideDesignBlocking';
@@ -14,6 +14,15 @@ import { workspacePreferencesStore } from '../workspacePreferences';
 // RB-DEBT-020 in the workbench as students use it: the shipped 2-Bit Up Counter, one retained
 // recording, and Simulate wired to the project runtime by IdeApp. Inspecting the recording must
 // leave the authored scenario exactly as it was; editing it is an explicit mode.
+
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+beforeAll(() => {
+  // jsdom does not scroll; the Generated HDL lens scrolls its mapped statement into view.
+  Element.prototype.scrollIntoView = () => {};
+});
+afterAll(() => {
+  Element.prototype.scrollIntoView = originalScrollIntoView;
+});
 
 function scenarioNow() {
   const state = useProjectRuntime.getState();
@@ -78,7 +87,7 @@ describe('Simulate inspection never edits the authored scenario (RB-DEBT-020)', 
     window.history.replaceState({}, '', '/');
   });
 
-  it('scrubbing, selecting, Space/Enter and opening the recorded circuit keep the scenario version and content hash', async () => {
+  it('scrubbing, selecting, Space/Enter, Details, the recorded circuit and the Follow signal lenses keep the scenario version and content hash', async () => {
     const view = await openCounterRecording();
     const before = scenarioNow();
     const recording = recordingNow();
@@ -104,6 +113,18 @@ describe('Simulate inspection never edits the authored scenario (RB-DEBT-020)', 
     fireEvent.click(view.getByTestId('ide-timing-cell-en-2'));
     fireEvent.keyDown(view.getByTestId('ide-timing-lanes'), { key: 'Enter' });
     fireEvent.click(view.getByLabelText('Close circuit investigation'));
+
+    // Details, then Follow signal through every lens it offers (Logic, recorded time, Generated
+    // HDL, Board boundary, Circuit), and back to the experiment.
+    fireEvent.click(view.getByTestId('ide-verify-details'));
+    fireEvent.click(await view.findByLabelText('Close simulation details'));
+    fireEvent.click(view.getByTestId('ide-follow-signal'));
+    const journey = await view.findByTestId('ide-signal-journey', {}, { timeout: 15000 });
+    for (const lens of ['Logic', 'Recorded time', 'Generated HDL', 'Board boundary', 'Circuit']) {
+      fireEvent.click(within(journey).getByRole('button', { name: lens }));
+    }
+    fireEvent.click(within(journey).getByTestId('ide-journey-return'));
+    await waitFor(() => expect(view.queryByTestId('ide-signal-journey')).toBeNull());
 
     expect(scenarioNow()).toEqual(before);
     expect(recordingNow()).toBe(recording);
