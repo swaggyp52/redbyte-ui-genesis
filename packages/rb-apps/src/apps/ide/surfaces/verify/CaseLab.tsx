@@ -424,12 +424,18 @@ export const CaseLab: React.FC<CaseLabProps> = ({
                             </button>
                           </td>
                           <td className={`ide-case-lab-obs${field.id === focusFieldId ? ' is-followed' : ''}${cellFail ? ' is-fail' : ''}${field.id === focusFieldId && vector.tick === selectedTick ? ' is-selected-result' : ''}`}>
-                            <button type="button" className="ide-case-lab-observation" data-testid={`ide-case-lab-obs-${vector.tick}-${field.id}`}
-                              aria-pressed={field.id === focusFieldId && vector.tick === selectedTick}
-                              aria-label={`Inspect recorded ${field.label ?? field.id}, Case ${caseNumberByTick.get(vector.tick)}, ${obs || 'unrecorded'}${cellFail ? ', mismatch' : ''}`}
-                              onClick={event => { event.stopPropagation(); onSelectObservation?.(vector.tick, field.id); }}>
-                              <code>{obs || '—'}</code>{cellFail && <span aria-hidden="true"> ≠</span>}
-                            </button>
+                            {/* Only a value recorded for this scenario is inspectable; an
+                                unrecorded cell (or another scenario's recording) offers nothing to open. */}
+                            {obs ? (
+                              <button type="button" className="ide-case-lab-observation" data-testid={`ide-case-lab-obs-${vector.tick}-${field.id}`}
+                                aria-pressed={field.id === focusFieldId && vector.tick === selectedTick}
+                                aria-label={`Inspect recorded ${field.label ?? field.id}, Case ${caseNumberByTick.get(vector.tick)}, ${obs}${cellFail ? ', mismatch' : ''}`}
+                                onClick={event => { event.stopPropagation(); onSelectObservation?.(vector.tick, field.id); }}>
+                                <code>{obs}</code>{cellFail && <span aria-hidden="true"> ≠</span>}
+                              </button>
+                            ) : (
+                              <code data-testid={`ide-case-lab-obs-${vector.tick}-${field.id}`} title="Not recorded for this scenario">·</code>
+                            )}
                           </td>
                         </React.Fragment>
                       );
