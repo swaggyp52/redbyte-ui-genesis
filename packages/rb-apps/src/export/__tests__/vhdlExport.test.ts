@@ -490,7 +490,9 @@ describe('vhdlFromNetlist', () => {
   });
 
 
-it('warns when an exported netlist contains an unknown primitive', () => {
+// Contract changed 2026-10-26 (Defect C): an unknown primitive is a blocking
+// RBEX4100 error with a marker comment, no longer a warning about a skipped node.
+it('reports an unknown primitive as an unsupported-part error, never a silent skip', () => {
   const result = vhdlFromNetlist({
     ...minimalAndNetlist,
     nodes: [
@@ -498,8 +500,8 @@ it('warns when an exported netlist contains an unknown primitive', () => {
       { id: 'unsupported', type: 'CustomUnsupportedPrimitive', ports: [] },
     ],
   });
-  expect(result.warnings).toContain(
-    'Unsupported node type "CustomUnsupportedPrimitive" (id: unsupported) — skipped'
-  );
+  expect(result.errors).toHaveLength(1);
+  expect(result.errors[0]).toMatch(/^Unsupported synth subset node type "CustomUnsupportedPrimitive" on node "unsupported"\. Fix: /);
+  expect(result.vhd).toContain('-- RBEX4100 unsupported primitive CustomUnsupportedPrimitive (unsupported): not exported');
   expect(result.vhd).toContain('entity top is');
 });

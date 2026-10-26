@@ -569,6 +569,7 @@ export function elaborateCircuit(
   const drivenSinks = new Set<string>(
     normedConns.map(c => `${c.to.nodeId}.${c.to.portName}`)
   );
+  const drivenSinksLower = new Set<string>([...drivenSinks].map((key) => key.toLowerCase()));
 
   const outputPorts = ports.filter(p => p.kind === 'output');
   for (const port of outputPorts) {
@@ -640,8 +641,10 @@ export function elaborateCircuit(
       // Skip clock/reset ports — IR004 covers clock; reset is optional
       if (reqPort === clockPort || reqPort === resetPort) continue;
 
+      // Port names are case-insensitive here: the Design canvas wires a FullAdder's
+      // A/B/Cin, while this table lists a/b/cin.
       const sinkKey = `${prim.id}.${reqPort}`;
-      if (!drivenSinks.has(sinkKey)) {
+      if (!drivenSinksLower.has(sinkKey.toLowerCase())) {
         diagnostics.push({
           code: 'IR005',
           severity: 'warning',

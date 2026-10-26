@@ -1,5 +1,6 @@
 import type { Circuit, CompositeNodeDef, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
 import { parseVectorLabel } from '@redbyte/rb-logic-core';
+import { moduleNameCollision } from './vhdlNames';
 
 export const PROJECT_HIERARCHY_SCHEMA_VERSION = 'rb.project-hierarchy.v1' as const;
 export const TOP_MODULE_ID = 'top' as const;
@@ -1080,6 +1081,12 @@ function validateModuleName(value: string): string {
   const trimmed = value.trim();
   if (!/^[A-Za-z][A-Za-z0-9_ ]{1,47}$/.test(trimmed)) {
     throw new Error('Module name must start with a letter and use letters, numbers, spaces, or underscores.');
+  }
+  // The entity name is derived from the display name; a built-in part's name
+  // would capture every gate of that type, and a reserved word cannot analyze.
+  const collision = moduleNameCollision(toVhdlIdentifier(trimmed));
+  if (collision) {
+    throw new Error(`Module name "${trimmed}" ${collision}. Choose another name, for example "${trimmed} Cell".`);
   }
   return trimmed;
 }

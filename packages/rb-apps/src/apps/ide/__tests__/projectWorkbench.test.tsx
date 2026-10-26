@@ -44,7 +44,7 @@ const fullAdder: Circuit = {
 
 function hierarchicalTop() {
   const fa = createModuleFromSelection(fullAdder, createEmptyProjectHierarchy(), {
-    moduleName: 'FullAdder',
+    moduleName: 'FullAdderCell',
     instanceName: 'u_fa0',
     selectedNodeIds: ['x1', 'x2', 'a1', 'a2', 'o1'],
     nowIso: '2026-09-01T00:00:00.000Z',
@@ -185,13 +185,13 @@ describe('Project workbench — loaded project', () => {
     const view = render(<ProjectSurface {...baseProps({ circuit, hierarchy, document: { kind: 'sources' } })} />);
     expect(view.getByTestId('ide-project-sources-document')).toBeTruthy();
     const moduleRow = view.getByTestId(`ide-project-module-row-${hierarchy.modules[0].id}`);
-    expect(moduleRow.textContent).toContain('FullAdder');
+    expect(moduleRow.textContent).toContain('FullAdderCell');
     expect(moduleRow.textContent).toContain('2'); // two instances
     cleanup();
     const order = render(<ProjectSurface {...baseProps({ circuit, hierarchy, document: { kind: 'compile-order' } })} />);
     const rows = order.container.querySelectorAll('[data-testid^="ide-project-compile-row-"]');
     expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain('FullAdder.vhd');
+    expect(rows[0].textContent).toContain('FullAdderCell.vhd');
     expect(rows[1].textContent).toContain('full_adder.vhd');
     expect(rows[1].textContent).toContain('FullAdder');
   });
@@ -265,7 +265,7 @@ describe('Project workbench — loaded project', () => {
     expect(hier?.rows.map((row) => row.label)).toEqual(['full_adder', 'u_fa0', 'u_fa1']);
     expect(hier?.rows[1].open).toEqual({ kind: 'schematic', moduleId: definition.id });
     const order = deriveProjectCompileOrder({ topModuleName: 'full_adder', hierarchy, sourceModel: undefined });
-    expect(order.map((row) => row.unit)).toEqual(['FullAdder.vhd', 'full_adder.vhd']);
+    expect(order.map((row) => row.unit)).toEqual(['FullAdderCell.vhd', 'full_adder.vhd']);
   });
 
   it('sets the active top through the overview header as a validated command', () => {

@@ -881,7 +881,7 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
       );
     } else if (lens === 'source') {
       meta = sourceFile ? `${sourceFile.path}${sourceRange && selectedNodeId ? ` · ${nodeLabel(selectedNodeId)} = ${sourceRange}` : ''} · ${sourceFromRecording ? 'as recorded' : 'current design (generated)'}` : '';
-      body = <SourceLens file={sourceFile} spans={source?.spans ?? []} activeNodeId={selectedNodeId} onSelectNode={selectNode} nodeLabel={nodeLabel} />;
+      body = <SourceLens file={sourceFile} spans={source?.spans ?? []} activeNodeId={selectedNodeId} onSelectNode={selectNode} nodeLabel={nodeLabel} limits={source?.diagnostics} />;
     } else if (lens === 'logic') {
       meta = selectedSymbol ? nodeLabel(selectedSymbol.nodeId) : '';
       body = (

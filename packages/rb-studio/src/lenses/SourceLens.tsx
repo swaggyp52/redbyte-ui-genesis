@@ -19,9 +19,11 @@ export interface SourceLensProps {
   readonly activeNodeId: string | null;
   readonly onSelectNode: (nodeId: string) => void;
   readonly nodeLabel: (nodeId: string) => string;
+  /** What this source could not express; shown before the text, never hidden in it. */
+  readonly limits?: readonly string[];
 }
 
-export const SourceLens: React.FC<SourceLensProps> = ({ file, spans, activeNodeId, onSelectNode, nodeLabel }) => {
+export const SourceLens: React.FC<SourceLensProps> = ({ file, spans, activeNodeId, onSelectNode, nodeLabel, limits = [] }) => {
   const bodyRef = useRef<HTMLPreElement | null>(null);
   const lines = useMemo(() => (file ? file.text.replace(/\r\n/g, '\n').split('\n') : []), [file]);
   const owners = useMemo(() => {
@@ -56,6 +58,13 @@ export const SourceLens: React.FC<SourceLensProps> = ({ file, spans, activeNodeI
 
   if (!file) return <div className="mrd-lens-empty">No generated source for this moment.</div>;
   return (
+    <>
+    {limits.length > 0 ? (
+      <div className="mrd-source-limits" role="note" data-testid="meridian-source-limits">
+        <strong>This source cannot be packaged yet.</strong> Export is blocked until these are fixed; the design and its simulation are unaffected.
+        <ul>{limits.map((limit) => <li key={limit}>{limit}</li>)}</ul>
+      </div>
+    ) : null}
     <pre className="mrd-source" ref={bodyRef} data-testid="meridian-source" data-path={file.path} data-active-node={activeNodeId ?? ''}>
       {lines.map((text, index) => {
         const line = index + 1;
@@ -73,5 +82,6 @@ export const SourceLens: React.FC<SourceLensProps> = ({ file, spans, activeNodeI
         );
       })}
     </pre>
+    </>
   );
 };

@@ -41,7 +41,8 @@ function buildFullAdder() {
     ],
   };
   return createModuleFromSelection(base, createEmptyProjectHierarchy(), {
-    moduleName: 'FullAdder', instanceName: 'u_fa0', selectedNodeIds: ['x1', 'x2', 'a1', 'a2', 'o1'],
+    // Named like the shipped starter: a module may not reuse a built-in part's name.
+    moduleName: 'FullAdderCell', instanceName: 'u_fa0', selectedNodeIds: ['x1', 'x2', 'a1', 'a2', 'o1'],
     nowIso: '2026-08-08T12:00:00.000Z',
   });
 }
@@ -132,8 +133,8 @@ describe('hierarchical adder simulation', () => {
     const reloaded = decodeRBProject(encodeRBProject(project));
 
     // Hierarchy and its FullAdder definition survive the round-trip.
-    expect(reloaded.hierarchy?.modules.map((m) => m.name)).toContain('FullAdder');
-    const fa = reloaded.hierarchy?.modules.find((m) => m.name === 'FullAdder');
+    expect(reloaded.hierarchy?.modules.map((m) => m.name)).toContain('FullAdderCell');
+    const fa = reloaded.hierarchy?.modules.find((m) => m.name === 'FullAdderCell');
     expect(fa?.ports.map((p) => p.name).sort()).toEqual(['A', 'B', 'CIN', 'COUT', 'SUM']);
     // Both instances survive at the top.
     const instances = reloaded.circuit.nodes.filter((n) => n.config?.moduleDefinitionId);

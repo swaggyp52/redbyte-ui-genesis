@@ -165,14 +165,14 @@ console.log('create-module-open present:', await openBtn.count());
 await openBtn.click(); await page.waitForTimeout(300);
 const err = await page.getByTestId('ide-design-create-module-error').count();
 console.log('module dialog error:', err ? await page.getByTestId('ide-design-create-module-error').textContent() : 'none');
-await page.getByTestId('ide-design-create-module-name').fill('FullAdder');
+await page.getByTestId('ide-design-create-module-name').fill('FullAdderCell');
 await page.getByTestId('ide-design-create-instance-name').fill('u_fa');
 const confirm = page.getByTestId('ide-design-create-module-confirm');
 console.log('confirm disabled:', await confirm.isDisabled());
 if (!(await confirm.isDisabled())) { await confirm.click(); await page.waitForTimeout(500); }
 
 let s = await G();
-const faDef = s.modules.find((m) => m.name === 'FullAdder');
+const faDef = s.modules.find((m) => m.name === 'FullAdderCell');
 console.log('STAGE A RESULT module:', JSON.stringify(faDef));
 await page.screenshot({ path: `${OUT}/90-fulladder-created.png` });
 
@@ -182,7 +182,7 @@ await page.locator('[data-testid="ide-design-canvas"]').click({ position: { x: 9
 await page.keyboard.press('Control+a'); await page.waitForTimeout(150);
 await page.keyboard.press('Delete'); await page.waitForTimeout(300);
 s = await G();
-console.log('after clear: top nodes =', s.nodes.length, '| FullAdder still defined =', s.modules.some((m) => m.name === 'FullAdder'));
+console.log('after clear: top nodes =', s.nodes.length, '| FullAdder still defined =', s.modules.some((m) => m.name === 'FullAdderCell'));
 
 async function createBus(name, direction, width) {
   await page.getByTestId('ide-design-library-new-bus').click(); await page.waitForTimeout(200);
@@ -500,7 +500,7 @@ const topVhd = (await readFile('top')) ?? '';
 const faVhd = (await readFile('full_adder')) ?? (await readFile('fulladder')) ?? '';
 const topHasInstances = ['u_fa0', 'u_fa1', 'u_fa2', 'u_fa3'].filter((n) => topVhd.includes(n)).length;
 console.log('STAGE F top instances found:', topHasInstances, '| full_adder.vhd present:', faVhd.length > 0);
-console.log('STAGE F top has entity work.FullAdder:', topVhd.includes('work.FullAdder'));
+console.log('STAGE F top has entity work.FullAdderCell:', topVhd.includes('work.FullAdderCell'));
 await page.screenshot({ path: `${OUT}/94-export-vhdl.png` });
 
 // Stage F used to print these and exit 0 whatever they said. The generated hierarchy is the
@@ -512,8 +512,8 @@ if (topHasInstances !== 4) {
 if (faVhd.length === 0) {
   throw new Error('the FullAdder module has no generated VHDL of its own');
 }
-if (!topVhd.includes('work.FullAdder')) {
-  throw new Error('generated top does not bind work.FullAdder');
+if (!topVhd.includes('work.FullAdderCell')) {
+  throw new Error('generated top does not bind work.FullAdderCell');
 }
 
 const uniqueErrors = [...new Set(errors)];
@@ -525,5 +525,5 @@ await browser.close();
 console.log(
   '\nPASS — blank project authored through the UI: 10 symbols, 12 wires, a reusable FullAdder ' +
   'module, a 4-bit ripple-carry top with 17 wires, deterministic simulation (0xA + 0xD = 0x17), ' +
-  'survival across reload, and generated hierarchical VHDL binding work.FullAdder.'
+  'survival across reload, and generated hierarchical VHDL binding work.FullAdderCell.'
 );

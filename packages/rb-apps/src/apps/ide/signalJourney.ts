@@ -25,17 +25,24 @@ export interface JourneySelection {
 export interface JourneyGeneratedSource {
   files: Array<{ path: string; text: string }>;
   spans: Array<VhdlNodeSourceSpan & { path: string; definitionId: string }>;
+  /**
+   * What this source could not express (unsupported parts, missing definitions,
+   * unresolved drivers). Absent on recordings made before it was retained.
+   */
+  diagnostics?: string[];
 }
 export function generateJourneySource(circuit: Circuit, hierarchy: ProjectHierarchyDocument | undefined,
   rows: readonly ProjectIoRow[], entityName: string): JourneyGeneratedSource {
   const mapping = { inputs: rows.filter(r=>r.direction==='in'), outputs: rows.filter(r=>r.direction==='out') };
   const hierarchical = generateHierarchicalVhdlProject({ circuit, hierarchy, ioMapping: mapping,
     hdl: { top: entityName, sources: [] } });
-  if (hierarchical) return { files: [{path:'top.vhd',text:hierarchical.topVhd}, ...hierarchical.moduleSources], spans: hierarchical.sourceMap };
+  if (hierarchical) return { files: [{path:'top.vhd',text:hierarchical.topVhd}, ...hierarchical.moduleSources], spans: hierarchical.sourceMap,
+    diagnostics: hierarchical.diagnostics.filter(entry=>entry.severity==='error').map(entry=>entry.message) };
   const model = buildBasys3ExportModel(circuit, mapping);
   const emitted = vhdlFromNetlist(model.netlist, { entityName, topPorts:model.topPorts,
     topInputBindings:model.topInputBindings, topOutputBindings:model.topOutputBindings });
-  return { files: [{path:'top.vhd',text:emitted.vhd}], spans: emitted.sourceMap.map(span=>({...span,path:'top.vhd',definitionId:'top'})) };
+  return { files: [{path:'top.vhd',text:emitted.vhd}], spans: emitted.sourceMap.map(span=>({...span,path:'top.vhd',definitionId:'top'})),
+    diagnostics: emitted.errors };
 }
 
 /** Resolve exact retained endpoints first, then explicit retained boundary bindings. */

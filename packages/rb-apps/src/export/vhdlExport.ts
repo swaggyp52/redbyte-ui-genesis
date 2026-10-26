@@ -55,6 +55,12 @@ export interface VhdlExportResult {
   inputPorts: string[];
   outputPorts: string[];
   warnings: string[];
+  /**
+   * Constructs this emitter could not express. Each one leaves a marker in the
+   * text (never a fabricated constant), and any one of them means the HDL must
+   * not be packaged as trustworthy.
+   */
+  errors: string[];
 }
 
 export interface VhdlNodeSourceSpan {
@@ -277,6 +283,7 @@ function resolveInputSignal(
   nets: NetlistNet[],
   nodeIdToSignal: Map<string, string>,
   topInputBindingByTarget: Map<string, string>,
+  resolveDriver: (from: { nodeId: string; port: string }) => string,
 ): string | null {
   const normalizedPortName = portName.toLowerCase();
   const net = nets.find(
@@ -293,11 +300,50 @@ function resolveInputSignal(
     }
     return null;
   }
+  return resolveDriver(net.from);
+}
+
+/**
+ * The signal a net's driver port carries. Every output alias of a supported
+ * primitive is registered before emission, so a lookup never depends on node
+ * order. Only single-output nodes may fall back to their node signal; a
+ * multi-output port that matches nothing is reported, and the text references
+ * an undeclared name so it cannot compile into a guessed connection.
+ */
+function createDriverResolver(
+  nodeIdToSignal: Map<string, string>,
+  multiOutputNodeIds: Set<string>,
+  errors: string[],
+): (from: { nodeId: string; port: string }) => string {
+  return (from) => {
+    const exact =
+      nodeIdToSignal.get(`${from.nodeId}:${from.port}`) ??
+      nodeIdToSignal.get(`${from.nodeId}:${from.port.toLowerCase()}`);
+    if (exact) return exact;
+    if (!multiOutputNodeIds.has(from.nodeId)) {
+      const single = nodeIdToSignal.get(from.nodeId);
+      if (single) return single;
+    }
+    const marker = unresolvedDriverMarker(from.nodeId, from.port);
+    const message =
+      `Unresolved driver "${from.nodeId}.${from.port}" on node "${from.nodeId}": no exported signal carries this output. ` +
+      'Fix: connect from a supported output port or replace the part; the design and its simulation are unchanged.';
+    if (!errors.includes(message)) errors.push(message);
+    return marker;
+  };
+}
+
+/** An undeclared identifier: analysis fails instead of silently wiring a constant. */
+export function unresolvedDriverMarker(nodeId: string, port: string): string {
+  const clean = (value: string) => value.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x';
+  return `RBEX_UNRESOLVED_${clean(nodeId)}_${clean(port)}`;
+}
+
+/** The RBEX4100 message the export view model maps to a design-owned blocking diagnostic. */
+export function unsupportedPrimitiveMessage(type: string, nodeId: string, where?: string): string {
   return (
-    nodeIdToSignal.get(`${net.from.nodeId}:${net.from.port}`) ??
-    nodeIdToSignal.get(`${net.from.nodeId}:${net.from.port.toLowerCase()}`) ??
-    nodeIdToSignal.get(net.from.nodeId) ??
-    null
+    `Unsupported synth subset node type "${type}" on node "${nodeId}"${where ? ` (${where})` : ''}. ` +
+    `Fix: replace it with a supported part (${getVhdlLogicNodeTypes().join(', ')}) or remove it; the design and its simulation are unchanged.`
   );
 }
 
@@ -334,6 +380,7 @@ export function vhdlFromNetlist(
   } = options;
 
   const warnings: string[] = [];
+  const errors: string[] = [];
   const lines: string[] = [];
   const sourceMap: VhdlNodeSourceSpan[] = [];
   const mapped = (nodeId: string, kind: VhdlNodeSourceSpan['kind'], emit: () => void) => {
@@ -367,12 +414,10 @@ export function vhdlFromNetlist(
       );
     });
 
-  // Warn and collect unsupported types
-  logicNodes.forEach((n) => {
-    if (!SUPPORTED_LOGIC_TYPES.has(n.type)) {
-      warnings.push(`Unsupported node type "${n.type}" (id: ${n.id}) — skipped`);
-    }
-  });
+  // A part this emitter cannot express is an error, never a skipped node whose
+  // consumers quietly read a constant.
+  const unsupportedLogicNodes = logicNodes.filter((n) => !SUPPORTED_LOGIC_TYPES.has(n.type));
+  unsupportedLogicNodes.forEach((n) => errors.push(unsupportedPrimitiveMessage(n.type, n.id)));
 
   const supportedLogicNodes = logicNodes.filter((n) =>
     SUPPORTED_LOGIC_TYPES.has(n.type),
@@ -428,17 +473,21 @@ export function vhdlFromNetlist(
   // ---- Assign internal signal names to logic nodes --------------------------
   // Use type-counters so we get and_0, and_1, or_0, fa_0, etc.
   const typeCounters = new Map<string, number>();
+  const multiOutputNodeIds = new Set<string>();
   supportedLogicNodes.forEach((node) => {
     const count = typeCounters.get(node.type) ?? 0;
     typeCounters.set(node.type, count + 1);
     const sigName = deriveSignalName(node, count);
     nodeIdToSignal.set(node.id, sigName);
-    nodeIdToSignal.set(`${node.id}:out`, sigName);
-    if (node.type === 'FullAdder') {
-      nodeIdToSignal.set(`${node.id}:sum`, `${sigName}_sum`);
-      nodeIdToSignal.set(`${node.id}:carry`, `${sigName}_carry`);
+    // Register every output alias before any consumer is emitted, so a reader
+    // of Q_inv or Cout resolves the same way whatever the node order is.
+    const aliases = primitiveOutputAliases(node.type);
+    if (new Set(aliases.map(([, port]) => port)).size > 1) multiOutputNodeIds.add(node.id);
+    for (const [alias, port] of aliases) {
+      nodeIdToSignal.set(`${node.id}:${alias}`, flatPrimitiveSignal(sigName, port));
     }
   });
+  const resolveDriver = createDriverResolver(nodeIdToSignal, multiOutputNodeIds, errors);
 
   // ---- Check for unconnected outputs ----------------------------------------
   outputNodes.forEach((outNode) => {
@@ -549,239 +598,20 @@ export function vhdlFromNetlist(
   lines.push('begin');
 
   // ---- Concurrent signal assignments ----------------------------------------
+  for (const node of unsupportedLogicNodes) {
+    lines.push(`  -- RBEX4100 unsupported primitive ${node.type} (${node.id}): not exported`);
+  }
   supportedLogicNodes.forEach((node) => mapped(node.id, 'evaluation', () => {
     const sigName = nodeIdToSignal.get(node.id)!;
-    const nets = netlist.nets;
-
-    if (node.type === 'PowerSource') {
-      lines.push(`  ${sigName} <= '1';`);
-      return;
-    }
-
-    if (node.type === 'Ground') {
-      lines.push(`  ${sigName} <= '0';`);
-      return;
-    }
-
-    if (node.type === 'NOT') {
-      // NOT has a single input port 'in' (inferred from connections)
-      const inSig =
-        resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'a', nets, nodeIdToSignal, topInputBindingByTarget);
-      if (!inSig) {
-        warnings.push(`NOT gate "${node.id}" has no input — signal ${sigName} will be undriven`);
-        lines.push(`  ${sigName} <= '0'; -- undriven NOT gate`);
-      } else {
-        lines.push(`  ${sigName} <= not ${inSig};`);
-      }
-      return;
-    }
-
-    if (node.type === 'DFlipFlop' || node.type === 'Register1' || node.type === 'RegisterBus' || node.type === 'StateBank') {
-      nodeIdToSignal.set(`${node.id}:Q`, sigName);
-      nodeIdToSignal.set(`${node.id}:q`, sigName);
-      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:out`, sigName);
-
-      const emitted = emitRegisterVhdl({
-        id: node.id, type: node.type, config: (node as ConfigBackedNetlistNode).config,
-        signal: sigName,
-        input: (port) => resolveInputSignal(node.id, port, nets, nodeIdToSignal, topInputBindingByTarget),
-      });
-      lines.push(...emitted.lines);
-      warnings.push(...emitted.warnings);
-      return;
-    }
-
-    if (node.type === 'DLatch') {
-      const d  =
-        resolveInputSignal(node.id, 'd',  nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        "'0'";
-      const en =
-        resolveInputSignal(node.id, 'en',     nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget);
-
-      nodeIdToSignal.set(`${node.id}:Q`, sigName);
-      nodeIdToSignal.set(`${node.id}:q`, sigName);
-      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:out`, sigName);
-
-      if (!en) {
-        warnings.push(`DLatch "${node.id}" has no EN input — Q will be tied low`);
-        lines.push(`  ${sigName} <= '0'; -- missing DLatch EN`);
-        lines.push(`  ${sigName}_inv <= '1';`);
-        return;
-      }
-
-      lines.push(`  process (${en}, ${d})`);
-      lines.push('  begin');
-      lines.push(`    if ${en} = '1' then`);
-      lines.push(`      ${sigName} <= ${d};`);
-      lines.push('    end if;');
-      lines.push('  end process;');
-      lines.push(`  ${sigName}_inv <= not ${sigName};`);
-      return;
-    }
-
-    if (node.type === 'TFlipFlop') {
-      const t   =
-        resolveInputSignal(node.id, 't',   nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'in',  nets, nodeIdToSignal, topInputBindingByTarget) ??
-        "'0'";
-      const clk =
-        resolveInputSignal(node.id, 'clk',   nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'c',     nets, nodeIdToSignal, topInputBindingByTarget);
-      const clr =
-        resolveInputSignal(node.id, 'clr', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'rst', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'reset', nets, nodeIdToSignal, topInputBindingByTarget);
-
-      nodeIdToSignal.set(`${node.id}:Q`, sigName);
-      nodeIdToSignal.set(`${node.id}:q`, sigName);
-      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:out`, sigName);
-
-      if (!clk) {
-        warnings.push(`TFlipFlop "${node.id}" has no CLK input — Q will be tied low`);
-        lines.push(`  ${sigName} <= '0'; -- missing TFlipFlop clock`);
-        lines.push(`  ${sigName}_inv <= '1';`);
-        return;
-      }
-
-      if (clr) {
-        lines.push(`  process (${clk}, ${clr})`);
-        lines.push('  begin');
-        lines.push(`    if ${clr} = '1' then`);
-        lines.push(`      ${sigName} <= '0';`);
-        lines.push(`    elsif rising_edge(${clk}) then`);
-      } else {
-        lines.push(`  process (${clk})`);
-        lines.push('  begin');
-        lines.push(`    if rising_edge(${clk}) then`);
-      }
-      lines.push(`      if ${t} = '1' then`);
-      lines.push(`        ${sigName} <= not ${sigName};`);
-      lines.push('      end if;');
-      lines.push('    end if;');
-      lines.push('  end process;');
-      lines.push(`  ${sigName}_inv <= not ${sigName};`);
-      return;
-    }
-
-    if (node.type === 'JKFlipFlop') {
-      const j   =
-        resolveInputSignal(node.id, 'j',  nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const k   =
-        resolveInputSignal(node.id, 'k',  nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const clk =
-        resolveInputSignal(node.id, 'clk',   nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'c',     nets, nodeIdToSignal, topInputBindingByTarget);
-      const clr =
-        resolveInputSignal(node.id, 'clr', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'rst', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'reset', nets, nodeIdToSignal, topInputBindingByTarget);
-
-      nodeIdToSignal.set(`${node.id}:Q`, sigName);
-      nodeIdToSignal.set(`${node.id}:q`, sigName);
-      nodeIdToSignal.set(`${node.id}:Q_inv`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:qn`, `${sigName}_inv`);
-      nodeIdToSignal.set(`${node.id}:out`, sigName);
-
-      if (!clk) {
-        warnings.push(`JKFlipFlop "${node.id}" has no CLK input — Q will be tied low`);
-        lines.push(`  ${sigName} <= '0'; -- missing JKFlipFlop clock`);
-        lines.push(`  ${sigName}_inv <= '1';`);
-        return;
-      }
-
-      if (clr) {
-        lines.push(`  process (${clk}, ${clr})`);
-        lines.push('  begin');
-        lines.push(`    if ${clr} = '1' then`);
-        lines.push(`      ${sigName} <= '0';`);
-        lines.push(`    elsif rising_edge(${clk}) then`);
-      } else {
-        lines.push(`  process (${clk})`);
-        lines.push('  begin');
-        lines.push(`    if rising_edge(${clk}) then`);
-      }
-      lines.push(`      if ${j} = '1' and ${k} = '0' then`);
-      lines.push(`        ${sigName} <= '1';`);
-      lines.push(`      elsif ${j} = '0' and ${k} = '1' then`);
-      lines.push(`        ${sigName} <= '0';`);
-      lines.push(`      elsif ${j} = '1' and ${k} = '1' then`);
-      lines.push(`        ${sigName} <= not ${sigName};`);
-      lines.push('      end if;');
-      lines.push('    end if;');
-      lines.push('  end process;');
-      lines.push(`  ${sigName}_inv <= not ${sigName};`);
-      return;
-    }
-
-    if (node.type === 'FullAdder') {
-      const a   = resolveInputSignal(node.id, 'a',  nets, nodeIdToSignal, topInputBindingByTarget);
-      const b   = resolveInputSignal(node.id, 'b',  nets, nodeIdToSignal, topInputBindingByTarget);
-      const cin = resolveInputSignal(node.id, 'cin', nets, nodeIdToSignal, topInputBindingByTarget);
-      const aStr   = a   ?? "'0'";
-      const bStr   = b   ?? "'0'";
-      const cinStr = cin ?? "'0'";
-      lines.push(`  ${sigName}_sum   <= ${aStr} xor ${bStr} xor ${cinStr};`);
-      lines.push(`  ${sigName}_carry <= (${aStr} and ${bStr}) or (${cinStr} and (${aStr} xor ${bStr}));`);
-      // Register sum/carry outputs in signal map for fanout
-      // (downstream nodes that read 'sum' or 'carry' output ports)
-      nodeIdToSignal.set(`${node.id}:sum`,   `${sigName}_sum`);
-      nodeIdToSignal.set(`${node.id}:carry`, `${sigName}_carry`);
-      return;
-    }
-
-    if (node.type === 'MUX4') {
-      // MUX4: inputs i0..i3, select s0/s1 (or sel), output out
-      const i0 = resolveInputSignal(node.id, 'i0', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const i1 = resolveInputSignal(node.id, 'i1', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const i2 = resolveInputSignal(node.id, 'i2', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const i3 = resolveInputSignal(node.id, 'i3', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const s0 = resolveInputSignal(node.id, 's0', nets, nodeIdToSignal, topInputBindingByTarget) ??
-             resolveInputSignal(node.id, 'sel', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const s1 = resolveInputSignal(node.id, 's1', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      lines.push(`  with ${s1} & ${s0} select`);
-      lines.push(`    ${sigName} <= ${i0} when "00",`);
-      lines.push(`              ${i1} when "01",`);
-      lines.push(`              ${i2} when "10",`);
-      lines.push(`              ${i3} when others;`);
-      return;
-    }
-
-    // 3-input gate (AND3, OR3, NAND3, NOR3, XOR3)
-    const g3 = gate3Operator(node.type);
-    if (g3) {
-      const aSig = resolveInputSignal(node.id, 'a', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const bSig = resolveInputSignal(node.id, 'b', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      const cSig = resolveInputSignal(node.id, 'c', nets, nodeIdToSignal, topInputBindingByTarget) ?? "'0'";
-      if (node.type === 'XOR3') {
-        lines.push(`  ${sigName} <= ${aSig} xor ${bSig} xor ${cSig};`);
-      } else if (g3.invert) {
-        lines.push(`  ${sigName} <= not (${aSig} ${g3.op} ${bSig} ${g3.op} ${cSig});`);
-      } else {
-        lines.push(`  ${sigName} <= ${aSig} ${g3.op} ${bSig} ${g3.op} ${cSig};`);
-      }
-      return;
-    }
-
-    // Binary gate (AND, OR, XOR, NAND, NOR, XNOR)
-    const op = gateOperator(node.type);
-    if (!op) return; // unreachable given SUPPORTED_LOGIC_TYPES guard above
-
-    const aSig = resolveInputSignal(node.id, 'a', nets, nodeIdToSignal, topInputBindingByTarget);
-    const bSig = resolveInputSignal(node.id, 'b', nets, nodeIdToSignal, topInputBindingByTarget);
-    const aStr = aSig ?? "'0'";
-    const bStr = bSig ?? "'0'";
-    lines.push(`  ${sigName} <= ${aStr} ${op} ${bStr};`);
+    const emitted = emitPrimitiveVhdl({
+      id: node.id,
+      type: node.type,
+      config: (node as ConfigBackedNetlistNode).config,
+      output: (port) => flatPrimitiveSignal(sigName, port),
+      input: (port) => resolveInputSignal(node.id, port, netlist.nets, nodeIdToSignal, topInputBindingByTarget, resolveDriver),
+    });
+    lines.push(...emitted.lines);
+    warnings.push(...emitted.warnings);
   }));
 
   // ---- Drive output ports from internal signals or direct input connections --
@@ -816,18 +646,7 @@ export function vhdlFromNetlist(
         return;
       }
 
-        const resolvedDriverSig =
-          nodeIdToSignal.get(`${driverNet.from.nodeId}:${driverNet.from.port}`) ??
-          nodeIdToSignal.get(driverNet.from.nodeId) ??
-          null;
-        if (!resolvedDriverSig) {
-          warnings.push(
-            `Top output port "${binding.portName}" has unresolved driver ${driverNet.from.nodeId}.${driverNet.from.port}`,
-          );
-          lines.push(`  ${topOutputSignalRef} <= '0'; -- unresolved driver`);
-          return;
-        }
-        lines.push(`  ${topOutputSignalRef} <= ${resolvedDriverSig};`);
+        lines.push(`  ${topOutputSignalRef} <= ${resolveDriver(driverNet.from)};`);
     }));
   } else {
     outputNodes.forEach((outNode) => mapped(outNode.id, 'boundary', () => {
@@ -840,17 +659,7 @@ export function vhdlFromNetlist(
         lines.push(`  ${portExpr} <= '0'; -- undriven output`);
         return;
       }
-
-      const driverSig = nodeIdToSignal.get(driverNet.from.nodeId);
-      const driverFromPortSig = nodeIdToSignal.get(
-        `${driverNet.from.nodeId}:${driverNet.from.port}`,
-      );
-      const resolvedDriverSig = driverFromPortSig ?? driverSig;
-      if (!resolvedDriverSig) {
-        lines.push(`  ${portExpr} <= '0'; -- unresolved driver`);
-        return;
-      }
-      lines.push(`  ${portExpr} <= ${resolvedDriverSig};`);
+      lines.push(`  ${portExpr} <= ${resolveDriver(driverNet.from)};`);
     }));
   }
 
@@ -865,19 +674,225 @@ export function vhdlFromNetlist(
     inputPorts: inputPortNames,
     outputPorts: outputPortNames,
     warnings,
+    errors,
   };
 }
 
+// ---------------------------------------------------------------------------
+// Shared primitive emission (flat, leaf-module and structural paths)
+// ---------------------------------------------------------------------------
+
+/** The outputs a supported primitive can drive. */
+export type PrimitiveOutputPort = 'out' | 'Q' | 'Q_inv' | 'sum' | 'carry';
+
+const STATEFUL_OUTPUT_TYPES = new Set([
+  'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'DLatch', 'TFlipFlop', 'JKFlipFlop',
+]);
+
+/** Primitive types whose Q / Q_inv start at 0 / 1, like the simulator's power-on state. */
+export function isInitializedSequentialType(type: string): boolean {
+  return INITIALIZED_SEQUENTIAL_TYPES.has(type);
+}
+
+/** Whether emitPrimitiveVhdl can express this type. */
+export function isEmittablePrimitiveType(type: string): boolean {
+  return SUPPORTED_LOGIC_TYPES.has(type);
+}
+
+/**
+ * Every port name a connection may use for each output, lower-cased plus the
+ * canonical spelling. The Design canvas writes FullAdder Sum/Cout; netlists use
+ * sum/carry; registers are read as Q/q/out and Q_inv/qn.
+ */
+export function primitiveOutputAliases(type: string): Array<[string, PrimitiveOutputPort]> {
+  if (STATEFUL_OUTPUT_TYPES.has(type)) {
+    return [['Q', 'Q'], ['q', 'Q'], ['out', 'Q'], ['Q_inv', 'Q_inv'], ['q_inv', 'Q_inv'], ['qn', 'Q_inv'], ['nq', 'Q_inv']];
+  }
+  if (type === 'FullAdder') {
+    return [['sum', 'sum'], ['Sum', 'sum'], ['s', 'sum'], ['carry', 'carry'], ['Cout', 'carry'], ['cout', 'carry'], ['co', 'carry']];
+  }
+  return [['out', 'out']];
+}
+
+/** Canonical output a connection's port names, or null when the primitive has no such output. */
+export function canonicalPrimitiveOutputPort(type: string, port: string): PrimitiveOutputPort | null {
+  const aliases = primitiveOutputAliases(type);
+  if (aliases.length === 1) return 'out';
+  const lowered = port.trim().toLowerCase();
+  return aliases.find(([alias]) => alias.toLowerCase() === lowered)?.[1] ?? null;
+}
+
+function flatPrimitiveSignal(signal: string, port: PrimitiveOutputPort): string {
+  if (port === 'Q_inv') return `${signal}_inv`;
+  if (port === 'sum') return `${signal}_sum`;
+  if (port === 'carry') return `${signal}_carry`;
+  return signal;
+}
+
+export interface PrimitiveVhdlContext {
+  id: string;
+  type: string;
+  config?: Record<string, unknown>;
+  /** Signal that carries one output of this primitive. */
+  output: (port: PrimitiveOutputPort) => string;
+  /** Expression driving an input port (case-insensitive), or null/undefined when unconnected. */
+  input: (port: string) => string | null | undefined;
+}
+
+/**
+ * VHDL for one supported primitive: the single statement authority shared by the
+ * flat top, leaf modules and structural architectures. Unconnected inputs read
+ * '0', as in the simulator. Unsupported types return no lines; callers report
+ * them (isEmittablePrimitiveType) instead of inventing a value.
+ */
+export function emitPrimitiveVhdl(ctx: PrimitiveVhdlContext): { lines: string[]; warnings: string[] } {
+  const { id, type, output } = ctx;
+  const lines: string[] = [];
+  const warnings: string[] = [];
+  const first = (...ports: string[]): string | undefined => {
+    for (const port of ports) {
+      const value = ctx.input(port);
+      if (value) return value;
+    }
+    return undefined;
+  };
+  const zero = "'0'";
+
+  if (type === 'PowerSource') {
+    lines.push(`  ${output('out')} <= '1';`);
+    return { lines, warnings };
+  }
+  if (type === 'Ground') {
+    lines.push(`  ${output('out')} <= '0';`);
+    return { lines, warnings };
+  }
+  if (type === 'NOT') {
+    const inSig = first('in', 'a');
+    if (!inSig) warnings.push(`NOT gate "${id}" has no input — it reads '0' and drives '1', as in the simulator`);
+    lines.push(`  ${output('out')} <= not ${inSig ?? zero};`);
+    return { lines, warnings };
+  }
+  if (type === 'DFlipFlop' || type === 'Register1' || type === 'RegisterBus' || type === 'StateBank') {
+    const emitted = emitRegisterVhdl({
+      id, type, config: ctx.config, signal: output('Q'), invSignal: output('Q_inv'), input: ctx.input,
+    });
+    return { lines: emitted.lines, warnings: emitted.warnings };
+  }
+  const q = () => output('Q');
+  const qInv = () => output('Q_inv');
+  if (type === 'DLatch') {
+    const d = first('d', 'in') ?? zero;
+    const en = first('en', 'enable');
+    if (!en) {
+      warnings.push(`DLatch "${id}" has no EN input — Q will be tied low`);
+      lines.push(`  ${q()} <= '0'; -- missing DLatch EN`);
+      lines.push(`  ${qInv()} <= '1';`);
+      return { lines, warnings };
+    }
+    lines.push(`  process (${en}, ${d})`);
+    lines.push('  begin');
+    lines.push(`    if ${en} = '1' then`);
+    lines.push(`      ${q()} <= ${d};`);
+    lines.push('    end if;');
+    lines.push('  end process;');
+    lines.push(`  ${qInv()} <= not ${q()};`);
+    return { lines, warnings };
+  }
+  if (type === 'TFlipFlop' || type === 'JKFlipFlop') {
+    const clk = first('clk', 'clock', 'c');
+    const clr = first('clr', 'rst', 'reset');
+    if (!clk) {
+      warnings.push(`${type} "${id}" has no CLK input — Q will be tied low`);
+      lines.push(`  ${q()} <= '0'; -- missing ${type} clock`);
+      lines.push(`  ${qInv()} <= '1';`);
+      return { lines, warnings };
+    }
+    if (clr) {
+      lines.push(`  process (${clk}, ${clr})`);
+      lines.push('  begin');
+      lines.push(`    if ${clr} = '1' then`);
+      lines.push(`      ${q()} <= '0';`);
+      lines.push(`    elsif rising_edge(${clk}) then`);
+    } else {
+      lines.push(`  process (${clk})`);
+      lines.push('  begin');
+      lines.push(`    if rising_edge(${clk}) then`);
+    }
+    if (type === 'TFlipFlop') {
+      const t = first('t', 'in') ?? zero;
+      lines.push(`      if ${t} = '1' then`);
+      lines.push(`        ${q()} <= not ${q()};`);
+      lines.push('      end if;');
+    } else {
+      const j = first('j') ?? zero;
+      const k = first('k') ?? zero;
+      lines.push(`      if ${j} = '1' and ${k} = '0' then`);
+      lines.push(`        ${q()} <= '1';`);
+      lines.push(`      elsif ${j} = '0' and ${k} = '1' then`);
+      lines.push(`        ${q()} <= '0';`);
+      lines.push(`      elsif ${j} = '1' and ${k} = '1' then`);
+      lines.push(`        ${q()} <= not ${q()};`);
+      lines.push('      end if;');
+    }
+    lines.push('    end if;');
+    lines.push('  end process;');
+    lines.push(`  ${qInv()} <= not ${q()};`);
+    return { lines, warnings };
+  }
+  if (type === 'FullAdder') {
+    const a = first('a') ?? zero;
+    const b = first('b') ?? zero;
+    const cin = first('cin') ?? zero;
+    lines.push(`  ${output('sum')} <= ${a} xor ${b} xor ${cin};`);
+    lines.push(`  ${output('carry')} <= (${a} and ${b}) or (${cin} and (${a} xor ${b}));`);
+    return { lines, warnings };
+  }
+  if (type === 'MUX4') {
+    const i0 = first('i0') ?? zero;
+    const i1 = first('i1') ?? zero;
+    const i2 = first('i2') ?? zero;
+    const i3 = first('i3') ?? zero;
+    const s0 = first('s0', 'sel') ?? zero;
+    const s1 = first('s1') ?? zero;
+    const out = output('out');
+    lines.push(`  with ${s1} & ${s0} select`);
+    lines.push(`    ${out} <= ${i0} when "00",`);
+    lines.push(`              ${i1} when "01",`);
+    lines.push(`              ${i2} when "10",`);
+    lines.push(`              ${i3} when others;`);
+    return { lines, warnings };
+  }
+  const g3 = gate3Operator(type);
+  if (g3) {
+    const a = first('a') ?? zero;
+    const b = first('b') ?? zero;
+    const c = first('c') ?? zero;
+    const out = output('out');
+    if (type === 'XOR3') lines.push(`  ${out} <= ${a} xor ${b} xor ${c};`);
+    else if (g3.invert) lines.push(`  ${out} <= not (${a} ${g3.op} ${b} ${g3.op} ${c});`);
+    else lines.push(`  ${out} <= ${a} ${g3.op} ${b} ${g3.op} ${c};`);
+    return { lines, warnings };
+  }
+  const op = gateOperator(type);
+  if (op) {
+    lines.push(`  ${output('out')} <= ${first('a') ?? zero} ${op} ${first('b') ?? zero};`);
+  }
+  return { lines, warnings };
+}
+
 /** Shared scalar register emission for flat and native structural handoffs. */
-export function emitRegisterVhdl({ id, type, config, signal, input }: {
+export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }: {
   id: string;
   type: string;
   config?: Record<string, unknown>;
   signal: string;
+  /** Inverted output; defaults to `<signal>_inv`. */
+  invSignal?: string;
   input: (port: string) => string | null | undefined;
 }): { lines: string[]; warnings: string[] } {
   const lines: string[] = [];
   const warnings: string[] = [];
+  const inv = invSignal ?? `${signal}_inv`;
   const registerConfig = config ?? {};
   const isConfiguredRegister1 = type === 'Register1';
   const registerResetKind = String(registerConfig.resetKind ?? 'none').toLowerCase();
@@ -912,7 +927,7 @@ export function emitRegisterVhdl({ id, type, config, signal, input }: {
   if (!clk) {
     warnings.push(`${type} "${id}" has no clock input - signal ${signal} will be tied low`);
     lines.push(`  ${signal} <= '0'; -- missing ${type} clock`);
-    lines.push(`  ${signal}_inv <= '1';`);
+    lines.push(`  ${inv} <= '1';`);
     return { lines, warnings };
   }
 
@@ -947,6 +962,6 @@ export function emitRegisterVhdl({ id, type, config, signal, input }: {
 
   lines.push('    end if;');
   lines.push('  end process;');
-  lines.push(`  ${signal}_inv <= not ${signal};`);
+  lines.push(`  ${inv} <= not ${signal};`);
   return { lines, warnings };
 }

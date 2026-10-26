@@ -26,6 +26,12 @@ export interface Basys3BundleResult {
   topXdc: string;
   readme: string;
   warnings: string[];
+  /**
+   * Specific reasons top.vhd/top.xdc cannot be trusted: parts the VHDL emitter
+   * could not express, unresolved drivers, and entity/XDC port disagreement.
+   * Callers that ship this top.vhd must report each one as a blocking error.
+   */
+  errors: string[];
   /** Canonical VHDL/XDC handoff validity, not legacy Verilog support. */
   valid: boolean;
 }
@@ -198,6 +204,30 @@ function extractXdcPortNames(xdcText: string): string[] {
   return [...xdcText.matchAll(/\[get_ports\s+\{([^}]+)\}\]/g)].map((match) => match[1].trim());
 }
 
+/**
+ * Entity ports without a constraint and constrained ports the entity does not
+ * declare. Applied to whichever top.vhd ships (flat or hierarchical) against the
+ * packaged top.xdc.
+ */
+export function findVhdlXdcPortMismatches(vhdlText: string, xdcText: string): string[] {
+  const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdlText));
+  const xdcPortRefs = extractXdcPortNames(xdcText).filter((port) => !port.startsWith('sys_clk'));
+  const xdcBaseNames = new Set(xdcPortRefs.map((port) => port.replace(/\[\d+\]$/, '')));
+  const mismatches: string[] = [];
+  for (const port of vhdlEntityPorts) {
+    if (!xdcBaseNames.has(port)) {
+      mismatches.push(`VHDL entity port "${port}" has no XDC constraint`);
+    }
+  }
+  for (const port of xdcPortRefs) {
+    const base = port.replace(/\[\d+\]$/, '');
+    if (!vhdlEntityPorts.has(base)) {
+      mismatches.push(`XDC get_ports "${port}" not found in VHDL entity`);
+    }
+  }
+  return mismatches;
+}
+
 export function exportBasys3Bundle(
   circuit: Circuit,
   ioMapping: IoMapping,
@@ -277,21 +307,7 @@ export function exportBasys3Bundle(
     .map((pin) => `Unknown Basys3 package pin in XDC: ${pin}`);
   warnings.push(...xdcPinWarnings);
 
-  const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdl.vhd));
-  const xdcPortRefs = extractXdcPortNames(topXdc).filter((port) => !port.startsWith('sys_clk'));
-  const xdcBaseNames = new Set(xdcPortRefs.map((port) => port.replace(/\[\d+\]$/, '')));
-  const vhdlXdcMismatches: string[] = [];
-  for (const port of vhdlEntityPorts) {
-    if (!xdcBaseNames.has(port)) {
-      vhdlXdcMismatches.push(`VHDL entity port "${port}" has no XDC constraint`);
-    }
-  }
-  for (const port of xdcPortRefs) {
-    const base = port.replace(/\[\d+\]$/, '');
-    if (!vhdlEntityPorts.has(base)) {
-      vhdlXdcMismatches.push(`XDC get_ports "${port}" not found in VHDL entity`);
-    }
-  }
+  const vhdlXdcMismatches = findVhdlXdcPortMismatches(vhdl.vhd, topXdc);
   warnings.push(...vhdlXdcMismatches);
 
   const readme = buildReadme(contract, warnings);
@@ -308,7 +324,9 @@ export function exportBasys3Bundle(
     contractErrors.length === 0 &&
 
     vhdlXdcMismatches.length === 0 &&
+    vhdl.errors.length === 0 &&
     exportModel.blockingDiagnostics.length === 0;
+  const errors = Array.from(new Set([...vhdl.errors, ...vhdlXdcMismatches])).sort(compareCodepoint);
 
   return {
     topV: verilog.verilog,
@@ -316,6 +334,7 @@ export function exportBasys3Bundle(
     topXdc,
     readme,
     warnings: uniqueWarnings,
+    errors,
     valid,
   };
 }

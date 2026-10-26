@@ -89,7 +89,8 @@ describe('hierarchical VHDL handoff', () => {
       ],
     };
     const created = createModuleFromSelection(base, createEmptyProjectHierarchy(), {
-      moduleName: 'FullAdder',
+      // Named like the shipped starter: a module may not reuse a built-in part's name.
+      moduleName: 'FullAdderCell',
       instanceName: 'u_fa0',
       selectedNodeIds: ['x1', 'x2', 'a1', 'a2', 'o1'],
       nowIso: '2026-08-08T12:00:00.000Z',

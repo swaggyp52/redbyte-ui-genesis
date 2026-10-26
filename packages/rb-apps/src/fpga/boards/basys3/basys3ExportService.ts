@@ -402,6 +402,13 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
   const preservedHandoff = tryBuildPreservedImportHandoff(project, bundleResult.topXdc);
   const treatBundleValid = bundleResult.valid || allowProjectionWarnings || Boolean(preservedHandoff);
+  // When the generated top.vhd is what ships, every construct it could not
+  // express blocks by name (RBEX4100 and friends), not as a generic warning.
+  if (!preservedHandoff && !hdlPortProjection) {
+    for (const message of bundleResult.errors) {
+      result.errors.push({ type: 'validation', severity: 'error', message });
+    }
+  }
   if (!treatBundleValid) {
     result.errors.push({
       type: 'validation',

@@ -11,6 +11,7 @@ import type {
   Basys3SemanticMappingProjection,
 } from '../../../fpga/boards/basys3/basys3ExportContract';
 import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
+import { findVhdlXdcPortMismatches } from '../../../fpga/boards/basys3/basys3Bundle';
 import {
   detectTestbenchEntityName,
   generateTestbenchVhdl,
@@ -245,7 +246,7 @@ export function buildExportViewModel(
   );
   const diagnostics = collectDiagnostics(
     flattenedProject,
-    [...exportResult.errors, ...runtimeBackedTestbenchErrors],
+    [...exportResult.errors, ...runtimeBackedTestbenchErrors, ...shippedHierarchyErrors(hierarchyVhdl, exportResult.bundle)],
     exportResult.warnings,
   );
   const canonicalDiagnostics = diagnostics.map((entry) => entry.canonical);
@@ -292,6 +293,30 @@ export function buildExportViewModel(
     topAuthority,
     exportedScenario,
   };
+}
+
+/**
+ * The gate above checks the elaborated flat project, but a hierarchical project
+ * ships the structural top and module sources. Anything those sources could not
+ * express, and any disagreement between the shipped top.vhd and the packaged
+ * top.xdc, blocks the package by name.
+ */
+function shippedHierarchyErrors(
+  hierarchyVhdl: ReturnType<typeof generateHierarchicalVhdlProject>,
+  bundle: ReturnType<typeof exportProjectAsBasys3>['bundle'],
+): Basys3ExportError[] {
+  if (!hierarchyVhdl || !bundle) return [];
+  const errors: Basys3ExportError[] = hierarchyVhdl.diagnostics
+    .filter((diagnostic) => diagnostic.severity === 'error')
+    .map((diagnostic) => ({ type: 'validation' as const, severity: 'error' as const, message: diagnostic.message }));
+  for (const mismatch of findVhdlXdcPortMismatches(hierarchyVhdl.topVhd, bundle.topXdc)) {
+    errors.push({
+      type: 'validation',
+      severity: 'error',
+      message: `Shipped hierarchical top.vhd and top.xdc disagree: ${mismatch}. Fix: re-export; report this if it persists.`,
+    });
+  }
+  return errors;
 }
 
 function buildRuntimeBackedTestbenchErrors(

@@ -384,6 +384,13 @@
 
 /* ── Source lens ──────────────────────────────────────────────────────────── */
 [data-rb-studio] .mrd-source { margin: 0; padding: 6px 0; font: 400 var(--mrd-text-sm)/1.55 var(--mrd-font-mono); }
+[data-rb-studio] .mrd-source-limits {
+  margin: 8px 12px 0; padding: 8px 12px; border-left: 3px solid var(--mrd-caution);
+  background: color-mix(in srgb, var(--mrd-caution) 8%, var(--mrd-panel));
+  color: var(--mrd-ink); font: 400 var(--mrd-text-sm)/1.45 var(--mrd-font-ui);
+}
+[data-rb-studio] .mrd-source-limits strong { color: var(--mrd-caution); font-weight: 600; }
+[data-rb-studio] .mrd-source-limits ul { margin: 6px 0 0; padding-left: 18px; overflow-wrap: anywhere; }
 [data-rb-studio] .mrd-src-line { display: grid; grid-template-columns: 48px 64px minmax(0, 1fr); white-space: pre; color: var(--mrd-ink); }
 [data-rb-studio] .mrd-src-line > span:first-child { text-align: right; padding-right: 8px; color: var(--mrd-ink-2); user-select: none; }
 [data-rb-studio] .mrd-src-owner {
