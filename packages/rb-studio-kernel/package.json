@@ -1,0 +1,26 @@
+{
+  "name": "@redbyte/rb-studio-kernel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-free studio kernel: one Moment (selection + time), identity resolution and recording views over the canonical RedByte model",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm -w exec vitest run --config packages/rb-studio-kernel/vitest.config.ts"
+  },
+  "dependencies": {
+    "@redbyte/rb-apps": "workspace:*",
+    "@redbyte/rb-logic-core": "workspace:*",
+    "@redbyte/rb-logic-view": "workspace:*",
+    "react": "19.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

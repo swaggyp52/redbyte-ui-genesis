@@ -1,5 +1,53 @@
 # AI State
 
+## Meridian Atlas completion pass - 2026-10-25
+
+Continues the P1 slice on claude/redbyte-meridian-slice (baseline 64bf7aa93); committed locally,
+nothing pushed. Every view now reads time from the engine's own order inside a tick (kernel
+timeline.ts): registers and their LEDs change at the rising edge, inputs at the tick start. The
+inspector explains values from recorded evaluations (explain.ts), "Show the clock edge that set
+Q1" navigates to the retained capture with Back, and the board draws RST on BTNC (U18) from the
+project's binding (alias or package pin). Critique ranks 1-25 and 28 done; 27 is an owner decision.
+
+Evidence (Node 20.19.0): verify:gates exit 0; 147 declaration diagnostics identical; typecheck:app
+0; build:unified exit 0; slice gate 134/134 on dev and on the built preview; counter proof passes
+unchanged; 28 pure + 24 recording/boundary unit tests. Two read-only review rounds: 27 and 9
+confirmed findings, all fixed. Details: docs/ACTIVE_WORK.md.
+
+Open: owner acceptance; the Logic marked-row decision; RB-DEBT-028; no E1, E2 or E3 claims.
+
+## Meridian P1 counter slice - 2026-10-20
+
+Owner-approved Meridian plan (Option D). The rc.4 candidate was sealed as local commit 64bf7aa93
+on branch claude/redbyte-meridian-slice. The slice is uncommitted on top of it and nothing was
+pushed. Students stay on rc.4.
+
+What was built:
+- A flag-gated studio at /os/?studio=meridian, with its own boot entry and no IdeApp or legacy
+  CSS.
+- New packages rb-studio-kernel and rb-studio.
+- Pure subpaths @redbyte/rb-apps/domain, /runtime and /fonts, and @redbyte/rb-logic-view/scene.
+- ideExportProject.ts and ideDesignBlocking.ts, so studio Runs carry the workbench's schedule
+  contract and blocking-design rule. IdeApp code moved verbatim into verifyReplayHash.ts
+  (buildCurrentVerifyReplayHash, re-exported) and ideExportProject.ts (three private helpers).
+
+Evidence (Node 20.19.0, after the review fixes):
+- verify:gates exit 0.
+- Goldens unchanged; 147 declaration diagnostics identical with locations.
+- typecheck:app 0; build:unified exit 0.
+- The new ide-meridian-counter-slice gate passes 62/62 on the dev server and on the built
+  preview, including studio/classic RunIdentity and digest parity.
+- The existing counter proof passes unchanged.
+
+Review: two adversarial rounds kept 27 of 29 and then 12 of 15 findings; all were fixed. Design authority:
+docs/ide/studio/MERIDIAN_DESIGN_SYSTEM.md. Details and timings: docs/ACTIVE_WORK.md.
+
+Open:
+- owner acceptance of the slice (the owner chose Meridian Atlas on 2026-10-20; alternates retired);
+- RB-DEBT-013 to RB-DEBT-027;
+- P2 hierarchy and legacy views;
+- no E1, E2 or E3 claims.
+
 ## Signal Journey - interactive hierarchy and cancellable execution - 2026-10-08
 
 Continued the preserved local, uncommitted candidate on the same branch and HEAD below.

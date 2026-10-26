@@ -1,5 +1,5 @@
 import type { Circuit, EngineEvaluationObservation } from '@redbyte/rb-logic-core';
-import { connectionEndpoints } from '@redbyte/rb-logic-view';
+import { connectionEndpoints } from '@redbyte/rb-logic-view/scene';
 import { vhdlFromNetlist, type VhdlNodeSourceSpan } from '../../export/vhdlExport';
 import { buildBasys3ExportModel } from '../../fpga/boards/basys3/basys3ExportModel';
 import { generateHierarchicalVhdlProject } from './hierarchicalVhdl';

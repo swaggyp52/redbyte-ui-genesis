@@ -618,7 +618,7 @@ dock choices persist per workspace; reset restores the defaults. The bottom dock
 | Observe versus Compare as permanent run intent | Optional checks are data on one experiment, not two executions a student must distinguish. Legacy trace recordings retain their original meaning. |
 | Report hash alone, or a new row for every unexplained rerun | Neither exposes the three inputs nor proves repeated outputs. Output identity excludes timestamps, labels and display settings. |
 | Timeline and Waveform as independent sequential destinations | They divide stimulus from its consequence; one experiment needs one time axis. |
-| A new global investigation or simulation store | Project, hierarchy, scenarios, recordings and selection already own the facts; coordination is derived. |
+| A new global investigation or simulation store | Project, hierarchy, scenarios, recordings and selection already own the facts; coordination is derived. *Superseded 2026-10-20 for the Meridian studio by a coordinate-only kernel; see "One Moment" below.* |
 | Permanent library, inspector and bottom analysis deck beside Split | They take the room from the two objects the reader explicitly chose. |
 | Five Project destinations in both explorer and tabs | Two owners ask the reader to choose which navigation is real. |
 | Global Simulation failing while editing or mapping | A historical experiment's result is not the active workspace's status. |
@@ -780,6 +780,46 @@ The canonical workspace names are **Project, Design, Simulate, Board, Package** 
 titles, command palette, shortcuts and help. `workflowStages.ts` owns these labels. Stable route
 IDs remain `project/design/verify/hardware/export`; engineering references to constraints and
 export remain valid. This explicitly supersedes the earlier short-name/formal-title distinction.
+
+### 2026-10-20 - One Moment: a coordinate kernel for the Meridian studio
+
+**Decided by the owner's approval of the Meridian architecture plan; implemented locally as a
+flag-gated P1 slice (`/os/?studio=meridian`); owner visual acceptance remains open.**
+
+This supersedes, for the studio, the rejected alternative "A new global investigation or
+simulation store". The reason for that rejection still holds: project, hierarchy, scenarios,
+recordings and selection own the facts. What changed is that coordination is no longer derived
+separately by each surface.
+
+**What the kernel holds.** `packages/rb-studio-kernel` holds **coordinates, never facts**:
+- the selected object (`ObjectRef`, lossless against `EngineeringObjectRef` and
+  `JourneySelection`);
+- the inspection anchor;
+- hover;
+- the focused lens;
+- one Moment: `null` in Edit, live in Explore, or recorded `{runId, tick, published|event, eventOrder}`.
+
+**What it does not hold.** It holds no circuit, recording, scenario or mapping. It never writes
+the project, and adds no persisted state. The sheet camera stays session-only.
+
+**Kept unchanged.** "Edit / Live / Replay as peer modes" remains rejected. Live and recorded are
+attributes of the Moment, not modes. Design still explores and Simulate still records.
+
+**Recorded values on the live sheet.** They paint only while the current design digest
+(computed exactly as `buildRunIdentity` computes it) equals the recording's design identity; a
+recording without an identity never paints. PASS/FAIL currency stays with the workbench's run
+scope (`deriveRunScope` with the run ledger and current project hash). After an undo, values may
+repaint with a chip: "recorded on this design · rerun to count as evidence".
+
+**Runs follow the workbench's rules.** A studio Run carries the same live schedule contract as a
+workbench Run, and a Design issue that blocks checked runs in the workbench turns checks off in
+the studio too; the Run still records. A link to an example never replaces a working session
+without asking.
+
+**Scope.** The classic workbench is unchanged and keeps its own owners until a later phase
+migrates it with written deletion deadlines. IdeApp code moved verbatim into shared modules: `buildCurrentVerifyReplayHash` and its helpers (`verifyReplayHash.ts`, re-exported by IdeApp) and three private export-project helpers (`ideExportProject.ts`), so the studio can build the same Run
+request and export project (RB-DEBT-026, deadline P4). The
+design authority is `docs/ide/studio/MERIDIAN_DESIGN_SYSTEM.md`.
 
 ## Attribution
 

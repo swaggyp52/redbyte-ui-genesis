@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-09-30
+last_validated: 2026-10-20
 owner: Connor Angiel
 used_by_claude: true
 role: canonical IDE product debt register
@@ -19,6 +19,8 @@ This file owns IDE product debt. The current composition is the P2.6C Studio con
 - The finite local completion checklist and its evidence are in [the Studio finish ticket](release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md). [The local candidate walkthrough](release/local-candidate-quickstart.md) describes supported use and backup boundaries.
 - Remaining debt includes raw rb-apps typecheck (570 diagnostics), extended human/classroom acceptance, fresh-machine Windows verification, unsigned distribution, browser storage quota/eviction and print-manual regeneration. Browser E0 does not establish Vivado E1, programming E2 or observed-board E3.
 - Legacy root/polish CSS still participates in the product. Broad deletion remains unsafe; any future cleanup needs scoped source and browser evidence.
+- 2026-10-20: the Meridian investigation and P1 studio slice filed RB-DEBT-013 to RB-DEBT-027 (below). The studio entry is isolated from the legacy cascade; it does not change the classic workbench debt above.
+- 2026-10-25: the Meridian Atlas completion pass filed RB-DEBT-028 (below).
 
 ## Historical July 2026 stable truths
 
@@ -263,3 +265,122 @@ The entries below preserve reproduction history and risk context. July dispositi
 - Tests/browser proof needed: Confirm all tests that interact with rail/console/toolbar panels still pass after the toggle buttons are hidden (tests should use data-testid, not toggle button visibility).
 - Files likely involved: Chrome toggle host component in `packages/rb-apps/src/apps/ide/`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`.
 - Status: **Resolved by Unified Workbench v3 (2026-07-15).** The historical controls are absent from the current student shell; no developer-mode gating follow-up is required for this finding.
+
+## Meridian investigation findings - 2026-10-20
+
+Filed from the Meridian architecture investigation and the P1 studio slice (local, uncommitted beyond the sealed baseline `64bf7aa93`). C = confirmed in code or live; H = hypothesis that needs a test before any fix. None of these blocks the flag-gated studio slice; each names the phase that should address it.
+
+### RB-DEBT-013 - Hierarchical VHDL exports unsupported primitives as constant `'0'` (C)
+
+- Severity: High (silent wrong hardware)
+- Current evidence: `packages/rb-apps/src/apps/ide/hierarchicalVhdl.ts:431-446` - `gateExpression` falls through to `default: return "'0'"`; unconnected boundary outputs also become `'0'` (`:239-241`).
+- Why it matters: a module instance with an unsupported primitive emits syntactically valid VHDL that ties the signal low instead of failing closed.
+- Next step (P2, before the Source lens shows hierarchical designs): fail export with a named diagnostic for unsupported primitives; add an emitter golden.
+- Status: Open
+
+### RB-DEBT-014 - Engine v2 feedback evaluation order may depend on node array order (H)
+
+- Severity: Medium
+- Current evidence: v2 evaluates feedback graphs in node array order (`packages/rb-logic-core/src/CircuitEngine.ts`, evaluation loop) while the project codec re-sorts nodes on save (`projectFormat.ts`).
+- Why it matters: the same RunIdentity could produce different results before and after a reload for order-sensitive feedback circuits.
+- Next step (P2 test, P5 fix): an order-permutation fixture with feedback, compared before/after save and reload.
+- Status: Open (hypothesis)
+
+### RB-DEBT-015 - Saved components (CompositeNode) may be missing from the Run worker (H)
+
+- Severity: Medium
+- Current evidence: "Save as component" registers CompositeNodes in the main-thread registry (`projectRuntime.ts` component registration); the worker engine builds its own registry.
+- Why it matters: a worker Run could skip or mis-evaluate a saved component while main-thread Explore works.
+- Next step (P2): one worker-versus-main differential test with a saved component.
+- Status: Open (hypothesis)
+
+### RB-DEBT-016 - Locale-sensitive sorts feed irHash and RunIdentity (H)
+
+- Severity: Medium
+- Current evidence: `localeCompare` in `packages/rb-logic-core/src/ir/elaborator.ts:185-195` and `packages/rb-apps/src/apps/ide/runDeterminism.ts:39`.
+- Why it matters: identities could differ between browser locales; the codec already uses codepoint order.
+- Next step (P2/P5): codepoint comparison behind an explicit identity/engine version bump; old identities fail closed.
+- Status: Open (hypothesis)
+
+### RB-DEBT-017 - Production ships the `window.__RB_*` store hooks (C)
+
+- Severity: Medium
+- Current evidence: `projectRuntime.ts:5491-5493` assigns `window.__RB_PROJECT_RUNTIME__` unconditionally; the logic-view and circuit stores do the same. Gates read these hooks hundreds of times.
+- Next step (P2-P3): a versioned `__REDBYTE_TEST__` facade, gates migrated to it, then build-flag gating.
+- Status: Open
+
+### RB-DEBT-018 - Candidate packaging copies the whole local `dist` (C)
+
+- Severity: Medium
+- Current evidence: `scripts/package-candidate.mjs:18` copies `dist` recursively; the local `dist` held stale files and sourcemaps from earlier builds during the investigation.
+- Next step (P0/P2): build into a clean directory and copy a manifest-listed file set.
+- Status: Open
+
+### RB-DEBT-019 - Classic Design culling drops long wires whose endpoints are both off-screen (C)
+
+- Severity: Low
+- Current evidence: `packages/rb-logic-view/src/LogicCanvas.tsx:451-459` keeps a connection only when one endpoint node is visible. The pure scene package offers segment-viewport culling instead (`rb-logic-view/src/scene/cull.ts` `cullScene`, unit-tested); the studio sheet does not cull yet and draws every net and symbol (321 symbols and 7,686 SVG elements on the fan-out fixture).
+- Next step (P3): retire with the classic canvas, or reuse `cullScene`.
+- Status: Open
+
+### RB-DEBT-020 - One click on a recorded stimulus lane edits the scenario (C, live)
+
+- Severity: High (inspection mutates authored data)
+- Current evidence: during the 2026-10-20 walkthrough a single inspection click on the EN stimulus lane changed the scenario ("The scenario changed after this run..."). Editable and recorded lanes look alike.
+- Next step: separate editing affordance (explicit edit mode or handle), and a gate that one click never mutates a scenario.
+- Status: Open
+
+### RB-DEBT-021 - Orthogonal routes can pass through gate bodies (C)
+
+- Severity: Low
+- Current evidence: on the counter the CLK route crossed XOR0's body. The studio passes `avoidBodiesOnLegs` (opt-in, default byte-stable); extra body clearance made routes worse and was reverted.
+- Next step (P4): channel reservation in the router with route goldens.
+- Status: Mitigated in the studio only
+
+### RB-DEBT-022 - Stale entry points and copy (C)
+
+- Current evidence: the Run menu "Run Simulation (Observe)" still builds a trace-only run (`IdeApp.tsx:2863`); starter goals still say "In Verify / Run Compare"; Ctrl+K is not listed in the shortcuts modal; `workbench.command-palette.open` is declared (`ideCommandRegistry.ts:14`) but never registered.
+- Next step (P3): retire or relabel with the studio keymap; list Ctrl+K.
+- Status: Open
+
+### RB-DEBT-023 - A navigation right after an import can reopen the previous project (C, workbench persistence)
+
+- Severity: Low in ordinary use, High for scripted proofs (wrong project measured or shown)
+- Current evidence: two of three runs of `scripts/perf/meridian-baseline.mjs` that navigated immediately after the workbench import of the 321-node fixture (in-memory project name confirmed) reopened the previous 13-node counter - in the workbench pages too, not only the studio (their fan-out Run took the counter's 130 ms). The runtime writes the session to IndexedDB asynchronously after `set()` (`durableProjectStorage.ts`, `runtimePersistence.flush`) and registers no `pagehide`/`beforeunload` flush. On the production build the stored session named the fixture 12 ms after the in-memory import (299 ms -> 311 ms); the script now waits for that record and every later run measured the fixture.
+- Next step (P4, with the persistence work): flush or block navigation while a session write is pending; a navigation-race test (import, navigate within the pending window, compare project identity).
+- Status: Open (classified; window is narrow)
+
+### RB-DEBT-024 - Studio scrub and Time-lens open cost at 321 nodes (C)
+
+- Severity: Medium (scale)
+- Current evidence: `scripts/perf/meridian-baseline.mjs`, fan-out fixture (321 nodes, 7,686 sheet SVG elements). Final production run: 3-tick scrub 203 ms (p95 frame 49.9 ms), Simulate preset 86 ms with a 62 ms long task, studio open 489 ms with 285 ms of long tasks. Dev server: 3-tick scrub 584 ms, Simulate preset 399 ms. On the production build the counter stays under 25 ms per stage switch and scrubs 6 ticks in 27 ms. Value writes are imperative, but each Moment change still re-derives values and re-renders lens/inspector React state.
+- Next step (P2/P5): memoize per-tick value frames; diff `data-value` writes by changed nets only; re-measure against this baseline.
+- Status: Open
+
+### RB-DEBT-025 - `crash-guard.test.tsx` hangs the vitest worker (C, present at the sealed baseline)
+
+- Severity: Medium (test infrastructure: a focused or root run over `packages/rb-logic-view/src` never prints its summary)
+- Current evidence: `packages/rb-logic-view/src/__tests__/crash-guard.test.tsx` alone runs until the 200 s bound and ends with "Worker exited unexpectedly" under Node 20.19.0 / vitest 2.1.8. The same file loaded from a pristine `64bf7aa93` worktree hangs identically, and the test and `LogicCanvas.tsx` are byte-identical to that baseline, so the Meridian slice did not cause it. The other 20 rb-logic-view test files pass. It renders the classic `LogicCanvas` with a mocked malformed view store.
+- Next step: isolate the render loop or open handle under the mock (classic canvas; outside the studio slice), then restore it to the routine focused run.
+- Status: Open
+
+### RB-DEBT-026 - The studio mirrors IdeApp's export-project derivation (C, deletion deadline P4)
+
+- Severity: Medium (two derivations of one document can drift)
+- Current evidence: `packages/rb-apps/src/apps/ide/ideExportProject.ts` rebuilds the workbench export project (top HDL, constraint text, IO mapping, schedule contract) from runtime state field by field, mirroring IdeApp's `hierarchyHdl` / `hdlText` / `xdcText` / `exportProject` / `liveScheduleContract` memos, so studio Runs carry the same schedule contract and the same blocking-design rule (`ideDesignBlocking.ts`). Three private helpers moved verbatim out of IdeApp into that module, and `buildCurrentVerifyReplayHash` with its helpers moved verbatim into `verifyReplayHash.ts`; IdeApp imports and re-exports them. Classic-versus-studio RunIdentity and output-digest parity is gate-checked on the counter only.
+- Next step (P4, with the lazy derivation graph): one shared derivation consumed by IdeApp and the studio; delete the mirror. Until then, add hierarchical and sequential-in-module parity fixtures to the slice gate.
+- Status: Open (deadline: P4)
+
+### RB-DEBT-027 - The domain entry still reaches the `@redbyte/rb-utils` barrel (C)
+
+- Severity: Low now, blocking for P2 content islands
+- Current evidence: `domainBoundary.test.ts` walks rb-apps and rb-logic-view and treats other @redbyte packages as leaves; the `@redbyte/rb-utils` barrel re-exports zustand stores, so importing `@redbyte/rb-apps/domain` is free of React components and stylesheets but not of every store module. Recorded in the `domain.ts` header.
+- Next step (P2): split rb-utils into pure and store subpaths, then extend the walker into it.
+- Status: Open
+
+### RB-DEBT-028 - "Unconnected · read as 0" is not true for every input (C)
+
+- Severity: Low (a misleading inspector line on rare registers; the studio's explanations avoid the claim)
+- Current evidence: `unconnectedInputPins` (rb-studio-kernel `resolver.ts`) marks every undriven input, and the studio inspector and sheet say "unconnected · read as 0". The behaviours do not all default to 0 (`rb-logic-core/src/builtins.ts`, `readFirstNumber` fallbacks): a DFlipFlop reads an unconnected EN as 1, and a Register1/RegisterBus/StateBank reads an unconnected EN as 1 unless its config sets `hasEnable`, in which case it reads 0. Data, clock and reset inputs default to 0. The shipped examples wire every EN they draw, so no shipped design shows the wrong line.
+- Next step (P2): derive the read-as value per pin from the behaviour's own fallback (a shared table exported next to `readFirstNumber`), say "unconnected · read as 1" where that is the fallback, and add a unit test per sequential type.
+- Status: Open

@@ -1,12 +1,163 @@
 ---
 doc_status: current
-last_validated: 2026-10-08
+last_validated: 2026-10-25
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
 ---
 
 # RedByte - Active Work Cockpit
+
+## Meridian Atlas completion pass - every view tells the same story - 2026-10-25
+
+Continues the slice below on `claude/redbyte-meridian-slice` (sealed baseline `64bf7aa93`), in
+the owner-chosen Meridian Atlas direction. Committed locally; nothing pushed, merged or deployed.
+Students stay on rc.4. Design authority: `docs/ide/studio/MERIDIAN_DESIGN_SYSTEM.md`.
+
+**What changed**
+- **Time inside a tick, from the engine's own order** (`rb-studio-kernel/src/timeline.ts`): the
+  board-clock schedule's three phases (inputs applied, rising edge, clock falls) are the only
+  positions inside a tick; each lane draws each phase's settled values. Q1, Q0, LD0 and LD1 now
+  change at the rising edge, EN and RST at the tick start; the clock lane is its recorded levels.
+  Without retained evaluations a lane has one sample per tick and changes are drawn slanted.
+- **Inspector explanation from recorded facts** (`explain.ts`): "Q1 was 0 at t2 and is 1 at t3 ·
+  At the rising clock edge in t3, Q1 read D = 1 (from RST1) · So its stored value changed 0 → 1".
+  Edge or no edge, changed or kept, resets and the clock's own story come from what each
+  evaluation recorded (async clears, authored clocks and t0 included); missing evidence is named.
+- **Causal navigation**: "Show the clock edge that set Q1" jumps to the retained capture
+  ("t3 · rising clock edge · step 34 of 63 · Q1"); the sheet shows the capture pending (`0→1…`),
+  the Logic lens marks the values at the edge, the board agrees, and Back (strip or Esc) returns,
+  also after a trip through Design.
+- **Board mapping**: RST is drawn on the centre button BTNC (U18) with a leader and a ring; rows
+  may name a resource by alias or package pin (the shipped Half Adder uses pins); switch and LED
+  labels drop repeated resource names and never collide; board parts are keyboard controls.
+- **Polish from the ranked critique** (ranks 5-25): failures named on their lane and check, focus
+  without dashes, body-hugging selection under the wires, state windows inside registers, lens and
+  tick controls for the mouse, one fact per place with a stale tone and Run again, labelled Logic
+  columns, Source gutter names, margin labels without repetition, quieter Edit affordances.
+- **Not simulated**: a combinational loop records only the test inputs; the studio draws those
+  inputs and says "not simulated" instead of drawing everything as unrecorded (critique rank 28).
+
+**Evidence (Node 20.19.0, this machine; browser E0 only)**
+
+| Check | Result |
+|---|---|
+| `verify:gates` | exit 0 (7m15s), goldens included |
+| Declaration diagnostics | 147, identical to the baseline including locations |
+| `typecheck:app` | 0 diagnostics, 2,285 files |
+| Kernel and studio `tsc` | 0 |
+| `build:unified` | exit 0 |
+| Slice gate `ide-meridian-counter-slice` | 134/134 on the dev server and 134/134 on the built preview |
+| Existing `ide-signal-journey-counter-proof` | passes, script unchanged since the seal (dev server) |
+| Unit tests | 28 pure (kernel, scene, keymap, board model) and 24 recording-backed and boundary tests; the timeline, cause, t0, board-label and lane-width checks were shown red without their fix |
+| Docs | `git diff --check`, `rb:doc:validate`, `rb:encoding:check` exit 0 |
+
+**Review.** Two independent read-only rounds after the gates passed: 31 candidates, 27 confirmed
+and fixed; then a fix-verification round, 13 candidates, 9 confirmed and fixed (authored-clock
+wording, measured strip priority, long-recording lane names, t0 clock level, register "kept"
+reasons, tooltips, scenario-scoped checks-off). The second round's fixes are covered by tests and
+the gate but were not reviewed by a third round.
+
+**Screenshots (local):** `.redbyte/meridian/shots/atlas-final/` (the acceptance journey at
+1440×900, 1366×768 and 1152×720), `.redbyte/meridian/gate/` and `.redbyte/meridian/gate-prod/`.
+
+**Open**
+- **Owner acceptance of the slice.** Agent review is not acceptance.
+- **Owner decision:** which truth-table row the Logic lens marks in the published view (the values
+  at tN, which predict the next edge, or the row that produced tN's state). A caption states it.
+- **RB-DEBT-028:** "unconnected · read as 0" is not true for an unconnected flip-flop EN.
+- Earlier debt RB-DEBT-013 to RB-DEBT-027 and the P2 scope below are unchanged.
+
+## Meridian P1 counter slice - one sheet, one Moment - 2026-10-20
+
+The owner approved the Meridian architecture plan (Option D: a framework-free kernel plus the
+Vite/React studio; Astro only for content after a Node 22 re-pin). The rc.4 candidate was sealed
+as local commit `64bf7aa93` on new branch `claude/redbyte-meridian-slice`; everything below is
+uncommitted on top of it and nothing was pushed. Students stay on rc.4.
+
+**What exists.** A flag-gated studio at `/os/?studio=meridian` with its own boot entry (never
+IdeApp, never legacy CSS):
+- `packages/rb-studio-kernel`: Moment, ObjectRef, resolver, recording views, paint and evidence
+  predicates, derived truth tables.
+- `packages/rb-studio`: one persistent SVG sheet plus Time, Source, Logic and Board lenses, the
+  inspector, in the owner-chosen Meridian Atlas direction (the two alternate concepts were
+  retired after the choice).
+- Pure subpaths: `@redbyte/rb-apps/domain`, `/runtime`, `/fonts` and
+  `@redbyte/rb-logic-view/scene`.
+- `ideExportProject.ts` / `ideDesignBlocking.ts`, so studio Runs follow the workbench's schedule
+  contract and blocking-design rule. IdeApp code moved verbatim into shared modules: `buildCurrentVerifyReplayHash` and its helpers (`verifyReplayHash.ts`, re-exported by IdeApp) and three private export-project helpers (`ideExportProject.ts`).
+
+Design authority: `docs/ide/studio/MERIDIAN_DESIGN_SYSTEM.md`. The row-621 supersession is in
+the V1 contract.
+
+**Evidence (Node 20.19.0, this machine; browser E0 only)**
+
+| Check | Result |
+|---|---|
+| `verify:gates` (after the first-round review fixes; later rounds touched only the studio, the kernel, docs and the gate) | exit 0, 7m06s |
+| Golden ZIP, rbproj and rbx gates | pass; golden files unmodified |
+| Declaration diagnostics | 147, identical including locations |
+| `typecheck:app` | 0 diagnostics, 2,284 files |
+| Kernel and studio `tsc` | 0 |
+| `build:unified` | exit 0 |
+| Built studio entry | 829 B; CSS is the Meridian sheet (205 studio rules; 0 `.ide-root`, Tailwind or `!important`) plus Plex `@font-face` |
+| New slice gate `ide-meridian-counter-slice` | 62/62 on the dev server and 62/62 on the built preview (45 s) |
+| Classic parity (studio vs classic Run) | one RunIdentity (design `2f60265b`, stimulus `41c8c473`) and output digest `a25ceec1` |
+| Existing `ide-signal-journey-counter-proof` | passes unchanged |
+| Unit tests | 21 pure kernel/scene/keymap tests, 7 recording tests and 3 domain-boundary tests pass; the boundary, keymap and register-bus tests were shown red without their fix |
+
+The slice gate covers:
+- Edit, Explore and the clock edge;
+- t3 across the sheet, Time, state windows, inspector, Logic (the exact current row), Source (the recording's top.vhd with Q1's recorded span) and Board;
+- the event view;
+- one sheet node across stages, with zoom and centre kept;
+- move, rewire, undo and the currency chip;
+- an authored failure;
+- an unconnected input;
+- a combinational loop turning checks off;
+- example-link session safety and reload;
+- Tab and Enter;
+- three viewports on the Simulate and Board stages;
+- full-motion versus reduced-motion Fit;
+- no console errors.
+
+**Production-build timings** (`scripts/perf/meridian-baseline.mjs`, report only):
+
+| Fixture | Action | Studio | Classic |
+|---|---|---|---|
+| Counter | stage switch | 19–23 ms | 124–189 ms |
+| Counter | Run → result | 109 ms | 113 ms |
+| Counter | 6-tick scrub | 27 ms | — |
+| Counter | 20 wheel steps | 682 ms, no long tasks | 1,018 ms |
+| 321-node fan-out | open | 489 ms | 649 ms |
+| 321-node fan-out | 3-tick scrub | 203 ms (RB-DEBT-024) | — |
+| 321-node fan-out | Run | 261 ms | 490 ms |
+
+**Review.** Two adversarial rounds:
+- **First round** (3 reviewers plus a verifier): 29 candidates, 27 kept (1 refuted, 1 duplicate),
+  all fixed. The two most serious:
+  - a `?example=` reload could wipe a session;
+  - studio Runs did not carry the workbench's schedule contract or its blocking-design rule.
+- **Second round** (verifying those fixes): 15 candidates, 12 distinct confirmed (2 refuted,
+  1 duplicate), all fixed. Among them:
+  - a truth-table regression that merged a register bus's bits;
+  - a looser session-safety rule;
+  - Board-stage room at 1280×650;
+  - gate checks that claimed more than they asserted.
+
+**Open**
+- **Owner acceptance.** The owner chose Meridian Atlas on 2026-10-20. Acceptance of the slice
+  itself is pending: the gate screenshots in `.redbyte/meridian/gate/` and a live walkthrough.
+  Agent review is not acceptance.
+- **Debt RB-DEBT-013 to RB-DEBT-027:**
+  - the mirrored export-project derivation, deadline P4;
+  - scale and culling;
+  - the navigation-after-import persistence race;
+  - `crash-guard.test.tsx` hangs at the sealed baseline too (RB-DEBT-025);
+  - the rb-utils barrel purity.
+- **Out of scope:** hierarchy and legacy-recording views are P2. Vivado, programming and board
+  evidence are not claimed.
+
 
 ## Signal Journey - interactive hierarchy and cancellable execution - 2026-10-08
 

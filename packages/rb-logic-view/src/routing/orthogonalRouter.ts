@@ -47,6 +47,12 @@ export interface RoutedNet {
 
 export interface RouteOptions {
   readonly grid?: number;
+  /**
+   * Also count symbol bodies crossed by the horizontal legs (driver to channel, channel to each
+   * load) when choosing a net's vertical channel. Off by default so existing drawings stay
+   * byte-identical; the studio scene opts in.
+   */
+  readonly avoidBodiesOnLegs?: boolean;
 }
 
 interface Endpoint {
@@ -92,12 +98,31 @@ function verticalCollisions(boxes: readonly Box[], x: number, y1: number, y2: nu
   return n;
 }
 
+/** Number of symbol bodies a horizontal segment at `y` spanning [x1,x2] would cross. */
+function horizontalCollisions(boxes: readonly Box[], y: number, x1: number, x2: number): number {
+  const lo = Math.min(x1, x2);
+  const hi = Math.max(x1, x2);
+  let n = 0;
+  for (const box of boxes) {
+    if (y > box.minY && y < box.maxY && hi > box.minX && lo < box.maxX) n += 1;
+  }
+  return n;
+}
+
 function snap(value: number, grid: number): number {
   return Math.round(value / grid) * grid;
 }
 
 /** Pick the vertical channel x between `left` and `right` with the fewest body crossings, nearest the midpoint. */
-function chooseChannel(boxes: readonly Box[], left: number, right: number, yLo: number, yHi: number, grid: number): number {
+function chooseChannel(
+  boxes: readonly Box[],
+  left: number,
+  right: number,
+  yLo: number,
+  yHi: number,
+  grid: number,
+  legs?: { readonly source: Point; readonly loads: readonly Point[] },
+): number {
   const mid = (left + right) / 2;
   const first = snap(left + grid, grid);
   const last = snap(right - grid, grid);
@@ -105,7 +130,12 @@ function chooseChannel(boxes: readonly Box[], left: number, right: number, yLo: 
   let best = snap(mid, grid);
   let bestScore = Number.POSITIVE_INFINITY;
   for (let x = first; x <= last; x += grid) {
-    const score = verticalCollisions(boxes, x, yLo, yHi) * 10_000 + Math.abs(x - mid);
+    let crossings = verticalCollisions(boxes, x, yLo, yHi);
+    if (legs) {
+      crossings += horizontalCollisions(boxes, legs.source.y, legs.source.x, x);
+      for (const load of legs.loads) crossings += horizontalCollisions(boxes, load.y, x, load.x);
+    }
+    const score = crossings * 10_000 + Math.abs(x - mid);
     if (score < bestScore) {
       bestScore = score;
       best = x;
@@ -198,7 +228,8 @@ export function routeCircuit(
       const nearestX = Math.min(...forwardLoads.map((load) => load.point!.x));
       const yLo = Math.min(s.y, ...forwardLoads.map((load) => load.point!.y));
       const yHi = Math.max(s.y, ...forwardLoads.map((load) => load.point!.y));
-      const channel = chooseChannel(boxes, s.x, nearestX, yLo, yHi, grid);
+      const channel = chooseChannel(boxes, s.x, nearestX, yLo, yHi, grid,
+        options.avoidBodiesOnLegs ? { source: s, loads: forwardLoads.map((load) => load.point!) } : undefined);
       const trunkOwners = forwardLoads.length;
       for (const load of forwardLoads) {
         const t = load.point!;

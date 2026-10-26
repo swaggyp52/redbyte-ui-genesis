@@ -1,0 +1,9 @@
+{
+  "extends": "../../tools/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client", "node"],
+    "typeRoots": ["../rb-apps/node_modules/@types", "../rb-apps/node_modules"]
+  },
+  "include": ["src"]
+}

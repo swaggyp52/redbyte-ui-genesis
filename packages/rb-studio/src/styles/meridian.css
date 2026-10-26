@@ -1,0 +1,510 @@
+/* Meridian studio — the single visual authority for the studio entry.
+ *
+ * One owner of tokens, scoped to [data-rb-studio]; no !important; nothing here styles the
+ * classic workbench and nothing from the workbench cascade reaches this tree (separate entry).
+ *
+ * Graphical contract (docs/ide/studio/MERIDIAN_DESIGN_SYSTEM.md):
+ *   light in a wire = an observed value at the current Moment; no Moment, no light
+ *   logic 1  = blue, 2.5px, tag "1"      logic 0 = grey, 1.25px, tag "0" (tag in ink-2)
+ *   unrecorded = ink-2 dashed, no tag   unconnected input = hollow terminal, "0·" (read as 0)
+ *   failure = crimson + glyph + hatch   pass = ink check + words (never green)
+ *   selection = ink double ring          vermilion = the time meridian (and the RedByte wordmark)
+ * Motion: instant 0 / quick 120 / move 200 / travel 240 (camera only); none under reduced motion.
+ */
+
+[data-rb-studio] {
+  /* Meridian Atlas: paper and ink, a vermilion time meridian (owner choice, 2026-10-20). */
+  --mrd-sheet: #f7f6f2;
+  --mrd-panel: #ffffff;
+  --mrd-panel-2: #f1f0ec;
+  --mrd-rule: #d9d6cf;
+  --mrd-rule-strong: #b8b4ab;
+  --mrd-grid: #e9e6df;
+  --mrd-ink: #1b1e23;
+  --mrd-ink-2: #565c66;
+  --mrd-ink-3: #7d838c;
+  --mrd-fill: #ffffff;
+  --mrd-fill-io: #eeece6;
+  --mrd-logic-1: #0a5ba8;
+  --mrd-logic-0: #7d838c;
+  --mrd-caution: #a04e00;
+  --mrd-failure: #a8155a;
+  --mrd-now: #c23a1e;
+  --mrd-on-now: #ffffff;
+  --mrd-focus: #1b1e23;
+  --mrd-dim: 0.42;
+  /* The Basys3 board plane and its silkscreen (same in both schemes). */
+  --mrd-board: #1d2b25;
+  --mrd-board-ink: #cfe0d4;
+  --mrd-board-rule: #2f4a3e;
+  --mrd-board-socket: #0f1714;
+  --mrd-board-led-on: #6fb3f5;
+
+  --mrd-font-ui: 'IBM Plex Sans Variable', 'IBM Plex Sans', system-ui, sans-serif;
+  --mrd-font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --mrd-text-xs: 12px; /* floor */
+  --mrd-text-sm: 13px;
+  --mrd-text: 14px;
+  --mrd-text-md: 15px;
+  --mrd-text-lg: 18px;
+
+  --mrd-quick: 120ms;
+  --mrd-move: 200ms;
+  --mrd-travel: 240ms;
+  --mrd-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Bridge for the shared schematic symbol renderer (rb-logic-view). */
+  --rb-font-mono: var(--mrd-font-mono);
+
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 48px minmax(0, 1fr) 30px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-areas: 'bar bar' 'rail work' 'status status';
+  background: var(--mrd-sheet);
+  color: var(--mrd-ink);
+  font: 400 var(--mrd-text)/1.4 var(--mrd-font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-rb-studio][data-scheme='dark'] {
+  --mrd-sheet: #12161c;
+  --mrd-panel: #1a1f27;
+  --mrd-panel-2: #151a21;
+  --mrd-rule: #2a313b;
+  --mrd-rule-strong: #3a434f;
+  --mrd-grid: #1c222a;
+  --mrd-ink: #e8eaed;
+  --mrd-ink-2: #a3aab5;
+  --mrd-ink-3: #6e7682;
+  --mrd-fill: #1a1f27;
+  --mrd-fill-io: #20262f;
+  --mrd-logic-1: #6fb3f5;
+  --mrd-logic-0: #6e7682;
+  --mrd-caution: #f0a04b;
+  --mrd-failure: #f075b0;
+  --mrd-now: #ff7a59;
+  --mrd-on-now: #12161c;
+  --mrd-focus: #e8eaed;
+}
+
+[data-rb-studio] *,
+[data-rb-studio] *::before,
+[data-rb-studio] *::after { box-sizing: border-box; }
+[data-rb-studio] button { font: inherit; color: inherit; }
+[data-rb-studio] :focus-visible { outline: 2px solid var(--mrd-focus); outline-offset: 2px; }
+[data-rb-studio] .mrd-visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ── App bar ─────────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-bar {
+  grid-area: bar;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--mrd-rule);
+  background: var(--mrd-panel);
+  min-width: 0;
+}
+[data-rb-studio] .mrd-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 0 1 auto; max-width: 40%; }
+[data-rb-studio] .mrd-brand-mark { font-weight: 700; letter-spacing: 0.02em; color: var(--mrd-ink); }
+[data-rb-studio] .mrd-brand-mark span { color: var(--mrd-now); }
+[data-rb-studio] .mrd-project { font-size: var(--mrd-text-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-rb-studio] .mrd-bar-spacer { flex: 1 1 auto; }
+[data-rb-studio] .mrd-run-status { font: 500 var(--mrd-text-sm) var(--mrd-font-mono); color: var(--mrd-ink-2); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+[data-rb-studio] .mrd-run-status[data-tone='pass'] { color: var(--mrd-ink); }
+[data-rb-studio] .mrd-run-status[data-tone='fail'] { color: var(--mrd-failure); }
+/* Checks from a recording made before the last edit: never shown as a current pass. */
+[data-rb-studio] .mrd-run-status[data-tone='stale'] { color: var(--mrd-caution); }
+[data-rb-studio] .mrd-run-progress {
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--mrd-ink); transform-origin: left;
+}
+
+[data-rb-studio] .mrd-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--mrd-rule-strong); border-radius: 4px;
+  background: var(--mrd-panel); color: var(--mrd-ink);
+  font-size: var(--mrd-text-sm); font-weight: 500; cursor: pointer;
+}
+[data-rb-studio] .mrd-btn:hover { border-color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-btn[aria-pressed='true'] { background: var(--mrd-panel-2); color: var(--mrd-ink); box-shadow: inset 0 -2px 0 var(--mrd-ink); font-weight: 600; }
+[data-rb-studio] .mrd-btn--primary { background: var(--mrd-ink); color: var(--mrd-panel); border-color: var(--mrd-ink); }
+[data-rb-studio] .mrd-btn:disabled { opacity: 0.5; cursor: default; }
+[data-rb-studio] .mrd-btn--strip { min-height: 28px; flex: none; }
+[data-rb-studio] .mrd-btn--small { min-height: 24px; padding: 0 8px; font-size: var(--mrd-text-xs); }
+[data-rb-studio] .mrd-btn--inline { min-height: 22px; padding: 0 8px; font-size: var(--mrd-text-xs); vertical-align: middle; }
+[data-rb-studio] .mrd-btn--icon { min-height: 28px; min-width: 28px; padding: 0; justify-content: center; font-size: var(--mrd-text-md); line-height: 1; }
+[data-rb-studio] .mrd-kbd {
+  display: inline-block; min-width: 16px; padding: 0 4px; border: 1px solid var(--mrd-rule-strong); border-radius: 3px;
+  font: 500 12px/16px var(--mrd-font-mono); text-align: center; color: var(--mrd-ink-2);
+}
+[data-rb-studio] .mrd-btn--primary .mrd-kbd { border-color: currentColor; color: inherit; }
+
+/* ── Rail ─────────────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-rail {
+  grid-area: rail;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 6px;
+  border-right: 1px solid var(--mrd-rule);
+  background: var(--mrd-panel);
+}
+[data-rb-studio] .mrd-rail-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 2px; border: 0; border-radius: 4px; background: none; cursor: pointer;
+  font-size: var(--mrd-text-xs); color: var(--mrd-ink-2); text-decoration: none;
+}
+[data-rb-studio] .mrd-rail-item[aria-current='page'] { color: var(--mrd-ink); background: var(--mrd-panel-2); box-shadow: inset 2px 0 0 var(--mrd-ink); }
+[data-rb-studio] .mrd-rail-item:hover { color: var(--mrd-ink); }
+[data-rb-studio] .mrd-rail-key { font: 600 var(--mrd-text-xs) var(--mrd-font-mono); }
+[data-rb-studio] .mrd-rail-link { flex-direction: row; justify-content: center; gap: 2px; }
+[data-rb-studio] .mrd-rail-link span { color: var(--mrd-ink-3); }
+[data-rb-studio] .mrd-rail-rule { height: 1px; margin: 4px 6px; background: var(--mrd-rule); }
+[data-rb-studio] .mrd-rail-classic { margin-top: auto; }
+
+/* ── Work area: persistent sheet + lens slots + inspector ───────────────── */
+[data-rb-studio] .mrd-work {
+  grid-area: work;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--mrd-inspector-width, 300px);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: 'sheet inspector' 'lenses inspector';
+  min-width: 0; min-height: 0;
+}
+[data-rb-studio] .mrd-work[data-inspector='closed'] { --mrd-inspector-width: 0px; }
+/* The board lens grows with the window (up to 400px) but always leaves the sheet room. */
+[data-rb-studio] .mrd-work[data-preset='board'] { --mrd-lens-height: clamp(272px, 45vh, 400px); }
+
+[data-rb-studio] .mrd-sheet-pane { grid-area: sheet; display: grid; grid-template-rows: 40px minmax(0, 1fr); min-width: 0; min-height: 0; background: var(--mrd-sheet); }
+[data-rb-studio] .mrd-sheet-area { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+[data-rb-studio] .mrd-title-strip {
+  min-width: 0; padding: 0 12px;
+  border-bottom: 1px solid var(--mrd-rule); background: var(--mrd-panel);
+  font: 500 var(--mrd-text-sm) var(--mrd-font-mono); color: var(--mrd-ink-2); white-space: nowrap;
+}
+[data-rb-studio] .mrd-strip-row { display: flex; align-items: center; gap: 18px; min-width: 0; height: 100%; }
+[data-rb-studio] .mrd-strip-stage { font: 600 var(--mrd-text-sm) var(--mrd-font-ui); color: var(--mrd-ink); }
+[data-rb-studio] .mrd-strip-item { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+[data-rb-studio] .mrd-stepper .mrd-strip-item { flex: 0 1 auto; }
+[data-rb-studio] .mrd-strip-item[data-tone='now'] { color: var(--mrd-ink); box-shadow: inset 3px 0 0 var(--mrd-now); padding-left: 9px; }
+[data-rb-studio] .mrd-strip-item[data-tone='stale'] { color: var(--mrd-caution); }
+[data-rb-studio] .mrd-strip-evidence { margin-left: auto; flex: none; }
+[data-rb-studio] .mrd-stepper { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* The strip keeps the Moment whole. Nothing in it shrinks; when its content overflows, the
+ * studio adds one level at a time to data-squeeze (MeridianStudio STRIP_SQUEEZE), in this order:
+ * key hints and 'browser'; 'simulation ·' (the tier keeps its tooltip) and wide gaps; the zoom
+ * −/+ (the wheel and Fit remain); the phase words of a step; the chip (the bar already says
+ * 'not current'); the stage label (the rail marks the stage); only then may the Moment ellipsize. */
+[data-rb-studio] .mrd-strip-row { overflow: hidden; }
+[data-rb-studio] .mrd-strip-row .mrd-moment,
+[data-rb-studio] .mrd-strip-row .mrd-stepper { flex: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='wide'] .mrd-wide { display: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='compact'] { gap: 12px; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='compact'] .mrd-compact { display: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='zoom'] .mrd-zoomstep { display: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='roomy'] .mrd-roomy { display: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='chip'] .mrd-chip { display: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='stage'] .mrd-strip-stage { display: none; }
+[data-rb-studio] .mrd-strip-row[data-squeeze~='moment'] .mrd-moment,
+[data-rb-studio] .mrd-strip-row[data-squeeze~='moment'] .mrd-stepper { flex: 0 1 auto; min-width: 0; }
+[data-rb-studio] .mrd-lenses {
+  grid-area: lenses; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  min-width: 0; border-top: 1px solid var(--mrd-rule); background: var(--mrd-panel);
+}
+[data-rb-studio] .mrd-lenses:empty { display: none; }
+[data-rb-studio] .mrd-lens { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: var(--mrd-lens-height, 272px); }
+[data-rb-studio] .mrd-lens + .mrd-lens { border-left: 1px solid var(--mrd-rule); }
+[data-rb-studio] .mrd-lens-head {
+  display: flex; align-items: baseline; gap: 10px; min-height: 34px; padding: 6px 12px;
+  border-bottom: 1px solid var(--mrd-rule);
+}
+[data-rb-studio] .mrd-lens-title { font-weight: 600; font-size: var(--mrd-text-sm); letter-spacing: 0.01em; }
+[data-rb-studio] .mrd-lens-meta { font: 400 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-rb-studio] .mrd-lens-body { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; }
+[data-rb-studio] .mrd-lens-empty { padding: 16px; color: var(--mrd-ink-2); font-size: var(--mrd-text-sm); }
+
+[data-rb-studio] .mrd-inspector {
+  grid-area: inspector; overflow: auto; min-width: 0;
+  border-left: 1px solid var(--mrd-rule); background: var(--mrd-panel);
+}
+[data-rb-studio] .mrd-work[data-inspector='closed'] .mrd-inspector { display: none; }
+
+/* ── Sheet ────────────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-sheet { display: block; width: 100%; height: 100%; touch-action: none; cursor: default; }
+[data-rb-studio] .mrd-sheet:focus { outline: none; }
+[data-rb-studio] .mrd-sheet:focus-visible { outline: 2px solid var(--mrd-focus); outline-offset: -2px; }
+[data-rb-studio] .mrd-sheet[data-panning='1'] { cursor: grabbing; }
+[data-rb-studio] .mrd-sheet-grid-minor { stroke: var(--mrd-grid); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+
+/* Nets: ink by default; a value at the Moment is weight + hue + tag. */
+[data-rb-studio] .mrd-net-line {
+  fill: none; stroke: var(--mrd-ink-2); stroke-width: 1.5px; stroke-linejoin: round; stroke-linecap: round;
+  /* Values are time: they snap with the meridian, never interpolate. */
+  vector-effect: non-scaling-stroke;
+}
+[data-rb-studio] .mrd-net-hit { fill: none; stroke: transparent; stroke-width: 10px; vector-effect: non-scaling-stroke; cursor: pointer; pointer-events: stroke; }
+[data-rb-studio] .mrd-net[data-value='1'] .mrd-net-line { stroke: var(--mrd-logic-1); stroke-width: 2.5px; }
+[data-rb-studio] .mrd-net[data-value='0'] .mrd-net-line { stroke: var(--mrd-logic-0); stroke-width: 1.25px; }
+[data-rb-studio] .mrd-net[data-value='x'] .mrd-net-line { stroke: var(--mrd-caution); stroke-dasharray: 5 3; }
+[data-rb-studio] .mrd-net[data-value='z'] .mrd-net-line { stroke: var(--mrd-ink-3); stroke-dasharray: 8 4; }
+[data-rb-studio] .mrd-net[data-value='none'] .mrd-net-line { stroke-dasharray: 2 3; }
+[data-rb-studio] .mrd-net[data-selected='1'] .mrd-net-line { stroke-width: 3px; }
+[data-rb-studio] .mrd-net[data-selected='1'] .mrd-net-halo { stroke: var(--mrd-ink); }
+[data-rb-studio] .mrd-net-halo { fill: none; stroke: transparent; stroke-width: 7px; opacity: 0.16; vector-effect: non-scaling-stroke; }
+[data-rb-studio] .mrd-net-junction { fill: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-net[data-value='1'] .mrd-net-junction { fill: var(--mrd-logic-1); }
+[data-rb-studio] .mrd-net-tag {
+  font: 600 12.5px var(--mrd-font-mono); fill: var(--mrd-ink-2); paint-order: stroke; stroke: var(--mrd-sheet); stroke-width: 3px;
+  pointer-events: none;
+}
+[data-rb-studio] .mrd-net[data-value='1'] .mrd-net-tag { fill: var(--mrd-logic-1); }
+/* A clock net shows edges, never its sampled level: [data-clock][data-value] outranks every value rule. */
+[data-rb-studio] .mrd-net[data-clock='1'] .mrd-net-line,
+[data-rb-studio] .mrd-net[data-clock='1'][data-value] .mrd-net-line { stroke: var(--mrd-ink-2); stroke-width: 1.5px; stroke-dasharray: none; }
+[data-rb-studio] .mrd-net[data-clock='1'][data-selected='1'] .mrd-net-line { stroke-width: 3px; }
+[data-rb-studio] .mrd-net[data-clock='1'] .mrd-net-junction,
+[data-rb-studio] .mrd-net[data-clock='1'][data-value] .mrd-net-junction { fill: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-net[data-clock='1'] .mrd-net-tag,
+[data-rb-studio] .mrd-net[data-clock='1'][data-value] .mrd-net-tag { fill: var(--mrd-ink); }
+[data-rb-studio] .mrd-sheet[data-lod='overview'] .mrd-net-tag,
+[data-rb-studio] .mrd-sheet[data-lod='read'] .mrd-net-tag { display: none; }
+[data-rb-studio] .mrd-dimmed { opacity: var(--mrd-dim); transition: opacity var(--mrd-quick) linear; }
+/* The 12px floor: world-space size × zoom decides which text classes remain (camera.ts). */
+[data-rb-studio] .mrd-sheet[data-text='none'] text,
+[data-rb-studio] .mrd-sheet[data-text='titles'] text:not(.rb-sym-title):not(.rb-sym-value):not(.mrd-net-tag):not(.mrd-state-window text) { display: none; }
+
+/* Symbols drawn by the shared renderer, recoloured by the studio's tokens. */
+[data-rb-studio] .rb-sym-body,
+[data-rb-studio] .rb-sym-body-extra,
+[data-rb-studio] .rb-sym-bubble,
+[data-rb-studio] .rb-sym-wedge { fill: var(--mrd-fill); stroke: var(--mrd-ink); stroke-width: 1.5px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+[data-rb-studio] .rb-sym-body-extra,
+[data-rb-studio] .rb-sym-wedge { fill: none; }
+[data-rb-studio] .rb-sym--register .rb-sym-body { stroke-width: 2.25px; }
+[data-rb-studio] .rb-sym--io-in .rb-sym-body,
+[data-rb-studio] .rb-sym--io-out .rb-sym-body,
+[data-rb-studio] .rb-sym--clock .rb-sym-body { fill: var(--mrd-fill-io); }
+[data-rb-studio] .rb-sym-stub { stroke: var(--mrd-ink-2); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+[data-rb-studio] .rb-sym text { fill: var(--mrd-ink); }
+[data-rb-studio] .rb-sym text.rb-sym-type,
+[data-rb-studio] .rb-sym text.rb-sym-alias,
+[data-rb-studio] .rb-sym text.rb-sym-pin-name { fill: var(--mrd-ink-2); }
+[data-rb-studio] .rb-sym-ring { display: none; }
+/* Names sit on a paper halo, so a selection ring passing behind one is knocked out, never struck through. */
+[data-rb-studio] .rb-sym text.rb-sym-title,
+[data-rb-studio] .rb-sym text.rb-sym-type,
+[data-rb-studio] .rb-sym text.rb-sym-alias { paint-order: stroke; stroke: var(--mrd-sheet); stroke-width: 3px; stroke-linejoin: round; }
+[data-rb-studio] .rb-sym-pin-dot { fill: var(--mrd-fill); stroke: var(--mrd-ink-2); stroke-width: 1px; vector-effect: non-scaling-stroke; opacity: 0; }
+[data-rb-studio] .rb-sym-pin-dot[data-state]:not([data-state='idle']) { opacity: 1; }
+[data-rb-studio] .mrd-sheet[data-mode='edit'] .rb-sym-pin-hit:hover ~ .rb-sym-pin-dot { opacity: 1; stroke: var(--mrd-ink); }
+[data-rb-studio] .rb-sym-pin-dot[data-state='source'] { fill: var(--mrd-ink); opacity: 1; }
+[data-rb-studio] .mrd-sheet-node { cursor: pointer; outline: none; }
+[data-rb-studio] .mrd-sheet[data-mode='edit'] .mrd-sheet-node { cursor: grab; }
+/* Edit: a hovered part shows where its pins are, so wiring can be found without hunting. */
+[data-rb-studio] .mrd-sheet[data-mode='edit'] .mrd-sheet-node:hover .rb-sym-pin-dot { opacity: 0.6; }
+[data-rb-studio] .mrd-focus-ring { display: none; fill: none; stroke: var(--mrd-focus); stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+[data-rb-studio] .mrd-sheet-node:focus-visible:not([aria-pressed='true']) .mrd-focus-ring { display: inline; }
+[data-rb-studio] .mrd-sheet:has(.mrd-sheet-node[aria-pressed='true']:focus-visible) .mrd-ring-outer { stroke-width: 2px; }
+
+/* State window on registers: retained prior -> current, recorded only. */
+[data-rb-studio] .mrd-state-window rect { fill: var(--mrd-fill); stroke: none; }
+[data-rb-studio] .mrd-state-window text { font: 600 12.5px var(--mrd-font-mono); fill: var(--mrd-ink); }
+[data-rb-studio] .mrd-sheet[data-text='none'] .mrd-state-window { display: none; }
+[data-rb-studio] .mrd-state-window[data-pending='1'] rect { stroke: var(--mrd-ink); stroke-width: 1px; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+
+/* Attention layer: one selection ring (ink double contour), unconnected-input markers. */
+[data-rb-studio] .mrd-ring-outer,
+[data-rb-studio] .mrd-ring-inner { fill: none; stroke: var(--mrd-ink); vector-effect: non-scaling-stroke; pointer-events: none; }
+[data-rb-studio] .mrd-ring-outer { stroke-width: 1px; }
+[data-rb-studio] .mrd-ring-inner { stroke-width: 2px; }
+[data-rb-studio] .mrd-unconnected circle { fill: var(--mrd-sheet); stroke: var(--mrd-caution); stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
+[data-rb-studio] .mrd-unconnected text { font: 600 11px var(--mrd-font-mono); fill: var(--mrd-caution); }
+[data-rb-studio] .mrd-pending-wire { fill: none; stroke: var(--mrd-ink); stroke-width: 1.25px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+/* Margin boundary ports: board resource and package pin printed beneath. */
+[data-rb-studio] .mrd-margin-pin { font: 500 11.5px var(--mrd-font-mono); fill: var(--mrd-ink-2); pointer-events: none; paint-order: stroke; stroke: var(--mrd-sheet); stroke-width: 3px; stroke-linejoin: round; }
+
+/* Sheet overlays */
+/* View controls: in the title strip, outside the drawing. */
+[data-rb-studio] .mrd-sheet-tools { display: flex; flex: none; gap: 4px; align-items: center; }
+[data-rb-studio] .mrd-sheet-tools .mrd-btn { min-height: 28px; padding-block: 2px; }
+[data-rb-studio] .mrd-sheet-tools output { min-width: 48px; text-align: center; font: 500 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-mode-switch {
+  display: flex; gap: 0; flex: none;
+  border: 1px solid var(--mrd-rule-strong); border-radius: 4px; overflow: hidden; background: var(--mrd-panel);
+}
+[data-rb-studio] .mrd-mode-switch .mrd-btn { border: 0; border-radius: 0; min-height: 28px; }
+
+/* ── Time lens ────────────────────────────────────────────────────────────── */
+/* As wide as its ticks (never narrower than the lens), so the sticky lane names stay put while a long recording scrolls. */
+[data-rb-studio] .mrd-time { display: grid; grid-template-columns: 132px minmax(0, 1fr); min-height: 100%; width: max-content; min-width: 100%; }
+[data-rb-studio] .mrd-time-labels { border-right: 1px solid var(--mrd-rule); position: sticky; left: 0; z-index: 2; background: var(--mrd-panel); }
+[data-rb-studio] .mrd-time-label, [data-rb-studio] .mrd-time-ruler-label {
+  display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px;
+  font: 500 var(--mrd-text-sm) var(--mrd-font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: 0; background: none; width: 100%; text-align: left; cursor: pointer; color: var(--mrd-ink);
+}
+[data-rb-studio] .mrd-time-label[data-selected='1'] { box-shadow: inset 3px 0 0 var(--mrd-ink); background: var(--mrd-panel-2); }
+[data-rb-studio] .mrd-time-label small { font-size: var(--mrd-text-xs); color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-time-ruler-label { cursor: default; color: var(--mrd-ink-2); font-weight: 400; }
+[data-rb-studio] .mrd-time-track { position: relative; min-width: 0; }
+[data-rb-studio] .mrd-time-ruler { position: relative; display: grid; height: 30px; border-bottom: 1px solid var(--mrd-rule); }
+[data-rb-studio] .mrd-time-tick {
+  border: 0; border-left: 1px solid var(--mrd-rule); background: none; cursor: pointer;
+  font: 500 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-ink-2);
+}
+[data-rb-studio] .mrd-time-tick:hover { background: var(--mrd-panel-2); color: var(--mrd-ink); }
+[data-rb-studio] .mrd-time-tick[aria-current='true'] { color: var(--mrd-now); font-weight: 700; }
+[data-rb-studio] .mrd-time-canvas { display: block; cursor: pointer; }
+[data-rb-studio] .mrd-time-checks { display: grid; height: 30px; border-top: 1px solid var(--mrd-rule); }
+[data-rb-studio] .mrd-time-check {
+  display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  padding: 0 2px; border: 0; border-left: 1px solid var(--mrd-rule); background: none; cursor: pointer;
+  font: 600 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-ink);
+}
+[data-rb-studio] .mrd-time-check:hover { background: var(--mrd-panel-2); }
+[data-rb-studio] .mrd-time-check[aria-current='true'] { box-shadow: inset 0 2px 0 var(--mrd-now); }
+[data-rb-studio] .mrd-time-check--none { justify-content: flex-start; padding-left: 10px; cursor: default; color: var(--mrd-ink-2); font-weight: 400; }
+[data-rb-studio] .mrd-time-label[data-fail] { color: var(--mrd-failure); }
+[data-rb-studio] .mrd-time-label[data-fail] small { color: var(--mrd-failure); }
+[data-rb-studio] .mrd-time-check[data-result='fail'] {
+  color: var(--mrd-failure);
+  background: repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--mrd-failure) 14%, transparent) 5px 7px);
+}
+[data-rb-studio] .mrd-meridian {
+  position: absolute; top: 0; width: 0; border-left: 1px solid var(--mrd-now); pointer-events: none;
+}
+[data-rb-studio] .mrd-meridian::before {
+  content: attr(data-label); position: absolute; top: 5px; left: 0; transform: translateX(-50%); padding: 1px 6px;
+  background: var(--mrd-now); color: var(--mrd-on-now); font: 700 12px var(--mrd-font-mono); white-space: nowrap;
+}
+
+/* ── Source lens ──────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-source { margin: 0; padding: 6px 0; font: 400 var(--mrd-text-sm)/1.55 var(--mrd-font-mono); }
+[data-rb-studio] .mrd-src-line { display: grid; grid-template-columns: 48px 64px minmax(0, 1fr); white-space: pre; color: var(--mrd-ink); }
+[data-rb-studio] .mrd-src-line > span:first-child { text-align: right; padding-right: 8px; color: var(--mrd-ink-2); user-select: none; }
+[data-rb-studio] .mrd-src-owner {
+  border: 0; background: none; padding: 0 6px 0 0; cursor: pointer; text-align: left; overflow: hidden; text-overflow: ellipsis;
+  font: 500 12px var(--mrd-font-mono); color: var(--mrd-ink-2);
+}
+[data-rb-studio] .mrd-src-owner:hover { color: var(--mrd-ink); }
+[data-rb-studio] .mrd-src-line[data-active='1'] { background: var(--mrd-panel-2); box-shadow: inset 3px 0 0 var(--mrd-ink); }
+[data-rb-studio] .mrd-src-line[data-active='1'] .mrd-src-owner { color: var(--mrd-ink); }
+
+/* ── Logic lens ───────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-logic { padding: 10px 14px 14px; }
+[data-rb-studio] .mrd-logic-expr { font: 500 var(--mrd-text-md)/1.5 var(--mrd-font-mono); margin: 2px 0 10px; }
+[data-rb-studio] .mrd-logic-note { font-size: var(--mrd-text-xs); color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-logic-caption { margin-top: 8px; color: var(--mrd-ink); }
+[data-rb-studio] .mrd-logic-split {
+  display: grid; grid-template-columns: minmax(220px, max-content) auto; justify-content: start; gap: 40px; align-items: start;
+  height: 100%; box-sizing: border-box; padding-bottom: 0;
+}
+[data-rb-studio] .mrd-truth-frame { max-height: 100%; overflow: auto; padding-bottom: 10px; box-sizing: border-box; }
+[data-rb-studio] .mrd-truth { border-collapse: collapse; font: 500 var(--mrd-text-sm) var(--mrd-font-mono); }
+[data-rb-studio] .mrd-truth thead th { position: sticky; top: 0; z-index: 1; background: var(--mrd-panel); }
+[data-rb-studio] .mrd-truth th, [data-rb-studio] .mrd-truth td { padding: 2px 10px; text-align: center; border-bottom: 1px solid var(--mrd-rule); }
+[data-rb-studio] .mrd-truth th { font-weight: 600; color: var(--mrd-ink-2); font-size: var(--mrd-text-xs); }
+[data-rb-studio] .mrd-truth td.mrd-truth-out { border-left: 1px solid var(--mrd-rule-strong); font-weight: 700; }
+[data-rb-studio] .mrd-truth tr[data-current='1'] td { background: var(--mrd-panel-2); box-shadow: inset 0 1px 0 var(--mrd-ink), inset 0 -1px 0 var(--mrd-ink); }
+
+/* ── Board lens ───────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-board { display: block; width: 100%; height: 100%; }
+[data-rb-studio] .mrd-board-plane { fill: var(--mrd-board); stroke: var(--mrd-board-rule); }
+[data-rb-studio] .mrd-board-silk { font: 600 13.5px var(--mrd-font-mono); fill: var(--mrd-board-ink); }
+[data-rb-studio] .mrd-board-chip { fill: var(--mrd-board-socket); stroke: var(--mrd-board-ink); stroke-width: 0.8; }
+[data-rb-studio] .mrd-board-led { fill: var(--mrd-board-socket); stroke: var(--mrd-board-ink); stroke-width: 1; }
+[data-rb-studio] .mrd-board-led[data-value='1'] { fill: var(--mrd-board-led-on); stroke: #ffffff; }
+[data-rb-studio] .mrd-board g[data-board-resource]:not(.mrd-board-mapped) { opacity: 0.6; }
+[data-rb-studio] .mrd-board-mapped-ring { fill: none; stroke: var(--mrd-board-ink); stroke-width: 1; }
+[data-rb-studio] .mrd-board-leader { stroke: var(--mrd-board-ink); stroke-width: 1; }
+[data-rb-studio] .mrd-board-focus { display: none; fill: none; stroke: #ffffff; stroke-width: 2; }
+[data-rb-studio] .mrd-board [role='button'] { outline: none; }
+[data-rb-studio] .mrd-board [role='button']:focus-visible .mrd-board-focus { display: inline; }
+[data-rb-studio] .mrd-board-led[data-value='none'] { stroke-dasharray: 2 2; }
+[data-rb-studio] .mrd-board-switch-track { fill: var(--mrd-board-socket); stroke: var(--mrd-board-ink); stroke-width: 0.8; }
+[data-rb-studio] .mrd-board-switch-knob { fill: var(--mrd-board-ink); }
+[data-rb-studio] .mrd-board-button { fill: var(--mrd-board-socket); stroke: var(--mrd-board-ink); stroke-width: 1; }
+[data-rb-studio] .mrd-board-button[data-value='1'] { fill: var(--mrd-board-ink); }
+[data-rb-studio] .mrd-board-button-letter { pointer-events: none; }
+[data-rb-studio] [data-value='1'] > .mrd-board-button-letter { fill: var(--mrd-board-socket); }
+[data-rb-studio] .mrd-board-mapped { cursor: pointer; }
+[data-rb-studio] .mrd-board-mapped-label { font: 700 13.5px var(--mrd-font-mono); fill: #ffffff; }
+[data-rb-studio] .mrd-board-select { fill: none; stroke: #ffffff; stroke-width: 1.4; stroke-dasharray: none; }
+[data-rb-studio] .mrd-board-legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px;
+  font: 500 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-ink-2); padding: 6px 12px; border-top: 1px solid var(--mrd-rule);
+}
+[data-rb-studio] .mrd-board-key { color: var(--mrd-ink); }
+[data-rb-studio] .mrd-board-key[data-tone='caution'] { color: var(--mrd-caution); }
+
+/* ── Inspector ────────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-insp { padding: 14px 16px; display: grid; gap: 14px; }
+[data-rb-studio] .mrd-insp h2 { margin: 0; font-size: var(--mrd-text-lg); font-weight: 600; line-height: 1.25; }
+[data-rb-studio] .mrd-insp-kind { font-size: var(--mrd-text-sm); color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-insp-section h3 { margin: 0 0 6px; font-size: var(--mrd-text-xs); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-pins { width: 100%; border-collapse: collapse; font: 500 var(--mrd-text-sm) var(--mrd-font-mono); }
+[data-rb-studio] .mrd-pins td { padding: 3px 0; border-bottom: 1px solid var(--mrd-rule); }
+[data-rb-studio] .mrd-pins td:last-child { text-align: right; }
+/* Without values (Edit, withdrawn) the table lists only pin names, read left to right. */
+[data-rb-studio] .mrd-pins[data-values='0'] td { text-align: left; }
+[data-rb-studio] .mrd-pins [data-value='1'] { color: var(--mrd-logic-1); font-weight: 700; }
+[data-rb-studio] .mrd-pins [data-value='none'] { color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-insp-line { margin: 0 0 6px; font-size: var(--mrd-text-sm); line-height: 1.5; }
+[data-rb-studio] .mrd-insp-line[data-kind='rule'],
+[data-rb-studio] .mrd-insp-line[data-kind='limitation'] { color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-insp-line[data-kind='pending'] { padding-left: 8px; border-left: 2px dashed var(--mrd-ink); }
+[data-rb-studio] .mrd-insp-note { margin: 6px 0 0; font-size: var(--mrd-text-xs); color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-insp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-rb-studio] .mrd-insp-empty { padding: 16px; color: var(--mrd-ink-2); font-size: var(--mrd-text-sm); }
+[data-rb-studio] .mrd-insp-empty p { margin: 6px 0 10px; }
+
+/* ── Status line ──────────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-status {
+  grid-area: status; display: flex; align-items: center; gap: 18px; padding: 0 16px;
+  border-top: 1px solid var(--mrd-rule); background: var(--mrd-panel);
+  font: 400 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-ink-2); white-space: nowrap; overflow: hidden;
+}
+[data-rb-studio] .mrd-status strong { color: var(--mrd-ink); font-weight: 600; }
+[data-rb-studio] .mrd-status-link { border: 0; padding: 0; background: none; font: inherit; color: var(--mrd-caution); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+[data-rb-studio] .mrd-status-live:empty { display: none; }
+[data-rb-studio] .mrd-status-live { color: var(--mrd-caution); }
+[data-rb-studio] .mrd-status-hint { margin-left: auto; }
+[data-rb-studio] .mrd-lens-switch { display: flex; gap: 4px; flex: none; }
+
+/* ── Opening / failure ────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-opening { grid-column: 1 / -1; grid-row: 1 / -1; display: grid; place-content: center; gap: 8px; text-align: center; color: var(--mrd-ink-2); }
+[data-rb-studio] .mrd-opening h1 { margin: 0; font-size: var(--mrd-text-lg); color: var(--mrd-ink); }
+
+/* ── Shortcuts overlay ────────────────────────────────────────────────────── */
+[data-rb-studio] .mrd-keys {
+  position: absolute; right: 16px; top: 56px; z-index: 10; width: 340px; max-height: calc(100% - 72px); overflow: auto;
+  padding: 12px 14px; border: 1px solid var(--mrd-ink); background: var(--mrd-panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+[data-rb-studio] .mrd-keys dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: var(--mrd-text-sm); }
+[data-rb-studio] .mrd-keys dt { font-family: var(--mrd-font-mono); font-weight: 600; }
+[data-rb-studio] .mrd-keys dd { margin: 0; color: var(--mrd-ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-rb-studio] *, [data-rb-studio] *::before, [data-rb-studio] *::after { transition-duration: 0ms; animation-duration: 0ms; }
+}
+[data-rb-studio][data-motion='off'] *, [data-rb-studio][data-motion='reduced'] * { transition-duration: 0ms; animation-duration: 0ms; }
+
+/* A link that would replace a working session asks first (MeridianStudio ExampleNotice). */
+[data-rb-studio] .mrd-notice {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; width: max-content; max-width: min(760px, calc(100% - 32px));
+  padding: 8px 10px 8px 14px; border: 1px solid var(--mrd-rule-strong); border-radius: 4px;
+  background: var(--mrd-panel); color: var(--mrd-ink); font-size: var(--mrd-text-sm);
+}
+[data-rb-studio] .mrd-notice > span { flex: 1 1 260px; min-width: 0; }
+[data-rb-studio] .mrd-notice > button { flex: none; white-space: nowrap; }
+/* Recorded values painted on a design whose evidence is not current (an edit since, even undone). */
+[data-rb-studio] .mrd-chip {
+  flex: none; padding: 1px 8px; border: 1px dashed var(--mrd-caution); border-radius: 10px;
+  font: 500 var(--mrd-text-xs) var(--mrd-font-mono); color: var(--mrd-caution); white-space: nowrap;
+}

@@ -490,6 +490,50 @@ importers:
 
   packages/rb-protocol: {}
 
+  packages/rb-studio:
+    dependencies:
+      '@redbyte/rb-apps':
+        specifier: workspace:*
+        version: link:../rb-apps
+      '@redbyte/rb-logic-core':
+        specifier: workspace:*
+        version: link:../rb-logic-core
+      '@redbyte/rb-logic-view':
+        specifier: workspace:*
+        version: link:../rb-logic-view
+      '@redbyte/rb-studio-kernel':
+        specifier: workspace:*
+        version: link:../rb-studio-kernel
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
+  packages/rb-studio-kernel:
+    dependencies:
+      '@redbyte/rb-apps':
+        specifier: workspace:*
+        version: link:../rb-apps
+      '@redbyte/rb-logic-core':
+        specifier: workspace:*
+        version: link:../rb-logic-core
+      '@redbyte/rb-logic-view':
+        specifier: workspace:*
+        version: link:../rb-logic-view
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+    devDependencies:
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/rb-theme:
     dependencies:
       '@redbyte/rb-tokens':

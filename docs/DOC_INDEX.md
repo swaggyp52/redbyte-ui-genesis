@@ -205,6 +205,7 @@ The manual describes current behavior. The contract describes target-state oblig
 | [ide/ui-contract.md](./ide/ui-contract.md) | Pixel-level UI contract |
 | [ide/style-guide.md](./ide/style-guide.md) | Design tokens and component catalog |
 | [ide/design-system-v1.md](./ide/design-system-v1.md) | Frozen design system contract |
+| [ide/studio/MERIDIAN_DESIGN_SYSTEM.md](./ide/studio/MERIDIAN_DESIGN_SYSTEM.md) | Meridian studio design authority (flag-gated P1 slice; classic workbench unaffected) |
 
 ---
 

@@ -15,7 +15,6 @@ import {
 } from '@redbyte/rb-utils';
 import { decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
 import { digestValue } from '../utils/digest';
-import { stableSerialize } from '../utils/stableSerialize';
 import { buildVerifyDeterminismHash } from './ide/verifyDeterminism';
 // The two RedByte faces, bundled with the app rather than fetched from a CDN, and the
 // single owner of the type system. Loaded before every other sheet so the tokens exist
@@ -76,11 +75,8 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import { buildProjectExportPackageSourceHash } from './ide/exportTrustState';
-import {
-  buildCurrentVerifyProjectHash,
-  buildVerifyCircuitEvidenceHash,
-  toProjectIoMapping,
-} from './ide/verifyProjectHash';
+import { buildCurrentVerifyProjectHash } from './ide/verifyProjectHash';
+import { buildCurrentVerifyReplayHash } from './ide/verifyReplayHash';
 import {
   choosePrimaryDiagnosticAction,
   type IdeDiagnostic,
@@ -91,7 +87,6 @@ import {
   type DesignFocusRequest,
 } from './ide/designFocus';
 import type { VerifyDebugContext } from './ide/verifyDebug';
-import { getStudentFacingIoLabel } from './ide/ioLabels';
 import {
   IDE_EXAMPLES,
   getIdeExampleById,
@@ -134,6 +129,7 @@ import {
   type EngineeringLocation,
 } from './ide/engineeringLocation';
 import { generateHierarchicalVhdlProject } from './ide/hierarchicalVhdl';
+import { buildConstraintText, normalizeProjectCircuit } from './ide/ideExportProject';
 import {
   FULL_ADDER_LAB_ID,
   FULL_ADDER_SCRATCH_LAB,
@@ -151,7 +147,6 @@ import {
   deriveVerifyCurrent,
   isDesignOwnedExportDiagnostic,
 } from './ide/projectWorkflowAuthority';
-import { resolveBasys3SignalBinding } from '../fpga/boards/basys3/basys3SignalSemantics';
 import {
   snapshotRuntimeEvidence,
   sessionEvidenceSaveSignature,
@@ -183,7 +178,6 @@ import {
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
 import {
-  computeVectorStimulusHash,
   getActiveScenario,
   type VerifyScenario,
 } from './ide/verifyScenario';
@@ -4056,23 +4050,6 @@ function normalizeSignalKey(value: string): string {
   return value.trim().toLowerCase().replace(/\[[^\]]+\]/g, '');
 }
 
-function normalizeProjectCircuit(circuit: RBProject['circuit']): RBProject['circuit'] {
-  return {
-    nodes: circuit.nodes.map((node) => {
-      const x = node.position?.x ?? node.x ?? 0;
-      const y = node.position?.y ?? node.y ?? 0;
-      return {
-        ...node,
-        position: node.position ?? { x, y },
-        x,
-        y,
-        config: node.config ?? {},
-        state: node.state ?? {},
-      };
-    }),
-    connections: circuit.connections.map((connection) => ({ ...connection })),
-  };
-}
 
 
 function findFullAdderLabSignal(label: string): GuidedLabSignal | null {
@@ -4131,36 +4108,7 @@ function nextGuidedLabNodeId(circuit: Circuit, label: string): string {
   return `${base}_${Date.now().toString(36)}`;
 }
 
-function buildConstraintText(
-  ioRows: Array<{
-    label: string;
-    direction: 'in' | 'out';
-    pin: string;
-    id: string;
-    port?: string;
-  }>
-): string {
-  const clockRow = ioRows.find(
-    (row) => row.direction === 'in' && resolveBasys3SignalBinding(row)?.role === 'clock'
-  );
 
-  if (!clockRow) {
-    return '# Clock constraint pending: map the design clock to the Basys3 board clock CLK100MHZ / W5.';
-  }
-
-  const clockSignal = createSignalName(getStudentFacingIoLabel(clockRow, clockRow.id), 'clk');
-  return `create_clock -name sys_clk -period 10.000 [get_ports ${clockSignal}]`;
-}
-
-function createSignalName(raw: string, fallback: string): string {
-  const normalized = raw
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, '_')
-    .replace(/^_+|_+$/g, '');
-  if (normalized.length === 0) return fallback;
-  return /^[a-z]/.test(normalized) ? normalized : `sig_${normalized}`;
-}
 
 function extractExpectedIoRows(
   artifacts: ReturnType<typeof buildExportViewModel>['artifacts']
@@ -4216,58 +4164,7 @@ export function deriveHasDff(
   );
 }
 
-export { buildCurrentVerifyProjectHash };
-
-export function buildCurrentVerifyReplayHash(input: {
-  circuit: Circuit;
-  projectVectors: TestVector[];
-  customVectors?: TestVector[];
-  projectIoRows: ProjectIoRow[];
-}): string {
-  return digestValue(
-    stableSerialize({
-      circuitEvidenceHash: buildVerifyCircuitEvidenceHash(input.circuit),
-      stimulusHash: computeVectorStimulusHash([
-        ...input.projectVectors,
-        ...(input.customVectors ?? []),
-      ].map((vector) => ({
-        tick: vector.tick,
-        inputs: canonicalizeVerifyReplayInputs(vector.inputs ?? {}, input.projectIoRows),
-      }))),
-      mapping: toProjectIoMapping(input.projectIoRows),
-    })
-  );
-}
-
-function canonicalizeVerifyReplayInputs(
-  inputs: Record<string, boolean | number>,
-  projectIoRows: ProjectIoRow[]
-): Record<string, boolean | number> {
-  const inputAliasMap = buildVerifyReplayInputAliasMap(projectIoRows);
-  return Object.fromEntries(
-    Object.entries(inputs)
-      .map(([key, value]): [string, boolean | number] => [inputAliasMap.get(normalizeVerifyReplayKey(key)) ?? key, value])
-      .sort(([left], [right]) => left.localeCompare(right))
-  );
-}
-
-function buildVerifyReplayInputAliasMap(projectIoRows: ProjectIoRow[]): Map<string, string> {
-  const aliasMap = new Map<string, string>();
-  for (const row of projectIoRows) {
-    if (row.direction !== 'in') continue;
-    const aliases = [row.id, row.label, row.nodeId ?? '', `${row.nodeId ?? ''}.${row.port ?? ''}`];
-    for (const alias of aliases) {
-      const normalized = normalizeVerifyReplayKey(alias);
-      if (!normalized) continue;
-      aliasMap.set(normalized, row.id);
-    }
-  }
-  return aliasMap;
-}
-
-function normalizeVerifyReplayKey(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
+export { buildCurrentVerifyProjectHash, buildCurrentVerifyReplayHash };
 
 function formatSavedAtLabel(savedAtIso: string): string {
   const normalized = savedAtIso.trim();

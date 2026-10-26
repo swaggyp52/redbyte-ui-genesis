@@ -1,5 +1,5 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { buildGeometryIndex, connectionEndpoints, findPin, unionBounds } from '@redbyte/rb-logic-view';
+import { buildGeometryIndex, connectionEndpoints, findPin, unionBounds } from '@redbyte/rb-logic-view/scene';
 import { getDesignChipMetadata } from '../../designChipMetadata';
 import { getDesignChipMetadataForNode } from '../../registerFamilyChipMetadata';
 

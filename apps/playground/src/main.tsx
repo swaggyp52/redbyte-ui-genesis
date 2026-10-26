@@ -10,6 +10,8 @@ const isBisect = params.get('boot') === 'bisect' || import.meta.env.VITE_BOOT_BI
 const bisectStep = Number(params.get('step') || '0');
 const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
 const isAudit = isAuditEnabled(params);
+// Meridian studio (flag-gated vertical slice): its own entry, never the classic workbench.
+const isStudio = params.get('studio') === 'meridian';
 
 // 3) Temporary Crash Beacon for Playwright triage
 const isGoldenPath = import.meta.env.VITE_GOLDEN_PATH === '1' || params.get('golden') === '1';
@@ -127,6 +129,8 @@ if (isBisect && bisectStep === -1) {
       }
     });
   });
+} else if (isStudio) {
+  import('./boot/studio-bootstrap').then(m => m.bootstrapStudio()).catch(renderBootLoadFailure);
 } else if (isBisect) {
   // BISECT MODE: conditional steps
   import('./boot/bisect-steps').then(m => m.runBisect(bisectStep)).catch(renderBootLoadFailure);

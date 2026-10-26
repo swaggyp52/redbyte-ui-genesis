@@ -11,6 +11,17 @@
       "import": "./dist/rb-apps.js",
       "require": "./dist/rb-apps.js"
     },
+    "./domain": {
+      "types": "./src/domain.ts",
+      "import": "./src/domain.ts"
+    },
+    "./runtime": {
+      "types": "./src/runtime.ts",
+      "import": "./src/runtime.ts"
+    },
+    "./fonts": {
+      "import": "./src/fonts.ts"
+    },
     "./stores/circuitStore": {
       "types": "./src/stores/circuitStore.ts",
       "import": "./src/stores/circuitStore.ts"
