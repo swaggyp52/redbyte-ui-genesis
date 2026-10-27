@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { RuntimeVerifyRun } from '../../../projectRuntime';
 import { describeRecordingState, recordingPickerLabel } from '../recordingState';
+import { BROWSER_ENGINE_VERSION } from '../../../runDeterminism';
+
+// Recordings made by today's engine; one from another engine is the explicit foreign case below.
 
 function run(overrides: Partial<RuntimeVerifyRun> & { rows?: Array<'pass' | 'fail'> }): RuntimeVerifyRun {
   const { rows = [], ...rest } = overrides;
@@ -13,7 +16,7 @@ function run(overrides: Partial<RuntimeVerifyRun> & { rows?: Array<'pass' | 'fai
     status: rows.includes('fail') ? 'fail' : 'pass',
     runKind: 'verify',
     assertionStatus: rows.length === 0 ? 'not-configured' : rows.includes('fail') ? 'failing' : 'passing',
-    identity: { design: 'd', stimulus: 's', engine: 'redbyte-browser-v1' },
+    identity: { design: 'd', stimulus: 's', engine: BROWSER_ENGINE_VERSION },
     outputDigest: 'aaaaaaaa',
     executionInput: { ioRows: [], vectors: [], projectHash: 'h' },
     circuitSnapshot: { nodes: [], connections: [] },
@@ -74,13 +77,20 @@ describe('describeRecordingState', () => {
     expect(describeRecordingState({ run: foreignEngine, archive: [foreignEngine], changes: [], stale: false }).reproducible).toEqual({
       ok: false, reason: 'The recorded engine is unavailable.',
     });
+    // RB-DEBT-028: a v2 recording read a register's EN without Clock enable; v3 does not. It stays
+    // on file and readable, and is never re-executed under today's engine as though it were v2.
+    const v2 = run({ identity: { design: 'd', stimulus: 's', engine: 'redbyte-browser-v2' } });
+    expect(BROWSER_ENGINE_VERSION).not.toBe('redbyte-browser-v2');
+    expect(describeRecordingState({ run: v2, archive: [v2], changes: [], stale: false }).reproducible).toEqual({
+      ok: false, reason: 'The recorded engine is unavailable.',
+    });
   });
 
   it('lists only this scenario\'s recordings for the picker, oldest first, with a verdict each', () => {
     // Distinct stimulus identities: a repaired circuit or edited checks is a new configuration.
-    const first = run({ runId: 'r1', sequence: 1, rows: ['fail'], identity: { design: 'd1', stimulus: 's', engine: 'redbyte-browser-v1' } });
-    const second = run({ runId: 'r2', sequence: 2, rows: ['pass'], identity: { design: 'd2', stimulus: 's', engine: 'redbyte-browser-v1' } });
-    const other = run({ runId: 'r3', sequence: 3, scenarioId: 'other', rows: [], identity: { design: 'd2', stimulus: 'other', engine: 'redbyte-browser-v1' } });
+    const first = run({ runId: 'r1', sequence: 1, rows: ['fail'], identity: { design: 'd1', stimulus: 's', engine: BROWSER_ENGINE_VERSION } });
+    const second = run({ runId: 'r2', sequence: 2, rows: ['pass'], identity: { design: 'd2', stimulus: 's', engine: BROWSER_ENGINE_VERSION } });
+    const other = run({ runId: 'r3', sequence: 3, scenarioId: 'other', rows: [], identity: { design: 'd2', stimulus: 'other', engine: BROWSER_ENGINE_VERSION } });
     const state = describeRecordingState({ run: second, archive: [first, second, other], changes: [], stale: false });
     expect(state.options.map((option) => option.runId)).toEqual(['r1', 'r2']);
     expect(state.options.map((option) => option.label)).toEqual(['Recording 1', 'Recording 2']);
