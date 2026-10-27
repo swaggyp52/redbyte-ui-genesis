@@ -12,7 +12,8 @@
 
 import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
-import { resolveIoMappingFromProjectFields, type IoMapping } from '@redbyte/rb-utils';
+import { resolveExportIoMapping } from './exportIoMapping';
+import type { IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../../export/projectFormat';
 import { generateTestbenchVhdl, TESTBENCH_UNRESOLVED_MARKER } from './testbenchGenerator';
 import { parseVhdl } from '../../../import/vhdlImport';
@@ -90,11 +91,9 @@ const BASYS3_INPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('input');
 const BASYS3_OUTPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('output');
 
 /** Prefer structured {@link RBProject.hardwareMappingV2} when present; else legacy {@link RBProject.ioMapping}. */
+/** The mapping the package is built from, live rows only (resolveExportIoMapping). */
 export function getExportIoMapping(project: RBProject): IoMapping | undefined {
-  return resolveIoMappingFromProjectFields({
-    ioMapping: project.ioMapping,
-    hardwareMappingV2: project.hardwareMappingV2,
-  });
+  return resolveExportIoMapping(project);
 }
 
 interface ExportAuthorityContext {

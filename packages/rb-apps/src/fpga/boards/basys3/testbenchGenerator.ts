@@ -15,7 +15,8 @@ import {
   type VerifySchedule,
 } from './verifySchedule';
 import { buildTopLevelBindingRefs, toSignalName } from './basys3ExportModel';
-import { normalizeBoardRowId, resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
+import { normalizeBoardRowId } from '@redbyte/rb-utils';
+import { resolveExportIoMapping } from './exportIoMapping';
 
 interface SignalCatalog {
   inputs: string[];
@@ -67,7 +68,7 @@ interface EntityPortInfo {
  * the entity never declared.
  */
 function resolveProjectIoMapping(project: RBProject): RBProject['ioMapping'] {
-  return resolveIoMappingFromProjectFields({ ioMapping: project.ioMapping, hardwareMappingV2: project.hardwareMappingV2 });
+  return resolveExportIoMapping(project);
 }
 function parseEntityPortInfos(topVhd: string): EntityPortInfo[] {
   // Match Port block ending with "  );" on its own line (handles nested parens in vector types)
