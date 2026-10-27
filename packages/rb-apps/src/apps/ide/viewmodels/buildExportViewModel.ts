@@ -201,9 +201,10 @@ interface RequiredPortDescriptor {
 export function buildExportViewModel(
   project: RBProject,
   runtimeVerifyRun?: RuntimeVerifyRun,
-  activeScenario?: VerifyScenario
+  activeScenario?: VerifyScenario,
+  customVectors: readonly TestVector[] = [],
 ): ExportViewModel {
-  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario);
+  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario, customVectors);
   const hierarchyVhdl = generateHierarchicalVhdlProject(project);
   const flattenedProject = flattenProjectMacros({
     ...project,
@@ -857,17 +858,23 @@ function extractExportClockDriveView(
   }) as ExportClockDriveView;
 }
 
+/**
+ * The vectors a Run executes: the active scenario's (or the project's), then the custom rows,
+ * in the order planStudioRun appends them. The custom rows were run and checked by Verify but
+ * left out of the bench, so the plans never matched and every such run read STALE.
+ */
 function getExportVectors(
   project: RBProject,
   activeScenario: VerifyScenario | undefined,
+  customVectors: readonly TestVector[] = [],
 ): TestVector[] {
-  return activeScenario
-    ? materializeScenarioVectors(activeScenario)
-    : (project.vectors ?? []).map((vector) => ({
-        ...vector,
-        inputs: { ...(vector.inputs ?? {}) },
-        expected: { ...(vector.expected ?? {}) },
-      }));
+  const clone = (vector: TestVector): TestVector => ({
+    ...vector,
+    inputs: { ...(vector.inputs ?? {}) },
+    expected: { ...(vector.expected ?? {}) },
+  });
+  const base = activeScenario ? materializeScenarioVectors(activeScenario) : (project.vectors ?? []).map(clone);
+  return [...base, ...customVectors.map(clone)];
 }
 
 function getProjectCircuitHash(project: RBProject): string {
@@ -1162,8 +1169,9 @@ export function buildExportVerifyAuthority(
   project: RBProject,
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
   activeScenario: VerifyScenario | undefined,
+  customVectors: readonly TestVector[] = [],
 ): ExportVerifyAuthority {
-  const vectors = getExportVectors(project, activeScenario);
+  const vectors = getExportVectors(project, activeScenario, customVectors);
   const clockPolicy = resolveExportClockPolicy(project, runtimeVerifyRun, activeScenario, vectors);
   const normalizedVectors = normalizeVectorsForLiveIo(
     vectors.map((vector) => ({
@@ -1773,7 +1781,7 @@ function diagnosticCodeFor(
   const lowered = message.toLowerCase();
   if (lowered.includes('unmapped required')) return 'RBEX1001';
   if (lowered.includes('declared but has no basys3 pin assignment')) return 'RBEX1002';
-  if (lowered.includes('unsupported synth subset node type')) return 'RBEX4100';
+  if (lowered.includes('unsupported synth subset node type') || lowered.includes('unknown primitive type')) return 'RBEX4100';
   if (lowered.includes('multiple drivers detected')) return 'RBEX4101';
   if (lowered.includes('combinational loop detected')) return 'RBEX4102';
   if (lowered.includes('reads no input of that name') || lowered.includes('the module has no input of that name')) return 'RBEX4104';

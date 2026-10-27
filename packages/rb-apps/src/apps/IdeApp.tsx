@@ -2367,8 +2367,8 @@ const IdeWorkspace: React.FC = () => {
   }, []);
 
   const exportViewModel = useMemo(
-    () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined),
-    [activeScenario, exportProject, verifyLastRun]
+    () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined, customVectors),
+    [activeScenario, customVectors, exportProject, verifyLastRun]
   );
   // The constraints a captured set records are the packaged XDC (pins + clock), not the clock line alone.
   const packagedXdcText = useMemo(
@@ -3791,6 +3791,7 @@ const IdeWorkspace: React.FC = () => {
               designReady={workflowAuthority.designReady}
               workflowAuthority={workflowAuthority}
               activeScenario={activeScenario ?? undefined}
+              customVectors={customVectors}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}
               activeConstraintSetName={constraintSetsDoc?.sets.find((set) => set.id === constraintSetsDoc.activeId)?.name ?? null}
               activeConstraintSetId={constraintSetsDoc?.activeId ?? null}

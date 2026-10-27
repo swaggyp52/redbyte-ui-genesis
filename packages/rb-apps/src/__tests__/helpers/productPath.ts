@@ -73,8 +73,8 @@ export function runProduct(): ProductRun {
   const scenario = getActiveScenario(after.scenarios, after.activeScenarioId) ?? undefined;
   return {
     run, refusal, checkCount: plan.checkCount, project,
-    vm: buildExportViewModel(project, run, scenario),
-    authority: buildExportVerifyAuthority(project, run, scenario),
+    vm: buildExportViewModel(project, run, scenario, after.customVectors ?? []),
+    authority: buildExportVerifyAuthority(project, run, scenario, after.customVectors ?? []),
   };
 }
 

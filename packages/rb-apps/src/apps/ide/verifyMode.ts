@@ -3,6 +3,7 @@ import {
   getBlockedVerificationNodeTypes,
   getComponentSupport,
   getVerificationSequentialNodeTypes,
+  NodeRegistry,
 } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
 
@@ -47,11 +48,21 @@ export interface VerifyBlocker {
   nodes: Array<{ id: string; label: string }>;
 }
 
+/**
+ * A part type nothing defines: neither the support registry nor the engine knows it (a "mux4", a
+ * "MUX8"), so the engine has no behaviour and its outputs would read values nothing computed.
+ * Module instances and boundary markers are the hierarchy's own and are never parts.
+ */
+function isUndefinedPartType(node: Circuit['nodes'][number]): boolean {
+  if (typeof node.config?.moduleDefinitionId === 'string' || typeof node.config?.moduleBoundary === 'string') return false;
+  return !getComponentSupport(node.type) && !NodeRegistry.has(node.type);
+}
+
 /** The parts that block Verify for this circuit, grouped by type in first-seen order. */
 export function findVerifyBlockers(circuit: Circuit): VerifyBlocker[] {
   const byType = new Map<string, VerifyBlocker>();
   for (const node of circuit.nodes) {
-    if (!BLOCKED_VERIFY_NODE_TYPES.has(node.type)) continue;
+    if (!BLOCKED_VERIFY_NODE_TYPES.has(node.type) && !isUndefinedPartType(node)) continue;
     let blocker = byType.get(node.type);
     if (!blocker) {
       const support = getComponentSupport(node.type);
@@ -107,8 +118,8 @@ export function unsimulatedRunRefusal(circuit: Circuit): string | null {
 export function detectVerifyMode(circuit: Circuit, hdlScheduleHint?: string): VerifyMode {
   const nodeTypes = circuit.nodes.map((n) => n.type);
 
-  // Blocked wins over everything.
-  if (nodeTypes.some((t) => BLOCKED_VERIFY_NODE_TYPES.has(t))) {
+  // Blocked wins over everything, including a part nothing defines.
+  if (nodeTypes.some((t) => BLOCKED_VERIFY_NODE_TYPES.has(t)) || circuit.nodes.some(isUndefinedPartType)) {
     return 'blocked';
   }
 

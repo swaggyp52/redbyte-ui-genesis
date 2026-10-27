@@ -94,7 +94,7 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
-import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity } from './topEntity';
+import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity, topEntityNameProblem } from './topEntity';
 import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
 import { normalizeGuidedLabTaskId } from './labTaskDefinition';
 import {
@@ -2081,13 +2081,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           }));
           return { ok: true };
         }
-        if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
-          return {
-            ok: false,
-            error:
-              'Top entity must start with a letter and use only letters, digits, or underscores (max 64 characters).',
-          };
-        }
+        const problem = topEntityNameProblem(trimmed);
+        if (problem) return { ok: false, error: problem };
         set((state) => ({
           activeTop: normalizeTopEntityName(trimmed, buildTopEntityName(state.projectName)),
           projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },

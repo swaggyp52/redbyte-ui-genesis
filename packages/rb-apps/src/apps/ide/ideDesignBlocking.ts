@@ -22,12 +22,12 @@ import { getActiveScenario } from './verifyScenario';
  * through the pure domain entry.
  */
 export function deriveIdeBlockingDesignIssue(
-  state: IdeExportState & Pick<ProjectRuntimeState, 'verifyLastRun'>,
+  state: IdeExportState & Pick<ProjectRuntimeState, 'verifyLastRun'> & Partial<Pick<ProjectRuntimeState, 'customVectors'>>,
   project: RBProject = buildIdeExportProject(state),
   liveSchedule: VerifyScheduleContract = deriveIdeLiveScheduleContract(project),
 ): IdeBlockingDesignIssue | null {
   const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
-  const exportViewModel = buildExportViewModel(project, state.verifyLastRun ?? undefined, activeScenario ?? undefined);
+  const exportViewModel = buildExportViewModel(project, state.verifyLastRun ?? undefined, activeScenario ?? undefined, state.customVectors ?? []);
   const exportDiagnostic = exportViewModel.errors.find(
     (diagnostic) => diagnostic.canonical.blocking && blocksCheckedRuns(diagnostic.code, liveSchedule.timingMode),
   );

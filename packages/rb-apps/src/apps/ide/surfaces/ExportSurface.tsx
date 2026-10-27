@@ -44,7 +44,7 @@ import {
   type ExportPinStatus,
 } from '../viewmodels/buildExportViewModel';
 import type { VerifyScenario } from '../verifyScenario';
-import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
+import { resolveIoMappingFromProjectFields, type TestVector } from '@redbyte/rb-utils';
 import { deriveTimingGuidance, type TimingGuidance } from '../timingGuidance';
 import type {
   FullAdderLabExportSummary,
@@ -99,6 +99,8 @@ export const CHROME_CONTRACT = {
   exitPaths: [],
 } satisfies IdeChromeContract;
 
+const NO_CUSTOM_VECTORS: readonly TestVector[] = [];
+
 export interface ExportSurfaceProps {
   project: RBProject;
   verifyResult?: ProjectHealthVerifyResult;
@@ -120,6 +122,8 @@ export interface ExportSurfaceProps {
   workflowAuthority?: ProjectWorkflowAuthority;
   /** The currently active Verify scenario - used as the authoritative testbench vector source. */
   activeScenario?: VerifyScenario;
+  /** The custom rows a Run appends to the scenario; the bench checks them as Verify does. */
+  customVectors?: readonly TestVector[];
   dirtySinceVerify?: boolean;
   determinismHash: string;
   /** The workbench document this surface renders: the package files, or the handoff overview. */
@@ -265,6 +269,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   designReady = true,
   workflowAuthority,
   activeScenario,
+  customVectors = NO_CUSTOM_VECTORS,
   dirtySinceVerify = false,
   determinismHash,
   activeDocument = null,
@@ -291,8 +296,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const surfaceRef = useRef<HTMLElement | null>(null);
   const hasExternalMappingAuthority = Boolean(onUpdateMappingPin);
   const baseViewModel = useMemo(
-    () => buildExportViewModel(project, verifyLastRun, activeScenario),
-    [project, verifyLastRun, activeScenario]
+    () => buildExportViewModel(project, verifyLastRun, activeScenario, customVectors),
+    [project, verifyLastRun, activeScenario, customVectors]
   );
   const [pinDrafts, setPinDrafts] = useState<Record<string, string>>(() =>
     createPinOverrideMap(baseViewModel.pinTable)
@@ -305,8 +310,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () =>
       hasExternalMappingAuthority
         ? baseViewModel
-        : buildExportViewModel(localPreviewProject, verifyLastRun, activeScenario),
-    [activeScenario, baseViewModel, hasExternalMappingAuthority, localPreviewProject, verifyLastRun]
+        : buildExportViewModel(localPreviewProject, verifyLastRun, activeScenario, customVectors),
+    [activeScenario, baseViewModel, customVectors, hasExternalMappingAuthority, localPreviewProject, verifyLastRun]
   );
   const topModule = useMemo(() => resolveTopEntity(project), [project]);
   const projectSlug = useMemo(
@@ -1366,8 +1371,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     exportTrustAxes.verificationTrust, resolvedWorkflowAuthority.comparePassIncomplete,
     verifyState,
   ]);
+  // A blocked file is shown so the student can read why, never handed out on its own: the
+  // package refuses it, and a per-file download or copy must not carry it out either.
+  const artifactLeavesWorkbench = (artifact: ExportArtifactView) => artifact.status !== 'blocked' && artifact.content.trim().length > 0;
   const handleDownloadArtifact = (artifact: ExportArtifactView) => {
-    if (typeof window === 'undefined' || artifact.content.trim().length === 0) return;
+    if (typeof window === 'undefined' || !artifactLeavesWorkbench(artifact)) return;
     const blob = new Blob([artifact.content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1880,8 +1888,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         </button>
                         <IdeButton
                           tone="secondary"
-                          onClick={() => void copyToClipboard(selectedArtifact.content, 'artifact')}
-                          disabled={selectedArtifact.content.length === 0}
+                          onClick={() => { if (artifactLeavesWorkbench(selectedArtifact)) void copyToClipboard(selectedArtifact.content, 'artifact'); }}
+                          disabled={!artifactLeavesWorkbench(selectedArtifact)}
+                          title={selectedArtifact.status === 'blocked' ? 'This file is blocked: fix the problems listed for the package first.' : undefined}
                           testId="ide-export-copy-current-file"
                         >
                           {copiedTarget === 'artifact' ? 'Copied' : 'Copy file'}
@@ -1889,7 +1898,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <IdeButton
                           tone="ghost"
                           onClick={() => handleDownloadArtifact(selectedArtifact)}
-                          disabled={selectedArtifact.content.length === 0}
+                          disabled={!artifactLeavesWorkbench(selectedArtifact)}
+                          title={selectedArtifact.status === 'blocked' ? 'This file is blocked: fix the problems listed for the package first.' : undefined}
                           testId="ide-export-download-current-file"
                         >
                           Download file
