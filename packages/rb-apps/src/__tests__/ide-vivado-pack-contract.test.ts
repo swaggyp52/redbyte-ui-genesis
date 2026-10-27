@@ -1,23 +1,12 @@
-import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
-import { parseVhdl } from '../import/vhdlImport';
-import { parsedHdlToCircuit } from '../import/hdlToCircuit';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
+import { nativeCounterCircuit } from './helpers/nativeCounterFixture';
 
-const FIXTURE_DIR = join(
-  process.cwd(),
-  'packages/rb-apps/src/fixtures/import/03-vivado-ish-clocked'
-);
 const ZIP_DATE = new Date('2026-01-01T00:00:00.000Z');
-
-function loadFixtureVhdl(): string {
-  return readFileSync(join(FIXTURE_DIR, 'top.vhd'), 'utf8');
-}
 
 function buildFixtureIoMapping(): IoMapping {
   return {
@@ -50,9 +39,10 @@ function buildFixtureVectors(): TestVector[] {
   ];
 }
 
-function buildFixtureProject(vhdl: string): RBProject {
-  const parsed = parseVhdl(vhdl);
-  const converted = parsedHdlToCircuit(parsed);
+// A native counter with the ports of the imported counter fixture. That import is a port
+// scaffold whose generated top drives no LED (refused since it used to ship tied to '0'; see
+// ide-synth-subset-contract and ide-bringup-contract); this pack ships real counter logic.
+function buildFixtureProject(): RBProject {
   const timestamp = '2026-02-19T00:00:00.000Z';
 
   return {
@@ -62,13 +52,10 @@ function buildFixtureProject(vhdl: string): RBProject {
     updatedAt: timestamp,
     name: 'vivado-pack-counter',
     description: 'Vivado pack contract fixture',
-    circuit: converted.circuit,
+    circuit: nativeCounterCircuit(),
     ioMapping: buildFixtureIoMapping(),
     vectors: buildFixtureVectors(),
-    hdl: {
-      top: 'top',
-      sources: [{ path: 'top.vhd', language: 'vhdl', text: vhdl }],
-    },
+    hdl: { top: 'top', sources: [] },
     fpga: { board: 'basys3', top: 'top' },
     meta: {
       projectId: 'vivado-pack-counter-fixture',
@@ -95,7 +82,7 @@ function sha256Hex(bytes: Uint8Array): string {
 
 describe('IDE Vivado pack contract', () => {
   it('builds a deterministic Vivado-ready ZIP from the canonical export artifact set', async () => {
-    const project = buildFixtureProject(loadFixtureVhdl());
+    const project = buildFixtureProject();
     const exportViewModel = buildExportViewModel(project);
 
     expect(exportViewModel.status).toBe('ok');
