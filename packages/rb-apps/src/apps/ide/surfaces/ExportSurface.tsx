@@ -28,7 +28,8 @@ import {
   deriveVivadoProjectSlug,
   resolveVivadoPart,
 } from '../../../fpga/vivado/vivadoProjectFolder';
-import { deriveVerifySchedule, type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
+import { type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
+import { deriveIdeLiveScheduleContract } from '../ideExportProject';
 import { resolveBasys3BoardAlias, resolveBasys3PackagePin } from '../../../fpga/boards/basys3/basys3Pins';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { resolveActiveScheduleContract } from '../clockAuthority';
@@ -326,7 +327,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ioMapping: project.ioMapping,
         hardwareMappingV2: project.hardwareMappingV2,
       }) ?? project.ioMapping;
-    return deriveVerifySchedule(project.circuit, ioForSchedule, project.hdl);
+    return deriveIdeLiveScheduleContract(project, ioForSchedule);
   }, [project.circuit, project.hardwareMappingV2, project.hdl, project.ioMapping]);
   const activeScheduleContract = useMemo(
     () =>

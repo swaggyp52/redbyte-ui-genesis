@@ -129,7 +129,7 @@ import {
   type EngineeringLocation,
 } from './ide/engineeringLocation';
 import { generateHierarchicalVhdlProject } from './ide/hierarchicalVhdl';
-import { buildConstraintText, normalizeProjectCircuit } from './ide/ideExportProject';
+import { buildConstraintText, deriveIdeLiveScheduleContract, normalizeProjectCircuit } from './ide/ideExportProject';
 import {
   FULL_ADDER_LAB_ID,
   FULL_ADDER_SCRATCH_LAB,
@@ -186,7 +186,6 @@ import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import type { HdlSource } from '../fpga/toolchainBackend';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
-import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
 import type { HardwareMappingV2EditOperation } from './ide/hardwareMappingV2EditorModel';
 
 const loadDesignSurface = () =>
@@ -1045,7 +1044,7 @@ const IdeWorkspace: React.FC = () => {
         ...input,
         captureEvaluations: input.captureEvaluations ?? true,
         scheduleContract: ep
-          ? deriveVerifySchedule(ep.circuit, ep.ioMapping, ep.hdl)
+          ? deriveIdeLiveScheduleContract(ep)
           : undefined,
       });
     },
@@ -2402,11 +2401,7 @@ const IdeWorkspace: React.FC = () => {
   );
   const liveScheduleContract = useMemo(() => {
     if (!exportProject) return undefined;
-    return deriveVerifySchedule(
-      exportProject.circuit,
-      exportProject.ioMapping,
-      exportProject.hdl
-    );
+    return deriveIdeLiveScheduleContract(exportProject);
   }, [exportProject]);
   const exportDesignDiagnostics = useMemo(
     () =>

@@ -971,11 +971,7 @@ function isRuntimeScheduleCurrentForExport(
   clockPolicy: VerifyClockPolicy | undefined,
   vectors: readonly TestVector[]
 ): boolean {
-  const currentSchedule = deriveVerifySchedule(
-    project.circuit,
-    getEffectiveIoMapping(project),
-    project.hdl
-  );
+  const currentSchedule = deriveProjectSchedule(project);
   if (runtimeVerifyRun.schedule !== currentSchedule.schedule) return false;
   if (!runtimeVerifyRun.scheduleContract) return false;
   if (
@@ -1085,12 +1081,19 @@ function getProjectClockIoRows(project: RBProject): ProjectIoRow[] {
   ];
 }
 
+/**
+ * The schedule of the project as the simulator runs it: its elaborated hierarchy, so a register
+ * or latch inside a module is sequential (IdeApp liveScheduleContract and the testbench agree).
+ */
+function deriveProjectSchedule(project: RBProject) {
+  return deriveVerifySchedule(elaborateProjectHierarchy(project.circuit, project.hierarchy), getEffectiveIoMapping(project), project.hdl);
+}
+
 function detectProjectClockPolicy(project: RBProject): VerifyClockPolicy | null {
-  const ioMapping = getEffectiveIoMapping(project);
   return detectVerifyClockPolicy({
-    circuit: project.circuit,
+    circuit: elaborateProjectHierarchy(project.circuit, project.hierarchy),
     ioRows: getProjectClockIoRows(project),
-    scheduleContract: deriveVerifySchedule(project.circuit, ioMapping, project.hdl),
+    scheduleContract: deriveProjectSchedule(project),
   });
 }
 
@@ -1100,11 +1103,7 @@ function resolveExportClockPolicy(
   activeScenario: VerifyScenario | undefined,
   vectors: readonly TestVector[],
 ): VerifyClockPolicy | undefined {
-  const currentSchedule = deriveVerifySchedule(
-    project.circuit,
-    getEffectiveIoMapping(project),
-    project.hdl
-  );
+  const currentSchedule = deriveProjectSchedule(project);
   if (currentSchedule.schedule !== 'clocked_macro') return undefined;
   const savedPolicy = normalizeScenarioSequentialPolicy(activeScenario?.sequentialPolicy);
   const detectedPolicy = detectProjectClockPolicy(project);
