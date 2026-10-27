@@ -15,6 +15,7 @@ import {
   type ProjectHierarchyDocument,
 } from '../apps/ide/projectHierarchy';
 import { generateHierarchicalVhdlProject } from '../apps/ide/hierarchicalVhdl';
+import { emitPrimitiveVhdl } from '../export/vhdlExport';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
 import { isDesignOwnedExportDiagnostic } from '../apps/ide/projectWorkflowAuthority';
 import { exportProjectAsBasys3 } from '../fpga/boards/basys3/basys3ExportService';
@@ -185,12 +186,22 @@ describe('hierarchical emitter expresses every supported primitive', () => {
     },
   );
 
-  it.each(getVhdlLogicNodeTypes().filter((type) => inputPinsOf(type) === null))(
-    '%s, which the simulator does not define, blocks by name instead of shipping invented logic',
+  it('the primitive emitter itself refuses a part the simulator does not define, whatever the registry claims', () => {
+    for (const type of ['MUX4', 'Counter4Bit', 'NoSuchPart']) {
+      const emitted = emitPrimitiveVhdl({ id: 'p', type, output: () => 'p_out', input: () => 'SW0', connectedPorts: ['i0'] });
+      expect(emitted.lines, type).toEqual([]);
+      expect(emitted.errors, type).toEqual([expect.stringMatching(new RegExp(`^Unsupported synth subset node type "${type}" on node "p"`))]);
+    }
+  });
+
+  // A fixed list, so the case never becomes vacuous when the registry stops claiming a part.
+  it.each(['MUX4', 'Counter4Bit', 'Delay'])(
+    '%s, which the simulator does not simulate or the export cannot express, blocks by name instead of shipping invented logic',
     (type) => {
       const hier = generateHierarchicalVhdlProject(primitiveProject(type))!;
       expect(hier.diagnostics.map((d) => d.message).join('\n')).toMatch(new RegExp(`Unsupported synth subset node type "${type}" on node "p"`));
-      const vm = buildExportViewModel(primitiveProject(type));
+      // A clocked part is wired to a clock, so the missing-clock check cannot mask the refusal.
+      const vm = buildExportViewModel(primitiveProject(type, {}, type === 'Counter4Bit' ? ['CLK'] : []));
       expect(vm.status).not.toBe('ok');
       expect(vm.errors.map((e) => e.code)).toContain('RBEX4100');
     },
