@@ -2503,9 +2503,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           if (!active) return state;
           const hierarchy: ProjectHierarchyDocument = {
             ...cloneProjectHierarchy(state.hierarchy),
+            // The module's port refs follow the edit: the simulator and leaf-module export read them,
+            // and they kept the pre-edit wiring while the structural export read the drawing.
             modules: state.hierarchy.modules.map((module) =>
               module.id === activeModuleId
-                ? { ...module, circuit: cloneCircuit(nextCircuit), updatedAt: new Date().toISOString() }
+                ? { ...rederiveModulePortRefs({ ...module, circuit: cloneCircuit(nextCircuit) }), updatedAt: new Date().toISOString() }
                 : cloneModuleDefinition(module),
             ),
           };
