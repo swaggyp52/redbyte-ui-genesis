@@ -2,7 +2,7 @@
 // HDL Import Pipeline — shared types, component mapping, and auto-layout engine.
 
 import type { Circuit, Node, Connection } from '@redbyte/rb-logic-core';
-import { resolveImportedComponentType } from '@redbyte/rb-logic-core';
+import { inputPinsOf, outputPortsOf, resolveImportedComponentType } from '@redbyte/rb-logic-core';
 
 // ─── Parsed intermediate representation ──────────────────────────────────────
 
@@ -62,10 +62,35 @@ function resolveComponentType(raw: string): string | null {
 // ─── Port name normalisation ──────────────────────────────────────────────────
 
 /**
- * Map common HDL port names to the RedByte internal port names.
- * RedByte uses: a, b (inputs), out (output) for gates; in/out for IO.
+ * The connection port name the simulator reads (inputPinsOf) or publishes (outputPortsOf) for
+ * this part: the role name when the engine uses it as written, else the engine's spelling of it
+ * (a FullAdder is A, B, Cin, Sum and Cout, a register's inverted output Q_inv). A name the engine
+ * has neither way is kept, and export names the wire it cannot read.
+ */
+function enginePortName(rbNodeType: string, name: string): string {
+  const names = [
+    ...(inputPinsOf(rbNodeType) ?? []).flatMap((pin) => pin.names),
+    ...(outputPortsOf(rbNodeType) ?? []).flatMap((port) => port.names),
+  ];
+  if (names.includes(name)) return name;
+  return names.find((candidate) => candidate.toLowerCase() === name.toLowerCase()) ?? name;
+}
+
+/**
+ * Map common HDL port names to the port names the simulator reads and publishes.
+ * RedByte uses: a, b (inputs), out (output) for gates; in/out for IO; A, B, Cin, Sum, Cout for a
+ * FullAdder.
  */
 function normalisePortName(
+  hdlPort: string,
+  rbNodeType: string,
+  portIndex: number,
+): string {
+  return enginePortName(rbNodeType, rolePortName(hdlPort, rbNodeType, portIndex));
+}
+
+/** The role an HDL port name plays on a RedByte part (see normalisePortName). */
+function rolePortName(
   hdlPort: string,
   rbNodeType: string,
   portIndex: number,
