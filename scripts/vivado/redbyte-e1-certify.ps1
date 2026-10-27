@@ -268,7 +268,15 @@ function Remove-XdcComments([string]$XdcText) {
   return (($XdcText -split "`r?`n") | ForEach-Object { $_ -replace '#.*$', '' }) -join "`n"
 }
 
+# VHDL code only: `--` comments run to the end of the line (the provenance header carries the
+# project name). String literals are matched first and kept, so a "--" inside one cannot hide
+# the code after it; anything else ambiguous stays in and can only over-report.
+function Remove-VhdlComments([string]$VhdlText) {
+  return [regex]::Replace($VhdlText, '("(?:[^"\r\n]|"")*")|--[^\r\n]*', '$1')
+}
+
 function Get-UnsupportedTopConstructs([string]$TopText) {
+  $TopText = Remove-VhdlComments $TopText
   $constructs = @()
   foreach ($entry in @(
       @{ name = 'after-delay'; pattern = '\bafter\b' },

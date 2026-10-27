@@ -597,6 +597,38 @@ describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real packa
     });
   }, 300_000);
 
+  it('the unsupported-construct scan ignores comments: a project named "After school lab" is not blocked', async () => {
+    await withRoot(async (root) => {
+      const project = { ...createFromScratchCombSwitchAndBasys3Project(), name: 'After school lab' };
+      let top = '';
+      await writePackageZip(project, join(root, 'zips'), `${designId}-vivado-project.zip`, { editTop: (text) => (top = text) });
+      expect(top).toMatch(/^-- Project: After school lab\b/m);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.packageFacts.unsupportedTopConstructs).toEqual([]);
+      expect(design.classification, outcome.output).toBe('PASS_E1');
+    });
+  }, 300_000);
+
+  it('an after clause in top.vhd code is still BLOCKED_UNSUPPORTED_CONSTRUCT, even behind a "--" string literal', async () => {
+    await withRoot(async (root) => {
+      const injected = '  -- wait: this comment is not code\n  probe_text <= "--"; LD0 <= SW0 after 1 ns;\n';
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`, {
+        editTop: (text) => {
+          const edited = text.replace(/^begin\r?\n/m, (line) => `${line}${injected}`);
+          expect(edited).not.toBe(text);
+          return edited;
+        },
+      });
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.packageFacts.unsupportedTopConstructs, outcome.output).toEqual(['after-delay']);
+      expect(design.classification).toBe('BLOCKED_UNSUPPORTED_CONSTRUCT');
+      expect(design.vivadoRun.attempted).toBe(false);
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
   it('a package holding two .xpr projects is a named FAIL_IMPORT and never reaches Vivado', async () => {
     await withRoot(async (root) => {
       await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`, { extraXpr: true });

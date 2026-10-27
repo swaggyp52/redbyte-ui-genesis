@@ -106,7 +106,7 @@ Local-generated packages are useful for harness rehearsal. Production certificat
 | `BLOCKED_NO_VIVADO` | Vivado is not installed/discoverable on the machine |
 | `BLOCKED_PACKAGE_MISSING` | No ZIP package with one of the design's exact names was available |
 | `BLOCKED_PACKAGE_AMBIGUOUS` | More than one ZIP package matched the design id exactly |
-| `BLOCKED_UNSUPPORTED_CONSTRUCT` | Static package audit found a construct that should not be sent to Vivado as certified |
+| `BLOCKED_UNSUPPORTED_CONSTRUCT` | Static package audit found a construct that should not be sent to Vivado as certified (`after` delays, `wait`, `textio`, `file` in `top.vhd` code; `--` comments such as the provenance header are not scanned) |
 
 E1c is decided by `scripts/vivado/redbyte-e1-classify.tcl` from the testbench's own result file, `redbyte_tb_result.txt`. It must hold exactly one line, exactly `REDBYTE_TB_RESULT v=1 tb=<entity> status=PASS|FAIL|NO_CHECKS checks=<n> failures=<m>` (decimal counts without leading zeros, nothing before or after). Markers are counted, not lines: two markers on one line, a truncated marker, trailing text, or any marker in a simulator log that is not an exact copy of the result line ending its log line is `FAIL_TESTBENCH_CONTRACT`. The wrapper applies the same rule to the Vivado log and console before accepting `PASS_E1`; a contradiction there is `EVIDENCE_CONFLICT`. A log copy is not required, because where xsim routes report lines has not been observed on a real Vivado run.
 
