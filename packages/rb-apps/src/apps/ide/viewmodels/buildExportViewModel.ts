@@ -1773,6 +1773,8 @@ function diagnosticCodeFor(
   if (lowered.includes('unsupported synth subset node type')) return 'RBEX4100';
   if (lowered.includes('multiple drivers detected')) return 'RBEX4101';
   if (lowered.includes('combinational loop detected')) return 'RBEX4102';
+  if (lowered.includes('reads no input of that name') || lowered.includes('the module has no input of that name')) return 'RBEX4104';
+  if (lowered.includes('the simulator reads only')) return 'RBEX4105';
   if (
     lowered.includes('floating output detected') ||
     lowered.includes('undriven output') ||
@@ -1839,6 +1841,8 @@ function diagnosticTitleFor(
   if (code === 'RBEX4101') return 'Multiple drivers on input port';
   if (code === 'RBEX4102') return 'Combinational loop detected';
   if (code === 'RBEX4103') return 'Floating output';
+  if (code === 'RBEX4104') return 'Wire into an input the part does not read';
+  if (code === 'RBEX4105') return 'Input wired under two names';
   if (code === 'RBEX4200') return 'Sequential node missing clock';
   if (code === 'RBEX4201') return 'Multiple clock domains';
   if (code === 'RBEX4202') return 'Sequential node has multiple clocks';

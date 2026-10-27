@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Circuit, Node } from '@redbyte/rb-logic-core';
-import { getVhdlLogicNodeTypes } from '@redbyte/rb-logic-core';
+import { getVhdlLogicNodeTypes, inputPinsOf, outputPortsOf } from '@redbyte/rb-logic-core';
 import type { TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
 import {
@@ -140,37 +140,90 @@ describe('hierarchical emitter expresses every supported primitive', () => {
     expect(buildExportViewModel(e1Project()).status).toBe('ok');
   });
 
-  it.each(getVhdlLogicNodeTypes().filter((type) => !['Ground', 'PowerSource'].includes(type)))(
+  /**
+   * One part at the top of a hierarchical project, every input wired under the name the
+   * simulator reads it by first (inputPinsOf) and its outputs read under the names it
+   * publishes (outputPortsOf), or under `extraInputs` as well.
+   */
+  function primitiveProject(type: string, config: Record<string, unknown> = {}, extraInputs: string[] = []) {
+    const inv = notModule();
+    const pins = inputPinsOf(type, config) ?? [];
+    const outputs = (outputPortsOf(type, config) ?? []).map((port) => port.names[0]);
+    const nodes: Node[] = [
+      { id: 'sw0', type: 'INPUT', label: 'SW0', ...at(0) },
+      { id: 'clk', type: 'INPUT', label: 'CLK100MHZ', ...at(0, 50) },
+      { id: 'p', type, config, ...at(100) },
+      { id: 'ld0', type: 'OUTPUT', label: 'LD0', ...at(300) },
+      { id: 'ld1', type: 'OUTPUT', label: 'LD1', ...at(300, 50) },
+    ];
+    const placed = placeModuleInstance({ nodes, connections: [] }, inv.definition, { x: 200, y: 200 }, 'u_inv0');
+    const circuit: Circuit = {
+      nodes: placed.circuit.nodes,
+      connections: [
+        ...pins.map((pin, i) => wire(`i${i}`, pin.role === 'clock' ? 'clk' : 'sw0', 'out', 'p', pin.names[0])),
+        ...extraInputs.map((port, i) => wire(`x${i}`, 'sw0', 'out', 'p', port)),
+        wire('o0', 'p', outputs[0] ?? 'out', 'ld0', 'in'),
+        wire('o1', 'p', outputs[1] ?? outputs[0] ?? 'out', 'ld1', 'in'),
+      ],
+    };
+    return project('prim', circuit, inv.hierarchy,
+      [['sw0', 'SW0', 'SW0'], ['clk', 'CLK100MHZ', 'CLK100MHZ']], [['ld0', 'LD0', 'LD0'], ['ld1', 'LD1', 'LD1']]);
+  }
+
+  /** Width-1 registers: the scalar export expresses only one bit (wider words block by name). */
+  const SCALAR = { width: 1 };
+  const configFor = (type: string) => (['Register1', 'RegisterBus', 'StateBank'].includes(type) ? SCALAR : {});
+
+  it.each(getVhdlLogicNodeTypes().filter((type) => !['Ground', 'PowerSource'].includes(type) && inputPinsOf(type) !== null))(
     '%s at the top of a hierarchical project uses the shared primitive emitter',
     (type) => {
-      const inv = notModule();
-      const inputs = ['a', 'b', 'c', 'in', 'A', 'B', 'Cin', 'i0', 'i1', 'i2', 'i3', 's0', 's1', 'D', 'EN', 'T', 'J', 'K'];
-      const nodes: Node[] = [
-        { id: 'sw0', type: 'INPUT', label: 'SW0', ...at(0) },
-        { id: 'clk', type: 'INPUT', label: 'CLK100MHZ', ...at(0, 50) },
-        { id: 'p', type, ...at(100) },
-        { id: 'ld0', type: 'OUTPUT', label: 'LD0', ...at(300) },
-        { id: 'ld1', type: 'OUTPUT', label: 'LD1', ...at(300, 50) },
-      ];
-      const placed = placeModuleInstance({ nodes, connections: [] }, inv.definition, { x: 200, y: 200 }, 'u_inv0');
-      const outs = type === 'FullAdder' ? ['Sum', 'Cout'] : /Flip|Register|StateBank|DLatch/.test(type) ? ['Q', 'Q_inv'] : ['out', 'out'];
-      const circuit: Circuit = {
-        nodes: placed.circuit.nodes,
-        connections: [
-          ...inputs.map((port, i) => wire(`i${i}`, 'sw0', 'out', 'p', port)),
-          wire('ck', 'clk', 'out', 'p', 'CLK'),
-          wire('o0', 'p', outs[0], 'ld0', 'in'),
-          wire('o1', 'p', outs[1], 'ld1', 'in'),
-        ],
-      };
-      const hier = generateHierarchicalVhdlProject(project('prim', circuit, inv.hierarchy,
-        [['sw0', 'SW0', 'SW0'], ['clk', 'CLK100MHZ', 'CLK100MHZ']], [['ld0', 'LD0', 'LD0'], ['ld1', 'LD1', 'LD1']]))!;
+      const hier = generateHierarchicalVhdlProject(primitiveProject(type, configFor(type)))!;
       expect(hier.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
       expect(fabricatedZeros(hier.topVhd)).toEqual([]);
       expect(hier.topVhd).not.toContain('RBEX');
       expect(hier.topVhd).toMatch(/LED\(0\) <= n_p_\w+;/);
     },
   );
+
+  it.each(getVhdlLogicNodeTypes().filter((type) => inputPinsOf(type) === null))(
+    '%s, which the simulator does not define, blocks by name instead of shipping invented logic',
+    (type) => {
+      const hier = generateHierarchicalVhdlProject(primitiveProject(type))!;
+      expect(hier.diagnostics.map((d) => d.message).join('\n')).toMatch(new RegExp(`Unsupported synth subset node type "${type}" on node "p"`));
+      const vm = buildExportViewModel(primitiveProject(type));
+      expect(vm.status).not.toBe('ok');
+      expect(vm.errors.map((e) => e.code)).toContain('RBEX4100');
+    },
+  );
+
+  it.each([
+    ['AND', 'A', 'RBEX4104'],
+    ['FullAdder', 'a', 'RBEX4104'],
+    ['NOT', 'a', 'RBEX4104'],
+    ['XOR', 'a', 'RBEX4105'],
+    ['DFlipFlop', 'in', 'RBEX4105'],
+  ] as const)('%s with an extra wire into "%s" blocks by name (%s), flat and hierarchical', (type, port, code) => {
+    // The simulator ignores a wire into a name it does not read, and reads only the first of
+    // two names of one input: exported hardware could only copy that silently.
+    const withExtra = primitiveProject(type, {}, [port]);
+    const hier = generateHierarchicalVhdlProject(withExtra)!;
+    expect(hier.diagnostics.filter((d) => d.severity === 'error').map((d) => d.message).join('\n')).toContain(`"${port}"`);
+    const vm = buildExportViewModel(withExtra);
+    expect(vm.status).not.toBe('ok');
+    expect(vm.errors.map((e) => e.code)).toContain(code);
+    const named = vm.errors.find((e) => e.code === code)!;
+    expect(named.canonical.location?.nodeId).toBe('p');
+    expect(isDesignOwnedExportDiagnostic(named.code)).toBe(true);
+  });
+
+  it('reads a part only through the output names the simulator publishes', () => {
+    // A FullAdder publishes Sum and Cout; "sum" carries nothing in the simulator.
+    const lower = primitiveProject('FullAdder');
+    const circuit = { ...lower.circuit, connections: lower.circuit.connections.map((c) => (c.id === 'o0' ? wire('o0', 'p', 'sum', 'ld0', 'in') : c)) };
+    const vm = buildExportViewModel({ ...lower, circuit });
+    expect(vm.status).not.toBe('ok');
+    expect(vm.errors.map((e) => e.message).join('\n')).toMatch(/Unresolved driver "p\.sum"/);
+  });
 
   it('E2: a leaf module Register1 keeps its async clear and clock enable', () => {
     const base: Circuit = {
@@ -209,9 +262,10 @@ describe('hierarchical emitter expresses every supported primitive', () => {
         { id: 's', type: 'OUTPUT', label: 'S', ...at(200, 0) },
         { id: 'h', type: 'OUTPUT', label: 'H', ...at(200, 100) },
       ],
+      // The simulator reads a FullAdder as A, B, Cin and publishes Sum (inputPinsOf/outputPortsOf).
       connections: [
-        wire('m1', 'a', 'out', 'fa', 'a'), wire('m2', 'b', 'out', 'fa', 'b'), wire('m3', 'fa', 'sum', 's', 'in'),
-        wire('m4', 'vcc', 'out', 'h', 'in'), wire('m5', 'vcc', 'out', 'fa', 'cin'),
+        wire('m1', 'a', 'out', 'fa', 'A'), wire('m2', 'b', 'out', 'fa', 'B'), wire('m3', 'fa', 'Sum', 's', 'in'),
+        wire('m4', 'vcc', 'out', 'h', 'in'), wire('m5', 'vcc', 'out', 'fa', 'Cin'),
       ],
     };
     const mid = createModuleFromSelection(base, leaf.hierarchy, {
@@ -393,8 +447,12 @@ describe('constructs the HDL cannot express block the package by name', () => {
     });
     const proj = project('leafdelay', created.circuit, created.hierarchy, [['i', 'A', 'SW0']], [['o', 'Y', 'LD0']]);
     const hier = generateHierarchicalVhdlProject(proj)!;
+    // The NOT reading the Delay is named too: its driver has no exported signal. (Before exact
+    // driver resolution, the module input bound to the Delay's own id was substituted for the
+    // Delay's output, a silent short-circuit hidden only because the package was blocked.)
     expect(hier.diagnostics.map((d) => d.message)).toEqual([
       expect.stringMatching(/^Unsupported synth subset node type "Delay" on node "dl"\. Fix: .* \[in slow\.vhd\]$/),
+      expect.stringMatching(/^Unresolved driver "dl\.out" on node "dl": .* \[in slow\.vhd\]$/),
     ]);
     blockedBy(proj, /Unsupported synth subset node type "Delay"/);
   });

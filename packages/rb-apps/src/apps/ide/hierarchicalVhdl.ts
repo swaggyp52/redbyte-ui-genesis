@@ -287,24 +287,28 @@ function emitStructuralBody(
       return vector && bitIndex !== undefined ? `${name}(${bitIndex})` : name;
     }
     const canonical: PrimitiveOutputPort | null = node && isEmittablePrimitiveType(node.type)
-      ? canonicalPrimitiveOutputPort(node.type, portName)
+      ? canonicalPrimitiveOutputPort(node.type, portName, node.config)
       : 'out';
     if (!canonical) {
       report(`Unresolved driver "${nodeId}.${portName}" on node "${nodeId}": a ${node?.type} has no output ${portName} [in ${context.path}].`, nodeId);
       return unresolvedDriverMarker(nodeId, portName);
     }
-    const name = structuralSignalName(nodeId, canonical);
+    return primitiveOutputSignal(nodeId, canonical);
+  };
+  /** The structural signal carrying one canonical output of a primitive (emitPrimitiveVhdl's own outputs). */
+  const primitiveOutputSignal = (nodeId: string, port: PrimitiveOutputPort): string => {
+    const name = structuralSignalName(nodeId, port);
     if (!signals.has(name)) signals.set(name, { type: 'STD_LOGIC' });
     return name;
   };
   const sourceFor = (ref: PortRef): string => boundary.inputExpr(ref.nodeId) ?? signalFor(ref.nodeId, ref.portName);
+  // Exact port names, as the simulator and hierarchy flattening read them: 'A' is not 'a'.
   const sourceForInput = (nodeId: string, portName: string): string | undefined => {
-    const exact = incoming.get(`${nodeId}.${portName}`);
-    if (exact) return sourceFor(exact);
-    const lowered = `${nodeId}.${portName}`.toLowerCase();
-    for (const [key, ref] of incoming) if (key.toLowerCase() === lowered) return sourceFor(ref);
-    return undefined;
+    const ref = incoming.get(`${nodeId}.${portName}`);
+    return ref ? sourceFor(ref) : undefined;
   };
+  const incomingPortsOf = (nodeId: string): string[] =>
+    circuit.connections.map((connection) => endpoint(connection.to, 'in')).filter((to) => to.nodeId === nodeId).map((to) => to.portName);
 
   const statements: string[] = [];
   const mapped = new StatementSourceMap(statements, context.sourceMap);
@@ -313,6 +317,18 @@ function emitStructuralBody(
     const before = statements.length;
     const child = resolveChildModule(node, moduleById, moduleByName);
     if (child) {
+      // Flattening binds a wire to the input port of exactly that name; any other wire is ignored.
+      const declaredInputs = child.ports.filter((port) => port.direction !== 'output');
+      for (const portName of incomingPortsOf(node.id)) {
+        const base = portName.replace(/\(\d+\)$|\[\d+\]$/, '');
+        if (declaredInputs.some((port) => port.name === base)) continue;
+        report(
+          `Wire into port "${portName}" on node "${node.id}" (module ${child.name}) is ignored: the module has no input of that name ` +
+            `(its inputs are ${declaredInputs.map((port) => `"${port.name}"`).join(', ') || 'none'}), so the simulator ignores this wire ` +
+            `and exported hardware could only copy that [in ${context.path}]. Fix: move the wire to one of those inputs or remove it; the design and its simulation are unchanged.`,
+          node.id,
+        );
+      }
       const associations = child.ports.flatMap((port) => {
         const vector = modulePortWidth(port) > 1;
         // A vector output associates whole: the instance's output signal is declared as that vector.
@@ -352,9 +368,11 @@ function emitStructuralBody(
       id: node.id,
       type: node.type,
       config: node.config,
-      output: (port) => signalFor(node.id, port),
+      output: (port) => primitiveOutputSignal(node.id, port),
       input: (port) => sourceForInput(node.id, port),
+      connectedPorts: incomingPortsOf(node.id),
     });
+    for (const error of emitted.errors) report(`${error} [in ${context.path}]`, node.id);
     if (isInitializedSequentialType(node.type)) {
       // Registers and latches power up at Q=0 / Q_inv=1, like the simulator.
       signals.set(structuralSignalName(node.id, 'Q'), { type: 'STD_LOGIC', init: "'0'" });
