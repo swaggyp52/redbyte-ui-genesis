@@ -43,6 +43,18 @@ import type {
   IRPrimitiveType,
 } from './circuitIR';
 import { busIndices, busWidth } from '../bus';
+import { inputPinsOf } from '../builtins';
+
+/**
+ * The connection port names a part's clock or reset is read under, exactly as the simulator reads
+ * them (inputPinsOf: a DFlipFlop's clock is CLK, clk, clock or C); the registry's single name for
+ * a part the engine describes no such pin for.
+ */
+function pinNamesForRole(type: string, role: 'clock' | 'reset', registryName: string | undefined): readonly string[] {
+  const pin = inputPinsOf(type)?.find((entry) => entry.role === role);
+  if (pin) return pin.names;
+  return registryName ? [registryName] : [];
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -592,8 +604,9 @@ export function elaborateCircuit(
     const clockPort = getClockPortName(prim.type);
     if (!clockPort) continue; // e.g., RSLatch has no dedicated clock port
 
-    const clockSinkKey = `${prim.id}.${clockPort}`;
-    if (!drivenSinks.has(clockSinkKey)) {
+    // The clock is wired under any name the simulator reads it by, the first one wired winning.
+    const wiredClock = pinNamesForRole(prim.type, 'clock', clockPort).find((name) => drivenSinks.has(`${prim.id}.${name}`));
+    if (!wiredClock) {
       diagnostics.push({
         code: 'IR004',
         severity: 'error',
@@ -604,7 +617,7 @@ export function elaborateCircuit(
     } else {
       // Find the net that drives this clock port and set clockBinding
       for (const net of nets) {
-        if (net.sinks.some(s => s.nodeId === prim.id && s.port === clockPort)) {
+        if (net.sinks.some(s => s.nodeId === prim.id && s.port === wiredClock)) {
           prim.clockBinding = net.name;
           break;
         }
@@ -619,10 +632,10 @@ export function elaborateCircuit(
     const resetPort = getResetPortName(prim.type);
     if (!resetPort) continue;
 
-    const resetSinkKey = `${prim.id}.${resetPort}`;
-    if (drivenSinks.has(resetSinkKey)) {
+    const wiredReset = pinNamesForRole(prim.type, 'reset', resetPort).find((name) => drivenSinks.has(`${prim.id}.${name}`));
+    if (wiredReset) {
       for (const net of nets) {
-        if (net.sinks.some(s => s.nodeId === prim.id && s.port === resetPort)) {
+        if (net.sinks.some(s => s.nodeId === prim.id && s.port === wiredReset)) {
           prim.resetBinding = net.name;
           break;
         }
@@ -636,15 +649,20 @@ export function elaborateCircuit(
     const requiredInputs = PRIMITIVE_REQUIRED_INPUTS[prim.type] ?? [];
     const clockPort = getClockPortName(prim.type);
     const resetPort = getResetPortName(prim.type);
+    const pins = inputPinsOf(prim.type);
 
     for (const reqPort of requiredInputs) {
       // Skip clock/reset ports — IR004 covers clock; reset is optional
       if (reqPort === clockPort || reqPort === resetPort) continue;
 
-      // Port names are case-insensitive here: the Design canvas wires a FullAdder's
-      // A/B/Cin, while this table lists a/b/cin.
-      const sinkKey = `${prim.id}.${reqPort}`;
-      if (!drivenSinksLower.has(sinkKey.toLowerCase())) {
+      // An input counts as connected when a wire drives one of the names the simulator reads it
+      // by, exactly as written (inputPinsOf): a gate's in1 or a, a FullAdder's Cin but not cin.
+      // This table names the input; parts the engine does not describe keep the old lookup.
+      const pin = pins?.find((entry) => entry.names.some((name) => name.toLowerCase() === reqPort.toLowerCase()));
+      const connected = pin
+        ? [...pin.names, ...(pin.bitNames ?? [])].some((name) => drivenSinks.has(`${prim.id}.${name}`))
+        : drivenSinksLower.has(`${prim.id}.${reqPort}`.toLowerCase());
+      if (!connected) {
         diagnostics.push({
           code: 'IR005',
           severity: 'warning',
@@ -679,13 +697,13 @@ export function elaborateCircuit(
   const clockNets = nets.filter(n =>
     n.sinks.some(s => {
       const node = nodeMap.get(s.nodeId);
-      return node && isSequentialNodeType(node.type) && getClockPortName(node.type) === s.port;
+      return node && isSequentialNodeType(node.type) && pinNamesForRole(node.type, 'clock', getClockPortName(node.type)).includes(s.port);
     })
   );
   const resetNets = nets.filter(n =>
     n.sinks.some(s => {
       const node = nodeMap.get(s.nodeId);
-      return node && isSequentialNodeType(node.type) && getResetPortName(node.type) === s.port;
+      return node && isSequentialNodeType(node.type) && pinNamesForRole(node.type, 'reset', getResetPortName(node.type)).includes(s.port);
     })
   );
 
