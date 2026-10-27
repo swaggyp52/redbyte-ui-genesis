@@ -99,6 +99,23 @@ describe('identity is independent of the runtime collation (RB-DEBT-016)', () =>
     }
   });
 
+  it('keeps the same canonical row for a boundary mapped twice, under every collation', () => {
+    // Two equally complete rows on one LED: the survivor is persisted, so it cannot be chosen by
+    // collation (Lithuanian sorts y before j; codepoint and en-US sort j first).
+    const project = collationProject();
+    project.ioMapping!.outputs.push({ id: 'y_led', nodeId: 'y1_out', port: 'in', label: 'y1_out', pin: 'LD9' });
+    project.ioMapping!.outputs = project.ioMapping!.outputs.map(row => row.nodeId === 'y1_out' && row.id === 'y1_led' ? { ...row, id: 'j_led' } : row);
+    const survivor = (locale: string) => withCollation(locale, () => {
+      localStorage.clear();
+      useProjectRuntime.getState().loadFromProject(structuredClone(project));
+      const rows = useProjectRuntime.getState().projectIoRows.filter(row => row.nodeId === 'y1_out');
+      return rows.map(row => `${row.id}:${row.pin}`);
+    });
+    const english = survivor('en-US');
+    expect(english).toEqual(['j_led:LD0']);
+    for (const locale of LOCALES) expect(survivor(locale), locale).toEqual(english);
+  });
+
   it('the test double really changes collation, so the comparisons above have teeth', () => {
     const order = (locale: string, values: string[]) => withCollation(locale, () => [...values].sort((a, b) => a.localeCompare(b)));
     expect(order('en-US', ['y1', 'j1'])).toEqual(['j1', 'y1']);

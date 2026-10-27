@@ -25,6 +25,7 @@ import { generateJourneySource } from './signalJourney';
 import { startVerificationWorker, type VerificationJob } from './sim/verificationWorker';
 import type { VerificationComputeRequest } from './sim/verificationCompute';
 import { deriveSourceModel, normalizeRBProject, type RBProject } from '../../export/projectFormat';
+import { compareCodepoint } from '../../export/codepointSort';
 import {
   createEmptyProjectSourceModel,
   normalizeProjectSourceModel,
@@ -4035,9 +4036,10 @@ function chooseCanonicalIoRow(rows: ProjectIoRow[]): ProjectIoRow | null {
     }
 
     if (score === bestScore) {
+      // The surviving row is persisted: codepoint order, never the browser's collation (RB-DEBT-016).
       const currentId = normalizePortToken(row.id);
       const bestId = normalizePortToken(bestRow.id);
-      if (currentId.localeCompare(bestId) < 0) {
+      if (compareCodepoint(currentId, bestId) < 0) {
         bestRow = row;
       }
     }
@@ -4181,11 +4183,10 @@ function buildDesignBehaviorFingerprint(circuit: Circuit, rows: ProjectIoRow[]):
       label: row.label,
       direction: row.direction,
     }))
-    .sort((left, right) =>
-      `${left.direction}:${left.nodeId}:${left.id}`.localeCompare(
-        `${right.direction}:${right.nodeId}:${right.id}`
-      )
-    );
+    .sort((left, right) => compareCodepoint(
+      `${left.direction}:${left.nodeId}:${left.id}`,
+      `${right.direction}:${right.nodeId}:${right.id}`,
+    ));
   return digestValue(stableSerialize({ circuit: normalizeCircuit(circuit), logicalIo }));
 }
 
@@ -4199,11 +4200,10 @@ function hasSameVectorIoContract(leftRows: ProjectIoRow[], rightRows: ProjectIoR
         label: row.label,
         direction: row.direction,
       }))
-      .sort((left, right) =>
-        `${left.direction}:${left.nodeId}:${left.id}`.localeCompare(
-          `${right.direction}:${right.nodeId}:${right.id}`
-        )
-      );
+      .sort((left, right) => compareCodepoint(
+        `${left.direction}:${left.nodeId}:${left.id}`,
+        `${right.direction}:${right.nodeId}:${right.id}`,
+      ));
 
   return stableSerialize(normalizeRows(leftRows)) === stableSerialize(normalizeRows(rightRows));
 }

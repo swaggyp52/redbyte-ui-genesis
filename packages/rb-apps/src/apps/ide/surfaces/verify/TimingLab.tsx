@@ -6,6 +6,7 @@ import type {
 } from '../ScenarioBuilderPanel';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
 import { TimingLanes } from './TimingLanes';
+import { compareCodepoint } from '../../../../export/codepointSort';
 import type { RecordedWordLane } from './recordedWordLanes';
 
 // Timing Lab — the sequential simulation instrument. Events are rows in time:
@@ -100,7 +101,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   clockFieldIds,
 }) => {
   const orderedVectors = useMemo(
-    () => [...vectors].sort((left, right) => left.tick - right.tick || left.id.localeCompare(right.id)),
+    () => [...vectors].sort((left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id)),
     [vectors]
   );
   const orderedInputs = useMemo(() => {
@@ -126,7 +127,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
     onVectorsChange(
       orderedVectors
         .map((vector) => (vector.id === id ? { ...vector, ...patch } : vector))
-        .sort((left, right) => left.tick - right.tick || left.id.localeCompare(right.id))
+        .sort((left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id))
     );
   };
 
@@ -200,7 +201,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       ...(Object.fromEntries(inputFields.map((field) => [field.id, held?.inputs[field.id] === 1 ? 1 : 0])) as Record<string, 0 | 1>),
     } as Record<string, 0 | 1>;
     return [...orderedVectors, { id: nextEventId(orderedVectors), tick, inputs, expected: {} }].sort(
-      (left, right) => left.tick - right.tick || left.id.localeCompare(right.id)
+      (left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id)
     );
   };
   const driveInputAt = (tick: number, fieldId: string, value: 0 | 1) => {
