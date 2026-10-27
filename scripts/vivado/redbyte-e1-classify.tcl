@@ -5,34 +5,65 @@
 # tclsh (see packages/rb-apps/src/__tests__/vivado-e1-harness.test.ts).
 #
 # The authority is the generated testbench's own result line, written to
-# redbyte_tb_result.txt in the simulator working directory:
+# redbyte_tb_result.txt in the simulator working directory (testbenchGenerator.ts):
 #   REDBYTE_TB_RESULT v=1 tb=<entity> status=PASS|FAIL|NO_CHECKS checks=<n> failures=<m>
-# A PASS is only returned when that line exists exactly once, names this
-# testbench, agrees with every copy seen in the logs, and its check count equals
-# the number of checks the testbench source contains. Everything else is a named
-# non-pass outcome.
+# <n> and <m> are VHDL integer'image values: decimal digits, no sign, no leading zero.
+# A PASS is only returned when the result file holds exactly that one line and nothing
+# else, it names this testbench, every marker seen in the logs is a well-formed copy of
+# it, and its check count equals the number of checks the testbench source contains.
+# Markers are counted, not lines: a line with two markers, a truncated marker or one with
+# trailing text is malformed, and anything malformed is a named non-pass outcome.
 
 namespace eval ::rb_e1c {
   variable outcomes {
     PASS NO_SIMULATOR NOT_CONFIGURED HDL_COMPILE_ERROR HDL_ELAB_ERROR SIM_LAUNCH_ERROR
     RUNTIME_ERROR TIMEOUT CONTRACT_VIOLATION ASSERTION_FAILED NO_CHECKS
   }
+  # A result-file line is exactly one marker, start to end.
+  variable file_line_re {^REDBYTE_TB_RESULT v=1 tb=([A-Za-z][A-Za-z0-9_]*) status=(PASS|FAIL|NO_CHECKS) checks=(0|[1-9][0-9]*) failures=(0|[1-9][0-9]*)$}
+  # A log copy may carry a simulator prefix ("Note: ", "file:line:col:@40ns:(report note): ")
+  # but the marker must run to the end of the line.
+  variable log_copy_re {REDBYTE_TB_RESULT v=1 tb=([A-Za-z][A-Za-z0-9_]*) status=(PASS|FAIL|NO_CHECKS) checks=(0|[1-9][0-9]*) failures=(0|[1-9][0-9]*)$}
 }
 
-# Parse one summary line; returns a dict or {} when the line is not one.
-proc rb_e1c_parse_result {line} {
-  if {![regexp {REDBYTE_TB_RESULT v=1 tb=([A-Za-z][A-Za-z0-9_]*) status=(PASS|FAIL|NO_CHECKS) checks=([0-9]+) failures=([0-9]+)} \
-      $line -> tb status checks failures]} {
+proc rb_e1c_marker_count {text} {
+  return [regexp -all {REDBYTE_TB_RESULT} $text]
+}
+
+proc rb_e1c_parse_with {re line} {
+  set line [string trim $line]
+  if {[rb_e1c_marker_count $line] != 1 || ![regexp $re $line -> tb status checks failures]} {
     return {}
   }
   return [dict create tb $tb status $status checks $checks failures $failures]
 }
 
-# Every summary line found in a block of text (a log or the result file).
+# Parse one result-file line; returns a dict, or {} when it is not exactly one result line.
+proc rb_e1c_parse_result {line} {
+  return [rb_e1c_parse_with $::rb_e1c::file_line_re $line]
+}
+
+# Parse one log line holding a marker; returns a dict, or {} when the marker is malformed.
+proc rb_e1c_parse_log_copy {line} {
+  return [rb_e1c_parse_with $::rb_e1c::log_copy_re $line]
+}
+
+# Every line of a log that holds a marker.
 proc rb_e1c_result_lines {text} {
   set found {}
   foreach line [split $text "\n"] {
     if {[string first REDBYTE_TB_RESULT $line] >= 0} {
+      lappend found [string trim $line]
+    }
+  }
+  return $found
+}
+
+# Every non-blank line of the result file, marker or not: the file must hold one line only.
+proc rb_e1c_content_lines {text} {
+  set found {}
+  foreach line [split $text "\n"] {
+    if {[string trim $line] ne ""} {
       lappend found [string trim $line]
     }
   }
@@ -63,8 +94,8 @@ proc rb_e1c_has_contract {testbench_text} {
 #   fatal_lines        FATAL_ERROR lines seen in logs
 #   mismatch_lines     per-vector "failed on" error lines seen in logs
 #   bound_reached      1 when simulation time reached the bound without a result
-#   file_lines         summary lines read from redbyte_tb_result.txt
-#   log_lines          summary lines seen in simulator logs
+#   file_lines         every non-blank line read from redbyte_tb_result.txt
+#   log_lines          every simulator-log line holding a REDBYTE_TB_RESULT marker
 # Returns {outcome reason}.
 proc rb_e1c_classify {facts} {
   set f [dict merge [dict create \
@@ -101,21 +132,26 @@ proc rb_e1c_classify {facts} {
     }
     return [list RUNTIME_ERROR "simulation ended without writing redbyte_tb_result.txt"]
   }
-  if {[llength $file_lines] > 1} {
-    return [list CONTRACT_VIOLATION "expected one result line, found [llength $file_lines]"]
+  set markers 0
+  foreach line $file_lines { incr markers [rb_e1c_marker_count $line] }
+  if {$markers != 1 || [llength $file_lines] != 1} {
+    return [list CONTRACT_VIOLATION "expected exactly one result line, found $markers marker(s) on [llength $file_lines] line(s)"]
   }
 
   set line [lindex $file_lines 0]
   set result [rb_e1c_parse_result $line]
   if {$result eq {}} {
-    return [list CONTRACT_VIOLATION "unreadable result line: $line"]
+    return [list CONTRACT_VIOLATION "malformed result line: $line"]
   }
   if {![string equal -nocase [dict get $result tb] [dict get $f tb_entity]]} {
     return [list CONTRACT_VIOLATION "result names tb=[dict get $result tb], simulated [dict get $f tb_entity]"]
   }
   foreach seen [dict get $f log_lines] {
-    set copy [rb_e1c_parse_result $seen]
-    if {$copy ne {} && $copy ne $result} {
+    set copy [rb_e1c_parse_log_copy $seen]
+    if {$copy eq {}} {
+      return [list CONTRACT_VIOLATION "malformed result marker in a simulator log: $seen"]
+    }
+    if {$copy ne $result} {
       return [list CONTRACT_VIOLATION "log line disagrees with result file: $seen"]
     }
   }

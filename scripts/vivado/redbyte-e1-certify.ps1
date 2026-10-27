@@ -100,6 +100,21 @@ function Get-StagePassed($TclResult, [string]$Stage) {
   return ($null -ne $entry -and $entry.Value.status -eq 'pass')
 }
 
+# The accepted result's e1c.resultLine when it is an exact PASS line of the testbench grammar
+# (see redbyte-e1-classify.tcl), otherwise ''.
+function Get-AcceptedPassLine($TclResult) {
+  if ($null -eq $TclResult) { return '' }
+  $e1c = $TclResult.PSObject.Properties['e1c']
+  if ($null -eq $e1c -or $null -eq $e1c.Value) { return '' }
+  $line = $e1c.Value.PSObject.Properties['resultLine']
+  if ($null -eq $line) { return '' }
+  $text = [string]$line.Value
+  if ($text -cmatch '^REDBYTE_TB_RESULT v=1 tb=[A-Za-z][A-Za-z0-9_]* status=PASS checks=[1-9][0-9]* failures=0$') {
+    return $text
+  }
+  return ''
+}
+
 function Quote-ProcessArgument([string]$Value) {
   return '"' + ($Value -replace '"', '\"') + '"'
 }
@@ -537,17 +552,22 @@ function Analyze-Package([string]$DesignId, $ZipCandidates, [string]$RunRoot, $V
       $stageSource = $tclResult
     }
 
-    # Independent cross-check of a pass against everything Vivado printed.
+    # Independent cross-check of a pass against everything Vivado printed: every line holding a
+    # REDBYTE_TB_RESULT marker must hold exactly one, ending the line as an exact copy of the
+    # accepted result line. A truncated, doubled, trailing-junk or contradicting marker conflicts.
     $consoleText = (@($logPath, $stdoutPath) | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join "`n"
-    $logResultLines = @([regex]::Matches($consoleText, 'REDBYTE_TB_RESULT v=1 tb=\S+ status=(\S+) checks=\d+ failures=\d+') | ForEach-Object { $_.Value })
-    $vivadoRun.resultLinesInLog = $logResultLines
+    $markerLines = @(($consoleText -split "`r?`n") | Where-Object { $_.Contains('REDBYTE_TB_RESULT') } | ForEach-Object { $_.Trim() })
+    $vivadoRun.resultLinesInLog = $markerLines
     if ($classification -eq 'PASS_E1') {
-      $nonPass = @($logResultLines | Where-Object { $_ -notmatch 'status=PASS ' })
+      $accepted = Get-AcceptedPassLine $tclResult
+      $badMarkers = @($markerLines | Where-Object {
+          $accepted -eq '' -or [regex]::Matches($_, 'REDBYTE_TB_RESULT').Count -ne 1 -or !$_.EndsWith($accepted, [System.StringComparison]::Ordinal)
+        })
       $mismatchCount = [regex]::Matches($consoleText, 'Vector \d+ failed on ').Count
-      if ($nonPass.Count -gt 0 -or $mismatchCount -gt 0) {
+      if ($accepted -eq '' -or $badMarkers.Count -gt 0 -or $mismatchCount -gt 0) {
         $classification = 'EVIDENCE_CONFLICT'
         $stageSource = $null
-        $vivadoRun.acceptance = "PASS_E1 contradicted by the Vivado log: $($nonPass.Count) non-PASS result line(s), $mismatchCount mismatch report(s)."
+        $vivadoRun.acceptance = "PASS_E1 contradicted by the Vivado log: accepted result line '$accepted', $($badMarkers.Count) malformed or non-matching result marker line(s), $mismatchCount mismatch report(s)."
       }
     }
   }

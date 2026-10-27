@@ -146,6 +146,22 @@ describe.skipIf(!TCLSH)('E1c classifier (tclsh table)', () => {
     ['pass-unknown-static-count', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
     ['pass-with-mismatch-report', 'ASSERTION_FAILED', 'FAIL_TESTBENCH_ASSERTION', '28'],
     ['pass-failures-nonzero', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    // A simulator prefix before a log copy is fine; the result file is the authority, so a
+    // missing log copy is not required (xsim's log routing is unobserved).
+    ['pass-ghdl-log-prefix', 'PASS', 'PASS_E1C', '0'],
+    ['pass-trailing-cr', 'PASS', 'PASS_E1C', '0'],
+    ['pass-without-log-copy', 'PASS', 'PASS_E1C', '0'],
+    // Markers are counted, not lines, and every marker must be the exact testbench grammar.
+    ['log-truncated-fail', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['log-trailing-junk', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['log-two-markers', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-two-markers-one-line', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-trailing-status', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-failures-hex', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-checks-leading-zero', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-leading-junk', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-extra-line', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-junk-only', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
   ])('%s -> %s', (name, outcome, classification, code) => {
     expect(rows.get(name)).toEqual([outcome, classification, code]);
   });
@@ -222,6 +238,10 @@ describe.skipIf(!TCLSH)('redbyte-e1-certify.tcl under a fake Vivado', () => {
     ['two-lines', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
     ['log-conflict', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
     ['pass-with-mismatch', 'FAIL_TESTBENCH_ASSERTION', 28, 'fail'],
+    ['two-markers-one-line', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
+    ['trailing-junk', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
+    ['extra-result-line', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
+    ['log-truncated', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
     ['synth-fail', 'FAIL_SYNTH', 5, 'pass'],
     ['harness-crash', 'HARNESS_ERROR', 10, 'pending'],
   ])('%s -> %s (exit %d)', (scenario, classification, exitCode, e1cStatus) => {
@@ -437,6 +457,7 @@ describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real packa
     ['exit0-no-result', 'INTERRUPTED', 'failed', 1, false],
     ['forged-result', 'HARNESS_ERROR', 'failed', 1, false],
     ['vivado-log-conflict', 'EVIDENCE_CONFLICT', 'failed', 1, false],
+    ['vivado-log-truncated', 'EVIDENCE_CONFLICT', 'failed', 1, false],
     ['no-sim', 'BLOCKED_NO_TESTBENCH', 'blocked', 1, false],
   ])('%s -> %s, verdict %s, exit %d', async (scenario, classification, verdict, exitCode, testbenchFlag) => {
     await withPackage((root) => {

@@ -108,6 +108,8 @@ Local-generated packages are useful for harness rehearsal. Production certificat
 | `BLOCKED_PACKAGE_AMBIGUOUS` | More than one ZIP package matched the design id exactly |
 | `BLOCKED_UNSUPPORTED_CONSTRUCT` | Static package audit found a construct that should not be sent to Vivado as certified |
 
+E1c is decided by `scripts/vivado/redbyte-e1-classify.tcl` from the testbench's own result file, `redbyte_tb_result.txt`. It must hold exactly one line, exactly `REDBYTE_TB_RESULT v=1 tb=<entity> status=PASS|FAIL|NO_CHECKS checks=<n> failures=<m>` (decimal counts without leading zeros, nothing before or after). Markers are counted, not lines: two markers on one line, a truncated marker, trailing text, or any marker in a simulator log that is not an exact copy of the result line ending its log line is `FAIL_TESTBENCH_CONTRACT`. The wrapper applies the same rule to the Vivado log and console before accepting `PASS_E1`; a contradiction there is `EVIDENCE_CONFLICT`. A log copy is not required, because where xsim routes report lines has not been observed on a real Vivado run.
+
 `READY_FOR_E1_RUN` can appear in dry-run output when packages are structurally ready and Vivado is discoverable, but it is not an E1 pass.
 
 `BLOCKED_TOOLCHAIN` and `BLOCKED_PACKAGE` are acceptable report-level umbrella labels. In harness output, the concrete equivalents are `BLOCKED_NO_VIVADO` and `BLOCKED_PACKAGE_MISSING`.

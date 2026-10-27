@@ -217,7 +217,7 @@ $readme = @(
   '- `FAIL_TESTBENCH_ASSERTION`: the testbench ran and at least one check failed.',
   '- `FAIL_TESTBENCH_NO_CHECKS`: the testbench drives stimulus but checks nothing, so it cannot pass.',
   '- `FAIL_TESTBENCH_COMPILE`, `FAIL_TESTBENCH_ELAB`, `FAIL_TESTBENCH_LAUNCH`, `FAIL_TESTBENCH_RUNTIME`, `FAIL_TESTBENCH_TIMEOUT`: the simulation did not reach a result.',
-  '- `FAIL_TESTBENCH_CONTRACT`: the result line was missing, duplicated or disagreed with the logs or the testbench (or the package predates the self-check).',
+  '- `FAIL_TESTBENCH_CONTRACT`: the result line was missing, duplicated, malformed (not exactly `REDBYTE_TB_RESULT v=1 tb=<entity> status=<status> checks=<n> failures=<m>`, alone in its file) or disagreed with a log marker or the testbench (or the package predates the self-check).',
   '- `BLOCKED_NO_SIM`, `BLOCKED_NO_TESTBENCH`: no XSim target or no sim_1 testbench; never a pass.',
   '- `TIMEOUT`, `INTERRUPTED`, `HARNESS_ERROR`, `EVIDENCE_CONFLICT`: the run itself did not produce an accepted result.',
   '- `FAIL_SYNTH`: synthesis failed.',
