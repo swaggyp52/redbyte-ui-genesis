@@ -23,7 +23,8 @@ try {
  const page=zoom===1?await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'}):browser.pages()[0];const tid=id=>page.getByTestId(id);page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  async function shot(name){await page.waitForFunction(()=>!/Loading (Design|Simulate|Board|Project|Package) workspace/.test(document.body.innerText));await page.waitForTimeout(650);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await captureViewport(page,path.join(out,name+'.png'));captures.push({name,viewport:page.viewportSize(),state:await page.evaluate(()=>{const s=window.__RB_PROJECT_RUNTIME__.getState();return{project:s.projectId,example:s.activeExampleId,nodes:s.circuit.nodes.length,run:s.verifyLastRun?.runId,checks:s.verifyLastRun?.assertionStatus,rootPx:getComputedStyle(document.documentElement).fontSize,bodyWidth:document.body.scrollWidth,layoutWidth:innerWidth,layoutHeight:innerHeight,dpr:devicePixelRatio,outerWidth,outerHeight};})});}
  async function timeView(){if(await tid('ide-verify-view-timeline').count())await tid('ide-verify-view-timeline').click();}
- async function run(){await tid('ide-vcb-run').click();await page.waitForFunction(()=>!!window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun);await timeView();}
+ // A Run is complete when a new recording is selected, not when any recording exists.
+ async function run(){const prior=await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId??null);await tid('ide-vcb-run').click();await page.waitForFunction(id=>{const r=window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun;return !!r&&r.runId!==id;},prior);await timeView();}
  await page.goto(BASE_URL,{waitUntil:'networkidle',timeout:60000});
  await tid('ide-project-start-a-lab-primary').click();await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();await page.locator('[data-testid^="ide-project-gannon-lab-start-"]').first().click();
  await tid('mode-button-design').click();await shot('01-design-normal-1440x900');
@@ -38,6 +39,8 @@ try {
  assert.equal(await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun.status),'fail','Same EN edit fails the retained expected values');
  await shot('05-simulate-failing-1440x900');
  const inspect=await tid('ide-verify-inspect-circuit').count()?tid('ide-verify-inspect-circuit'):tid('ide-verify-open-circuit-replay');await inspect.click();
+ // The signal picker lives in the Recorded signals & connections disclosure.
+ const signalDisclosure=page.locator('details',{has:page.getByLabel('Recorded circuit signal')});if(!await signalDisclosure.evaluate(d=>d.open))await signalDisclosure.locator('summary').click();
  await page.getByLabel('Recorded circuit signal').selectOption('LD0');
  if(await tid('ide-timing-lanes').count()) {
   await tid('ide-timing-lanes').press('Home');await tid('ide-timing-lanes').press('ArrowRight');await tid('ide-timing-lanes').press('ArrowRight');

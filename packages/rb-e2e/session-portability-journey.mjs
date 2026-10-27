@@ -266,6 +266,8 @@ async function authoringPortability() {
     await openSaved(before.projectId);
     await compareAuthoring('authoring-open-B-reopen-A');
     await fileMenu(p, 'project.save-as');
+    // Save As names the copy in its dialog (the suggested name is valid) and saves on confirm.
+    await p.getByTestId('ide-save-as-confirm').click();
     await p.waitForFunction(id => window.__RB_PROJECT_RUNTIME__.getState().projectId !== id, before.projectId);
     const savedAs = await compareAuthoring('authoring-save-as');
     await openSaved(savedAs.projectId);

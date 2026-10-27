@@ -6760,7 +6760,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     signal={selectedSignal} position={resultPosition} tick={selectedTick}
     expected={resultRow?.expected && resultRow.expected !== '-' ? resultRow.expected : null}
     observed={resultSample && selectedSignal ? resultSample.signals[selectedSignal] ?? null : null}
-    recorded={Boolean(lastRun)} inputs={resultInputs} mismatch={Boolean(resultFailure)} navigator={failureNavigator}
+    // Observed only where this sample recorded the signal; elsewhere it is unrecorded, never a value.
+    recorded={Boolean(resultSample && selectedSignal && resultSample.signals[selectedSignal] != null)} inputs={resultInputs} mismatch={Boolean(resultFailure)} navigator={failureNavigator}
     onInspect={lastRun ? inspectCircuit ? () => setInspectCircuit(false) : openCircuitInvestigation : undefined} inspecting={inspectCircuit}
     onEditDesign={lastRun && (onEditCurrentDesign || onGoToDesign) ? handleEditCurrentDesign : undefined}
     draftExpected={caseLabFocusFieldId ? selectedDraftCase?.expected?.[caseLabFocusFieldId] : undefined}

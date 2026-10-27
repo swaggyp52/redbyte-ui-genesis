@@ -49,7 +49,13 @@
   --rb-board-conflict-stroke: var(--rb-state-danger);
   --rb-board-unavailable-fill: transparent;
   --rb-board-unavailable-stroke: #c3cbd6;
-  --rb-board-unavailable-label: #9aa5b5;
+  /* Resource names are text a student reads to find SW3 or LD0: every label state is >= 4.5:1
+     on both planes and on its own state fill. The outline carries the state; selected and
+     conflict names use a deeper ink than their outlines, and an unavailable name stays readable
+     (the faint outline, not faint text, says it is unavailable). */
+  --rb-board-selected-label: #1d4ed8;
+  --rb-board-conflict-label: var(--rb-board-conflict-stroke);
+  --rb-board-unavailable-label: #5f6b7c;
   --rb-board-led-on: var(--rb-schematic-high, #0f6b5b);
   --rb-board-led-off: #8b98ab;
   --rb-board-knob-off: #8b98ab;
@@ -67,7 +73,9 @@
   --rb-board-mapped-fill: #34404f;
   --rb-board-conflict-fill: color-mix(in srgb, var(--rb-state-danger) 26%, #1b2431);
   --rb-board-unavailable-stroke: #3a4656;
-  --rb-board-unavailable-label: #6f7d92;
+  --rb-board-selected-label: #a8c2ff;
+  --rb-board-conflict-label: #f3b0b3;
+  --rb-board-unavailable-label: #8794a8;
   --rb-board-led-off: #6f7d92;
   --rb-board-knob-off: #6f7d92;
 }

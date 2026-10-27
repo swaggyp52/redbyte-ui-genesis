@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';import fs from 'node:fs';import path fro
 const out=evidenceDir('causal-capture',process.env.RB_SHOT_LABEL??'current');const browser=await launchChromium();let page;
 try{
  page=await browser.newPage({viewport:{width:1280,height:650}});page.setDefaultTimeout(10000);const tid=id=>page.getByTestId(id);
+ // The signal picker lives in 'Recorded signals & connections'; open it as a student would before choosing.
+ const pickSignal=async name=>{const control=page.getByLabel('Recorded circuit signal');const d=page.locator('details',{has:control}).last();if(!await d.evaluate(x=>x.open))await d.locator('summary').first().click();await control.selectOption(name);};
  await page.goto(BASE_URL,{waitUntil:'networkidle'});await tid('ide-project-start-a-lab-primary').click();await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();await page.locator('[data-testid^="ide-project-gannon-lab-start-"]').first().click();await tid('mode-button-verify').click();
  await tid('ide-scenario-generators-disclosure').locator('summary').first().click();
  const policy=tid('ide-verify-clock-policy-panel');if(!(await policy.getAttribute('open')))await policy.locator('summary').click();
@@ -17,13 +19,13 @@ try{
   if(!(await cell.getAttribute('aria-label')).includes(': '+target))await cell.click();
  }
  await tid('ide-vcb-run').click();
- await tid('ide-verify-inspect-circuit').click();await page.getByLabel('Recorded circuit signal').selectOption('LD0');
+ await tid('ide-verify-inspect-circuit').click();await pickSignal('LD0');
  await tid('ide-timing-lanes').press('Home');await tid('ide-timing-lanes').press('ArrowRight');await tid('ide-timing-lanes').press('ArrowRight');
  const threeDrawings=[];
  for(const tick of [2,9]) {
   await tid('ide-timing-lanes').press('Home');
   for(let step=0;step<tick;step++)await tid('ide-timing-lanes').press('ArrowRight');
-  const value=await tid('ide-time-selected-value').innerText();
+  const value=await tid('ide-selected-result-observed').getAttribute('data-observed-value');
   if(tick===9)assert.equal(value,'unrecorded');else assert.match(value,/^[01]$/);
   const wire=tid('ide-recorded-circuit-svg').locator('[data-recorded-wire-value]:has([data-wire-selected="1"])').first();
   assert.equal(await wire.getAttribute('data-recorded-wire-value'),value,'Recorded wire agrees with time instrument at t'+tick);
@@ -33,7 +35,7 @@ try{
   await page.screenshot({path:path.join(out,'three-drawings-board-t'+tick+'.png')});
   threeDrawings.push({tick,value});
   await tid('mode-button-verify').click();if(!(await tid('ide-recorded-circuit').count()))await tid('ide-verify-inspect-circuit').click();
-  await page.getByLabel('Recorded circuit signal').selectOption('LD0');
+  await pickSignal('LD0');
  }
  await tid('ide-timing-lanes').press('Home');await tid('ide-timing-lanes').press('ArrowRight');await tid('ide-timing-lanes').press('ArrowRight');
  await tid('ide-causal-walk').locator('[data-causal-kind="driver"]').first().click();

@@ -12,6 +12,17 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const tid = id => page.getByTestId(id);
+  // Secondary controls (the recording picker, the signal picker) live in disclosures; open the one holding a control.
+  const reveal = async control => {
+    const disclosure = page.locator('details', { has: control }).last();
+    if (await disclosure.count() && !await disclosure.evaluate(details => details.open)) await disclosure.locator('summary').first().click();
+  };
+  // A Run is complete when a new recording is selected, not when the button was pressed.
+  const runAndWait = async () => {
+    const prior = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId ?? null);
+    await tid('ide-vcb-run').click();
+    await page.waitForFunction(id => { const run = window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun; return !!run && run.runId !== id; }, prior);
+  };
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await tid('ide-project-start-a-lab-primary').click();
   await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();
@@ -19,14 +30,20 @@ try {
   await tid('mode-button-verify').click();
   await page.screenshot({ path: path.join(out, 'before-run-1280x650.png') });
   assert.equal(await tid('ide-vcb-run-intent').count(), 0, 'Run has one meaning');
-  await tid('ide-vcb-run').click();
+  await runAndWait();
   await tid('ide-run-identity').waitFor({ timeout: 8000 });
   const original = await tid('ide-run-output-digest').getAttribute('data-digest');
   const originalRunId = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun.runId);
   assert.ok(original?.length >= 8, 'The native output digest is accessible in the DOM');
-  for (let n = 0; n < 3; n++) await tid('ide-vcb-reproduce').click();
-  assert.match(await tid('ide-run-repetition').innerText(), /4 runs · 4 identical/);
+  // Reproduce, repetition and the recording digests live in Recordings & details (docs/ide/03-verify.md).
   await tid('ide-run-details').locator('summary').click();
+  // Each reproduction is its own recording: wait for it to land before asking for the next.
+  for (let n = 0; n < 3; n++) {
+    const recorded = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.length);
+    await tid('ide-vcb-reproduce').click();
+    await page.waitForFunction(count => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.length > count, recorded);
+  }
+  assert.match(await tid('ide-run-repetition').innerText(), /4 runs · 4 identical/);
   const digests = await page.locator('[data-recording-output-digest]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-recording-output-digest')));
   assert.equal(digests.length, 4);
   assert.ok(digests.every(digest => digest === original), 'All four displayed recording digests agree');
@@ -46,10 +63,13 @@ try {
   await inputCell.click();
   assert.notEqual(await inputCell.getAttribute('aria-label'), beforeInput, 'The edit changes the authored stimulus');
   assert.match(await tid('ide-run-input-changes').innerText(), /Stimulus changed/);
+  if (!await tid('ide-run-details').evaluate(details => details.open)) await tid('ide-run-details').locator('summary').click();
+  const recordedBeforeReproduce = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.length);
   await tid('ide-vcb-reproduce').click();
+  await page.waitForFunction(count => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.length > count, recordedBeforeReproduce);
   assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'), original, 'Reproduce ignores current draft changes');
   assert.notEqual(await inputCell.getAttribute('aria-label'), beforeInput, 'Reproduce does not overwrite the authoring draft');
-  await tid('ide-vcb-run').click();
+  await runAndWait();
   const editedStimulusDigest = await tid('ide-run-output-digest').getAttribute('data-digest');
   assert.notEqual(editedStimulusDigest, original, 'This EN edit changes the actual counter recording');
   const stimulusRun = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun.runId);
@@ -82,12 +102,14 @@ try {
   assert.equal(await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun.runId), stimulusRun, 'Design handoff does not run');
   assert.match(await tid('ide-run-input-changes').innerText(), /Design changed.*XOR.*OR/);
   await page.screenshot({ path: path.join(out, 'design-changed-1280x650.png') });
-  await tid('ide-vcb-run').click();
+  await runAndWait();
   const changedDesignDigest = await tid('ide-run-output-digest').getAttribute('data-digest');
   assert.notEqual(changedDesignDigest, editedStimulusDigest, 'The gate defect changes the recorded outputs');
+  await reveal(page.getByLabel('Recorded run', { exact: true }));
   await page.getByLabel('Recorded run', { exact: true }).selectOption(originalRunId);
   assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'), original, 'The original evidence remains selectable');
   await tid('ide-verify-inspect-circuit').click();
+  await reveal(page.getByLabel('Recorded circuit signal'));
   await page.getByLabel('Recorded circuit signal').selectOption('LD0');
   await tid('ide-timing-lanes').focus();
   await tid('ide-timing-lanes').press('Home');

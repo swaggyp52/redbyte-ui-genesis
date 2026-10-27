@@ -45,39 +45,42 @@ function ruleBody(css: string, selector: string): string {
 }
 
 describe('Simulate inner grid — one owner at every viewport', () => {
-  it('stacks the lab grid in one column under 900px with the splitter and evidence rows following the document', () => {
+  /** Every area the desktop lab grid lays its regions into. */
+  const usedAreas = () => {
+    const desktop = ruleBody(stripComments(simulateCss), '.ide-root .rb-sim-lab-grid');
+    return [...new Set([...(desktop.match(/grid-template-areas:([^;]*)/)?.[1] ?? '').matchAll(/[a-z-]+/g)].map((match) => match[0]))];
+  };
+
+  it('stacks the lab grid in one column under 900px and declares every area a region uses', () => {
     const owners = compactBlocks(stripComments(simulateCss)).filter((block) => block.includes("grid-template-areas: 'cases'"));
     expect(owners, 'exactly one compact block owns the stacked template').toHaveLength(1);
     const template = owners[0].match(/\.rb-sim-lab-grid, [^{]*\{([^}]*)\}/)?.[1] ?? '';
     expect(template).toContain('grid-template-columns: minmax(0, 1fr)');
-    expect(template).toContain("grid-template-areas: 'cases' 'split' 'evidence' 'inspector'");
-    expect(template).toContain('grid-template-rows: minmax(160px, 1fr) auto minmax(0, var(--rb-sim-evidence-fr)) minmax(0, 32%)');
+    // The cases row takes its content (the time instrument with its lane floor); the workspace scrolls.
+    expect(template).toContain('grid-template-rows: minmax(180px, auto)');
+    // An area a region names but the template does not declare makes implicit tracks; at 720px
+    // they took the whole width and the time instrument collapsed to 0px.
+    const declared = template.match(/grid-template-areas:([^;]*)/)?.[1] ?? '';
+    for (const area of usedAreas()) expect(declared, `compact template declares '${area}'`).toContain(`'${area}'`);
   });
 
-  it('excludes replay from every deck variant (replay has no cases row and no splitter)', () => {
-    const css = stripComments(simulateCss);
-    const variants = css.match(/\.rb-sim-lab-grid[^{]*\[data-evidence-[^{]*\{/g) ?? [];
-    expect(variants.length).toBeGreaterThanOrEqual(6);
-    for (const selector of variants) {
-      expect(selector, `${selector} must not apply in replay`).toContain("not([data-studio-mode='replay'])");
-    }
-  });
-
-  it('keeps the collapsed and maximized deck variants in the same stacked row order', () => {
+  it('gives replay its own compact template without a cases row, and no deck variants remain', () => {
     const compact = compactBlocks(stripComments(simulateCss)).join('\n');
-    const variant = (state: string) => `.rb-sim-lab-grid:not([data-studio-mode='replay'])[data-evidence-${state}]`;
-    expect(compact).toContain(`${variant("collapsed='true'")} { grid-template-rows: minmax(160px, 1fr) auto 28px minmax(0, 32%); }`);
-    expect(compact).toContain(`${variant("maximized='cases'")} { grid-template-rows: minmax(0, 1fr) auto 0 minmax(0, 32%); }`);
-    expect(compact).toContain(`${variant("maximized='waveform'")} { grid-template-rows: 0 auto minmax(0, 1fr) minmax(0, 32%); }`);
+    const replay = compact.match(/\.rb-sim-lab-grid\[data-studio-mode='replay'\] \{([^}]*)\}/)?.[1] ?? '';
+    expect(replay).toContain("grid-template-areas: 'evidence' 'inspector' 'result'");
+    expect(replay).not.toContain("'cases'");
+    // The resizable Cases/Evidence deck was replaced by one time instrument: no splitter row and
+    // no collapsed or maximized deck variants are left to fight the template.
+    expect(stripComments(simulateCss)).not.toMatch(/data-evidence-|'split'/);
   });
 
-  it('bounds the result region and guarantees the document a floor (182px up to 240px or 60%)', () => {
+  it('bounds the result region and guarantees the document a floor', () => {
     const result = ruleBody(simulateCss, '.ide-root .rb-sim-region--result');
     expect(result).toContain('min-height: 0');
     expect(result).toContain('overflow: auto');
     const workspace = ruleBody(simulateCss, '.ide-root .rb-sim-workspace');
-    expect(workspace).toContain('flex: 1 1 0');
-    expect(workspace).toContain('min-height: clamp(182px, 60%, 240px)');
+    expect(workspace).toContain('flex: 1 0 22rem');
+    expect(workspace).toContain('min-height: 22rem');
     // The shell's section-gap rule outranks the base panel rule, so the gap owner names the full path.
     const gapOwner = ruleBody(simulateCss, ".ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace > .rb-sim-panel > .ide-panel-body");
     expect(gapOwner).toContain('gap: 0');
@@ -118,10 +121,9 @@ describe('ide-root.css — the retired verify layout owners are gone', () => {
   });
 });
 
-describe('simulate-instrument.css — re-homed drawer caps carry no !important', () => {
-  it('caps the drawer body from Simulate, with nothing in ide-root.css outranking it', () => {
-    expect(simulateCss).toContain(".ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-drawer-body { max-height: min(34vh, 320px); }");
-    // A plain rule only wins if no `!important` competes: ide-root.css must not force the height.
+describe('simulate-instrument.css — Details owns its scrolling, with no !important', () => {
+  it('leaves the drawer body uncapped inside the inspector, with nothing in ide-root.css forcing a height', () => {
+    expect(stripComments(simulateCss)).toContain('.ide-root .rb-sim-inspector .ide-verify-drawer-body, .ide-root .rb-sim-inspector .ide-verify-tab-panel { flex: none; min-height: 0; max-height: none;');
     expect(stripComments(rootCss)).not.toMatch(/\.ide-verify-drawer-body[^{]*\{[^}]*max-height:[^;]*!important/);
     expect(stripComments(simulateCss)).not.toContain('!important');
   });

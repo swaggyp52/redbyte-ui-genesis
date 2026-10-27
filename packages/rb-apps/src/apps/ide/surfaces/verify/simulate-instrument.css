@@ -227,10 +227,9 @@
 .ide-root .rb-sim-command-stack { display: flex; flex-direction: column; margin: 0; padding: 0; background: transparent; }
 .ide-root .rb-sim-region { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .ide-root .rb-sim-region--header { flex: none; border-bottom: 1px solid var(--wb-border-strong); }
-/* The result region (diagnosis and notes) is bounded and scrolls; the document below it always keeps a
-   floor: 182px (a 160px document row plus the splitter) up to 240px or 60% of the panel. Before this rule
-   the callouts could not shrink and, at 200% zoom or with the Problems panel open, pushed the whole
-   Case Lab / Timing document out of the panel. */
+/* The result region (diagnosis and notes) is bounded and scrolls; the workspace below it always keeps a
+   22rem floor. Before this rule the callouts could not shrink and, at 200% zoom or with the Problems
+   panel open, pushed the whole Case Lab / Timing document out of the panel. */
 .ide-root .rb-sim-region--result { flex: 0 1 auto; min-height: 0; overflow: auto; }
 .ide-root .rb-sim-workspace { display: flex; flex-direction: column; flex: 1 0 22rem; min-height: 22rem; padding: 0; border: 0; }
 .ide-root .rb-sim-lab-frame { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: auto; background: transparent; }
@@ -580,7 +579,9 @@
 /* Timing lanes — the sequential authoring instrument (ruler · clock/reset/input lanes · expected over observed). */
 /* The lanes are the working area: they take the region and scroll inside it, so the
    instrument can measure what it actually has and draw to fit. */
-.ide-root .rb-tl { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--rb-wave-bg, var(--wb-paper)); border-bottom: 1px solid var(--wb-border); }
+/* The lanes keep a floor however tall the toolbar above them wraps: at 720x450 (a 1440x900 screen at
+   200% zoom) the toolbar took 163px of a 190px row and left the lanes 1px, so no cell could be reached. */
+.ide-root .rb-tl { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 160px; overflow: hidden; background: var(--rb-wave-bg, var(--wb-paper)); border-bottom: 1px solid var(--wb-border); }
 /* The lanes take the room that is left and scroll inside it. Sized by their content they pushed the
    event disclosures below the fold of a short window, where the first one was cut in half. */
 .ide-root .rb-tl-scroll { flex: 1 1 0; min-height: 9rem; overflow: auto; }
@@ -670,8 +671,10 @@
    instrument keeps the height, the run line follows it, and the inspector becomes a bottom
    strip. This is the single owner of the stacked template. */
 @media (max-width: 899px) {
-  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, 1fr) auto; grid-template-areas: 'cases' 'evidence'; }
-  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(220px, 1fr); grid-template-areas: 'evidence'; }
+  /* Every area the regions name is in the template: an undefined 'inspector' or 'result' made
+     implicit tracks that took the whole width, and the time instrument collapsed to 0px at 720px. */
+  .ide-root .rb-sim-lab-grid, .ide-root .rb-sim-lab-grid[data-studio-mode='scenario'], .ide-root .rb-sim-lab-grid[data-studio-mode='checks'] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(180px, auto) auto auto auto; grid-template-areas: 'cases' 'evidence' 'inspector' 'result'; }
+  .ide-root .rb-sim-lab-grid[data-studio-mode='replay'] { grid-template-rows: minmax(220px, 1fr) auto auto; grid-template-areas: 'evidence' 'inspector' 'result'; }
   /* Floors mean the rows can add up to more than the window. The workspace scrolls rather than
      resolving one of them to nothing. */
   .ide-root .rb-sim-lab-frame { overflow-y: auto; }
@@ -712,6 +715,9 @@
   .ide-root .rb-sim-lab-grid[data-investigation='both'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(240px, 45vh) auto minmax(300px, auto) auto; grid-template-areas: 'cases' 'evidence' 'inspector' 'result'; }
   .ide-root .rb-sim-lab-grid[data-studio-mode='replay'][data-investigation='both'] { grid-template-rows: minmax(240px, 45vh) minmax(300px, auto) auto; grid-template-areas: 'evidence' 'inspector' 'result'; }
   .ide-root .rb-sim-lab-grid[data-details-open='true']:not([data-investigation]) { grid-template-columns: minmax(0, 1fr); position: relative; }
+  /* An absolutely placed grid child is laid out in its grid area: the overlay spans the whole grid, not the
+     inspector row (which the stacked template declares, and which is empty while Details overlays). */
+  .ide-root .rb-sim-lab-grid > [data-testid='ide-sim-context-inspector'] { grid-area: 1 / 1 / -1 / -1; }
   .ide-root [data-testid='ide-sim-context-inspector'] { position: absolute; z-index: 6; inset: 0 0 0 12%; box-shadow: -4px 0 14px #15243d33; }
 
 }

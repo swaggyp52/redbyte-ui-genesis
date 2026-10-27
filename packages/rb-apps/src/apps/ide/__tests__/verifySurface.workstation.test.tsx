@@ -1171,8 +1171,10 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-selected-result')).toHaveAttribute('data-tick','1');
     fireEvent.keyDown(time, {key: 'ArrowRight'});
     expect(getByTestId('ide-verify-selected-result')).toHaveAttribute('data-tick','2');
-    // The interval between sparse recorded samples is not silently filled.
+    // The interval between sparse recorded samples is not silently filled, nor called observed.
     expect(getByTestId('ide-selected-result-observed').textContent).toBe('—');
+    expect(getByTestId('ide-selected-result-observed')).toHaveAttribute('data-observed-value', 'unrecorded');
+    expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('unrecorded —');
     fireEvent.keyDown(time, {key: 'ArrowRight'});
     expect(getByTestId('ide-verify-selected-result')).toHaveAttribute('data-tick','3');
   });

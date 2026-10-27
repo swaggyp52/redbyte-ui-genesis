@@ -73,6 +73,9 @@ try {
     await tid('ide-vcb-run').click();
     await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.status === 'fail');
     await tid('ide-verify-inspect-circuit').click();
+    // The signal picker lives in 'Recorded signals & connections'; open it as a student would.
+    const signalDisclosure = page.locator('details', { has: page.getByLabel('Recorded circuit signal') }).last();
+    if (!await signalDisclosure.evaluate(details => details.open)) await signalDisclosure.locator('summary').first().click();
     await page.getByLabel('Recorded circuit signal').selectOption('LD0');
     await tid('ide-timing-lanes').press('Home');
     await tid('ide-timing-lanes').press('ArrowRight');
@@ -95,7 +98,10 @@ try {
     await tid('mode-button-project').click();
     await tid('ide-project-row-doc:overview').click();
     assert.equal(await tid('ide-project-problems').count(), 0, 'Overview does not contain a second Problems ledger');
-    assert.match(await tid('ide-project-attention').innerText(), /check-failed/);
+    // The lead problem is stated in words; its code identifies it without being the first sentence.
+    const attentionLead = tid('ide-project-attention').locator('.rb-project-attention-lead');
+    assert.equal(await attentionLead.getAttribute('data-problem-code'), 'check-failed');
+    assert.match(await attentionLead.innerText(), /checks? fail/);
     await tid('ide-project-open-problems').click();
     assert.equal(await tid('ide-console-toggle').getAttribute('aria-expanded'), 'true',
       'Open Problems reaches the canonical dock');
