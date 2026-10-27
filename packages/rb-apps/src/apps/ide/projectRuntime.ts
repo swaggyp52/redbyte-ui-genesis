@@ -128,6 +128,7 @@ import {
   type VerifyScenarioProbe,
   type VerifyScenarioSequentialPolicy,
 } from './verifyScenario';
+import { unsimulatedRunRefusal } from './verifyMode';
 import {
   createScenarioStep,
   deriveScenarioStepsFromVectors,
@@ -5502,6 +5503,10 @@ function prepareRuntimeVerification(state: ProjectRuntimeState, input: RunVerifi
   const executionIoRows = source?.executionInput?.ioRows ?? state.projectIoRows;
   const elaborationSources: import('./projectHierarchy').ElaborationSources = source?.elaborationSources ? structuredClone(source.elaborationSources) : {};
   const simulationCircuit = source?.circuitSnapshot ?? elaborateProjectHierarchy(state.circuit, state.hierarchy, elaborationSources);
+  // Every run path (Verify, Run menu, command palette, Reproduce, studio) is
+  // admitted here: a part the engine does not simulate is refused by name.
+  const refusal = unsimulatedRunRefusal(simulationCircuit);
+  if (refusal) throw new Error(refusal);
   const scenarioId = source?.scenarioId ?? (input.scenarioId.trim() || 'runtime-verify');
   const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
   const scenarioName =

@@ -76,7 +76,7 @@ import {
   type VerifyScenario,
   type VerifyScenarioSequentialPolicy,
 } from '../verifyScenario';
-import type { VerifyMode } from '../verifyMode';
+import { describeVerifyBlocker, type VerifyBlocker, type VerifyMode } from '../verifyMode';
 import type {
   FullAdderLabDesignChecklist,
   GuidedLabTaskDefinition,
@@ -287,6 +287,8 @@ export interface VerifySurfaceProps {
   onGoToHardware?: () => void;
   onGoToImport?: () => void;
   verifyMode?: VerifyMode;
+  /** The parts that make verifyMode 'blocked' (findVerifyBlockers), named on the blocked surface. */
+  verifyBlockers?: readonly VerifyBlocker[];
   unmappedOutputLabels?: string[];
   onPreviewVector?: (inputs: Record<string, number>) => void;
   onDebugTickSelected?: (
@@ -452,6 +454,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onGoToHardware,
   onGoToImport,
   verifyMode = 'combinational' as VerifyMode,
+  verifyBlockers = [],
   unmappedOutputLabels = [],
   onPreviewVector,
   liveSignalRoles,
@@ -7293,6 +7296,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               This circuit contains components that cannot be simulated yet.
               Remove the unsupported component to run verification.
             </p>
+            {verifyBlockers.length > 0 && (
+              <p className="ide-verify-entry-blocked-reason" data-testid="ide-verify-entry-blocked-parts">
+                Unsupported: {verifyBlockers.map(describeVerifyBlocker).join('; ')}.
+              </p>
+            )}
             {onGoToDesign && (
               <IdeButton
                 tone="primary"

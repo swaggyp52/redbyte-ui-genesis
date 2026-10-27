@@ -9,9 +9,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import {
+  BLOCKED_VERIFY_NODE_TYPES,
+  describeVerifyBlocker,
   detectVerifyMode,
+  findVerifyBlockers,
   SUPPORTED_SEQUENTIAL,
-  UNSUPPORTED_SEQUENTIAL,
+  unsimulatedRunRefusal,
 } from '../verifyMode';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -93,20 +96,56 @@ describe('detectVerifyMode — blocked', () => {
   it('blocked wins even if hdlScheduleHint is clocked_macro', () => {
     expect(detectVerifyMode(makeCircuit(['Counter4Bit']), 'clocked_macro')).toBe('blocked');
   });
+
+  it('returns blocked for a combinational part the engine does not simulate (MUX4)', () => {
+    expect(detectVerifyMode(makeCircuit(['INPUT', 'MUX4', 'OUTPUT']))).toBe('blocked');
+    expect(detectVerifyMode(makeCircuit(['DFlipFlop', 'MUX4']))).toBe('blocked');
+  });
+
+  it('does not newly block boundary parts the registry does not simulate (Button, CLOCK)', () => {
+    expect(detectVerifyMode(makeCircuit(['Button', 'AND', 'OUTPUT']))).toBe('combinational');
+    expect(detectVerifyMode(makeCircuit(['CLOCK', 'DFlipFlop']))).toBe('sequential');
+  });
 });
 
-describe('detectVerifyMode — SUPPORTED_SEQUENTIAL and UNSUPPORTED_SEQUENTIAL sets', () => {
+describe('verify blockers name the part', () => {
+  const labelled = (nodes: Array<[string, string, string?]>): Circuit => ({
+    nodes: nodes.map(([id, type, label]) => ({ id, type, label, position: { x: 0, y: 0 }, rotation: 0, config: {}, state: {} })),
+    connections: [],
+  });
+
+  it('groups each blocked type with its nodes in circuit order', () => {
+    const circuit = labelled([['sw0', 'INPUT', 'SW0'], ['m0', 'MUX4', 'MUX[0]'], ['d', 'Delay'], ['m1', 'MUX4', 'MUX[1]']]);
+    const blockers = findVerifyBlockers(circuit);
+    expect(blockers).toEqual([
+      { type: 'MUX4', label: '4:1 multiplexer', simulated: false, nodes: [{ id: 'm0', label: 'MUX[0]' }, { id: 'm1', label: 'MUX[1]' }] },
+      { type: 'Delay', label: 'delay', simulated: true, nodes: [{ id: 'd', label: 'd' }] },
+    ]);
+    expect(describeVerifyBlocker(blockers[0])).toBe('4:1 multiplexer (MUX4) on MUX[0], MUX[1]');
+  });
+
+  it('refuses a run only when a part is not simulated at all', () => {
+    expect(unsimulatedRunRefusal(labelled([['m0', 'MUX4', 'MUX[0]']]))).toMatch(
+      /^Simulation was not run: RedByte does not simulate 4:1 multiplexer \(MUX4\) on MUX\[0\], so a recording would show values it never computed\./,
+    );
+    // Delay is simulated (Verify still blocks it); ordinary gates run.
+    expect(unsimulatedRunRefusal(labelled([['d', 'Delay']]))).toBeNull();
+    expect(unsimulatedRunRefusal(labelled([['a', 'AND'], ['b', 'Button']]))).toBeNull();
+  });
+});
+
+describe('detectVerifyMode — SUPPORTED_SEQUENTIAL and BLOCKED_VERIFY_NODE_TYPES sets', () => {
   it('SUPPORTED_SEQUENTIAL includes DFlipFlop', () => {
     expect(SUPPORTED_SEQUENTIAL.has('DFlipFlop')).toBe(true);
   });
 
-  it('UNSUPPORTED_SEQUENTIAL includes Counter4Bit', () => {
-    expect(UNSUPPORTED_SEQUENTIAL.has('Counter4Bit')).toBe(true);
+  it('BLOCKED_VERIFY_NODE_TYPES includes Counter4Bit', () => {
+    expect(BLOCKED_VERIFY_NODE_TYPES.has('Counter4Bit')).toBe(true);
   });
 
-  it('SUPPORTED_SEQUENTIAL and UNSUPPORTED_SEQUENTIAL do not overlap', () => {
+  it('SUPPORTED_SEQUENTIAL and BLOCKED_VERIFY_NODE_TYPES do not overlap', () => {
     for (const type of SUPPORTED_SEQUENTIAL) {
-      expect(UNSUPPORTED_SEQUENTIAL.has(type)).toBe(false);
+      expect(BLOCKED_VERIFY_NODE_TYPES.has(type)).toBe(false);
     }
   });
 });

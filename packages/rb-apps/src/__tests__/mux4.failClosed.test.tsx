@@ -5,15 +5,19 @@ import { act, cleanup, render, waitFor } from '@testing-library/react';
 import type { Circuit, Node, PortRef } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
+import { loadExample } from '../examples';
 import {
   createEmptyProjectHierarchy,
   createModuleFromSelection,
+  elaborateProjectHierarchy,
 } from '../apps/ide/projectHierarchy';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
 import { isDesignOwnedExportDiagnostic } from '../apps/ide/projectWorkflowAuthority';
+import { detectVerifyMode, findVerifyBlockers } from '../apps/ide/verifyMode';
 import { moduleNameCollision } from '../apps/ide/vhdlNames';
-import { useProjectRuntime, type RuntimeSimState } from '../apps/ide/projectRuntime';
+import { useProjectRuntime, type RunVerificationInput, type RuntimeSimState } from '../apps/ide/projectRuntime';
 import { projectRuntimeCircuitToEditorStore } from '../apps/ide/circuitProjection';
+import { VerifySurface } from '../apps/ide/surfaces/VerifySurface';
 import { DesignSurface } from '../apps/ide/surfaces/DesignSurface';
 import { workspacePreferencesStore } from '../apps/ide/workspacePreferences';
 import { useCircuitStore } from '../stores/circuitStore';
@@ -22,8 +26,8 @@ import { useLayoutStore } from '../stores/layoutStore';
 /**
  * MUX4 fails closed. The engine has no MUX4 behaviour (its outputs read 0) and
  * the VHDL it used to emit (`with s1 & s0 select`) did not analyze, so RedByte
- * refuses the part by name instead of claiming a trusted package. A saved
- * design that contains one still opens, unchanged and inspectable.
+ * refuses the part by name instead of claiming a run or a trusted package. A
+ * saved design that contains one still opens, unchanged and inspectable.
  */
 
 const NOW = '2026-10-26T00:00:00.000Z';
@@ -75,6 +79,84 @@ function moduleProject(): RBProject {
 
 /** A concurrent `with ... select` is the MUX4 HDL GHDL rejected; nothing may ship it. */
 const SELECT_STATEMENT = /\bwith\b[^;]*\bselect\b/i;
+
+describe('MUX4 blocks Verify by name', () => {
+  afterEach(() => cleanup());
+
+  it('blocks a flat design and a design with MUX4 inside a module', () => {
+    expect(detectVerifyMode(mux4Circuit())).toBe('blocked');
+    const hierarchical = moduleProject();
+    // The IDE detects the mode on the elaborated simulation circuit.
+    const elaborated = elaborateProjectHierarchy(hierarchical.circuit, hierarchical.hierarchy!);
+    expect(detectVerifyMode(elaborated)).toBe('blocked');
+    expect(findVerifyBlockers(elaborated).map((blocker) => blocker.nodes)).toEqual([
+      [{ id: 'u-sel__mux0', label: 'u_sel.MUX[0]' }],
+    ]);
+  });
+
+  it('shows the blocked surface and names the part', () => {
+    const circuit = mux4Circuit();
+    const view = render(
+      <VerifySurface
+        hasVectors={false}
+        onOpenProjectVectors={vi.fn()}
+        deterministicHash="mux4"
+        verifyMode={detectVerifyMode(circuit)}
+        verifyBlockers={findVerifyBlockers(circuit)}
+      />,
+    );
+    expect(view.getByTestId('ide-verify-entry-blocked')).toBeTruthy();
+    expect(view.getByTestId('ide-verify-entry-blocked-parts').textContent).toBe(
+      'Unsupported: 4:1 multiplexer (MUX4) on MUX[0].',
+    );
+    expect(view.queryByTestId('ide-vcb-run')).toBeNull();
+  });
+
+  it('blocks the shipped legacy Lab 4 starter', async () => {
+    const starter = await loadExample('19_lab4-alu-starter-basys3');
+    const circuit = { nodes: starter.nodes, connections: starter.connections } as Circuit;
+    expect(detectVerifyMode(circuit)).toBe('blocked');
+    expect(findVerifyBlockers(circuit).map((blocker) => [blocker.type, blocker.nodes.map((node) => node.label)])).toEqual([
+      ['MUX4', ['MUX[0]', 'MUX[1]', 'MUX[2]', 'MUX[3]']],
+    ]);
+  });
+});
+
+describe('no run path records values the engine never computed', () => {
+  const workers: unknown[] = [];
+  class RecordingWorker {
+    onmessage = null; onerror = null; onmessageerror = null;
+    constructor() { workers.push(this); }
+    postMessage() {}
+    terminate() {}
+  }
+  const rt = () => useProjectRuntime.getState();
+  const runInput = (): RunVerificationInput => ({
+    scenarioId: rt().activeScenarioId, scenarioName: 'mux4', deterministicHash: 'mux4', rows: [],
+    vectors: [{ tick: 0, inputs: { sw0: 1 }, expected: {} }],
+  });
+
+  beforeEach(() => {
+    rt().cancelVerification();
+    workers.length = 0;
+    vi.stubGlobal('Worker', RecordingWorker);
+    rt().loadFromProject(mux4Project());
+  });
+  afterEach(() => { rt().cancelVerification(); vi.unstubAllGlobals(); });
+
+  it('refuses the run by name before any worker starts and admits no evidence', async () => {
+    const archiveBefore = JSON.stringify(rt().verifyRunArchive);
+    expect(() => rt().runVerification(runInput())).toThrow(
+      /^Simulation was not run: RedByte does not simulate 4:1 multiplexer \(MUX4\) on MUX\[0\]/,
+    );
+    rt().startVerification(runInput());
+    await vi.waitFor(() => expect(rt().verificationExecution.status).toBe('error'));
+    expect(rt().verificationExecution.message).toMatch(/does not simulate 4:1 multiplexer \(MUX4\) on MUX\[0\]/);
+    expect(workers).toHaveLength(0);
+    expect(JSON.stringify(rt().verifyRunArchive)).toBe(archiveBefore);
+    expect(rt().verifyLastRun).toBeUndefined();
+  });
+});
 
 describe('MUX4 blocks the package with a named RBEX4100 diagnostic', () => {
   it('flat project: blocked, names MUX4 and the node, and no trusted top.vhd', () => {
