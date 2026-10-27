@@ -416,7 +416,9 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.getByTestId('ide-project-attention').textContent).toMatch(/floating-output|Output not|Floating output/);
     });
     const attention = view.getByTestId('ide-project-attention');
-    expect(attention.textContent).toContain('Output');
+    // The lead problem is the RBEX4103 output blocker ("Floating output"), not missing evidence.
+    expect(attention.textContent).toContain('Floating output');
+    expect(attention.textContent).not.toMatch(/Compare|no evidence/i);
     expect(view.getByTestId('ide-project-fact-problems').textContent).not.toContain('none');
     fireEvent.click(within(attention).getByRole('button', { name: /^Open Design$/ }));
     await waitFor(() => expect(view.getByTestId('ide-root').getAttribute('data-ide-stage')).toBe('design'));

@@ -6,7 +6,7 @@ import {
   canonicalPrimitiveOutputPort,
   emitPrimitiveVhdl,
   isEmittablePrimitiveType,
-  isInitializedSequentialType,
+  sequentialPowerOnLevels,
   undrivenOutputMarker,
   undrivenOutputMessage,
   unresolvedDriverMarker,
@@ -375,10 +375,11 @@ function emitStructuralBody(
       connectedPorts: incomingPortsOf(node.id),
     });
     for (const error of emitted.errors) report(`${error} [in ${context.path}]`, node.id);
-    if (isInitializedSequentialType(node.type)) {
-      // Registers and latches power up at Q=0 / Q_inv=1, like the simulator.
-      signals.set(structuralSignalName(node.id, 'Q'), { type: 'STD_LOGIC', init: "'0'" });
-      signals.set(structuralSignalName(node.id, 'Q_inv'), { type: 'STD_LOGIC', init: "'1'" });
+    const powerOn = sequentialPowerOnLevels(node.type);
+    if (powerOn) {
+      // Registers and latches power up as the simulator's do (a DLatch at Q=1).
+      signals.set(structuralSignalName(node.id, 'Q'), { type: 'STD_LOGIC', init: powerOn.q });
+      signals.set(structuralSignalName(node.id, 'Q_inv'), { type: 'STD_LOGIC', init: powerOn.qInv });
     }
     statements.push(...emitted.lines);
     mapped.add(node.id, before, 'evaluation');

@@ -321,13 +321,15 @@ function connectedInputPorts(
  */
 function createDriverResolver(
   nodeIdToSignal: Map<string, string>,
-  logicNodeIds: Set<string>,
+  inputBoundaryIds: Set<string>,
   errors: string[],
 ): (from: { nodeId: string; port: string }) => string {
   return (from) => {
     const exact = nodeIdToSignal.get(`${from.nodeId}:${from.port}`);
     if (exact) return exact;
-    if (!logicNodeIds.has(from.nodeId) && from.port === 'out') {
+    // Only an input boundary publishes "out". A board OUTPUT publishes nothing in the simulator:
+    // a gate reading it reads its unconnected level there, and its port here is an output.
+    if (inputBoundaryIds.has(from.nodeId) && from.port === 'out') {
       const boundary = nodeIdToSignal.get(from.nodeId);
       if (boundary) return boundary;
     }
@@ -507,13 +509,18 @@ export function vhdlFromNetlist(
       nodeIdToSignal.set(`${node.id}:${alias}`, flatPrimitiveSignal(sigName, port));
     }
   });
-  const resolveDriver = createDriverResolver(nodeIdToSignal, new Set(logicNodes.map((node) => node.id)), errors);
+  const resolveDriver = createDriverResolver(nodeIdToSignal, new Set(inputNodes.map((node) => node.id)), errors);
 
   // ---- Check for unconnected outputs ----------------------------------------
   // Verify shows an output nothing drives as X (unknown). A board pin needs a
   // level, and inventing one would ship hardware nobody designed, so it blocks.
+  // A wire into a port the output does not read drives nothing in the simulator
+  // either: it is refused by name, and the output counts as undriven.
   outputNodes.forEach((outNode) => {
-    const hasDriver = netlist.nets.some((net) => net.to.nodeId === outNode.id);
+    const intoOutput = netlist.nets.filter((net) => net.to.nodeId === outNode.id);
+    const issues = primitiveInputConnectionIssues(outNode.id, outNode.type, undefined, [...new Set(intoOutput.map((net) => net.to.port))]);
+    for (const error of issues.errors) if (!errors.includes(error)) errors.push(error);
+    const hasDriver = intoOutput.some((net) => outputNodeReads(outNode.type, net.to.port));
     if (!hasDriver) {
       const binding = topOutputBindings?.find((entry) => entry.fromNodeId === outNode.id);
       const message = undrivenOutputMessage(binding ? topBindingSignalRef(binding) : nodeIdToSignal.get(outNode.id) ?? outNode.id, outNode.id);
@@ -606,14 +613,14 @@ export function vhdlFromNetlist(
       lines.push(`  signal ${sigName}_sum   : STD_LOGIC;`);
       lines.push(`  signal ${sigName}_carry : STD_LOGIC;`);
     } else {
-      const isInitializedSequential = INITIALIZED_SEQUENTIAL_TYPES.has(node.type);
+      const powerOn = sequentialPowerOnLevels(node.type);
       lines.push(
-        isInitializedSequential
-          ? `  signal ${sigName} : STD_LOGIC := '0';`
+        powerOn
+          ? `  signal ${sigName} : STD_LOGIC := ${powerOn.q};`
           : `  signal ${sigName} : STD_LOGIC;`,
       );
-      if (isInitializedSequential) {
-        lines.push(`  signal ${sigName}_inv : STD_LOGIC := '1';`);
+      if (powerOn) {
+        lines.push(`  signal ${sigName}_inv : STD_LOGIC := ${powerOn.qInv};`);
       }
     }
   });
@@ -658,10 +665,14 @@ export function vhdlFromNetlist(
         // input net — trace through the netlist to find the actual driver signal.
         // This fixes: entity declares 'ld0_node_in' but architecture body was
         // referencing undeclared 'LED(0)' from buildPortGroups.
-        const driverNet =
-          netlist.nets.find(
-            (n) => n.to.nodeId === binding.fromNodeId && n.to.port === binding.fromPort,
-          ) ?? netlist.nets.find((n) => n.to.nodeId === binding.fromNodeId);
+        // A row on a board output carries that output's value: whatever drives the port the
+        // output reads (older rows name the pin, not the port). A row on any other node binds
+        // only an output it publishes (above): a gate's "in" binds nothing, as in the
+        // simulator, and never one of the gate's inputs.
+        const boundNode = netlist.nodes.find((node) => node.id === binding.fromNodeId);
+        const driverNet = boundNode && OUTPUT_NODE_TYPES.has(boundNode.type)
+          ? netlist.nets.find((n) => n.to.nodeId === boundNode.id && outputNodeReads(boundNode.type, n.to.port))
+          : undefined;
 
         if (!driverNet) {
           const message = undrivenOutputMessage(topOutputSignalRef, binding.fromNodeId);
@@ -677,7 +688,7 @@ export function vhdlFromNetlist(
       const portExpr = nodeIdToSignal.get(outNode.id)!;
       // Find the net driving this output node's 'in' port
       const driverNet = netlist.nets.find(
-        (n) => n.to.nodeId === outNode.id && n.to.port === 'in',
+        (n) => n.to.nodeId === outNode.id && outputNodeReads(outNode.type, n.to.port),
       );
       if (!driverNet) {
         lines.push(`  ${portExpr} <= ${undrivenOutputMarker(portExpr)}; -- undriven output: blocked`);
@@ -709,9 +720,21 @@ export function vhdlFromNetlist(
 /** The outputs a supported primitive can drive. */
 export type PrimitiveOutputPort = 'out' | 'Q' | 'Q_inv' | 'sum' | 'carry';
 
-/** Primitive types whose Q / Q_inv start at 0 / 1, like the simulator's power-on state. */
-export function isInitializedSequentialType(type: string): boolean {
-  return INITIALIZED_SEQUENTIAL_TYPES.has(type);
+/**
+ * The simulator's power-on Q / Q_inv of a stateful primitive, as VHDL literals. Edge-triggered
+ * parts start at Q=0. A DLatch is cross-coupled NANDs that settle to Q=1 with its enable low,
+ * and the exported latch starts there too (it started at 0, so Verify and the shipped HDL
+ * disagreed until the first transparent phase).
+ */
+export function sequentialPowerOnLevels(type: string): { q: "'0'" | "'1'"; qInv: "'0'" | "'1'" } | null {
+  if (!INITIALIZED_SEQUENTIAL_TYPES.has(type)) return null;
+  return type === 'DLatch' ? { q: "'1'", qInv: "'0'" } : { q: "'0'", qInv: "'1'" };
+}
+
+/** Whether a board output reads a wire into this port (inputPinsOf; an OUTPUT reads "in"). */
+function outputNodeReads(type: string, port: string): boolean {
+  const pins = inputPinsOf(type, undefined);
+  return pins ? pins.some((pin) => pin.names.includes(port)) : port === 'in';
 }
 
 /** Whether emitPrimitiveVhdl can express this type. */

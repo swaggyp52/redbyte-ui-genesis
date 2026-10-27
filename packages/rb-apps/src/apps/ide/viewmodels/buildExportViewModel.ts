@@ -1249,7 +1249,7 @@ function buildTestbenchNote(
     if (runKind === 'trace') {
       return (
         `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
-        ` â€” trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
+        ` — trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
         `Expected-output comparison has not been confirmed yet.`
       );
     }
@@ -1283,7 +1283,7 @@ function buildTestbenchNote(
   const runStatus = runtimeVerifyRun?.status ?? null;
   const scheduleLabel = runtimeVerifyRun?.schedule ?? 'derived';
   if (runKind === 'trace') {
-    return `Vectors from project â€” trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
+    return `Vectors from project — trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
   }
   if (runStatus === 'pass') {
     return `Deterministic schedule from last Verify PASS (${scheduleLabel}${clockNote}).`;
@@ -1366,9 +1366,12 @@ function buildProvenanceHeader(
   const tbLine = fields.simulationTop
     ? `${c} Board: ${fields.board} | designTop: ${fields.designTop} | simulationTop: ${fields.simulationTop}`
     : `${c} Board: ${fields.board} | designTop: ${fields.designTop}`;
+  // A project name is one comment line: a line break in a loaded name would start an
+  // uncommented line in the shipped HDL.
+  const projectName = fields.projectName.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim();
   const projLine = fields.exportHash
-    ? `${c} Project: ${fields.projectName} | Export hash: ${fields.exportHash}`
-    : `${c} Project: ${fields.projectName}`;
+    ? `${c} Project: ${projectName} | Export hash: ${fields.exportHash}`
+    : `${c} Project: ${projectName}`;
   return [sep, `${c} RedByte IDE Export`, tbLine, projLine, `${c} Generated automatically — do not edit by hand.`, sep, ''].join('\n');
 }
 
