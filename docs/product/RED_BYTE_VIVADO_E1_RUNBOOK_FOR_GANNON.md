@@ -83,27 +83,29 @@ powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-collect.ps1 -
 
 If the collector reports missing packages, download the RedByte/Vivado ZIPs from production Export and put them in `.redbyte/vivado-e1-packages`.
 
+A design id selects its ZIP by exact file name, never by substring (`four-bit-adder` never picks up `four-bit-adder-hierarchical`). Keep the name Export gave the file, `rb-<design-id>-<suffix>-vivado-project.zip`, and keep one ZIP per design: a browser's renamed duplicate such as `... (1).zip` does not match, and two matching ZIPs are `BLOCKED_PACKAGE_AMBIGUOUS`.
+
 ## Run E1
 
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages -OutDir .redbyte/vivado-e1/<timestamp>
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages
 ```
 
-Replace `<timestamp>` with a simple run label such as `20260702-gannon-e1`.
+Each run creates a new `.redbyte/vivado-e1/<timestamp>/` folder and prints it as `runRoot=`; running the command again is safe and never reuses an earlier run. To name the folder yourself, add `-OutDir .redbyte/vivado-e1/<run-label>` with a label that has not been used: a folder that already holds files is refused (exit code 2), because a reused folder could mix an earlier extraction with the new ZIP.
 
 Optional route-only implementation dry run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages -OutDir .redbyte/vivado-e1/<timestamp>-impl-dry-run -IncludeImplementation
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages -IncludeImplementation
 ```
 
 This optional run still does not claim bitstream or board success.
 
 ## Send Results Back
 
-Send the entire `.redbyte/vivado-e1/<timestamp>/` folder back, including:
+Send the entire `runRoot=` folder (`.redbyte/vivado-e1/<timestamp>/`) back, including:
 
 - `manifest.json`
 - `results.md`
@@ -125,7 +127,8 @@ Use these meanings:
 - `FAIL_SYNTH`: synthesis failed.
 - `FAIL_IMPL_DRY_RUN`: optional implementation dry run failed.
 - `BLOCKED_NO_VIVADO`: Vivado is not installed or discoverable.
-- `BLOCKED_PACKAGE_MISSING`: a required ZIP was missing.
+- `BLOCKED_PACKAGE_MISSING`: no ZIP carried one of the design's exact names.
+- `BLOCKED_PACKAGE_AMBIGUOUS`: more than one ZIP matched the design id exactly; keep one per design.
 - `BLOCKED_UNSUPPORTED_CONSTRUCT`: static audit found unsupported content before Vivado certification.
 
 If Vivado fails, do not guess. Send the logs.

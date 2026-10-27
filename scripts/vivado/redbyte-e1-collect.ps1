@@ -39,14 +39,24 @@ function Write-JsonFile($Value, [string]$Path) {
   $Value | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
-function Find-DesignZip([string]$Root, [string]$DesignId) {
-  if (!(Test-Path -LiteralPath $Root)) {
-    return $null
+. (Join-Path $PSScriptRoot 'redbyte-e1-packages.ps1')
+
+# The design's one exactly named ZIP, or a record saying why there is none (missing or ambiguous).
+function Select-DesignZip([string]$Root, [string]$DesignId) {
+  $candidates = @(Find-RedByteDesignZips $Root $DesignId)
+  if ($candidates.Count -eq 1) {
+    return [ordered]@{ zip = $candidates[0]; record = $null }
   }
-  return Get-ChildItem -LiteralPath $Root -Filter '*.zip' -File -Recurse |
-    Where-Object { $_.Name -like "*$DesignId*" } |
-    Sort-Object LastWriteTimeUtc -Descending |
-    Select-Object -First 1
+  return [ordered]@{
+    zip = $null
+    record = [ordered]@{
+      designId = $DesignId
+      status = if ($candidates.Count -eq 0) { 'missing' } else { 'ambiguous' }
+      source = $Root
+      candidates = @($candidates | ForEach-Object { $_.FullName })
+      copiedTo = $null
+    }
+  }
 }
 
 $OutputZipDir = Resolve-RepoPath $OutputZipDir
@@ -58,14 +68,10 @@ switch ($Mode) {
   'ExistingZipDir' {
     $sourceRoot = Resolve-RepoPath $InputZipDir
     foreach ($designId in $DesignIds) {
-      $zip = Find-DesignZip $sourceRoot $designId
+      $selected = Select-DesignZip $sourceRoot $designId
+      $zip = $selected.zip
       if ($null -eq $zip) {
-        $records += [ordered]@{
-          designId = $designId
-          status = 'missing'
-          source = $sourceRoot
-          copiedTo = $null
-        }
+        $records += $selected.record
         continue
       }
 
@@ -98,13 +104,12 @@ switch ($Mode) {
       }
 
       $generatedRoot = Join-Path $RepoRoot ("out/vivado-cert/examples/{0}" -f $designId)
-      $zip = Find-DesignZip $generatedRoot $designId
+      $selected = Select-DesignZip $generatedRoot $designId
+      $zip = $selected.zip
       if ($null -eq $zip) {
-        $records += [ordered]@{
-          designId = $designId
-          status = 'generated-but-zip-missing'
-          source = $generatedRoot
-        }
+        $record = $selected.record
+        $record.status = "generated-but-zip-$($record.status)"
+        $records += $record
         continue
       }
 
