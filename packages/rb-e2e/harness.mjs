@@ -57,3 +57,15 @@ export function evidenceDir(...segments) {
  * Playwright's own default is generous; journeys want to fail fast and say why.
  */
 export const DEFAULT_TIMEOUT_MS = Number(process.env.RB_E2E_TIMEOUT_MS ?? 15000);
+
+/**
+ * Turn on the Time instrument's explicit "Edit stimulus" mode (RB-DEBT-020). While a recording
+ * is on screen a click, Space or Enter on a lane cell only selects; a journey that authors
+ * stimulus there presses the toggle first, as a student does. Idempotent.
+ */
+export async function editStimulus(page) {
+  const toggle = page.getByTestId('ide-timing-edit-mode');
+  await toggle.waitFor({ state: 'visible' });
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') throw new Error('Edit stimulus did not turn on');
+}

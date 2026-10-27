@@ -1,4 +1,4 @@
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,7 +26,8 @@ try {
    await tid('ide-design-test-design').click();await tid('ide-vcb-run').click();
    const before=await tid('ide-run-output-digest').getAttribute('data-digest');
    const cell=page.locator('[data-testid^="ide-timing-cell-"][data-testid$="-2"]:not([data-generated="true"])').first();
-   const value=await cell.getAttribute('aria-label');await cell.click();
+   // The recording is on screen, so editing its stimulus is the explicit mode (RB-DEBT-020).
+   const value=await cell.getAttribute('aria-label');await editStimulus(page);await cell.click();
    assert.notEqual(await cell.getAttribute('aria-label'),value);
    await tid('ide-vcb-run').click();
    assert.notEqual(await tid('ide-run-output-digest').getAttribute('data-digest'),before);

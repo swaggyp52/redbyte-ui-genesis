@@ -7495,6 +7495,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             generatedFieldIds={timingGeneratedFieldIds}
             generatedValueAt={timingGeneratedValueAt}
             generatedNote={timingGeneratedNote}
+            // RB-DEBT-020: the recording on screen and its investigation decide when the lab
+            // inspects; editing the stimulus is the student's explicit choice.
+            recordingId={lastRun ? getRuntimeVerifyRunId(lastRun) : null}
+            inspecting={Boolean(inspectCircuit && lastRun)}
           />
         ) : (
           <CaseLab

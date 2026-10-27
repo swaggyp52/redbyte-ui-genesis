@@ -1,5 +1,5 @@
 // D1–D3: the user can see and reproduce a retained execution, through actual controls.
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,6 +38,11 @@ try {
   assert.equal(await tid('ide-verify-view-waveform').count(), 0, 'The recorded outputs remain on the authoring time axis');
   const inputCell = page.locator('[data-testid^="ide-timing-cell-"][data-testid$="-2"]:not([data-generated="true"])').first();
   const beforeInput = await inputCell.getAttribute('aria-label');
+  // RB-DEBT-020: with the recording on screen a click only selects; editing is the explicit mode.
+  await inputCell.click();
+  assert.equal(await inputCell.getAttribute('aria-label'), beforeInput, 'A click while inspecting the recording never edits the stimulus');
+  assert.equal(await tid('ide-run-input-changes').count(), 0, 'Inspecting leaves the recording current');
+  await editStimulus(page);
   await inputCell.click();
   assert.notEqual(await inputCell.getAttribute('aria-label'), beforeInput, 'The edit changes the authored stimulus');
   assert.match(await tid('ide-run-input-changes').innerText(), /Stimulus changed/);

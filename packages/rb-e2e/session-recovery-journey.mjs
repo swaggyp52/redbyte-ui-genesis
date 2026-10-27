@@ -1,6 +1,6 @@
 // Real UI recovery under an environmental IndexedDB write failure. No runtime
 // mutation: the injected fault changes only the browser's storage capability.
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -60,6 +60,8 @@ try {
     };
   });
   if (await tid('ide-verify-view-timeline').count()) await tid('ide-verify-view-timeline').click();
+  // The recording is on screen: editing its stimulus is the explicit mode (RB-DEBT-020).
+  await editStimulus(page);
   await page.getByRole('gridcell', { name: /^EN at t2:/ }).click();
   const edited = await state();
   assert.notDeepEqual(edited.scenarios, before.scenarios);

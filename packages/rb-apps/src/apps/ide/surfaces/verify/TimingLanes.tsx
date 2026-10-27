@@ -8,9 +8,11 @@ import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas'
 // Timing lanes — the sequential authoring instrument. A horizontal tick ruler,
 // one lane per driven input (clock first, reset next), one lane per output with
 // the expected value overlaid on the observed trace, edge markers on the ruler,
-// the selected tick as a column. Clicking an input cell drives that input at
-// that tick (creating the event if the tick has none); clicking an output cell
-// selects that recorded value. Optional checks are edited explicitly in the event editor.
+// the selected tick as a column. A click on any cell selects that signal and tick.
+// Only while `editable` (the lab's explicit "Edit stimulus" mode) does a click, Space
+// or Enter on an input cell also drive that input at that tick (creating the event if
+// the tick has none); otherwise the stimulus is read-only (RB-DEBT-020). Recorded
+// values are never edited here. Optional checks are edited explicitly in the event editor.
 
 export interface TimingLanesProps {
   readonly vectors: readonly VerifyAuthorVector[];
@@ -28,7 +30,10 @@ export interface TimingLanesProps {
   readonly cursorB?: number | null;
   readonly onSetCursorA?: (tick: number | null) => void;
   readonly onSetCursorB?: (tick: number | null) => void;
+  /** A click, Space or Enter on an authored input cell edits it. Off, every gesture only selects. */
   readonly editable: boolean;
+  /** What the stimulus heading says about editing ("editing", "cells select while inspecting"). */
+  readonly stimulusNote?: string;
   readonly observedValuesByTick?: Readonly<Record<number, Readonly<Record<string, string>>>>;
   readonly caseEvidenceByTick?: Readonly<Record<number, StimulusCaseEvidenceState>>;
   readonly onSelectTick: (tick: number) => void;
@@ -95,6 +100,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
   selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
   playbackControls, selectionReadout = true, formatObservedValue = value => value, showExpectedOverlay = true,
   editable,
+  stimulusNote,
   observedValuesByTick,
   caseEvidenceByTick,
   onSelectTick,
@@ -292,8 +298,10 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
     <div
       className="rb-tl"
       data-testid="ide-timing-lanes"
+      data-stimulus-editing={editable ? 'true' : 'false'}
       role="grid"
-      aria-label="Timing lanes — up and down select a signal; left and right move the tick; Shift with left or right moves to a clock edge; Space edits the selected driven input"
+      aria-label={`Timing lanes — up and down select a signal; left and right move the tick; Shift with left or right moves to a clock edge; ${
+        editable ? 'Space or Enter edits the selected driven input' : 'the stimulus is read-only, Space and Enter only select'}`}
       tabIndex={0}
       onKeyDown={(event) => {
         // Child buttons retain their own keyboard action. The grid is one tab stop,
@@ -310,8 +318,11 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
         }
         if (event.key === ' ' || event.key === 'Enter') {
           const field = lanes.find((entry) => entry.label === selectedSignal);
-          if (editable && selectedTick != null && field && !generatedFieldIds?.has(field.id)) {
-            event.preventDefault();
+          if (selectedTick == null || !field) return;
+          // The key acts on the cell at the cursor, which the cursor already selects. It edits
+          // only in edit mode; while inspecting it changes nothing (and does not scroll the page).
+          event.preventDefault();
+          if (editable && !generatedFieldIds?.has(field.id)) {
             onDriveInput(selectedTick, field.id, inputAt(field.id, selectedTick) === 1 ? 0 : 1);
           }
           return;
@@ -373,7 +384,9 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
             ))}
           </g>
           {/* group headers */}
-          <text className="rb-tl-group" x={8} y={RULER_H + GROUP_H - 5}>Stimulus · current draft</text>
+          <text className="rb-tl-group rb-tl-group--draft" x={8} y={RULER_H + GROUP_H - 5} data-testid="ide-timing-stimulus-heading">
+            {`Stimulus · current draft${stimulusNote ? ` · ${stimulusNote}` : ''}`}
+          </text>
           <line className="rb-tl-group-rule" x1={0} x2={width} y1={RULER_H + GROUP_H} y2={RULER_H + GROUP_H} />
           <text className="rb-tl-group" x={8} y={outputsTop - 5}>{observedTicks.length ? 'Recorded signals' : 'Checks · no recording'}</text>
           <line className="rb-tl-group-rule" x1={0} x2={width} y1={outputsTop} y2={outputsTop} />
@@ -410,6 +423,14 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                 data-generated={isGenerated ? 'true' : undefined}
               >
                 {isGenerated && generatedNote ? <title>{generatedNote}</title> : null}
+                {/* Edit mode marks the lanes a click will change: a tinted band with a rule at its
+                    edge. Inspecting, a draft lane is drawn like any other and a click only selects. */}
+                {editable && !isGenerated ? (
+                  <g className="rb-tl-draft-edit" data-testid={`ide-timing-draft-edit-${field.id}`}>
+                    <rect className="rb-tl-draft-band" x={0} y={top} width={width} height={LANE_H} />
+                    <rect className="rb-tl-draft-rule" x={0} y={top} width={3} height={LANE_H} />
+                  </g>
+                ) : null}
                 <line className="rb-tl-lane-rule" x1={0} x2={width} y1={top + LANE_H} y2={top + LANE_H} />
                 <title>{field.label}</title>
                 <text className="rb-tl-label" x={8} y={top + LANE_H / 2 + 4}>
@@ -440,7 +461,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                       height={LANE_H}
                       role="gridcell"
                       aria-label={`${field.label} at t${tick}: ${value}${isGenerated ? ' (generated by the clock policy)' : ''}`}
-                      aria-readonly={isGenerated ? 'true' : undefined}
+                      aria-readonly={isGenerated || !editable ? 'true' : undefined}
                       data-generated={isGenerated ? 'true' : undefined}
                       data-testid={`ide-timing-cell-${field.id}-${tick}`}
                       onClick={() => {
@@ -491,7 +512,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                   const word = wordAt(group, tick);
                   return (
                     <rect key={tick} className="rb-tl-cell rb-tl-cell--word" x={x(tick)} y={top} width={TICK_W} height={LANE_H}
-                      role="gridcell"
+                      role="gridcell" aria-readonly="true"
                       aria-label={`${group.label} at t${tick}: ${word ? `${word.value}, binary ${word.bits}` : 'unrecorded'}`}
                       data-word-value={word ? word.value : 'unrecorded'}
                       data-testid={`ide-timing-word-${group.base}-${tick}`}
@@ -545,6 +566,7 @@ export const TimingLanes: React.FC<TimingLanesProps> = ({
                         width={TICK_W}
                         height={LANE_H}
                         role="gridcell"
+                        aria-readonly="true"
                         aria-label={`${field.label} at t${tick}: expected ${expected ?? 'unset'}, observed ${observed ?? 'unrecorded'}`}
                         data-observed-value={observed ?? 'unrecorded'}
                         data-testid={`ide-timing-check-${field.id}-${tick}`}

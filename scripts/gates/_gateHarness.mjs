@@ -20,6 +20,18 @@ export async function visible(locator) {
   return locator.first().isVisible().catch(() => false);
 }
 
+/**
+ * Turn on the Time instrument's explicit "Edit stimulus" mode (RB-DEBT-020). While a recording
+ * is on screen a click, Space or Enter on a lane cell only selects; a gate that authors stimulus
+ * there presses the toggle first, as a student does. Idempotent.
+ */
+export async function editStimulus(page) {
+  const toggle = page.getByTestId('ide-timing-edit-mode');
+  await toggle.waitFor({ state: 'visible' });
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
+  assert((await toggle.getAttribute('aria-pressed')) === 'true', 'Edit stimulus must turn on through its toolbar toggle');
+}
+
 
 export async function openDesignBoardPalette(page) {
   const reveal = page.locator('[data-testid="ide-show-left-dock"]').first();

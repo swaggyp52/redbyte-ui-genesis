@@ -616,6 +616,16 @@
 .ide-root .rb-tl-cell { fill: transparent; cursor: pointer; }
 .ide-root .rb-tl-cell:hover { fill: var(--wb-hover-bg); }
 .ide-root .rb-tl-cell.is-fail { fill: transparent; }
+/* Edit stimulus (RB-DEBT-020). Inspecting, every cell only selects and the draft lanes read like
+   the recorded ones. Editing, the lanes a click will change carry a tinted band, an accent rule
+   and the cell cursor, so an edit never looks like a selection. */
+.ide-root .rb-tl-draft-edit { pointer-events: none; }
+.ide-root .rb-tl-draft-band { fill: var(--wb-accent-bg); }
+.ide-root .rb-tl-draft-rule { fill: var(--wb-accent); }
+.ide-root .rb-tl[data-stimulus-editing='true'] .rb-tl-lane--input:not(.is-generated) .rb-tl-cell { cursor: cell; }
+.ide-root .rb-tl[data-stimulus-editing='true'] .rb-tl-lane--input:not(.is-generated) .rb-tl-cell:hover { fill: var(--wb-accent-bg-strong); }
+.ide-root .rb-tl[data-stimulus-editing='true'] .rb-tl-group--draft { fill: var(--wb-text); }
+.ide-root .rb-timing-edit-mode { flex: none; }
 .ide-root .rb-tl-mismatch-background { fill: var(--wb-err-bg); pointer-events: none; }
 .ide-root .rb-tl-expected line { stroke: var(--wb-text-2); stroke-width: 2; stroke-dasharray: 3 2; }
 .ide-root .rb-tl-expected.is-pass line { stroke: var(--wb-ok); }
