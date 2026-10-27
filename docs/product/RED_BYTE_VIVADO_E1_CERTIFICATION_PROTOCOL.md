@@ -69,11 +69,12 @@ Mode A, existing ZIP directory:
 powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 `
   -Mode Certify `
   -PackageSource ExistingZipDir `
-  -PackageDir C:\path\to\downloaded-zips `
-  -OutDir .redbyte/vivado-e1/<timestamp>
+  -PackageDir C:\path\to\downloaded-zips
 ```
 
-`-PackageDir` is an alias for the older `-ZipDir` parameter. `-OutDir` writes to that exact run folder; if omitted, the harness creates `.redbyte/vivado-e1/<timestamp>/`.
+`-PackageDir` is an alias for the older `-ZipDir` parameter. Without `-OutDir` the harness creates a new `.redbyte/vivado-e1/<timestamp>/` run folder and prints it as `runRoot=`. `-OutDir` names the run folder instead; it must not exist yet or be empty. A folder that already holds files is refused before anything is written (exit code 2): a reused folder could hold an earlier run's extraction, logs and manifest.
+
+Each design's ZIP is copied into `designs/<design-id>/package.zip`, hashed, and extracted into the new folder `designs/<design-id>/extracted/`. The package must hold exactly one `.xpr` project; zero or several is `FAIL_IMPORT`, and Vivado is not started. The manifest binds `zipSha256`, `xprZipEntry` (the `.xpr` path inside the ZIP), `files.xpr` (the extracted path) and `xprSha256` (taken before Vivado opens the project) to that one copy.
 
 Mode B, production browser ZIPs:
 
@@ -124,7 +125,7 @@ powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -
 Real E1:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips> -OutDir .redbyte/vivado-e1/<timestamp>
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips>
 ```
 
 Optional route-only implementation dry run:

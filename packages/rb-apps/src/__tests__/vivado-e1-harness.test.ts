@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -315,18 +316,52 @@ describe.skipIf(!TCLSH || !ghdlAvailable)('redbyte-e1-certify.tcl with GHDL stan
   }, 180_000);
 });
 
-async function writePackageZip(project: RBProject, dir: string, designId: string): Promise<void> {
+function sha256(bytes: Uint8Array | string): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+interface PackageOptions {
+  /** Project folder slug inside the ZIP (defaults to the project's own). */
+  slug?: string;
+  /** Rewrites top.vhd before packaging. */
+  editTop?: (topVhd: string) => string;
+  /** Adds a second .xpr project file next to the real one. */
+  extraXpr?: boolean;
+}
+
+interface WrittenPackage {
+  path: string;
+  sha256: string;
+  /** SHA-256 of the .xpr entry inside the ZIP. */
+  xprSha256: string;
+}
+
+async function writePackageZip(project: RBProject, dir: string, fileName: string, options: PackageOptions = {}): Promise<WrittenPackage> {
   const vm = buildExportViewModel(project);
   expect(vm.status).toBe('ok');
-  const bytes = await buildVivadoProjectFolderZip({
-    artifacts: vm.artifacts.map((a) => ({ path: a.path, content: a.content })),
+  const slug = options.slug ?? deriveVivadoProjectSlug(project.meta?.projectId ?? project.name);
+  let bytes = await buildVivadoProjectFolderZip({
+    artifacts: vm.artifacts.map((a) => ({
+      path: a.path,
+      content: a.path === 'top.vhd' && options.editTop ? options.editTop(a.content) : a.content,
+    })),
     projectName: project.name,
-    projectSlug: deriveVivadoProjectSlug(project.meta?.projectId ?? project.name),
+    projectSlug: slug,
     topModule: vm.topAuthority.designTop,
     part: project.fpga?.part,
   });
-  await JSZip.loadAsync(bytes);
-  writeFileSync(join(dir, `${designId}-vivado-project.zip`), bytes);
+  const zip = await JSZip.loadAsync(bytes);
+  const xprEntry = zip.file(`${slug}/${slug}.xpr`);
+  expect(xprEntry).not.toBeNull();
+  const xprBytes = await xprEntry!.async('uint8array');
+  if (options.extraXpr) {
+    zip.file(`${slug}/zzz-second.xpr`, xprBytes);
+    bytes = await zip.generateAsync({ type: 'uint8array' });
+  }
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, fileName);
+  writeFileSync(path, bytes);
+  return { path, sha256: sha256(bytes), xprSha256: sha256(xprBytes) };
 }
 
 interface WrapperOutcome {
@@ -335,7 +370,13 @@ interface WrapperOutcome {
   manifest: Record<string, any> | null;
 }
 
-function runWrapper(root: string, scenario: string, designId: string, timeoutMinutes = '5'): WrapperOutcome {
+interface WrapperOptions {
+  zipDir?: string;
+  out?: string;
+  timeoutMinutes?: string;
+}
+
+function runWrapper(root: string, scenario: string, designId: string, options: WrapperOptions = {}): WrapperOutcome {
   const fakeDir = join(root, 'fake');
   mkdirSync(fakeDir, { recursive: true });
   copyFileSync(join(FIXTURES, 'fake-vivado.tcl'), join(fakeDir, 'fake-vivado.tcl'));
@@ -343,11 +384,11 @@ function runWrapper(root: string, scenario: string, designId: string, timeoutMin
     join(fakeDir, 'vivado.cmd'),
     `@echo off\r\n"${TCLSH}" "%~dp0fake-vivado.tcl" %*\r\nexit /b %ERRORLEVEL%\r\n`,
   );
-  const out = join(root, `out-${scenario}`);
+  const out = options.out ?? join(root, `out-${scenario}`);
   const run = spawnSync(
     'powershell.exe',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CERTIFY_PS1, '-Mode', 'Certify', '-ZipDir', join(root, 'zips'),
-      '-OutDir', out, '-DesignIds', designId, '-VivadoPath', join(fakeDir, 'vivado.cmd'), '-TimeoutMinutes', timeoutMinutes],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CERTIFY_PS1, '-Mode', 'Certify', '-ZipDir', options.zipDir ?? join(root, 'zips'),
+      '-OutDir', out, '-DesignIds', designId, '-VivadoPath', join(fakeDir, 'vivado.cmd'), '-TimeoutMinutes', options.timeoutMinutes ?? '5'],
     { encoding: 'utf8', env: { ...process.env, FAKE_SCENARIO: scenario }, timeout: 300_000 },
   );
   const manifestPath = join(out, 'manifest.json');
@@ -361,15 +402,20 @@ function runWrapper(root: string, scenario: string, designId: string, timeoutMin
 describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real package and a fake Vivado', () => {
   const designId = 'fs-comb-switch-and';
 
-  async function withPackage<T>(fn: (root: string) => T): Promise<T> {
+  async function withRoot<T>(fn: (root: string) => Promise<T> | T): Promise<T> {
     const root = mkdtempSync(join(tmpdir(), 'rb-e1-ps1-'));
-    mkdirSync(join(root, 'zips'));
-    await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), designId);
     try {
-      return fn(root);
+      return await fn(root);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  }
+
+  async function withPackage<T>(fn: (root: string) => T): Promise<T> {
+    return withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`);
+      return fn(root);
+    });
   }
 
   it.each([
@@ -396,11 +442,52 @@ describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real packa
 
   it('a hung Vivado is stopped at the wall-clock limit and is a TIMEOUT', async () => {
     await withPackage((root) => {
-      const outcome = runWrapper(root, 'wallclock-hang', designId, '0.1');
+      const outcome = runWrapper(root, 'wallclock-hang', designId, { timeoutMinutes: '0.1' });
       const design = outcome.manifest!.designs[0];
       expect(design.classification, outcome.output).toBe('TIMEOUT');
       expect(design.vivadoRun.timedOut).toBe(true);
       expect(design.vivadoRun.lastStage).toBe('E1c-behavioral-sim');
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('a reused -OutDir is refused: a new ZIP is never certified against an earlier extraction', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      const first = await writePackageZip(project, join(root, 'zips-first'), 'lab-vivado-project.zip', { slug: 'aaa-lab' });
+      const second = await writePackageZip(project, join(root, 'zips-second'), 'lab-vivado-project.zip', { slug: 'zzz-lab' });
+      const out = join(root, 'out-reused');
+
+      const run1 = runWrapper(root, 'pass', 'lab', { zipDir: join(root, 'zips-first'), out });
+      expect(run1.manifest?.verdict, run1.output).toBe('pass-e1');
+      const manifestBefore = read(join(out, 'manifest.json'));
+
+      const run2 = runWrapper(root, 'pass', 'lab', { zipDir: join(root, 'zips-second'), out });
+      const recorded = run2.manifest?.designs?.[0];
+      expect(run2.status, `zip ${recorded?.zipSha256} certified with xpr ${recorded?.files?.xpr}\n${run2.output}`).toBe(2);
+      expect(run2.output).toMatch(/refused: output folder .* is not empty/);
+      expect(read(join(out, 'manifest.json'))).toBe(manifestBefore);
+      expect(run1.manifest!.designs[0].zipSha256).toBe(first.sha256);
+
+      // A fresh folder analyses only the ZIP it names, and the manifest binds ZIP, .xpr path and .xpr hash.
+      const fresh = runWrapper(root, 'pass', 'lab', { zipDir: join(root, 'zips-second'), out: join(root, 'out-fresh') });
+      const design = fresh.manifest!.designs[0];
+      expect(design.classification, fresh.output).toBe('PASS_E1');
+      expect(design.zipSha256).toBe(second.sha256);
+      expect(design.xprZipEntry).toBe('zzz-lab/zzz-lab.xpr');
+      expect(design.files.xpr).toMatch(/[\\/]extracted[\\/]zzz-lab[\\/]zzz-lab\.xpr$/);
+      expect(design.xprSha256).toBe(second.xprSha256);
+    });
+  }, 300_000);
+
+  it('a package holding two .xpr projects is a named FAIL_IMPORT and never reaches Vivado', async () => {
+    await withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`, { extraXpr: true });
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, outcome.output).toBe('FAIL_IMPORT');
+      expect(design.issues.join('\n')).toMatch(/exactly one \.xpr project; found 2/);
+      expect(design.vivadoRun.attempted).toBe(false);
       expect(outcome.status).toBe(1);
     });
   }, 300_000);

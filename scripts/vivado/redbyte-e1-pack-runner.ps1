@@ -160,7 +160,6 @@ $packageReadme += 'powershell -ExecutionPolicy Bypass -File scripts/vivado/redby
 $packageReadme += '```'
 Set-Content -LiteralPath (Join-Path $PackagesRoot 'README.md') -Value $packageReadme -Encoding UTF8
 
-$runTimestamp = '<timestamp>'
 $readme = @(
   '# RedByte Vivado E1 Run Kit',
   '',
@@ -186,17 +185,19 @@ $readme = @(
   'git pull --ff-only origin main',
   'git rev-parse HEAD',
   'powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-collect.ps1 -OutDir .redbyte/vivado-e1-packages',
-  ('powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages -OutDir .redbyte/vivado-e1/{0}' -f $runTimestamp),
+  'powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages',
   '```',
   '',
   'The `git rev-parse HEAD` output should match the intended pushed SHA before the run. If it does not, stop and report the mismatch.',
+  '',
+  'Each certify run writes a new `.redbyte/vivado-e1/<timestamp>/` folder and prints it as `runRoot=`. Re-running the command is safe: it never reuses an earlier run folder. An explicit `-OutDir` must name a folder that does not exist yet (or is empty); a used one is refused with exit code 2.',
   '',
   '## One-Command Certification Shape',
   '',
   'If ZIPs are already collected in one folder, run this from the repo root:',
   '',
   '```powershell',
-  ('powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips> -OutDir .redbyte/vivado-e1/{0}' -f $runTimestamp),
+  'powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips>',
   '```',
   '',
   '## Kit Package Folder',
@@ -205,7 +206,7 @@ $readme = @(
   '',
   '## Required Return Artifacts',
   '',
-  'Send back these files from the output folder:',
+  'Send back these files from the `runRoot=` output folder:',
   '',
   '- `manifest.json`',
   '- `results.md`',

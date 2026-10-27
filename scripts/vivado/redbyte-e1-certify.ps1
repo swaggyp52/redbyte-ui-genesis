@@ -1,7 +1,9 @@
 <#
 Run a RedByte Vivado E1 certification checkpoint.
 
-This wrapper creates a durable proof folder under .redbyte/vivado-e1/<timestamp>/.
+This wrapper creates a durable proof folder under .redbyte/vivado-e1/<timestamp>/ (or -OutDir,
+which must not exist yet or be empty: a reused folder is refused with exit 2). Each design's ZIP is
+copied, hashed and extracted into a new folder, and must hold exactly one .xpr project.
 It can run as:
   - EnvCheck: records local environment and Vivado discovery only.
   - DryRun: inspects candidate ZIP packages and records whether a real E1 run is blocked.
@@ -207,10 +209,21 @@ function Find-FirstFileByName([string]$Root, [string]$Name) {
     Select-Object -First 1
 }
 
-function Find-FirstXpr([string]$Root) {
-  return Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.xpr' |
-    Sort-Object FullName |
-    Select-Object -First 1
+# Every .xpr in a freshly extracted package; E1 analyses a package only when there is exactly one.
+function Find-XprFiles([string]$Root) {
+  return @(Get-ChildItem -LiteralPath $Root -Recurse -File |
+    Where-Object { $_.Extension -ieq '.xpr' } |
+    Sort-Object FullName)
+}
+
+function Get-Sha256([string]$Path) {
+  return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+}
+
+# Refuses the whole run before anything is written; nonzero, and never a pass.
+function Stop-E1Run([string]$Message) {
+  [Console]::Error.WriteLine("RedByte E1: refused: $Message")
+  exit 2
 }
 
 function Read-TextFile($FileInfo) {
@@ -274,31 +287,51 @@ function Get-PackageRoot([string]$ExtractRoot, $XprFile) {
   return $ExtractRoot
 }
 
+function New-UnanalysedResult([string]$DesignId, [string]$Classification, [string[]]$Issues) {
+  return [ordered]@{
+    designId = $DesignId
+    classification = $Classification
+    packagePresent = $false
+    zipPath = $null
+    packageRoot = $null
+    issues = $Issues
+    warnings = @()
+    e1 = [ordered]@{ import = $false; compile = $false; testbench = $false; synthesis = $false; implementationDryRun = $false }
+  }
+}
+
 function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoInfo, [string]$Mode) {
-  $designOut = Join-Path $RunRoot ("designs/{0}" -f $DesignId)
+  $designOut = [System.IO.Path]::GetFullPath((Join-Path $RunRoot ("designs\{0}" -f $DesignId)))
   $extractRoot = Join-Path $designOut 'extracted'
   $logsRoot = Join-Path $designOut 'logs'
+  # The run folder started empty, so an existing design folder can only be a reuse; never analyse it.
+  if (Test-Path -LiteralPath $designOut) {
+    return New-UnanalysedResult $DesignId 'HARNESS_ERROR' @("$designOut already exists; E1 never reuses an extraction.")
+  }
   New-Directory $designOut
-  New-Directory $extractRoot
   New-Directory $logsRoot
 
   if ($null -eq $ZipFile) {
-    return [ordered]@{
-      designId = $DesignId
-      classification = 'BLOCKED_PACKAGE_MISSING'
-      packagePresent = $false
-      zipPath = $null
-      packageRoot = $null
-      issues = @('No ZIP package matched this design id.')
-      warnings = @()
-      e1 = [ordered]@{ import = $false; compile = $false; testbench = $false; synthesis = $false; implementationDryRun = $false }
-    }
+    return New-UnanalysedResult $DesignId 'BLOCKED_PACKAGE_MISSING' @('No ZIP package matched this design id.')
   }
 
-  $zipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipFile.FullName).Hash.ToLowerInvariant()
-  Expand-Archive -LiteralPath $ZipFile.FullName -DestinationPath $extractRoot -Force
+  # Hash, extract and inspect one private copy, so every recorded fact comes from the same bytes,
+  # extracted into a folder that did not exist before this run.
+  $packageZip = Join-Path $designOut 'package.zip'
+  Copy-Item -LiteralPath $ZipFile.FullName -Destination $packageZip
+  $zipHash = Get-Sha256 $packageZip
+  New-Item -ItemType Directory -Path $extractRoot | Out-Null
+  $extractIssue = $null
+  try {
+    Expand-Archive -LiteralPath $packageZip -DestinationPath $extractRoot
+  } catch {
+    $extractIssue = "The ZIP could not be extracted: $($_.Exception.Message)"
+  }
 
-  $xpr = Find-FirstXpr $extractRoot
+  $xprFiles = @(Find-XprFiles $extractRoot)
+  $xpr = if ($xprFiles.Count -eq 1) { $xprFiles[0] } else { $null }
+  $xprSha256 = if ($xpr) { Get-Sha256 $xpr.FullName } else { $null }
+  $xprZipEntry = if ($xpr) { $xpr.FullName.Substring($extractRoot.Length).TrimStart('\', '/').Replace('\', '/') } else { $null }
   $packageRoot = Get-PackageRoot $extractRoot $xpr
   $rbproj = Find-FirstFileByName $packageRoot 'project.rbproj.json'
   $readme = Find-FirstFileByName $packageRoot 'README.txt'
@@ -321,8 +354,15 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
 
   $issues = @()
   $warnings = @()
+  if ($null -ne $extractIssue) {
+    $issues += $extractIssue
+  }
+  if ($xprFiles.Count -gt 1) {
+    $relative = @($xprFiles | ForEach-Object { $_.FullName.Substring($extractRoot.Length).TrimStart('\', '/') })
+    $issues += "A package must hold exactly one .xpr project; found $($xprFiles.Count): $($relative -join ', ')"
+  }
   foreach ($key in $files.Keys) {
-    if ($null -eq $files[$key]) {
+    if ($null -eq $files[$key] -and !($key -eq 'xpr' -and $xprFiles.Count -gt 1)) {
       $issues += "Missing required package file: $key"
     }
   }
@@ -519,7 +559,13 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
     classification = $classification
     packagePresent = $true
     zipPath = $ZipFile.FullName
+    # zipSha256, xprZipEntry and xprSha256 all describe package.zip, the copy extracted into the
+    # fresh extractRoot; the .xpr hash is taken before Vivado opens (and may rewrite) the project.
     zipSha256 = $zipHash
+    packageZip = $packageZip
+    extractRoot = $extractRoot
+    xprZipEntry = $xprZipEntry
+    xprSha256 = $xprSha256
     packageRoot = $packageRoot
     project = $projectSummary
     files = $files
@@ -598,6 +644,13 @@ if ($OutDir.Trim().Length -gt 0) {
   $RunRoot = Resolve-RepoPath $OutDir
 } else {
   $RunRoot = Join-Path (Resolve-RepoPath $OutputRoot) $Timestamp
+}
+# Every run writes into a folder of its own. A reused folder still holds an earlier run's
+# extraction, logs and manifest, which a new run could silently analyse or mix with its own.
+if (Test-Path -LiteralPath $RunRoot) {
+  if (!(Test-Path -LiteralPath $RunRoot -PathType Container) -or @(Get-ChildItem -LiteralPath $RunRoot -Force).Count -gt 0) {
+    Stop-E1Run "output folder $RunRoot is not empty. E1 never reuses a run folder: omit -OutDir to get a new .redbyte/vivado-e1/<timestamp>/ folder, or pass a folder that does not exist yet."
+  }
 }
 $LogsRoot = Join-Path $RunRoot 'logs'
 New-Directory $RunRoot
