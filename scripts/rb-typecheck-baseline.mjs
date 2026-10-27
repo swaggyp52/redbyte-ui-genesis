@@ -7,9 +7,13 @@
 // product. "Typecheck passed" was therefore not a statement about rb-apps at all, and
 // "778 unchanged" was a number from a command nothing in the repository encoded.
 //
-// This script encodes the scope, records the fingerprint, and fails on an INCREASE. It does not
-// hide the existing diagnostics, suppress them, or loosen any compiler setting: the baseline is
-// committed in full so the count, the shape and the owning files are all reviewable.
+// This script encodes the scope, records the fingerprint, and fails on ANY CHANGE: an increase, a
+// new file+code pair at an equal count (a diagnostic moved or a new kind appeared), and a decrease
+// that has not been re-recorded. The last one matters: a baseline left at 778 after rb-apps reached
+// 0 let up to 778 new diagnostics in unnoticed (found 2026-10-26). An improvement is locked in only
+// by re-recording it. It does not hide the existing diagnostics, suppress them, or loosen any
+// compiler setting: the baseline is committed in full so the count, the shape and the owning files
+// are all reviewable.
 //
 //   node scripts/rb-typecheck-baseline.mjs            compare against the committed baseline
 //   node scripts/rb-typecheck-baseline.mjs --write    re-record it (say why in the commit)
@@ -23,7 +27,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, SCOPES, parseDiagnostics, resolveTsc } from './rb-typecheck-scope.mjs';
+import { BASELINE_SCOPES, ROOT, parseDiagnostics, resolveTsc } from './rb-typecheck-scope.mjs';
 
 const BASELINE = path.join(ROOT, 'docs', 'validation', 'typecheck-baseline.json');
 
@@ -59,7 +63,7 @@ function run(scope, tsc) {
 
 const tsc = resolveTsc();
 const version = spawnSync(process.execPath, [tsc, '--version'], { encoding: 'utf8' }).stdout.trim();
-const measured = { compiler: version, node: process.version, scopes: SCOPES.map((scope) => run(scope, tsc)) };
+const measured = { compiler: version, node: process.version, scopes: BASELINE_SCOPES.map((scope) => run(scope, tsc)) };
 
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(measured, null, 2));
@@ -94,14 +98,27 @@ for (const scope of measured.scopes) {
   console.log(
     `[typecheck-baseline] ${scope.scope}: ${scope.total} diagnostics (${delta >= 0 ? '+' : ''}${delta}), shape ${shape}, exit ${scope.exitCode}`
   );
-  if (delta > 0) {
+  const worse = Object.entries(scope.byFile).filter(([file, count]) => (before.byFile[file] ?? 0) < count);
+  if (delta > 0 || worse.length > 0) {
+    // More diagnostics, or a file that now has more than it did (a new diagnostic hidden behind
+    // a fix elsewhere at the same total): both are regressions.
     failed = true;
-    const news = Object.entries(scope.byFile).filter(([file, count]) => (before.byFile[file] ?? 0) < count);
-    for (const [file, count] of news.slice(0, 10)) {
+    for (const [file, count] of worse.slice(0, 10)) {
       console.error(`  worse: ${file} ${before.byFile[file] ?? 0} -> ${count}`);
     }
+  } else if (shape === 'changed' || delta < 0) {
+    // Only improvements, but the committed baseline no longer describes the tree. Left alone it
+    // would let new diagnostics back in up to the old count, so this fails until re-recorded.
+    failed = true;
+    console.error('  the baseline is stale (fewer or different diagnostics); re-record with --write and say why in the commit.');
   }
-  if (delta < 0) console.log('  fewer diagnostics than the baseline; re-record with --write and say why.');
+}
+const measuredNames = new Set(measured.scopes.map((scope) => scope.scope));
+for (const entry of recorded.scopes) {
+  if (!measuredNames.has(entry.scope)) {
+    console.error(`[typecheck-baseline] ${entry.scope}: recorded but no longer measured; a scope may not be dropped silently.`);
+    failed = true;
+  }
 }
 if (recorded.compiler !== measured.compiler) {
   // A count from a different compiler is a different measurement, not a regression or a win.

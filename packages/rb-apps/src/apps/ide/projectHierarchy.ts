@@ -637,12 +637,14 @@ export function toCompositeDefinition(module: NativeVisualModuleDefinition): Com
           return [port.name, `${boundary?.id ?? port.sourceBoundary.internalRefs[0]?.nodeId}.isOn`];
         }),
     ),
+    // An output nothing inside drives publishes nothing, as in flattening (its readers read their
+    // own unconnected levels); it used to crash every load of such a project.
     outputMapping: Object.fromEntries(
       module.ports
         .filter((port) => port.direction === 'output')
-        .map((port) => {
+        .flatMap((port) => {
           const ref = port.sourceBoundary.internalRefs[0];
-          return [port.name, `${ref.nodeId}.${ref.portName}`];
+          return ref ? [[port.name, `${ref.nodeId}.${ref.portName}`]] : [];
         }),
     ),
   };

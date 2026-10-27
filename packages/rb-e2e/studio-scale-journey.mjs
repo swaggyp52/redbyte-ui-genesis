@@ -1,4 +1,4 @@
-import { launchChromium, BASE_URL, evidenceDir } from './harness.mjs';
+import { launchChromium, BASE_URL, editStimulus, evidenceDir } from './harness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,12 +23,15 @@ try {
    assert.match(await tid('ide-design-live-tick').innerText(),/1 clock edge/);
    await tid('ide-design-live-reset').click();await tid('ide-design-explore').click();
    await page.screenshot({path:path.join(out,`${name}-design.png`)});
-   await tid('ide-design-test-design').click();await tid('ide-vcb-run').click();
+   // A Run is complete when a new recording is selected, not when the button was pressed.
+   const runAndWait=async()=>{const prior=await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId??null);await tid('ide-vcb-run').click();await page.waitForFunction(id=>{const r=window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun;return !!r&&r.runId!==id;},prior);};
+   await tid('ide-design-test-design').click();await runAndWait();
    const before=await tid('ide-run-output-digest').getAttribute('data-digest');
    const cell=page.locator('[data-testid^="ide-timing-cell-"][data-testid$="-2"]:not([data-generated="true"])').first();
-   const value=await cell.getAttribute('aria-label');await cell.click();
+   // The recording is on screen, so editing its stimulus is the explicit mode (RB-DEBT-020).
+   const value=await cell.getAttribute('aria-label');await editStimulus(page);await cell.click();
    assert.notEqual(await cell.getAttribute('aria-label'),value);
-   await tid('ide-vcb-run').click();
+   await runAndWait();
    assert.notEqual(await tid('ide-run-output-digest').getAttribute('data-digest'),before);
    await tid('ide-verify-details').click();await page.getByLabel('Close simulation details').click();
    await cell.scrollIntoViewIfNeeded();

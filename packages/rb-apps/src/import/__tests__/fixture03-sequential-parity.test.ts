@@ -180,7 +180,11 @@ set_input_delay -clock clk 2.0 [get_ports rst]
     };
 
     const exportResult = exportProjectAsBasys3(project);
-    expect(exportResult.success).toBe(true);
+    // The aliases are accepted. The package itself is refused: this import is a port scaffold whose
+    // generated top drives no output (it used to ship tied to '0' with success true).
+    const blocking = exportResult.errors.filter((error) => error.severity === 'error');
+    expect(blocking.length).toBeGreaterThan(0);
+    expect(blocking.every((error) => /^Output port ".+" on node ".+" has no driver: /.test(error.message))).toBe(true);
     expect(exportResult.errors.some((error) => error.message.includes('Unsupported input pin'))).toBe(false);
     expect(exportResult.errors.some((error) => error.message.includes('Unsupported output pin'))).toBe(false);
     expect(exportResult.bundle?.topXdc).toContain('PACKAGE_PIN U18');

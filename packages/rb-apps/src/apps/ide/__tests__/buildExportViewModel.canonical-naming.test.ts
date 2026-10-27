@@ -921,5 +921,12 @@ describe('buildExportViewModel canonical naming', () => {
 
     expect(viewModel.pinTable.some((row) => row.port === 'ghost_output')).toBe(false);
     expect(viewModel.pinTable.find((row) => row.port === 'ld0')?.pin).toBe('U16');
+    // The shipped artifacts agree with the pin table: a deleted LED gets no entity port and
+    // no XDC pin (it used to be declared, tied to '0' and pinned to V3).
+    const top = viewModel.artifacts.find((artifact) => artifact.path === 'top.vhd')!.content;
+    const xdc = viewModel.artifacts.find((artifact) => artifact.path === 'top.xdc')!.content;
+    expect(top).not.toContain('ghost_output');
+    expect(xdc).not.toContain('ghost_output');
+    expect(viewModel.status).toBe('ok');
   });
 });

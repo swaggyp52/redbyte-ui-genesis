@@ -43,6 +43,14 @@ const GUARD_FILES = {
     'packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx',
     'packages/rb-apps/src/apps/ide/projectRuntime.ts',
   ],
+  'rb-studio': [
+    'packages/rb-studio/src/MeridianStudio.tsx',
+    'packages/rb-studio/src/lenses/SourceLens.tsx',
+  ],
+  'rb-studio-kernel': [
+    'packages/rb-studio-kernel/src/index.ts',
+    'packages/rb-studio-kernel/src/timeline.ts',
+  ],
 };
 
 const TAG = '[typecheck-app]';
@@ -182,7 +190,7 @@ for (const scope of SCOPES) {
   );
 
   stepSummary(
-    `### Application typecheck (rb-apps, raw)\n\n` +
+    `### Product typecheck (${scope.name}, raw)\n\n` +
       `| | |\n|---|---|\n` +
       `| Scope | \`${scope.project}\` |\n` +
       `| Compiler | ${version} (pinned ${PINNED_TYPESCRIPT}), Node ${process.version} |\n` +

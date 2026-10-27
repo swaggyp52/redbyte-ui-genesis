@@ -3,6 +3,8 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { NodeBehavior, Signal, NodeInputs, NodeOutputs } from './types';
+import { BUILTIN_COMPOSITE_DEFS } from './composite-defs';
+import { getComponentSupport } from './analysis/componentSupportRegistry';
 
 /**
  * PowerSource - Always outputs 1
@@ -287,6 +289,314 @@ function readFirstNumber(inputs: NodeInputs, names: readonly string[], fallback 
   return fallback;
 }
 
+// ---------------------------------------------------------------------------
+// Input pins: what a behaviour reads when nothing drives a pin
+// ---------------------------------------------------------------------------
+
+/** The part an input pin plays in its behaviour. */
+export type InputPinRole = 'data' | 'clock' | 'reset' | 'enable';
+
+/**
+ * How a built-in behaviour reads one input pin. The engine passes no value for a pin that
+ * nothing drives (CircuitEngine.buildNodeInputs), so the behaviour's own fallback applies. The
+ * sequential behaviours below read their pins through these specs and describeInputPin reports
+ * the same specs, so the description cannot drift from what executes; the combinational gates'
+ * entries are checked against their behaviours in unconnectedInputs.test.ts.
+ */
+interface InputPinSpec {
+  readonly role: InputPinRole;
+  /** Connection port names the behaviour reads; the first one carrying a number wins. */
+  readonly names: readonly string[];
+  /** Names of bit `index` of a word input, read when no whole-word value is wired. */
+  readonly bitNames?: (index: number) => readonly string[];
+  /** The level the behaviour uses when nothing drives the pin. */
+  readonly unconnected: 0 | 1;
+  /** False when the configuration disables the pin: the behaviour does not read it, wired or not. */
+  readonly usedWhen?: (config: Record<string, unknown>) => boolean;
+  /** The level that asserts a reset or an enable under the configuration. */
+  readonly activeLevel?: (config: Record<string, unknown>) => 0 | 1;
+}
+
+function readPin(inputs: NodeInputs, pin: InputPinSpec): number {
+  return readFirstNumber(inputs, pin.names, pin.unconnected);
+}
+
+function isPinUsed(pin: InputPinSpec, config: Record<string, unknown>): boolean {
+  return pin.usedWhen ? pin.usedWhen(config) : true;
+}
+
+const dataPin = (...names: string[]): InputPinSpec => ({ role: 'data', names, unconnected: 0 });
+const activeHigh = (): 1 => 1;
+
+const CLOCK_PIN: InputPinSpec = { role: 'clock', names: ['CLK', 'clk', 'clock', 'C'], unconnected: 0 };
+const D_PIN = dataPin('D', 'd', 'in');
+const DFF_RESET_PIN: InputPinSpec = {
+  role: 'reset', names: ['RST', 'rst', 'RESET', 'reset', 'CLR', 'clr'], unconnected: 0, activeLevel: activeHigh,
+};
+/** An unconnected DFlipFlop EN reads 1: the flip-flop captures at every rising edge. */
+const DFF_ENABLE_PIN: InputPinSpec = {
+  role: 'enable', names: ['EN', 'en', 'ENABLE', 'enable'], unconnected: 1, activeLevel: activeHigh,
+};
+const REGISTER_WORD_PIN: InputPinSpec = {
+  role: 'data', names: ['D'], bitNames: (index) => [`D[${index}]`, `D${index}`, `D_${index}`], unconnected: 0,
+};
+/** Read only when the configuration chooses a reset mode; the reset polarity sets its active level. */
+const REGISTER_RESET_PIN: InputPinSpec = {
+  role: 'reset',
+  names: ['RST', 'rst', 'RESET', 'reset', 'CLR', 'clr', 'SET', 'set'],
+  unconnected: 0,
+  usedWhen: (config) => resolveResetKind(config) !== 'none',
+  activeLevel: (config) => (resolvePolarity(config.resetPolarity) === 'active_low' ? 0 : 1),
+};
+/**
+ * Read only with Clock enable on (config.hasEnable === true), as in the exported VHDL; without
+ * it the register ignores EN, wired or not. An unconnected EN then reads 0.
+ */
+const REGISTER_ENABLE_PIN: InputPinSpec = {
+  role: 'enable',
+  names: ['EN', 'en', 'ENABLE', 'enable', 'CE', 'ce'],
+  unconnected: 0,
+  usedWhen: (config) => config.hasEnable === true,
+  activeLevel: (config) => (resolvePolarity(config.enablePolarity) === 'active_low' ? 0 : 1),
+};
+const T_PIN = dataPin('T', 't', 'in');
+const J_PIN = dataPin('J', 'j');
+const K_PIN = dataPin('K', 'k');
+const CLEAR_PIN: InputPinSpec = {
+  role: 'reset', names: ['CLR', 'clr', 'RST', 'rst', 'RESET', 'reset'], unconnected: 0, activeLevel: activeHigh,
+};
+// The combinational behaviours read `inputs.in1 ?? inputs.a ?? 0` and the like.
+const GATE_A_PIN = dataPin('in1', 'a');
+const GATE_B_PIN = dataPin('in2', 'b');
+const SINGLE_IN_PIN = dataPin('in');
+const GATE3_PINS = [dataPin('a'), dataPin('b'), dataPin('c')];
+
+const BUILTIN_INPUT_PINS: Readonly<Record<string, readonly InputPinSpec[]>> = {
+  // Sources read no input pin: their output comes from configuration or state.
+  PowerSource: [],
+  Ground: [],
+  Switch: [],
+  INPUT: [],
+  Clock: [],
+  Lamp: [SINGLE_IN_PIN],
+  Wire: [SINGLE_IN_PIN],
+  OUTPUT: [SINGLE_IN_PIN],
+  NOT: [SINGLE_IN_PIN],
+  Delay: [SINGLE_IN_PIN],
+  AND: [GATE_A_PIN, GATE_B_PIN],
+  OR: [GATE_A_PIN, GATE_B_PIN],
+  NAND: [GATE_A_PIN, GATE_B_PIN],
+  NOR: [GATE_A_PIN, GATE_B_PIN],
+  XOR: [GATE_A_PIN, GATE_B_PIN],
+  XNOR: [GATE_A_PIN, GATE_B_PIN],
+  AND3: GATE3_PINS,
+  OR3: GATE3_PINS,
+  NAND3: GATE3_PINS,
+  NOR3: GATE3_PINS,
+  XOR3: GATE3_PINS,
+  DFlipFlop: [D_PIN, CLOCK_PIN, DFF_RESET_PIN, DFF_ENABLE_PIN],
+  Register1: [D_PIN, CLOCK_PIN, REGISTER_RESET_PIN, REGISTER_ENABLE_PIN],
+  RegisterBus: [REGISTER_WORD_PIN, CLOCK_PIN, REGISTER_RESET_PIN, REGISTER_ENABLE_PIN],
+  StateBank: [REGISTER_WORD_PIN, CLOCK_PIN, REGISTER_RESET_PIN, REGISTER_ENABLE_PIN],
+  TFlipFlop: [T_PIN, CLOCK_PIN, CLEAR_PIN],
+  JKFlipFlop: [J_PIN, K_PIN, CLOCK_PIN, CLEAR_PIN],
+};
+
+/**
+ * The level a composite part (CompositeNode.createCompositeNodeBehavior) feeds its subcircuit for
+ * an input that nothing drives.
+ */
+export const COMPOSITE_UNCONNECTED_INPUT_LEVEL = 0;
+
+/** Roles of the built-in composite parts' pins that are not data (their active level is 1). */
+const COMPOSITE_PIN_ROLES: Readonly<Record<string, Readonly<Record<string, InputPinRole>>>> = {
+  DLatch: { EN: 'enable' },
+  RSLatch: { R: 'reset' },
+};
+
+/** How a built-in behaviour treats one of its input pins (see describeInputPin). */
+export interface InputPinDescription {
+  readonly role: InputPinRole;
+  /**
+   * False when the node's configuration disables the pin: the behaviour does not read it, wired
+   * or not (a register's EN without Clock enable, its RST with Reset mode none).
+   */
+  readonly used: boolean;
+  /** The level the behaviour reads when nothing drives the pin. */
+  readonly unconnectedLevel: 0 | 1;
+  /** For a reset or an enable: the level that asserts it under this configuration. */
+  readonly activeLevel: 0 | 1 | null;
+}
+
+function registerFamilyWidth(nodeType: string, config: Record<string, unknown>): number {
+  return normalizeWidth(config.width, nodeType === 'Register1' ? 1 : 8);
+}
+
+/**
+ * The one description of what a built-in part reads from an input pin, taken from the specs its
+ * behaviour executes: its role, whether the configuration lets the behaviour read it, the level
+ * it reads when nothing drives it, and for a reset or enable the level that asserts it. `pin` is
+ * the port name exactly as a connection carries it. Null for a pin the behaviour does not read,
+ * for a part the support registry does not simulate (the Counter4Bit stub ignores its clock) and
+ * for parts this package does not define (module instances, custom components): callers then
+ * claim no value.
+ */
+export function describeInputPin(
+  nodeType: string,
+  pin: string,
+  config: Record<string, unknown> | null | undefined = {},
+): InputPinDescription | null {
+  if (getComponentSupport(nodeType)?.capabilities.simulation === false) return null;
+  const settings = config ?? {};
+  const specs = BUILTIN_INPUT_PINS[nodeType];
+  if (specs) {
+    const width = registerFamilyWidth(nodeType, settings);
+    const spec = specs.find((entry) => entry.names.includes(pin)
+      || (entry.bitNames !== undefined && Array.from({ length: width }, (_value, index) => index)
+        .some((index) => entry.bitNames!(index).includes(pin))));
+    if (!spec) return null;
+    return {
+      role: spec.role,
+      used: isPinUsed(spec, settings),
+      unconnectedLevel: spec.unconnected,
+      activeLevel: spec.activeLevel ? spec.activeLevel(settings) : null,
+    };
+  }
+  const composite = BUILTIN_COMPOSITE_DEFS.find((definition) => definition.name === nodeType);
+  if (!composite || !Object.prototype.hasOwnProperty.call(composite.inputMapping, pin)) return null;
+  const role = COMPOSITE_PIN_ROLES[nodeType]?.[pin] ?? 'data';
+  return {
+    role,
+    used: true,
+    unconnectedLevel: COMPOSITE_UNCONNECTED_INPUT_LEVEL,
+    activeLevel: role === 'reset' || role === 'enable' ? 1 : null,
+  };
+}
+
+/** One input of a built-in part, with every connection port name its behaviour reads for it. */
+export interface InputPinReading extends InputPinDescription {
+  /**
+   * The port names the behaviour reads for this input, exactly as a connection carries them, in
+   * the order it tries them: the first one a connection drives is the one that counts.
+   */
+  readonly names: readonly string[];
+  /** For a word input: the names of its bits at the configured width, read when no whole word is wired. */
+  readonly bitNames?: readonly string[];
+}
+
+/**
+ * The inputs a built-in part reads, in the order its behaviour reads them, from the specs
+ * describeInputPin reports. An exporter resolves each input to the first of its names that a
+ * connection drives, compared exactly ('A' is not 'a'), and so reads the connections the
+ * simulator reads. Empty for a part that reads no input; null for a part the support registry
+ * does not simulate and for parts this package does not define, whose logic a caller must not
+ * invent.
+ */
+export function inputPinsOf(
+  nodeType: string,
+  config: Record<string, unknown> | null | undefined = {},
+): readonly InputPinReading[] | null {
+  if (getComponentSupport(nodeType)?.capabilities.simulation === false) return null;
+  const settings = config ?? {};
+  const specs = BUILTIN_INPUT_PINS[nodeType];
+  if (specs) {
+    const width = registerFamilyWidth(nodeType, settings);
+    return specs.map((spec) => ({
+      names: spec.names,
+      ...(spec.bitNames
+        ? { bitNames: Array.from({ length: width }, (_value, index) => spec.bitNames!(index)).flat() }
+        : {}),
+      role: spec.role,
+      used: isPinUsed(spec, settings),
+      unconnectedLevel: spec.unconnected,
+      activeLevel: spec.activeLevel ? spec.activeLevel(settings) : null,
+    }));
+  }
+  const composite = BUILTIN_COMPOSITE_DEFS.find((definition) => definition.name === nodeType);
+  if (!composite) return null;
+  return Object.keys(composite.inputMapping).map((pin) => {
+    const role = COMPOSITE_PIN_ROLES[nodeType]?.[pin] ?? 'data';
+    return {
+      names: [pin],
+      role,
+      used: true,
+      unconnectedLevel: COMPOSITE_UNCONNECTED_INPUT_LEVEL,
+      activeLevel: role === 'reset' || role === 'enable' ? 1 : null,
+    };
+  });
+}
+
+/** The outputs a connection can read from a built-in part. */
+export type OutputPortRole = 'out' | 'q' | 'q_inv' | 'sum' | 'carry';
+
+/** One output of a built-in part and every port name its behaviour publishes it under. */
+export interface OutputPortReading {
+  readonly role: OutputPortRole;
+  /** Published port names, exactly as a connection reads them; every one carries the same value. */
+  readonly names: readonly string[];
+}
+
+const SINGLE_OUTPUT: readonly OutputPortReading[] = [{ role: 'out', names: ['out'] }];
+/** sequentialOutputs: a flip-flop publishes Q as Q, q and out, and Q_inv as Q_inv and qn. */
+const FLIP_FLOP_OUTPUTS: readonly OutputPortReading[] = [
+  { role: 'q', names: ['Q', 'q', 'out'] },
+  { role: 'q_inv', names: ['Q_inv', 'qn'] },
+];
+/** buildRegisterOutputs at width 1: every word and bit-0 name carries the stored bit. */
+const ONE_BIT_REGISTER_OUTPUTS: readonly OutputPortReading[] = [
+  { role: 'q', names: ['Q', 'q', 'out', 'value', 'Q0', 'q0', 'Q[0]', 'q[0]'] },
+  { role: 'q_inv', names: ['Q_inv', 'qn', 'Q_inv0'] },
+];
+const BUILTIN_OUTPUT_PORTS: Readonly<Record<string, readonly OutputPortReading[]>> = {
+  PowerSource: SINGLE_OUTPUT,
+  Ground: SINGLE_OUTPUT,
+  Switch: SINGLE_OUTPUT,
+  INPUT: SINGLE_OUTPUT,
+  Clock: SINGLE_OUTPUT,
+  Lamp: SINGLE_OUTPUT,
+  Wire: SINGLE_OUTPUT,
+  Delay: SINGLE_OUTPUT,
+  OUTPUT: [],
+  NOT: SINGLE_OUTPUT,
+  AND: SINGLE_OUTPUT,
+  OR: SINGLE_OUTPUT,
+  NAND: SINGLE_OUTPUT,
+  NOR: SINGLE_OUTPUT,
+  XOR: SINGLE_OUTPUT,
+  XNOR: SINGLE_OUTPUT,
+  AND3: SINGLE_OUTPUT,
+  OR3: SINGLE_OUTPUT,
+  NAND3: SINGLE_OUTPUT,
+  NOR3: SINGLE_OUTPUT,
+  XOR3: SINGLE_OUTPUT,
+  DFlipFlop: FLIP_FLOP_OUTPUTS,
+  TFlipFlop: FLIP_FLOP_OUTPUTS,
+  JKFlipFlop: FLIP_FLOP_OUTPUTS,
+};
+/** A composite part publishes exactly its output mapping: a FullAdder's Sum and Cout, a latch's Q and Q_inv. */
+const COMPOSITE_OUTPUT_ROLES: Readonly<Record<string, OutputPortRole>> = { Sum: 'sum', Cout: 'carry', Q: 'q', Q_inv: 'q_inv' };
+
+/**
+ * The outputs a built-in part publishes and the exact port names a connection may read each one
+ * under. A connection from any other name reads nothing the part computes. Null for a part the
+ * support registry does not simulate, for parts this package does not define, and for a
+ * register-family word wider than one bit, whose outputs are words rather than bits.
+ */
+export function outputPortsOf(
+  nodeType: string,
+  config: Record<string, unknown> | null | undefined = {},
+): readonly OutputPortReading[] | null {
+  if (getComponentSupport(nodeType)?.capabilities.simulation === false) return null;
+  if (nodeType === 'Register1' || nodeType === 'RegisterBus' || nodeType === 'StateBank') {
+    return registerFamilyWidth(nodeType, config ?? {}) === 1 ? ONE_BIT_REGISTER_OUTPUTS : null;
+  }
+  const builtin = BUILTIN_OUTPUT_PORTS[nodeType];
+  if (builtin) return builtin;
+  const composite = BUILTIN_COMPOSITE_DEFS.find((definition) => definition.name === nodeType);
+  if (!composite) return null;
+  return Object.keys(composite.outputMapping).map((name) => ({ role: COMPOSITE_OUTPUT_ROLES[name] ?? 'out', names: [name] }));
+}
+
 function sequentialOutputs(q: number): NodeOutputs {
   const qInv = q === 0 ? 1 : 0;
   return {
@@ -349,32 +659,19 @@ function resolveClockEdge(config: Record<string, unknown>): ClockEdge {
   return token === 'falling_edge' ? 'falling_edge' : 'rising_edge';
 }
 
-function isActive(level: number, polarity: ActivePolarity): boolean {
-  const bit = toBit(level);
-  return polarity === 'active_high' ? bit === 1 : bit === 0;
-}
-
 function readPackedInput(
   inputs: NodeInputs,
   width: number,
-  base: string
+  pin: InputPinSpec
 ): number {
-  const direct = inputs[base];
+  const direct = inputs[pin.names[0]];
   if (typeof direct === 'number') {
     return (Math.floor(direct) & maskForWidth(width)) >>> 0;
   }
 
   let packed = 0;
   for (let index = 0; index < width; index += 1) {
-    const bit = readFirstNumber(
-      inputs,
-      [
-        `${base}[${index}]`,
-        `${base}${index}`,
-        `${base}_${index}`,
-      ],
-      0
-    );
+    const bit = readFirstNumber(inputs, pin.bitNames?.(index) ?? [], pin.unconnected);
     if (toBit(bit) === 1) packed |= (1 << index);
   }
   return packed & maskForWidth(width);
@@ -438,14 +735,11 @@ function evaluateRegisterFamily(
   const width = normalizeWidth(config.width, widthDefault);
   const mask = maskForWidth(width);
 
-  const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
-  const rst = readFirstNumber(inputs, ['RST', 'rst', 'RESET', 'reset', 'CLR', 'clr', 'SET', 'set'], 0);
-  const enFallback = config.hasEnable === true ? 0 : 1;
-  const en = readFirstNumber(inputs, ['EN', 'en', 'ENABLE', 'enable', 'CE', 'ce'], enFallback);
+  const clk = readPin(inputs, CLOCK_PIN);
   const dPacked =
     nodeType === 'Register1'
-      ? toBit(readFirstNumber(inputs, ['D', 'd', 'in']))
-      : readPackedInput(inputs, width, 'D');
+      ? toBit(readPin(inputs, D_PIN))
+      : readPackedInput(inputs, width, REGISTER_WORD_PIN);
   const lastClk = toBit(Number(state.lastClk ?? 0));
   let q = (Number(state.q ?? 0) & mask) >>> 0;
 
@@ -454,8 +748,13 @@ function evaluateRegisterFamily(
   const enablePolarity = resolvePolarity(config.enablePolarity, 'active_high');
   const clockEdge = resolveClockEdge(config);
 
-  const resetActive = isActive(rst, resetPolarity);
-  const enableActive = isActive(en, enablePolarity);
+  // The configuration is the authority for EN and RST, as in the exported VHDL
+  // (emitRegisterVhdl): a pin it disables is not read, wired or not. Without Clock enable the
+  // register captures at every active edge whatever EN carries and whatever its polarity says.
+  const resetActive = isPinUsed(REGISTER_RESET_PIN, config)
+    && toBit(readPin(inputs, REGISTER_RESET_PIN)) === REGISTER_RESET_PIN.activeLevel!(config);
+  const enableActive = !isPinUsed(REGISTER_ENABLE_PIN, config)
+    || toBit(readPin(inputs, REGISTER_ENABLE_PIN)) === REGISTER_ENABLE_PIN.activeLevel!(config);
   const clkBit = toBit(clk);
   const edgeDetected =
     clockEdge === 'rising_edge'
@@ -503,10 +802,10 @@ function evaluateRegisterFamily(
  */
 export const DFlipFlopBehavior: NodeBehavior = {
   evaluate(inputs, state) {
-    const d = readFirstNumber(inputs, ['D', 'd', 'in']);
-    const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
-    const rst = readFirstNumber(inputs, ['RST', 'rst', 'RESET', 'reset', 'CLR', 'clr'], 0);
-    const en = readFirstNumber(inputs, ['EN', 'en', 'ENABLE', 'enable'], 1);
+    const d = readPin(inputs, D_PIN);
+    const clk = readPin(inputs, CLOCK_PIN);
+    const rst = readPin(inputs, DFF_RESET_PIN);
+    const en = readPin(inputs, DFF_ENABLE_PIN);
     const lastClk = (state.lastClk ?? 0) as number;
     let q = (state.q ?? 0) as number;
 
@@ -552,9 +851,9 @@ export const StateBankBehavior: NodeBehavior = {
  */
 export const TFlipFlopBehavior: NodeBehavior = {
   evaluate(inputs, state) {
-    const t = readFirstNumber(inputs, ['T', 't', 'in']);
-    const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
-    const clr = readFirstNumber(inputs, ['CLR', 'clr', 'RST', 'rst', 'RESET', 'reset'], 0);
+    const t = readPin(inputs, T_PIN);
+    const clk = readPin(inputs, CLOCK_PIN);
+    const clr = readPin(inputs, CLEAR_PIN);
     const lastClk = (state.lastClk ?? 0) as number;
     let q = (state.q ?? 0) as number;
 
@@ -578,10 +877,10 @@ export const TFlipFlopBehavior: NodeBehavior = {
  */
 export const JKFlipFlopBehavior: NodeBehavior = {
   evaluate(inputs, state) {
-    const j = readFirstNumber(inputs, ['J', 'j'], 0);
-    const k = readFirstNumber(inputs, ['K', 'k'], 0);
-    const clk = readFirstNumber(inputs, ['CLK', 'clk', 'clock', 'C']);
-    const clr = readFirstNumber(inputs, ['CLR', 'clr', 'RST', 'rst', 'RESET', 'reset'], 0);
+    const j = readPin(inputs, J_PIN);
+    const k = readPin(inputs, K_PIN);
+    const clk = readPin(inputs, CLOCK_PIN);
+    const clr = readPin(inputs, CLEAR_PIN);
     const lastClk = (state.lastClk ?? 0) as number;
     let q = (state.q ?? 0) as number;
 

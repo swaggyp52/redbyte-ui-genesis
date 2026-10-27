@@ -76,7 +76,7 @@ import {
   type VerifyScenario,
   type VerifyScenarioSequentialPolicy,
 } from '../verifyScenario';
-import type { VerifyMode } from '../verifyMode';
+import { describeVerifyBlocker, type VerifyBlocker, type VerifyMode } from '../verifyMode';
 import type {
   FullAdderLabDesignChecklist,
   GuidedLabTaskDefinition,
@@ -287,6 +287,8 @@ export interface VerifySurfaceProps {
   onGoToHardware?: () => void;
   onGoToImport?: () => void;
   verifyMode?: VerifyMode;
+  /** The parts that make verifyMode 'blocked' (findVerifyBlockers), named on the blocked surface. */
+  verifyBlockers?: readonly VerifyBlocker[];
   unmappedOutputLabels?: string[];
   onPreviewVector?: (inputs: Record<string, number>) => void;
   onDebugTickSelected?: (
@@ -452,6 +454,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onGoToHardware,
   onGoToImport,
   verifyMode = 'combinational' as VerifyMode,
+  verifyBlockers = [],
   unmappedOutputLabels = [],
   onPreviewVector,
   liveSignalRoles,
@@ -6757,7 +6760,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     signal={selectedSignal} position={resultPosition} tick={selectedTick}
     expected={resultRow?.expected && resultRow.expected !== '-' ? resultRow.expected : null}
     observed={resultSample && selectedSignal ? resultSample.signals[selectedSignal] ?? null : null}
-    recorded={Boolean(lastRun)} inputs={resultInputs} mismatch={Boolean(resultFailure)} navigator={failureNavigator}
+    // Observed only where this sample recorded the signal; elsewhere it is unrecorded, never a value.
+    recorded={Boolean(resultSample && selectedSignal && resultSample.signals[selectedSignal] != null)} inputs={resultInputs} mismatch={Boolean(resultFailure)} navigator={failureNavigator}
     onInspect={lastRun ? inspectCircuit ? () => setInspectCircuit(false) : openCircuitInvestigation : undefined} inspecting={inspectCircuit}
     onEditDesign={lastRun && (onEditCurrentDesign || onGoToDesign) ? handleEditCurrentDesign : undefined}
     draftExpected={caseLabFocusFieldId ? selectedDraftCase?.expected?.[caseLabFocusFieldId] : undefined}
@@ -7293,6 +7297,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               This circuit contains components that cannot be simulated yet.
               Remove the unsupported component to run verification.
             </p>
+            {verifyBlockers.length > 0 && (
+              <p className="ide-verify-entry-blocked-reason" data-testid="ide-verify-entry-blocked-parts">
+                Unsupported: {verifyBlockers.map(describeVerifyBlocker).join('; ')}.
+              </p>
+            )}
             {onGoToDesign && (
               <IdeButton
                 tone="primary"
@@ -7487,6 +7496,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             generatedFieldIds={timingGeneratedFieldIds}
             generatedValueAt={timingGeneratedValueAt}
             generatedNote={timingGeneratedNote}
+            // RB-DEBT-020: the recording on screen and its investigation decide when the lab
+            // inspects; editing the stimulus is the student's explicit choice.
+            recordingId={lastRun ? getRuntimeVerifyRunId(lastRun) : null}
+            inspecting={Boolean(inspectCircuit && lastRun)}
           />
         ) : (
           <CaseLab

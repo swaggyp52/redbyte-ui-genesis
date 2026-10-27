@@ -129,7 +129,7 @@ await runIdeGate('Signal Journey complexity and bounded capture through imported
       }
       const run = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun);
       assert(run?.runId, 'Run must produce a real retained recording');
-      // RB-DEBT-014 bumped the engine to v3 (node-order-independent feedback schedule).
+      // Engine v3: RB-DEBT-014 feedback schedule, RB-DEBT-016 codepoint identity, RB-DEBT-028 register EN.
       assert(run.identity?.engine === 'redbyte-browser-v3', `Stress qualification must retain engine-v3, got ${run.identity?.engine}`);
       assert(run.report.rows.length > 0 && run.report.rows.every(row => [0, 1, '0', '1'].includes(row.expected) && [0, 1, '0', '1'].includes(row.actual) && String(row.expected) === String(row.actual)), 'Every authored stress-fixture check must match a known actual engine result');
       assert(run.waveform.length === fixture.project.vectors.length, 'Capture truncation must preserve every published sample');

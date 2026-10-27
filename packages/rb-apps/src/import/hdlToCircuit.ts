@@ -2,7 +2,7 @@
 // HDL Import Pipeline — shared types, component mapping, and auto-layout engine.
 
 import type { Circuit, Node, Connection } from '@redbyte/rb-logic-core';
-import { resolveImportedComponentType } from '@redbyte/rb-logic-core';
+import { inputPinsOf, outputPortsOf, resolveImportedComponentType } from '@redbyte/rb-logic-core';
 
 // ─── Parsed intermediate representation ──────────────────────────────────────
 
@@ -27,6 +27,11 @@ export type ParsedHdlWarning = {
   line?: number;  // 1-based, resolved against original source
   col?: number;   // 1-based
   kind?: 'structural' | 'named';
+  /**
+   * The parser did not rebuild this construct (an unsupported process or expression), so a
+   * circuit built from the rest would not be the design: parsedHdlToCircuit keeps only the ports.
+   */
+  dropsLogic?: boolean;
 };
 
 export interface ParsedHDL {
@@ -50,6 +55,13 @@ export interface ImportResult {
   unmappedComponents: string[];
   /** How faithfully the circuit was reconstructed from the HDL source */
   reconstructionLevel: ReconstructionLevel;
+  /**
+   * Every construct of the HDL body that was not rebuilt exactly, by name. When any is listed the
+   * circuit is the port scaffold (reconstructionLevel 'ports-only'): logic built around a hole
+   * would simulate and export a design the source does not describe (an unconnected pin reads a
+   * level the source never set), while the scaffold's undriven outputs refuse Export by name.
+   */
+  unreconstructed: string[];
 }
 
 // ─── Component type mapping ───────────────────────────────────────────────────
@@ -62,10 +74,53 @@ function resolveComponentType(raw: string): string | null {
 // ─── Port name normalisation ──────────────────────────────────────────────────
 
 /**
- * Map common HDL port names to the RedByte internal port names.
- * RedByte uses: a, b (inputs), out (output) for gates; in/out for IO.
+ * The port names the engine reads (inputPinsOf) and publishes (outputPortsOf) on one configured
+ * part: the only authority for which side of a part an HDL port is on. Null for a part the
+ * engine does not simulate or define, whose ports the importer must not guess.
+ */
+interface PortAuthority {
+  readonly inputs: ReadonlySet<string>;
+  readonly outputs: ReadonlySet<string>;
+}
+
+function portAuthorityOf(rbNodeType: string, config: Record<string, unknown> | undefined): PortAuthority | null {
+  const inputs = inputPinsOf(rbNodeType, config);
+  const outputs = outputPortsOf(rbNodeType, config);
+  if (!inputs || !outputs) return null;
+  return {
+    inputs: new Set(inputs.flatMap((pin) => [...pin.names, ...(pin.bitNames ?? [])])),
+    outputs: new Set(outputs.flatMap((port) => port.names)),
+  };
+}
+
+/**
+ * The connection port name the simulator reads or publishes for this part: the role name when
+ * the engine uses it as written, else the engine's spelling of it (a FullAdder is A, B, Cin, Sum
+ * and Cout, a register's inverted output Q_inv). A name the engine has neither way is kept, and
+ * the importer names it as a port the part does not have.
+ */
+function enginePortName(authority: PortAuthority, name: string): string {
+  const names = [...authority.inputs, ...authority.outputs];
+  if (names.includes(name)) return name;
+  return names.find((candidate) => candidate.toLowerCase() === name.toLowerCase()) ?? name;
+}
+
+/**
+ * Map common HDL port names to the port names the simulator reads and publishes.
+ * RedByte uses: a, b (inputs), out (output) for gates; in/out for IO; A, B, Cin, Sum, Cout for a
+ * FullAdder.
  */
 function normalisePortName(
+  hdlPort: string,
+  rbNodeType: string,
+  portIndex: number,
+  authority: PortAuthority,
+): string {
+  return enginePortName(authority, rolePortName(hdlPort, rbNodeType, portIndex));
+}
+
+/** The role an HDL port name plays on a RedByte part (see normalisePortName). */
+function rolePortName(
   hdlPort: string,
   rbNodeType: string,
   portIndex: number,
@@ -242,25 +297,47 @@ function assignPositions(nodes: Node[], connections: Connection[]): Node[] {
 
 // ─── Main conversion ──────────────────────────────────────────────────────────
 
+/** A pass-through: VHDL `y <= x;` (ALIAS) or Verilog `assign y = x;` (Wire), both { in, out }. */
+function isPassThrough(inst: ParsedInstance): boolean {
+  return /^(alias|wire)$/i.test(inst.componentType);
+}
+
+/** A constant level: '0'/'1' in an expression, 0/1 in a port map (the parser strips the quotes). */
+function constantLevel(signal: string): 0 | 1 | null {
+  const token = signal.trim().replace(/^'([01])'$/, '$1');
+  return token === '0' ? 0 : token === '1' ? 1 : null;
+}
+
 /**
  * Convert a ParsedHDL intermediate representation into a RedByte Circuit.
+ *
+ * Each port of an instance is an input or an output because the engine reads or publishes it
+ * (inputPinsOf / outputPortsOf for the configured part), never because of how it is spelled. A
+ * constant is a Ground or PowerSource tie. Anything not rebuilt exactly is listed in
+ * `unreconstructed`, and then only the port scaffold is returned.
  */
 export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
   const warnings: string[] = [...parsed.warnings.map((w) => w.message)];
+  const unreconstructed: string[] = parsed.warnings.filter((w) => w.dropsLogic).map((w) => w.message);
   const unmappedComponents: string[] = [];
-  const nodes: Node[] = [];
+  const portNodes: Node[] = [];
   const connections: Connection[] = [];
+  const notRebuilt = (message: string) => {
+    warnings.push(message);
+    unreconstructed.push(message);
+  };
 
   // 1. Create INPUT nodes for each 'in' port on the entity
   const inputPorts = parsed.ports.filter((p) => p.direction === 'in');
   const outputPorts = parsed.ports.filter((p) => p.direction === 'out');
 
   for (const port of inputPorts) {
-    nodes.push({ id: `port_${port.name}`, type: 'INPUT', label: port.name, x: 0, y: 0 });
+    portNodes.push({ id: `port_${port.name}`, type: 'INPUT', label: port.name, x: 0, y: 0 });
   }
   for (const port of outputPorts) {
-    nodes.push({ id: `port_out_${port.name}`, type: 'OUTPUT', label: port.name, x: 0, y: 0 });
+    portNodes.push({ id: `port_out_${port.name}`, type: 'OUTPUT', label: port.name, x: 0, y: 0 });
   }
+  const nodes: Node[] = [...portNodes];
 
   // Signal → producing node+port lookup (for wiring)
   const signalSource: Map<string, { nodeId: string; port: string }> = new Map();
@@ -276,7 +353,7 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
   };
 
   for (const inst of parsed.instances) {
-    if (inst.componentType.toUpperCase() !== 'ALIAS') continue;
+    if (!isPassThrough(inst)) continue;
     const from = inst.portMap.in?.toLowerCase();
     const to = inst.portMap.out?.toLowerCase();
     if (!from || !to) continue;
@@ -287,12 +364,13 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
     signalSource.set(port.name.toLowerCase(), { nodeId: `port_${port.name}`, port: 'out' });
   }
 
-  // 2. Create gate nodes for each component instance
+  // 2. Create a node for each component instance; its outputs become signal sources
+  const reads: Array<{ instId: string; hdlPort: string; signal: string; pin: string }> = [];
   for (const inst of parsed.instances) {
-    if (inst.componentType.toUpperCase() === 'ALIAS') continue;
+    if (isPassThrough(inst)) continue;
     const rbType = resolveComponentType(inst.componentType);
     if (!rbType) {
-      warnings.push(`Unknown component '${inst.componentType}' (instance '${inst.id}') — skipped`);
+      notRebuilt(`Unknown component '${inst.componentType}' (instance '${inst.id}') — skipped`);
       unmappedComponents.push(inst.componentType);
       continue;
     }
@@ -306,6 +384,11 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
             hasEnable: Object.keys(inst.portMap).some((key) => ['ce', 'en', 'enable'].includes(key.toLowerCase())),
           }
         : undefined;
+    const authority = portAuthorityOf(rbType, sequentialConfig);
+    if (!authority) {
+      notRebuilt(`Instance '${inst.id}' (${rbType}): RedByte does not simulate this part's ports — not rebuilt`);
+      continue;
+    }
 
     nodes.push({
       id: inst.id,
@@ -316,79 +399,80 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
       ...(sequentialConfig ? { config: sequentialConfig as Record<string, unknown> } : {}),
     });
 
-    // Register this instance's output signals in the source map
-    const portEntries = Object.entries(inst.portMap);
-    portEntries.forEach(([hdlPort, signal], idx) => {
-      const rbPort = normalisePortName(hdlPort, rbType, idx);
-      if (rbPort === 'out' || rbPort === 'sum' || rbPort === 'cout' || rbPort === 'q') {
-        signalSource.set(resolveAlias(signal), { nodeId: inst.id, port: rbPort });
+    Object.entries(inst.portMap).forEach(([hdlPort, signal], idx) => {
+      const pin = normalisePortName(hdlPort, rbType, idx, authority);
+      if (authority.outputs.has(pin)) {
+        const key = resolveAlias(signal);
+        if (key === 'open' || constantLevel(key) !== null) return;
+        const driver = signalSource.get(key);
+        if (driver) notRebuilt(`Signal '${signal}' is driven by both '${driver.nodeId}' and '${inst.id}' — not rebuilt`);
+        else signalSource.set(key, { nodeId: inst.id, port: pin });
+      } else if (authority.inputs.has(pin)) {
+        reads.push({ instId: inst.id, hdlPort, signal, pin });
+      } else {
+        notRebuilt(`Instance '${inst.id}' (${rbType}) has no port '${hdlPort}' — not rebuilt`);
       }
     });
   }
 
-  // 3. Wire connections: for each instance input port, find its signal source
-  for (const inst of parsed.instances) {
-    if (inst.componentType.toUpperCase() === 'ALIAS') continue;
-    const rbType = resolveComponentType(inst.componentType);
-    if (!rbType) continue;
+  // A constant is one shared Ground ('0') or PowerSource ('1') part.
+  const ties = new Map<0 | 1, string>();
+  const tieSource = (level: 0 | 1) => {
+    let id = ties.get(level);
+    if (!id) {
+      const base = level === 1 ? 'tie_1' : 'tie_0';
+      id = base;
+      for (let n = 1; nodes.some((node) => node.id === id); n += 1) id = `${base}_${n}`;
+      ties.set(level, id);
+      nodes.push({ id, type: level === 1 ? 'PowerSource' : 'Ground', label: level === 1 ? 'VCC' : 'GND', x: 0, y: 0 });
+    }
+    return { nodeId: id, port: 'out' };
+  };
+  const sourceOf = (signal: string) => {
+    const key = resolveAlias(signal);
+    const level = constantLevel(key);
+    if (level !== null) return tieSource(level);
+    return key === 'open' ? undefined : signalSource.get(key);
+  };
 
-    const portEntries = Object.entries(inst.portMap);
-    portEntries.forEach(([hdlPort, signal], idx) => {
-      const rbPort = normalisePortName(hdlPort, rbType, idx);
-      const isOutput = ['out', 'sum', 'cout', 'q', 'q_inv'].includes(rbPort);
-      if (isOutput) return; // Output ports don't receive connections
+  // 3. Wire each input the engine reads from its signal's source
+  for (const { instId, hdlPort, signal, pin } of reads) {
+    const src = sourceOf(signal);
+    if (!src) {
+      notRebuilt(`Signal '${signal}' not driven in instance '${instId}.${hdlPort}'`);
+      continue;
+    }
+    connections.push({
+      from: { nodeId: src.nodeId, portName: src.port } as any,
+      to: { nodeId: instId, portName: pin } as any,
+    });
+  }
 
-      const src = signalSource.get(resolveAlias(signal));
-      if (!src) {
-        warnings.push(`Signal '${signal}' not driven in instance '${inst.id}.${hdlPort}'`);
-        return;
-      }
+  // 4. Wire each entity output from its signal's source
+  for (const port of outputPorts) {
+    const src = sourceOf(port.name);
+    if (src) {
       connections.push({
         from: { nodeId: src.nodeId, portName: src.port } as any,
-        to: { nodeId: inst.id, portName: rbPort } as any,
+        to: { nodeId: `port_out_${port.name}`, portName: 'in' } as any,
       });
-    });
-  }
-
-  // 4. Wire entity output ports: find what drives each output signal
-  for (const port of outputPorts) {
-    const portMapEntry = parsed.instances
-      .flatMap((inst) =>
-        inst.componentType.toUpperCase() === 'ALIAS'
-          ? []
-          :
-        Object.entries(inst.portMap)
-          .filter(([, sig]) => resolveAlias(sig) === resolveAlias(port.name))
-          .map(([hdlPort]) => ({ inst, hdlPort })),
-      )
-      .at(0);
-
-    if (portMapEntry) {
-      const rbType = resolveComponentType(portMapEntry.inst.componentType);
-      if (rbType) {
-        const portEntries = Object.entries(portMapEntry.inst.portMap);
-        const idx = portEntries.findIndex(([p]) => p === portMapEntry.hdlPort);
-        const rbPort = normalisePortName(portMapEntry.hdlPort, rbType, idx);
-        connections.push({
-          from: { nodeId: portMapEntry.inst.id, portName: rbPort } as any,
-          to: { nodeId: `port_out_${port.name}`, portName: 'in' } as any,
-        });
-      }
     } else {
-      // Check if an input is directly connected to this output (pass-through)
-      const src = signalSource.get(resolveAlias(port.name));
-      if (src) {
-        connections.push({
-          from: { nodeId: src.nodeId, portName: src.port } as any,
-          to: { nodeId: `port_out_${port.name}`, portName: 'in' } as any,
-        });
-      } else {
-        warnings.push(`Output port '${port.name}' has no driver`);
-      }
+      warnings.push(`Output port '${port.name}' has no driver`);
     }
   }
 
-  // 5. Auto-layout
+  // 5. Anything not rebuilt exactly leaves the port scaffold, which Export refuses by name.
+  if (unreconstructed.length > 0) {
+    return {
+      circuit: { nodes: assignPositions(portNodes, []), connections: [] },
+      warnings,
+      unmappedComponents,
+      reconstructionLevel: portNodes.length === 0 ? 'empty' : 'ports-only',
+      unreconstructed,
+    };
+  }
+
+  // 6. Auto-layout
   const positionedNodes = assignPositions(nodes, connections);
 
   const hasGates = positionedNodes.some(
@@ -406,5 +490,6 @@ export function parsedHdlToCircuit(parsed: ParsedHDL): ImportResult {
     warnings,
     unmappedComponents,
     reconstructionLevel,
+    unreconstructed,
   };
 }

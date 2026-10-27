@@ -95,7 +95,7 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
-import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity } from './topEntity';
+import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity, topEntityNameProblem } from './topEntity';
 import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
 import { normalizeGuidedLabTaskId } from './labTaskDefinition';
 import {
@@ -129,6 +129,7 @@ import {
   type VerifyScenarioProbe,
   type VerifyScenarioSequentialPolicy,
 } from './verifyScenario';
+import { unsimulatedRunRefusal } from './verifyMode';
 import {
   createScenarioStep,
   deriveScenarioStepsFromVectors,
@@ -2081,13 +2082,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           }));
           return { ok: true };
         }
-        if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
-          return {
-            ok: false,
-            error:
-              'Top entity must start with a letter and use only letters, digits, or underscores (max 64 characters).',
-          };
-        }
+        const problem = topEntityNameProblem(trimmed);
+        if (problem) return { ok: false, error: problem };
         set((state) => ({
           activeTop: normalizeTopEntityName(trimmed, buildTopEntityName(state.projectName)),
           projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
@@ -2503,9 +2499,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           if (!active) return state;
           const hierarchy: ProjectHierarchyDocument = {
             ...cloneProjectHierarchy(state.hierarchy),
+            // The module's port refs follow the edit: the simulator and leaf-module export read them,
+            // and they kept the pre-edit wiring while the structural export read the drawing.
             modules: state.hierarchy.modules.map((module) =>
               module.id === activeModuleId
-                ? { ...module, circuit: cloneCircuit(nextCircuit), updatedAt: new Date().toISOString() }
+                ? { ...rederiveModulePortRefs({ ...module, circuit: cloneCircuit(nextCircuit) }), updatedAt: new Date().toISOString() }
                 : cloneModuleDefinition(module),
             ),
           };
@@ -5502,6 +5500,10 @@ function prepareRuntimeVerification(state: ProjectRuntimeState, input: RunVerifi
   const executionIoRows = source?.executionInput?.ioRows ?? state.projectIoRows;
   const elaborationSources: import('./projectHierarchy').ElaborationSources = source?.elaborationSources ? structuredClone(source.elaborationSources) : {};
   const simulationCircuit = source?.circuitSnapshot ?? elaborateProjectHierarchy(state.circuit, state.hierarchy, elaborationSources);
+  // Every run path (Verify, Run menu, command palette, Reproduce, studio) is
+  // admitted here: a part the engine does not simulate is refused by name.
+  const refusal = unsimulatedRunRefusal(simulationCircuit);
+  if (refusal) throw new Error(refusal);
   const scenarioId = source?.scenarioId ?? (input.scenarioId.trim() || 'runtime-verify');
   const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
   const scenarioName =

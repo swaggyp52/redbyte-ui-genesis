@@ -48,15 +48,17 @@ function findIdentifierLineCol(
 
 // ─── Warning event types ──────────────────────────────────────────────────────
 
+/** dropsLogic: the construct was not rebuilt, so the circuit cannot be the design (ParsedHdlWarning). */
 type WarningEvent =
-  | { kind: 'structural'; message: string }
-  | { kind: 'named'; message: string; ident: string };
+  | { kind: 'structural'; message: string; dropsLogic?: true }
+  | { kind: 'named'; message: string; ident: string; dropsLogic?: true };
 
 function mapWarningEvents(events: WarningEvent[], originalSource: string): ParsedHdlWarning[] {
   return events.map((e) => {
-    if (e.kind === 'structural') return { message: e.message, kind: 'structural' as const };
+    const drops = e.dropsLogic ? { dropsLogic: true as const } : {};
+    if (e.kind === 'structural') return { message: e.message, kind: 'structural' as const, ...drops };
     const pos = findIdentifierLineCol(originalSource, e.ident);
-    return { message: e.message, kind: 'named' as const, ...(pos ?? {}) };
+    return { message: e.message, kind: 'named' as const, ...(pos ?? {}), ...drops };
   });
 }
 
@@ -132,7 +134,7 @@ function parseBody(
 
   // Warn about always blocks
   if (/\balways\b/i.test(body)) {
-    events.push({ kind: 'structural', message: 'Behavioural always blocks detected — only structural connections are imported.' });
+    events.push({ kind: 'structural', message: 'Behavioural always blocks detected — only structural connections are imported.', dropsLogic: true });
   }
 
   // Warn about assign with complex expressions
@@ -149,7 +151,7 @@ function parseBody(
         portMap: { in: rhs, out: lhs },
       });
     } else {
-      events.push({ kind: 'named', message: `assign '${lhs} = ${rhs}' uses an operator expression — imported as a note only`, ident: lhs });
+      events.push({ kind: 'named', message: `assign '${lhs} = ${rhs}' uses an operator expression — imported as a note only`, ident: lhs, dropsLogic: true });
     }
   }
 

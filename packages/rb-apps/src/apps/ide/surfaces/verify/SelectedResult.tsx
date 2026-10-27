@@ -26,7 +26,7 @@ export function SelectedResult({ signal, position, tick, expected, observed, inp
       <div className="rb-selected-result-values" data-testid="ide-verify-fail-nav-summary">
         <strong>{signal ?? 'Select an output'}</strong><span>{position}</span>
         {expected != null && <span>expected <code>{expected}</code></span>}
-        <span>{recorded ? 'observed' : 'unrecorded'} <code data-testid="ide-selected-result-observed">{observed ?? '—'}</code></span>
+        <span>{recorded ? 'observed' : 'unrecorded'} <code data-testid="ide-selected-result-observed" data-observed-value={recorded ? observed ?? undefined : 'unrecorded'}>{observed ?? '—'}</code></span>
         {mismatch && <strong className="rb-selected-result-mismatch">≠ Mismatch</strong>}
       </div>
       <div className="rb-selected-result-actions">

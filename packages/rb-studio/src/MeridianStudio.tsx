@@ -51,7 +51,7 @@ import { SourceLens } from './lenses/SourceLens';
 import { LogicLens } from './lenses/LogicLens';
 import { BoardLens } from './lenses/BoardLens';
 import { buildBoardModel } from './lenses/boardModel';
-import { Inspector, type InspectorAction } from './Inspector';
+import { Inspector, unconnectedSummaryText, type InspectorAction } from './Inspector';
 import { isTypingTarget, STUDIO_KEYMAP } from './keymap';
 import { sceneMetadata, shortHash } from './metadata';
 import type { Camera } from './camera';
@@ -1069,7 +1069,9 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
         {unconnected.size && firstUnconnected ? (
           <button type="button" className="mrd-status-link" data-testid="meridian-unconnected-count"
             onClick={() => { selectNode(firstUnconnected.slice(0, firstUnconnected.lastIndexOf('.'))); setFrameRequest((n) => n + 1); }}>
-            {unconnected.size} unconnected input{unconnected.size === 1 ? '' : 's'} · read as 0
+            {unconnectedSummaryText(scene.symbols.flatMap((symbol) => symbol.geometry.pins
+              .filter((pin) => unconnected.has(`${symbol.nodeId}.${pin.id}`))
+              .map((pin) => ({ node: symbol.node, pin: pin.id }))))}
           </button>
         ) : null}
         <span className="mrd-status-live" role="status" aria-live="polite" data-testid="meridian-wire-notice">{statusNotice ?? ''}</span>

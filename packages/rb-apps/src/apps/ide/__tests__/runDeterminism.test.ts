@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mergePersistedRuntimeState, useProjectRuntime, type RuntimeVerifyRun } from '../projectRuntime';
-import { BROWSER_ENGINE_VERSION, compactNativeTrace, firstRecordingDifference, outputDigest, summarizeRepetitions } from '../runDeterminism';
+import { BROWSER_ENGINE_VERSION, compactNativeTrace, describeRecordingChanges, firstRecordingDifference, outputDigest, summarizeRepetitions } from '../runDeterminism';
 
 function execute(reproduceRunId?: string) {
   const state = useProjectRuntime.getState();
@@ -71,6 +71,17 @@ describe('visible determinism at the recording owner', () => {
     expect(() => execute('another-project-run')).toThrow(/cannot be reproduced/);
     useProjectRuntime.setState({ verifyRunArchive: [{ ...first, identity: { ...first.identity!, engine: 'unavailable-v0' } }] });
     expect(() => execute(first.runId)).toThrow(/engine version/);
+  });
+
+  it('names a v2 recording as made by another engine and never reproduces it under v3 (RB-DEBT-028)', () => {
+    const first = execute();
+    const v2: RuntimeVerifyRun = { ...first, identity: { ...first.identity!, engine: 'redbyte-browser-v2' } };
+    expect(describeRecordingChanges(v2, {})).toEqual(['Engine changed']);
+    expect(describeRecordingChanges(first, {})).toEqual([]);
+    useProjectRuntime.setState({ verifyRunArchive: [v2] });
+    expect(() => execute(first.runId)).toThrow(/engine version/);
+    // The recording itself stays on file, unchanged.
+    expect(useProjectRuntime.getState().verifyRunArchive[0].identity?.engine).toBe('redbyte-browser-v2');
   });
 
   it('reports the exact first divergent value and distinguishes an absent sample from zero', () => {

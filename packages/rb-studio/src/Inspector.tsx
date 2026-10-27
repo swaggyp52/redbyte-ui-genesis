@@ -1,4 +1,5 @@
 import React from 'react';
+import { describeInputPin, type Node } from '@redbyte/rb-logic-core';
 import type { SceneSymbol } from '@redbyte/rb-logic-view/scene';
 import type { BoardBinding, Explanation, LogicValue } from '@redbyte/rb-studio-kernel';
 import type { SheetMode, ValueState } from './Sheet';
@@ -38,6 +39,30 @@ export interface InspectorProps {
   readonly wireLabel: string | null;
   readonly actions: readonly InspectorAction[];
   readonly wireActions: readonly InspectorAction[];
+}
+
+/**
+ * What an unconnected input reads in the simulator, from the engine's own description of the pin
+ * (RB-DEBT-028): a gate input reads 0, a DFlipFlop EN reads 1, and a register's EN or reset that
+ * its settings disable is not read at all. A pin the engine does not describe (a module instance's
+ * input, whose level depends on what it feeds) states no level.
+ */
+export function unconnectedInputText(node: Pick<Node, 'type' | 'config'>, pin: string): string {
+  const description = describeInputPin(node.type, pin, node.config);
+  if (!description) return 'unconnected';
+  if (!description.used) return `unconnected · not read (off in this part's settings)`;
+  return `unconnected · read as ${description.unconnectedLevel}`;
+}
+
+/** The status-bar count of unconnected inputs; it names a level only when every one of them reads it. */
+export function unconnectedSummaryText(pins: readonly { node: Pick<Node, 'type' | 'config'>; pin: string }[]): string {
+  const count = `${pins.length} unconnected input${pins.length === 1 ? '' : 's'}`;
+  const levels = new Set(pins.map(({ node, pin }) => {
+    const description = describeInputPin(node.type, pin, node.config);
+    return description?.used ? description.unconnectedLevel : null;
+  }));
+  const [level] = levels;
+  return levels.size === 1 && level != null ? `${count} · read as ${level}` : count;
 }
 
 function ActionButton({ action }: { action: InspectorAction }) {
@@ -88,7 +113,7 @@ export const Inspector: React.FC<InspectorProps> = ({
               const floating = pin.direction === 'in' && unconnected.has(key);
               const clock = clockPins.has(pin.id);
               const note = explanation?.pinNotes.get(pin.id);
-              const text = floating ? 'unconnected · read as 0'
+              const text = floating ? unconnectedInputText(symbol.node, pin.id)
                 : clock && clockRose ? `↑ rose${momentLabel ? ` in ${momentLabel.split(' · ')[0]}` : ''}`
                   : value === undefined ? 'not recorded' : `${value}${note ? ` · ${note}` : ''}`;
               return (

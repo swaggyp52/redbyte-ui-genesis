@@ -71,7 +71,7 @@ export function RunIdentityStrip({ run, archive, changes, recording, currencyRea
       </li>)}</ol>
     </WorkbenchDisclosure>
     </div>
-    {(changes.length > 0 || state.currency === 'differs') && <p className="rb-run-identity__changes" data-testid="ide-run-input-changes">{currencyReason ?? changes.join(' · ')} This recording is retained. Rerun uses current inputs; Reproduce uses this recording’s inputs.</p>}
+    {(changes.length > 0 || state.currency === 'differs') && <p className="rb-run-identity__changes" data-testid="ide-run-input-changes">{/* The manual: what changed (Design, Stimulus, Engine); without a listed change, why the run is no longer current. */}{changes.length > 0 ? changes.join(' · ') : currencyReason} This recording is retained. Rerun uses current inputs; Reproduce uses this recording’s inputs.</p>}
     {repetition.divergent && <div role="alert" className="rb-run-identity__alarm" data-testid="ide-run-divergence">
       <strong>Same configuration produced different outputs.</strong>{' '}
       {repetition.difference ? <button type="button" onClick={() => onDifference?.(repetition.difference!.signal, repetition.difference!.tick)}>

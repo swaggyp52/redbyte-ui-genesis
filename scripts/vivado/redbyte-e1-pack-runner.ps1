@@ -69,15 +69,7 @@ function Copy-RepoFile([string]$RelativePath, [string]$KitRoot) {
   return $true
 }
 
-function Find-DesignZip([string]$Root, [string]$DesignId) {
-  if (!(Test-Path -LiteralPath $Root)) {
-    return $null
-  }
-  return Get-ChildItem -LiteralPath $Root -Filter '*.zip' -File -Recurse |
-    Where-Object { $_.Name -like "*$DesignId*" } |
-    Sort-Object LastWriteTimeUtc -Descending |
-    Select-Object -First 1
-}
+. (Join-Path $PSScriptRoot 'redbyte-e1-packages.ps1')
 
 $KitBase = Resolve-RepoPath $OutDir
 $KitRoot = Join-Path $KitBase $Timestamp
@@ -105,6 +97,7 @@ foreach ($relative in @(
     'scripts/vivado/redbyte-e1-certify.ps1',
     'scripts/vivado/redbyte-e1-certify.tcl',
     'scripts/vivado/redbyte-e1-classify.tcl',
+    'scripts/vivado/redbyte-e1-packages.ps1',
     'scripts/vivado/redbyte-e1-collect.ps1',
     'docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md',
     'docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md',
@@ -119,16 +112,18 @@ foreach ($relative in @(
 $sourcePackageRoot = Resolve-RepoPath $PackageDir
 $packageRecords = @()
 foreach ($designId in $DesignIds) {
-  $zip = Find-DesignZip $sourcePackageRoot $designId
-  if ($null -eq $zip) {
+  $candidates = @(Find-RedByteDesignZips $sourcePackageRoot $designId)
+  if ($candidates.Count -ne 1) {
     $packageRecords += [ordered]@{
       designId = $designId
-      status = 'missing'
+      status = if ($candidates.Count -eq 0) { 'missing' } else { 'ambiguous' }
       source = $sourcePackageRoot
+      candidates = @($candidates | ForEach-Object { $_.FullName })
       copiedTo = $null
     }
     continue
   }
+  $zip = $candidates[0]
 
   $destination = Join-Path $PackagesRoot $zip.Name
   Copy-Item -LiteralPath $zip.FullName -Destination $destination -Force
@@ -160,7 +155,6 @@ $packageReadme += 'powershell -ExecutionPolicy Bypass -File scripts/vivado/redby
 $packageReadme += '```'
 Set-Content -LiteralPath (Join-Path $PackagesRoot 'README.md') -Value $packageReadme -Encoding UTF8
 
-$runTimestamp = '<timestamp>'
 $readme = @(
   '# RedByte Vivado E1 Run Kit',
   '',
@@ -186,17 +180,19 @@ $readme = @(
   'git pull --ff-only origin main',
   'git rev-parse HEAD',
   'powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-collect.ps1 -OutDir .redbyte/vivado-e1-packages',
-  ('powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages -OutDir .redbyte/vivado-e1/{0}' -f $runTimestamp),
+  'powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages',
   '```',
   '',
   'The `git rev-parse HEAD` output should match the intended pushed SHA before the run. If it does not, stop and report the mismatch.',
+  '',
+  'Each certify run writes a new `.redbyte/vivado-e1/<timestamp>/` folder and prints it as `runRoot=`. Re-running the command is safe: it never reuses an earlier run folder. An explicit `-OutDir` must name a folder that does not exist yet (or is empty); a used one is refused with exit code 2.',
   '',
   '## One-Command Certification Shape',
   '',
   'If ZIPs are already collected in one folder, run this from the repo root:',
   '',
   '```powershell',
-  ('powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips> -OutDir .redbyte/vivado-e1/{0}' -f $runTimestamp),
+  'powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips>',
   '```',
   '',
   '## Kit Package Folder',
@@ -205,7 +201,7 @@ $readme = @(
   '',
   '## Required Return Artifacts',
   '',
-  'Send back these files from the output folder:',
+  'Send back these files from the `runRoot=` output folder:',
   '',
   '- `manifest.json`',
   '- `results.md`',
@@ -221,13 +217,14 @@ $readme = @(
   '- `FAIL_TESTBENCH_ASSERTION`: the testbench ran and at least one check failed.',
   '- `FAIL_TESTBENCH_NO_CHECKS`: the testbench drives stimulus but checks nothing, so it cannot pass.',
   '- `FAIL_TESTBENCH_COMPILE`, `FAIL_TESTBENCH_ELAB`, `FAIL_TESTBENCH_LAUNCH`, `FAIL_TESTBENCH_RUNTIME`, `FAIL_TESTBENCH_TIMEOUT`: the simulation did not reach a result.',
-  '- `FAIL_TESTBENCH_CONTRACT`: the result line was missing, duplicated or disagreed with the logs or the testbench (or the package predates the self-check).',
+  '- `FAIL_TESTBENCH_CONTRACT`: the result line was missing, duplicated, malformed (not exactly `REDBYTE_TB_RESULT v=1 tb=<entity> status=<status> checks=<n> failures=<m>`, alone in its file) or disagreed with a log marker or the testbench (or the package predates the self-check).',
   '- `BLOCKED_NO_SIM`, `BLOCKED_NO_TESTBENCH`: no XSim target or no sim_1 testbench; never a pass.',
   '- `TIMEOUT`, `INTERRUPTED`, `HARNESS_ERROR`, `EVIDENCE_CONFLICT`: the run itself did not produce an accepted result.',
   '- `FAIL_SYNTH`: synthesis failed.',
   '- `FAIL_IMPL_DRY_RUN`: optional implementation dry run failed.',
   '- `BLOCKED_NO_VIVADO`: Vivado is not installed or discoverable. This is a toolchain blocker, not a product pass.',
-  '- `BLOCKED_PACKAGE_MISSING`: no ZIP was available for the design.',
+  '- `BLOCKED_PACKAGE_MISSING`: no ZIP with one of the design''s exact names (for example `rb-<design-id>-<suffix>-vivado-project.zip`) was available.',
+  '- `BLOCKED_PACKAGE_AMBIGUOUS`: more than one ZIP matched the design id exactly; keep one per design.',
   '- `BLOCKED_UNSUPPORTED_CONSTRUCT`: static audit found a construct that should not be certified.',
   '',
   'If Vivado fails, do not guess. Preserve and send the logs.'

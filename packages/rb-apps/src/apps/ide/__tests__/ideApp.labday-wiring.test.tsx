@@ -411,11 +411,14 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     // The Overview's lead problem keeps the structural blocker and its repair owner dominant.
+    // An undriven board output now blocks the package by name (RBEX4103, titled Floating output).
     await waitFor(() => {
-      expect(view.getByTestId('ide-project-attention').textContent).toMatch(/floating-output|Output not/);
+      expect(view.getByTestId('ide-project-attention').textContent).toMatch(/floating-output|Output not|Floating output/);
     });
     const attention = view.getByTestId('ide-project-attention');
-    expect(attention.textContent).toContain('Output');
+    // The lead problem is the RBEX4103 output blocker ("Floating output"), not missing evidence.
+    expect(attention.textContent).toContain('Floating output');
+    expect(attention.textContent).not.toMatch(/Compare|no evidence/i);
     expect(view.getByTestId('ide-project-fact-problems').textContent).not.toContain('none');
     fireEvent.click(within(attention).getByRole('button', { name: /^Open Design$/ }));
     await waitFor(() => expect(view.getByTestId('ide-root').getAttribute('data-ide-stage')).toBe('design'));

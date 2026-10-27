@@ -1,4 +1,4 @@
-import { getVhdlLogicNodeTypes } from '@redbyte/rb-logic-core';
+import { COMPONENT_SUPPORT_REGISTRY } from '@redbyte/rb-logic-core';
 
 /**
  * VHDL-2008 reserved words. An entity with one of these names does not
@@ -21,12 +21,13 @@ export const VHDL_RESERVED_WORDS: ReadonlySet<string> = new Set([
 
 /**
  * Why a module name cannot be an exported entity, or null when it can. A name
- * equal to a primitive type would also capture every gate of that type.
+ * equal to a primitive type would also capture every gate of that type, so every
+ * part the support registry knows is reserved, exportable or not (MUX4 included).
  */
 export function moduleNameCollision(name: string, topEntity?: string): string | null {
   const lowered = name.trim().toLowerCase();
   if (VHDL_RESERVED_WORDS.has(lowered)) return 'is a VHDL reserved word';
-  const primitive = [...getVhdlLogicNodeTypes(), 'Delay', 'Counter4Bit', 'RSLatch', 'Button', 'Clock', 'Switch', 'Lamp', 'INPUT', 'OUTPUT', 'Wire']
+  const primitive = COMPONENT_SUPPORT_REGISTRY.map((entry) => entry.type)
     .find((type) => type.toLowerCase() === lowered);
   if (primitive) return `is the name of the built-in ${primitive} part`;
   if (topEntity && topEntity.toLowerCase() === lowered) return 'is the top entity name';

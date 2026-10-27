@@ -1,4 +1,4 @@
-import type { Circuit, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
+import { describeInputPin, type Circuit, type Connection, type Node, type PortRef } from '@redbyte/rb-logic-core';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { canonicalizeSemanticCircuit } from '../../circuit/semanticCircuit';
 import { netlistFromCircuit } from '../../export/netlistExport';
@@ -6,7 +6,9 @@ import {
   canonicalPrimitiveOutputPort,
   emitPrimitiveVhdl,
   isEmittablePrimitiveType,
-  isInitializedSequentialType,
+  sequentialPowerOnLevels,
+  undrivenOutputMarker,
+  undrivenOutputMessage,
   unresolvedDriverMarker,
   unsupportedPrimitiveMessage,
   vhdlFromNetlist,
@@ -20,6 +22,7 @@ import type { NativeVisualModuleDefinition, ModulePort } from './projectHierarch
 import {
   elaborateProjectHierarchy,
   modulePortIndices,
+  modulePortInternalRefs,
   modulePortVhdlType,
   modulePortWidth,
   splitBitPort,
@@ -283,28 +286,57 @@ function emitStructuralBody(
       }
       const name = structuralSignalName(nodeId, port.name);
       const vector = modulePortWidth(port) > 1;
+      if (vector && bitIndex === undefined) {
+        // The simulator reads only the first bit of a whole vector read into one wire.
+        report(
+          `Unresolved driver "${nodeId}.${portName}" on node "${nodeId}": the wire reads the whole ${modulePortWidth(port)}-bit output ${port.name} ` +
+            `of module ${child.name}, and the simulator passes on only one of its bits [in ${context.path}]. ` +
+            `Fix: wire the bit you mean, ${port.name}(i); the design and its simulation are unchanged.`,
+          nodeId,
+        );
+        return unresolvedDriverMarker(nodeId, portName);
+      }
+      if (modulePortInternalRefs(port, bitIndex).length === 0) {
+        // Nothing inside drives it: flattening drops the wire and its reader reads its own unconnected level.
+        report(
+          `Unresolved driver "${nodeId}.${portName}" on node "${nodeId}": nothing inside module ${child.name} drives its output ${portName}, ` +
+            `so the simulator leaves what reads it at that input's unconnected level [in ${context.path}]. ` +
+            'Fix: drive the output inside the module, or remove this wire; the design and its simulation are unchanged.',
+          nodeId,
+        );
+        return unresolvedDriverMarker(nodeId, portName);
+      }
       signals.set(name, { type: vector ? modulePortVhdlType(port) : 'STD_LOGIC' });
-      return vector && bitIndex !== undefined ? `${name}(${bitIndex})` : name;
+      return vector ? `${name}(${bitIndex})` : name;
     }
+    // A board OUTPUT or a boundary marker publishes nothing in the simulator; only parts do.
     const canonical: PrimitiveOutputPort | null = node && isEmittablePrimitiveType(node.type)
-      ? canonicalPrimitiveOutputPort(node.type, portName)
-      : 'out';
+      ? canonicalPrimitiveOutputPort(node.type, portName, node.config)
+      : null;
     if (!canonical) {
-      report(`Unresolved driver "${nodeId}.${portName}" on node "${nodeId}": a ${node?.type} has no output ${portName} [in ${context.path}].`, nodeId);
+      // An unsupported part is already refused by name (RBEX4100); its readers only carry the marker.
+      const unsupportedPart = node && !boundary.isBoundary(node) && !isEmittablePrimitiveType(node.type) && !readString(node.config?.moduleBoundary);
+      if (!unsupportedPart) {
+        report(`Unresolved driver "${nodeId}.${portName}" on node "${nodeId}": a ${node?.type ?? 'missing node'} publishes no output ${portName} in the simulator [in ${context.path}].`, nodeId);
+      }
       return unresolvedDriverMarker(nodeId, portName);
     }
-    const name = structuralSignalName(nodeId, canonical);
+    return primitiveOutputSignal(nodeId, canonical);
+  };
+  /** The structural signal carrying one canonical output of a primitive (emitPrimitiveVhdl's own outputs). */
+  const primitiveOutputSignal = (nodeId: string, port: PrimitiveOutputPort): string => {
+    const name = structuralSignalName(nodeId, port);
     if (!signals.has(name)) signals.set(name, { type: 'STD_LOGIC' });
     return name;
   };
   const sourceFor = (ref: PortRef): string => boundary.inputExpr(ref.nodeId) ?? signalFor(ref.nodeId, ref.portName);
+  // Exact port names, as the simulator and hierarchy flattening read them: 'A' is not 'a'.
   const sourceForInput = (nodeId: string, portName: string): string | undefined => {
-    const exact = incoming.get(`${nodeId}.${portName}`);
-    if (exact) return sourceFor(exact);
-    const lowered = `${nodeId}.${portName}`.toLowerCase();
-    for (const [key, ref] of incoming) if (key.toLowerCase() === lowered) return sourceFor(ref);
-    return undefined;
+    const ref = incoming.get(`${nodeId}.${portName}`);
+    return ref ? sourceFor(ref) : undefined;
   };
+  const incomingPortsOf = (nodeId: string): string[] =>
+    circuit.connections.map((connection) => endpoint(connection.to, 'in')).filter((to) => to.nodeId === nodeId).map((to) => to.portName);
 
   const statements: string[] = [];
   const mapped = new StatementSourceMap(statements, context.sourceMap);
@@ -313,14 +345,66 @@ function emitStructuralBody(
     const before = statements.length;
     const child = resolveChildModule(node, moduleById, moduleByName);
     if (child) {
+      // Flattening binds a wire to the input of exactly that name: "A" reaches every bit of A,
+      // "A(i)" bit i of a vector A or a scalar A whole. Any other wire ("A[0]", "A(9)") is ignored.
+      const declaredInputs = child.ports.filter((port) => port.direction !== 'output');
+      const reaches = (portName: string): ModulePort | undefined => {
+        const { base, bitIndex } = splitBitPort(portName);
+        const port = declaredInputs.find((entry) => entry.name === base);
+        if (!port) return undefined;
+        return bitIndex === undefined || modulePortWidth(port) <= 1 || modulePortIndices(port).includes(bitIndex) ? port : undefined;
+      };
+      for (const portName of incomingPortsOf(node.id)) {
+        if (reaches(portName)) continue;
+        report(
+          `Wire into port "${portName}" on node "${node.id}" (module ${child.name}) is ignored: the module has no input of that name ` +
+            `(its inputs are ${declaredInputs.map((port) => `"${port.name}"`).join(', ') || 'none'}), so the simulator ignores this wire ` +
+            `and exported hardware could only copy that [in ${context.path}]. Fix: move the wire to one of those inputs or remove it; the design and its simulation are unchanged.`,
+          node.id,
+        );
+      }
+      const wiresIn = circuit.connections
+        .map((connection) => ({ from: endpoint(connection.from, 'out'), to: endpoint(connection.to, 'in') }))
+        .filter((entry) => entry.to.nodeId === node.id && reaches(entry.to.portName));
+      /** What one input bit (or a scalar input) is associated with, as the simulator reads it. */
+      const inputActual = (port: ModulePort, bit: number | undefined): string => {
+        const label = bit === undefined ? port.name : `${port.name}(${bit})`;
+        const sources = [...new Set(wiresIn
+          .filter((entry) => {
+            const { base, bitIndex } = splitBitPort(entry.to.portName);
+            return base === port.name && (bit === undefined || bitIndex === undefined || bitIndex === bit);
+          })
+          .map((entry) => sourceFor(entry.from)))];
+        if (sources.length === 1) return sources[0];
+        if (sources.length > 1) {
+          report(
+            `Module input ${label} of instance "${node.id}" (module ${child.name}) is driven by ${sources.length} wires [in ${context.path}]. ` +
+              'Fix: keep one wire into it; the design and its simulation are unchanged.',
+            node.id,
+          );
+          return unresolvedDriverMarker(node.id, label);
+        }
+        // Unconnected: flattening leaves each part it feeds at that part's own unconnected level.
+        const level = unconnectedInputLevel(child, port, bit, new Set([child.id]), { byId: moduleById, byName: moduleByName });
+        if (level !== null) return `'${level}'`;
+        report(
+          `Module input ${label} of instance "${node.id}" (module ${child.name}) is unconnected, and the parts it feeds read ` +
+            `different levels when unconnected, which one port cannot carry [in ${context.path}]. ` +
+            'Fix: connect it, or wire a Ground or PowerSource part to it; the design and its simulation are unchanged.',
+          node.id,
+        );
+        return unresolvedDriverMarker(node.id, label);
+      };
       const associations = child.ports.flatMap((port) => {
         const vector = modulePortWidth(port) > 1;
         // A vector output associates whole: the instance's output signal is declared as that vector.
-        if (port.direction === 'output') return [`      ${port.name} => ${signalFor(node.id, port.name)}`];
-        if (!vector) return [`      ${port.name} => ${sourceForInput(node.id, port.name) ?? "'0'"}`];
-        // One association per declared bit; an unconnected bit reads '0', as in the simulator.
-        return modulePortIndices(port).map((bit) =>
-          `      ${port.name}(${bit}) => ${sourceForInput(node.id, `${port.name}(${bit})`) ?? "'0'"}`);
+        if (port.direction === 'output') {
+          const name = structuralSignalName(node.id, port.name);
+          signals.set(name, { type: vector ? modulePortVhdlType(port) : 'STD_LOGIC' });
+          return [`      ${port.name} => ${name}`];
+        }
+        if (!vector) return [`      ${port.name} => ${inputActual(port, undefined)}`];
+        return modulePortIndices(port).map((bit) => `      ${port.name}(${bit}) => ${inputActual(port, bit)}`);
       });
       statements.push(
         `  ${instanceLabel(readString(node.config?.instanceName) || node.label || node.id)} : entity work.${child.name}`,
@@ -352,18 +436,58 @@ function emitStructuralBody(
       id: node.id,
       type: node.type,
       config: node.config,
-      output: (port) => signalFor(node.id, port),
+      output: (port) => primitiveOutputSignal(node.id, port),
       input: (port) => sourceForInput(node.id, port),
+      connectedPorts: incomingPortsOf(node.id),
     });
-    if (isInitializedSequentialType(node.type)) {
-      // Registers and latches power up at Q=0 / Q_inv=1, like the simulator.
-      signals.set(structuralSignalName(node.id, 'Q'), { type: 'STD_LOGIC', init: "'0'" });
-      signals.set(structuralSignalName(node.id, 'Q_inv'), { type: 'STD_LOGIC', init: "'1'" });
+    for (const error of emitted.errors) report(`${error} [in ${context.path}]`, node.id);
+    const powerOn = sequentialPowerOnLevels(node.type);
+    if (powerOn) {
+      // Registers and latches power up as the simulator's do (a DLatch at Q=1).
+      signals.set(structuralSignalName(node.id, 'Q'), { type: 'STD_LOGIC', init: powerOn.q });
+      signals.set(structuralSignalName(node.id, 'Q_inv'), { type: 'STD_LOGIC', init: powerOn.qInv });
     }
     statements.push(...emitted.lines);
     mapped.add(node.id, before, 'evaluation');
   }
   return { statements, signals, signalFor, incoming };
+}
+
+/**
+ * The level an unconnected module input carries in the simulator: flattening leaves every part
+ * it feeds at that part's own unconnected level (a gate input 0, a DFlipFlop EN 1), and a pin
+ * the part's configuration disables reads nothing. Null when the parts it feeds disagree, or it
+ * passes straight to an output or into something this cannot read, so one port level cannot
+ * stand for them.
+ */
+function unconnectedInputLevel(
+  module: NativeVisualModuleDefinition,
+  port: ModulePort,
+  bit: number | undefined,
+  visiting: Set<string>,
+  modules: { byId: Map<string, NativeVisualModuleDefinition>; byName: Map<string, NativeVisualModuleDefinition> },
+): 0 | 1 | null {
+  const levels = new Set<0 | 1>();
+  for (const ref of modulePortInternalRefs(port, bit)) {
+    const inner = module.circuit.nodes.find((node) => node.id === ref.nodeId);
+    if (!inner || typeof inner.config?.moduleBoundary === 'string') return null;
+    const grandchild = resolveChildModule(inner, modules.byId, modules.byName);
+    if (grandchild || readString(inner.config?.moduleDefinitionId)) {
+      const { base, bitIndex } = splitBitPort(ref.portName);
+      const innerPort = grandchild?.ports.find((entry) => entry.direction === 'input' && entry.name === base);
+      if (!grandchild || !innerPort || visiting.has(grandchild.id)) return null;
+      const level = unconnectedInputLevel(grandchild, innerPort, bitIndex, new Set([...visiting, grandchild.id]), modules);
+      if (level === null) return null;
+      levels.add(level);
+      continue;
+    }
+    const pin = describeInputPin(inner.type, ref.portName, inner.config);
+    if (!pin) return null;
+    if (pin.used === false) continue;
+    levels.add(pin.unconnectedLevel === 1 ? 1 : 0);
+  }
+  if (levels.size > 1) return null;
+  return levels.size === 1 ? [...levels][0] : 0;
 }
 
 function signalDeclarations(signals: StructuralBody['signals']): string[] {
@@ -523,8 +647,15 @@ function generateStructuralTop(
     const node = nodeById.get(nodeId);
     const inputPort = node && isBoundaryOutput(node) ? 'in' : 'out';
     const ref = body.incoming.get(`${nodeId}.${inputPort}`);
-    const driver = ref ? (inputPortByNode.get(ref.nodeId) ?? body.signalFor(ref.nodeId, ref.portName)) : "'0'";
-    statements.push(`  ${portName} <= ${driver};${ref ? '' : ' -- undriven output'}`);
+    // A board output nothing drives is X in Verify: it blocks, and the text cannot compile into a level.
+    if (!ref) {
+      const message = undrivenOutputMessage(portName, nodeId);
+      if (!diagnostics.some((entry) => entry.message === message)) {
+        diagnostics.push({ severity: 'error', message, definitionId: 'top', path: 'top.vhd', nodeId });
+      }
+    }
+    const driver = ref ? (inputPortByNode.get(ref.nodeId) ?? body.signalFor(ref.nodeId, ref.portName)) : undrivenOutputMarker(portName);
+    statements.push(`  ${portName} <= ${driver};${ref ? '' : ' -- undriven output: blocked'}`);
     mapped.add(nodeId, before, 'boundary');
   }
 

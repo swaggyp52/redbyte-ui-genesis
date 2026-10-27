@@ -164,8 +164,8 @@ function labelFill(
 ): string {
   const state = resourceVisualState(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode, conflictAliases);
   if (state === 'unavailable') return 'var(--rb-board-unavailable-label)';
-  if (state === 'selected') return 'var(--rb-board-selected-stroke)';
-  if (state === 'conflict') return 'var(--rb-board-conflict-stroke)';
+  if (state === 'selected') return 'var(--rb-board-selected-label)';
+  if (state === 'conflict') return 'var(--rb-board-conflict-label)';
   if (state === 'mapped') return 'var(--rb-board-ink)';
   if (state === 'mapped-unavailable') return 'var(--rb-board-label)';
   if (state === 'available') return 'var(--rb-board-ink)';

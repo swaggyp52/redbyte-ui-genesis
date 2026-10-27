@@ -8,6 +8,32 @@ role: Verify surface spec
 
 # Verify Mode Spec
 
+## Inspection is read-only; stimulus editing is explicit (2026-10-26, RB-DEBT-020)
+
+Scrubbing time, selecting lanes, cells, recorded values and checks, Space/Enter on the time grid,
+and opening Details, Recorded circuit or Follow signal never change the authored scenario: its
+version and content hash stay as they were and the selected recording stays current. The Meridian
+studio is read-only in the same way (Time, Logic, Source and Board lenses, sheet and board
+selection, stage switches); it offers no stimulus editing at all.
+
+Editing stimulus in the Time instrument is the explicit **Edit stimulus** mode, a toggle in the
+Timing Lab toolbar (`ide-timing-edit-mode`, `aria-pressed`). It is on while no recording is on
+screen, so a new scenario is still authored one click per value. It turns off whenever a recording
+is selected (Run, Reproduce, history, another scenario) or opened in Recorded circuit, and only the
+student turns it on again. While it is off, a click or Space/Enter on a lane cell selects that
+signal and tick, Delete on the instrument removes nothing, the draft heading reads "cells select
+while inspecting" and the draft cells are `aria-readonly`. While it is on, a click or Space/Enter drives
+the selected authored input as before; the editable lanes carry an accent band, an edge rule and
+the cell cursor, and the heading reads "editing". Recorded lanes are read-only in both modes. An
+edit is one scenario revision and marks the selected recording stale exactly as before; it never
+changes a recording, and design undo/redo neither rewinds nor restamps it. The labelled editors
+(+ Event, Duplicate, Delete, Edit event at tN, the generators) and the combinational Table's input
+toggles are explicit commands and are unchanged, so the heading names the cells, not the whole
+draft. Stimulus edits have no undo of their own (only the design has undo/redo); a student reverses
+one by editing it back. Proof: `timingLab.inspectMode`,
+`verifySurface.inspectionReadOnly` and `studio.inspectionReadOnly` tests; the counter proof gate
+asserts that a click on EN at t5 while inspecting leaves the scenario unchanged.
+
 ## Cancellable execution contract (2026-10-08)
 
 Explicit Run prepares an owned request and executes the same browser-v2 engine and schedule
@@ -125,7 +151,7 @@ With no circuit, the instrument yields to the start instructions. Design, the ex
 
 The linked investigation reserves its shared controls above two independently scrolling panes. Focusing Time must not obscure the recording header; the trace retains a useful minimum height, and its event-editor disclosure stays below it. One recorded execution says no repeat yet; identical counts describe comparisons after reproduction.
 
-Review refinement: Time uses Up/Down to select a lane and Left/Right to move the tick. Space/Enter edits only the selected authored input; generated clock and recorded output lanes cannot mutate stimulus. Child controls retain their own keyboard actions. Combinational Table inputs remain directly editable. Pre-run check context says no recording.
+Review refinement: Time uses Up/Down to select a lane and Left/Right to move the tick. In **Edit stimulus** mode Space/Enter edits only the selected authored input; while inspecting a recording it only selects (see the 2026-10-26 section). Generated clock and recorded output lanes cannot mutate stimulus. Child controls retain their own keyboard actions. Combinational Table inputs remain directly editable. Pre-run check context says no recording.
 
 This section supersedes the representation/run-line/mode descriptions below where they conflict.
 Run evaluates saved optional checks automatically; no Observe/Compare fork or Live I/O peer.
@@ -193,11 +219,13 @@ about a design whose output depends on the state it is in.
 **Direct editing and the cursor.** Every column the ruler draws holds the cursor, including the
 spare columns past the last authored event - the readout, the header chip and the drawn cursor
 always name the same tick. Clicking the tick number selects that tick: the number, the grid line
-and the edge marker are decoration and do not take the click. The event editor edits the event at
-the cursor and says so when there is none ("No event at t7. Click a stimulus cell in that column
-to drive an input there, or use + Add event"), rather than silently editing the first event in the
-scenario. The ruler's spare columns follow the experiment, not the cursor, so selecting one column
-does not re-fit the tick width and move the rest.
+and the edge marker are decoration and do not take the click. A click on a stimulus cell drives
+that input only in **Edit stimulus** mode; otherwise it selects that cell like any other. The event
+editor edits the event at the cursor and says so when there is none ("No event at t7. Click a
+stimulus cell in that column to drive an input there, or use + Add event", and while inspecting
+"Turn on Edit stimulus, then click a stimulus cell ..."), rather than silently editing the first
+event in the scenario. The ruler's spare columns follow the experiment, not the cursor, so selecting
+one column does not re-fit the tick width and move the rest.
 
 **The alternate editors are bounded.** "Event table", "Edit event at tN" and "Generators and full
 event editor" are disclosures the reader opens. An open one takes a bounded, scrolling share

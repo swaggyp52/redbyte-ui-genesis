@@ -100,6 +100,9 @@ export function buildImportedProjectCompilerResult(
   });
   const simModel = buildSimulationModel(ir);
 
+  // A construct the importer did not rebuild exactly blocks by name: the circuit is only the
+  // port scaffold (parsedHdlToCircuit), never a design that differs from the source.
+  const unreconstructed = new Set(converted.unreconstructed);
   const parserDiagnostics = normalizeParserDiagnostics([
     ...(input.parserDiagnostics ?? []),
     ...(input.parsedHdl.warnings ?? []).map((warning) => ({
@@ -110,11 +113,10 @@ export function buildImportedProjectCompilerResult(
       column: warning.col,
       message: warning.message,
     })),
-    ...converted.warnings.map((warning) => ({
-      source: 'reconstruction' as const,
-      severity: 'warning' as const,
-      message: warning,
-    })),
+    ...converted.warnings.map((warning): ImportDiagnostic =>
+      unreconstructed.has(warning)
+        ? { source: 'reconstruction', severity: 'error', blocking: true, message: warning }
+        : { source: 'reconstruction', severity: 'warning', message: warning }),
     ...(input.xdcResult?.warnings ?? []).map((warning) => ({
       source: 'constraints' as const,
       severity: 'warning' as const,

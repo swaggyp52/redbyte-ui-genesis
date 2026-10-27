@@ -114,6 +114,18 @@ describe('student-facing explanations of retained evaluations', () => {
     expect(noEdge.sequential?.reason).toContain('no rising edge');
   });
 
+  it('treats EN as the configuration does: a register without Clock enable captures whatever EN reads (RB-DEBT-028)', () => {
+    // The simulator ignores EN without Clock enable; a wired EN = 0 must not be read as a disabled capture.
+    const wired = explain(observe('Register1', { D: 1, CLK: 1, EN: 0 }, { q: 0, lastClk: 0 }, { hasEnable: false }, true), 'Q');
+    expect(wired.sequential).toMatchObject({ kind: 'capture', priorState: { value: 0 }, nextState: { value: 1 } });
+    // Nor does an active-low enable polarity apply to an EN the configuration disables.
+    const open = explain(observe('Register1', { D: 1, CLK: 1 }, { q: 0, lastClk: 0 }, { hasEnable: false, enablePolarity: 'active_low' }, true), 'Q');
+    expect(open.sequential).toMatchObject({ kind: 'capture', nextState: { value: 1 } });
+    // With Clock enable on, an unconnected EN reads 0 and holds.
+    const held = explain(observe('Register1', { D: 1, CLK: 1 }, { q: 0, lastClk: 0 }, { hasEnable: true }, true), 'Q');
+    expect(held.sequential).toMatchObject({ kind: 'hold', nextState: { value: 0 } });
+  });
+
   it('distinguishes direct async clear from synchronous reset requiring an actual edge', () => {
     const direct = explain(observe('DFlipFlop', { D: 1, CLK: 0, RST: 1 }, { q: 1, lastClk: 0 }), 'Q');
     expect(direct.sequential).toMatchObject({ kind: 'reset', priorState: { value: 1 }, nextState: { value: 0 } });

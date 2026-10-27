@@ -42,6 +42,24 @@ describe('component support registry', () => {
     expect(getComponentSupport('Counter4Bit')?.note).toContain('stub');
   });
 
+  it('refuses MUX4 like the Counter4Bit stub: the engine has no MUX4 behaviour', () => {
+    expect(NodeRegistry.has('MUX4')).toBe(false);
+    const mux4 = getComponentSupport('MUX4');
+    expect(mux4?.category).toBe('unsupported');
+    expect(mux4?.vhdlKind).toBe('none');
+    expect(Object.entries(mux4?.capabilities ?? {}).filter(([, supported]) => supported)).toEqual([]);
+    expect(mux4?.note).toMatch(/not simulated, verified or exported/);
+    expect(getVhdlLogicNodeTypes()).not.toContain('MUX4');
+    expect(resolveImportedComponentType('mux4')).toBeNull();
+  });
+
+  it('blocks Verify for every non-boundary part it does not simulate or verify, and for no boundary part', () => {
+    expect(getBlockedVerificationNodeTypes()).toEqual(['MUX4', 'Counter4Bit', 'Delay']);
+    for (const boundary of ['INPUT', 'OUTPUT', 'Switch', 'Button', 'Clock', 'CLOCK', 'Lamp', 'Wire']) {
+      expect(getBlockedVerificationNodeTypes()).not.toContain(boundary);
+    }
+  });
+
   it('resolves import aliases through the support matrix', () => {
     expect(resolveImportedComponentType('AND2')).toBe('AND');
     expect(resolveImportedComponentType('and3')).toBe('AND3');

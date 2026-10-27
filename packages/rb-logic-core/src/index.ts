@@ -161,7 +161,12 @@ export {
   StateBankBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
+  COMPOSITE_UNCONNECTED_INPUT_LEVEL,
+  describeInputPin,
+  inputPinsOf,
+  outputPortsOf,
 } from './builtins';
+export type { InputPinDescription, InputPinReading, InputPinRole, OutputPortReading, OutputPortRole } from './builtins';
 
 // Composite nodes
 export type { CompositeNodeDef } from './CompositeNode';
@@ -173,6 +178,7 @@ export {
   JKFlipFlopDef,
   FullAdderDef,
   Counter4BitDef,
+  BUILTIN_COMPOSITE_DEFS,
 } from './composite-defs';
 
 // Auto-register built-in node types
@@ -207,12 +213,7 @@ import {
   OUTPUTBehavior,
 } from './builtins';
 import { registerCompositeNode } from './CompositeNode';
-import {
-  RSLatchDef,
-  DLatchDef,
-  FullAdderDef,
-  Counter4BitDef,
-} from './composite-defs';
+import { BUILTIN_COMPOSITE_DEFS } from './composite-defs';
 NodeRegistry.register('PowerSource', PowerSourceBehavior);
 NodeRegistry.register('Ground', GroundBehavior);
 NodeRegistry.register('Switch', SwitchBehavior);
@@ -241,11 +242,9 @@ NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);
 NodeRegistry.register('OUTPUT', OUTPUTBehavior);
 
-// Register composite nodes
-registerCompositeNode(RSLatchDef);
-registerCompositeNode(DLatchDef);
-registerCompositeNode(FullAdderDef);
-registerCompositeNode(Counter4BitDef);
+// Register composite nodes (RSLatch, DLatch, FullAdder, Counter4Bit); describeInputPin reads
+// the same list.
+for (const definition of BUILTIN_COMPOSITE_DEFS) registerCompositeNode(definition);
 
 // Share utilities
 export * from './share/encoding';

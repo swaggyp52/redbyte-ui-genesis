@@ -10,9 +10,13 @@ import { compareCodepoint } from '../../export/codepointSort';
 
 /**
  * Semantic engine revision, independent of UI build SHA. Bump when execution changes.
- * v3 (RB-DEBT-014): feedback through Delay, DLatch, RSLatch and gates evaluates in a
- * node-order-independent schedule, so some feedback designs record different samples
- * than v2. v2 recordings report 'Engine changed' and cannot be reproduced.
+ * v3 changes what some designs record, so v2 recordings report 'Engine changed' and cannot
+ * be reproduced:
+ * - RB-DEBT-014: feedback through Delay, DLatch, RSLatch and gates evaluates in a
+ *   node-order-independent schedule;
+ * - RB-DEBT-016: identities, hashes and persisted orders compare text by codepoint;
+ * - RB-DEBT-028: a register reads EN only with Clock enable on, at its configured polarity
+ *   (a wired EN of 0 without Clock enable no longer blocks capture).
  */
 export const BROWSER_ENGINE_VERSION = 'redbyte-browser-v3';
 

@@ -16,9 +16,26 @@ import { fileURLToPath } from 'node:url';
 /** Repository root (this file lives in `scripts/`). */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Every scope this repository claims to have type-checked. Add a scope, do not widen one. */
+/**
+ * Product scopes that must type-check clean. `typecheck:app` runs each one raw and exits non-zero
+ * on any diagnostic. Add a scope, do not widen one.
+ */
 export const SCOPES = [
   { name: 'rb-apps', project: 'packages/rb-apps/tsconfig.json' },
+  { name: 'rb-studio', project: 'packages/rb-studio/tsconfig.json' },
+  { name: 'rb-studio-kernel', project: 'packages/rb-studio-kernel/tsconfig.json' },
+];
+
+/**
+ * Scopes the ratchet records and compares. Beyond the product scopes it records the whole-repo
+ * program (the root tsconfig includes every package and app), so type debt outside the product
+ * scopes stays visible and cannot grow: on 2026-10-26 it held 141 diagnostics, mostly
+ * rb-logic-core and rb-logic-view test and legacy determinism code. This is also the program a
+ * package without its own tsconfig falls back to during declaration emit.
+ */
+export const BASELINE_SCOPES = [
+  ...SCOPES,
+  { name: 'repo', project: 'tsconfig.json' },
 ];
 
 // `@redbyte/rb-apps` declares no TypeScript of its own, and three versions are installed through
