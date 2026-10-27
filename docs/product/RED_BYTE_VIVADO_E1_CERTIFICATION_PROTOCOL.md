@@ -46,6 +46,7 @@ Tracked entry points:
 - `scripts/vivado/redbyte-e1-certify.tcl`
 - `scripts/vivado/redbyte-e1-collect.ps1`
 - `scripts/vivado/redbyte-e1-pack-runner.ps1`
+- `scripts/vivado/redbyte-e1-packages.ps1` (shared exact package-ZIP matcher, dot-sourced by the three scripts above)
 
 Default proof output:
 
@@ -74,6 +75,8 @@ powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 `
 
 `-PackageDir` is an alias for the older `-ZipDir` parameter. Without `-OutDir` the harness creates a new `.redbyte/vivado-e1/<timestamp>/` run folder and prints it as `runRoot=`. `-OutDir` names the run folder instead; it must not exist yet or be empty. A folder that already holds files is refused before anything is written (exit code 2): a reused folder could hold an earlier run's extraction, logs and manifest.
 
+`-DesignIds` selects ZIPs by exact file name (case-insensitive), never by substring; the matcher is `scripts/vivado/redbyte-e1-packages.ps1`, shared by the certify, collect and pack-runner scripts. For design id `<id>` the accepted names are the ones RedByte's tools write: `<id>-vivado-project.zip` (Export of a project whose id is `<id>`), `rb-<id>-<6-char suffix>-vivado-project.zip` (Export of example `<id>` opened as a project), `<id>-rb-<id>-<suffix>-vivado-project.zip` (a browser proof's saved copy) and `<id>.zip` (`scripts/vivado-cert-export-ide-example.ts`). No match is `BLOCKED_PACKAGE_MISSING`; more than one is `BLOCKED_PACKAGE_AMBIGUOUS`, never "the newest". A design id must be a project slug (lowercase letters and digits in dash-separated groups) and may be listed once; otherwise the run is refused (exit code 2).
+
 Each design's ZIP is copied into `designs/<design-id>/package.zip`, hashed, and extracted into the new folder `designs/<design-id>/extracted/`. The package must hold exactly one `.xpr` project; zero or several is `FAIL_IMPORT`, and Vivado is not started. The manifest binds `zipSha256`, `xprZipEntry` (the `.xpr` path inside the ZIP), `files.xpr` (the extracted path) and `xprSha256` (taken before Vivado opens the project) to that one copy.
 
 Mode B, production browser ZIPs:
@@ -101,7 +104,8 @@ Local-generated packages are useful for harness rehearsal. Production certificat
 | `FAIL_SYNTH` | Synthesis failed |
 | `FAIL_IMPL_DRY_RUN` | Optional route-only implementation dry run failed |
 | `BLOCKED_NO_VIVADO` | Vivado is not installed/discoverable on the machine |
-| `BLOCKED_PACKAGE_MISSING` | No ZIP package was available for the design |
+| `BLOCKED_PACKAGE_MISSING` | No ZIP package with one of the design's exact names was available |
+| `BLOCKED_PACKAGE_AMBIGUOUS` | More than one ZIP package matched the design id exactly |
 | `BLOCKED_UNSUPPORTED_CONSTRUCT` | Static package audit found a construct that should not be sent to Vivado as certified |
 
 `READY_FOR_E1_RUN` can appear in dry-run output when packages are structurally ready and Vivado is discoverable, but it is not an E1 pass.

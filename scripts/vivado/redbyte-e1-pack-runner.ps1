@@ -69,15 +69,7 @@ function Copy-RepoFile([string]$RelativePath, [string]$KitRoot) {
   return $true
 }
 
-function Find-DesignZip([string]$Root, [string]$DesignId) {
-  if (!(Test-Path -LiteralPath $Root)) {
-    return $null
-  }
-  return Get-ChildItem -LiteralPath $Root -Filter '*.zip' -File -Recurse |
-    Where-Object { $_.Name -like "*$DesignId*" } |
-    Sort-Object LastWriteTimeUtc -Descending |
-    Select-Object -First 1
-}
+. (Join-Path $PSScriptRoot 'redbyte-e1-packages.ps1')
 
 $KitBase = Resolve-RepoPath $OutDir
 $KitRoot = Join-Path $KitBase $Timestamp
@@ -105,6 +97,7 @@ foreach ($relative in @(
     'scripts/vivado/redbyte-e1-certify.ps1',
     'scripts/vivado/redbyte-e1-certify.tcl',
     'scripts/vivado/redbyte-e1-classify.tcl',
+    'scripts/vivado/redbyte-e1-packages.ps1',
     'scripts/vivado/redbyte-e1-collect.ps1',
     'docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md',
     'docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md',
@@ -119,16 +112,18 @@ foreach ($relative in @(
 $sourcePackageRoot = Resolve-RepoPath $PackageDir
 $packageRecords = @()
 foreach ($designId in $DesignIds) {
-  $zip = Find-DesignZip $sourcePackageRoot $designId
-  if ($null -eq $zip) {
+  $candidates = @(Find-RedByteDesignZips $sourcePackageRoot $designId)
+  if ($candidates.Count -ne 1) {
     $packageRecords += [ordered]@{
       designId = $designId
-      status = 'missing'
+      status = if ($candidates.Count -eq 0) { 'missing' } else { 'ambiguous' }
       source = $sourcePackageRoot
+      candidates = @($candidates | ForEach-Object { $_.FullName })
       copiedTo = $null
     }
     continue
   }
+  $zip = $candidates[0]
 
   $destination = Join-Path $PackagesRoot $zip.Name
   Copy-Item -LiteralPath $zip.FullName -Destination $destination -Force
@@ -228,7 +223,8 @@ $readme = @(
   '- `FAIL_SYNTH`: synthesis failed.',
   '- `FAIL_IMPL_DRY_RUN`: optional implementation dry run failed.',
   '- `BLOCKED_NO_VIVADO`: Vivado is not installed or discoverable. This is a toolchain blocker, not a product pass.',
-  '- `BLOCKED_PACKAGE_MISSING`: no ZIP was available for the design.',
+  '- `BLOCKED_PACKAGE_MISSING`: no ZIP with one of the design''s exact names (for example `rb-<design-id>-<suffix>-vivado-project.zip`) was available.',
+  '- `BLOCKED_PACKAGE_AMBIGUOUS`: more than one ZIP matched the design id exactly; keep one per design.',
   '- `BLOCKED_UNSUPPORTED_CONSTRUCT`: static audit found a construct that should not be certified.',
   '',
   'If Vivado fails, do not guess. Preserve and send the logs.'

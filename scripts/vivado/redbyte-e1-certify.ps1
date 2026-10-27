@@ -37,6 +37,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'redbyte-e1-packages.ps1')
+
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $StartedAt = (Get-Date).ToUniversalTime()
 $Timestamp = $StartedAt.ToString('yyyyMMddTHHmmssfffZ')
@@ -192,16 +194,6 @@ function Resolve-Vivado {
   }
 }
 
-function Find-DesignZip([string]$Root, [string]$DesignId) {
-  if (!(Test-Path -LiteralPath $Root)) {
-    return $null
-  }
-  return Get-ChildItem -LiteralPath $Root -Filter '*.zip' -File -Recurse |
-    Where-Object { $_.Name -like "*$DesignId*" } |
-    Sort-Object LastWriteTimeUtc -Descending |
-    Select-Object -First 1
-}
-
 function Find-FirstFileByName([string]$Root, [string]$Name) {
   return Get-ChildItem -LiteralPath $Root -Recurse -File |
     Where-Object { $_.Name -ieq $Name } |
@@ -300,7 +292,7 @@ function New-UnanalysedResult([string]$DesignId, [string]$Classification, [strin
   }
 }
 
-function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoInfo, [string]$Mode) {
+function Analyze-Package([string]$DesignId, $ZipCandidates, [string]$RunRoot, $VivadoInfo, [string]$Mode) {
   $designOut = [System.IO.Path]::GetFullPath((Join-Path $RunRoot ("designs\{0}" -f $DesignId)))
   $extractRoot = Join-Path $designOut 'extracted'
   $logsRoot = Join-Path $designOut 'logs'
@@ -311,9 +303,15 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
   New-Directory $designOut
   New-Directory $logsRoot
 
-  if ($null -eq $ZipFile) {
-    return New-UnanalysedResult $DesignId 'BLOCKED_PACKAGE_MISSING' @('No ZIP package matched this design id.')
+  $ZipCandidates = @($ZipCandidates)
+  if ($ZipCandidates.Count -eq 0) {
+    return New-UnanalysedResult $DesignId 'BLOCKED_PACKAGE_MISSING' @("No ZIP package is named for design id $DesignId (exact names only; see redbyte-e1-packages.ps1).")
   }
+  if ($ZipCandidates.Count -gt 1) {
+    $names = @($ZipCandidates | ForEach-Object { $_.FullName })
+    return New-UnanalysedResult $DesignId 'BLOCKED_PACKAGE_AMBIGUOUS' @("$($ZipCandidates.Count) ZIP packages match design id ${DesignId}; keep exactly one: $($names -join '; ')")
+  }
+  $ZipFile = $ZipCandidates[0]
 
   # Hash, extract and inspect one private copy, so every recorded fact comes from the same bytes,
   # extracted into a folder that did not exist before this run.
@@ -645,6 +643,17 @@ if ($OutDir.Trim().Length -gt 0) {
 } else {
   $RunRoot = Join-Path (Resolve-RepoPath $OutputRoot) $Timestamp
 }
+# Design ids name ZIPs exactly and become designs/<id> folders, so each must be a project slug.
+$seenDesignIds = @{}
+foreach ($designId in $DesignIds) {
+  if (!(Test-RedByteDesignId $designId)) {
+    Stop-E1Run "design id '$designId' is not a RedByte project slug (lowercase letters and digits in dash-separated groups)."
+  }
+  if ($seenDesignIds.ContainsKey($designId.ToLowerInvariant())) {
+    Stop-E1Run "design id '$designId' is listed twice."
+  }
+  $seenDesignIds[$designId.ToLowerInvariant()] = $true
+}
 # Every run writes into a folder of its own. A reused folder still holds an earlier run's
 # extraction, logs and manifest, which a new run could silently analyse or mix with its own.
 if (Test-Path -LiteralPath $RunRoot) {
@@ -717,8 +726,8 @@ if ($Mode -eq 'EnvCheck') {
   }
 
   foreach ($designId in $DesignIds) {
-    $zip = Find-DesignZip $zipRoot $designId
-    $results += Analyze-Package $designId $zip $RunRoot $VivadoInfo $Mode
+    $candidates = @(Find-RedByteDesignZips $zipRoot $designId)
+    $results += Analyze-Package $designId $candidates $RunRoot $VivadoInfo $Mode
   }
 }
 

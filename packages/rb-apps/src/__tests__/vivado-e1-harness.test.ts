@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -34,6 +34,7 @@ const CERTIFY_TCL = join(REPO, 'scripts/vivado/redbyte-e1-certify.tcl');
 const CLASSIFY_TCL = join(REPO, 'scripts/vivado/redbyte-e1-classify.tcl');
 const CERTIFY_PS1 = join(REPO, 'scripts/vivado/redbyte-e1-certify.ps1');
 const PACK_RUNNER_PS1 = join(REPO, 'scripts/vivado/redbyte-e1-pack-runner.ps1');
+const COLLECT_PS1 = join(REPO, 'scripts/vivado/redbyte-e1-collect.ps1');
 const FIXTURES = join(__dirname, 'fixtures/vivado-e1');
 
 function findTclsh(): string | null {
@@ -88,8 +89,17 @@ describe('E1 harness scripts: static fail-closed contract', () => {
     expect(ps1).not.toMatch(/Set-Content -LiteralPath \$Path[^\n]*-Encoding UTF8/);
   });
 
-  it('the Gannon run kit ships the classifier with the certify script', () => {
+  it('the Gannon run kit ships the classifier and the package matcher with the certify script', () => {
     expect(read(PACK_RUNNER_PS1)).toContain("'scripts/vivado/redbyte-e1-classify.tcl'");
+    expect(read(PACK_RUNNER_PS1)).toContain("'scripts/vivado/redbyte-e1-packages.ps1'");
+  });
+
+  it('no script selects a package ZIP by substring', () => {
+    for (const script of [CERTIFY_PS1, COLLECT_PS1, PACK_RUNNER_PS1]) {
+      const text = read(script);
+      expect(text, script).not.toMatch(/-like\s+"\*\$DesignId\*"/);
+      expect(text, script).toMatch(/\. \(Join-Path \$PSScriptRoot 'redbyte-e1-packages\.ps1'\)/);
+    }
   });
 });
 
@@ -477,6 +487,92 @@ describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real packa
       expect(design.xprZipEntry).toBe('zzz-lab/zzz-lab.xpr');
       expect(design.files.xpr).toMatch(/[\\/]extracted[\\/]zzz-lab[\\/]zzz-lab\.xpr$/);
       expect(design.xprSha256).toBe(second.xprSha256);
+    });
+  }, 300_000);
+
+  // The names RedByte's own tools give design <id>'s package (see redbyte-e1-packages.ps1).
+  it.each([
+    [`${designId}-vivado-project.zip`],
+    [`rb-${designId}-41vclq-vivado-project.zip`],
+    [`${designId}-rb-${designId}-41vclq-vivado-project.zip`],
+    [`${designId}.zip`],
+  ])('-DesignIds selects the exported name %s', async (fileName) => {
+    await withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), fileName);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, outcome.output).toBe('PASS_E1');
+      expect(design.zipPath.endsWith(`\\${fileName}`)).toBe(true);
+    });
+  }, 300_000);
+
+  it('-DesignIds matches exactly: a newer package with a longer name is never selected', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      await writePackageZip(project, join(root, 'zips'), `${designId}-vivado-project.zip`);
+      const longer = await writePackageZip(project, join(root, 'zips'), `${designId}-hierarchical-vivado-project.zip`, { slug: 'hier' });
+      const later = new Date(Date.now() + 60_000);
+      utimesSync(longer.path, later, later);
+      const outcome = runWrapper(root, 'pass', designId);
+      expect(outcome.manifest!.designs[0].zipPath, outcome.output).toMatch(new RegExp(`\\\\${designId}-vivado-project\\.zip$`));
+    });
+  }, 300_000);
+
+  it.each([
+    [`${designId}-hierarchical-vivado-project.zip`],
+    [`rb-${designId}-hierarchical-41vxyz-vivado-project.zip`],
+    [`old-${designId}-vivado-project.zip`],
+  ])('a package named %s alone is BLOCKED_PACKAGE_MISSING for the shorter id', async (fileName) => {
+    await withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), fileName);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, `${outcome.output}\n${design.zipPath}`).toBe('BLOCKED_PACKAGE_MISSING');
+      expect(outcome.manifest!.verdict).toBe('blocked');
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('two packages that both match a design id exactly are BLOCKED_PACKAGE_AMBIGUOUS, not the newest', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      await writePackageZip(project, join(root, 'zips', 'a'), `${designId}-vivado-project.zip`);
+      await writePackageZip(project, join(root, 'zips', 'b'), `rb-${designId}-41vclq-vivado-project.zip`);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, outcome.output).toBe('BLOCKED_PACKAGE_AMBIGUOUS');
+      expect(design.issues.join('\n')).toMatch(/2 ZIP packages match/);
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('a design id that is not a RedByte project slug is refused before anything is written', async () => {
+    await withRoot(async (root) => {
+      const outcome = runWrapper(root, 'pass', '..\\escape');
+      expect(outcome.status, outcome.output).toBe(2);
+      expect(outcome.output).toMatch(/refused: design id/);
+      expect(existsSync(join(root, 'out-pass'))).toBe(false);
+    });
+  }, 300_000);
+
+  it('the collector copies only the exactly named package', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      await writePackageZip(project, join(root, 'zips'), `${designId}-vivado-project.zip`);
+      const longer = await writePackageZip(project, join(root, 'zips'), `${designId}-hierarchical-vivado-project.zip`, { slug: 'hier' });
+      const later = new Date(Date.now() + 60_000);
+      utimesSync(longer.path, later, later);
+      const collected = join(root, 'collected');
+      const run = spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', COLLECT_PS1, '-Mode', 'ExistingZipDir', '-InputZipDir', join(root, 'zips'),
+          '-OutputZipDir', collected, '-DesignIds', designId],
+        { encoding: 'utf8', timeout: 120_000 },
+      );
+      expect(run.status, `${run.stdout}${run.stderr}`).toBe(0);
+      const summary = JSON.parse(read(join(collected, 'collection-summary.json')).replace(/^﻿/, ''));
+      expect(summary.records[0].status).toBe('copied');
+      expect(summary.records[0].source).toMatch(new RegExp(`\\\\${designId}-vivado-project\\.zip$`));
     });
   }, 300_000);
 
