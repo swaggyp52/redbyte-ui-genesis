@@ -171,6 +171,8 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     learningGoal: 'Implement opcode-driven combinational datapath behavior.',
     whatToDo: `You are given a partially built ALU. The AND, OR, XOR gate columns, FullAdder (FA) blocks, and four MUX4 (4:1 mux) output-select blocks are already placed on the canvas. Your job: wire the datapath and opcode control to make a working 4-function ALU.
 
+Unsupported component: the four MUX4 blocks are not supported. RedByte has no MUX4 simulation, so it cannot simulate, verify or export them: Simulate shows "Cannot verify this circuit" and Package is blocked (RBEX4100) while one is on the canvas. Delete each MUX4 and build its 4:1 output select from AND, OR and NOT gates.
+
 Inputs:  SW[3:0] = A operand,  SW[7:4] = B operand,  SW[10:8] = opcode (S2/S1/S0)
 Outputs: LED[3:0] = result,  LED[4] = carry flag (Cout of FA[3])
 
@@ -186,9 +188,9 @@ Opcode table:
       'Connect SW[3:0] to the A inputs of AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] blocks.',
       'Connect SW[7:4] to the B inputs of AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] blocks.',
       'Chain FA[0] to FA[1] to FA[2] to FA[3]: tie Cin of FA[0] to ground, connect each Cout to the next Cin.',
-      'Connect the AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] Sum outputs to the four pre-placed MUX4 input pins (a, b, c, d).',
-      'Connect SW[10:8] (opcode S2/S1/S0) to the select lines of each mux.',
-      'Connect the mux outputs to LED[3:0].',
+      'Delete the four pre-placed MUX4 blocks (MUX4 is not supported: RedByte cannot simulate, verify or export it) and build one 4:1 select per result bit from AND, OR and NOT gates.',
+      'Connect the AND[3:0], OR[3:0], XOR[3:0], and FA[3:0] Sum outputs to the data inputs of each 4:1 select, and decode SW[10:8] (opcode S2/S1/S0) into its select logic.',
+      'Connect the select outputs to LED[3:0].',
       'Connect FA[3] Cout to LED[4].',
     ],
     simulateChecks: [

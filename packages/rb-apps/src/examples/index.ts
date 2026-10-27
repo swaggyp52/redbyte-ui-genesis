@@ -276,7 +276,8 @@ const examples: Record<ExampleId, { data: SerializedCircuitV1; metadata: Example
     metadata: {
       id: '19_lab4-alu-starter-basys3',
       name: 'Lab 4 ALU Starter (Basys3)',
-      description: 'Unsolved starter scaffold with required Lab 4 SW/LED labels',
+      description:
+        'Unsolved legacy Lab 4 scaffold with the required SW/LED labels. Its four MUX4 blocks are not supported (not simulated, verified or exported); replace them with AND/OR/NOT selects.',
       layer: 6,
       difficulty: 'intermediate',
     },
