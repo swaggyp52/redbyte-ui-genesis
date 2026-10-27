@@ -9,7 +9,7 @@ import {
 } from './ideExportProject';
 import { elaborateProjectHierarchy } from './projectHierarchy';
 import type { ProjectRuntimeState } from './projectRuntime';
-import { isDesignOwnedExportDiagnostic } from './projectWorkflowAuthority';
+import { blocksCheckedRuns } from './projectWorkflowAuthority';
 import { buildExportViewModel } from './viewmodels/buildExportViewModel';
 import { getActiveScenario } from './verifyScenario';
 
@@ -29,7 +29,7 @@ export function deriveIdeBlockingDesignIssue(
   const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
   const exportViewModel = buildExportViewModel(project, state.verifyLastRun ?? undefined, activeScenario ?? undefined);
   const exportDiagnostic = exportViewModel.errors.find(
-    (diagnostic) => diagnostic.canonical.blocking && isDesignOwnedExportDiagnostic(diagnostic.code, liveSchedule.timingMode),
+    (diagnostic) => diagnostic.canonical.blocking && blocksCheckedRuns(diagnostic.code, liveSchedule.timingMode),
   );
   if (exportDiagnostic) {
     return { title: exportDiagnostic.title, message: exportDiagnostic.message, hint: exportDiagnostic.fix ?? exportDiagnostic.hint[0] };

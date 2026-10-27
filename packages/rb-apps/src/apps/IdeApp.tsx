@@ -143,6 +143,7 @@ import {
 } from './ide/labTaskDefinition';
 import type { IdeImportMeta } from './ide/projectImportMeta';
 import {
+  blocksCheckedRuns,
   deriveProjectWorkflowAuthority,
   deriveVerifyCurrent,
   isDesignOwnedExportDiagnostic,
@@ -2429,7 +2430,9 @@ const IdeWorkspace: React.FC = () => {
     return Array.from(diagnosticsById.values());
   }, [designDiagnostics, exportDesignDiagnostics]);
   const blockingDesignIssue = useMemo(() => {
-    const exportDiagnostic = exportDesignDiagnostics[0];
+    const exportDiagnostic = exportDesignDiagnostics.find((diagnostic) =>
+      blocksCheckedRuns(diagnostic.code, liveScheduleContract?.timingMode)
+    );
     if (exportDiagnostic) {
       return {
         title: exportDiagnostic.title,
@@ -2446,7 +2449,7 @@ const IdeWorkspace: React.FC = () => {
       message: compilerDiagnostic.message,
       hint: compilerDiagnostic.hint[0],
     };
-  }, [designDiagnostics, exportDesignDiagnostics]);
+  }, [designDiagnostics, exportDesignDiagnostics, liveScheduleContract?.timingMode]);
   const blockingDesignIssueMessage = useMemo(
     () =>
       blockingDesignIssue
