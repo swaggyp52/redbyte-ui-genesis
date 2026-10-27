@@ -6,9 +6,15 @@ import type { VerifyClockPolicy } from './verifyClockPolicy';
 import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 import { buildVerifyCircuitEvidenceHash } from './verifyProjectHash';
 import { computeExecutionStimulusHash } from './verifyScenario';
+import { compareCodepoint } from '../../export/codepointSort';
 
-/** Semantic engine revision, independent of UI build SHA. Bump when execution changes. */
-export const BROWSER_ENGINE_VERSION = 'redbyte-browser-v2';
+/**
+ * Semantic engine revision, independent of UI build SHA. Bump when execution changes.
+ * v3 (RB-DEBT-014): feedback through Delay, DLatch, RSLatch and gates evaluates in a
+ * node-order-independent schedule, so some feedback designs record different samples
+ * than v2. v2 recordings report 'Engine changed' and cannot be reproduced.
+ */
+export const BROWSER_ENGINE_VERSION = 'redbyte-browser-v3';
 
 export interface RunIdentity {
   readonly design: string;
@@ -33,10 +39,11 @@ export function buildRunIdentity(input: {
 }): RunIdentity {
   // Logical IO binding affects execution; the board package pin does not. Geometry,
   // timestamps, run ordinals, scenario names and authoring IDs never enter this identity.
+  // Codepoint order: the identity must not vary with the browser locale (RB-DEBT-016).
   const io = input.ioRows.map(row => ({
     id: row.id, nodeId: row.nodeId ?? '', port: row.port ?? '',
     label: row.label, direction: row.direction,
-  })).sort((a, b) => a.id.localeCompare(b.id));
+  })).sort((a, b) => compareCodepoint(a.id, b.id));
   return {
     design: digestValue({ circuit: buildVerifyCircuitEvidenceHash(input.circuit), io }),
     stimulus: digestValue({

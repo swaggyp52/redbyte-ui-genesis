@@ -42,6 +42,7 @@ import type {
   IRPrimitive,
   IRPrimitiveType,
 } from './circuitIR';
+import { compareText } from './simulationModel';
 import { busIndices, busWidth } from '../bus';
 
 // ---------------------------------------------------------------------------
@@ -179,20 +180,22 @@ function djb2Hash(s: string): string {
  * Compute a topology-stable irHash.
  * Input ordering is normalized: primitives and nets are sorted, endpoints
  * within each net are sorted. Timestamps and positions are excluded.
+ * Sorting is by codepoint, never collation, so the hash is the same in every
+ * browser locale (RB-DEBT-016).
  */
 function computeIrHash(primitives: IRPrimitive[], nets: IRNet[]): string {
   const primPart = [...primitives]
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => compareText(a.id, b.id))
     .map(p => `${p.id}:${p.type}`);
 
   const netPart = [...nets]
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => compareText(a.name, b.name))
     .map(n => {
       const drivers = [...n.drivers]
-        .sort((a, b) => `${a.nodeId}.${a.port}`.localeCompare(`${b.nodeId}.${b.port}`))
+        .sort((a, b) => compareText(`${a.nodeId}.${a.port}`, `${b.nodeId}.${b.port}`))
         .map(d => `${d.nodeId}.${d.port}`);
       const sinks = [...n.sinks]
-        .sort((a, b) => `${a.nodeId}.${a.port}`.localeCompare(`${b.nodeId}.${b.port}`))
+        .sort((a, b) => compareText(`${a.nodeId}.${a.port}`, `${b.nodeId}.${b.port}`))
         .map(s => `${s.nodeId}.${s.port}`);
       return `${n.name}[${drivers.join(',')}→${sinks.join(',')}]`;
     });
@@ -387,7 +390,7 @@ function buildNets(
 
     const mergedDrivers: IRNetEndpoint[] = sortedKeys
       .map(dk => byDriver.get(dk)!.driver)
-      .sort((a, b) => `${a.nodeId}.${a.port}`.localeCompare(`${b.nodeId}.${b.port}`));
+      .sort((a, b) => compareText(`${a.nodeId}.${a.port}`, `${b.nodeId}.${b.port}`));
 
     const mergedSinksMap = new Map<string, IRNetEndpoint>();
     for (const dk of driverKeys) {

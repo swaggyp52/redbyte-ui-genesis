@@ -27,6 +27,12 @@ import type {
   Node,
   PortRef,
 } from './types';
+import { compareText } from './ir/simulationModel';
+
+/** Persisted declaration order: name, then direction, by codepoint (never collation). */
+function compareBusDeclarations(a: BusDeclaration, b: BusDeclaration): number {
+  return compareText(a.name, b.name) || compareText(a.direction, b.direction);
+}
 
 // ---------------------------------------------------------------------------
 // Membership rules
@@ -404,9 +410,7 @@ export function normalizeBusDeclarations(raw: unknown): BusDeclaration[] {
       bits: bits.sort((a, b) => a.index - b.index),
     });
   }
-  return out.sort(
-    (a, b) => a.name.localeCompare(b.name) || a.direction.localeCompare(b.direction)
-  );
+  return out.sort(compareBusDeclarations);
 }
 
 // ---------------------------------------------------------------------------
@@ -455,7 +459,7 @@ export function synthesizeBusDeclarations(circuit: Circuit): Circuit {
   for (const group of groups.values()) {
     if (group.bits.length < 2) continue;
     const bits = [...group.bits].sort(
-      (a, b) => a.index - b.index || a.nodeId.localeCompare(b.nodeId)
+      (a, b) => a.index - b.index || compareText(a.nodeId, b.nodeId)
     );
     const indices = bits.map((bit) => bit.index);
     const uniqueIndices = new Set(indices);
@@ -477,9 +481,7 @@ export function synthesizeBusDeclarations(circuit: Circuit): Circuit {
   }
 
   if (added.length === 0) return circuit;
-  const buses = [...existing, ...added].sort(
-    (a, b) => a.name.localeCompare(b.name) || a.direction.localeCompare(b.direction)
-  );
+  const buses = [...existing, ...added].sort(compareBusDeclarations);
   return { ...circuit, buses };
 }
 
@@ -593,9 +595,7 @@ export function createBusBoundary(circuit: Circuit, spec: CreateBusSpec): Create
     circuit: {
       ...circuit,
       nodes: [...circuit.nodes, ...memberNodes],
-      buses: [...existing, bus].sort(
-        (a, b) => a.name.localeCompare(b.name) || a.direction.localeCompare(b.direction)
-      ),
+      buses: [...existing, bus].sort(compareBusDeclarations),
     },
     bus,
     memberNodes,
@@ -633,7 +633,7 @@ export function renameBus(circuit: Circuit, busId: string, nextName: string): Ci
 
   const renamed = buses
     .map((entry) => (entry.id === busId ? { ...entry, name } : entry))
-    .sort((a, b) => a.name.localeCompare(b.name) || a.direction.localeCompare(b.direction));
+    .sort(compareBusDeclarations);
 
   return { ...circuit, nodes, buses: renamed };
 }
