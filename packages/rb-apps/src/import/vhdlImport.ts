@@ -10,7 +10,10 @@
 //       component instantiations with port map
 //     end architecture;
 //
-// Behavioural 'process' blocks are ignored with a warning.
+// A clocked process in the register template (REGISTER_PROCESS_RX) is rebuilt as a
+// register whose next state, enable and reset are rebuilt as gates. Anything the parser does not
+// rebuild exactly (another process, an expression outside and/or/xor/not, ...) is a warning
+// flagged dropsLogic, and parsedHdlToCircuit then keeps only the port scaffold.
 
 import type { ParsedHDL, ParsedPort, ParsedInstance, ParsedHdlWarning } from './hdlToCircuit';
 
@@ -53,15 +56,17 @@ function findIdentifierLineCol(
 
 // ─── Warning event types ──────────────────────────────────────────────────────
 
+/** dropsLogic: the construct was not rebuilt, so the circuit cannot be the design (ParsedHdlWarning). */
 type WarningEvent =
-  | { kind: 'structural'; message: string }
-  | { kind: 'named'; message: string; ident: string };
+  | { kind: 'structural'; message: string; dropsLogic?: true }
+  | { kind: 'named'; message: string; ident: string; dropsLogic?: true };
 
 function mapWarningEvents(events: WarningEvent[], originalSource: string): ParsedHdlWarning[] {
   return events.map((e) => {
-    if (e.kind === 'structural') return { message: e.message, kind: 'structural' as const };
+    const drops = e.dropsLogic ? { dropsLogic: true as const } : {};
+    if (e.kind === 'structural') return { message: e.message, kind: 'structural' as const, ...drops };
     const pos = findIdentifierLineCol(originalSource, e.ident);
-    return { message: e.message, kind: 'named' as const, ...(pos ?? {}) };
+    return { message: e.message, kind: 'named' as const, ...(pos ?? {}), ...drops };
   });
 }
 
@@ -169,52 +174,9 @@ function parseBeginBlock(
   _signals: string[],
   events: WarningEvent[],
 ): void {
-  const inferredRegisters = new Set<string>();
-  const ffPattern =
-    /if\s+(.+?)\s*=\s*'1'\s+then\s+([A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\d+\))?)\s*<=\s*'0'\s*;\s*elsif\s+rising_edge\((.+?)\)\s+then\s+(?:if\s+(.+?)\s*=\s*'1'\s+then\s+)?\2\s*<=\s*(.+?)\s*;\s*(?:end\s+if\s*;\s*)?end\s+if\s*;/gi;
-  let ffMatch: RegExpExecArray | null;
-  while ((ffMatch = ffPattern.exec(body)) !== null) {
-    const resetExpr = normalizeSignalRef(ffMatch[1]);
-    const regName = normalizeSignalRef(ffMatch[2]);
-    const clkExpr = normalizeSignalRef(ffMatch[3]);
-    const ceExpr = ffMatch[4] ? normalizeSignalRef(ffMatch[4]) : undefined;
-    const dExpr = normalizeSignalRef(ffMatch[5]);
-    if (inferredRegisters.has(regName)) continue;
-    inferredRegisters.add(regName);
-
-    const portMap: Record<string, string> = {
-      D: dExpr,
-      C: clkExpr,
-      CLR: resetExpr,
-      Q: regName,
-    };
-    if (ceExpr) {
-      portMap.CE = ceExpr;
-    }
-
-    instances.push({
-      id: `proc_ff_${regName.replace(/[^a-zA-Z0-9_]/g, '_')}`,
-      componentType: 'FDCE',
-      portMap,
-    });
-  }
-
-  let bodyWithoutProcesses = body;
-  const processRx = /process\s*\([\s\S]*?\)\s*begin([\s\S]*?)end\s+process\s*;/gi;
-  let processMatch: RegExpExecArray | null;
-  let processIndex = 0;
-  while ((processMatch = processRx.exec(body)) !== null) {
-    processIndex += 1;
-    const processBody = processMatch[1];
-    const parsed = parseSequentialProcess(processBody, processIndex);
-    if (parsed && !inferredRegisters.has(parsed.portMap.Q)) {
-      instances.push(parsed);
-      inferredRegisters.add(parsed.portMap.Q);
-    }
-  }
-  bodyWithoutProcesses = body.replace(processRx, '');
-
-  parseConcurrentAssignments(bodyWithoutProcesses, instances, events);
+  const materialize = createExprMaterializer(instances);
+  const bodyWithoutProcesses = parseRegisterProcesses(body, instances, events, materialize);
+  parseConcurrentAssignments(bodyWithoutProcesses, instances, events, materialize);
 
   // Component instantiations:
   // <label> : <component_name> port map ( ... );
@@ -233,20 +195,18 @@ function parseBeginBlock(
     const portMapStr = im[3];
     const portMap: Record<string, string> = {};
 
-    // Named port map: portName => signal
-    const namedRx = /(\w+)\s*=>\s*([\w']+)/g;
+    // Named port map: portName => actual
+    const namedRx = /(\w+)\s*=>\s*([^,]+)/g;
     let nmm: RegExpExecArray | null;
     while ((nmm = namedRx.exec(portMapStr)) !== null) {
-      const hdlPort = nmm[1].trim();
-      const signal = nmm[2].trim().replace(/^'(.)'$/, '$1'); // strip '1' → 1
-      portMap[hdlPort] = signal;
+      portMap[nmm[1].trim()] = portActual(nmm[2]);
     }
 
     if (Object.keys(portMap).length === 0) {
       // Positional port map: fallback, just record positions as port0, port1, …
       const positional = portMapStr.split(',').map((s) => s.trim()).filter(Boolean);
       positional.forEach((sig, idx) => {
-        portMap[`port${idx}`] = sig.replace(/^'(.)'$/, '$1');
+        portMap[`port${idx}`] = portActual(sig);
       });
     }
 
@@ -254,53 +214,106 @@ function parseBeginBlock(
   }
 }
 
-function parseSequentialProcess(body: string, index: number): ParsedInstance | null {
-  const collapsed = body.replace(/\s+/g, ' ').trim();
-  const resetMatch = collapsed.match(
-    /if\s+(.+?)\s*=\s*'1'\s+then\s+([A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\d+\))?)\s*<=\s*'0'\s*;/i
-  );
-  if (!resetMatch) return null;
-  const resetExpr = normalizeSignalRef(resetMatch[1]);
-  const regName = normalizeSignalRef(resetMatch[2]);
+/**
+ * A port-map actual as the importer wires it: a constant '0'/'1' loses its quotes (0, 1), a
+ * signal or one bit of a vector is normalised (SW(3) -> SW[3]). Anything else is kept as
+ * written, so it resolves to no source and the importer names it instead of guessing.
+ */
+function portActual(raw: string): string {
+  const actual = raw.trim();
+  if (/^'[01]'$/.test(actual)) return actual.slice(1, 2);
+  return normalizeSignalRef(actual);
+}
 
-  const clkMatch = collapsed.match(/rising_edge\((.+?)\)\s+then\s+([\s\S]+)\s*end\s+if\s*;$/i);
-  if (!clkMatch) return null;
-  const clkExpr = normalizeSignalRef(clkMatch[1]);
-  let clockBranch = clkMatch[2].trim();
-  if (clockBranch.endsWith('end if;')) {
-    clockBranch = clockBranch.slice(0, -'end if;'.length).trim();
+/** A signal reference the parser rebuilds: an identifier, optionally one bit of a vector. */
+const SIGNAL_REF = String.raw`[A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\s*\d+\s*\))?`;
+
+/**
+ * The one process shape the importer rebuilds, with nothing else in the process (whitespace
+ * collapsed):
+ *   if <reset> = '1' then <q> <= '0';
+ *   elsif rising_edge(<clock>) then [if <enable> = '1' then] <q> <= <next>; [end if;]
+ *   end if;
+ * It becomes a Register1 with an active-high asynchronous clear (FDCE). Reset, enable and next
+ * state may be and/or/xor/not expressions, rebuilt as gates; the clock is a signal.
+ */
+const REGISTER_PROCESS_RX = new RegExp(
+  String.raw`^if\s+(.+?)\s*=\s*'1'\s+then\s+(${SIGNAL_REF})\s*<=\s*'0'\s*;\s*` +
+    String.raw`elsif\s+rising_edge\s*\(\s*(${SIGNAL_REF})\s*\)\s+then\s+` +
+    String.raw`(?:if\s+(.+?)\s*=\s*'1'\s+then\s+\2\s*<=\s*([^;]+?)\s*;\s*end\s+if\s*;|\2\s*<=\s*([^;]+?)\s*;)\s*` +
+    String.raw`end\s+if\s*;$`,
+  'i',
+);
+
+/** [label :] process [(sensitivity)] [is] <declarations> begin <statements> end process [label]; */
+const PROCESS_RX =
+  /(?:\b\w+\s*:\s*)?\bprocess\b\s*(?:\(([^()]*(?:\([^()]*\)[^()]*)*)\))?\s*(?:\bis\b)?([\s\S]*?)\bbegin\b([\s\S]*?)\bend\s+process\b[^;]*;/gi;
+
+/**
+ * Rebuild every register process (REGISTER_PROCESS_RX) and name every other process, which is
+ * not imported. Returns the body without its processes, for the concurrent statements.
+ */
+function parseRegisterProcesses(
+  body: string,
+  instances: ParsedInstance[],
+  events: WarningEvent[],
+  materialize: (node: ExprNode) => string,
+): string {
+  const registers = new Set<string>();
+  let processMatch: RegExpExecArray | null;
+  PROCESS_RX.lastIndex = 0;
+  while ((processMatch = PROCESS_RX.exec(body)) !== null) {
+    const sensitivity = (processMatch[1] ?? '').replace(/\s+/g, ' ').trim();
+    const statements = processMatch[3].replace(/\s+/g, ' ').trim();
+    const register = processMatch[2].trim() ? null : REGISTER_PROCESS_RX.exec(statements);
+    if (!register) {
+      const preview = statements.length > 60 ? `${statements.slice(0, 57)}...` : statements;
+      events.push({
+        kind: 'structural',
+        message:
+          `PROCESS (${sensitivity}) "${preview}" not imported: RedByte rebuilds only a register process ` +
+          `(if <reset> = '1' then <q> <= '0'; elsif rising_edge(<clock>) then [if <enable> = '1' then] <q> <= <next>; end if;).`,
+        dropsLogic: true,
+      });
+      continue;
+    }
+    const regName = normalizeSignalRef(register[2]);
+    if (registers.has(regName.toLowerCase())) {
+      events.push({ kind: 'named', message: `Register '${regName}' is assigned in more than one process — not imported`, ident: regName, dropsLogic: true });
+      continue;
+    }
+    registers.add(regName.toLowerCase());
+    const roles: Array<[string, string | undefined]> = [
+      ['next state', register[5] ?? register[6]],
+      ['reset', register[1]],
+      ['enable', register[4]],
+    ];
+    const parsed = roles.map(([role, raw]) => ({ role, raw, expr: raw === undefined ? null : parseExpr(raw) }));
+    const unsupported = parsed.find((part) => part.raw !== undefined && !part.expr);
+    if (unsupported) {
+      events.push({
+        kind: 'named',
+        message: `Register '${regName}' ${unsupported.role} '${unsupported.raw!.trim()}' not imported: only and, or, xor, not, '0' and '1' are rebuilt`,
+        ident: regName,
+        dropsLogic: true,
+      });
+      continue;
+    }
+    const [next, reset, enable] = parsed.map((part) => (part.expr ? materialize(part.expr) : undefined));
+    const portMap: Record<string, string> = {
+      D: next!,
+      C: normalizeSignalRef(register[3]),
+      CLR: reset!,
+      Q: regName,
+    };
+    if (enable !== undefined) portMap.CE = enable;
+    instances.push({ id: `proc_ff_${regName.replace(/[^a-zA-Z0-9_]/g, '_')}`, componentType: 'FDCE', portMap });
   }
-
-  let ceExpr: string | undefined;
-  let dExpr: string;
-
-  const ceMatch = clockBranch.match(/if\s+(.+?)\s*=\s*'1'\s+then\s+(.+?)\s*<=\s*(.+?)\s*;\s*end\s+if\s*;?/i);
-  if (ceMatch) {
-    ceExpr = normalizeSignalRef(ceMatch[1]);
-    dExpr = normalizeSignalRef(ceMatch[3]);
-  } else {
-    const directMatch = clockBranch.match(
-      /([A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\d+\))?)\s*<=\s*(.+?)\s*;?$/i
-    );
-    if (!directMatch) return null;
-    dExpr = normalizeSignalRef(directMatch[2]);
+  const rest = body.replace(PROCESS_RX, ' ');
+  if (/\bprocess\b/i.test(rest)) {
+    events.push({ kind: 'structural', message: 'A PROCESS block could not be parsed — not imported.', dropsLogic: true });
   }
-
-  const portMap: Record<string, string> = {
-    D: dExpr,
-    C: clkExpr,
-    CLR: resetExpr,
-    Q: regName,
-  };
-  if (ceExpr) {
-    portMap.CE = ceExpr;
-  }
-
-  return {
-    id: `proc_ff_${index}_${regName.replace(/[^a-zA-Z0-9_]/g, '_')}`,
-    componentType: 'FDCE',
-    portMap,
-  };
+  return rest;
 }
 
 type ExprNode =
@@ -308,13 +321,20 @@ type ExprNode =
   | { kind: 'not'; value: ExprNode }
   | { kind: 'binary'; op: 'and' | 'or' | 'xor'; left: ExprNode; right: ExprNode };
 
-function tokenizeExpr(raw: string): string[] {
-  const tokens = raw.match(/\(|\)|\b(?:not|and|or|xor)\b|[A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\d+\))?/gi);
-  return tokens?.map((token) => normalizeSignalRef(token)) ?? [];
+/** Parentheses, the constants '0' and '1', not/and/or/xor and signal references (one bit at most). */
+const EXPR_TOKEN_RX = /\(|\)|'[01]'|\b(?:not|and|or|xor)\b|[A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\s*\d+\s*\))?/gi;
+
+/** Null when the text holds anything else: an expression is rebuilt whole or not at all. */
+function tokenizeExpr(raw: string): string[] | null {
+  if (raw.replace(EXPR_TOKEN_RX, '').trim() !== '') return null;
+  return (raw.match(EXPR_TOKEN_RX) ?? []).map((token) => normalizeSignalRef(token));
 }
 
+/** A constant '0'/'1' is a signal leaf; parsedHdlToCircuit ties it to Ground/PowerSource. */
 function parseExpr(raw: string): ExprNode | null {
-  const tokens = tokenizeExpr(raw);
+  const tokenized = tokenizeExpr(raw);
+  if (!tokenized) return null;
+  const tokens: string[] = tokenized;
   let i = 0;
 
   function parsePrimary(): ExprNode | null {
@@ -323,7 +343,8 @@ function parseExpr(raw: string): ExprNode | null {
     if (token === '(') {
       i += 1;
       const inner = parseOr();
-      if (tokens[i] === ')') i += 1;
+      if (tokens[i] !== ')') return null;
+      i += 1;
       return inner;
     }
     if (/^(and|or|xor|not)$/i.test(token)) return null;
@@ -377,19 +398,18 @@ function parseExpr(raw: string): ExprNode | null {
   return parsed && i === tokens.length ? parsed : null;
 }
 
-function parseConcurrentAssignments(
-  body: string,
-  instances: ParsedInstance[],
-  events: WarningEvent[],
-): void {
+/**
+ * Rebuilds a parsed expression as gate instances and returns the signal carrying its value. One
+ * materializer per architecture, so register next states and concurrent assignments never reuse
+ * a gate id.
+ */
+function createExprMaterializer(instances: ParsedInstance[]): (node: ExprNode) => string {
   let syntheticGateCount = 0;
-  const assignmentRx = /([A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\d+\))?)\s*<=\s*([^;]+);/gi;
-  let assignmentMatch: RegExpExecArray | null;
 
-  function materialize(node: ExprNode, targetHint: string): string {
+  function materialize(node: ExprNode): string {
     if (node.kind === 'signal') return node.value;
     if (node.kind === 'not') {
-      const source = materialize(node.value, `${targetHint}_n`);
+      const source = materialize(node.value);
       const out = `__expr_not_${syntheticGateCount}`;
       syntheticGateCount += 1;
       instances.push({
@@ -399,8 +419,8 @@ function parseConcurrentAssignments(
       });
       return out;
     }
-    const left = materialize(node.left, `${targetHint}_l`);
-    const right = materialize(node.right, `${targetHint}_r`);
+    const left = materialize(node.left);
+    const right = materialize(node.right);
     const out = `__expr_${node.op}_${syntheticGateCount}`;
     syntheticGateCount += 1;
     const componentType = node.op.toUpperCase();
@@ -412,6 +432,18 @@ function parseConcurrentAssignments(
     return out;
   }
 
+  return materialize;
+}
+
+function parseConcurrentAssignments(
+  body: string,
+  instances: ParsedInstance[],
+  events: WarningEvent[],
+  materialize: (node: ExprNode) => string,
+): void {
+  const assignmentRx = /([A-Za-z_][A-Za-z0-9_]*(?:\[\d+\]|\(\d+\))?)\s*<=\s*([^;]+);/gi;
+  let assignmentMatch: RegExpExecArray | null;
+
   while ((assignmentMatch = assignmentRx.exec(body)) !== null) {
     const lhs = normalizeSignalRef(assignmentMatch[1]);
     const rhs = assignmentMatch[2].trim();
@@ -421,10 +453,11 @@ function parseConcurrentAssignments(
         kind: 'named',
         message: `Signal assignment '${lhs} <= ${rhs}' not fully supported — skipped`,
         ident: lhs,
+        dropsLogic: true,
       });
       continue;
     }
-    const resolved = materialize(expr, lhs);
+    const resolved = materialize(expr);
     if (resolved !== lhs) {
       instances.push({
         id: `wire_${lhs.replace(/[^a-zA-Z0-9_]/g, '_')}`,
@@ -439,7 +472,8 @@ function parseConcurrentAssignments(
 
 /**
  * Parse VHDL source text and return a ParsedHDL intermediate representation.
- * Handles structural VHDL only; behavioural process blocks are noted as warnings.
+ * Handles structural VHDL and register processes; every construct it does not rebuild is a
+ * warning flagged dropsLogic.
  */
 export function parseVhdl(source: string): ParsedHDL {
   const originalSource = source;
