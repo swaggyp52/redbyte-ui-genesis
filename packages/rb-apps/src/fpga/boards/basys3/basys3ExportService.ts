@@ -12,7 +12,7 @@
 
 import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
-import { resolveExportIoMapping } from './exportIoMapping';
+import { resolveExportIoMapping, resolveProjectIoMapping } from './exportIoMapping';
 import type { IoMapping } from '@redbyte/rb-utils';
 import type { RBProject } from '../../../export/projectFormat';
 import { generateTestbenchVhdl, TESTBENCH_UNRESOLVED_MARKER } from './testbenchGenerator';
@@ -91,9 +91,12 @@ const BASYS3_INPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('input');
 const BASYS3_OUTPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('output');
 
 /** Prefer structured {@link RBProject.hardwareMappingV2} when present; else legacy {@link RBProject.ioMapping}. */
-/** The mapping the package is built from, live rows only (resolveExportIoMapping). */
+/**
+ * Every mapping row the project carries, for validation: a row whose node was deleted still
+ * reports that it is ignored. The artifacts are built from resolveExportIoMapping (live rows).
+ */
 export function getExportIoMapping(project: RBProject): IoMapping | undefined {
-  return resolveExportIoMapping(project);
+  return resolveProjectIoMapping(project);
 }
 
 interface ExportAuthorityContext {
@@ -341,7 +344,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   // Step 1: Build the semantic projection before validation returns. Map Pins
   // needs exact conflict/missing state even when packaging is blocked.
-  const ioMapping = getExportIoMapping(project);
+  const ioMapping = resolveExportIoMapping(project);
   const entityName = project.hdl?.top ?? project.fpga?.top ?? 'top';
   const exportModel = ioMapping
     ? buildBasys3ExportModel(project.circuit, ioMapping)
@@ -395,24 +398,26 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   result.warnings.push(...filteredBundleWarnings);
 
-  // An HDL port projection ships the imported top.vhd; its generated port scaffold drives
-  // nothing, so its scaffold diagnostics (an undriven output is an error since it blocks a
-  // generated top) are tolerated, and anything else still blocks.
-  const scaffoldDiagnostics = [...bundleResult.warnings, ...bundleResult.errors];
+  // A port projection's scaffold warnings (its INPUT/OUTPUT boundary nodes) are noise, but only
+  // a preserved import handoff ships the imported HDL: otherwise the generated top ships, and an
+  // error in it is real. An imported counter whose logic was not reconstructed used to ship
+  // here with every LED tied to '0' and status ok.
   const allowProjectionWarnings =
     hdlPortProjection &&
-    scaffoldDiagnostics.length > 0 &&
-    scaffoldDiagnostics.every((message) => isHdlProjectionScaffoldWarning(message));
+    bundleResult.errors.length === 0 &&
+    bundleResult.warnings.length > 0 &&
+    bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
   const preservedHandoff = tryBuildPreservedImportHandoff(project, bundleResult.topXdc);
   const treatBundleValid = bundleResult.valid || allowProjectionWarnings || Boolean(preservedHandoff);
   // When the generated top.vhd is what ships, every construct it could not
-  // express blocks by name (RBEX4100 and friends), not as a generic warning.
-  if (!preservedHandoff && !hdlPortProjection) {
+  // express blocks by name (RBEX4100, RBEX4103 and friends), not as a generic warning.
+  if (!preservedHandoff) {
     for (const message of bundleResult.errors) {
       result.errors.push({ type: 'validation', severity: 'error', message });
     }
   }
-  if (!treatBundleValid) {
+  // The generic message only when no error above already names why the bundle is invalid.
+  if (!treatBundleValid && (preservedHandoff || bundleResult.errors.length === 0)) {
     result.errors.push({
       type: 'validation',
       severity: 'error',
@@ -982,8 +987,6 @@ export function isHdlProjectionScaffoldWarning(message: string): boolean {
     /^Unsupported node: .+ \(INPUT\)$/i.test(trimmed) ||
     /^Unsupported node: .+ \(OUTPUT\)$/i.test(trimmed) ||
     /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed) ||
-    // The generated port scaffold of an HDL projection drives nothing; the imported HDL ships.
-    /^Output port ".+" on node ".+" has no driver: /i.test(trimmed) ||
     /^Top output port ".+" has no driver .*$/i.test(trimmed) ||
     /^Top output port ".+" has unresolved driver .+$/i.test(trimmed) ||
     /^HDL ports missing in XDC: .+$/i.test(trimmed) ||

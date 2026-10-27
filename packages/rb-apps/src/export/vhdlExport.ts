@@ -516,7 +516,7 @@ export function vhdlFromNetlist(
     const hasDriver = netlist.nets.some((net) => net.to.nodeId === outNode.id);
     if (!hasDriver) {
       const binding = topOutputBindings?.find((entry) => entry.fromNodeId === outNode.id);
-      const message = undrivenOutputMessage(binding?.portName ?? nodeIdToSignal.get(outNode.id) ?? outNode.id, outNode.id);
+      const message = undrivenOutputMessage(binding ? topBindingSignalRef(binding) : nodeIdToSignal.get(outNode.id) ?? outNode.id, outNode.id);
       if (!errors.includes(message)) errors.push(message);
     }
   });
@@ -664,9 +664,9 @@ export function vhdlFromNetlist(
           ) ?? netlist.nets.find((n) => n.to.nodeId === binding.fromNodeId);
 
         if (!driverNet) {
-          const message = undrivenOutputMessage(binding.portName, binding.fromNodeId);
+          const message = undrivenOutputMessage(topOutputSignalRef, binding.fromNodeId);
           if (!errors.includes(message)) errors.push(message);
-          lines.push(`  ${topOutputSignalRef} <= ${undrivenOutputMarker(binding.portName)}; -- undriven output: blocked`);
+          lines.push(`  ${topOutputSignalRef} <= ${undrivenOutputMarker(topOutputSignalRef)}; -- undriven output: blocked`);
           return;
         }
 

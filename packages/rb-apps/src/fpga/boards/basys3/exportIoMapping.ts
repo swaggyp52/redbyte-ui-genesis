@@ -2,6 +2,18 @@ import { resolveIoMappingFromProjectFields, type IoMapping } from '@redbyte/rb-u
 import type { RBProject } from '../../../export/projectFormat';
 
 /**
+ * Every mapping row the project carries: the structured V2 document when the project has one,
+ * else the legacy ioMapping. Validation reads this, so a row whose node was deleted still
+ * reports that it is ignored.
+ */
+export function resolveProjectIoMapping(project: RBProject): IoMapping | undefined {
+  return resolveIoMappingFromProjectFields({
+    ioMapping: project.ioMapping,
+    hardwareMappingV2: project.hardwareMappingV2,
+  });
+}
+
+/**
  * The mapping every artifact of a Basys3 package is built from (top.vhd, top.xdc, the
  * testbench, the pin checks): the structured V2 document when the project carries one, else
  * the legacy ioMapping, without the rows whose node is no longer in the circuit.
@@ -12,10 +24,7 @@ import type { RBProject } from '../../../export/projectFormat';
  * as a boundary node, so any node of the circuit keeps its row.
  */
 export function resolveExportIoMapping(project: RBProject): IoMapping | undefined {
-  const mapping = resolveIoMappingFromProjectFields({
-    ioMapping: project.ioMapping,
-    hardwareMappingV2: project.hardwareMappingV2,
-  });
+  const mapping = resolveProjectIoMapping(project);
   if (!mapping) return mapping;
   const live = new Set((project.circuit?.nodes ?? []).map((node) => node.id));
   return {
