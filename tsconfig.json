@@ -18,6 +18,7 @@
       "@redbyte/rb-apps": ["packages/rb-apps/src/index.ts"],
       "@redbyte/rb-apps/domain": ["packages/rb-apps/src/domain.ts"],
       "@redbyte/rb-apps/runtime": ["packages/rb-apps/src/runtime.ts"],
+      "@redbyte/rb-apps/*": ["packages/rb-apps/src/*"],
       "@redbyte/rb-logic-view/scene": ["packages/rb-logic-view/src/scene/index.ts"],
       "@redbyte/rb-studio-kernel": ["packages/rb-studio-kernel/src/index.ts"],
       "@redbyte/rb-studio-kernel/react": ["packages/rb-studio-kernel/src/react.ts"],

@@ -174,6 +174,7 @@ import {
   loadLabSessionMeta,
   clearLabSessionMeta,
   shouldKeepHydratedRuntime,
+  sessionMetaIsAheadOfRuntime,
   type LabSessionMeta,
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
@@ -419,6 +420,8 @@ const IdeWorkspace: React.FC = () => {
   const [reloadEvidenceStale, setReloadEvidenceStale] = useState(false);
 
   const [runtimeSaveStatus, setRuntimeSaveStatus] = useState(runtimePersistence.getStatus);
+  /** RB-DEBT-023: set at boot when the session metadata follows a record that never landed. */
+  const [unfinishedSessionNotice, setUnfinishedSessionNotice] = useState<string | null>(null);
   useEffect(() => runtimePersistence.subscribe(setRuntimeSaveStatus), []);
   useEffect(() => projectRepository.subscribe(setRepositoryState), []);
   useEffect(
@@ -2139,6 +2142,13 @@ const IdeWorkspace: React.FC = () => {
     void (async () => {
     const meta = loadLabSessionMeta();
     const hydratedRuntime = useProjectRuntime.getState();
+    if (sessionMetaIsAheadOfRuntime(meta, runtimePersistence.storedRuntimeRevision())) {
+      // The page closed before the last change landed. Say so instead of silently reopening the
+      // previous project; the stored working session is what opens.
+      const reopened = hydratedRuntime.projectName?.trim();
+      setUnfinishedSessionNotice(`Your last change did not finish saving before the page closed. RedByte reopened ${
+        reopened ? `"${reopened}"` : 'the last saved session'}, the last state that was saved.`);
+    }
     if (shouldKeepHydratedRuntime(meta, hydratedRuntime.projectId, runtimePersistence.hasStoredSession())) {
       const ownSnapshot = projectRepository.open(hydratedRuntime.projectId);
       if (ownSnapshot.ok) {
@@ -3322,7 +3332,7 @@ const IdeWorkspace: React.FC = () => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       const persistence = runtimePersistence.getStatus();
       const repository = projectRepository.getState();
-      if (persistence.state === 'saving' || persistence.state === 'failed' ||
+      if (persistence.state === 'saving' || persistence.state === 'failed' || runtimePersistence.hasUnacknowledgedWrites() ||
         (!isPristineProjectHomeRef.current &&
           (repository.saveState === 'saving' || repository.saveState === 'autosaving' || repository.saveState === 'save-failed'))) {
         event.preventDefault();
@@ -3394,6 +3404,12 @@ const IdeWorkspace: React.FC = () => {
         <div className="ide-autosave-banner" role="alert" data-testid="ide-session-save-failure">
           <span>{runtimeSaveStatus.message ?? repositoryState.lastError?.message ?? 'This session could not be saved. Your open work is still available.'}</span>
           <button type="button" onClick={handleExportProjectBackup}>Download session backup</button>
+        </div>
+      ) : null}
+      {unfinishedSessionNotice ? (
+        <div className="ide-autosave-banner" role="alert" data-testid="ide-session-unfinished">
+          <span>{unfinishedSessionNotice}</span>
+          <button type="button" onClick={() => setUnfinishedSessionNotice(null)}>Dismiss</button>
         </div>
       ) : null}
 

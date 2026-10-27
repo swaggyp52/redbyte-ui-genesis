@@ -12,6 +12,7 @@
 import React from 'react';
 import { toStudentFacingError } from '@redbyte/rb-utils';
 import { setErrorBoundaryMarker } from '../utils/snapshotSystem';
+import { runtimePersistence } from '../apps/ide/durableProjectStorage';
 import styles from './ErrorBoundary.module.css';
 
 interface ErrorBoundaryProps {
@@ -24,6 +25,10 @@ interface ErrorBoundaryState {
   error?: Error;
   errorInfo?: React.ErrorInfo;
   resetNonce?: number;
+  /** Reload App is waiting for the last change to land. */
+  reloadPending?: boolean;
+  /** Why the last change could not be saved; Reload App waits until the student decides. */
+  reloadBlockedReason?: string;
 }
 
 type ErrorBoundaryKind = 'runtime' | 'surface-load';
@@ -101,6 +106,20 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   };
 
   handleReload = () => {
+    // RB-DEBT-023: a reload abandons a write that has not landed, so wait for the last requested
+    // change. If it cannot be saved, say why and let the student choose to reload anyway.
+    this.setState({ reloadPending: true, reloadBlockedReason: undefined });
+    runtimePersistence.whenDurable().then(
+      () => window.location.reload(),
+      (error: unknown) => this.setState({
+        reloadPending: false,
+        reloadBlockedReason: typeof (error as { message?: unknown } | null)?.message === 'string'
+          ? (error as { message: string }).message : 'The last change could not be saved.',
+      }),
+    );
+  };
+
+  handleReloadAnyway = () => {
     window.location.reload();
   };
 
@@ -161,9 +180,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 <button
                   onClick={this.handleReload}
                   className={styles.primaryButton}
+                  disabled={this.state.reloadPending}
                   data-testid="error-boundary-reload-app"
                 >
-                  Reload App
+                  {this.state.reloadPending ? 'Saving, then reloading' : 'Reload App'}
                 </button>
               ) : (
                 <button
@@ -189,6 +209,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 Copy Error Details
               </button>
             </div>
+            {this.state.reloadBlockedReason ? (
+              <p className={styles.errorMessage} role="alert" data-testid="error-boundary-reload-blocked">
+                The last change could not be saved, so reloading now would lose it: {this.state.reloadBlockedReason}{' '}
+                <button onClick={this.handleReloadAnyway} className={styles.secondaryButton} data-testid="error-boundary-reload-anyway">
+                  Reload anyway
+                </button>
+              </p>
+            ) : null}
 
             {isDev && this.state.error && (
               <details className={styles.errorDetails}>

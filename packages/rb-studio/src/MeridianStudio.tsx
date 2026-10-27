@@ -199,6 +199,12 @@ function dropParam(name: string): void {
   }
 }
 
+/** The storage failure, as the browser reported it (an IndexedDB DOMException carries a message). */
+function failureReason(error: unknown): string {
+  const message = (error as { message?: unknown } | null)?.message;
+  return typeof message === 'string' && message.trim() ? message : 'The last change could not be saved.';
+}
+
 const ExampleNotice: React.FC<{ example: string; onOpen: () => void; onKeep: () => void }> = ({ example, onOpen, onKeep }) => {
   const projectName = useProjectRuntime((s) => s.projectName);
   return (
@@ -304,6 +310,36 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
   const [edgeCount, setEdgeCount] = useState(0);
   const [pendingWire, setPendingWire] = useState<{ nodeId: string; port: string } | null>(null);
   const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  // RB-DEBT-023: the rail links leave this document, and a write that has not landed when it goes
+  // never lands. A link waits for the last change; a failed write keeps the student here with the
+  // reason and a Leave anyway path. A modified click opens a new tab and keeps this document.
+  const [leaveNotice, setLeaveNotice] = useState<{ href: string; reason: string } | null>(null);
+  const leavingAnywayRef = useRef(false);
+  const leaveStudio = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const href = event.currentTarget.getAttribute('href') ?? '';
+    setLeaveNotice(null);
+    runtimePersistence.whenDurable().then(
+      () => window.location.assign(href),
+      (error: unknown) => setLeaveNotice({ href, reason: failureReason(error) }),
+    );
+  }, []);
+  const leaveAnyway = useCallback(() => {
+    if (!leaveNotice) return;
+    leavingAnywayRef.current = true;
+    window.location.assign(leaveNotice.href);
+  }, [leaveNotice]);
+  useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => {
+      if (leavingAnywayRef.current) return;
+      if (!runtimePersistence.hasUnacknowledgedWrites() && runtimePersistence.getStatus().state !== 'failed') return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, []);
   const width = useWindowWidth();
 
   const moment = useMemo(() => createMomentStore(projectId), [projectId]);
@@ -945,9 +981,16 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
         {busy ? <div className="mrd-run-progress" aria-hidden="true" /> : null}
       </header>
       {notice}
+      {leaveNotice ? (
+        <div className="mrd-notice" role="alert" data-testid="meridian-leave-notice">
+          <span>Your last change has not been saved, so leaving now would lose it: {leaveNotice.reason}</span>
+          <button type="button" className="mrd-btn" onClick={() => setLeaveNotice(null)} data-testid="meridian-leave-stay">Stay</button>
+          <button type="button" className="mrd-btn" onClick={leaveAnyway} data-testid="meridian-leave-anyway">Leave anyway</button>
+        </div>
+      ) : null}
 
       <nav className="mrd-rail" aria-label="Stages">
-        <a className="mrd-rail-item mrd-rail-link" href="?mode=project" title="Project · opens the classic workbench">Project<span aria-hidden="true">↗</span></a>
+        <a className="mrd-rail-item mrd-rail-link" href="?mode=project" onClick={leaveStudio} title="Project · opens the classic workbench">Project<span aria-hidden="true">↗</span></a>
         <div className="mrd-rail-rule" role="presentation" />
         {STAGES.map((entry) => (
           <button key={entry.id} type="button" className="mrd-rail-item" aria-current={stage === entry.id ? 'page' : undefined}
@@ -956,8 +999,8 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
           </button>
         ))}
         <div className="mrd-rail-rule" role="presentation" />
-        <a className="mrd-rail-item mrd-rail-link" href="?mode=export" title="Package · opens the classic workbench">Package<span aria-hidden="true">↗</span></a>
-        <a className="mrd-rail-item mrd-rail-link mrd-rail-classic" href="?mode=design" title="Open this project in the classic workbench">Classic<span aria-hidden="true">↗</span></a>
+        <a className="mrd-rail-item mrd-rail-link" href="?mode=export" onClick={leaveStudio} title="Package · opens the classic workbench">Package<span aria-hidden="true">↗</span></a>
+        <a className="mrd-rail-item mrd-rail-link mrd-rail-classic" href="?mode=design" onClick={leaveStudio} title="Open this project in the classic workbench">Classic<span aria-hidden="true">↗</span></a>
       </nav>
 
       <main className="mrd-work" data-preset={stage} data-inspector={inspectorOpen ? 'open' : 'closed'} data-testid="meridian-work">

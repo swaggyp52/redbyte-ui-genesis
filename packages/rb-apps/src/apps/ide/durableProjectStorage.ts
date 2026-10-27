@@ -12,6 +12,8 @@ interface StoredRecord { key: string; value: string | null; revision: number }
 export interface SessionStorageBackend {
   ready(): Promise<void>;
   snapshot(): Map<string, string>;
+  /** The stored revision of a record (0 when it was never written): it grows by one per landed write. */
+  revision(key: string): number;
   commit(changes: ReadonlyMap<string, string | null>): Promise<void>;
 }
 
@@ -124,6 +126,7 @@ export function createIndexedDbSessionStorage(options: {
   return {
     ready,
     snapshot: () => new Map([...records.values()].flatMap(record => record.value === null ? [] : [[record.key, record.value]])),
+    revision: key => records.get(key)?.revision ?? 0,
     commit(changes) {
       const captured = new Map(changes);
       const pending = writes.then(async () => { await ready(); await write(captured); });
@@ -134,6 +137,10 @@ export function createIndexedDbSessionStorage(options: {
 }
 
 let browserBackend: SessionStorageBackend | null | undefined;
+/** Test seam: a fresh module instance uses this backend instead of the browser's IndexedDB. */
+export function _setBrowserSessionStorageForTests(backend: SessionStorageBackend | null | undefined): void {
+  browserBackend = backend;
+}
 export function getBrowserSessionStorage(): SessionStorageBackend | null {
   if (browserBackend !== undefined) return browserBackend;
   if (typeof indexedDB === 'undefined') return browserBackend = null;
@@ -152,9 +159,82 @@ let runtimeHadStoredSession = false;
 const runtimeFlushers = new Set<() => Promise<void>>();
 const runtimeBusyChecks = new Set<() => boolean>();
 const runtimeFailures = new Map<string, unknown>();
-const runtimeFailedWrites = new Map<string, { value: string | null; sequence: number }>();
+const runtimeFailedWrites = new Map<string, { value: string | null; sequence: number; revision: number }>();
 const runtimeLatestWriteSequence = new Map<string, number>();
 let runtimeOutstandingWrites = 0;
+
+// RB-DEBT-023: every requested write takes the next revision synchronously. A landed write of a
+// record covers every earlier revision requested for that record (a later snapshot replaces an
+// earlier one), and a revision is acknowledged once every revision up to it has landed.
+// Navigation, Reload and the leave guard wait on acknowledgement, never on a timer.
+let requestedRevision = 0;
+let acknowledgedRevision = 0;
+const unlandedRevisions = new Map<number, { key: string; failed: boolean; error?: unknown }>();
+const latestRequestedRevision = new Map<string, number>();
+const durableWaiters = new Set<{ revision: number; resolve: () => void; reject: (error: unknown) => void }>();
+const runtimeLandedHooks = new Set<(key: string) => void>();
+/** Records that describe the working session (its navigation metadata): written only after every
+ * earlier write of another record has landed, so they never name a record the disk does not hold. */
+const dependentWrites = new Map<string, { revision: number; build: (runtimeRevision: number) => string | null }>();
+
+function requestRevision(key: string): number {
+  const revision = ++requestedRevision;
+  unlandedRevisions.set(revision, { key, failed: false });
+  latestRequestedRevision.set(key, revision);
+  return revision;
+}
+
+function failureAtOrBefore(revision: number): { error: unknown } | null {
+  for (const [requested, entry] of unlandedRevisions) if (requested <= revision && entry.failed) return { error: entry.error };
+  return null;
+}
+
+function settleRevisions(): void {
+  let lowest = requestedRevision + 1;
+  for (const requested of unlandedRevisions.keys()) if (requested < lowest) lowest = requested;
+  acknowledgedRevision = lowest - 1;
+  // Every request has landed, so nothing is queued anywhere: report it before any waiter resumes.
+  if (acknowledgedRevision === requestedRevision && !runtimeFailure && runtimeOutstandingWrites === 0 && runtimeStatus.state === 'saving') {
+    reportRuntimeStatus({ state: 'ready', message: null });
+  }
+  for (const waiter of [...durableWaiters]) {
+    if (acknowledgedRevision >= waiter.revision) { durableWaiters.delete(waiter); waiter.resolve(); continue; }
+    const failure = failureAtOrBefore(waiter.revision);
+    if (failure) { durableWaiters.delete(waiter); waiter.reject(failure.error); }
+  }
+  releaseDependentWrites();
+}
+
+function markRevisions(key: string, coveredRevision: number, outcome: 'landed' | 'failed' | 'retrying', error?: unknown): void {
+  for (const [requested, entry] of unlandedRevisions) {
+    if (entry.key !== key || requested > coveredRevision) continue;
+    if (outcome === 'landed') unlandedRevisions.delete(requested);
+    else { entry.failed = outcome === 'failed'; entry.error = outcome === 'failed' ? error : undefined; }
+  }
+  if (outcome === 'landed') for (const hook of runtimeLandedHooks) hook(key);
+  if (outcome !== 'retrying') settleRevisions();
+}
+
+function releaseDependentWrites(): void {
+  for (const [key, pending] of [...dependentWrites]) {
+    let blocked = false;
+    for (const [requested, entry] of unlandedRevisions) if (requested < pending.revision && entry.key !== key) { blocked = true; break; }
+    if (blocked) continue;
+    dependentWrites.delete(key);
+    const backend = getBrowserSessionStorage();
+    void writeRuntimeValue(key, pending.build(backend ? backend.revision(RUNTIME_KEY) : 0), pending.revision);
+  }
+}
+
+/** Writes a record describing the working session once every earlier write has landed. `build`
+ * receives the stored revision of the runtime record it follows. A newer call replaces a waiting one. */
+export function writeAfterRuntime(key: string, build: (runtimeRevision: number) => string | null): void {
+  dependentWrites.set(key, { revision: requestRevision(key), build });
+  if (getBrowserSessionStorage()) reportRuntimeStatus({ state: 'saving', message: null });
+  releaseDependentWrites();
+}
+runtimeBusyChecks.add(() => dependentWrites.size > 0);
+
 function reportRuntimeCompletion(): void {
   if (runtimeFailure) {
     reportRuntimeStatus({ state: 'failed', message: runtimeFailure instanceof Error ? runtimeFailure.message : 'The session could not be saved. Download a session backup before closing.' });
@@ -167,6 +247,22 @@ function reportRuntimeCompletion(): void {
 export const runtimePersistence = {
   getStatus: () => runtimeStatus,
   hasStoredSession: () => runtimeHadStoredSession,
+  /** The revision of the latest requested write (it grows synchronously with each request). */
+  currentRevision: () => requestedRevision,
+  /** Every write requested at or before this revision has landed. */
+  acknowledgedRevision: () => acknowledgedRevision,
+  /** True while a requested write has not landed (pending or failed): leaving now would lose it. */
+  hasUnacknowledgedWrites: () => acknowledgedRevision < requestedRevision,
+  /** The stored revision of the working-session record, or null without browser session storage. */
+  storedRuntimeRevision: (): number | null => getBrowserSessionStorage()?.revision(RUNTIME_KEY) ?? null,
+  /** Resolves once `revision` (default: the latest request) is acknowledged; rejects with the
+   * failure of a write it depends on, at once when that write has already failed. */
+  whenDurable(revision = requestedRevision): Promise<void> {
+    if (acknowledgedRevision >= revision) return Promise.resolve();
+    const failure = failureAtOrBefore(revision);
+    if (failure) return Promise.reject(failure.error);
+    return new Promise((resolve, reject) => { durableWaiters.add({ revision, resolve, reject }); });
+  },
   subscribe(listener: (status: RuntimePersistenceStatus) => void) {
     runtimeListeners.add(listener);
     return () => { runtimeListeners.delete(listener); };
@@ -187,7 +283,8 @@ export const runtimePersistence = {
       // A newer owner write may be in flight, or complete while another key is
       // retried. Check immediately before enqueueing; never replay stale bytes.
       if (runtimeFailedWrites.get(key) !== failed || runtimeLatestWriteSequence.get(key) !== failed.sequence) continue;
-      await writeRuntimeValue(key, failed.value);
+      markRevisions(key, failed.revision, 'retrying');
+      await writeRuntimeValue(key, failed.value, failed.revision);
     }
     await runtimePersistence.flush();
   },
@@ -227,16 +324,24 @@ export const runtimeSessionStorage = {
     });
   },
   setItem(key: string, value: string): void | Promise<void> {
+    dependentWrites.delete(key);
     return writeRuntimeValue(key, value);
   },
   removeItem(key: string): void | Promise<void> {
+    dependentWrites.delete(key);
     return writeRuntimeValue(key, null);
   },
 };
 
-function writeRuntimeValue(key: string, value: string | null): void | Promise<void> {
+/** `revision` is the request this write covers: a fresh one unless a deferred snapshot or a retry already has one. */
+function writeRuntimeValue(key: string, value: string | null, revision = requestRevision(key)): void | Promise<void> {
     const backend = getBrowserSessionStorage();
-    if (!backend) { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); return; }
+    if (!backend) {
+      try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }
+      catch (error) { markRevisions(key, revision, 'failed', error); throw error; }
+      markRevisions(key, revision, 'landed');
+      return;
+    }
     const sequence = ++runtimeSequence;
     runtimeLatestWriteSequence.set(key, sequence);
     runtimeOutstandingWrites += 1;
@@ -247,13 +352,16 @@ function writeRuntimeValue(key: string, value: string | null): void | Promise<vo
       runtimeFailures.delete(key);
       runtimeFailedWrites.delete(key);
       runtimeFailure = runtimeFailures.values().next().value;
+      // Acknowledge first: a landed runtime record releases the metadata that follows it.
+      markRevisions(key, revision, 'landed');
       if (sequence === runtimeSequence) reportRuntimeCompletion();
     }, error => {
       runtimeOutstandingWrites -= 1;
       runtimeFailures.set(key, error);
-      runtimeFailedWrites.set(key, { value, sequence });
+      runtimeFailedWrites.set(key, { value, sequence, revision });
       runtimeFailure = error;
       reportRuntimeStatus({ state: 'failed', message: error instanceof Error ? error.message : 'The working session could not be saved. Download a session backup before closing.' });
+      markRevisions(key, revision, 'failed', error);
     });
     return runtimePending;
 }
@@ -270,10 +378,10 @@ interface JsonCodec {
  * work and prevents selection changes from queuing dozens of identical archives. */
 export function createCoalescedJsonStorage<S>(storage: StateStorage, codec: JsonCodec, options: {
   defer: boolean;
-  pending?: () => void;
+  pending?: (name: string) => void;
   completed?: () => void;
   failed?: (error: unknown) => void;
-}): PersistStorage<S> & { flush(): Promise<void>; isPending(): boolean } {
+}): PersistStorage<S> & { flush(): Promise<void>; isPending(): boolean; clearFailure(): void } {
   let queued: { name: string; value: StorageValue<S> } | null = null;
   let draining: Promise<void> | null = null;
   let failure: unknown;
@@ -304,23 +412,32 @@ export function createCoalescedJsonStorage<S>(storage: StateStorage, codec: Json
     setItem(name, value) {
       if (!options.defer) return storage.setItem(name, JSON.stringify(value, codec.replacer));
       queued = { name, value };
-      options.pending?.();
+      options.pending?.(name);
       void drain();
     },
     async removeItem(name) { if (draining) await draining; await storage.removeItem(name); },
     async flush() { while (draining || queued) await drain(); if (failure) throw failure; },
     isPending: () => Boolean(draining || queued),
+    /** The failed bytes were written another way (an explicit retry): nothing of this adapter is lost. */
+    clearFailure() { if (!queued) failure = undefined; },
   };
 }
 
 export function createRuntimeJsonStorage<S>(codec: JsonCodec): PersistStorage<S> {
-  const adapter = createCoalescedJsonStorage<S>(runtimeSessionStorage, codec, {
-    defer: getBrowserSessionStorage() !== null,
-    pending: () => reportRuntimeStatus({ state: 'saving', message: null }),
+  const defer = getBrowserSessionStorage() !== null;
+  const adapter = createCoalescedJsonStorage<S>({
+    getItem: runtimeSessionStorage.getItem,
+    // A deferred snapshot took its revision when it was requested, and covers every earlier one.
+    setItem: (key, value) => writeRuntimeValue(key, value, defer ? latestRequestedRevision.get(key) : undefined),
+    removeItem: key => writeRuntimeValue(key, null),
+  }, codec, {
+    defer,
+    pending: name => { requestRevision(name); reportRuntimeStatus({ state: 'saving', message: null }); },
     completed: reportRuntimeCompletion,
     failed: error => runtimePersistence.writeFailed(error),
   });
   runtimeFlushers.add(adapter.flush);
   runtimeBusyChecks.add(adapter.isPending);
+  runtimeLandedHooks.add(key => { if (key === RUNTIME_KEY) adapter.clearFailure(); });
   return adapter;
 }

@@ -19,7 +19,7 @@ try {
   await page.goto('http://redbyte-storage-proof.test/');
   const result = await page.evaluate(async code => {
     const moduleUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
-    const { createIndexedDbSessionStorage, getBrowserSessionStorage, runtimeSessionStorage, runtimePersistence } = await import(moduleUrl);
+    const { createIndexedDbSessionStorage, getBrowserSessionStorage, runtimeSessionStorage, runtimePersistence, writeAfterRuntime, IDE_SESSION_DATABASE } = await import(moduleUrl);
     const assert = (condition, message) => { if (!condition) throw new Error(message); };
     const factory = name => createIndexedDbSessionStorage({ indexedDB, legacyStorage: localStorage, databaseName: name });
     const key = 'rb.ide.project.v1:transaction-fixture';
@@ -142,7 +142,45 @@ try {
     await runtimePersistence.retryFailedWrites();
     await newerRuntimeWrite;
     assert(facade.snapshot().get(runtimeKey) === 'newest authored runtime', 'Retry must not replace a newer runtime edit already queued');
-    return { migration: 'exact readback; repeatable; original bytes retained', concurrentTab: conflict,
+
+    // RB-DEBT-023 on native IndexedDB: a revision is acknowledged only when its transaction has
+    // completed, metadata naming a project lands only after that project's working-session record,
+    // and an interrupted write keeps both the previous record and the previous metadata.
+    const metadataBefore = facade.snapshot().get(metadataKey);
+    const runtimeRevisionBefore = facade.revision(runtimeKey);
+    IDBObjectStore.prototype.put = function(value, ...args) {
+      const request = originalPut.call(this, value, ...args);
+      if (value.key === runtimeKey && value.value === 'imported project B') queueMicrotask(() => this.transaction.abort());
+      return request;
+    };
+    let importRejected = '';
+    try {
+      await runtimeSessionStorage.setItem(runtimeKey, 'imported project B');
+      writeAfterRuntime(metadataKey, revision => JSON.stringify({ version: 1, projectId: 'project-b', currentMode: 'design', probedKeys: [], runtimeRevision: revision }));
+      const importRevision = runtimePersistence.currentRevision();
+      await runtimePersistence.whenDurable(importRevision).catch(error => { importRejected = error?.name ?? String(error); });
+      assert(runtimePersistence.acknowledgedRevision() < importRevision, 'An interrupted transaction is never acknowledged');
+      // A waiter that arrives after the failure is told at once.
+      let lateRejected = false;
+      await runtimePersistence.whenDurable(importRevision).catch(() => { lateRejected = true; });
+      assert(lateRejected, 'A late waiter on a failed revision is rejected at once');
+    } finally { IDBObjectStore.prototype.put = originalPut; }
+    assert(importRejected === 'AbortError' || importRejected.length > 0, 'The interrupted import write reaches its waiters');
+    const afterInterrupt = createIndexedDbSessionStorage({ indexedDB, databaseName: IDE_SESSION_DATABASE }); await afterInterrupt.ready();
+    assert(afterInterrupt.snapshot().get(runtimeKey) === 'newest authored runtime', 'An interrupted import keeps the previous working session');
+    assert(afterInterrupt.snapshot().get(metadataKey) === metadataBefore, 'Metadata naming the interrupted import never lands');
+    assert(afterInterrupt.revision(runtimeKey) === runtimeRevisionBefore, 'An aborted transaction leaves the stored revision unchanged');
+    await runtimePersistence.retryFailedWrites();
+    await runtimePersistence.whenDurable();
+    assert(runtimePersistence.acknowledgedRevision() === runtimePersistence.currentRevision(), 'Recovery acknowledges every requested revision');
+    const recovered = createIndexedDbSessionStorage({ indexedDB, databaseName: IDE_SESSION_DATABASE }); await recovered.ready();
+    const recoveredMeta = JSON.parse(recovered.snapshot().get(metadataKey));
+    assert(recovered.snapshot().get(runtimeKey) === 'imported project B', 'Retry commits the interrupted import');
+    assert(recoveredMeta.projectId === 'project-b', 'The import metadata lands after its record');
+    assert(recoveredMeta.runtimeRevision === recovered.revision(runtimeKey), 'Metadata names the stored revision of the record it follows');
+    assert(recovered.revision(runtimeKey) === runtimeRevisionBefore + 1, 'One landed write advances the stored revision by one');
+    return {
+      revisions: 'native transaction completion acknowledges; abort leaves record, metadata and revision unchanged; late waiter rejected; retry lands record then metadata naming its revision', migration: 'exact readback; repeatable; original bytes retained', concurrentTab: conflict,
       runtimeRetry: 'failed owner retained across metadata success; explicit retry commits exact latest failed bytes',
       interruptedMigration: 'original bytes retained; retry completed', queuedWrites: 'request order preserved',
       sessionMetadata: 'migrated and updated in IndexedDB while legacy localStorage writes fail',
@@ -150,5 +188,5 @@ try {
   }, moduleCode);
   if (errors.length) throw new Error(errors.join('\n'));
   fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ ...result, pageErrors: errors, boundary: 'isolated native IndexedDB adapter; no student UI operation claimed' }, null, 2));
-  console.log('PASS native IndexedDB migration, two-tab conflict, interrupted transaction, quota failure, recovery and tombstone: ' + out);
+  console.log('PASS native IndexedDB migration, two-tab conflict, interrupted transaction, quota failure, recovery, tombstone and acknowledged revisions: ' + out);
 } finally { await browser.close(); }
