@@ -372,6 +372,12 @@ const SINGLE_IN_PIN = dataPin('in');
 const GATE3_PINS = [dataPin('a'), dataPin('b'), dataPin('c')];
 
 const BUILTIN_INPUT_PINS: Readonly<Record<string, readonly InputPinSpec[]>> = {
+  // Sources read no input pin: their output comes from configuration or state.
+  PowerSource: [],
+  Ground: [],
+  Switch: [],
+  INPUT: [],
+  Clock: [],
   Lamp: [SINGLE_IN_PIN],
   Wire: [SINGLE_IN_PIN],
   OUTPUT: [SINGLE_IN_PIN],
@@ -465,6 +471,130 @@ export function describeInputPin(
     unconnectedLevel: COMPOSITE_UNCONNECTED_INPUT_LEVEL,
     activeLevel: role === 'reset' || role === 'enable' ? 1 : null,
   };
+}
+
+/** One input of a built-in part, with every connection port name its behaviour reads for it. */
+export interface InputPinReading extends InputPinDescription {
+  /**
+   * The port names the behaviour reads for this input, exactly as a connection carries them, in
+   * the order it tries them: the first one a connection drives is the one that counts.
+   */
+  readonly names: readonly string[];
+  /** For a word input: the names of its bits at the configured width, read when no whole word is wired. */
+  readonly bitNames?: readonly string[];
+}
+
+/**
+ * The inputs a built-in part reads, in the order its behaviour reads them, from the specs
+ * describeInputPin reports. An exporter resolves each input to the first of its names that a
+ * connection drives, compared exactly ('A' is not 'a'), and so reads the connections the
+ * simulator reads. Empty for a part that reads no input; null for a part the support registry
+ * does not simulate and for parts this package does not define, whose logic a caller must not
+ * invent.
+ */
+export function inputPinsOf(
+  nodeType: string,
+  config: Record<string, unknown> | null | undefined = {},
+): readonly InputPinReading[] | null {
+  if (getComponentSupport(nodeType)?.capabilities.simulation === false) return null;
+  const settings = config ?? {};
+  const specs = BUILTIN_INPUT_PINS[nodeType];
+  if (specs) {
+    const width = registerFamilyWidth(nodeType, settings);
+    return specs.map((spec) => ({
+      names: spec.names,
+      ...(spec.bitNames
+        ? { bitNames: Array.from({ length: width }, (_value, index) => spec.bitNames!(index)).flat() }
+        : {}),
+      role: spec.role,
+      used: isPinUsed(spec, settings),
+      unconnectedLevel: spec.unconnected,
+      activeLevel: spec.activeLevel ? spec.activeLevel(settings) : null,
+    }));
+  }
+  const composite = BUILTIN_COMPOSITE_DEFS.find((definition) => definition.name === nodeType);
+  if (!composite) return null;
+  return Object.keys(composite.inputMapping).map((pin) => {
+    const role = COMPOSITE_PIN_ROLES[nodeType]?.[pin] ?? 'data';
+    return {
+      names: [pin],
+      role,
+      used: true,
+      unconnectedLevel: COMPOSITE_UNCONNECTED_INPUT_LEVEL,
+      activeLevel: role === 'reset' || role === 'enable' ? 1 : null,
+    };
+  });
+}
+
+/** The outputs a connection can read from a built-in part. */
+export type OutputPortRole = 'out' | 'q' | 'q_inv' | 'sum' | 'carry';
+
+/** One output of a built-in part and every port name its behaviour publishes it under. */
+export interface OutputPortReading {
+  readonly role: OutputPortRole;
+  /** Published port names, exactly as a connection reads them; every one carries the same value. */
+  readonly names: readonly string[];
+}
+
+const SINGLE_OUTPUT: readonly OutputPortReading[] = [{ role: 'out', names: ['out'] }];
+/** sequentialOutputs: a flip-flop publishes Q as Q, q and out, and Q_inv as Q_inv and qn. */
+const FLIP_FLOP_OUTPUTS: readonly OutputPortReading[] = [
+  { role: 'q', names: ['Q', 'q', 'out'] },
+  { role: 'q_inv', names: ['Q_inv', 'qn'] },
+];
+/** buildRegisterOutputs at width 1: every word and bit-0 name carries the stored bit. */
+const ONE_BIT_REGISTER_OUTPUTS: readonly OutputPortReading[] = [
+  { role: 'q', names: ['Q', 'q', 'out', 'value', 'Q0', 'q0', 'Q[0]', 'q[0]'] },
+  { role: 'q_inv', names: ['Q_inv', 'qn', 'Q_inv0'] },
+];
+const BUILTIN_OUTPUT_PORTS: Readonly<Record<string, readonly OutputPortReading[]>> = {
+  PowerSource: SINGLE_OUTPUT,
+  Ground: SINGLE_OUTPUT,
+  Switch: SINGLE_OUTPUT,
+  INPUT: SINGLE_OUTPUT,
+  Clock: SINGLE_OUTPUT,
+  Lamp: SINGLE_OUTPUT,
+  Wire: SINGLE_OUTPUT,
+  Delay: SINGLE_OUTPUT,
+  OUTPUT: [],
+  NOT: SINGLE_OUTPUT,
+  AND: SINGLE_OUTPUT,
+  OR: SINGLE_OUTPUT,
+  NAND: SINGLE_OUTPUT,
+  NOR: SINGLE_OUTPUT,
+  XOR: SINGLE_OUTPUT,
+  XNOR: SINGLE_OUTPUT,
+  AND3: SINGLE_OUTPUT,
+  OR3: SINGLE_OUTPUT,
+  NAND3: SINGLE_OUTPUT,
+  NOR3: SINGLE_OUTPUT,
+  XOR3: SINGLE_OUTPUT,
+  DFlipFlop: FLIP_FLOP_OUTPUTS,
+  TFlipFlop: FLIP_FLOP_OUTPUTS,
+  JKFlipFlop: FLIP_FLOP_OUTPUTS,
+};
+/** A composite part publishes exactly its output mapping: a FullAdder's Sum and Cout, a latch's Q and Q_inv. */
+const COMPOSITE_OUTPUT_ROLES: Readonly<Record<string, OutputPortRole>> = { Sum: 'sum', Cout: 'carry', Q: 'q', Q_inv: 'q_inv' };
+
+/**
+ * The outputs a built-in part publishes and the exact port names a connection may read each one
+ * under. A connection from any other name reads nothing the part computes. Null for a part the
+ * support registry does not simulate, for parts this package does not define, and for a
+ * register-family word wider than one bit, whose outputs are words rather than bits.
+ */
+export function outputPortsOf(
+  nodeType: string,
+  config: Record<string, unknown> | null | undefined = {},
+): readonly OutputPortReading[] | null {
+  if (getComponentSupport(nodeType)?.capabilities.simulation === false) return null;
+  if (nodeType === 'Register1' || nodeType === 'RegisterBus' || nodeType === 'StateBank') {
+    return registerFamilyWidth(nodeType, config ?? {}) === 1 ? ONE_BIT_REGISTER_OUTPUTS : null;
+  }
+  const builtin = BUILTIN_OUTPUT_PORTS[nodeType];
+  if (builtin) return builtin;
+  const composite = BUILTIN_COMPOSITE_DEFS.find((definition) => definition.name === nodeType);
+  if (!composite) return null;
+  return Object.keys(composite.outputMapping).map((name) => ({ role: COMPOSITE_OUTPUT_ROLES[name] ?? 'out', names: [name] }));
 }
 
 function sequentialOutputs(q: number): NodeOutputs {

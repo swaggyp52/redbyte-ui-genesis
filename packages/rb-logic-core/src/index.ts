@@ -163,8 +163,10 @@ export {
   JKFlipFlopBehavior,
   COMPOSITE_UNCONNECTED_INPUT_LEVEL,
   describeInputPin,
+  inputPinsOf,
+  outputPortsOf,
 } from './builtins';
-export type { InputPinDescription, InputPinRole } from './builtins';
+export type { InputPinDescription, InputPinReading, InputPinRole, OutputPortReading, OutputPortRole } from './builtins';
 
 // Composite nodes
 export type { CompositeNodeDef } from './CompositeNode';
