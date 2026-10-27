@@ -830,7 +830,7 @@ function buildArtifacts(
 /** The only clock behavior permitted across the export-to-HDL boundary. */
 type ExportClockDriveView = Readonly<TestbenchClockDriveView>;
 
-interface ExportVerifyAuthority {
+export interface ExportVerifyAuthority {
   vectors: TestVector[];
   executionVectors: TestVector[];
   clockPolicy?: VerifyClockPolicy;
@@ -1158,7 +1158,8 @@ function resolveExportClockPolicy(
   return undefined;
 }
 
-function buildExportVerifyAuthority(
+/** The execution plan Export derives for the testbench (exported for the artifact-consistency matrix). */
+export function buildExportVerifyAuthority(
   project: RBProject,
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
   activeScenario: VerifyScenario | undefined,
