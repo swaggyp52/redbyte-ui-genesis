@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { getBlockedVerificationNodeTypes, getComponentSupport, isNodeTypeSupportedFor } from '@redbyte/rb-logic-core';
+import { listExamples, loadExample } from '../examples';
 import { LAB_DEFINITIONS, getLabDefinitionById } from '../labs/labDefinitions';
+import { getLabStarterKitById } from '../starterKits/labStarterKits';
+
+/** Parts a student cannot carry through Simulate or Package: blocked in Verify, or logic the exporter refuses. */
+function refusedPartTypes(types: readonly string[]): string[] {
+  const blocked = new Set<string>(getBlockedVerificationNodeTypes());
+  return [...new Set(types)].filter((type) => {
+    const support = getComponentSupport(type);
+    if (!support) return false;
+    const boundary = support.category === 'io' || support.category === 'utility';
+    return blocked.has(type) || (!boundary && !isNodeTypeSupportedFor(type, 'vhdlExport'));
+  });
+}
 
 describe('lab definitions', () => {
   it('contains labs 1-8 and freeplay', () => {
@@ -39,5 +53,30 @@ describe('lab definitions', () => {
         }
       }
     }
+  });
+
+  it('explains every part of a starter that RedByte does not support, wherever the lab is presented', async () => {
+    const explained: Record<string, string[]> = {};
+    for (const definition of LAB_DEFINITIONS) {
+      if (!definition.starterExampleId) continue;
+      const starter = await loadExample(definition.starterExampleId);
+      const refused = refusedPartTypes(starter.nodes.map((node) => node.type));
+      if (refused.length === 0) continue;
+      explained[definition.id] = refused;
+      const kit = getLabStarterKitById(definition.starterId);
+      const example = listExamples().find((entry) => entry.id === definition.starterExampleId);
+      for (const type of refused) {
+        const notice = new RegExp(`${type}[^.]*not supported|not supported[^.]*${type}`, 'i');
+        expect(definition.whatToDo, `${definition.id} whatToDo`).toMatch(notice);
+        expect(kit?.whatToDo, `${definition.id} starter kit`).toMatch(notice);
+        expect(example?.description, `${definition.starterExampleId} description`).toMatch(notice);
+        // No step may send students to wire the part as if it worked.
+        for (const step of definition.buildSteps.filter((entry) => entry.includes(type))) {
+          expect(step, `${definition.id} build step`).toMatch(/not supported/i);
+        }
+      }
+    }
+    // The legacy Lab 4 ALU scaffold is the shipped starter that carries one (four MUX4 blocks).
+    expect(explained).toEqual({ 'lab-4': ['MUX4'] });
   });
 });
