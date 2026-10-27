@@ -395,10 +395,14 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   result.warnings.push(...filteredBundleWarnings);
 
+  // An HDL port projection ships the imported top.vhd; its generated port scaffold drives
+  // nothing, so its scaffold diagnostics (an undriven output is an error since it blocks a
+  // generated top) are tolerated, and anything else still blocks.
+  const scaffoldDiagnostics = [...bundleResult.warnings, ...bundleResult.errors];
   const allowProjectionWarnings =
     hdlPortProjection &&
-    bundleResult.warnings.length > 0 &&
-    bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
+    scaffoldDiagnostics.length > 0 &&
+    scaffoldDiagnostics.every((message) => isHdlProjectionScaffoldWarning(message));
   const preservedHandoff = tryBuildPreservedImportHandoff(project, bundleResult.topXdc);
   const treatBundleValid = bundleResult.valid || allowProjectionWarnings || Boolean(preservedHandoff);
   // When the generated top.vhd is what ships, every construct it could not
@@ -978,6 +982,8 @@ export function isHdlProjectionScaffoldWarning(message: string): boolean {
     /^Unsupported node: .+ \(INPUT\)$/i.test(trimmed) ||
     /^Unsupported node: .+ \(OUTPUT\)$/i.test(trimmed) ||
     /^Output ".+" \(id: .+\) has no driver .*$/i.test(trimmed) ||
+    // The generated port scaffold of an HDL projection drives nothing; the imported HDL ships.
+    /^Output port ".+" on node ".+" has no driver: /i.test(trimmed) ||
     /^Top output port ".+" has no driver .*$/i.test(trimmed) ||
     /^Top output port ".+" has unresolved driver .+$/i.test(trimmed) ||
     /^HDL ports missing in XDC: .+$/i.test(trimmed) ||

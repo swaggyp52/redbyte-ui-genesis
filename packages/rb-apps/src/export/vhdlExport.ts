@@ -346,6 +346,22 @@ export function unresolvedDriverMarker(nodeId: string, port: string): string {
   return `RBEX_UNRESOLVED_${clean(nodeId)}_${clean(port)}`;
 }
 
+/** An undeclared identifier for a top-level output nothing drives: it cannot compile into a guessed level. */
+export function undrivenOutputMarker(portName: string): string {
+  return `RBEX_UNDRIVEN_${portName.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x'}`;
+}
+
+/**
+ * The RBEX4103 message for a top-level output nothing drives. Verify shows such an
+ * output as X; a deliberate constant is a Ground (or PowerSource) part wired to it.
+ */
+export function undrivenOutputMessage(portName: string, nodeId: string): string {
+  return (
+    `Output port "${portName}" on node "${nodeId}" has no driver: Verify shows it as unknown (X), and RedByte will not invent a level for the board. ` +
+    'Fix: drive it from your logic, or wire a Ground part to it if it should stay at 0; the design and its simulation are unchanged.'
+  );
+}
+
 /** The RBEX4100 message the export view model maps to a design-owned blocking diagnostic. */
 export function unsupportedPrimitiveMessage(type: string, nodeId: string, where?: string): string {
   return (
@@ -494,11 +510,14 @@ export function vhdlFromNetlist(
   const resolveDriver = createDriverResolver(nodeIdToSignal, new Set(logicNodes.map((node) => node.id)), errors);
 
   // ---- Check for unconnected outputs ----------------------------------------
+  // Verify shows an output nothing drives as X (unknown). A board pin needs a
+  // level, and inventing one would ship hardware nobody designed, so it blocks.
   outputNodes.forEach((outNode) => {
     const hasDriver = netlist.nets.some((net) => net.to.nodeId === outNode.id);
     if (!hasDriver) {
-      const portExpr = nodeIdToSignal.get(outNode.id) ?? outNode.id;
-      warnings.push(`Output "${portExpr}" (id: ${outNode.id}) has no driver — will default to '0'`);
+      const binding = topOutputBindings?.find((entry) => entry.fromNodeId === outNode.id);
+      const message = undrivenOutputMessage(binding?.portName ?? nodeIdToSignal.get(outNode.id) ?? outNode.id, outNode.id);
+      if (!errors.includes(message)) errors.push(message);
     }
   });
 
@@ -645,12 +664,11 @@ export function vhdlFromNetlist(
           ) ?? netlist.nets.find((n) => n.to.nodeId === binding.fromNodeId);
 
         if (!driverNet) {
-        warnings.push(
-            `Top output port "${binding.portName}" has no driver — output will be tied low`,
-        );
-          lines.push(`  ${topOutputSignalRef} <= '0'; -- undriven output`);
-        return;
-      }
+          const message = undrivenOutputMessage(binding.portName, binding.fromNodeId);
+          if (!errors.includes(message)) errors.push(message);
+          lines.push(`  ${topOutputSignalRef} <= ${undrivenOutputMarker(binding.portName)}; -- undriven output: blocked`);
+          return;
+        }
 
         lines.push(`  ${topOutputSignalRef} <= ${resolveDriver(driverNet.from)};`);
     }));
@@ -662,7 +680,7 @@ export function vhdlFromNetlist(
         (n) => n.to.nodeId === outNode.id && n.to.port === 'in',
       );
       if (!driverNet) {
-        lines.push(`  ${portExpr} <= '0'; -- undriven output`);
+        lines.push(`  ${portExpr} <= ${undrivenOutputMarker(portExpr)}; -- undriven output: blocked`);
         return;
       }
       lines.push(`  ${portExpr} <= ${resolveDriver(driverNet.from)};`);

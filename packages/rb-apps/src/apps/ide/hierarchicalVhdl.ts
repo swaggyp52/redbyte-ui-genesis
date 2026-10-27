@@ -7,6 +7,8 @@ import {
   emitPrimitiveVhdl,
   isEmittablePrimitiveType,
   isInitializedSequentialType,
+  undrivenOutputMarker,
+  undrivenOutputMessage,
   unresolvedDriverMarker,
   unsupportedPrimitiveMessage,
   vhdlFromNetlist,
@@ -541,8 +543,15 @@ function generateStructuralTop(
     const node = nodeById.get(nodeId);
     const inputPort = node && isBoundaryOutput(node) ? 'in' : 'out';
     const ref = body.incoming.get(`${nodeId}.${inputPort}`);
-    const driver = ref ? (inputPortByNode.get(ref.nodeId) ?? body.signalFor(ref.nodeId, ref.portName)) : "'0'";
-    statements.push(`  ${portName} <= ${driver};${ref ? '' : ' -- undriven output'}`);
+    // A board output nothing drives is X in Verify: it blocks, and the text cannot compile into a level.
+    if (!ref) {
+      const message = undrivenOutputMessage(portName, nodeId);
+      if (!diagnostics.some((entry) => entry.message === message)) {
+        diagnostics.push({ severity: 'error', message, definitionId: 'top', path: 'top.vhd', nodeId });
+      }
+    }
+    const driver = ref ? (inputPortByNode.get(ref.nodeId) ?? body.signalFor(ref.nodeId, ref.portName)) : undrivenOutputMarker(portName);
+    statements.push(`  ${portName} <= ${driver};${ref ? '' : ' -- undriven output: blocked'}`);
     mapped.add(nodeId, before, 'boundary');
   }
 
