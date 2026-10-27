@@ -384,7 +384,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
         selectedSignal={selectedSignal} onSelectSignal={onSelectSignal}
         cursorA={cursorA} cursorB={cursorB} onSetCursorA={onSetCursorA} onSetCursorB={onSetCursorB}
         editable={stimulusEditing}
-        stimulusNote={stimulusEditing ? 'editing' : editable ? 'read-only while inspecting' : 'read-only'}
+        stimulusNote={stimulusEditing ? 'editing' : editable ? 'cells select while inspecting' : 'read-only'}
         observedValuesByTick={observedValuesByTick}
         caseEvidenceByTick={caseEvidenceByTick}
         onSelectTick={onSelectTick}

@@ -199,13 +199,13 @@ describe('TimingLab inspection versus explicit stimulus editing (RB-DEBT-020)', 
     expect(onVectorsChange).toHaveBeenCalledTimes(2);
   });
 
-  it('shows the draft lanes as read-only while inspecting and as editable while editing', () => {
+  it('shows the draft cells as select-only while inspecting and as editable while editing', () => {
     const view = render(<Lab onVectorsChange={vi.fn()} {...withRecording} />);
     const lanes = view.getByTestId('ide-timing-lanes');
     const draftCell = view.getByTestId('ide-timing-cell-en-2');
     expect(lanes.getAttribute('data-stimulus-editing')).toBe('false');
     expect(draftCell.getAttribute('aria-readonly')).toBe('true');
-    expect(view.getByTestId('ide-timing-stimulus-heading').textContent).toBe('Stimulus · current draft · read-only while inspecting');
+    expect(view.getByTestId('ide-timing-stimulus-heading').textContent).toBe('Stimulus · current draft · cells select while inspecting');
 
     fireEvent.click(view.getByTestId('ide-timing-edit-mode'));
     expect(lanes.getAttribute('data-stimulus-editing')).toBe('true');
@@ -213,6 +213,27 @@ describe('TimingLab inspection versus explicit stimulus editing (RB-DEBT-020)', 
     expect(view.getByTestId('ide-timing-stimulus-heading').textContent).toBe('Stimulus · current draft · editing');
     // Recorded values stay read-only in every mode.
     expect(view.getByTestId('ide-timing-check-q-2').getAttribute('aria-readonly')).toBe('true');
+  });
+
+  it('keeps the labelled commands explicit while inspecting, so the heading never calls the whole draft read-only', () => {
+    // The heading speaks for the cells. + Event, Duplicate, Delete and the event editor are
+    // labelled commands in both modes; each is one deliberate edit, never a side effect of looking.
+    const onVectorsChange = vi.fn();
+    const view = render(<Lab onVectorsChange={onVectorsChange} {...withRecording} />);
+    expect(view.getByTestId('ide-timing-edit-mode').getAttribute('aria-pressed')).toBe('false');
+    expect(view.getByTestId('ide-timing-stimulus-heading').textContent).not.toMatch(/read-only/);
+
+    fireEvent.click(view.getByTestId('ide-timing-cell-en-3'));
+    expect(onVectorsChange).not.toHaveBeenCalled();
+    fireEvent.click(view.getByTestId('ide-scenario-check-q'));
+    expect(onVectorsChange).toHaveBeenCalledTimes(1);
+    expect(onVectorsChange.mock.calls[0][0].find((vector: VerifyAuthorVector) => vector.tick === 3)?.expected).toEqual({ q: 0 });
+
+    fireEvent.click(view.getByTestId('ide-scenario-composer-add-event'));
+    expect(onVectorsChange).toHaveBeenCalledTimes(2);
+    expect(onVectorsChange.mock.calls[1][0].map((vector: VerifyAuthorVector) => vector.tick)).toEqual([0, 1, 2, 3, 4]);
+    // Neither command switched the cells into editing.
+    expect(view.getByTestId('ide-timing-edit-mode').getAttribute('aria-pressed')).toBe('false');
   });
 
   it('offers no editing at all when the scenario cannot be edited', () => {

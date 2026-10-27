@@ -32,7 +32,7 @@ export interface TimingLanesProps {
   readonly onSetCursorB?: (tick: number | null) => void;
   /** A click, Space or Enter on an authored input cell edits it. Off, every gesture only selects. */
   readonly editable: boolean;
-  /** What the stimulus heading says about editing ("editing", "read-only while inspecting"). */
+  /** What the stimulus heading says about editing ("editing", "cells select while inspecting"). */
   readonly stimulusNote?: string;
   readonly observedValuesByTick?: Readonly<Record<number, Readonly<Record<string, string>>>>;
   readonly caseEvidenceByTick?: Readonly<Record<number, StimulusCaseEvidenceState>>;
