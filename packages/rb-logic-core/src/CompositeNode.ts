@@ -4,6 +4,7 @@
 
 import type { Circuit, NodeBehavior, NodeInputs, NodeOutputs } from './types';
 import { CircuitEngine } from './CircuitEngine';
+import { COMPOSITE_UNCONNECTED_INPUT_LEVEL } from './builtins';
 
 /**
  * Composite node definition - a node that encapsulates a subcircuit
@@ -34,7 +35,8 @@ export function createCompositeNodeBehavior(def: CompositeNodeDef): NodeBehavior
       // Map external inputs to internal nodes
       for (const [externalPort, internalRef] of Object.entries(def.inputMapping)) {
         const [nodeId, portName] = internalRef.split('.');
-        const value = inputs[externalPort] ?? 0;
+        // An input nothing drives reads the shared composite fallback (describeInputPin).
+        const value = inputs[externalPort] ?? COMPOSITE_UNCONNECTED_INPUT_LEVEL;
         
         // Find the internal node and set its state to output the input value
         const node = def.subcircuit.nodes.find(n => n.id === nodeId);
