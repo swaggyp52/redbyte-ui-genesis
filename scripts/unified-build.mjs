@@ -39,6 +39,20 @@ try {
         execSync(`pnpm --filter @redbyte/${pkg} run build`, { stdio: 'inherit', env });
     }
 
+    // A candidate is exactly one build (RB-DEBT-018). On Windows Vite never empties its output
+    // (emptyOutDir is off there to survive a locked folder), so files from earlier builds would be
+    // merged and packaged. A candidate build starts from an empty playground output or stops.
+    if (process.env.RB_CANDIDATE_VERSION) {
+        const playgroundDist = 'apps/playground/dist';
+        try {
+            fs.rmSync(playgroundDist, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        } catch (error) {
+            console.error(`A candidate build needs an empty ${playgroundDist}; it could not be removed (${error.code ?? error.message}). Stop any preview serving it and build again.`);
+            throw error;
+        }
+        console.log(`  Candidate ${process.env.RB_CANDIDATE_VERSION}: emptied ${playgroundDist}`);
+    }
+
     console.log('1. Building playground OS...');
     execSync('pnpm --filter @redbyte/playground build', { stdio: 'inherit', env });
 
