@@ -7,6 +7,58 @@ import { NodeRegistry } from './NodeRegistry';
 import type { EngineEvaluationObservation, EngineTickObservationOptions, EvaluationInputRead } from './observation';
 import { isClockCaptureNodeType, canSettleAfterClockCapture } from './clockCapture';
 import { readClockedStateOutputs } from './builtins';
+import { compareText } from './ir/simulationModel';
+
+/**
+ * Strongly connected components (Tarjan, iterative so a long chain cannot exhaust the call
+ * stack). Members are returned in codepoint id order; component order is not meaningful.
+ */
+function stronglyConnectedComponents(successors: ReadonlyMap<string, ReadonlySet<string>>): string[][] {
+  const index = new Map<string, number>();
+  const lowLink = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const components: string[][] = [];
+  let counter = 0;
+  for (const root of successors.keys()) {
+    if (index.has(root)) continue;
+    const frames: Array<{ id: string; next: Iterator<string> }> = [];
+    const enter = (id: string) => {
+      index.set(id, counter);
+      lowLink.set(id, counter);
+      counter += 1;
+      stack.push(id);
+      onStack.add(id);
+      frames.push({ id, next: (successors.get(id) ?? new Set<string>()).values() });
+    };
+    enter(root);
+    while (frames.length > 0) {
+      const frame = frames[frames.length - 1];
+      const step = frame.next.next();
+      if (!step.done) {
+        if (!index.has(step.value)) enter(step.value);
+        else if (onStack.has(step.value)) lowLink.set(frame.id, Math.min(lowLink.get(frame.id)!, index.get(step.value)!));
+        continue;
+      }
+      frames.pop();
+      if (lowLink.get(frame.id) === index.get(frame.id)) {
+        const component: string[] = [];
+        let member: string;
+        do {
+          member = stack.pop()!;
+          onStack.delete(member);
+          component.push(member);
+        } while (member !== frame.id);
+        components.push(component.sort(compareText));
+      }
+      if (frames.length > 0) {
+        const parent = frames[frames.length - 1].id;
+        lowLink.set(parent, Math.min(lowLink.get(parent)!, lowLink.get(frame.id)!));
+      }
+    }
+  }
+  return components;
+}
 
 function normalizeConnection(conn: Connection): { from: PortRef; to: PortRef } {
   const fromIsString = typeof conn.from === 'string';
@@ -497,53 +549,68 @@ export class CircuitEngine {
   }
 
   /**
-   * Topological sort of nodes (simple forward pass, assumes no cycles)
+   * Evaluation order, source -> sink, independent of node-array and connection order.
+   *
+   * Edges leaving a state-boundary node are excluded: clock-capture devices publish their
+   * held Q before anything evaluates (tick, above). Feedback can remain through elements
+   * that publish only when they are evaluated (Delay, DLatch, RSLatch, plain gates). Inside
+   * such a cycle the node evaluated first reads its in-cycle drivers' previous-tick values,
+   * so the order inside the cycle decides the values a tick publishes. Each cycle is one
+   * strongly connected component: components run in Kahn order (first in, first out, as
+   * before), each newly ready batch in codepoint order of the component's smallest id, and a
+   * multi-node component's members in codepoint id order. Every node downstream of a cycle
+   * therefore follows the whole cycle. An acyclic circuit in codec order (ids and
+   * connections sorted) keeps its previous evaluation order.
    */
   topologicalSort(stateBoundaryNodeIds: ReadonlySet<string> = new Set()): Node[] {
-    const nodes = this.circuit.nodes;
-    const edges: Map<string, Set<string>> = new Map();
-    const inDegree: Map<string, number> = new Map();
-
-    for (const node of nodes) {
-      edges.set(node.id, new Set());
-      inDegree.set(node.id, 0);
+    const nodeById = new Map<string, Node>();
+    for (const node of this.circuit.nodes) {
+      // The first node carrying an id evaluates for that id, as before.
+      if (!nodeById.has(node.id)) nodeById.set(node.id, node);
     }
 
+    // Dependency order is per source/target pair, even when the source drives
+    // several input ports.
+    const successors = new Map<string, Set<string>>();
+    for (const id of nodeById.keys()) successors.set(id, new Set());
     for (const conn of this.circuit.connections) {
       const normalized = normalizeConnection(conn);
       if (stateBoundaryNodeIds.has(normalized.from.nodeId)) continue;
-      const targets = edges.get(normalized.from.nodeId);
-      // Dependency order is per source/target pair, even when the source drives
-      // several input ports. Match the Set edge count used by the dequeue pass.
-      if (targets && !targets.has(normalized.to.nodeId)) {
-        targets.add(normalized.to.nodeId);
-        inDegree.set(normalized.to.nodeId, (inDegree.get(normalized.to.nodeId) ?? 0) + 1);
+      if (!nodeById.has(normalized.to.nodeId)) continue;
+      successors.get(normalized.from.nodeId)?.add(normalized.to.nodeId);
+    }
+
+    const components = stronglyConnectedComponents(successors);
+    const componentOf = new Map<string, number>();
+    components.forEach((members, component) => {
+      for (const id of members) componentOf.set(id, component);
+    });
+    const componentSuccessors = components.map(() => new Set<number>());
+    const inDegree = components.map(() => 0);
+    for (const [from, targets] of successors) {
+      const source = componentOf.get(from)!;
+      for (const to of targets) {
+        const target = componentOf.get(to)!;
+        if (target === source || componentSuccessors[source].has(target)) continue;
+        componentSuccessors[source].add(target);
+        inDegree[target] += 1;
       }
     }
 
-    const queue: string[] = [];
-    for (const [id, deg] of inDegree.entries()) {
-      if (deg === 0) queue.push(id);
-    }
-
+    const byLeadId = (left: number, right: number) => compareText(components[left][0], components[right][0]);
+    const queue = components.map((_members, component) => component)
+      .filter(component => inDegree[component] === 0)
+      .sort(byLeadId);
     const sorted: Node[] = [];
-    while (queue.length) {
-      const id = queue.shift()!;
-      const node = nodes.find(n => n.id === id);
-      if (node) sorted.push(node);
-      for (const to of edges.get(id) ?? []) {
-        inDegree.set(to, (inDegree.get(to) ?? 1) - 1);
-        if (inDegree.get(to) === 0) queue.push(to);
+    for (let head = 0; head < queue.length; head += 1) {
+      const component = queue[head];
+      for (const id of components[component]) sorted.push(nodeById.get(id)!);
+      const ready: number[] = [];
+      for (const target of componentSuccessors[component]) {
+        inDegree[target] -= 1;
+        if (inDegree[target] === 0) ready.push(target);
       }
-    }
-
-    if (sorted.length < nodes.length) {
-      const sortedIds = new Set(sorted.map(n => n.id));
-      for (const node of nodes) {
-        if (!sortedIds.has(node.id)) {
-          sorted.push(node);
-        }
-      }
+      queue.push(...ready.sort(byLeadId));
     }
 
     return sorted;

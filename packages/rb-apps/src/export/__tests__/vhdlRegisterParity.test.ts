@@ -6,10 +6,13 @@ type ConfiguredNetlistNode = NetlistNode & {
   config: Record<string, unknown>;
 };
 
-function buildRegisterNetlist(config: Record<string, unknown>): Netlist {
+function buildRegisterNetlist(
+  config: Record<string, unknown>,
+  type: 'Register1' | 'RegisterBus' | 'StateBank' = 'Register1',
+): Netlist {
   const register: ConfiguredNetlistNode = {
     id: 'reg',
-    type: 'Register1',
+    type,
     label: 'state',
     config,
     ports: [
@@ -79,5 +82,27 @@ describe('Register1 VHDL parity', () => {
     expect(result.vhd).toContain('reg1_0 <= SW(0);');
     expect(result.vhd).not.toContain("if SW(2) = '1' then");
     expect(result.vhd).not.toContain("if SW(3) = '1' then");
+  });
+});
+
+// RB-DEBT-028 (b): the simulator applies one configuration rule to the whole register family
+// (evaluateRegisterFamily), so the shared emitter must too: a RegisterBus or StateBank whose
+// configuration disables EN or RST ignores the wired pin, and one that enables them uses it.
+describe.each(['RegisterBus', 'StateBank'] as const)('%s VHDL follows the same configuration authority', (type) => {
+  const signal = type === 'RegisterBus' ? 'regb_0' : 'bank_0';
+
+  it('ignores connected reset and enable ports when configuration disables them', () => {
+    const result = vhdlFromNetlist(buildRegisterNetlist({ width: 1, resetKind: 'none', hasEnable: false }, type));
+    expect(result.vhd).toContain('process (SW(1))');
+    expect(result.vhd).toContain(`${signal} <= SW(0);`);
+    expect(result.vhd).not.toContain("if SW(2) = '1' then");
+    expect(result.vhd).not.toContain("if SW(3) = '1' then");
+  });
+
+  it('uses connected reset and enable ports when configuration enables them', () => {
+    const result = vhdlFromNetlist(buildRegisterNetlist({ width: 1, resetKind: 'async_clear', hasEnable: true }, type));
+    expect(result.vhd).toContain('process (SW(1), SW(2))');
+    expect(result.vhd).toContain("if SW(2) = '1' then");
+    expect(result.vhd).toContain("if SW(3) = '1' then");
   });
 });

@@ -813,8 +813,11 @@
    1366px with the inspector open the clock controls, "Finish exploring" and Test need 365px
    beside tools that leave 276px, so on one row they wrapped or not depending on whether a part
    was selected. Now the height changes once, when the student presses Explore, and is the same
-   at every width and with or without a selection. */
-.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has([data-testid='ide-design-live-transport']) { flex: 1 0 100%; border-top: 1px solid var(--wb-border); }
+   at every width and with or without a selection. When even that row is narrower than its
+   controls (720px, or 1280px at double text size), "Finish exploring" and Test move to a second
+   line: the clock buttons used to spill out of their shrunk group underneath them, so a click
+   on Reset values landed on Finish exploring. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has([data-testid='ide-design-live-transport']) { flex: 1 0 100%; flex-wrap: wrap; row-gap: 2px; border-top: 1px solid var(--wb-border); }
 .ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; }
 .ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] > * { flex: none; }
 /* "Exploring - not recorded" is the claim that keeps this honest, so it stays whole; when the

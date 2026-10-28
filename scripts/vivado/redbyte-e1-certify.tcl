@@ -17,8 +17,9 @@
 #     crashed run can never be read as an earlier pass.
 #   - Every stage runs inside one catch; an unexpected Tcl error is HARNESS_ERROR, never a
 #     stage verdict.
-#   - E1c passes only when the testbench's own REDBYTE_TB_RESULT line says PASS and agrees
-#     with the logs and the testbench source (see redbyte-e1-classify.tcl). No sim_1 testbench
+#   - E1c passes only when the testbench's own REDBYTE_TB_RESULT line says PASS, is the result
+#     file's only line, matches the exact grammar, and every marker in the logs is a well-formed
+#     copy of it, and it agrees with the testbench source (see redbyte-e1-classify.tcl). No sim_1 testbench
 #     is BLOCKED_NO_TESTBENCH, not a pass.
 #   - The result is written atomically as redbyte.vivado-e1.tcl-result.v2 and carries the runId
 #     the wrapper generated, plus one exit code per classification.
@@ -209,9 +210,10 @@ proc rb_run_e1c {sim_bound_ns} {
   }
   catch {close_sim -force}
 
+  # Every non-blank line, not only marker lines: the result file must hold exactly one line.
   set file_lines {}
   foreach path [rb_find_files $sim_root $::rb_tb_result_file] {
-    set file_lines [concat $file_lines [rb_e1c_result_lines [rb_read_text $path]]]
+    set file_lines [concat $file_lines [rb_e1c_content_lines [rb_read_text $path]]]
   }
   dict set facts file_lines $file_lines
 

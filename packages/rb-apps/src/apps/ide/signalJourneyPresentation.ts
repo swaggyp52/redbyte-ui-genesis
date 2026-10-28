@@ -1,4 +1,4 @@
-import type { EngineEvaluationObservation, Node, PortRef } from '@redbyte/rb-logic-core';
+import { describeInputPin, type EngineEvaluationObservation, type Node, type PortRef } from '@redbyte/rb-logic-core';
 import type { ElaboratedNodeSource } from './projectHierarchy';
 
 export interface JourneyPresentedValue {
@@ -262,10 +262,16 @@ function sequentialPresentation(node: Node, inputs: JourneyPresentedPort[], outp
   if (resetActive && resetKind === 'sync_reset') return after === 0 ? result('reset', 'Reset at clock edge', `Active reset forces stored state ${before} to 0 at the ${edgeName} edge.`) : unavailable('Recorded synchronous reset and resulting state disagree.');
   if (resetActive && resetKind === 'sync_set') return after === mask ? result('set', 'Set at clock edge', `Active set forces stored state to ${after} at the ${edgeName} edge.`) : unavailable('Recorded synchronous set and resulting state disagree.');
   if (register || node.type === 'DFlipFlop') {
-    const enable = numberRead(event, register ? [...ENABLE_PORTS, 'CE', 'ce'] : ENABLE_PORTS);
-    const fallback = register && config.hasEnable === true ? 0 : 1;
-    const active = register ? String(config.enablePolarity).toLowerCase() === 'active_low' ? (enable ?? fallback) === 0 : (enable ?? fallback) !== 0 : (enable ?? fallback) === 1;
-    if (!active) return before === after ? result('hold', 'Hold stored state', `Capture is disabled at this edge; stored state stays ${after}.`) : unavailable('State changed while the recorded capture control was disabled.');
+    // The engine's own description of EN (RB-DEBT-028): a register reads it only with Clock
+    // enable on, at its configured polarity, reading 0 when unconnected; a DFlipFlop's EN reads 1
+    // unconnected. A capture with EN wired 0 and Clock enable off is a capture, not a disabled one.
+    const enablePin = describeInputPin(node.type, 'EN', config);
+    if (enablePin?.used !== false) {
+      const enable = numberRead(event, register ? [...ENABLE_PORTS, 'CE', 'ce'] : ENABLE_PORTS);
+      const level = Number((enable ?? enablePin?.unconnectedLevel ?? 1) !== 0);
+      const active = level === (enablePin?.activeLevel ?? 1);
+      if (!active) return before === after ? result('hold', 'Hold stored state', `Capture is disabled at this edge; stored state stays ${after}.`) : unavailable('State changed while the recorded capture control was disabled.');
+    }
     const directData = numberRead(event, D_PORTS);
     let expectedData: number | undefined;
     if (!register || node.type === 'Register1') expectedData = directData === undefined ? undefined : Number(directData !== 0);

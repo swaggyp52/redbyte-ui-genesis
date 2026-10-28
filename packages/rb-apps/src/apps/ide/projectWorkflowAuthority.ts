@@ -33,6 +33,19 @@ export function isDesignOwnedExportDiagnostic(
   return !(code === 'RBEX4200' && timingMode === 'manual_event_driven_lab');
 }
 
+/**
+ * Whether a design-owned export diagnostic also turns checks off for a Run. An output nothing
+ * drives (RBEX4103) blocks the package, but Verify already runs such a design honestly: the
+ * output reads X, its checks fail, and its evidence cannot become validated
+ * (simulationEvidence). A student can still check the outputs already wired.
+ */
+export function blocksCheckedRuns(
+  code: string,
+  timingMode?: DesignAuthorityTimingMode
+): boolean {
+  return isDesignOwnedExportDiagnostic(code, timingMode) && code !== 'RBEX4103';
+}
+
 export interface ProjectWorkflowAuthority {
   truth: ProjectTruthSnapshot;
   truthState: ProjectTruthState;

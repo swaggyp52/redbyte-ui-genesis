@@ -52,7 +52,6 @@ Current live-bench truth on 2026-04-29:
   - IO nodes
   - `AND`, `OR`, `XOR`, `NOT`, `NAND`, `NOR`, `XNOR`
   - `FullAdder`
-  - `MUX4`
   - `DFlipFlop`
 
 ### Final-project (security lock) class — honest tier
@@ -127,7 +126,7 @@ Reference ZIP inspected from `C:\Users\conno\Downloads\swaggy.zip`.
 | --- | --- | --- | --- |
 | Lab 1: Basic gates | simple combinational gates, simulate, map to hardware | Supported now | RedByte supports the logic objective on Vivado + Basys3, not the original ISE / breadboard flow |
 | Lab 2: 4-bit adder + macros | combinational adder, hierarchy/macro reuse | Partially supported | Flat 4-bit adder is fine; student-authored hierarchical macro flow is not frozen for export/import |
-| Lab 4: ALU | gates, add/sub path, mux/decoder/tri-state style control | Partially supported | `MUX4` / gates / `FullAdder` path is viable; decoder/tri-state-specific implementation is not a lab-day guarantee |
+| Lab 4: ALU | gates, add/sub path, mux/decoder/tri-state style control | Partially supported | Gates + `FullAdder` path is viable; the legacy starter's `MUX4` blocks are not supported (not simulated, verified or exported), so each 4:1 select is built from gates; decoder/tri-state-specific implementation is not a lab-day guarantee |
 | Lab 5: add/sub + SSD | arithmetic unit, hierarchy, buses, 7-seg cathodes/anodes | Partially supported | Core arithmetic and Basys3 7-seg pins exist, but bus-native authoring and hierarchy are still manual |
 | Lab 6: latches/flip-flops | D latch, D FF, T FF, JK FF behavior | Partially supported | `DFlipFlop` path is safe; latch/T/JK are not a frozen Basys3 student export promise |
 | Lab 7: synchronous counter | DFF counter, CE/load/reset/CEO, clocked behavior | Supported only after real sequential validation | Use `DFlipFlop` + gates, not `Counter4Bit`, as the student export path |

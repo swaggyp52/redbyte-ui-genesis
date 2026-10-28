@@ -1,7 +1,9 @@
 import {
   analyzeSequentialLogic,
   getBlockedVerificationNodeTypes,
+  getComponentSupport,
   getVerificationSequentialNodeTypes,
+  NodeRegistry,
 } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
 
@@ -24,22 +26,84 @@ export const SUPPORTED_SEQUENTIAL = new Set<string>([
 ]);
 
 /**
- * Node types whose presence must block verify.
- * These are structurally recognized as stateful but lack verified simulation
- * support in the current product contract.
+ * Node types whose presence must block verify: every non-boundary part the
+ * component support registry does not simulate or cannot verify, combinational
+ * (MUX4) or stateful (Counter4Bit, Delay). Derived from the registry, never
+ * listed here.
  *
  * 'blocked' always wins over 'sequential': a circuit with both a DFlipFlop and
  * a Counter4Bit is blocked, not sequential, until Counter4Bit is supported.
  */
-export const UNSUPPORTED_SEQUENTIAL = new Set<string>([
+export const BLOCKED_VERIFY_NODE_TYPES = new Set<string>([
   ...getBlockedVerificationNodeTypes(),
 ]);
+
+/** One blocked part type in a circuit and the nodes that carry it, in circuit order. */
+export interface VerifyBlocker {
+  type: string;
+  /** Student-readable part name from the support registry. */
+  label: string;
+  /** False when the engine does not simulate the part at all, so its outputs would be invented. */
+  simulated: boolean;
+  nodes: Array<{ id: string; label: string }>;
+}
+
+/**
+ * A part type nothing defines: neither the support registry nor the engine knows it (a "mux4", a
+ * "MUX8"), so the engine has no behaviour and its outputs would read values nothing computed.
+ * Module instances and boundary markers are the hierarchy's own and are never parts.
+ */
+function isUndefinedPartType(node: Circuit['nodes'][number]): boolean {
+  if (typeof node.config?.moduleDefinitionId === 'string' || typeof node.config?.moduleBoundary === 'string') return false;
+  return !getComponentSupport(node.type) && !NodeRegistry.has(node.type);
+}
+
+/** The parts that block Verify for this circuit, grouped by type in first-seen order. */
+export function findVerifyBlockers(circuit: Circuit): VerifyBlocker[] {
+  const byType = new Map<string, VerifyBlocker>();
+  for (const node of circuit.nodes) {
+    if (!BLOCKED_VERIFY_NODE_TYPES.has(node.type) && !isUndefinedPartType(node)) continue;
+    let blocker = byType.get(node.type);
+    if (!blocker) {
+      const support = getComponentSupport(node.type);
+      blocker = {
+        type: node.type,
+        label: support?.label ?? node.type,
+        simulated: support?.capabilities.simulation === true,
+        nodes: [],
+      };
+      byType.set(node.type, blocker);
+    }
+    blocker.nodes.push({ id: node.id, label: node.label?.trim() || node.id });
+  }
+  return [...byType.values()];
+}
+
+/** "4:1 multiplexer (MUX4) on MUX[0], MUX[1]" */
+export function describeVerifyBlocker(blocker: VerifyBlocker): string {
+  return `${blocker.label} (${blocker.type}) on ${blocker.nodes.map((node) => node.label).join(', ')}`;
+}
+
+/**
+ * Why a run of this circuit must not be recorded, or null when it may run. A
+ * part the engine does not simulate would leave its outputs at values nothing
+ * computed (MUX4 read 0), so no run, Observe or Compare, may record them.
+ */
+export function unsimulatedRunRefusal(circuit: Circuit): string | null {
+  const unsimulated = findVerifyBlockers(circuit).filter((blocker) => !blocker.simulated);
+  if (unsimulated.length === 0) return null;
+  return (
+    `Simulation was not run: RedByte does not simulate ${unsimulated.map(describeVerifyBlocker).join('; ')}, ` +
+    'so a recording would show values it never computed. ' +
+    'Fix: rebuild that logic from supported gates or remove the part; the design is unchanged.'
+  );
+}
 
 /**
  * Determine the canonical verify mode for a circuit.
  *
  * Detection priority (highest to lowest):
- * 1. Any UNSUPPORTED_SEQUENTIAL node type → 'blocked'  (wins over everything)
+ * 1. Any BLOCKED_VERIFY_NODE_TYPES node type → 'blocked'  (wins over everything)
  * 2. Any stateful behavior (supported nodes OR hasClockedMacros analysis OR HDL hint) → 'sequential'
  * 3. Default → 'combinational'
  *
@@ -54,8 +118,8 @@ export const UNSUPPORTED_SEQUENTIAL = new Set<string>([
 export function detectVerifyMode(circuit: Circuit, hdlScheduleHint?: string): VerifyMode {
   const nodeTypes = circuit.nodes.map((n) => n.type);
 
-  // Blocked wins over everything.
-  if (nodeTypes.some((t) => UNSUPPORTED_SEQUENTIAL.has(t))) {
+  // Blocked wins over everything, including a part nothing defines.
+  if (nodeTypes.some((t) => BLOCKED_VERIFY_NODE_TYPES.has(t)) || circuit.nodes.some(isUndefinedPartType)) {
     return 'blocked';
   }
 

@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import {
-  assert, clickVerifyRun, ensureVerifyVectorsReady, loadStarterProject, runIdeGate,
+  assert, clickVerifyRun, editStimulus, ensureVerifyVectorsReady, loadStarterProject, runIdeGate,
   setVerifyRunMode,
 } from './_gateHarness.mjs';
 import { assertBuildHash, assertNoRootOverflow, captureBrowserProblems } from './_workbenchReconstructionHarness.mjs';
@@ -263,6 +263,12 @@ await runIdeGate('IDE Signal Journey counter proof', async ({ page, baseUrl }) =
 async function readRun(page) {
   return page.evaluate(() => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun ?? null);
 }
+async function readActiveScenario(page) {
+  return page.evaluate(() => {
+    const state = window.__RB_PROJECT_RUNTIME__?.getState?.();
+    return JSON.parse(JSON.stringify(state?.scenarios?.find(scenario => scenario.id === state.activeScenarioId) ?? null));
+  });
+}
 async function readArchivedRun(page, id) {
   return page.evaluate(runId => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyRunArchive.find(run => run.runId === runId) ?? null, id);
 }
@@ -279,6 +285,13 @@ async function authorNonzeroReset(page) {
   assert(await reset.getAttribute('data-generated') !== 'true', 'Authored reset must be editable rather than a generated policy lane');
   assert(/: 0$/.test(await reset.getAttribute('aria-label')), 'Reset at t5 begins deasserted');
   assert(/: 1$/.test(await enable.getAttribute('aria-label')), 'Enable at t5 begins asserted for rollover');
+  // RB-DEBT-020: with the baseline recording on screen a click on a stimulus cell only selects it.
+  const scenarioBeforeInspection = await readActiveScenario(page);
+  await enable.click();
+  assert(/: 1$/.test(await enable.getAttribute('aria-label')), 'A click while inspecting the recording must not edit EN at t5');
+  assert(isDeepStrictEqual(await readActiveScenario(page), scenarioBeforeInspection),
+    'Inspecting the recording must leave the scenario version and content unchanged');
+  await editStimulus(page);
   await enable.click();
   await reset.click();
   assert(/: 0$/.test(await enable.getAttribute('aria-label')) && /: 1$/.test(await reset.getAttribute('aria-label')),

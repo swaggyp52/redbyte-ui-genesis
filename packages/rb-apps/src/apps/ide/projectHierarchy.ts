@@ -1,5 +1,6 @@
 import type { Circuit, CompositeNodeDef, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
 import { parseVectorLabel } from '@redbyte/rb-logic-core';
+import { compareCodepoint } from '../../export/codepointSort';
 import { moduleNameCollision } from './vhdlNames';
 
 export const PROJECT_HIERARCHY_SCHEMA_VERSION = 'rb.project-hierarchy.v1' as const;
@@ -170,7 +171,8 @@ export function normalizeProjectHierarchy(
     schemaVersion: PROJECT_HIERARCHY_SCHEMA_VERSION,
     topModuleId: TOP_MODULE_ID,
     activeModuleId,
-    modules: modules.sort((left, right) => left.name.localeCompare(right.name)),
+    // Persisted order: codepoint, never collation (RB-DEBT-016).
+    modules: modules.sort((left, right) => compareCodepoint(left.name, right.name)),
   };
 }
 
@@ -395,7 +397,7 @@ export function createModuleFromSelection(
     hierarchy: {
       ...hierarchy,
       activeModuleId: TOP_MODULE_ID,
-      modules: [...hierarchy.modules, definition].sort((left, right) => left.name.localeCompare(right.name)),
+      modules: [...hierarchy.modules, definition].sort((left, right) => compareCodepoint(left.name, right.name)),
     },
     definition,
     instance,
@@ -635,12 +637,14 @@ export function toCompositeDefinition(module: NativeVisualModuleDefinition): Com
           return [port.name, `${boundary?.id ?? port.sourceBoundary.internalRefs[0]?.nodeId}.isOn`];
         }),
     ),
+    // An output nothing inside drives publishes nothing, as in flattening (its readers read their
+    // own unconnected levels); it used to crash every load of such a project.
     outputMapping: Object.fromEntries(
       module.ports
         .filter((port) => port.direction === 'output')
-        .map((port) => {
+        .flatMap((port) => {
           const ref = port.sourceBoundary.internalRefs[0];
-          return [port.name, `${ref.nodeId}.${ref.portName}`];
+          return ref ? [[port.name, `${ref.nodeId}.${ref.portName}`]] : [];
         }),
     ),
   };
@@ -797,14 +801,15 @@ function groupBoundaryConnections(
     }
     groups.set(key, group);
   }
+  // Port ids carry this index and persist with the module: codepoint order (RB-DEBT-016).
   return [...groups.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
+    .sort(([left], [right]) => compareCodepoint(left, right))
     .map(([key, group], index) => ({
       id: `${direction}-${index + 1}-${key.replace(/[^a-zA-Z0-9]+/g, '-')}`,
       suggestedName: validateSuggestedPortName(group.suggestedName, direction, index),
       direction,
       internalRefs: group.refs.sort((left, right) =>
-        `${left.nodeId}.${left.portName}`.localeCompare(`${right.nodeId}.${right.portName}`),
+        compareCodepoint(`${left.nodeId}.${left.portName}`, `${right.nodeId}.${right.portName}`),
       ),
       ...(group.busBase ? { busBase: group.busBase, bitIndex: group.bitIndex } : {}),
     }));

@@ -1,7 +1,9 @@
 <#
 Run a RedByte Vivado E1 certification checkpoint.
 
-This wrapper creates a durable proof folder under .redbyte/vivado-e1/<timestamp>/.
+This wrapper creates a durable proof folder under .redbyte/vivado-e1/<timestamp>/ (or -OutDir,
+which must not exist yet or be empty: a reused folder is refused with exit 2). Each design's ZIP is
+copied, hashed and extracted into a new folder, and must hold exactly one .xpr project.
 It can run as:
   - EnvCheck: records local environment and Vivado discovery only.
   - DryRun: inspects candidate ZIP packages and records whether a real E1 run is blocked.
@@ -34,6 +36,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'redbyte-e1-packages.ps1')
 
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $StartedAt = (Get-Date).ToUniversalTime()
@@ -94,6 +98,21 @@ function Get-StagePassed($TclResult, [string]$Stage) {
   if ($null -eq $TclResult -or $null -eq $TclResult.stages) { return $false }
   $entry = $TclResult.stages.PSObject.Properties[$Stage]
   return ($null -ne $entry -and $entry.Value.status -eq 'pass')
+}
+
+# The accepted result's e1c.resultLine when it is an exact PASS line of the testbench grammar
+# (see redbyte-e1-classify.tcl), otherwise ''.
+function Get-AcceptedPassLine($TclResult) {
+  if ($null -eq $TclResult) { return '' }
+  $e1c = $TclResult.PSObject.Properties['e1c']
+  if ($null -eq $e1c -or $null -eq $e1c.Value) { return '' }
+  $line = $e1c.Value.PSObject.Properties['resultLine']
+  if ($null -eq $line) { return '' }
+  $text = [string]$line.Value
+  if ($text -cmatch '^REDBYTE_TB_RESULT v=1 tb=[A-Za-z][A-Za-z0-9_]* status=PASS checks=[1-9][0-9]* failures=0$') {
+    return $text
+  }
+  return ''
 }
 
 function Quote-ProcessArgument([string]$Value) {
@@ -190,16 +209,6 @@ function Resolve-Vivado {
   }
 }
 
-function Find-DesignZip([string]$Root, [string]$DesignId) {
-  if (!(Test-Path -LiteralPath $Root)) {
-    return $null
-  }
-  return Get-ChildItem -LiteralPath $Root -Filter '*.zip' -File -Recurse |
-    Where-Object { $_.Name -like "*$DesignId*" } |
-    Sort-Object LastWriteTimeUtc -Descending |
-    Select-Object -First 1
-}
-
 function Find-FirstFileByName([string]$Root, [string]$Name) {
   return Get-ChildItem -LiteralPath $Root -Recurse -File |
     Where-Object { $_.Name -ieq $Name } |
@@ -207,10 +216,21 @@ function Find-FirstFileByName([string]$Root, [string]$Name) {
     Select-Object -First 1
 }
 
-function Find-FirstXpr([string]$Root) {
-  return Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.xpr' |
-    Sort-Object FullName |
-    Select-Object -First 1
+# Every .xpr in a freshly extracted package; E1 analyses a package only when there is exactly one.
+function Find-XprFiles([string]$Root) {
+  return @(Get-ChildItem -LiteralPath $Root -Recurse -File |
+    Where-Object { $_.Extension -ieq '.xpr' } |
+    Sort-Object FullName)
+}
+
+function Get-Sha256([string]$Path) {
+  return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+}
+
+# Refuses the whole run before anything is written; nonzero, and never a pass.
+function Stop-E1Run([string]$Message) {
+  [Console]::Error.WriteLine("RedByte E1: refused: $Message")
+  exit 2
 }
 
 function Read-TextFile($FileInfo) {
@@ -248,7 +268,15 @@ function Remove-XdcComments([string]$XdcText) {
   return (($XdcText -split "`r?`n") | ForEach-Object { $_ -replace '#.*$', '' }) -join "`n"
 }
 
+# VHDL code only: `--` comments run to the end of the line (the provenance header carries the
+# project name). String literals are matched first and kept, so a "--" inside one cannot hide
+# the code after it; anything else ambiguous stays in and can only over-report.
+function Remove-VhdlComments([string]$VhdlText) {
+  return [regex]::Replace($VhdlText, '("(?:[^"\r\n]|"")*")|--[^\r\n]*', '$1')
+}
+
 function Get-UnsupportedTopConstructs([string]$TopText) {
+  $TopText = Remove-VhdlComments $TopText
   $constructs = @()
   foreach ($entry in @(
       @{ name = 'after-delay'; pattern = '\bafter\b' },
@@ -274,31 +302,57 @@ function Get-PackageRoot([string]$ExtractRoot, $XprFile) {
   return $ExtractRoot
 }
 
-function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoInfo, [string]$Mode) {
-  $designOut = Join-Path $RunRoot ("designs/{0}" -f $DesignId)
+function New-UnanalysedResult([string]$DesignId, [string]$Classification, [string[]]$Issues) {
+  return [ordered]@{
+    designId = $DesignId
+    classification = $Classification
+    packagePresent = $false
+    zipPath = $null
+    packageRoot = $null
+    issues = $Issues
+    warnings = @()
+    e1 = [ordered]@{ import = $false; compile = $false; testbench = $false; synthesis = $false; implementationDryRun = $false }
+  }
+}
+
+function Analyze-Package([string]$DesignId, $ZipCandidates, [string]$RunRoot, $VivadoInfo, [string]$Mode) {
+  $designOut = [System.IO.Path]::GetFullPath((Join-Path $RunRoot ("designs\{0}" -f $DesignId)))
   $extractRoot = Join-Path $designOut 'extracted'
   $logsRoot = Join-Path $designOut 'logs'
+  # The run folder started empty, so an existing design folder can only be a reuse; never analyse it.
+  if (Test-Path -LiteralPath $designOut) {
+    return New-UnanalysedResult $DesignId 'HARNESS_ERROR' @("$designOut already exists; E1 never reuses an extraction.")
+  }
   New-Directory $designOut
-  New-Directory $extractRoot
   New-Directory $logsRoot
 
-  if ($null -eq $ZipFile) {
-    return [ordered]@{
-      designId = $DesignId
-      classification = 'BLOCKED_PACKAGE_MISSING'
-      packagePresent = $false
-      zipPath = $null
-      packageRoot = $null
-      issues = @('No ZIP package matched this design id.')
-      warnings = @()
-      e1 = [ordered]@{ import = $false; compile = $false; testbench = $false; synthesis = $false; implementationDryRun = $false }
-    }
+  $ZipCandidates = @($ZipCandidates)
+  if ($ZipCandidates.Count -eq 0) {
+    return New-UnanalysedResult $DesignId 'BLOCKED_PACKAGE_MISSING' @("No ZIP package is named for design id $DesignId (exact names only; see redbyte-e1-packages.ps1).")
+  }
+  if ($ZipCandidates.Count -gt 1) {
+    $names = @($ZipCandidates | ForEach-Object { $_.FullName })
+    return New-UnanalysedResult $DesignId 'BLOCKED_PACKAGE_AMBIGUOUS' @("$($ZipCandidates.Count) ZIP packages match design id ${DesignId}; keep exactly one: $($names -join '; ')")
+  }
+  $ZipFile = $ZipCandidates[0]
+
+  # Hash, extract and inspect one private copy, so every recorded fact comes from the same bytes,
+  # extracted into a folder that did not exist before this run.
+  $packageZip = Join-Path $designOut 'package.zip'
+  Copy-Item -LiteralPath $ZipFile.FullName -Destination $packageZip
+  $zipHash = Get-Sha256 $packageZip
+  New-Item -ItemType Directory -Path $extractRoot | Out-Null
+  $extractIssue = $null
+  try {
+    Expand-Archive -LiteralPath $packageZip -DestinationPath $extractRoot
+  } catch {
+    $extractIssue = "The ZIP could not be extracted: $($_.Exception.Message)"
   }
 
-  $zipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipFile.FullName).Hash.ToLowerInvariant()
-  Expand-Archive -LiteralPath $ZipFile.FullName -DestinationPath $extractRoot -Force
-
-  $xpr = Find-FirstXpr $extractRoot
+  $xprFiles = @(Find-XprFiles $extractRoot)
+  $xpr = if ($xprFiles.Count -eq 1) { $xprFiles[0] } else { $null }
+  $xprSha256 = if ($xpr) { Get-Sha256 $xpr.FullName } else { $null }
+  $xprZipEntry = if ($xpr) { $xpr.FullName.Substring($extractRoot.Length).TrimStart('\', '/').Replace('\', '/') } else { $null }
   $packageRoot = Get-PackageRoot $extractRoot $xpr
   $rbproj = Find-FirstFileByName $packageRoot 'project.rbproj.json'
   $readme = Find-FirstFileByName $packageRoot 'README.txt'
@@ -321,8 +375,15 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
 
   $issues = @()
   $warnings = @()
+  if ($null -ne $extractIssue) {
+    $issues += $extractIssue
+  }
+  if ($xprFiles.Count -gt 1) {
+    $relative = @($xprFiles | ForEach-Object { $_.FullName.Substring($extractRoot.Length).TrimStart('\', '/') })
+    $issues += "A package must hold exactly one .xpr project; found $($xprFiles.Count): $($relative -join ', ')"
+  }
   foreach ($key in $files.Keys) {
-    if ($null -eq $files[$key]) {
+    if ($null -eq $files[$key] -and !($key -eq 'xpr' -and $xprFiles.Count -gt 1)) {
       $issues += "Missing required package file: $key"
     }
   }
@@ -499,17 +560,22 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
       $stageSource = $tclResult
     }
 
-    # Independent cross-check of a pass against everything Vivado printed.
+    # Independent cross-check of a pass against everything Vivado printed: every line holding a
+    # REDBYTE_TB_RESULT marker must hold exactly one, ending the line as an exact copy of the
+    # accepted result line. A truncated, doubled, trailing-junk or contradicting marker conflicts.
     $consoleText = (@($logPath, $stdoutPath) | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join "`n"
-    $logResultLines = @([regex]::Matches($consoleText, 'REDBYTE_TB_RESULT v=1 tb=\S+ status=(\S+) checks=\d+ failures=\d+') | ForEach-Object { $_.Value })
-    $vivadoRun.resultLinesInLog = $logResultLines
+    $markerLines = @(($consoleText -split "`r?`n") | Where-Object { $_.Contains('REDBYTE_TB_RESULT') } | ForEach-Object { $_.Trim() })
+    $vivadoRun.resultLinesInLog = $markerLines
     if ($classification -eq 'PASS_E1') {
-      $nonPass = @($logResultLines | Where-Object { $_ -notmatch 'status=PASS ' })
+      $accepted = Get-AcceptedPassLine $tclResult
+      $badMarkers = @($markerLines | Where-Object {
+          $accepted -eq '' -or [regex]::Matches($_, 'REDBYTE_TB_RESULT').Count -ne 1 -or !$_.EndsWith($accepted, [System.StringComparison]::Ordinal)
+        })
       $mismatchCount = [regex]::Matches($consoleText, 'Vector \d+ failed on ').Count
-      if ($nonPass.Count -gt 0 -or $mismatchCount -gt 0) {
+      if ($accepted -eq '' -or $badMarkers.Count -gt 0 -or $mismatchCount -gt 0) {
         $classification = 'EVIDENCE_CONFLICT'
         $stageSource = $null
-        $vivadoRun.acceptance = "PASS_E1 contradicted by the Vivado log: $($nonPass.Count) non-PASS result line(s), $mismatchCount mismatch report(s)."
+        $vivadoRun.acceptance = "PASS_E1 contradicted by the Vivado log: accepted result line '$accepted', $($badMarkers.Count) malformed or non-matching result marker line(s), $mismatchCount mismatch report(s)."
       }
     }
   }
@@ -519,7 +585,13 @@ function Analyze-Package([string]$DesignId, $ZipFile, [string]$RunRoot, $VivadoI
     classification = $classification
     packagePresent = $true
     zipPath = $ZipFile.FullName
+    # zipSha256, xprZipEntry and xprSha256 all describe package.zip, the copy extracted into the
+    # fresh extractRoot; the .xpr hash is taken before Vivado opens (and may rewrite) the project.
     zipSha256 = $zipHash
+    packageZip = $packageZip
+    extractRoot = $extractRoot
+    xprZipEntry = $xprZipEntry
+    xprSha256 = $xprSha256
     packageRoot = $packageRoot
     project = $projectSummary
     files = $files
@@ -599,6 +671,24 @@ if ($OutDir.Trim().Length -gt 0) {
 } else {
   $RunRoot = Join-Path (Resolve-RepoPath $OutputRoot) $Timestamp
 }
+# Design ids name ZIPs exactly and become designs/<id> folders, so each must be a project slug.
+$seenDesignIds = @{}
+foreach ($designId in $DesignIds) {
+  if (!(Test-RedByteDesignId $designId)) {
+    Stop-E1Run "design id '$designId' is not a RedByte project slug (lowercase letters and digits in dash-separated groups)."
+  }
+  if ($seenDesignIds.ContainsKey($designId.ToLowerInvariant())) {
+    Stop-E1Run "design id '$designId' is listed twice."
+  }
+  $seenDesignIds[$designId.ToLowerInvariant()] = $true
+}
+# Every run writes into a folder of its own. A reused folder still holds an earlier run's
+# extraction, logs and manifest, which a new run could silently analyse or mix with its own.
+if (Test-Path -LiteralPath $RunRoot) {
+  if (!(Test-Path -LiteralPath $RunRoot -PathType Container) -or @(Get-ChildItem -LiteralPath $RunRoot -Force).Count -gt 0) {
+    Stop-E1Run "output folder $RunRoot is not empty. E1 never reuses a run folder: omit -OutDir to get a new .redbyte/vivado-e1/<timestamp>/ folder, or pass a folder that does not exist yet."
+  }
+}
 $LogsRoot = Join-Path $RunRoot 'logs'
 New-Directory $RunRoot
 New-Directory $LogsRoot
@@ -664,8 +754,8 @@ if ($Mode -eq 'EnvCheck') {
   }
 
   foreach ($designId in $DesignIds) {
-    $zip = Find-DesignZip $zipRoot $designId
-    $results += Analyze-Package $designId $zip $RunRoot $VivadoInfo $Mode
+    $candidates = @(Find-RedByteDesignZips $zipRoot $designId)
+    $results += Analyze-Package $designId $candidates $RunRoot $VivadoInfo $Mode
   }
 }
 

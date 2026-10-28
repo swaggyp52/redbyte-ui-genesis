@@ -28,14 +28,30 @@ describe('canonical VHDL/XDC bundle authority', () => {
     expect(bundle.warnings).toContain('Unsupported node: unknown (UnknownGate)');
   });
 
-  it('preserves an undriven output as a draft warning without promoting it to an export error', () => {
+  it('blocks an undriven board output by name instead of shipping a level Verify never showed', () => {
+    // Verify shows an output nothing drives as X. The bundle used to stay valid and tie it to
+    // '0' with a warning, so a downloaded (or, with no check on that output, trusted) package
+    // drove an LED nobody designed. It is a blocking error now, the text cannot compile into a
+    // guessed level, and Design keeps IR003 as the editing-time warning.
     const { circuit, mapping } = fixture();
     circuit.connections = [];
     const model = buildBasys3ExportModel(circuit, mapping);
     expect(model.ir.diagnostics.find((entry) => entry.code === 'IR003')?.severity).toBe('warning');
     const bundle = exportBasys3Bundle(circuit, mapping, { exportModel: model });
+    expect(bundle.valid).toBe(false);
+    expect(bundle.errors.some((error) => /^Output port ".+" on node "led" has no driver: /.test(error))).toBe(true);
+    expect(bundle.topVhd).toMatch(/<= RBEX_UNDRIVEN_\w+;/);
+    expect(bundle.topVhd).not.toMatch(/<= '0';/);
+  });
+
+  it('exports an output deliberately tied to a Ground part as the designed 0', () => {
+    const { circuit, mapping } = fixture();
+    circuit.nodes.push({ id: 'gnd', type: 'Ground' });
+    circuit.connections = [{ from: { nodeId: 'gnd', portName: 'out' }, to: { nodeId: 'led', portName: 'in' } }];
+    const bundle = exportBasys3Bundle(circuit, mapping);
+    expect(bundle.errors).toEqual([]);
     expect(bundle.valid).toBe(true);
-    expect(bundle.warnings.some((warning) => warning.includes('has no driver'))).toBe(true);
+    expect(bundle.topVhd).toMatch(/<= '0';/);
   });
 
   it.each(['RegisterBus', 'StateBank'])('keeps %s blocked by the current scalar export policy', (type) => {

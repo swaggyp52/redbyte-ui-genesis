@@ -126,6 +126,7 @@ import {
   designCameraKey,
   rememberDesignCamera,
   recallDesignCamera,
+  wasFramedDesignCamera,
   type DesignCanvasGraphAnchor,
   type DesignCanvasViewport,
 } from './designCanvasCamera';
@@ -1290,9 +1291,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setTraceState(null);
   }, []);
 
+  // Switching the Design view (Schematic, Split, Code) is the student's own choice of sheet, not
+  // an incidental resize: an untouched framed view is framed again for the new sheet (the Split
+  // proof: all 13 counter parts stay inside), while a view the student zoomed or panned is kept.
+  const viewSwitchRefitRef = useRef(false);
+  const lastDesignViewForFitRef = useRef(designView);
   // Force canvas host to recompute its size when view mode changes.
   // Double-rAF: first frame applies display changes, second measures new dims.
   useLayoutEffect(() => {
+    if (lastDesignViewForFitRef.current !== designView) viewSwitchRefitRef.current = true;
+    lastDesignViewForFitRef.current = designView;
     const outer = requestAnimationFrame(() => {
       requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
     });
@@ -2814,6 +2822,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
       const viewState = useLogicViewStore.getState();
       const currentCamera = viewState.camera;
+      // A view switch (Schematic, Split, Code) frames an untouched frame again for the new sheet,
+      // before any selection or last-touched part is followed: the switch is the student's choice
+      // of sheet, and the frame was never theirs to keep.
+      const untouchedFrame = lastFittedCameraRef.current;
+      if (viewSwitchRefitRef.current && untouchedFrame && currentCamera.x === untouchedFrame.x &&
+          currentCamera.y === untouchedFrame.y && currentCamera.zoom === untouchedFrame.zoom) {
+        fitToCircuitRef.current(nextViewport);
+        return;
+      }
       // A resized sheet never rescales the work. Selecting a part opens the inspector, which
       // narrows the sheet; refitting the whole circuit into what was left turned a readable
       // schematic into a small one at the moment a student wanted to look closely. The camera
@@ -2832,11 +2849,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         }
         return region;
       };
+      // Panning to keep a selection or a just-placed part on the sheet is the workbench's move, not
+      // the student's: an untouched frame stays one (a later view switch still frames it again).
+      const keepFramed = (kept: typeof currentCamera) => {
+        const framed = lastFittedCameraRef.current;
+        if (framed && framed.x === currentCamera.x && framed.y === currentCamera.y && framed.zoom === currentCamera.zoom) {
+          lastFittedCameraRef.current = kept;
+        }
+        setCamera(kept);
+      };
       if (selectedIds.size > 0) {
+        viewSwitchRefitRef.current = false;
         const region = regionOf(selectedIds, SELECTION_VIEW_PAD);
         if (region) {
           const kept = keepRegionInView(currentCamera, nextViewport, region);
-          if (kept !== currentCamera) setCamera(kept);
+          if (kept !== currentCamera) keepFramed(kept);
           return;
         }
       }
@@ -2851,7 +2878,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           const region = regionOf(touched, SELECTION_VIEW_PAD);
           const kept = region ? keepRegionInView(currentCamera, nextViewport, region) : currentCamera;
           if (kept !== currentCamera) {
-            setCamera(kept);
+            keepFramed(kept);
             return;
           }
         }
@@ -2861,6 +2888,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const framedCamera = lastFittedCameraRef.current;
       if (framedCamera && currentCamera.x === framedCamera.x &&
           currentCamera.y === framedCamera.y && currentCamera.zoom === framedCamera.zoom) {
+        // An untouched frame keeps its zoom while the work still fits the sheet at that zoom;
+        // after a view switch, or when the sheet became too small for it, it is framed again.
+        const bounds = unionBounds(buildGeometryIndex(editorNodesRef.current as Node[]).values());
+        const stillFits = !bounds || (
+          (bounds.maxX - bounds.minX) * currentCamera.zoom <= nextViewport.width - 96 &&
+          (bounds.maxY - bounds.minY) * currentCamera.zoom <= nextViewport.height - 96);
+        if (viewSwitchRefitRef.current || !stillFits) {
+          fitToCircuitRef.current(nextViewport);
+          return;
+        }
         const centred = {
           x: currentCamera.x + (nextViewport.width - previousViewport.width) / 2,
           y: currentCamera.y + (nextViewport.height - previousViewport.height) / 2,
@@ -2870,6 +2907,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         setCamera(centred);
         return;
       }
+      viewSwitchRefitRef.current = false;
       const stillShowsWork = cameraGraphAnchorsRef.current.some((anchor) => {
         const screenX = anchor.x * currentCamera.zoom + currentCamera.x;
         const screenY = anchor.y * currentCamera.zoom + currentCamera.y;
@@ -2932,7 +2970,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const restoreOrFrameRef = useRef<() => void>(() => {});
   restoreOrFrameRef.current = () => {
     const remembered = recallDesignCamera(designCameraKeyRef.current);
-    if (remembered && editorNodesRef.current.length > 0) {
+    if (remembered && editorNodesRef.current.length > 0 && wasFramedDesignCamera(designCameraKeyRef.current)) {
+      // An untouched frame was made for the sheet Design had then (before Verify, before a view
+      // switch remounted it); it is framed again for this sheet rather than restored off-centre.
+      fitToCircuitRef.current();
+    } else if (remembered && editorNodesRef.current.length > 0) {
       // On first entry this runs twice in a row (mount, then the first frame request): the
       // second finds the frame the first one just made, already remembered. That view is still
       // an untouched frame and must go on being centred as the sheet settles; only a view that
@@ -2967,7 +3009,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return;
     }
     if (!cameraEstablishedRef.current || editorCircuit.nodes.length === 0) return;
-    rememberDesignCamera(designCameraKeyValue, { x: camera.x, y: camera.y, zoom: camera.zoom });
+    const framed = lastFittedCameraRef.current;
+    rememberDesignCamera(designCameraKeyValue, { x: camera.x, y: camera.y, zoom: camera.zoom },
+      Boolean(framed && framed.x === camera.x && framed.y === camera.y && framed.zoom === camera.zoom));
   }, [camera.x, camera.y, camera.zoom, designCameraKeyValue, editorCircuit.nodes.length]);
 
   // The measured viewport observer owns resize reconciliation; changing representation
@@ -4351,8 +4395,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const lastCameraLocationRef = useRef<string | null>(null);
   const restoreCameraForLocationRef = useRef<() => void>(() => {});
   restoreCameraForLocationRef.current = () => {
-    const stored = recallDesignCamera(designCameraKey(projectId, activeModuleKey));
-    if (stored) {
+    const storedKey = designCameraKey(projectId, activeModuleKey);
+    const stored = recallDesignCamera(storedKey);
+    if (stored && wasFramedDesignCamera(storedKey)) {
+      fitToCircuit();
+    } else if (stored) {
       lastFittedCameraRef.current = null;
       setCamera(stored);
     } else {

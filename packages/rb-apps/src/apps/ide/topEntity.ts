@@ -6,13 +6,34 @@
  * user-typed top is normalized.
  */
 
+import { VHDL_RESERVED_WORDS } from './vhdlNames';
+
+/**
+ * Why a name cannot be the top entity, or null when it can: it must analyse as a VHDL
+ * identifier (letter first; letters, digits and single underscores; no trailing underscore)
+ * and must not be a reserved word (a project named "Register" made a top that never analysed).
+ */
+export function topEntityNameProblem(name: string): string | null {
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name)) {
+    return 'Top entity must start with a letter and use only letters, digits, or underscores (max 64 characters).';
+  }
+  if (/__|_$/.test(name)) return 'Top entity cannot contain two underscores in a row or end with an underscore.';
+  if (VHDL_RESERVED_WORDS.has(name.toLowerCase())) return `"${name}" is a VHDL reserved word; choose another top entity name.`;
+  return null;
+}
+
+/** A normalized identifier that analyses: single underscores, never a reserved word. */
+function analysableIdentifier(value: string): string {
+  const collapsed = value.replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  return VHDL_RESERVED_WORDS.has(collapsed.toLowerCase()) ? `${collapsed}_top` : collapsed;
+}
+
 /** Derive the default HDL top-entity name from a project name. */
 export function buildTopEntityName(projectName: string): string {
-  const normalized = projectName
+  const normalized = analysableIdentifier(projectName
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+    .replace(/[^a-z0-9_]+/g, '_'));
   const base = normalized.length > 0 ? normalized : 'redbyte_top';
   return /^[a-z]/.test(base) ? base : `rb_${base}`;
 }
@@ -27,12 +48,11 @@ export function normalizeTopEntityName(
   fallbackTopEntity: string
 ): string {
   const fallback = fallbackTopEntity.trim().length > 0 ? fallbackTopEntity : 'redbyte_top';
-  const normalized = (value ?? '')
+  const normalized = analysableIdentifier((value ?? '')
     .trim()
-    .replace(/[^A-Za-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+    .replace(/[^A-Za-z0-9_]+/g, '_'));
   if (normalized.length === 0) return fallback;
-  return /^[A-Za-z_]/.test(normalized) ? normalized : `rb_${normalized}`;
+  return /^[A-Za-z]/.test(normalized) ? normalized : `rb_${normalized}`;
 }
 
 /**

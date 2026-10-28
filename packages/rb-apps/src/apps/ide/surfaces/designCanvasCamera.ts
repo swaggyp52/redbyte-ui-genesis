@@ -242,13 +242,23 @@ export function keepRegionInView(
  * discarded a deliberate zoom. It is view state only and is never saved with the project.
  */
 const workingCameras = new Map<string, DesignCanvasCamera>();
+/** Keys whose remembered camera is the untouched frame of the work, not a view the student chose. */
+const framedCameraKeys = new Set<string>();
 
 export function designCameraKey(projectId: string | null | undefined, moduleId: string): string {
   return `${projectId?.trim() || 'project'}\u0000${moduleId}`;
 }
 
-export function rememberDesignCamera(key: string, camera: DesignCanvasCamera): void {
-  if (isFiniteCamera(camera)) workingCameras.set(key, { x: camera.x, y: camera.y, zoom: camera.zoom });
+export function rememberDesignCamera(key: string, camera: DesignCanvasCamera, framed = false): void {
+  if (!isFiniteCamera(camera)) return;
+  workingCameras.set(key, { x: camera.x, y: camera.y, zoom: camera.zoom });
+  if (framed) framedCameraKeys.add(key);
+  else framedCameraKeys.delete(key);
+}
+
+/** Whether the remembered camera is still the untouched frame (it is framed again for a new sheet). */
+export function wasFramedDesignCamera(key: string): boolean {
+  return framedCameraKeys.has(key);
 }
 
 export function recallDesignCamera(key: string): DesignCanvasCamera | null {
@@ -259,4 +269,5 @@ export function recallDesignCamera(key: string): DesignCanvasCamera | null {
 /** Clears the session memory. Used by tests; the app keeps it for the life of the page. */
 export function forgetDesignCameras(): void {
   workingCameras.clear();
+  framedCameraKeys.clear();
 }

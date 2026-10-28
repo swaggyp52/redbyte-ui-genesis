@@ -1,5 +1,6 @@
 import type { LabGraph, LabWire } from './types';
 import { PART_DEFINITIONS } from './parts';
+import { compareCodepoint } from '../../export/codepointSort';
 
 export type PinKey = string;
 
@@ -176,7 +177,7 @@ export const computeNetlist = (graph: LabGraph): Netlist => {
     nets.push({ id, pins: pinRefs });
   });
 
-  nets.sort((a, b) => a.id.localeCompare(b.id));
+  nets.sort((a, b) => compareCodepoint(a.id, b.id));
 
   return { nets, pinToNetId };
 };

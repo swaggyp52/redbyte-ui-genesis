@@ -140,11 +140,19 @@ proc launch_simulation {args} {
   set n [static_checks]
   switch -- $::scenario {
     ghdl { run_ghdl }
-    pass - noisy - vivado-log-conflict - synth-fail - crash137 {
+    pass - noisy - vivado-log-conflict - vivado-log-truncated - synth-fail - crash137 {
       write_tb_result [result_line PASS $n 0]
       write_sim_log "Note: [result_line PASS $n 0]"
       if {$::scenario eq "noisy"} { for {set i 0} {$i < 400} {incr i} { puts "INFO: \[Common 17-$i\] noisy fake console line $i" } }
       if {$::scenario eq "vivado-log-conflict"} { vlog "Failure: [result_line FAIL $n 1]" }
+      if {$::scenario eq "vivado-log-truncated"} { vlog "Failure: REDBYTE_TB_RESULT v=1 tb=[tb_entity] status=FAIL checks=$n fail" }
+    }
+    two-markers-one-line { write_tb_result "[result_line PASS $n 0] [result_line FAIL $n 1]"; write_sim_log "Note: [result_line PASS $n 0]" }
+    trailing-junk { write_tb_result "[result_line PASS $n 0] status=FAIL"; write_sim_log "Note: [result_line PASS $n 0]" }
+    extra-result-line { write_tb_result "[result_line PASS $n 0]\nstatus=FAIL checks=$n failures=1"; write_sim_log "Note: [result_line PASS $n 0]" }
+    log-truncated {
+      write_tb_result [result_line PASS $n 0]
+      write_sim_log "Note: [result_line PASS $n 0]\nFailure: REDBYTE_TB_RESULT v=1 tb=[tb_entity] status=FAIL checks=$n fail"
     }
     assertion { write_tb_result [result_line FAIL $n 1]; write_sim_log "Error: Vector 0 failed on LED: expected '1', got '0'\nFailure: [result_line FAIL $n 1]" }
     failure-as-error { write_tb_result [result_line FAIL $n 2]; error "ERROR: \[Simulator 45-1\] Failure: simulation stopped (fake)" }

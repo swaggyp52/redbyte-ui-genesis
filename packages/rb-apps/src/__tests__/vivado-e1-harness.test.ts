@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -33,6 +34,7 @@ const CERTIFY_TCL = join(REPO, 'scripts/vivado/redbyte-e1-certify.tcl');
 const CLASSIFY_TCL = join(REPO, 'scripts/vivado/redbyte-e1-classify.tcl');
 const CERTIFY_PS1 = join(REPO, 'scripts/vivado/redbyte-e1-certify.ps1');
 const PACK_RUNNER_PS1 = join(REPO, 'scripts/vivado/redbyte-e1-pack-runner.ps1');
+const COLLECT_PS1 = join(REPO, 'scripts/vivado/redbyte-e1-collect.ps1');
 const FIXTURES = join(__dirname, 'fixtures/vivado-e1');
 
 function findTclsh(): string | null {
@@ -87,8 +89,17 @@ describe('E1 harness scripts: static fail-closed contract', () => {
     expect(ps1).not.toMatch(/Set-Content -LiteralPath \$Path[^\n]*-Encoding UTF8/);
   });
 
-  it('the Gannon run kit ships the classifier with the certify script', () => {
+  it('the Gannon run kit ships the classifier and the package matcher with the certify script', () => {
     expect(read(PACK_RUNNER_PS1)).toContain("'scripts/vivado/redbyte-e1-classify.tcl'");
+    expect(read(PACK_RUNNER_PS1)).toContain("'scripts/vivado/redbyte-e1-packages.ps1'");
+  });
+
+  it('no script selects a package ZIP by substring', () => {
+    for (const script of [CERTIFY_PS1, COLLECT_PS1, PACK_RUNNER_PS1]) {
+      const text = read(script);
+      expect(text, script).not.toMatch(/-like\s+"\*\$DesignId\*"/);
+      expect(text, script).toMatch(/\. \(Join-Path \$PSScriptRoot 'redbyte-e1-packages\.ps1'\)/);
+    }
   });
 });
 
@@ -135,6 +146,22 @@ describe.skipIf(!TCLSH)('E1c classifier (tclsh table)', () => {
     ['pass-unknown-static-count', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
     ['pass-with-mismatch-report', 'ASSERTION_FAILED', 'FAIL_TESTBENCH_ASSERTION', '28'],
     ['pass-failures-nonzero', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    // A simulator prefix before a log copy is fine; the result file is the authority, so a
+    // missing log copy is not required (xsim's log routing is unobserved).
+    ['pass-ghdl-log-prefix', 'PASS', 'PASS_E1C', '0'],
+    ['pass-trailing-cr', 'PASS', 'PASS_E1C', '0'],
+    ['pass-without-log-copy', 'PASS', 'PASS_E1C', '0'],
+    // Markers are counted, not lines, and every marker must be the exact testbench grammar.
+    ['log-truncated-fail', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['log-trailing-junk', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['log-two-markers', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-two-markers-one-line', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-trailing-status', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-failures-hex', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-checks-leading-zero', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-leading-junk', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-extra-line', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
+    ['file-junk-only', 'CONTRACT_VIOLATION', 'FAIL_TESTBENCH_CONTRACT', '27'],
   ])('%s -> %s', (name, outcome, classification, code) => {
     expect(rows.get(name)).toEqual([outcome, classification, code]);
   });
@@ -211,6 +238,10 @@ describe.skipIf(!TCLSH)('redbyte-e1-certify.tcl under a fake Vivado', () => {
     ['two-lines', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
     ['log-conflict', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
     ['pass-with-mismatch', 'FAIL_TESTBENCH_ASSERTION', 28, 'fail'],
+    ['two-markers-one-line', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
+    ['trailing-junk', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
+    ['extra-result-line', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
+    ['log-truncated', 'FAIL_TESTBENCH_CONTRACT', 27, 'fail'],
     ['synth-fail', 'FAIL_SYNTH', 5, 'pass'],
     ['harness-crash', 'HARNESS_ERROR', 10, 'pending'],
   ])('%s -> %s (exit %d)', (scenario, classification, exitCode, e1cStatus) => {
@@ -315,18 +346,52 @@ describe.skipIf(!TCLSH || !ghdlAvailable)('redbyte-e1-certify.tcl with GHDL stan
   }, 180_000);
 });
 
-async function writePackageZip(project: RBProject, dir: string, designId: string): Promise<void> {
+function sha256(bytes: Uint8Array | string): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+interface PackageOptions {
+  /** Project folder slug inside the ZIP (defaults to the project's own). */
+  slug?: string;
+  /** Rewrites top.vhd before packaging. */
+  editTop?: (topVhd: string) => string;
+  /** Adds a second .xpr project file next to the real one. */
+  extraXpr?: boolean;
+}
+
+interface WrittenPackage {
+  path: string;
+  sha256: string;
+  /** SHA-256 of the .xpr entry inside the ZIP. */
+  xprSha256: string;
+}
+
+async function writePackageZip(project: RBProject, dir: string, fileName: string, options: PackageOptions = {}): Promise<WrittenPackage> {
   const vm = buildExportViewModel(project);
   expect(vm.status).toBe('ok');
-  const bytes = await buildVivadoProjectFolderZip({
-    artifacts: vm.artifacts.map((a) => ({ path: a.path, content: a.content })),
+  const slug = options.slug ?? deriveVivadoProjectSlug(project.meta?.projectId ?? project.name);
+  let bytes = await buildVivadoProjectFolderZip({
+    artifacts: vm.artifacts.map((a) => ({
+      path: a.path,
+      content: a.path === 'top.vhd' && options.editTop ? options.editTop(a.content) : a.content,
+    })),
     projectName: project.name,
-    projectSlug: deriveVivadoProjectSlug(project.meta?.projectId ?? project.name),
+    projectSlug: slug,
     topModule: vm.topAuthority.designTop,
     part: project.fpga?.part,
   });
-  await JSZip.loadAsync(bytes);
-  writeFileSync(join(dir, `${designId}-vivado-project.zip`), bytes);
+  const zip = await JSZip.loadAsync(bytes);
+  const xprEntry = zip.file(`${slug}/${slug}.xpr`);
+  expect(xprEntry).not.toBeNull();
+  const xprBytes = await xprEntry!.async('uint8array');
+  if (options.extraXpr) {
+    zip.file(`${slug}/zzz-second.xpr`, xprBytes);
+    bytes = await zip.generateAsync({ type: 'uint8array' });
+  }
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, fileName);
+  writeFileSync(path, bytes);
+  return { path, sha256: sha256(bytes), xprSha256: sha256(xprBytes) };
 }
 
 interface WrapperOutcome {
@@ -335,7 +400,13 @@ interface WrapperOutcome {
   manifest: Record<string, any> | null;
 }
 
-function runWrapper(root: string, scenario: string, designId: string, timeoutMinutes = '5'): WrapperOutcome {
+interface WrapperOptions {
+  zipDir?: string;
+  out?: string;
+  timeoutMinutes?: string;
+}
+
+function runWrapper(root: string, scenario: string, designId: string, options: WrapperOptions = {}): WrapperOutcome {
   const fakeDir = join(root, 'fake');
   mkdirSync(fakeDir, { recursive: true });
   copyFileSync(join(FIXTURES, 'fake-vivado.tcl'), join(fakeDir, 'fake-vivado.tcl'));
@@ -343,11 +414,11 @@ function runWrapper(root: string, scenario: string, designId: string, timeoutMin
     join(fakeDir, 'vivado.cmd'),
     `@echo off\r\n"${TCLSH}" "%~dp0fake-vivado.tcl" %*\r\nexit /b %ERRORLEVEL%\r\n`,
   );
-  const out = join(root, `out-${scenario}`);
+  const out = options.out ?? join(root, `out-${scenario}`);
   const run = spawnSync(
     'powershell.exe',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CERTIFY_PS1, '-Mode', 'Certify', '-ZipDir', join(root, 'zips'),
-      '-OutDir', out, '-DesignIds', designId, '-VivadoPath', join(fakeDir, 'vivado.cmd'), '-TimeoutMinutes', timeoutMinutes],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', CERTIFY_PS1, '-Mode', 'Certify', '-ZipDir', options.zipDir ?? join(root, 'zips'),
+      '-OutDir', out, '-DesignIds', designId, '-VivadoPath', join(fakeDir, 'vivado.cmd'), '-TimeoutMinutes', options.timeoutMinutes ?? '5'],
     { encoding: 'utf8', env: { ...process.env, FAKE_SCENARIO: scenario }, timeout: 300_000 },
   );
   const manifestPath = join(out, 'manifest.json');
@@ -361,15 +432,20 @@ function runWrapper(root: string, scenario: string, designId: string, timeoutMin
 describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real package and a fake Vivado', () => {
   const designId = 'fs-comb-switch-and';
 
-  async function withPackage<T>(fn: (root: string) => T): Promise<T> {
+  async function withRoot<T>(fn: (root: string) => Promise<T> | T): Promise<T> {
     const root = mkdtempSync(join(tmpdir(), 'rb-e1-ps1-'));
-    mkdirSync(join(root, 'zips'));
-    await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), designId);
     try {
-      return fn(root);
+      return await fn(root);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  }
+
+  async function withPackage<T>(fn: (root: string) => T): Promise<T> {
+    return withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`);
+      return fn(root);
+    });
   }
 
   it.each([
@@ -381,6 +457,7 @@ describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real packa
     ['exit0-no-result', 'INTERRUPTED', 'failed', 1, false],
     ['forged-result', 'HARNESS_ERROR', 'failed', 1, false],
     ['vivado-log-conflict', 'EVIDENCE_CONFLICT', 'failed', 1, false],
+    ['vivado-log-truncated', 'EVIDENCE_CONFLICT', 'failed', 1, false],
     ['no-sim', 'BLOCKED_NO_TESTBENCH', 'blocked', 1, false],
   ])('%s -> %s, verdict %s, exit %d', async (scenario, classification, verdict, exitCode, testbenchFlag) => {
     await withPackage((root) => {
@@ -396,11 +473,170 @@ describe.skipIf(!TCLSH || !windows)('redbyte-e1-certify.ps1 against a real packa
 
   it('a hung Vivado is stopped at the wall-clock limit and is a TIMEOUT', async () => {
     await withPackage((root) => {
-      const outcome = runWrapper(root, 'wallclock-hang', designId, '0.1');
+      const outcome = runWrapper(root, 'wallclock-hang', designId, { timeoutMinutes: '0.1' });
       const design = outcome.manifest!.designs[0];
       expect(design.classification, outcome.output).toBe('TIMEOUT');
       expect(design.vivadoRun.timedOut).toBe(true);
       expect(design.vivadoRun.lastStage).toBe('E1c-behavioral-sim');
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('a reused -OutDir is refused: a new ZIP is never certified against an earlier extraction', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      const first = await writePackageZip(project, join(root, 'zips-first'), 'lab-vivado-project.zip', { slug: 'aaa-lab' });
+      const second = await writePackageZip(project, join(root, 'zips-second'), 'lab-vivado-project.zip', { slug: 'zzz-lab' });
+      const out = join(root, 'out-reused');
+
+      const run1 = runWrapper(root, 'pass', 'lab', { zipDir: join(root, 'zips-first'), out });
+      expect(run1.manifest?.verdict, run1.output).toBe('pass-e1');
+      const manifestBefore = read(join(out, 'manifest.json'));
+
+      const run2 = runWrapper(root, 'pass', 'lab', { zipDir: join(root, 'zips-second'), out });
+      const recorded = run2.manifest?.designs?.[0];
+      expect(run2.status, `zip ${recorded?.zipSha256} certified with xpr ${recorded?.files?.xpr}\n${run2.output}`).toBe(2);
+      expect(run2.output).toMatch(/refused: output folder .* is not empty/);
+      expect(read(join(out, 'manifest.json'))).toBe(manifestBefore);
+      expect(run1.manifest!.designs[0].zipSha256).toBe(first.sha256);
+
+      // A fresh folder analyses only the ZIP it names, and the manifest binds ZIP, .xpr path and .xpr hash.
+      const fresh = runWrapper(root, 'pass', 'lab', { zipDir: join(root, 'zips-second'), out: join(root, 'out-fresh') });
+      const design = fresh.manifest!.designs[0];
+      expect(design.classification, fresh.output).toBe('PASS_E1');
+      expect(design.zipSha256).toBe(second.sha256);
+      expect(design.xprZipEntry).toBe('zzz-lab/zzz-lab.xpr');
+      expect(design.files.xpr).toMatch(/[\\/]extracted[\\/]zzz-lab[\\/]zzz-lab\.xpr$/);
+      expect(design.xprSha256).toBe(second.xprSha256);
+    });
+  }, 300_000);
+
+  // The names RedByte's own tools give design <id>'s package (see redbyte-e1-packages.ps1).
+  it.each([
+    [`${designId}-vivado-project.zip`],
+    [`rb-${designId}-41vclq-vivado-project.zip`],
+    [`${designId}-rb-${designId}-41vclq-vivado-project.zip`],
+    [`${designId}.zip`],
+  ])('-DesignIds selects the exported name %s', async (fileName) => {
+    await withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), fileName);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, outcome.output).toBe('PASS_E1');
+      expect(design.zipPath.endsWith(`\\${fileName}`)).toBe(true);
+    });
+  }, 300_000);
+
+  it('-DesignIds matches exactly: a newer package with a longer name is never selected', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      await writePackageZip(project, join(root, 'zips'), `${designId}-vivado-project.zip`);
+      const longer = await writePackageZip(project, join(root, 'zips'), `${designId}-hierarchical-vivado-project.zip`, { slug: 'hier' });
+      const later = new Date(Date.now() + 60_000);
+      utimesSync(longer.path, later, later);
+      const outcome = runWrapper(root, 'pass', designId);
+      expect(outcome.manifest!.designs[0].zipPath, outcome.output).toMatch(new RegExp(`\\\\${designId}-vivado-project\\.zip$`));
+    });
+  }, 300_000);
+
+  it.each([
+    [`${designId}-hierarchical-vivado-project.zip`],
+    [`rb-${designId}-hierarchical-41vxyz-vivado-project.zip`],
+    [`old-${designId}-vivado-project.zip`],
+  ])('a package named %s alone is BLOCKED_PACKAGE_MISSING for the shorter id', async (fileName) => {
+    await withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), fileName);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, `${outcome.output}\n${design.zipPath}`).toBe('BLOCKED_PACKAGE_MISSING');
+      expect(outcome.manifest!.verdict).toBe('blocked');
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('two packages that both match a design id exactly are BLOCKED_PACKAGE_AMBIGUOUS, not the newest', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      await writePackageZip(project, join(root, 'zips', 'a'), `${designId}-vivado-project.zip`);
+      await writePackageZip(project, join(root, 'zips', 'b'), `rb-${designId}-41vclq-vivado-project.zip`);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, outcome.output).toBe('BLOCKED_PACKAGE_AMBIGUOUS');
+      expect(design.issues.join('\n')).toMatch(/2 ZIP packages match/);
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('a design id that is not a RedByte project slug is refused before anything is written', async () => {
+    await withRoot(async (root) => {
+      const outcome = runWrapper(root, 'pass', '..\\escape');
+      expect(outcome.status, outcome.output).toBe(2);
+      expect(outcome.output).toMatch(/refused: design id/);
+      expect(existsSync(join(root, 'out-pass'))).toBe(false);
+    });
+  }, 300_000);
+
+  it('the collector copies only the exactly named package', async () => {
+    await withRoot(async (root) => {
+      const project = createFromScratchCombSwitchAndBasys3Project();
+      await writePackageZip(project, join(root, 'zips'), `${designId}-vivado-project.zip`);
+      const longer = await writePackageZip(project, join(root, 'zips'), `${designId}-hierarchical-vivado-project.zip`, { slug: 'hier' });
+      const later = new Date(Date.now() + 60_000);
+      utimesSync(longer.path, later, later);
+      const collected = join(root, 'collected');
+      const run = spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', COLLECT_PS1, '-Mode', 'ExistingZipDir', '-InputZipDir', join(root, 'zips'),
+          '-OutputZipDir', collected, '-DesignIds', designId],
+        { encoding: 'utf8', timeout: 120_000 },
+      );
+      expect(run.status, `${run.stdout}${run.stderr}`).toBe(0);
+      const summary = JSON.parse(read(join(collected, 'collection-summary.json')).replace(/^﻿/, ''));
+      expect(summary.records[0].status).toBe('copied');
+      expect(summary.records[0].source).toMatch(new RegExp(`\\\\${designId}-vivado-project\\.zip$`));
+    });
+  }, 300_000);
+
+  it('the unsupported-construct scan ignores comments: a project named "After school lab" is not blocked', async () => {
+    await withRoot(async (root) => {
+      const project = { ...createFromScratchCombSwitchAndBasys3Project(), name: 'After school lab' };
+      let top = '';
+      await writePackageZip(project, join(root, 'zips'), `${designId}-vivado-project.zip`, { editTop: (text) => (top = text) });
+      expect(top).toMatch(/^-- Project: After school lab\b/m);
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.packageFacts.unsupportedTopConstructs).toEqual([]);
+      expect(design.classification, outcome.output).toBe('PASS_E1');
+    });
+  }, 300_000);
+
+  it('an after clause in top.vhd code is still BLOCKED_UNSUPPORTED_CONSTRUCT, even behind a "--" string literal', async () => {
+    await withRoot(async (root) => {
+      const injected = '  -- wait: this comment is not code\n  probe_text <= "--"; LD0 <= SW0 after 1 ns;\n';
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`, {
+        editTop: (text) => {
+          const edited = text.replace(/^begin\r?\n/m, (line) => `${line}${injected}`);
+          expect(edited).not.toBe(text);
+          return edited;
+        },
+      });
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.packageFacts.unsupportedTopConstructs, outcome.output).toEqual(['after-delay']);
+      expect(design.classification).toBe('BLOCKED_UNSUPPORTED_CONSTRUCT');
+      expect(design.vivadoRun.attempted).toBe(false);
+      expect(outcome.status).toBe(1);
+    });
+  }, 300_000);
+
+  it('a package holding two .xpr projects is a named FAIL_IMPORT and never reaches Vivado', async () => {
+    await withRoot(async (root) => {
+      await writePackageZip(createFromScratchCombSwitchAndBasys3Project(), join(root, 'zips'), `${designId}-vivado-project.zip`, { extraXpr: true });
+      const outcome = runWrapper(root, 'pass', designId);
+      const design = outcome.manifest!.designs[0];
+      expect(design.classification, outcome.output).toBe('FAIL_IMPORT');
+      expect(design.issues.join('\n')).toMatch(/exactly one \.xpr project; found 2/);
+      expect(design.vivadoRun.attempted).toBe(false);
       expect(outcome.status).toBe(1);
     });
   }, 300_000);

@@ -118,9 +118,14 @@ export function buildIdeExportProject(state: IdeExportState): RBProject {
   } as RBProject;
 }
 
-/** IdeApp `liveScheduleContract`: the schedule every Run from the workbench carries. */
-export function deriveIdeLiveScheduleContract(project: RBProject): VerifyScheduleContract {
-  return deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+/**
+ * IdeApp `liveScheduleContract`: the schedule every Run from the workbench carries, and the one
+ * Export's plan and testbench use. It reads the elaborated hierarchy, as the simulator and the
+ * testbench do: a register or latch inside a module is sequential, and the top-level circuit
+ * alone hid it (a Run treated a module's latch as combinational while the testbench clocked it).
+ */
+export function deriveIdeLiveScheduleContract(project: RBProject, ioMapping: RBProject['ioMapping'] = project.ioMapping): VerifyScheduleContract {
+  return deriveVerifySchedule(elaborateProjectHierarchy(project.circuit, project.hierarchy), ioMapping, project.hdl);
 }
 
 /** IdeApp `blockingDesignIssue` (see ideDesignBlocking.ts, offered through the runtime entry). */

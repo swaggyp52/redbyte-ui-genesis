@@ -58,9 +58,9 @@ export interface Resolver {
 const EMPTY: Resolution = { nodeId: null, port: null, netId: null, lane: null, spans: [], board: null };
 
 /**
- * Declared input pins that nothing drives. The engine's gates read such a pin as 0 without
- * recording a read, so this is a fact of topology, drawn as "unconnected · read as 0", never
- * as an observed logic 0.
+ * Declared input pins that nothing drives. The engine reads such a pin at its unconnected level
+ * (describeInputPin: 0 for a gate input, 1 for a DFlipFlop EN) without recording a read, so this
+ * is a fact of topology, drawn as "unconnected · read as <level>", never as an observed value.
  */
 export function unconnectedInputPins(scene: CircuitScene): Set<string> {
   const keys = new Set<string>();

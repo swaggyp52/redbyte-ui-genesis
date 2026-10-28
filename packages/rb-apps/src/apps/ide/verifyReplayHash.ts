@@ -1,5 +1,6 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { TestVector } from '@redbyte/rb-utils';
+import { compareCodepoint } from '../../export/codepointSort';
 import { digestValue } from '../../utils/digest';
 import { stableSerialize } from '../../utils/stableSerialize';
 import type { ProjectIoRow } from './projectRuntime';
@@ -40,7 +41,7 @@ function canonicalizeVerifyReplayInputs(
   return Object.fromEntries(
     Object.entries(inputs)
       .map(([key, value]): [string, boolean | number] => [inputAliasMap.get(normalizeVerifyReplayKey(key)) ?? key, value])
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareCodepoint(left, right))
   );
 }
 

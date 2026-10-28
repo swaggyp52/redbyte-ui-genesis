@@ -15,7 +15,8 @@ import {
   type VerifySchedule,
 } from './verifySchedule';
 import { buildTopLevelBindingRefs, toSignalName } from './basys3ExportModel';
-import { normalizeBoardRowId, resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
+import { normalizeBoardRowId } from '@redbyte/rb-utils';
+import { resolveExportIoMapping } from './exportIoMapping';
 
 interface SignalCatalog {
   inputs: string[];
@@ -67,7 +68,7 @@ interface EntityPortInfo {
  * the entity never declared.
  */
 function resolveProjectIoMapping(project: RBProject): RBProject['ioMapping'] {
-  return resolveIoMappingFromProjectFields({ ioMapping: project.ioMapping, hardwareMappingV2: project.hardwareMappingV2 });
+  return resolveExportIoMapping(project);
 }
 function parseEntityPortInfos(topVhd: string): EntityPortInfo[] {
   // Match Port block ending with "  );" on its own line (handles nested parens in vector types)
@@ -127,18 +128,30 @@ function buildLabelToEntityRef(
     }
   };
 
-  const registerAlias = (alias: string | undefined, ref: string, allowAmbiguous = true) => {
+  // A key resolves through the closest spelling any row registered: exact, then a case variant,
+  // then punctuation stripped; at each, a row's own identity (id, node, pin, port) before a name
+  // derived from a label. Rows that differ only by punctuation (Y_1, Y1) or case keep their own
+  // ports, and a key two rows claim at the same closeness resolves to neither: an unresolved key
+  // blocks the export by name instead of checking another output (review P0-1).
+  const candidates = new Map<string, Array<Set<string>>>();
+  const registerAlias = (alias: string | undefined, ref: string, allowAmbiguous = true, fromLabel = false) => {
     const trimmed = alias?.trim() ?? '';
     if (!trimmed) return;
     if (!allowAmbiguous && ambiguousLabels.has(trimmed.toLowerCase())) return;
 
     const normalized = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '');
-    const variants = [trimmed, trimmed.toUpperCase(), trimmed.toLowerCase(), normalized].filter(Boolean);
-    for (const variant of variants) {
-      const existing = result.get(variant);
-      if (!existing || existing === ref) {
-        result.set(variant, ref);
-      }
+    const spellings: Array<[number, string]> = [[0, trimmed], [1, trimmed.toUpperCase()], [1, trimmed.toLowerCase()], [2, normalized]];
+    for (const [closeness, variant] of spellings) {
+      if (!variant) continue;
+      const byTier = candidates.get(variant) ?? Array.from({ length: 6 }, () => new Set<string>());
+      byTier[closeness * 2 + (fromLabel ? 1 : 0)].add(ref);
+      candidates.set(variant, byTier);
+    }
+  };
+  const settleAliases = () => {
+    for (const [variant, byTier] of candidates) {
+      const closest = byTier.find((refs) => refs.size > 0);
+      if (closest?.size === 1) result.set(variant, [...closest][0]);
     }
   };
 
@@ -243,24 +256,25 @@ function buildLabelToEntityRef(
       registerAlias(bindingRef?.signalRef, ref);
       registerAlias(bindingRef?.xdcRef, ref);
       registerAlias(bindingRef?.portName, ref);
-      registerAlias(canonicalPortHint, ref);
+      registerAlias(canonicalPortHint, ref, true, Boolean(entry.label?.trim()));
       registerAlias(basys3Alias, ref);
       registerAlias(entry.pin, ref);
       registerAlias(entry.id, ref);
       registerAlias(entry.nodeId, ref);
       registerAlias(toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`), ref);
-      registerAlias(entry.label, ref, false);
-      registerAlias(nodeLabel, ref, false);
+      registerAlias(entry.label, ref, false, true);
+      registerAlias(nodeLabel, ref, false, true);
       // The runtime keys rows, vectors and checks by the label-derived row id
       // (SUM[0] -> sum_0); a project whose rows were derived that way must
       // resolve its assertion targets to the same port.
-      registerAlias(entry.label ? normalizeBoardRowId(entry.label) : undefined, ref);
-      registerAlias(nodeLabel ? normalizeBoardRowId(nodeLabel) : undefined, ref);
+      registerAlias(entry.label ? normalizeBoardRowId(entry.label) : undefined, ref, true, true);
+      registerAlias(nodeLabel ? normalizeBoardRowId(nodeLabel) : undefined, ref, true, true);
     }
   };
 
   processEntries(resolveProjectIoMapping(project)?.inputs ?? [], 'in');
   processEntries(resolveProjectIoMapping(project)?.outputs ?? [], 'out');
+  settleAliases();
   return result;
 }
 
@@ -381,6 +395,7 @@ export function generateTestbenchVhdl(
     vhdlNameByLogical,
     authoredClock,
     names,
+    authoredClockStartLevel,
   );
   const clockProcess = authoredClock
     ? ''
@@ -698,6 +713,7 @@ function generateTestbenchFromEntity(
     entityPorts,
     authoredClock,
     names,
+    authoredClock && clockDrive?.startLevel === 1 ? 1 : 0,
   );
   const clockProcess = authoredClock
     ? ''
@@ -765,13 +781,16 @@ function generateEntityStimulus(
   entityPorts: EntityPortInfo[],
   authoredClock: boolean,
   names: SelfCheckNames,
+  clockStartLevel: 0 | 1 = 0,
 ): string {
   const lines: string[] = [];
+  let clockLevel = clockStartLevel === 1 ? "'1'" : "'0'";
   const resolve = (key: string): string | undefined =>
     labelToRef.get(key) ?? labelToRef.get(key.trim()) ?? labelToRef.get(key.trim().toUpperCase());
 
   vectors.forEach((vector, index) => {
     lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
+    let clockLine: string | undefined;
 
     for (const key of uniqueSorted(Object.keys(vector.inputs))) {
       const ref = resolve(key);
@@ -786,8 +805,12 @@ function generateEntityStimulus(
         emitUnresolvedStimulus(lines, names, index, key, 'non-binary');
         continue;
       }
-      lines.push(`    ${ref} <= ${literal};`);
+      const isClock = authoredClock && Boolean(clockPortRef) && ref === clockPortRef;
+      if (isClock && literal === "'1'" && clockLevel !== "'1'") clockLine = `    ${ref} <= ${literal};`;
+      else lines.push(`    ${ref} <= ${literal};`);
+      if (isClock) clockLevel = literal;
     }
+    lines.push(...authoredEdgeLines(clockLine));
 
     lines.push(...settleLines(schedule, clockPortRef, authoredClock));
 
@@ -822,6 +845,18 @@ function settleLines(
   return ['    wait for 10 ns;'];
 }
 
+/**
+ * A row that raises an authored clock lane drives the edge after the row's data has settled:
+ * the browser engine settles a row's logic from its new inputs, then captures on that edge (a
+ * student sets the switches, then presses the button). Driving both in one delta made the bench
+ * capture the previous data (review P0-2). Every other change is driven at once: a latch whose
+ * enable falls in a row holds its value in the engine, as it does in VHDL when both change in
+ * one delta.
+ */
+function authoredEdgeLines(clockLine: string | undefined): string[] {
+  return clockLine ? ['    wait for 1 ns;', clockLine] : [];
+}
+
 function generateStimulus(
   vectors: TestVector[],
   schedule: 'combinational' | 'clocked_macro',
@@ -829,13 +864,16 @@ function generateStimulus(
   nameMap: Map<string, string>,
   authoredClock: boolean,
   names: SelfCheckNames,
+  clockStartLevel: 0 | 1 = 0,
 ): string {
   const lines: string[] = [];
+  let clockLevel = clockStartLevel === 1 ? "'1'" : "'0'";
   const safeClock = clockSignal ? nameMap.get(clockSignal) : undefined;
   const resolve = (key: string): string | undefined => nameMap.get(key) ?? nameMap.get(key.trim());
 
   vectors.forEach((vector, index) => {
     lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
+    let clockLine: string | undefined;
 
     for (const inputName of uniqueSorted(Object.keys(vector.inputs))) {
       const signalName = resolve(inputName);
@@ -849,8 +887,12 @@ function generateStimulus(
         emitUnresolvedStimulus(lines, names, index, inputName, 'non-binary');
         continue;
       }
-      lines.push(`    ${signalName} <= ${literal};`);
+      const isClock = authoredClock && Boolean(safeClock) && signalName === safeClock;
+      if (isClock && literal === "'1'" && clockLevel !== "'1'") clockLine = `    ${signalName} <= ${literal};`;
+      else lines.push(`    ${signalName} <= ${literal};`);
+      if (isClock) clockLevel = literal;
     }
+    lines.push(...authoredEdgeLines(clockLine));
 
     lines.push(...settleLines(schedule, safeClock, authoredClock));
 

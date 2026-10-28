@@ -2,7 +2,7 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole, TestVector } from '@redbyte/rb-utils';
 import { BASYS3_CLOCK_PIN } from '../../fpga/boards/basys3/basys3Pins';
 import { resolveBasys3SignalBinding } from '../../fpga/boards/basys3/basys3SignalSemantics';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import { isActiveLowResetName, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 
 export type VerifyClockSourceType =
   | 'board-clock'
@@ -441,9 +441,14 @@ function resolveResetSignalName(
     : undefined;
   if (hintedRow) return readSignalLabel(hintedRow);
 
+  // The Auto sequence asserts a reset with 1 and releases it with 0. A row named as an
+  // active-low reset (rst_n) would be held in reset after the first cycle, so it is never
+  // sequenced: its authored levels run, as the schedule's reset hint already treats it.
+  const sequenceable = inputRows.filter((row) =>
+    !isActiveLowResetName(readSignalLabel(row)) && !isActiveLowResetName(row.id) && !isActiveLowResetName(row.nodeId));
   const resetRow =
-    inputRows.find((row) => row.timingRole === 'reset') ??
-    inputRows.find(
+    sequenceable.find((row) => row.timingRole === 'reset') ??
+    sequenceable.find(
       (row) =>
         isResetLike(readSignalLabel(row)) ||
         isResetLike(row.id) ||

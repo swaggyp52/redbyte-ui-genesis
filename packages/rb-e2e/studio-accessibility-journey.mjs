@@ -35,8 +35,8 @@ try {
    await page.waitForFunction(()=>{const element=document.querySelector('[data-testid="ide-timing-lanes"]');return element&&parseFloat(getComputedStyle(element).outlineWidth)>0;},undefined,{timeout:2000});
    const focus=await lane.evaluate(element=>{const style=getComputedStyle(element);return {visible:element.matches(':focus-visible'),style:style.outlineStyle,width:style.outlineWidth,token:style.getPropertyValue('--wb-focus'),active:document.activeElement?.outerHTML.slice(0,160)};});
    assert.ok(focus.visible&&focus.style!=='none'&&parseFloat(focus.width)>0,'The keyboard grid has a visible focus outline '+JSON.stringify(focus));
-   for(let attempt=0;attempt<8&&!/^EN ·/.test(await tid('ide-time-selection').locator('strong').innerText());attempt++)await page.keyboard.press('ArrowDown');
-   assert.match(await tid('ide-time-selection').locator('strong').innerText(),/^EN ·/,'The grid keyboard selects a driven input lane');
+   for(let attempt=0;attempt<8&&await tid('ide-verify-selected-result').getAttribute('data-signal')!=='EN';attempt++)await page.keyboard.press('ArrowDown');
+   assert.equal(await tid('ide-verify-selected-result').getAttribute('data-signal'),'EN','The grid keyboard selects a driven input lane');
    await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');
    const before=await tid('ide-timing-cell-en-2').getAttribute('aria-label');await page.keyboard.press('Space');assert.notEqual(await tid('ide-timing-cell-en-2').getAttribute('aria-label'),before,'Space authors a stimulus value through the grid');
    await activate(tid('ide-vcb-run'));await tid('ide-run-identity').waitFor();
@@ -45,14 +45,24 @@ try {
    const contrasts=[];for(const id of ['ide-vcb-run','ide-vcb-reproduce','ide-run-repetition','ide-run-check-result']){const measured=await measure(tid(id));assert.ok(measured.visibleFraction>.98 && measured.receivesClick,id+' remains reachable '+JSON.stringify(measured));assert.ok(measured.contrast>=4.5,id+' text contrast '+measured.contrast);contrasts.push({id,...measured});}
    await details.locator('summary').focus();await page.keyboard.press('Escape');assert.equal(await details.getAttribute('open'),null);assert.ok(await details.locator('summary').evaluate(el=>document.activeElement===el),'Escape returns focus to the disclosure summary');
    if(await tid('ide-verify-fail-nav-summary').count()){const measured=await measure(tid('ide-verify-fail-nav-summary').locator('code').first());assert.ok(measured.contrast>=4.5,'Failure value contrast '+measured.contrast);contrasts.push({id:'failure-value',...measured});await activate(tid('ide-verify-fail-nav-first'));}
-   await lane.focus();await page.keyboard.press('End');assert.equal(await tid('ide-time-selected-value').innerText(),'unrecorded','Keyboard navigation beyond samples never invents zero');
+   await lane.focus();await page.keyboard.press('End');assert.equal(await tid('ide-selected-result-observed').getAttribute('data-observed-value'),'unrecorded','Keyboard navigation beyond samples never invents zero');
    await activate(tid('ide-verify-details'));await activate(page.getByLabel('Close simulation details'));await activate(tid('ide-verify-inspect-circuit'));await activate(page.getByLabel('Close circuit investigation'));
    await activate(tid('mode-button-hardware'));await activate(page.getByRole('button',{name:'Edit mapping for LD0',exact:true}));await tid('ide-hw-board-resource-summary').waitFor();
    const boardLegends=await page.locator('svg text[data-board-alias]').evaluateAll(elements=>elements.map(element=>{
-    const style=getComputedStyle(element);const rgb=style.fill.match(/[\d.]+/g)?.map(Number)??[];
-    const background=[11,32,61];const foreground=rgb.slice(0,3).map((v,i)=>v*(rgb[3]??1)+background[i]*(1-(rgb[3]??1)));
+    // Measure against what is actually painted beneath the legend (the board plane, a resource fill),
+    // compositing each layer; any CSS colour (including color-mix results) is resolved through a canvas.
+    const ink=document.createElement('canvas').getContext('2d',{willReadFrequently:true});
+    const rgba=color=>{ink.clearRect(0,0,1,1);ink.fillStyle='rgba(0,0,0,0)';ink.fillStyle=color;ink.fillRect(0,0,1,1);const [r,g,b,a]=ink.getImageData(0,0,1,1).data;return [r,g,b,a/255];};
+    const over=(top,bottom,alpha)=>top.slice(0,3).map((v,i)=>v*alpha+bottom[i]*(1-alpha));
+    const box=element.getBoundingClientRect();let background=rgba(getComputedStyle(document.body).backgroundColor).slice(0,3);
+    for(const node of document.elementsFromPoint(box.left+box.width/2,box.top+box.height/2).reverse()){
+     if(node===element||element.contains(node))continue;const painted=getComputedStyle(node);const paint=node instanceof SVGElement?painted.fill:painted.backgroundColor;
+     if(!paint||paint==='none')continue;const layer=rgba(paint);const alpha=layer[3]*Number(node instanceof SVGElement?painted.fillOpacity:1)*Number(painted.opacity);
+     if(alpha>0)background=over(layer,background,alpha);
+    }
+    const style=getComputedStyle(element);const fill=rgba(style.fill);const foreground=over(fill,background,fill[3]*Number(style.fillOpacity));
     const l=c=>c.map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
-    return {alias:element.textContent,fill:style.fill,contrast:(Math.max(l(foreground),l(background))+.05)/(Math.min(l(foreground),l(background))+.05)};
+    return {alias:element.textContent,fill:style.fill,background:background.map(Math.round).join(','),contrast:(Math.max(l(foreground),l(background))+.05)/(Math.min(l(foreground),l(background))+.05)};
    }));
    assert.ok(boardLegends.length>20,'Measured mapped and inactive resource legends');assert.ok(boardLegends.every(legend=>legend.contrast>=4.5),'Board legends: '+JSON.stringify(boardLegends));
    await activate(tid('ide-hw-clear-selected-resource'));assert.match(await tid('ide-hw-mapping-overview-unassigned').innerText(),/Unassigned\s*1/);

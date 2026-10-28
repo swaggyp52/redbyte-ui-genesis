@@ -201,9 +201,10 @@ interface RequiredPortDescriptor {
 export function buildExportViewModel(
   project: RBProject,
   runtimeVerifyRun?: RuntimeVerifyRun,
-  activeScenario?: VerifyScenario
+  activeScenario?: VerifyScenario,
+  customVectors: readonly TestVector[] = [],
 ): ExportViewModel {
-  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario);
+  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario, customVectors);
   const hierarchyVhdl = generateHierarchicalVhdlProject(project);
   const flattenedProject = flattenProjectMacros({
     ...project,
@@ -830,7 +831,7 @@ function buildArtifacts(
 /** The only clock behavior permitted across the export-to-HDL boundary. */
 type ExportClockDriveView = Readonly<TestbenchClockDriveView>;
 
-interface ExportVerifyAuthority {
+export interface ExportVerifyAuthority {
   vectors: TestVector[];
   executionVectors: TestVector[];
   clockPolicy?: VerifyClockPolicy;
@@ -857,17 +858,23 @@ function extractExportClockDriveView(
   }) as ExportClockDriveView;
 }
 
+/**
+ * The vectors a Run executes: the active scenario's (or the project's), then the custom rows,
+ * in the order planStudioRun appends them. The custom rows were run and checked by Verify but
+ * left out of the bench, so the plans never matched and every such run read STALE.
+ */
 function getExportVectors(
   project: RBProject,
   activeScenario: VerifyScenario | undefined,
+  customVectors: readonly TestVector[] = [],
 ): TestVector[] {
-  return activeScenario
-    ? materializeScenarioVectors(activeScenario)
-    : (project.vectors ?? []).map((vector) => ({
-        ...vector,
-        inputs: { ...(vector.inputs ?? {}) },
-        expected: { ...(vector.expected ?? {}) },
-      }));
+  const clone = (vector: TestVector): TestVector => ({
+    ...vector,
+    inputs: { ...(vector.inputs ?? {}) },
+    expected: { ...(vector.expected ?? {}) },
+  });
+  const base = activeScenario ? materializeScenarioVectors(activeScenario) : (project.vectors ?? []).map(clone);
+  return [...base, ...customVectors.map(clone)];
 }
 
 function getProjectCircuitHash(project: RBProject): string {
@@ -971,11 +978,7 @@ function isRuntimeScheduleCurrentForExport(
   clockPolicy: VerifyClockPolicy | undefined,
   vectors: readonly TestVector[]
 ): boolean {
-  const currentSchedule = deriveVerifySchedule(
-    project.circuit,
-    getEffectiveIoMapping(project),
-    project.hdl
-  );
+  const currentSchedule = deriveProjectSchedule(project);
   if (runtimeVerifyRun.schedule !== currentSchedule.schedule) return false;
   if (!runtimeVerifyRun.scheduleContract) return false;
   if (
@@ -1085,12 +1088,19 @@ function getProjectClockIoRows(project: RBProject): ProjectIoRow[] {
   ];
 }
 
+/**
+ * The schedule of the project as the simulator runs it: its elaborated hierarchy, so a register
+ * or latch inside a module is sequential (IdeApp liveScheduleContract and the testbench agree).
+ */
+function deriveProjectSchedule(project: RBProject) {
+  return deriveVerifySchedule(elaborateProjectHierarchy(project.circuit, project.hierarchy), getEffectiveIoMapping(project), project.hdl);
+}
+
 function detectProjectClockPolicy(project: RBProject): VerifyClockPolicy | null {
-  const ioMapping = getEffectiveIoMapping(project);
   return detectVerifyClockPolicy({
-    circuit: project.circuit,
+    circuit: elaborateProjectHierarchy(project.circuit, project.hierarchy),
     ioRows: getProjectClockIoRows(project),
-    scheduleContract: deriveVerifySchedule(project.circuit, ioMapping, project.hdl),
+    scheduleContract: deriveProjectSchedule(project),
   });
 }
 
@@ -1100,11 +1110,7 @@ function resolveExportClockPolicy(
   activeScenario: VerifyScenario | undefined,
   vectors: readonly TestVector[],
 ): VerifyClockPolicy | undefined {
-  const currentSchedule = deriveVerifySchedule(
-    project.circuit,
-    getEffectiveIoMapping(project),
-    project.hdl
-  );
+  const currentSchedule = deriveProjectSchedule(project);
   if (currentSchedule.schedule !== 'clocked_macro') return undefined;
   const savedPolicy = normalizeScenarioSequentialPolicy(activeScenario?.sequentialPolicy);
   const detectedPolicy = detectProjectClockPolicy(project);
@@ -1158,12 +1164,14 @@ function resolveExportClockPolicy(
   return undefined;
 }
 
-function buildExportVerifyAuthority(
+/** The execution plan Export derives for the testbench (exported for the artifact-consistency matrix). */
+export function buildExportVerifyAuthority(
   project: RBProject,
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
   activeScenario: VerifyScenario | undefined,
+  customVectors: readonly TestVector[] = [],
 ): ExportVerifyAuthority {
-  const vectors = getExportVectors(project, activeScenario);
+  const vectors = getExportVectors(project, activeScenario, customVectors);
   const clockPolicy = resolveExportClockPolicy(project, runtimeVerifyRun, activeScenario, vectors);
   const normalizedVectors = normalizeVectorsForLiveIo(
     vectors.map((vector) => ({
@@ -1249,7 +1257,7 @@ function buildTestbenchNote(
     if (runKind === 'trace') {
       return (
         `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
-        ` â€” trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
+        ` — trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
         `Expected-output comparison has not been confirmed yet.`
       );
     }
@@ -1283,7 +1291,7 @@ function buildTestbenchNote(
   const runStatus = runtimeVerifyRun?.status ?? null;
   const scheduleLabel = runtimeVerifyRun?.schedule ?? 'derived';
   if (runKind === 'trace') {
-    return `Vectors from project â€” trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
+    return `Vectors from project — trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
   }
   if (runStatus === 'pass') {
     return `Deterministic schedule from last Verify PASS (${scheduleLabel}${clockNote}).`;
@@ -1366,9 +1374,12 @@ function buildProvenanceHeader(
   const tbLine = fields.simulationTop
     ? `${c} Board: ${fields.board} | designTop: ${fields.designTop} | simulationTop: ${fields.simulationTop}`
     : `${c} Board: ${fields.board} | designTop: ${fields.designTop}`;
+  // A project name is one comment line: a line break in a loaded name would start an
+  // uncommented line in the shipped HDL.
+  const projectName = fields.projectName.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim();
   const projLine = fields.exportHash
-    ? `${c} Project: ${fields.projectName} | Export hash: ${fields.exportHash}`
-    : `${c} Project: ${fields.projectName}`;
+    ? `${c} Project: ${projectName} | Export hash: ${fields.exportHash}`
+    : `${c} Project: ${projectName}`;
   return [sep, `${c} RedByte IDE Export`, tbLine, projLine, `${c} Generated automatically — do not edit by hand.`, sep, ''].join('\n');
 }
 
@@ -1770,9 +1781,11 @@ function diagnosticCodeFor(
   const lowered = message.toLowerCase();
   if (lowered.includes('unmapped required')) return 'RBEX1001';
   if (lowered.includes('declared but has no basys3 pin assignment')) return 'RBEX1002';
-  if (lowered.includes('unsupported synth subset node type')) return 'RBEX4100';
+  if (lowered.includes('unsupported synth subset node type') || lowered.includes('unknown primitive type')) return 'RBEX4100';
   if (lowered.includes('multiple drivers detected')) return 'RBEX4101';
   if (lowered.includes('combinational loop detected')) return 'RBEX4102';
+  if (lowered.includes('reads no input of that name') || lowered.includes('the module has no input of that name')) return 'RBEX4104';
+  if (lowered.includes('the simulator reads only')) return 'RBEX4105';
   if (
     lowered.includes('floating output detected') ||
     lowered.includes('undriven output') ||
@@ -1839,6 +1852,8 @@ function diagnosticTitleFor(
   if (code === 'RBEX4101') return 'Multiple drivers on input port';
   if (code === 'RBEX4102') return 'Combinational loop detected';
   if (code === 'RBEX4103') return 'Floating output';
+  if (code === 'RBEX4104') return 'Wire into an input the part does not read';
+  if (code === 'RBEX4105') return 'Input wired under two names';
   if (code === 'RBEX4200') return 'Sequential node missing clock';
   if (code === 'RBEX4201') return 'Multiple clock domains';
   if (code === 'RBEX4202') return 'Sequential node has multiple clocks';

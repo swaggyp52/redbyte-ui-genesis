@@ -4,9 +4,14 @@
 
 import type { Netlist, NetlistNode, NetlistNet } from './netlistExport';
 import {
+  describeInputPin,
   getBoundaryInputNodeTypes,
   getBoundaryOutputNodeTypes,
   getVhdlLogicNodeTypes,
+  inputPinsOf,
+  outputPortsOf,
+  type InputPinReading,
+  type OutputPortRole,
 } from '@redbyte/rb-logic-core';
 
 // ---------------------------------------------------------------------------
@@ -273,56 +278,60 @@ function buildPortGroups(
 // ---------------------------------------------------------------------------
 
 /**
- * For a given logic node port (e.g. AND.a), find what signal drives it.
- * Searches the net list for a net whose "to" matches the node/port.
+ * For a given logic node port (e.g. AND.in1), find what signal drives it.
+ * Searches the net list for a net whose "to" is exactly that node and port: the
+ * simulator keys a node's inputs by the connection's port name as written, so
+ * 'A' and 'a' are different inputs here too.
  * Returns the VHDL signal expression (port index or internal signal name).
  */
 function resolveInputSignal(
   nodeId: string,
   portName: string,
   nets: NetlistNet[],
-  nodeIdToSignal: Map<string, string>,
   topInputBindingByTarget: Map<string, string>,
   resolveDriver: (from: { nodeId: string; port: string }) => string,
 ): string | null {
-  const normalizedPortName = portName.toLowerCase();
-  const net = nets.find(
-    (n) => n.to.nodeId === nodeId && n.to.port.toLowerCase() === normalizedPortName,
-  );
-  if (!net) {
-    const directMatch = topInputBindingByTarget.get(`${nodeId}:${portName}`);
-    if (directMatch) return directMatch;
-    for (const [target, signalName] of topInputBindingByTarget.entries()) {
-      const [targetNodeId, targetPort] = target.split(':');
-      if (targetNodeId === nodeId && targetPort.toLowerCase() === normalizedPortName) {
-        return signalName;
-      }
-    }
-    return null;
-  }
+  const net = nets.find((n) => n.to.nodeId === nodeId && n.to.port === portName);
+  if (!net) return topInputBindingByTarget.get(`${nodeId}:${portName}`) ?? null;
   return resolveDriver(net.from);
 }
 
+/** The input port names connections into a node carry, exactly as written. */
+function connectedInputPorts(
+  nodeId: string,
+  nets: NetlistNet[],
+  topInputBindingByTarget: Map<string, string>,
+): string[] {
+  const ports = new Set(nets.filter((net) => net.to.nodeId === nodeId).map((net) => net.to.port));
+  const prefix = `${nodeId}:`;
+  for (const target of topInputBindingByTarget.keys()) {
+    if (target.startsWith(prefix)) ports.add(target.slice(prefix.length));
+  }
+  return [...ports];
+}
+
 /**
- * The signal a net's driver port carries. Every output alias of a supported
- * primitive is registered before emission, so a lookup never depends on node
- * order. Only single-output nodes may fall back to their node signal; a
- * multi-output port that matches nothing is reported, and the text references
- * an undeclared name so it cannot compile into a guessed connection.
+ * The signal a net's driver port carries. Every output name a supported primitive
+ * publishes (outputPortsOf) is registered before emission, so a lookup never
+ * depends on node order, and it is exact, as the simulator's is: a FullAdder read
+ * as "sum" or a gate read as "q" carries nothing in the simulator, so it resolves
+ * to nothing here. Only a boundary node's "out" falls back to its port signal. A
+ * port that matches nothing is reported, and the text references an undeclared
+ * name so it cannot compile into a guessed connection.
  */
 function createDriverResolver(
   nodeIdToSignal: Map<string, string>,
-  multiOutputNodeIds: Set<string>,
+  inputBoundaryIds: Set<string>,
   errors: string[],
 ): (from: { nodeId: string; port: string }) => string {
   return (from) => {
-    const exact =
-      nodeIdToSignal.get(`${from.nodeId}:${from.port}`) ??
-      nodeIdToSignal.get(`${from.nodeId}:${from.port.toLowerCase()}`);
+    const exact = nodeIdToSignal.get(`${from.nodeId}:${from.port}`);
     if (exact) return exact;
-    if (!multiOutputNodeIds.has(from.nodeId)) {
-      const single = nodeIdToSignal.get(from.nodeId);
-      if (single) return single;
+    // Only an input boundary publishes "out". A board OUTPUT publishes nothing in the simulator:
+    // a gate reading it reads its unconnected level there, and its port here is an output.
+    if (inputBoundaryIds.has(from.nodeId) && from.port === 'out') {
+      const boundary = nodeIdToSignal.get(from.nodeId);
+      if (boundary) return boundary;
     }
     const marker = unresolvedDriverMarker(from.nodeId, from.port);
     const message =
@@ -337,6 +346,22 @@ function createDriverResolver(
 export function unresolvedDriverMarker(nodeId: string, port: string): string {
   const clean = (value: string) => value.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x';
   return `RBEX_UNRESOLVED_${clean(nodeId)}_${clean(port)}`;
+}
+
+/** An undeclared identifier for a top-level output nothing drives: it cannot compile into a guessed level. */
+export function undrivenOutputMarker(portName: string): string {
+  return `RBEX_UNDRIVEN_${portName.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x'}`;
+}
+
+/**
+ * The RBEX4103 message for a top-level output nothing drives. Verify shows such an
+ * output as X; a deliberate constant is a Ground (or PowerSource) part wired to it.
+ */
+export function undrivenOutputMessage(portName: string, nodeId: string): string {
+  return (
+    `Output port "${portName}" on node "${nodeId}" has no driver: Verify shows it as unknown (X), and RedByte will not invent a level for the board. ` +
+    'Fix: drive it from your logic, or wire a Ground part to it if it should stay at 0; the design and its simulation are unchanged.'
+  );
 }
 
 /** The RBEX4100 message the export view model maps to a design-owned blocking diagnostic. */
@@ -473,28 +498,33 @@ export function vhdlFromNetlist(
   // ---- Assign internal signal names to logic nodes --------------------------
   // Use type-counters so we get and_0, and_1, or_0, fa_0, etc.
   const typeCounters = new Map<string, number>();
-  const multiOutputNodeIds = new Set<string>();
   supportedLogicNodes.forEach((node) => {
     const count = typeCounters.get(node.type) ?? 0;
     typeCounters.set(node.type, count + 1);
     const sigName = deriveSignalName(node, count);
     nodeIdToSignal.set(node.id, sigName);
-    // Register every output alias before any consumer is emitted, so a reader
-    // of Q_inv or Cout resolves the same way whatever the node order is.
-    const aliases = primitiveOutputAliases(node.type);
-    if (new Set(aliases.map(([, port]) => port)).size > 1) multiOutputNodeIds.add(node.id);
-    for (const [alias, port] of aliases) {
+    // Register every published output name before any consumer is emitted, so a
+    // reader of Q_inv or Cout resolves the same way whatever the node order is.
+    for (const [alias, port] of primitiveOutputAliases(node.type, (node as ConfigBackedNetlistNode).config)) {
       nodeIdToSignal.set(`${node.id}:${alias}`, flatPrimitiveSignal(sigName, port));
     }
   });
-  const resolveDriver = createDriverResolver(nodeIdToSignal, multiOutputNodeIds, errors);
+  const resolveDriver = createDriverResolver(nodeIdToSignal, new Set(inputNodes.map((node) => node.id)), errors);
 
   // ---- Check for unconnected outputs ----------------------------------------
+  // Verify shows an output nothing drives as X (unknown). A board pin needs a
+  // level, and inventing one would ship hardware nobody designed, so it blocks.
+  // A wire into a port the output does not read drives nothing in the simulator
+  // either: it is refused by name, and the output counts as undriven.
   outputNodes.forEach((outNode) => {
-    const hasDriver = netlist.nets.some((net) => net.to.nodeId === outNode.id);
+    const intoOutput = netlist.nets.filter((net) => net.to.nodeId === outNode.id);
+    const issues = primitiveInputConnectionIssues(outNode.id, outNode.type, undefined, [...new Set(intoOutput.map((net) => net.to.port))]);
+    for (const error of issues.errors) if (!errors.includes(error)) errors.push(error);
+    const hasDriver = intoOutput.some((net) => outputNodeReads(outNode.type, net.to.port));
     if (!hasDriver) {
-      const portExpr = nodeIdToSignal.get(outNode.id) ?? outNode.id;
-      warnings.push(`Output "${portExpr}" (id: ${outNode.id}) has no driver — will default to '0'`);
+      const binding = topOutputBindings?.find((entry) => entry.fromNodeId === outNode.id);
+      const message = undrivenOutputMessage(binding ? topBindingSignalRef(binding) : nodeIdToSignal.get(outNode.id) ?? outNode.id, outNode.id);
+      if (!errors.includes(message)) errors.push(message);
     }
   });
 
@@ -578,19 +608,19 @@ export function vhdlFromNetlist(
   // Internal signal declarations
   supportedLogicNodes.forEach((node) => {
     const sigName = nodeIdToSignal.get(node.id)!;
-    // FullAdder and MUX4 have multiple outputs; declare carry/sum separately
+    // A FullAdder has two outputs; declare sum/carry separately
     if (node.type === 'FullAdder') {
       lines.push(`  signal ${sigName}_sum   : STD_LOGIC;`);
       lines.push(`  signal ${sigName}_carry : STD_LOGIC;`);
     } else {
-      const isInitializedSequential = INITIALIZED_SEQUENTIAL_TYPES.has(node.type);
+      const powerOn = sequentialPowerOnLevels(node.type);
       lines.push(
-        isInitializedSequential
-          ? `  signal ${sigName} : STD_LOGIC := '0';`
+        powerOn
+          ? `  signal ${sigName} : STD_LOGIC := ${powerOn.q};`
           : `  signal ${sigName} : STD_LOGIC;`,
       );
-      if (isInitializedSequential) {
-        lines.push(`  signal ${sigName}_inv : STD_LOGIC := '1';`);
+      if (powerOn) {
+        lines.push(`  signal ${sigName}_inv : STD_LOGIC := ${powerOn.qInv};`);
       }
     }
   });
@@ -608,10 +638,12 @@ export function vhdlFromNetlist(
       type: node.type,
       config: (node as ConfigBackedNetlistNode).config,
       output: (port) => flatPrimitiveSignal(sigName, port),
-      input: (port) => resolveInputSignal(node.id, port, netlist.nets, nodeIdToSignal, topInputBindingByTarget, resolveDriver),
+      input: (port) => resolveInputSignal(node.id, port, netlist.nets, topInputBindingByTarget, resolveDriver),
+      connectedPorts: connectedInputPorts(node.id, netlist.nets, topInputBindingByTarget),
     });
     lines.push(...emitted.lines);
     warnings.push(...emitted.warnings);
+    for (const error of emitted.errors) if (!errors.includes(error)) errors.push(error);
   }));
 
   // ---- Drive output ports from internal signals or direct input connections --
@@ -633,18 +665,21 @@ export function vhdlFromNetlist(
         // input net — trace through the netlist to find the actual driver signal.
         // This fixes: entity declares 'ld0_node_in' but architecture body was
         // referencing undeclared 'LED(0)' from buildPortGroups.
-        const driverNet =
-          netlist.nets.find(
-            (n) => n.to.nodeId === binding.fromNodeId && n.to.port === binding.fromPort,
-          ) ?? netlist.nets.find((n) => n.to.nodeId === binding.fromNodeId);
+        // A row on a board output carries that output's value: whatever drives the port the
+        // output reads (older rows name the pin, not the port). A row on any other node binds
+        // only an output it publishes (above): a gate's "in" binds nothing, as in the
+        // simulator, and never one of the gate's inputs.
+        const boundNode = netlist.nodes.find((node) => node.id === binding.fromNodeId);
+        const driverNet = boundNode && OUTPUT_NODE_TYPES.has(boundNode.type)
+          ? netlist.nets.find((n) => n.to.nodeId === boundNode.id && outputNodeReads(boundNode.type, n.to.port))
+          : undefined;
 
         if (!driverNet) {
-        warnings.push(
-            `Top output port "${binding.portName}" has no driver — output will be tied low`,
-        );
-          lines.push(`  ${topOutputSignalRef} <= '0'; -- undriven output`);
-        return;
-      }
+          const message = undrivenOutputMessage(topOutputSignalRef, binding.fromNodeId);
+          if (!errors.includes(message)) errors.push(message);
+          lines.push(`  ${topOutputSignalRef} <= ${undrivenOutputMarker(topOutputSignalRef)}; -- undriven output: blocked`);
+          return;
+        }
 
         lines.push(`  ${topOutputSignalRef} <= ${resolveDriver(driverNet.from)};`);
     }));
@@ -653,10 +688,10 @@ export function vhdlFromNetlist(
       const portExpr = nodeIdToSignal.get(outNode.id)!;
       // Find the net driving this output node's 'in' port
       const driverNet = netlist.nets.find(
-        (n) => n.to.nodeId === outNode.id && n.to.port === 'in',
+        (n) => n.to.nodeId === outNode.id && outputNodeReads(outNode.type, n.to.port),
       );
       if (!driverNet) {
-        lines.push(`  ${portExpr} <= '0'; -- undriven output`);
+        lines.push(`  ${portExpr} <= ${undrivenOutputMarker(portExpr)}; -- undriven output: blocked`);
         return;
       }
       lines.push(`  ${portExpr} <= ${resolveDriver(driverNet.from)};`);
@@ -685,13 +720,21 @@ export function vhdlFromNetlist(
 /** The outputs a supported primitive can drive. */
 export type PrimitiveOutputPort = 'out' | 'Q' | 'Q_inv' | 'sum' | 'carry';
 
-const STATEFUL_OUTPUT_TYPES = new Set([
-  'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'DLatch', 'TFlipFlop', 'JKFlipFlop',
-]);
+/**
+ * The simulator's power-on Q / Q_inv of a stateful primitive, as VHDL literals. Edge-triggered
+ * parts start at Q=0. A DLatch is cross-coupled NANDs that settle to Q=1 with its enable low,
+ * and the exported latch starts there too (it started at 0, so Verify and the shipped HDL
+ * disagreed until the first transparent phase).
+ */
+export function sequentialPowerOnLevels(type: string): { q: "'0'" | "'1'"; qInv: "'0'" | "'1'" } | null {
+  if (!INITIALIZED_SEQUENTIAL_TYPES.has(type)) return null;
+  return type === 'DLatch' ? { q: "'1'", qInv: "'0'" } : { q: "'0'", qInv: "'1'" };
+}
 
-/** Primitive types whose Q / Q_inv start at 0 / 1, like the simulator's power-on state. */
-export function isInitializedSequentialType(type: string): boolean {
-  return INITIALIZED_SEQUENTIAL_TYPES.has(type);
+/** Whether a board output reads a wire into this port (inputPinsOf; an OUTPUT reads "in"). */
+function outputNodeReads(type: string, port: string): boolean {
+  const pins = inputPinsOf(type, undefined);
+  return pins ? pins.some((pin) => pin.names.includes(port)) : port === 'in';
 }
 
 /** Whether emitPrimitiveVhdl can express this type. */
@@ -699,27 +742,24 @@ export function isEmittablePrimitiveType(type: string): boolean {
   return SUPPORTED_LOGIC_TYPES.has(type);
 }
 
+const OUTPUT_ROLE_PORT: Readonly<Record<OutputPortRole, PrimitiveOutputPort>> = {
+  out: 'out', q: 'Q', q_inv: 'Q_inv', sum: 'sum', carry: 'carry',
+};
+
 /**
- * Every port name a connection may use for each output, lower-cased plus the
- * canonical spelling. The Design canvas writes FullAdder Sum/Cout; netlists use
- * sum/carry; registers are read as Q/q/out and Q_inv/qn.
+ * Every port name a connection may read each output of a primitive under: exactly
+ * the names the simulator publishes (outputPortsOf). The Design canvas writes a
+ * FullAdder's Sum/Cout and a flip-flop's Q (also published as q and out) and Q_inv
+ * (also qn). Empty for a part the simulator publishes no bit outputs for.
  */
-export function primitiveOutputAliases(type: string): Array<[string, PrimitiveOutputPort]> {
-  if (STATEFUL_OUTPUT_TYPES.has(type)) {
-    return [['Q', 'Q'], ['q', 'Q'], ['out', 'Q'], ['Q_inv', 'Q_inv'], ['q_inv', 'Q_inv'], ['qn', 'Q_inv'], ['nq', 'Q_inv']];
-  }
-  if (type === 'FullAdder') {
-    return [['sum', 'sum'], ['Sum', 'sum'], ['s', 'sum'], ['carry', 'carry'], ['Cout', 'carry'], ['cout', 'carry'], ['co', 'carry']];
-  }
-  return [['out', 'out']];
+export function primitiveOutputAliases(type: string, config?: Record<string, unknown>): Array<[string, PrimitiveOutputPort]> {
+  return (outputPortsOf(type, config) ?? []).flatMap((port) =>
+    port.names.map((name): [string, PrimitiveOutputPort] => [name, OUTPUT_ROLE_PORT[port.role]]));
 }
 
-/** Canonical output a connection's port names, or null when the primitive has no such output. */
-export function canonicalPrimitiveOutputPort(type: string, port: string): PrimitiveOutputPort | null {
-  const aliases = primitiveOutputAliases(type);
-  if (aliases.length === 1) return 'out';
-  const lowered = port.trim().toLowerCase();
-  return aliases.find(([alias]) => alias.toLowerCase() === lowered)?.[1] ?? null;
+/** Canonical output a connection's port names exactly, or null when the primitive publishes no such output. */
+export function canonicalPrimitiveOutputPort(type: string, port: string, config?: Record<string, unknown>): PrimitiveOutputPort | null {
+  return primitiveOutputAliases(type, config).find(([alias]) => alias === port)?.[1] ?? null;
 }
 
 function flatPrimitiveSignal(signal: string, port: PrimitiveOutputPort): string {
@@ -735,82 +775,147 @@ export interface PrimitiveVhdlContext {
   config?: Record<string, unknown>;
   /** Signal that carries one output of this primitive. */
   output: (port: PrimitiveOutputPort) => string;
-  /** Expression driving an input port (case-insensitive), or null/undefined when unconnected. */
+  /** Expression driving the input port with exactly this name, or null/undefined when nothing drives it. */
   input: (port: string) => string | null | undefined;
+  /** Every input port name a connection into this node carries, exactly as written. */
+  connectedPorts: readonly string[];
+}
+
+export interface PrimitiveVhdlResult {
+  lines: string[];
+  warnings: string[];
+  /** Blocking: the text would not compute what the simulator computes for this node. */
+  errors: string[];
+}
+
+const bitLiteral = (level: 0 | 1): string => `'${level}'`;
+
+const quoteList = (names: readonly string[]): string => names.map((name) => `"${name}"`).join(', ');
+
+/**
+ * Wires the exported text could only copy silently. The simulator reads each input of a
+ * primitive from the first of its names a connection drives (inputPinsOf, compared exactly):
+ * a wire into any other name is ignored, and an input wired under two of its names reads only
+ * the first. Both block the export, by name. A pin the configuration disables is ignored by
+ * the simulator and by the text alike, wired or not, so it only warns.
+ */
+export function primitiveInputConnectionIssues(
+  id: string,
+  type: string,
+  config: Record<string, unknown> | undefined,
+  connectedPorts: readonly string[],
+): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const pins = inputPinsOf(type, config);
+  if (!pins) return { errors, warnings };
+  const connected = new Set(connectedPorts);
+  const readable = pins.flatMap((pin) => pin.names);
+  for (const port of [...connected].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))) {
+    if (describeInputPin(type, port, config) !== null) continue;
+    errors.push(
+      `Wire into port "${port}" on node "${id}" (${type}) is ignored: a ${type} reads no input of that name ` +
+        `(${readable.length > 0 ? `it reads ${quoteList(readable)}` : 'it reads no input'}), so the simulator ignores this wire ` +
+        'and exported hardware could only copy that. Fix: move the wire to one of those inputs or remove it; the design and its simulation are unchanged.',
+    );
+  }
+  for (const pin of pins) {
+    const wired = [...pin.names.filter((name) => connected.has(name)), ...(pin.bitNames ?? []).filter((name) => connected.has(name))];
+    const wholeWired = pin.names.filter((name) => connected.has(name));
+    if (wholeWired.length > 1 || (wholeWired.length === 1 && wired.length > 1)) {
+      errors.push(
+        `Input "${wholeWired[0]}" on node "${id}" (${type}) is wired ${wired.length} times, as ${quoteList(wired)}: ` +
+          `the simulator reads only "${wholeWired[0]}". Fix: remove the extra wire; the design and its simulation are unchanged.`,
+      );
+    }
+    if (!pin.used && wired.length > 0) {
+      warnings.push(
+        `${type} "${id}" ignores its wired "${wired[0]}" input: its configuration ` +
+          `${pin.role === 'enable' ? 'has Clock enable off' : 'has Reset mode none'}, so the simulator and the exported hardware both ignore it.`,
+      );
+    }
+  }
+  return { errors, warnings };
 }
 
 /**
  * VHDL for one supported primitive: the single statement authority shared by the
- * flat top, leaf modules and structural architectures. Unconnected inputs read
- * '0', as in the simulator. Unsupported types return no lines; callers report
- * them (isEmittablePrimitiveType) instead of inventing a value.
+ * flat top, leaf modules and structural architectures. Every input is read the way
+ * the simulator reads it (inputPinsOf): from the first of its names a connection
+ * drives, compared exactly, and an unconnected input reads the level the simulator
+ * reads. A part the simulator does not define, or one this function has no
+ * statement for, blocks by name instead of inventing a value.
  */
-export function emitPrimitiveVhdl(ctx: PrimitiveVhdlContext): { lines: string[]; warnings: string[] } {
+export function emitPrimitiveVhdl(ctx: PrimitiveVhdlContext): PrimitiveVhdlResult {
   const { id, type, output } = ctx;
   const lines: string[] = [];
-  const warnings: string[] = [];
-  const first = (...ports: string[]): string | undefined => {
-    for (const port of ports) {
-      const value = ctx.input(port);
-      if (value) return value;
+  const pins = inputPinsOf(type, ctx.config);
+  if (!pins) return { lines, warnings: [], errors: [unsupportedPrimitiveMessage(type, id)] };
+  const { errors, warnings } = primitiveInputConnectionIssues(id, type, ctx.config, ctx.connectedPorts);
+  const driven = pins.map((pin) => {
+    for (const name of pin.names) {
+      const signal = ctx.input(name);
+      if (signal) return signal;
     }
     return undefined;
-  };
-  const zero = "'0'";
+  });
+  const level = (index: number): string => driven[index] ?? bitLiteral(pins[index].unconnectedLevel);
+  const named = (name: string): number => pins.findIndex((pin) => pin.names.includes(name));
+  const withRole = (role: InputPinReading['role']): number => pins.findIndex((pin) => pin.role === role);
 
   if (type === 'PowerSource') {
     lines.push(`  ${output('out')} <= '1';`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
   if (type === 'Ground') {
     lines.push(`  ${output('out')} <= '0';`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
   if (type === 'NOT') {
-    const inSig = first('in', 'a');
-    if (!inSig) warnings.push(`NOT gate "${id}" has no input — it reads '0' and drives '1', as in the simulator`);
-    lines.push(`  ${output('out')} <= not ${inSig ?? zero};`);
-    return { lines, warnings };
+    if (!driven[0]) warnings.push(`NOT gate "${id}" has no input — it reads ${bitLiteral(pins[0].unconnectedLevel)} and drives its inverse, as in the simulator`);
+    lines.push(`  ${output('out')} <= not ${level(0)};`);
+    return { lines, warnings, errors };
   }
   if (type === 'DFlipFlop' || type === 'Register1' || type === 'RegisterBus' || type === 'StateBank') {
     const emitted = emitRegisterVhdl({
-      id, type, config: ctx.config, signal: output('Q'), invSignal: output('Q_inv'), input: ctx.input,
+      id, type, config: ctx.config, signal: output('Q'), invSignal: output('Q_inv'), pins, driven,
     });
-    return { lines: emitted.lines, warnings: emitted.warnings };
+    return { lines: emitted.lines, warnings: [...warnings, ...emitted.warnings], errors: [...errors, ...emitted.errors] };
   }
   const q = () => output('Q');
   const qInv = () => output('Q_inv');
   if (type === 'DLatch') {
-    const d = first('d', 'in') ?? zero;
-    const en = first('en', 'enable');
-    if (!en) {
+    const d = named('D');
+    const en = named('EN');
+    if (!driven[en]) {
       warnings.push(`DLatch "${id}" has no EN input — Q will be tied low`);
       lines.push(`  ${q()} <= '0'; -- missing DLatch EN`);
       lines.push(`  ${qInv()} <= '1';`);
-      return { lines, warnings };
+      return { lines, warnings, errors };
     }
-    lines.push(`  process (${en}, ${d})`);
+    lines.push(`  process (${driven[en]}, ${level(d)})`);
     lines.push('  begin');
-    lines.push(`    if ${en} = '1' then`);
-    lines.push(`      ${q()} <= ${d};`);
+    lines.push(`    if ${driven[en]} = ${bitLiteral(pins[en].activeLevel ?? 1)} then`);
+    lines.push(`      ${q()} <= ${level(d)};`);
     lines.push('    end if;');
     lines.push('  end process;');
     lines.push(`  ${qInv()} <= not ${q()};`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
   if (type === 'TFlipFlop' || type === 'JKFlipFlop') {
-    const clk = first('clk', 'clock', 'c');
-    const clr = first('clr', 'rst', 'reset');
+    const clk = driven[withRole('clock')];
+    const clearIndex = withRole('reset');
+    const clr = driven[clearIndex];
     if (!clk) {
       warnings.push(`${type} "${id}" has no CLK input — Q will be tied low`);
       lines.push(`  ${q()} <= '0'; -- missing ${type} clock`);
       lines.push(`  ${qInv()} <= '1';`);
-      return { lines, warnings };
+      return { lines, warnings, errors };
     }
     if (clr) {
       lines.push(`  process (${clk}, ${clr})`);
       lines.push('  begin');
-      lines.push(`    if ${clr} = '1' then`);
+      lines.push(`    if ${clr} = ${bitLiteral(pins[clearIndex].activeLevel ?? 1)} then`);
       lines.push(`      ${q()} <= '0';`);
       lines.push(`    elsif rising_edge(${clk}) then`);
     } else {
@@ -819,13 +924,12 @@ export function emitPrimitiveVhdl(ctx: PrimitiveVhdlContext): { lines: string[];
       lines.push(`    if rising_edge(${clk}) then`);
     }
     if (type === 'TFlipFlop') {
-      const t = first('t', 'in') ?? zero;
-      lines.push(`      if ${t} = '1' then`);
+      lines.push(`      if ${level(named('T'))} = '1' then`);
       lines.push(`        ${q()} <= not ${q()};`);
       lines.push('      end if;');
     } else {
-      const j = first('j') ?? zero;
-      const k = first('k') ?? zero;
+      const j = level(named('J'));
+      const k = level(named('K'));
       lines.push(`      if ${j} = '1' and ${k} = '0' then`);
       lines.push(`        ${q()} <= '1';`);
       lines.push(`      elsif ${j} = '0' and ${k} = '1' then`);
@@ -837,111 +941,105 @@ export function emitPrimitiveVhdl(ctx: PrimitiveVhdlContext): { lines: string[];
     lines.push('    end if;');
     lines.push('  end process;');
     lines.push(`  ${qInv()} <= not ${q()};`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
   if (type === 'FullAdder') {
-    const a = first('a') ?? zero;
-    const b = first('b') ?? zero;
-    const cin = first('cin') ?? zero;
+    const a = level(named('A'));
+    const b = level(named('B'));
+    const cin = level(named('Cin'));
     lines.push(`  ${output('sum')} <= ${a} xor ${b} xor ${cin};`);
     lines.push(`  ${output('carry')} <= (${a} and ${b}) or (${cin} and (${a} xor ${b}));`);
-    return { lines, warnings };
-  }
-  if (type === 'MUX4') {
-    const i0 = first('i0') ?? zero;
-    const i1 = first('i1') ?? zero;
-    const i2 = first('i2') ?? zero;
-    const i3 = first('i3') ?? zero;
-    const s0 = first('s0', 'sel') ?? zero;
-    const s1 = first('s1') ?? zero;
-    const out = output('out');
-    lines.push(`  with ${s1} & ${s0} select`);
-    lines.push(`    ${out} <= ${i0} when "00",`);
-    lines.push(`              ${i1} when "01",`);
-    lines.push(`              ${i2} when "10",`);
-    lines.push(`              ${i3} when others;`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
   const g3 = gate3Operator(type);
-  if (g3) {
-    const a = first('a') ?? zero;
-    const b = first('b') ?? zero;
-    const c = first('c') ?? zero;
+  if (g3 && pins.length === 3) {
+    const [a, b, c] = [level(0), level(1), level(2)];
     const out = output('out');
     if (type === 'XOR3') lines.push(`  ${out} <= ${a} xor ${b} xor ${c};`);
     else if (g3.invert) lines.push(`  ${out} <= not (${a} ${g3.op} ${b} ${g3.op} ${c});`);
     else lines.push(`  ${out} <= ${a} ${g3.op} ${b} ${g3.op} ${c};`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
   const op = gateOperator(type);
-  if (op) {
-    lines.push(`  ${output('out')} <= ${first('a') ?? zero} ${op} ${first('b') ?? zero};`);
+  if (op && pins.length === 2) {
+    lines.push(`  ${output('out')} <= ${level(0)} ${op} ${level(1)};`);
+    return { lines, warnings, errors };
   }
-  return { lines, warnings };
+  return { lines, warnings, errors: [...errors, unsupportedPrimitiveMessage(type, id)] };
+}
+
+/**
+ * Register configurations this scalar emission can express. The simulator also runs async
+ * preset, synchronous reset/set, active-low reset or enable, falling-edge capture and words;
+ * those block by name here (as in verifySchedule) instead of shipping different hardware.
+ */
+function unsupportedRegisterConfiguration(type: string, config: Record<string, unknown>): string | null {
+  if (type === 'DFlipFlop') return null;
+  const resetKind = String(config.resetKind ?? 'none').toLowerCase();
+  if (resetKind !== 'none' && resetKind !== 'async_clear') return `reset mode ${resetKind}`;
+  if (resetKind !== 'none' && String(config.resetPolarity ?? 'active_high').toLowerCase() === 'active_low') return 'an active-low reset';
+  if (config.hasEnable === true && String(config.enablePolarity ?? 'active_high').toLowerCase() === 'active_low') return 'an active-low enable';
+  if (String(config.clockPolarity ?? 'rising_edge').toLowerCase() === 'falling_edge') return 'falling-edge capture';
+  const width = Number(config.width ?? (type === 'Register1' ? 1 : 8));
+  if (width !== 1) return `a ${width}-bit word`;
+  return null;
 }
 
 /** Shared scalar register emission for flat and native structural handoffs. */
-export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }: {
+export function emitRegisterVhdl({ id, type, config, signal, invSignal, pins, driven }: {
   id: string;
   type: string;
   config?: Record<string, unknown>;
   signal: string;
   /** Inverted output; defaults to `<signal>_inv`. */
   invSignal?: string;
-  input: (port: string) => string | null | undefined;
-}): { lines: string[]; warnings: string[] } {
+  /** The part's inputs as the simulator reads them (inputPinsOf). */
+  pins: readonly InputPinReading[];
+  /** The signal driving each of `pins`, or undefined when nothing drives it. */
+  driven: ReadonlyArray<string | undefined>;
+}): PrimitiveVhdlResult {
   const lines: string[] = [];
   const warnings: string[] = [];
+  const errors: string[] = [];
   const inv = invSignal ?? `${signal}_inv`;
-  const registerConfig = config ?? {};
-  const isConfiguredRegister1 = type === 'Register1';
-  const registerResetKind = String(registerConfig.resetKind ?? 'none').toLowerCase();
-  const registerHasEnable = registerConfig.hasEnable === true;
-  const d =
-    input('d') ??
-    input('in') ??
-    "'0'";
-  const clk =
-    input('clk') ??
-    input('clock') ??
-    input('c');
-  const connectedRst =
-    input('rst') ??
-    input('reset') ??
-    input('clr');
-  const connectedEn =
-    input('en') ??
-    input('enable') ??
-    input('ce');
-  const rst = isConfiguredRegister1
-    ? registerResetKind === 'async_clear'
-      ? connectedRst
-      : null
-    : connectedRst;
-  const en = isConfiguredRegister1
-    ? registerHasEnable
-      ? connectedEn
-      : null
-    : connectedEn;
+  const unsupported = unsupportedRegisterConfiguration(type, config ?? {});
+  if (unsupported) {
+    errors.push(
+      `Unsupported register configuration on node "${id}" (${type}): the scalar VHDL export cannot express ${unsupported}, ` +
+        'which the simulator runs. Fix: select rising-edge capture, active-high asynchronous clear or no reset, an active-high enable and width 1; the design and its simulation are unchanged.',
+    );
+    return { lines, warnings, errors };
+  }
+  // The configuration is the authority for a register-family part's EN and RST, as in the
+  // simulator: a pin it disables (used === false) is not read, wired or not. A DFlipFlop has no
+  // configuration and always uses a wired EN and RST.
+  const at = (role: InputPinReading['role']) => pins.findIndex((pin) => pin.role === role);
+  const dIndex = at('data');
+  const resetIndex = at('reset');
+  const enableIndex = at('enable');
+  const d = driven[dIndex] ?? bitLiteral(pins[dIndex].unconnectedLevel);
+  const clk = driven[at('clock')];
+  const rst = pins[resetIndex].used ? driven[resetIndex] : undefined;
+  const en = pins[enableIndex].used ? driven[enableIndex] : undefined;
 
   if (!clk) {
     warnings.push(`${type} "${id}" has no clock input - signal ${signal} will be tied low`);
     lines.push(`  ${signal} <= '0'; -- missing ${type} clock`);
     lines.push(`  ${inv} <= '1';`);
-    return { lines, warnings };
+    return { lines, warnings, errors };
   }
 
-  if (isConfiguredRegister1 && registerResetKind === 'async_clear' && !rst) {
-    warnings.push(`Register1 "${id}" enables async clear but has no reset input; reset will remain inactive`);
+  if (pins[resetIndex].used && !rst && type !== 'DFlipFlop') {
+    warnings.push(`${type} "${id}" enables async clear but has no reset input; reset will remain inactive`);
   }
-  if (isConfiguredRegister1 && registerHasEnable && !en) {
-    warnings.push(`Register1 "${id}" enables clock enable but has no EN/CE input; the register will hold its initial value`);
+  if (pins[enableIndex].used && !en && pins[enableIndex].unconnectedLevel !== pins[enableIndex].activeLevel) {
+    warnings.push(`${type} "${id}" enables clock enable but has no EN/CE input; the register will hold its initial value`);
   }
 
   if (rst) {
     lines.push(`  process (${clk}, ${rst})`);
     lines.push('  begin');
-    lines.push(`    if ${rst} = '1' then`);
+    lines.push(`    if ${rst} = ${bitLiteral(pins[resetIndex].activeLevel ?? 1)} then`);
     lines.push(`      ${signal} <= '0';`);
     lines.push(`    elsif rising_edge(${clk}) then`);
   } else {
@@ -951,10 +1049,11 @@ export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }:
   }
 
   if (en) {
-    lines.push(`      if ${en} = '1' then`);
+    lines.push(`      if ${en} = ${bitLiteral(pins[enableIndex].activeLevel ?? 1)} then`);
     lines.push(`        ${signal} <= ${d};`);
     lines.push('      end if;');
-  } else if (isConfiguredRegister1 && registerHasEnable) {
+  } else if (pins[enableIndex].used && pins[enableIndex].unconnectedLevel !== pins[enableIndex].activeLevel) {
+    // An enable the configuration turns on reads its unconnected level, which never asserts it.
     lines.push('      null; -- enabled register with no EN/CE input holds state');
   } else {
     lines.push(`      ${signal} <= ${d};`);
@@ -963,5 +1062,5 @@ export function emitRegisterVhdl({ id, type, config, signal, invSignal, input }:
   lines.push('    end if;');
   lines.push('  end process;');
   lines.push(`  ${inv} <= not ${signal};`);
-  return { lines, warnings };
+  return { lines, warnings, errors };
 }

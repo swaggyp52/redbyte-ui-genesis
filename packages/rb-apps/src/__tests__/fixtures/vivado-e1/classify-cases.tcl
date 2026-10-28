@@ -34,6 +34,19 @@ set cases [list \
   pass-unknown-static-count [dict replace $ok static_checks ""] \
   pass-with-mismatch-report [dict replace $ok mismatch_lines 1] \
   pass-failures-nonzero [dict replace $ok file_lines {{REDBYTE_TB_RESULT v=1 tb=tb_top status=PASS checks=4 failures=1}} log_lines {}] \
+  pass-ghdl-log-prefix [dict replace $ok log_lines [list "testbench.vhd:57:7:@40ns:(report note): $line"]] \
+  pass-trailing-cr [dict replace $ok file_lines [list "$line\r"]] \
+  pass-without-log-copy [dict replace $ok log_lines {}] \
+  log-truncated-fail [dict replace $ok log_lines [list "Note: $line" {Failure: REDBYTE_TB_RESULT v=1 tb=tb_top status=FAIL checks=4 fail}]] \
+  log-trailing-junk [dict replace $ok log_lines [list "Note: $line status=FAIL"]] \
+  log-two-markers [dict replace $ok log_lines [list "Note: $line $line"]] \
+  file-two-markers-one-line [dict replace $ok file_lines [list "$line REDBYTE_TB_RESULT v=1 tb=tb_top status=FAIL checks=4 failures=1"]] \
+  file-trailing-status [dict replace $ok file_lines [list "$line status=FAIL"]] \
+  file-failures-hex [dict replace $ok file_lines {{REDBYTE_TB_RESULT v=1 tb=tb_top status=PASS checks=4 failures=0x1}}] \
+  file-checks-leading-zero [dict replace $ok file_lines {{REDBYTE_TB_RESULT v=1 tb=tb_top status=PASS checks=04 failures=0}} log_lines {}] \
+  file-leading-junk [dict replace $ok file_lines [list "x $line"]] \
+  file-extra-line [dict replace $ok file_lines [list $line {status=FAIL checks=4 failures=1}]] \
+  file-junk-only [dict replace $ok file_lines {{status=FAIL}}] \
 ]
 
 foreach {name facts} $cases {

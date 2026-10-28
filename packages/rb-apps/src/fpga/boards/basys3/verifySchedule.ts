@@ -286,6 +286,11 @@ function collectMultiClockDomainIssuesFromStructure(
 
 const ACTIVE_LOW_RESET_PATTERN = /^(reset_n|rst_n|nreset|nrst)$/i;
 
+/** A signal named as an active-low reset (rst_n, nreset): v1 sequences only active-high resets. */
+export function isActiveLowResetName(name: string | undefined): boolean {
+  return ACTIVE_LOW_RESET_PATTERN.test(name?.trim() ?? '');
+}
+
 function collectActiveLowResetIssuesFromStructure(
   simModel: SimulationModel,
   ioMapping: IoMapping | undefined,

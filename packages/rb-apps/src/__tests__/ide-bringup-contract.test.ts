@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
+import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
 import { useProjectRuntime, type RuntimeVerifyRun } from '../apps/ide/projectRuntime';
@@ -12,6 +13,7 @@ import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewMode
 import { parseVhdl } from '../import/vhdlImport';
 import { parsedHdlToCircuit } from '../import/hdlToCircuit';
 import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
+import { nativeCounterCircuit } from './helpers/nativeCounterFixture';
 
 const FIXTURE_DIR = join(
   process.cwd(),
@@ -40,18 +42,15 @@ function buildFixtureIoMapping(): IoMapping {
   };
 }
 
-function buildFixtureProject(vhdl: string): RBProject {
-  const parsed = parseVhdl(vhdl);
-  const converted = parsedHdlToCircuit(parsed);
+/**
+ * A bring-up project around `circuit` with the counter's ports and generated bring-up vectors.
+ * `importedSource` keeps the imported VHDL the port-only projection came from.
+ */
+function buildFixtureProject(circuit: Circuit, importedSource?: string): RBProject {
   const ioMapping = buildFixtureIoMapping();
   const ioRows = buildBringUpIoRows(ioMapping);
   const timestamp = '2026-02-21T00:00:00.000Z';
-  const vectors = generateBringUpVectors({
-    ioRows,
-    circuit: converted.circuit,
-    existingVectors: [],
-  });
-
+  const vectors = generateBringUpVectors({ ioRows, circuit, existingVectors: [] });
   return {
     kind: 'rb-project',
     version: 1,
@@ -59,18 +58,19 @@ function buildFixtureProject(vhdl: string): RBProject {
     updatedAt: timestamp,
     name: 'bringup-contract-counter',
     description: 'Bring-up contract fixture',
-    circuit: converted.circuit,
+    circuit,
     ioMapping,
     vectors,
-    hdl: {
-      top: 'top',
-      sources: [{ path: 'top.vhd', language: 'vhdl', text: vhdl }],
-    },
+    hdl: { top: 'top', sources: importedSource ? [{ path: 'top.vhd', language: 'vhdl', text: importedSource }] : [] },
     fpga: { board: 'basys3', top: 'top' },
-    meta: {
-      projectId: 'bringup-contract-counter-fixture',
-    },
+    meta: { projectId: 'bringup-contract-counter-fixture' },
   };
+}
+
+/** The imported counter: a process the importer keeps as a port scaffold (INPUT/OUTPUT, no logic). */
+function importedCounterProject(): RBProject {
+  const vhdl = loadFixtureVhdl();
+  return buildFixtureProject(parsedHdlToCircuit(parseVhdl(vhdl)).circuit, vhdl);
 }
 
 function buildBringUpIoRows(ioMapping: IoMapping) {
@@ -165,20 +165,11 @@ function normalizeBitSymbol(value: unknown): string {
 }
 
 describe('IDE bring-up contract', () => {
-  it('exports deterministic bring-up references without treating a port-only HDL projection as passing browser proof', async () => {
-    const project = buildFixtureProject(loadFixtureVhdl());
+  it('never treats a port-only HDL projection as browser proof, and never packages its tied-low scaffold', async () => {
+    const project = importedCounterProject();
     const ioRows = buildBringUpIoRows(project.ioMapping ?? buildFixtureIoMapping());
-    const vectorsA = generateBringUpVectors({
-      ioRows,
-      circuit: project.circuit,
-      existingVectors: [],
-    });
-    const vectorsB = generateBringUpVectors({
-      ioRows,
-      circuit: project.circuit,
-      existingVectors: [],
-    });
-
+    const vectorsA = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
+    const vectorsB = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
     expect(vectorsA).toEqual(vectorsB);
     expect(vectorsA).toHaveLength(18);
     expect(vectorsA[0]).toMatchObject({
@@ -195,6 +186,28 @@ describe('IDE bring-up contract', () => {
     expect(runtimeVerifyRun.report.rows.every(row => row.actual === 'X')).toBe(true);
     expect(runtimeVerifyRun.schedule).toBe('combinational');
 
+    // The generated top of a port scaffold drives no LED. It used to export ok, with bring-up
+    // steps and EXPECTED_IO telling a student the LEDs count while the top tied them to '0'.
+    // Every output is now refused by name, and no package or bring-up reference is ready.
+    const exportViewModel = buildExportViewModel(project, runtimeVerifyRun);
+    expect(exportViewModel.status).toBe('blocked');
+    expect(exportViewModel.errors.map((error) => error.code)).toEqual(['RBEX4103', 'RBEX4103', 'RBEX4103', 'RBEX4103']);
+    const top = exportViewModel.artifacts.find((artifact) => artifact.path === 'top.vhd');
+    expect(top?.status).toBe('blocked');
+    expect(top?.content ?? '').not.toMatch(/<=\s*'0'/);
+    for (const path of ['BRINGUP.md', 'EXPECTED_IO.json', 'program_and_test.tcl']) {
+      expect(exportViewModel.artifacts.find((artifact) => artifact.path === path)?.status, path).not.toBe('ready');
+    }
+  });
+
+  it('exports deterministic bring-up references for a counter that ships its logic', async () => {
+    const project = buildFixtureProject(nativeCounterCircuit());
+    const ioRows = buildBringUpIoRows(project.ioMapping ?? buildFixtureIoMapping());
+    const vectorsA = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
+    const vectorsB = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
+    expect(vectorsA).toEqual(vectorsB);
+
+    const runtimeVerifyRun = buildFixtureRuntimeVerifyRun(project);
     const exportViewModel = buildExportViewModel(project, runtimeVerifyRun);
     expect(exportViewModel.status).toBe('ok');
     expect(exportViewModel.errors).toEqual([]);

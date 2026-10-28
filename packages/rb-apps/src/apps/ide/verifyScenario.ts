@@ -1,4 +1,5 @@
 import type { TestVector } from '@redbyte/rb-utils';
+import { compareCodepoint } from '../../export/codepointSort';
 import { digestValue } from '../../utils/digest';
 import {
   materializeVectorsFromScenarioSteps,
@@ -134,7 +135,8 @@ export function normalizeScenarioProbes(
     const label = typeof probe.label === 'string' ? probe.label.trim() : '';
     normalized.set(key, label && label !== key ? { key, label } : { key });
   }
-  return [...normalized.values()].sort((left, right) => left.key.localeCompare(right.key));
+  // Persisted with the scenario: codepoint order, never collation (RB-DEBT-016).
+  return [...normalized.values()].sort((left, right) => compareCodepoint(left.key, right.key));
 }
 
 export function toggleScenarioProbe(
@@ -426,7 +428,7 @@ function normalizeStimulusRecord(
 ): Record<string, 0 | 1> {
   return Object.fromEntries(
     Object.entries(record)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareCodepoint(left, right))
       .map(([key, value]) => [key, normalizeStimulusBit(value)])
   );
 }

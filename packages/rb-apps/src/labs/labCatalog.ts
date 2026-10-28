@@ -73,9 +73,9 @@ export const LAB_CATALOG: LabDefinition[] = [
       title: 'Lab 4 — ALU with Opcode Control',
       timeEstimate: '90 min',
       learningGoal:
-        'Wire a 4-bit ALU datapath using pre-verified subcomponents and define operation selection via opcode decoder',
+        'Wire a 4-bit ALU datapath and define operation selection via opcode decoder',
       steps: [
-        'Inspect the pre-built subcomponents: 4-bit ripple-carry adder, 4-to-1 MUX, 2-to-4 decoder',
+        'Inspect the pre-placed blocks. MUX4 (4:1 mux) blocks are not supported (RedByte cannot simulate, verify or export them): build each 4-to-1 select from AND, OR and NOT gates instead',
         'Connect the adder output to the MUX data inputs',
         'Route the 2-bit opcode lines to the decoder',
         'Connect decoder outputs to MUX select lines',

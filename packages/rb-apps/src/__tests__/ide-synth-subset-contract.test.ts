@@ -56,31 +56,28 @@ function buildFixtureProject(vhdl: string): RBProject {
 }
 
 describe('IDE synth subset contract', () => {
-  it('exports a legal clocked counter fixture with stable artifacts and no diagnostics', () => {
+  it('refuses to ship the imported counter while its logic is not reconstructed, every output by name', () => {
+    // The importer keeps this process-based counter as a port scaffold, and only a preserved
+    // multi-file import ships imported RTL: the generated top is what ships, and it drives no
+    // LED. It used to export ok, "ready" and diagnostic-free with LED(0..3) <= '0', a counter
+    // that never counts. Every output now blocks by name, deterministically.
     const project = buildFixtureProject(loadFixtureVhdl());
 
     const firstExport = exportProjectAsBasys3(project);
     const secondExport = exportProjectAsBasys3(project);
 
-    expect(firstExport.success).toBe(true);
-    expect(firstExport.errors).toEqual([]);
-    expect(firstExport.bundle).toBeDefined();
-    expect(secondExport.bundle).toBeDefined();
-
+    expect(firstExport.success).toBe(false);
+    const blocking = firstExport.errors.filter((error) => error.severity === 'error').map((error) => error.message);
+    expect(blocking).toHaveLength(4);
+    expect(blocking.every((message) => /^Output port ".+" on node "port_out_q[0-3]" has no driver: /.test(message))).toBe(true);
     expect(firstExport.bundle?.topVhd).toBe(secondExport.bundle?.topVhd);
-    expect(firstExport.bundle?.topXdc).toBe(secondExport.bundle?.topXdc);
+    expect(firstExport.bundle?.topVhd).not.toMatch(/<= '0';/);
     expect(firstExport.determinismHash).toBe(secondExport.determinismHash);
 
-    expect(firstExport.bundle?.topVhd).toContain('entity top is');
-    expect(firstExport.bundle?.topXdc).toContain('PACKAGE_PIN W5');
-
     const viewModel = buildExportViewModel(project);
-    expect(viewModel.status).toBe('ok');
-    expect(viewModel.errors).toEqual([]);
-    expect(viewModel.warnings).toEqual([]);
-    expect(viewModel.diagnostics).toEqual([]);
-    expect(viewModel.artifacts.find((artifact) => artifact.path === 'top.vhd')?.status).toBe('ready');
-    expect(viewModel.artifacts.find((artifact) => artifact.path === 'top.xdc')?.status).toBe('ready');
+    expect(viewModel.status).toBe('blocked');
+    expect(viewModel.errors.map((error) => error.code)).toEqual(['RBEX4103', 'RBEX4103', 'RBEX4103', 'RBEX4103']);
+    expect(viewModel.artifacts.find((artifact) => artifact.path === 'top.vhd')?.status).toBe('blocked');
   });
 
   it('accepts board-first SW/LD aliases and exports clean Basys3 constraints', () => {

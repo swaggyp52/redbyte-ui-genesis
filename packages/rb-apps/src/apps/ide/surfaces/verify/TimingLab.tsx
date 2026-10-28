@@ -6,12 +6,19 @@ import type {
 } from '../ScenarioBuilderPanel';
 import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
 import { TimingLanes } from './TimingLanes';
+import { compareCodepoint } from '../../../../export/codepointSort';
 import type { RecordedWordLane } from './recordedWordLanes';
 
 // Timing Lab — the sequential simulation instrument. Events are rows in time:
 // one row per stimulus event (t), one column per driven input and per
 // checked output, a status column, and a dense editor strip for the selected
 // event. The table is the timeline; the strip is where an event is authored.
+//
+// Inspection never edits (RB-DEBT-020). A click, Space or Enter on a stimulus lane
+// edits only in the explicit "Edit stimulus" mode. The mode is on while no recording
+// is on screen, so authoring a new scenario stays one click per value; it turns off
+// whenever a recording is selected (a Run, Reproduce, history, another scenario) or
+// inspected (Inspect circuit), and only the student turns it back on.
 
 type TimingLens = 'scenario' | 'checks';
 
@@ -49,6 +56,20 @@ export interface TimingLabProps {
   readonly generatedFieldIds?: ReadonlySet<string>;
   readonly generatedValueAt?: (fieldId: string, tick: number) => 0 | 1 | null;
   readonly generatedNote?: string;
+  /**
+   * The recording on screen (its run identity), or null when there is none. When omitted, any
+   * recorded sample on screen counts as a recording. A different recording turns stimulus
+   * editing off; no recording turns it on.
+   */
+  readonly recordingId?: string | null;
+  /** True while the recording is open in an investigation view; opening one turns editing off. */
+  readonly inspecting?: boolean;
+}
+
+interface StimulusEditMode {
+  readonly recordingKey: string | null;
+  readonly inspecting: boolean;
+  readonly editing: boolean;
 }
 
 function nextEventId(vectors: readonly VerifyAuthorVector[]): string {
@@ -98,9 +119,11 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   caseEvidenceByTick,
   observedValuesByTick,
   clockFieldIds,
+  recordingId,
+  inspecting = false,
 }) => {
   const orderedVectors = useMemo(
-    () => [...vectors].sort((left, right) => left.tick - right.tick || left.id.localeCompare(right.id)),
+    () => [...vectors].sort((left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id)),
     [vectors]
   );
   const orderedInputs = useMemo(() => {
@@ -121,12 +144,31 @@ export const TimingLab: React.FC<TimingLabProps> = ({
   const [contextHost, setContextHost] = useState<HTMLDivElement | null>(null);
   const editable = Boolean(onVectorsChange);
 
+  // Edit stimulus: derived from what is on screen when that changes, otherwise the student's.
+  // The previous recording and inspection are kept beside the mode so a change is seen during
+  // render (no effect, so no frame in which a click on a just-selected recording could edit).
+  const recordingKey = recordingId !== undefined
+    ? recordingId
+    : Object.keys(observedValuesByTick ?? {}).length > 0 ? 'recorded' : null;
+  const [editMode, setEditMode] = useState<StimulusEditMode>(() => ({
+    recordingKey,
+    inspecting,
+    editing: recordingKey === null && !inspecting,
+  }));
+  let editing = editMode.editing;
+  if (editMode.recordingKey !== recordingKey || editMode.inspecting !== inspecting) {
+    if (editMode.recordingKey !== recordingKey) editing = recordingKey === null && !inspecting;
+    else if (inspecting) editing = false;
+    setEditMode({ recordingKey, inspecting, editing });
+  }
+  const stimulusEditing = editable && editing;
+
   const commitVector = (id: string, patch: Partial<VerifyAuthorVector>) => {
     if (!onVectorsChange) return;
     onVectorsChange(
       orderedVectors
         .map((vector) => (vector.id === id ? { ...vector, ...patch } : vector))
-        .sort((left, right) => left.tick - right.tick || left.id.localeCompare(right.id))
+        .sort((left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id))
     );
   };
 
@@ -200,7 +242,7 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       ...(Object.fromEntries(inputFields.map((field) => [field.id, held?.inputs[field.id] === 1 ? 1 : 0])) as Record<string, 0 | 1>),
     } as Record<string, 0 | 1>;
     return [...orderedVectors, { id: nextEventId(orderedVectors), tick, inputs, expected: {} }].sort(
-      (left, right) => left.tick - right.tick || left.id.localeCompare(right.id)
+      (left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id)
     );
   };
   const driveInputAt = (tick: number, fieldId: string, value: 0 | 1) => {
@@ -242,7 +284,8 @@ export const TimingLab: React.FC<TimingLabProps> = ({
       data-testid="ide-scenario-composer"
       data-lens={lens}
       onKeyDown={(event) => {
-        if (event.key === 'Delete' && event.target === event.currentTarget) deleteEvent();
+        // Keys on the instrument obey the same contract as clicks: they edit only in edit mode.
+        if (event.key === 'Delete' && event.target === event.currentTarget && stimulusEditing) deleteEvent();
       }}
       tabIndex={0}
       aria-label={`Timing Lab — ${scenarioName}`}
@@ -253,6 +296,21 @@ export const TimingLab: React.FC<TimingLabProps> = ({
             rendered by the lanes, which own the selection, into this slot. */}
         <div className="rb-timing-selection" ref={setContextHost} />
         <span className="rb-timing-spacer" />
+        <button
+          type="button"
+          className="wb-btn rb-timing-edit-mode"
+          aria-pressed={stimulusEditing}
+          disabled={!editable}
+          onClick={() => setEditMode((current) => ({ ...current, editing: !current.editing }))}
+          data-testid="ide-timing-edit-mode"
+          title={!editable
+            ? 'This scenario cannot be edited here.'
+            : stimulusEditing
+              ? 'Editing: a click, Space or Enter on a stimulus cell drives that input. Press to inspect without editing.'
+              : 'Inspecting: a click, Space or Enter selects a tick and signal and never changes the scenario. Press to edit the stimulus.'}
+        >
+          Edit stimulus
+        </button>
         <div className="rb-timing-edit" role="group" aria-label="Events">
         <button
           type="button"
@@ -326,7 +384,8 @@ export const TimingLab: React.FC<TimingLabProps> = ({
         selectedTick={selectedTick}
         selectedSignal={selectedSignal} onSelectSignal={onSelectSignal}
         cursorA={cursorA} cursorB={cursorB} onSetCursorA={onSetCursorA} onSetCursorB={onSetCursorB}
-        editable={editable}
+        editable={stimulusEditing}
+        stimulusNote={stimulusEditing ? 'editing' : editable ? 'cells select while inspecting' : 'read-only'}
         observedValuesByTick={observedValuesByTick}
         caseEvidenceByTick={caseEvidenceByTick}
         onSelectTick={onSelectTick}
@@ -426,8 +485,12 @@ export const TimingLab: React.FC<TimingLabProps> = ({
 
       {!selectedVector && selectedTick != null ? (
         <p className="rb-timing-editor-empty" data-testid="ide-scenario-event-editor-empty">
-          No event at t{selectedTick}. Click a stimulus cell in that column to drive an input
-          there, or use <strong>+ Add event</strong>.
+          No event at t{selectedTick}.{editable ? (
+            <>
+              {' '}{stimulusEditing ? 'Click' : <>Turn on <strong>Edit stimulus</strong>, then click</>} a stimulus cell in
+              that column to drive an input there, or use <strong>+ Add event</strong>.
+            </>
+          ) : null}
         </p>
       ) : null}
       {selectedVector ? (
