@@ -46,14 +46,20 @@ it('keeps a rejected deferred write failed until a successful retry, with the pr
 
 function fixtureBackend() {
   const values = new Map<string, string>();
+  // As the IndexedDB backend: a key's revision grows by one per landed write (RB-DEBT-023).
+  const revisions = new Map<string, number>();
   let hold: Promise<void> | undefined;
   let rejectNext = false;
   const backend: SessionStorageBackend = {
     async ready() {}, snapshot: () => new Map(values),
+    revision: key => revisions.get(key) ?? 0,
     async commit(changes) {
       if (hold) await hold;
       if (rejectNext) { rejectNext = false; throw new DOMException('Controlled quota failure', 'QuotaExceededError'); }
-      for (const [key, value] of changes) { if (value === null) values.delete(key); else values.set(key, value); }
+      for (const [key, value] of changes) {
+        if (value === null) values.delete(key); else values.set(key, value);
+        revisions.set(key, (revisions.get(key) ?? 0) + 1);
+      }
     },
   };
   return { backend, values, fail: () => { rejectNext = true; }, hold: (promise?: Promise<void>) => { hold = promise; } };

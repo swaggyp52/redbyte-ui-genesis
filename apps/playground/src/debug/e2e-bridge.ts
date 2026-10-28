@@ -45,14 +45,14 @@ export function installE2EBridge() {
     const s = getStore();
     if (!s) return -1;
     if (typeof (s as any).reset === 'function') (s as any).reset();
-    else s.updateCircuit({ nodes: [], connections: [] }, true);
+    else s.updateCircuit({ nodes: [], connections: [] }, { skipHistory: true });
     return getNodeCount();
   };
 
   const loadCircuitForTest = (circuit: any) => {
     const s = getStore();
     if (!s) return -1;
-    s.updateCircuit(circuit, true);
+    s.updateCircuit(circuit, { skipHistory: true });
     return getNodeCount();
   };
 
