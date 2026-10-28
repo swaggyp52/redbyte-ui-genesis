@@ -10,9 +10,12 @@ policy. You can also run it from CMD with `--port 5189 --no-browser`. Use the sa
 `--port` for Stop. Repeated Start reopens this folder's running instance. If another
 service or extracted folder owns the port, Start explains the conflict and leaves it
 running. Stop requires this folder's matching private ownership receipt; it does not
-kill an arbitrary PID. Startup errors stay visible and logs live in `.logs`.
+kill an arbitrary PID. Startup errors stay visible; the server's logs and ownership receipt
+live in this folder's `run` subfolder (`run/server-<port>.log`, `run/server-<port>-error.log`).
 If Windows reports an untrusted download, inspect the package origin/checksum;
 this candidate is unsigned. Do not bypass a browser certificate warning.
+`LICENSE` covers RedByte; `THIRD_PARTY_NOTICES.txt` carries the licences of the libraries and fonts
+it includes, and `runtime/LICENSE` those of the bundled Node.js runtime.
 
 Use the same browser and address to resume your work. Saved projects belong to
 that browser origin, including its port. File → Export Project Backup downloads
@@ -32,7 +35,7 @@ folder or replacing the candidate preserves them when you stop the old instance 
 reuse the exact same address, port and browser profile. A different port, `localhost`
 instead of `127.0.0.1`, another browser or cleared browser data starts a different
 storage context. Import your session backup there. Side-by-side extraction is safe;
-only one server can use each port. Do not copy `.logs` ownership files between folders.
+only one server can use each port. Do not copy the `run` folder's ownership files between folders.
 
 To check the candidate, compare the ZIP with its adjacent `.sha256` file using
 `Get-FileHash -Algorithm SHA256`. `candidate.json` identifies the Git HEAD plus the
@@ -40,8 +43,8 @@ actual source content digest; an uncommitted candidate is not identified by HEAD
 `SHA256SUMS.txt` records every packaged file except the checksum list itself.
 
 For a source rebuild in the repository, use its pinned Node 20.19.0 and pnpm 10.24.0,
-set `RB_CANDIDATE_VERSION=1.0.0-rc.4`, and run `corepack pnpm build:unified` followed
-by `corepack pnpm release:package:local 1.0.0-rc.4`. The packager refuses a stale
+set `RB_CANDIDATE_VERSION` to the candidate's version (its `candidate.json` names it), and run
+`corepack pnpm build:unified` followed by `corepack pnpm release:package:local <version>`. The packager refuses a stale
 source/build fingerprint or an existing version directory. It archives the same
 files twice and requires equal ZIP hashes; this is reproducible packaging of a
 given build, not a claim that independently timed builds have identical metadata.

@@ -629,7 +629,7 @@ function buildArtifacts(
           ? `Structural top-level VHDL with ${project.hierarchy.modules.length} reusable project module source${project.hierarchy.modules.length === 1 ? '' : 's'}. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
           : bundle.exportMode === 'preserved-import-rtl'
           ? `Preserved imported top-level VHDL (multi-file handoff). designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
-          : `Synthesizable top-level VHDL. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
+          : `Generated top-level VHDL; synthesis runs in Vivado, outside RedByte. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
     });
     for (const companion of bundle.importedCompanionSources ?? []) {
       const companionHeader = buildProvenanceHeader('--', provenanceBase);

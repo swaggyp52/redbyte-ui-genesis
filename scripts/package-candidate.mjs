@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import archiver from 'archiver';
 import { sourceState } from './source-state.mjs';
+import { collectThirdParty, noticesText } from './release/third-party-notices.mjs';
 const root = process.cwd();
 const version = process.argv[2] ?? '1.0.0-rc.1';
 if (!/^[\w.-]+$/.test(version)) throw Error('Invalid candidate version');
@@ -24,6 +25,8 @@ fs.copyFileSync('scripts/release/local-server.mjs',path.join(dir,'server.mjs'));
 for (const name of ['launch.mjs','Start-RedByte.cmd','Stop-RedByte.cmd','Start-RedByte.ps1','Stop-RedByte.ps1']) fs.copyFileSync(path.join('scripts/release',name),path.join(dir,name));
 fs.copyFileSync('docs/release/local-candidate-quickstart.md',path.join(dir,'QUICKSTART.md'));
 fs.copyFileSync('LICENSE',path.join(dir,'LICENSE'));
+// The bundled libraries' and fonts' own notices (the Node runtime's are in runtime/LICENSE).
+fs.writeFileSync(path.join(dir,'THIRD_PARTY_NOTICES.txt'),noticesText(collectThirdParty({ root, buildDir: 'dist' })));
 fs.cpSync('scripts/release/samples',path.join(dir,'samples'),{recursive:true});
 fs.writeFileSync(path.join(dir,'candidate.json'),JSON.stringify({version,...state,node:'20.19.0',pnpm:'10.24.0',proofTier:'Browser E0; Vivado and physical board unverified'},null,2)+'\n');
 function walk(dir,base='') { return fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name,'en')).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name),`${base}${e.name}/`):[`${base}${e.name}`]); }
