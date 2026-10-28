@@ -581,6 +581,46 @@ export function elaborateProjectHierarchy(
 }
 
 /**
+ * Where each wired output pin of a module instance in `circuit` is driven from in the elaborated
+ * design: `${instanceId}.${portName}` -> the `${nodeId}.${portName}` that elaboration connects in
+ * its place (the key a recording and the live simulator use), through every level of nesting.
+ * The same resolution elaborateProjectHierarchy applies, read without flattening. A pin whose
+ * module output nothing drives is absent: there is no value to show for it.
+ */
+export function moduleInstanceOutputSources(
+  circuit: Circuit,
+  hierarchy: ProjectHierarchyDocument | undefined,
+): Map<string, string> {
+  const sources = new Map<string, string>();
+  if (!hierarchy || hierarchy.modules.length === 0) return sources;
+  const modulesById = new Map(hierarchy.modules.map((module) => [module.id, module]));
+  const modulesByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
+  const resolve = (instance: Node, portName: string, prefix: string, depth: number): string | undefined => {
+    const definition = resolveModuleForNode(instance, modulesById, modulesByName);
+    if (!definition || depth > MAX_ELABORATION_DEPTH) return undefined;
+    const { base, bitIndex } = splitBitPort(portName);
+    const port = definition.ports.find((entry) => entry.direction === 'output' && entry.name === base);
+    const internal = port ? modulePortInternalRefs(port, bitIndex)[0] : undefined;
+    if (!internal) return undefined;
+    const innerPrefix = `${prefix}${instance.id}__`;
+    const inner = definition.circuit.nodes.find((node) => node.id === internal.nodeId);
+    return inner && resolveModuleForNode(inner, modulesById, modulesByName)
+      ? resolve(inner, internal.portName, innerPrefix, depth + 1)
+      : `${innerPrefix}${internal.nodeId}.${internal.portName}`;
+  };
+  const nodesById = new Map(circuit.nodes.map((node) => [node.id, node]));
+  for (const connection of circuit.connections) {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const instance = nodesById.get(from.nodeId);
+    const key = `${from.nodeId}.${from.portName}`;
+    if (!instance || sources.has(key)) continue;
+    const source = resolve(instance, from.portName, '', 0);
+    if (source) sources.set(key, source);
+  }
+  return sources;
+}
+
+/**
  * Module ids that participate in an instantiation cycle (a module that
  * directly or indirectly instantiates itself). Empty when the hierarchy is a
  * DAG. Used to reject a cycle at authoring time and keep the project valid.

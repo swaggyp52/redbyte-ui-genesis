@@ -1157,7 +1157,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   semanticZoomTierRef.current = presentationZoom;
   const [diagnosticsDialogOpen, setDiagnosticsDialogOpen] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
-  const [wireFeedback, setWireFeedback] = useState<string | null>(null);
+  const [wireFeedback, setWireFeedbackText] = useState<string | null>(null);
+  // Each refusal is an event: the same words again must reach the status line's announcement, so
+  // the message is a new element every time.
+  const [wireFeedbackCount, setWireFeedbackCount] = useState(0);
+  const setWireFeedback = useCallback((message: string | null) => {
+    setWireFeedbackText(message);
+    if (message) setWireFeedbackCount((count) => count + 1);
+  }, []);
   // The workbench's status line, where the Wire tool says what to do next. A surface rendered on
   // its own keeps the message in its cue.
   const [statusHintSlot, setStatusHintSlot] = useState<HTMLElement | null>(null);
@@ -8012,7 +8019,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
                       >
                         {wireFeedback ? (
-                          <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
+                          <span key={wireFeedbackCount} data-testid="ide-design-wire-feedback">{wireFeedback}</span>
                         ) : wireStartPort ? (
                           <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
                         ) : (

@@ -194,4 +194,33 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     expect(view.getByTestId('ide-status-panel-slot').contains(show)).toBe(true);
     expect(document.activeElement).toBe(show);
   });
+
+  it('hands focus to the control that brings a hidden panel back, on any stage', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    const view = render(
+      <>
+        <IdeWorkbenchShell
+          mode="design"
+          workspace={<div>Canvas</div>}
+          leftDock={<div>Library</div>}
+          rightDock={<div>Inspector</div>}
+          console={<div>Problems</div>}
+        />
+        <WorkbenchStatusBar problemsCount={0} />
+      </>
+    );
+    const hide = (testId: string) => {
+      const control = view.getByTestId(testId);
+      control.focus();
+      act(() => { fireEvent.click(control); });
+      act(() => { frames.splice(0).forEach((callback) => callback(0)); });
+    };
+
+    hide('ide-hide-left-dock');
+    expect(document.activeElement).toBe(view.getByTestId('ide-show-left-dock'));
+    hide('ide-hide-bottom-dock');
+    expect(document.activeElement).toBe(view.getByTestId('ide-show-bottom-dock'));
+    expect(view.getByTestId('ide-status-console-slot').contains(document.activeElement)).toBe(true);
+  });
 });

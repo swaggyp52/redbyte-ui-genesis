@@ -183,10 +183,17 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       workspacePreferencesStore.setDock(mode, dockId === 'left' ? 'right' : 'left', { visible: false });
     }
     workspacePreferencesStore.setDock(mode, dockId, { visible });
-    if (narrowProject && !visible && dockId !== 'bottom') {
-      // The reveal lives in the status line when there is one, outside this shell.
-      const revealRoot = panelSlot ?? shellRef.current;
-      requestAnimationFrame(() => revealRoot?.querySelector<HTMLElement>(`[data-testid="ide-show-${dockId}-dock"]`)?.focus());
+    if (!visible) {
+      // The control that hid the panel (or the panel holding focus) is gone; focus goes to the one
+      // that brings it back, which lives in the status line when there is one, outside this shell.
+      const revealRoots = [dockId === 'bottom' ? statusSlot : panelSlot, shellRef.current];
+      requestAnimationFrame(() => {
+        if (document.activeElement && document.activeElement !== document.body) return;
+        const reveal = revealRoots
+          .map((root) => root?.querySelector<HTMLElement>(`[data-testid="ide-show-${dockId}-dock"]`))
+          .find(Boolean);
+        reveal?.focus();
+      });
     }
   };
 

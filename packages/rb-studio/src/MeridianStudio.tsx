@@ -8,6 +8,7 @@ import {
   findVerifyRunLedgerEntry,
   generateJourneySource,
   getActiveScenario,
+  moduleInstanceOutputSources,
   planStudioRun,
   type RuntimeVerifyRun,
   type StudioRunPlan,
@@ -237,6 +238,15 @@ function describeRef(ref: ObjectRef | null, label: (nodeId: string) => string, s
   }
 }
 
+/** Each instance output pin takes the value of the elaborated node that drives it. */
+function withInstanceOutputs(values: Map<string, LogicValue>, sources: ReadonlyMap<string, string>): Map<string, LogicValue> {
+  for (const [pin, source] of sources) {
+    const value = values.get(source);
+    if (value !== undefined && !values.has(pin)) values.set(pin, value);
+  }
+  return values;
+}
+
 /**
  * A wire carries its driver's value. Every view that shows an input pin (inspector pins, board
  * LEDs, explanations) reads it through its net, exactly as the sheet colours the wire, so a pin
@@ -431,13 +441,16 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
 
   const recordingCursor = cursor?.source === 'recording' && run && recordingRunId(run) === cursor.runId ? cursor : null;
   const place = recordingCursor && timeline ? placeMoment(timeline, recordingCursor) : null;
+  // A module instance's output pin is recorded (and simulated) under the elaborated node inside
+  // the instance that drives it; the wire leaving the instance carries that value.
+  const instanceOutputSources = useMemo(() => moduleInstanceOutputSources(circuit, hierarchy), [circuit, hierarchy]);
   const recordedValues = useMemo(
-    () => (recordingCursor && run && index ? valuesAt(run, index, recordingCursor) : null),
-    [recordingCursor, run, index],
+    () => (recordingCursor && run && index ? withInstanceOutputs(valuesAt(run, index, recordingCursor), instanceOutputSources) : null),
+    [recordingCursor, run, index, instanceOutputSources],
   );
   const liveValues = useMemo(
-    () => (cursor?.source === 'live' ? new Map(Object.entries(sim.signals)) as Map<string, LogicValue> : null),
-    [cursor, sim.signals],
+    () => (cursor?.source === 'live' ? withInstanceOutputs(new Map(Object.entries(sim.signals)) as Map<string, LogicValue>, instanceOutputSources) : null),
+    [cursor, sim.signals, instanceOutputSources],
   );
   const valueState: ValueState = !cursor ? 'none' : cursor.source === 'live' ? 'live' : verdict?.withdraw.sheet ? 'withdrawn' : 'recorded';
   const resolvedRecorded = useMemo(() => (recordedValues ? withNetValues(scene, recordedValues) : null), [scene, recordedValues]);

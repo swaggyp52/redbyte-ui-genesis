@@ -50,6 +50,7 @@ export { buildCurrentVerifyProjectHash, buildVerifyCircuitEvidenceHash } from '.
 export { findVerifyRunLedgerEntry } from './apps/ide/runArchive';
 export {
   elaborateProjectHierarchy,
+  moduleInstanceOutputSources,
   type ElaboratedNodeSource,
   type ElaborationSources,
   type ProjectHierarchyDocument,

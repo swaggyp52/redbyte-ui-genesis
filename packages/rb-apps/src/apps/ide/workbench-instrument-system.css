@@ -646,7 +646,9 @@
   row-gap: 0;
   min-height: var(--wb-status-h);
   padding: 0 var(--wb-space-2);
-  overflow: hidden;
+  /* Clipped, but a focused control's ring (2px at a 2px offset) still shows above and below it. */
+  overflow: clip;
+  overflow-clip-margin: 4px;
   border-top: 1px solid var(--wb-border-strong);
   color: var(--wb-text-2);
   background: var(--wb-doc-bg);
@@ -659,22 +661,18 @@
 /* Where the controls do not fit on one line (a narrow window, enlarged text) the line wraps:
    a control is never drawn over another or cut off at the edge. */
 .ide-root .wb-status-spacer { flex: 1 1 0; min-width: 0; }
-.ide-root .wb-status-hint-slot { display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
-.ide-root .wb-status-hint-slot > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* A long refusal takes a second line in the same height (two lines of the 14px status text at 1.05,
+   with a pixel below for descenders, fill 30.4px of the 31px inside the line's 2rem and its border),
+   so it is read in full where one line would end in an ellipsis. */
+.ide-root .wb-status-hint-slot { display: flex; align-items: center; overflow: hidden; }
+.ide-root .wb-status-hint-slot > * { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; padding-bottom: 0.0625rem; overflow: hidden; line-height: 1.05; white-space: normal; }
 /* Collapsed, the bottom panel's handle sits in the status line and the panel takes no room:
    one line at the bottom of the window instead of a status line under an empty strip. */
 .ide-root .wb-status-console-slot { display: inline-flex; align-items: center; flex: none; }
-/* Show left / right panel, in the status line rather than floating over the workspace. */
-.ide-root .wb-status-panel-slot { display: inline-flex; align-items: center; flex: none; }
-.ide-root .wb-status-panel-slot .ide-workbench-panel-controls {
-  position: static;
-  display: inline-flex;
-  gap: 2px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
+/* Show left / right panel, in the status line rather than floating over the workspace. Each is an
+   item of the line itself, so a wrap moves one control at a time and none is cut off at the edge. */
+.ide-root .wb-status-panel-slot,
+.ide-root .wb-status-panel-slot .ide-workbench-panel-controls { display: contents; }
 .ide-root .wb-status-panel-slot .ide-workbench-panel-controls button {
   height: 1.625rem;
   min-height: 0;

@@ -278,6 +278,11 @@ describe('DesignSurface authoring issues', () => {
       expect(hint.textContent).toContain('Outputs cannot be wired directly to each other. Source kept: SW0 out.');
     });
     expect(hint.contains(view.getByTestId('ide-design-wire-feedback'))).toBe(true);
+    // The same refusal again is a new message, so the status line announces it again.
+    const first = view.getByTestId('ide-design-wire-feedback');
+    fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]')!);
+    await waitFor(() => expect(view.getByTestId('ide-design-wire-feedback')).not.toBe(first));
+    expect(view.getByTestId('ide-design-wire-feedback').textContent).toBe(first.textContent);
     const cue = view.getByTestId('ide-design-wire-cuebar');
     expect(cue.contains(view.getByTestId('ide-design-wire-cue'))).toBe(false);
     expect(cue.contains(view.getByTestId('ide-design-wire-cancel'))).toBe(true);
