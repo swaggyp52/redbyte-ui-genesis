@@ -31,7 +31,14 @@
 .ide-root .rb-design-health-slot .rb-design-health-counts { flex: none; }
 @container (max-width: 11rem) { .ide-root .rb-design-health-slot .rb-design-health-label { display: none; } }
 @container (max-width: 4.5rem) { .ide-root .rb-design-health-slot > .rb-design-health { display: none; } }
-.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has(.rb-design-wirecue) { flex: 1 0 100%; border-top: 1px solid var(--wb-border); }
+/* Entering Wire keeps the same row: the cue takes the room the commands leave and shortens its
+   message, as the status chip does. On a row of its own (2026-10-20) it pushed the canvas down
+   44px, and the pin a student was about to click moved 22px under the pointer. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has(.rb-design-wirecue) { flex: 1 1 0; min-width: min-content; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > .rb-design-wirecue { flex: 4 1 0; min-width: 0; }
+/* While wiring, the cue has first claim on the row; the status chip's counts stay in the status bar.
+   Where even the cue's badge and Cancel do not fit beside the commands (the inspector open at
+   1366 or 1440), the header takes its own row for the whole of Wire mode, never per message. */
 .ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > :not(.rb-design-toolbar):not(.rb-design-header) { order: 3; flex: 1 0 100%; }
 /* At the top level the trail is the project's own name, which the application bar already
    shows. It appears once there is a module to come back from. */
@@ -62,6 +69,9 @@
 .ide-root .rb-design-breadcrumb .ide-design-breadcrumb-of { color: var(--wb-text-3); font-weight: 500; }
 .ide-root .rb-design-wirecue { display: inline-flex; flex: 1 1 120px; min-width: 0; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
 .ide-root .rb-design-wirecue-msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The message claims no width of its own (as the status chip's slot), so the cue fits the row the
+   commands leave and only the commands themselves can make the row wrap. */
+.ide-root .rb-design-header > .rb-design-wirecue > .rb-design-wirecue-msg { flex: 1 1 0; contain: inline-size; }
 .ide-root .rb-design-wirecue :is(button, .rb-design-wirecue-badge) { flex-shrink: 0; }
 .ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--rb-action); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
 .ide-root .rb-design-wirecue-msg code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
@@ -275,8 +285,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 var(--wb-space-2) 0 6px;
+  /* A heading may wrap in a narrow library (1440x900 with the inspector open): the row grows
+     with it instead of drawing its second line over the next heading. */
+  min-height: 24px;
+  padding: 2px var(--wb-space-2) 2px 6px;
   border-top: 1px solid var(--wb-border);
   background: var(--wb-surface-2);
 }
@@ -314,7 +326,7 @@
 .ide-root .rb-lib-section[data-collapsed='true'] .rb-lib-section-header { color: var(--wb-text-3); }
 .ide-root .rb-lib-list { display: block; padding: 2px 0; }
 .ide-root .rb-lib-subsection { display: block; }
-.ide-root .rb-lib-subheader { display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 var(--wb-space-2) 0 12px; }
+.ide-root .rb-lib-subheader { display: flex; align-items: center; gap: 6px; min-height: 22px; padding: 2px var(--wb-space-2) 2px 12px; }
 .ide-root .rb-lib-board-groups { display: block; }
 .ide-root .rb-lib-board-group { display: block; }
 .ide-root .rb-lib-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px var(--wb-space-2) 6px 12px; }

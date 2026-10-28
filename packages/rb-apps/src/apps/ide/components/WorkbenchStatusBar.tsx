@@ -2,6 +2,7 @@ import React from 'react';
 
 /** Where a workspace shell places its collapsed bottom-panel handle. */
 export const STATUS_CONSOLE_SLOT_ID = 'rb-status-console-slot';
+export const STATUS_PANEL_SLOT_ID = 'rb-status-panel-slot';
 
 export interface WorkbenchStatusBarProps {
   problemsCount: number;
@@ -51,6 +52,8 @@ export const WorkbenchStatusBar: React.FC<WorkbenchStatusBarProps> = ({
           window is one line rather than a status line under a second, empty strip. */}
       <span className="wb-status-console-slot" id={STATUS_CONSOLE_SLOT_ID} data-testid="ide-status-console-slot" />
       <span className="wb-status-spacer" />
+      {/* Show left / right panel live here, never over the workspace they would cover. */}
+      <span className="wb-status-panel-slot" id={STATUS_PANEL_SLOT_ID} data-testid="ide-status-panel-slot" />
       {runState ? (
         <span className="wb-status-item" data-testid="ide-status-run" data-tone={runState.tone === 'idle' ? undefined : runState.tone}>
           {runState.label}

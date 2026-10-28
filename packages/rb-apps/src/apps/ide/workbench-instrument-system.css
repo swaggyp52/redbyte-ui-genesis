@@ -658,6 +658,30 @@
 /* Collapsed, the bottom panel's handle sits in the status line and the panel takes no room:
    one line at the bottom of the window instead of a status line under an empty strip. */
 .ide-root .wb-status-console-slot { display: inline-flex; align-items: center; min-width: 0; }
+/* Show left / right panel, in the status line rather than floating over the workspace. */
+.ide-root .wb-status-panel-slot { display: inline-flex; align-items: center; flex: none; }
+.ide-root .wb-status-panel-slot .ide-workbench-panel-controls {
+  position: static;
+  display: inline-flex;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root .wb-status-panel-slot .ide-workbench-panel-controls button {
+  height: 1.625rem;
+  min-height: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: transparent;
+  box-shadow: none;
+  font: var(--wb-text-sm) / 1 var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .wb-status-panel-slot .ide-workbench-panel-controls button:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
 .ide-root .wb-status-console-slot .ide-workbench-console-bar {
   display: inline-flex;
   align-items: center;

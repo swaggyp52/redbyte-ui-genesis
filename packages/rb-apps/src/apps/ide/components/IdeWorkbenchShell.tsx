@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { STATUS_CONSOLE_SLOT_ID } from './WorkbenchStatusBar';
+import { STATUS_CONSOLE_SLOT_ID, STATUS_PANEL_SLOT_ID } from './WorkbenchStatusBar';
 import { getIdeModeLabel } from '../workflowStages';
 import {
   WORKSPACE_DOCK_SIZE_LIMITS,
@@ -225,11 +225,16 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   // The status line offers a slot for the collapsed bottom-panel handle. Where there is no
   // status line (a surface rendered on its own) the handle stays in place, as before.
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  // Show left / right panel join it there: floating over the workspace, they covered its controls
+  // in a short window with enlarged text (Simulate's event Delete at 720x450, 150% text).
+  const [panelSlot, setPanelSlot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
     setStatusSlot(window.document.getElementById(STATUS_CONSOLE_SLOT_ID));
+    setPanelSlot(window.document.getElementById(STATUS_PANEL_SLOT_ID));
   }, []);
   const inStatusLine = (handle: React.ReactElement, collapsed: boolean) =>
     collapsed && statusSlot ? createPortal(handle, statusSlot) : handle;
+  const inPanelSlot = (controls: React.ReactElement) => (panelSlot ? createPortal(controls, panelSlot) : controls);
 
   return (
     <section
@@ -304,7 +309,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
           aria-label={`${getIdeModeLabel(mode)} workspace`}
         >
           {workspace}
-          <div className="ide-workbench-panel-controls" aria-label="Workspace panels">
+          {inPanelSlot(<div className="ide-workbench-panel-controls" aria-label="Workspace panels">
             {leftDockAllowed && !showLeftDock ? (
               <button type="button" onClick={() => setDockVisible('left', true)} data-testid="ide-show-left-dock">
                 Show left panel
@@ -315,7 +320,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
                 Show right panel
               </button>
             ) : null}
-          </div>
+          </div>)}
         </main>
 
         {showRightDock ? (
