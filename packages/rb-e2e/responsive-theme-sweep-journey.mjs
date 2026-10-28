@@ -1,8 +1,11 @@
 // Every stage of a loaded lab at the four classroom viewports, in the light and the dark theme,
 // at the default and an enlarged root text size. A student-visible layout defect fails the sweep:
-// the page scrolling sideways, text drawn over other text, or chrome text below 3:1 contrast
-// (1.4.11 floor; text below 4.5:1 is listed for review). The schematic sheet is excluded: its
-// symbols are drawn by the student and covered by the Design journeys.
+// the page scrolling sideways, text drawn over other text, a status-line control drawn over another
+// or cut off at the edge, or text below WCAG 1.4.3 contrast (4.5:1, 3:1 for large text). A short
+// window at double text size checks the status line, where Show left / right panel live.
+// Not inspected: text inside svg and canvas drawings (the schematic, board views, waveforms and
+// figures; the Design, Board and Simulate journeys own those), and the painted-order test cannot
+// see elements with pointer-events: none.
 import fs from 'node:fs';
 import path from 'node:path';
 import { BASE_URL, evidenceDir, launchChromium } from './harness.mjs';
@@ -18,7 +21,7 @@ const browser = await launchChromium();
 const report = [];
 const failures = [];
 
-function inspect() {
+function inspect(stage) {
   const excluded = (el) => Boolean(el.closest('svg, canvas, [data-testid="ide-design-canvas"], [data-testid="ide-recorded-circuit"], [aria-hidden="true"], .rb-sim-region--waveform'));
   const visible = (el) => {
     for (let node = el; node; node = node.parentElement) {
@@ -100,11 +103,79 @@ function inspect() {
     const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
     if (ratio < (large ? 3 : 4.5)) lowContrast.push({ text, ratio: Math.round(ratio * 100) / 100, size, testid: el.closest('[data-testid]')?.getAttribute('data-testid') ?? null, at: [Math.round(box.left), Math.round(box.top)] });
   }
+  // The status line: no control drawn over another, none outside the bar.
+  const statusLine = [];
+  const bar = document.querySelector('[data-testid="ide-status-bar"]');
+  if (bar) {
+    const edge = bar.getBoundingClientRect();
+    const controls = [...bar.querySelectorAll('button')].filter((button) => visible(button)).map((button) => ({
+      label: (button.getAttribute('aria-label') || button.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30),
+      r: button.getBoundingClientRect(),
+    }));
+    for (const { label, r } of controls) {
+      if (r.left < edge.left - 0.5 || r.right > edge.right + 0.5 || r.top < edge.top - 0.5 || r.bottom > edge.bottom + 0.5) statusLine.push(`"${label}" outside the status line`);
+    }
+    for (let i = 0; i < controls.length; i += 1) {
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const a = controls[i].r, b = controls[j].r;
+        const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (w > 0.5 && h > 0.5) statusLine.push(`"${controls[i].label}" x "${controls[j].label}" (${Math.round(w)}px)`);
+      }
+    }
+  }
   return {
+    inspected: texts.length,
+    // Text the stage's own workspace renders (drawn or scrolled out of view alike): zero while only
+    // its loading placeholder is up.
+    inspectedInStage: (() => {
+      const root = document.querySelector(`[data-testid="ide-mode-${stage}"]`);
+      if (!root) return 0;
+      let count = 0;
+      const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walk.nextNode(); node; node = walk.nextNode()) if (node.textContent.trim() && node.parentElement && visible(node.parentElement)) count += 1;
+      return count;
+    })(),
     horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
     overlaps,
     lowContrast,
+    statusLine,
   };
+}
+
+async function openLab(page, colorScheme) {
+  const tid = (id) => page.getByTestId(id);
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  // A student opens a lab from the catalogue.
+  await tid('ide-project-start-a-lab-primary').click();
+  await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();
+  const start = page.locator('[data-testid^="ide-project-gannon-lab-start-"]');
+  if (await start.count()) await start.first().click();
+  await page.waitForFunction(() => (window.__RB_PROJECT_RUNTIME__?.getState().circuit.nodes.length ?? 0) > 0);
+  // The workbench theme is chosen in the command palette (it does not follow the system by default).
+  await page.keyboard.press('Control+k');
+  await tid('ide-command-palette').waitFor({ state: 'visible' });
+  await tid('ide-command-palette-query').fill(`Workbench ${colorScheme}`);
+  await tid(`ide-command-theme.${colorScheme}`).click();
+  await page.waitForFunction((t) => document.documentElement.getAttribute('data-rb-theme') === t, colorScheme);
+  return page.evaluate(() => document.documentElement.getAttribute('data-rb-theme'));
+}
+
+async function showStage(page, stage) {
+  await page.getByTestId(`mode-button-${stage}`).click();
+  // The stage's own workspace, not its loading placeholder (Design, Simulate, Board and Package load
+  // on first use), then the frame after its layout settles.
+  await page.waitForFunction((s) => {
+    const root = document.querySelector(`[data-testid="ide-mode-${s}"]`);
+    if (document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-ide-stage') !== s || !root) return false;
+    if (document.querySelector('[data-testid="ide-surface-loading"]')) return false;
+    // Shown, not fading in: some text of the stage's own is painted.
+    const painted = (el) => { for (let n = el; n; n = n.parentElement) { const c = getComputedStyle(n); if (c.display === 'none' || c.visibility === 'hidden' || Number(c.opacity) === 0) return false; } return true; };
+    const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walk.nextNode(); node; node = walk.nextNode()) if (node.textContent.trim() && node.parentElement && painted(node.parentElement)) return true;
+    return false;
+  }, stage);
+  await page.evaluate(() => document.fonts.ready.then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
 }
 
 try {
@@ -113,45 +184,53 @@ try {
       const context = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion: 'reduce' });
       const page = await context.newPage();
       page.setDefaultTimeout(15000);
-      const tid = (id) => page.getByTestId(id);
-      await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-      // A student opens a lab from the catalogue.
-      await tid('ide-project-start-a-lab-primary').click();
-      await page.locator('[data-testid^="ide-project-gannon-lab-card-"]').nth(4).click();
-      const start = page.locator('[data-testid^="ide-project-gannon-lab-start-"]');
-      if (await start.count()) await start.first().click();
-      await page.waitForFunction(() => (window.__RB_PROJECT_RUNTIME__?.getState().circuit.nodes.length ?? 0) > 0);
-      // The workbench theme is chosen in the command palette (it does not follow the system by default).
-      await page.keyboard.press('Control+k');
-      await tid('ide-command-palette').waitFor({ state: 'visible' });
-      await tid('ide-command-palette-query').fill(`Workbench ${colorScheme}`);
-      await tid(`ide-command-theme.${colorScheme}`).click();
-      await page.waitForFunction((t) => document.documentElement.getAttribute('data-rb-theme') === t, colorScheme);
-      const theme = await page.evaluate(() => document.documentElement.getAttribute('data-rb-theme'));
+      const theme = await openLab(page, colorScheme);
       for (const root of ROOTS) {
         await page.evaluate((size) => { document.documentElement.style.fontSize = `${size}px`; }, root);
         for (const stage of STAGES) {
-          await tid(`mode-button-${stage}`).click();
-          await page.waitForFunction((s) => document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-ide-stage') === s || document.querySelector(`[data-testid="ide-mode-${s}"]`), stage);
-          await page.waitForTimeout(250);
+          await showStage(page, stage);
           const label = `${width}x${height}-${colorScheme}-${root}px-${stage}`;
-          const found = await page.evaluate(inspect);
-          const severe = found.lowContrast.filter((entry) => entry.ratio < 3);
+          const found = await page.evaluate(inspect, stage);
           report.push({ label, theme, ...found, lowContrastCount: found.lowContrast.length });
           const problems = [];
+          // A sweep that read none of the stage's own text proves nothing about the stage.
+          if (found.inspectedInStage < 5) problems.push(`only ${found.inspectedInStage} runs of the stage's own text inspected`);
           if (found.horizontalOverflow > 1) problems.push(`page scrolls sideways by ${found.horizontalOverflow}px`);
           if (found.overlaps.length) problems.push(`text over text: ${found.overlaps.slice(0, 4).join('; ')}`);
-          if (severe.length) problems.push(`text below 3:1: ${severe.slice(0, 4).map((entry) => `"${entry.text}" ${entry.ratio} (${entry.testid})`).join('; ')}`);
+          if (found.statusLine.length) problems.push(`status line: ${found.statusLine.slice(0, 4).join('; ')}`);
+          if (found.lowContrast.length) problems.push(`text below 4.5:1 (3:1 large): ${found.lowContrast.slice(0, 4).map((entry) => `"${entry.text}" ${entry.ratio} (${entry.testid})`).join('; ')}`);
           if (theme !== colorScheme) problems.push(`theme ${theme} after choosing Workbench ${colorScheme}`);
           if (problems.length) {
             failures.push(`${label}: ${problems.join(' | ')}`);
             await page.screenshot({ path: path.join(out, `${label}.png`) });
           }
-          console.log(`${label}: overflow ${found.horizontalOverflow}, overlaps ${found.overlaps.length}, <4.5:1 ${found.lowContrast.length}, <3:1 ${severe.length}`);
+          console.log(`${label}: ${found.inspectedInStage}/${found.inspected} text runs in the stage, overflow ${found.horizontalOverflow}, overlaps ${found.overlaps.length}, status line ${found.statusLine.length}, low contrast ${found.lowContrast.length}`);
         }
       }
       await context.close();
     }
+  }
+  // Double text size in the short window: the status line wraps rather than drawing controls over
+  // each other (rc.6 drew Show left panel over Hide bottom panel here).
+  for (const stage of STAGES) {
+    const context = await browser.newContext({ viewport: { width: 720, height: 450 }, colorScheme: 'light', reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    await openLab(page, 'light');
+    await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+    await showStage(page, stage);
+    const label = `720x450-light-32px-${stage}-status-line`;
+    const found = await page.evaluate(inspect, stage);
+    report.push({ label, statusLine: found.statusLine, horizontalOverflow: found.horizontalOverflow });
+    const problems = [];
+    if (found.horizontalOverflow > 1) problems.push(`page scrolls sideways by ${found.horizontalOverflow}px`);
+    if (found.statusLine.length) problems.push(`status line: ${found.statusLine.slice(0, 4).join('; ')}`);
+    if (problems.length) {
+      failures.push(`${label}: ${problems.join(' | ')}`);
+      await page.screenshot({ path: path.join(out, `${label}.png`) });
+    }
+    console.log(`${label}: overflow ${found.horizontalOverflow}, status line ${found.statusLine.length}`);
+    await context.close();
   }
 } finally {
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify({ base: BASE_URL, failures, report }, null, 2));
@@ -162,4 +241,4 @@ if (failures.length) {
   console.error(`FAIL responsive/theme sweep: ${failures.length} configurations\n${failures.join('\n')}`);
   process.exit(1);
 }
-console.log(`PASS responsive/theme sweep: ${VIEWPORTS.length} viewports x ${THEMES.length} themes x ${ROOTS.length} text sizes x ${STAGES.length} stages -> ${out}`);
+console.log(`PASS responsive/theme sweep: ${VIEWPORTS.length} viewports x ${THEMES.length} themes x ${ROOTS.length} text sizes x ${STAGES.length} stages, and the status line at 720x450 with 32px text -> ${out}`);

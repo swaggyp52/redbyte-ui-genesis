@@ -133,16 +133,21 @@ describe('imported HDL the importer cannot rebuild: Mode B feasibility, refusal 
       refusal = error instanceof Error ? error.message : String(error);
     }
     const run = recorded as { waveform?: Array<{ tick: number; signals: Record<string, string> }> } | undefined;
-    // Either the Run refuses, or it records every output as unknown, never a level it did not compute.
+    // Manual 12.2: the Run records, and records every output as unknown - never a level it did not
+    // compute. Every signal the recording keeps for an output node counts (its .in and its .out:
+    // the readers look at .out first).
+    expect(refusal, 'the Run refused instead of recording the outputs as unknown').toBe('');
+    expect(run?.waveform?.length ?? 0, 'the Run recorded samples').toBeGreaterThan(0);
     const outputs = useProjectRuntime.getState().projectIoRows.filter((row) => row.direction === 'out');
-    const claimed = (run?.waveform ?? []).flatMap((sample) => outputs
-      .flatMap((row) => [row.id, row.nodeId, `${row.nodeId}.in`, row.label])
-      .filter((key) => sample.signals[key] === '0' || sample.signals[key] === '1')
-      .map((key) => `t${sample.tick} ${key}=${sample.signals[key]}`));
+    const keysOf = (signals: Record<string, string>, row: (typeof outputs)[number]) => Object.keys(signals)
+      .filter((key) => key === row.id || key === row.nodeId || key === row.label || key.startsWith(`${row.nodeId}.`));
+    const levels = run!.waveform!.flatMap((sample) => outputs.map((row) => ({
+      at: `t${sample.tick} ${row.label}`,
+      values: keysOf(sample.signals, row).map((key) => `${key}=${sample.signals[key]}`),
+    })));
+    expect(levels.filter((level) => level.values.length === 0).map((level) => level.at), 'an output sample with no recorded signal').toEqual([]);
+    const claimed = levels.flatMap((level) => level.values.filter((value) => !value.endsWith('=X')).map((value) => `${level.at}: ${value}`));
     expect(claimed, 'the browser recorded a level for an output it never computed').toEqual([]);
-    // The browser executes only what it rebuilt (the inputs): every output sample is unknown.
-    const unknown = (run?.waveform ?? []).every((sample) => outputs.every((row) => sample.signals[`${row.nodeId}.in`] === 'X'));
-    expect(refusal.length > 0 || ((run?.waveform?.length ?? 0) > 0 && unknown)).toBe(true);
 
     const state = useProjectRuntime.getState();
     const vm = buildExportViewModel(buildIdeExportProject(state), undefined, getActiveScenario(state.scenarios, state.activeScenarioId) ?? undefined);

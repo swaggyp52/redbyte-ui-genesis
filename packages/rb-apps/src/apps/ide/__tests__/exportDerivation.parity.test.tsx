@@ -15,8 +15,9 @@ import { parseVhdl } from '../../../import/vhdlImport';
 import { parseXdcPins } from '../../../import/xdcImport';
 import { at, projectOf, wire } from '../../../__tests__/helpers/productPath';
 import { deriveIdeBlockingDesignIssue } from '../ideDesignBlocking';
-import { assembleIdeExportProject, buildIdeExportProject, deriveIdeExportHdl } from '../ideExportProject';
+import { buildIdeExportProject } from '../ideExportProject';
 import { createEmptyProjectHierarchy, createModuleFromSelection } from '../projectHierarchy';
+import { projectRepository } from '../projectRepository';
 import { useProjectRuntime, type RunVerificationInput, type RuntimeVerifyRun } from '../projectRuntime';
 import { planStudioRun } from '../studioRunInput';
 import { workspacePreferencesStore } from '../workspacePreferences';
@@ -31,6 +32,11 @@ import { InlineVerificationWorker } from './inlineVerificationWorker';
  * rendered IdeApp (IdeApp adds the schedule contract from its export project), the studio Run
  * is planStudioRun on the same runtime state. Both must hand the Run owner the same contract,
  * replay hash and vectors, record the same RunIdentity and output digest, or refuse alike.
+ *
+ * Agreement alone would let one shared mistake pass on both sides, so each fixture also states
+ * what is true of it by hand: whether its schedule is clocked, which modules its export ships,
+ * and, where the expectations are worked out here, that the Run passes them. IdeApp's own export
+ * project is read where the student's work goes, the project it autosaves.
  */
 
 const NOW = '2026-10-28T00:00:00.000Z';
@@ -61,8 +67,17 @@ function enabledRegisterProject(): { project: RBProject; vectors: TestVector[] }
     connections: [wire('w1', 'clk', 'out', 'r', 'CLK'), wire('w2', 'd', 'out', 'r', 'D'), wire('w3', 'en', 'out', 'r', 'EN'), wire('w4', 'r', 'Q', 'q', 'in')],
   };
   const project = projectOf('enabled-register', circuit, [['clk', 'CLK100MHZ'], ['d', 'SW0'], ['en', 'SW1']], [['q', 'LD0']]);
+  return { project, vectors: enabledRegisterVectors((q) => q) };
+}
+
+/** Worked by hand: after each rising edge Q takes D while EN is high and holds otherwise. */
+function enabledRegisterVectors(output: (q: number) => number): TestVector[] {
   const rows: Array<[number, number]> = [[1, 1], [0, 0], [0, 1], [1, 0], [1, 1]];
-  return { project, vectors: rows.map(([d, en], tick) => ({ tick, inputs: { d, en }, expected: {} }) as TestVector) };
+  let q = 0;
+  return rows.map(([d, en], tick) => {
+    if (en) q = d;
+    return { tick, inputs: { d, en }, expected: { q: output(q) } } as TestVector;
+  });
 }
 
 /** Leaf (two NOTs) inside Mid (Leaf then a NOT) inside the top: Y = A through three inversions. */
@@ -90,7 +105,7 @@ function nestedHierarchyProject(): { project: RBProject; vectors: TestVector[] }
  * instance, so only the elaborated hierarchy shows the design is clocked.
  */
 function registerInModuleProject(): { project: RBProject; vectors: TestVector[] } {
-  const { project: flat, vectors } = enabledRegisterProject();
+  const { project: flat } = enabledRegisterProject();
   const base: Circuit = {
     nodes: [...flat.circuit.nodes.filter((node) => node.id !== 'q'), { id: 'n', type: 'NOT', ...at(300) }, { id: 'q', type: 'OUTPUT', label: 'LD0', ...at(400) }],
     connections: [...flat.circuit.connections.filter((connection) => connection.id !== 'w4'), wire('w5', 'r', 'Q', 'n', 'in'), wire('w6', 'n', 'out', 'q', 'in')],
@@ -98,7 +113,7 @@ function registerInModuleProject(): { project: RBProject; vectors: TestVector[] 
   const cell = createModuleFromSelection(base, createEmptyProjectHierarchy(), { moduleName: 'HeldInverse', instanceName: 'u_held', selectedNodeIds: ['r', 'n'], nowIso: NOW });
   expect(cell.circuit.nodes.some((node) => node.type === 'Register1'), 'the register lives only inside the module').toBe(false);
   const project = projectOf('register-in-module', cell.circuit, [['clk', 'CLK100MHZ'], ['d', 'SW0'], ['en', 'SW1']], [['q', 'LD0']], [], cell.hierarchy);
-  return { project, vectors };
+  return { project, vectors: enabledRegisterVectors((q) => 1 - q) };
 }
 
 function mux4Project(): RBProject {
@@ -136,25 +151,66 @@ function importedVhdlProject(): { project: RBProject; vectorsFor: (rows: RunRow[
 
 type RunRow = { inputs: Record<string, number>; expected: Record<string, number> };
 
+/** A clocked process the importer does not rebuild: it keeps the source and builds the ports only. */
+function unrebuiltImportProject(): RBProject {
+  const vhdl = ['library ieee;', 'use ieee.std_logic_1164.all;', 'entity top is',
+    '  port (CLK100MHZ : in std_logic; SW0 : in std_logic; LD0 : out std_logic);', 'end entity top;',
+    'architecture rtl of top is', '  signal q : std_logic := \'0\';', 'begin',
+    '  process (CLK100MHZ) begin', '    if rising_edge(CLK100MHZ) then', '      if SW0 = \'1\' then q <= not q; end if;',
+    '    end if;', '  end process;', '  LD0 <= q;', 'end architecture rtl;', ''].join('\n');
+  const xdc = [['CLK100MHZ', 'W5'], ['SW0', 'V17'], ['LD0', 'U16']]
+    .flatMap(([port, pin]) => [`set_property PACKAGE_PIN ${pin} [get_ports {${port}}]`, `set_property IOSTANDARD LVCMOS33 [get_ports {${port}}]`]).join('\n');
+  return buildImportedProjectCompilerResult({
+    sourceName: 'toggle.vhd', topPath: 'top.vhd', topText: vhdl, parsedHdl: parseVhdl(vhdl),
+    xdcPath: 'basys3.xdc', xdcText: xdc, xdcResult: parseXdcPins(xdc),
+  }).project;
+}
+
 interface Fixture {
   readonly kind: string;
   readonly load: () => void;
   /** A refused design: neither surface records, and both name the part that cannot be simulated. */
   readonly refused?: { readonly part: string };
+  /** How the Run must schedule it, and (for a clocked design) which elaborated registers it found. */
+  readonly schedule?: { readonly reason: 'combinational' | 'circuit-sequential'; readonly registers?: RegExp };
+  /** The module sources its export ships beside top.vhd. */
+  readonly modules?: number;
+  /** Expectations worked out in this file: the Run must pass every one. */
+  readonly passes?: true;
+  /** Nothing computes its outputs in the browser: every output sample must be unknown. */
+  readonly unknownOutputs?: true;
 }
 
+const combinational = { reason: 'combinational' } as const;
+
 const FIXTURES: Fixture[] = [
-  { kind: 'combinational', load: () => useProjectRuntime.getState().loadExample('logic-gates') },
-  { kind: 'full adder', load: () => useProjectRuntime.getState().loadExample('full-adder') },
-  { kind: 'enabled register', load: () => { const { project, vectors } = enabledRegisterProject(); loadProject(project, vectors); } },
-  { kind: 'counter', load: () => useProjectRuntime.getState().loadExample('two-bit-counter') },
-  { kind: 'reusable module', load: () => useProjectRuntime.getState().loadExample('four-bit-adder-hierarchical') },
-  { kind: 'register inside a module', load: () => { const { project, vectors } = registerInModuleProject(); loadProject(project, vectors); } },
-  { kind: 'nested hierarchy', load: () => { const { project, vectors } = nestedHierarchyProject(); loadProject(project, vectors); } },
-  { kind: 'incomplete', load: () => useProjectRuntime.getState().loadExample('lab6-full-adder') },
+  { kind: 'combinational', load: () => useProjectRuntime.getState().loadExample('logic-gates'), schedule: combinational, modules: 0 },
+  { kind: 'full adder', load: () => useProjectRuntime.getState().loadExample('full-adder'), schedule: combinational, modules: 0 },
+  {
+    kind: 'enabled register',
+    load: () => { const { project, vectors } = enabledRegisterProject(); loadProject(project, vectors); },
+    schedule: { reason: 'circuit-sequential', registers: /^r$/ }, modules: 0, passes: true,
+  },
+  { kind: 'counter', load: () => useProjectRuntime.getState().loadExample('two-bit-counter'), schedule: { reason: 'circuit-sequential' }, modules: 0 },
+  { kind: 'reusable module', load: () => useProjectRuntime.getState().loadExample('four-bit-adder-hierarchical'), schedule: combinational, modules: 1 },
+  {
+    kind: 'register inside a module',
+    load: () => { const { project, vectors } = registerInModuleProject(); loadProject(project, vectors); },
+    // The top level holds only the instance: the register is found in the elaborated design.
+    schedule: { reason: 'circuit-sequential', registers: /^u-held__r$/ }, modules: 1, passes: true,
+  },
+  {
+    kind: 'nested hierarchy',
+    load: () => { const { project, vectors } = nestedHierarchyProject(); loadProject(project, vectors); },
+    schedule: combinational, modules: 2, passes: true,
+  },
+  { kind: 'incomplete', load: () => useProjectRuntime.getState().loadExample('lab6-full-adder'), schedule: combinational, modules: 0 },
   { kind: 'unsupported', load: () => loadProject(mux4Project()), refused: { part: 'MUX4' } },
   {
     kind: 'imported HDL',
+    schedule: combinational,
+    modules: 0,
+    passes: true,
     load: () => {
       const { project, vectorsFor } = importedVhdlProject();
       useProjectRuntime.getState().loadFromProject(project);
@@ -162,6 +218,16 @@ const FIXTURES: Fixture[] = [
         inputs: { SW0: a, SW1: b }, expected: { LD0: a & b, LD1: a ^ b },
       }))));
     },
+  },
+  {
+    kind: 'imported HDL it cannot rebuild',
+    load: () => {
+      useProjectRuntime.getState().loadFromProject(unrebuiltImportProject());
+      const sw0 = useProjectRuntime.getState().projectIoRows.find((row) => row.label === 'SW0')!.id;
+      useProjectRuntime.getState().setVectors([1, 0, 1, 1].map((value, tick) => ({ tick, inputs: { [sw0]: value }, expected: {} }) as TestVector));
+    },
+    modules: 0,
+    unknownOutputs: true,
   },
 ];
 
@@ -263,11 +329,24 @@ describe('one export derivation for the workbench and the studio (RB-DEBT-026)',
   });
 
   it.each(FIXTURES)('$kind: the classic Run and the studio Run carry one contract and record one identity', async (fixture) => {
+    const autosaved: RBProject[] = [];
+    const autosave = projectRepository.autosave.bind(projectRepository);
+    vi.spyOn(projectRepository, 'autosave').mockImplementation((input) => { autosaved.push(structuredClone(input.project)); return autosave(input); });
     const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await act(async () => fixture.load());
-    const state = useProjectRuntime.getState();
-    // The memoized parts IdeApp uses are the whole derivation.
-    expect(assembleIdeExportProject(state, deriveIdeExportHdl(state))).toEqual(buildIdeExportProject(state));
+
+    // IdeApp's export project, as it autosaves it, is the shared derivation of the same state. Its
+    // meta differs by design: IdeApp records the scenario authority it derives and the lab/student.
+    const withoutMeta = ({ meta: _meta, ...project }: RBProject) => project;
+    await waitFor(() => {
+      expect(autosaved.length, 'IdeApp autosaved the open project').toBeGreaterThan(0);
+      expect(withoutMeta(autosaved[autosaved.length - 1])).toEqual(withoutMeta(buildIdeExportProject(useProjectRuntime.getState())));
+    }, { timeout: 5000 });
+    if (fixture.modules !== undefined) {
+      const shipped = autosaved[autosaved.length - 1].hdl?.sources.map((source) => source.path) ?? [];
+      expect(shipped[0], 'the export ships top.vhd first').toBe('top.vhd');
+      expect(shipped.length - 1, `module sources shipped: ${shipped.join(', ')}`).toBe(fixture.modules);
+    }
 
     const classic = await classicRun(view);
     const studio = studioRun();
@@ -284,5 +363,30 @@ describe('one export derivation for the workbench and the studio (RB-DEBT-026)',
     expect(comparable(studio.input)).toEqual(comparable(classic.input));
     expect(classic.run?.identity?.design, 'the classic Run recorded an identity').toBeTruthy();
     expect(recorded(studio.run)).toEqual(recorded(classic.run));
+
+    const contract = classic.input?.scheduleContract;
+    if (fixture.schedule) expect(contract?.reason, 'the Run schedules the design as it is').toBe(fixture.schedule.reason);
+    if (fixture.schedule?.registers) {
+      const registers = contract?.analysis.sequentialNodes.map((node) => node.id) ?? [];
+      expect(registers.length, `registers found: ${registers.join(', ')}`).toBe(1);
+      expect(registers[0]).toMatch(fixture.schedule.registers);
+    }
+    if (fixture.passes) {
+      const checks = classic.run?.report.rows.filter((row) => row.expected === '0' || row.expected === '1') ?? [];
+      expect(checks.length, 'the worked expectations are checked').toBeGreaterThan(0);
+      expect(checks.filter((row) => row.actual !== row.expected), 'every worked expectation holds').toEqual([]);
+      expect(classic.run?.status).toBe('pass');
+    }
+    if (fixture.unknownOutputs) {
+      // Simulate's Run claims no level for an output it never computed (manual 12.2), .in or .out.
+      const outputs = useProjectRuntime.getState().projectIoRows.filter((row) => row.direction === 'out');
+      const samples = classic.run?.waveform ?? [];
+      expect(samples.length, 'Simulate recorded the run').toBeGreaterThan(0);
+      const levels = samples.flatMap((sample) => outputs.map((row) => Object.entries(sample.signals)
+        .filter(([key]) => key === row.id || key === row.nodeId || key.startsWith(`${row.nodeId}.`))
+        .map(([key, value]) => `t${sample.tick} ${key}=${value}`)));
+      expect(levels.filter((values) => values.length === 0), 'an output sample with no recorded signal').toEqual([]);
+      expect(levels.flat().filter((value) => !value.endsWith('=X')), 'Simulate recorded a level it never computed').toEqual([]);
+    }
   }, 60_000);
 });

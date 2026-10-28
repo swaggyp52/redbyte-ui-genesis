@@ -67,10 +67,12 @@ async function renameNode(map, name, label) {
 // Pins are clicked unforced: a pin a student could not reach must fail loudly
 // rather than silently deliver the click to whatever symbol sits on top of it.
 async function wire(map, src, srcPort, dst, dstPort) {
-  await portOf(map[src], srcPort).click(); await page.waitForTimeout(90);
-  await portOf(map[dst], dstPort).click(); await page.waitForTimeout(120);
-  const landed = await page.evaluate(([f, fp, t, tp]) => window.__RB_PROJECT_RUNTIME__.getState().circuit.connections
-    .some((c) => c.from.nodeId === f && c.from.portName === fp && c.to.nodeId === t && c.to.portName === tp), [map[src], srcPort, map[dst], dstPort]);
+  await portOf(map[src], srcPort).click();
+  await page.getByTestId('ide-design-wire-cancel').waitFor(); // the source is armed
+  await portOf(map[dst], dstPort).click();
+  const landed = await page.waitForFunction(([f, fp, t, tp]) => window.__RB_PROJECT_RUNTIME__.getState().circuit.connections
+    .some((c) => c.from.nodeId === f && c.from.portName === fp && c.to.nodeId === t && c.to.portName === tp), [map[src], srcPort, map[dst], dstPort], { timeout: 4000 })
+    .then(() => true, () => false);
   if (!landed) {
     const status = await page.locator('[data-testid="logic-canvas-svg"]').getAttribute('data-wire-source-label').catch(() => null);
     throw new Error(`wire ${src}.${srcPort} -> ${dst}.${dstPort} did not land (armed source: ${status ?? 'none'})`);

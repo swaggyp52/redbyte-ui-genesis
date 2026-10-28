@@ -43,7 +43,15 @@ try {
       await page.locator(`[data-node-id="${id}"]`).first().click();
     };
     const wire = async (from, fromPort, to, toPort) => {
+      const canvasTop = async () => (await tid('ide-design-canvas').boundingBox()).y;
+      const cueSize = async () => { const box = await tid('ide-design-wire-cuebar').boundingBox(); return `${box.width.toFixed(1)}x${box.height.toFixed(1)}`; };
+      const top = await canvasTop();
+      const cue = await cueSize();
       await tid(`port-${from}-${fromPort}`).click();
+      await tid('ide-design-wire-cancel').waitFor();
+      assert.ok(Math.abs(await canvasTop() - top) <= 1, `Arming a wire must not move the canvas (${top} -> ${await canvasTop()})`);
+      // Esc cancels and Cancel share one cell: arming cannot change the row's width and rewrap it.
+      assert.equal(await cueSize(), cue, 'Arming a wire keeps the Wire cue one size');
       await tid(`port-${to}-${toPort}`).click();
     };
     const rename = async (id, label) => {
@@ -77,6 +85,14 @@ try {
       await tid('ide-design-tool-wire').click();
       const after = await port.boundingBox();
       const toolbarAfter = await tid('ide-design-toolbar').boundingBox();
+      // What to do next is said in full, in the announced status line. Beside the commands (rc.6) it
+      // had 13px of this window.
+      const guidance = await page.evaluate(() => {
+        const cue = document.querySelector('[data-testid="ide-design-wire-cue"]');
+        return cue && { text: cue.textContent.trim(), shown: cue.clientWidth, needs: cue.scrollWidth, announced: Boolean(cue.closest('[role="status"]')) };
+      });
+      assert.ok(guidance?.announced, `Wire guidance must be in the announced status line: ${JSON.stringify(guidance)}`);
+      assert.ok(guidance.shown >= guidance.needs, `Wire guidance must be readable in full at 1280x650: ${JSON.stringify(guidance)}`);
       await wire(a, 'out', gate, kind === 'register' ? 'D' : 'a');
       await wire(b, 'out', gate, kind === 'register' ? 'CLK' : 'b');
       await wire(gate, kind === 'register' ? 'Q' : 'out', output, 'in');
@@ -139,9 +155,16 @@ try {
         assert.equal(failed.status, 'fail');
         // Edit in Design opens the live design to change it (64bf7aa93); the recorded failure is
         // investigated in Simulate (causal-capture and recorded-investigation journeys).
+        const failedSignals = [...new Set(failed.report.rows.filter((row) => (row.expected === '0' || row.expected === '1') && row.actual !== row.expected).map((row) => row.signal))];
+        assert.ok(failedSignals.length > 0, 'the failed run names the failing output');
         await tid('ide-verify-fail-focus-trace').click();
         await tid('ide-design-toolbar').waitFor();
+        // The design itself, editable, with the failed output named as the place to start.
+        assert.equal(await tid('ide-root').getAttribute('data-ide-stage'), 'design');
         assert.equal(await tid('ide-design-current-design').count(), 0, 'Edit in Design edits the current design, not a recorded view');
+        assert.equal(await tid('ide-design-tool-wire').isEnabled(), true, 'the editing tools are live');
+        const focus = await tid('ide-design-verify-focus').innerText();
+        assert.ok(failedSignals.some((signal) => focus.includes(signal)), `Edit in Design points at the failed output (${failedSignals.join(', ')}): "${focus}"`);
         assert.equal(await page.locator('.ide-design-canvasWrap [data-testid="ide-design-debug-context-banner"]').count(), 0);
         await page.screenshot({ path: path.join(out, 'failure-edit-design-1280x650.png') });
         await tid('ide-design-test-design').click();

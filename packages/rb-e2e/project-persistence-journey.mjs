@@ -954,7 +954,7 @@ try {
   await page.getByTestId('ide-recorded-circuit').waitFor();
   for (const identity of [instanceEvidence.a, instanceEvidence.b]) {
     await (await revealDisclosed(page.getByLabel('Recorded circuit signal', { exact: true }))).selectOption(identity.display);
-    await page.waitForTimeout(150);
+    await page.waitForFunction((display) => (document.querySelector('[data-testid="ide-recorded-circuit-context"]')?.textContent ?? '').includes(display), identity.display);
     // The readout names the recording, sample and signal; the selected signal's wire carries its
     // recorded value (64bf7aa93; recorded-investigation reads it the same way).
     const readout = await page.getByTestId('ide-recorded-circuit-context').innerText();

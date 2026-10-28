@@ -134,9 +134,23 @@ async function runInStudio(page) {
   return (await runtime(page)).run;
 }
 
-/** The sheet shows recorded values once a recording is open. */
+/**
+ * The sheet shows the recording: at the moment the studio names (t<N> in the title block), every
+ * net's drawn value is the value recorded on its driver at that tick. A net id is its driver
+ * endpoint, the key the recording uses.
+ */
 async function sheetShowsRecording(page) {
-  return page.locator('[data-testid="meridian-sheet"] [data-net-id][data-value]').count();
+  return page.evaluate(() => {
+    const title = document.querySelector('[data-testid="meridian-title-block"]');
+    const tick = Number(/\bt(\d+)\b/.exec(title?.textContent ?? '')?.[1]);
+    const sample = window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.waveform?.find((entry) => entry.tick === tick);
+    const drawn = [...document.querySelectorAll('[data-testid="meridian-sheet"] [data-net-id][data-value]')]
+      .map((net) => ({ net: net.getAttribute('data-net-id'), shown: net.getAttribute('data-value') }));
+    const compared = drawn.filter(({ net }) => sample && net in sample.signals);
+    const wrong = compared.filter(({ net, shown }) => String(sample.signals[net]).toLowerCase() !== shown)
+      .map(({ net, shown }) => `${net} drawn ${shown}, recorded ${sample.signals[net]}`);
+    return { state: title?.getAttribute('data-value-state'), tick, drawn: drawn.length, compared: compared.length, wrong };
+  });
 }
 
 async function reloadKeepsRecording(page, runId) {
@@ -159,11 +173,14 @@ try {
     assert.equal(run.status, 'pass', `${kind}: the shipped reference passes in the studio (${run.failing.join(', ')})`);
     assert.ok(run.checks > 0, `${kind}: the recording grades authored checks`);
     assert.equal(run.engine, 'redbyte-browser-v3', `${kind}: recorded by engine v3`);
-    assert.ok(await sheetShowsRecording(page) > 0, `${kind}: the sheet shows the recorded values`);
+    const sheet = await sheetShowsRecording(page);
+    assert.equal(sheet.state, 'recorded', `${kind}: the sheet shows the recording`);
+    assert.ok(Number.isInteger(sheet.tick) && sheet.compared > 0, `${kind}: the sheet draws recorded values at t${sheet.tick} (${sheet.compared} of ${sheet.drawn} nets compared)`);
+    assert.deepEqual(sheet.wrong, [], `${kind}: every value on the sheet is the recorded one at t${sheet.tick}`);
     assert.match(await page.getByTestId('meridian-run-status').innerText(), /passed/i, `${kind}: the studio says the checks passed`);
     await reloadKeepsRecording(page, run.runId);
     results.push({ kind, example, runId: run.runId, checks: run.checks, nodes: (await runtime(page)).nodes });
-    console.log(`ok ${kind} (${example}, ${(await runtime(page)).nodes} parts): ${run.checks} checks pass; recording survives reload`);
+    console.log(`ok ${kind} (${example}, ${(await runtime(page)).nodes} parts): ${run.checks} checks pass; ${sheet.compared} sheet values match t${sheet.tick}; recording survives reload`);
   }
 
   // 2. A register imported as a project file: Q follows D only while EN is high (by hand above).
@@ -200,8 +217,13 @@ try {
     }, statusBefore, { timeout: 30000 });
     const state = await runtime(page);
     const status = await page.getByTestId('meridian-run-status').innerText();
-    assert.ok(!state.run || state.run.status !== 'pass', `incomplete: the starter must not pass (${status})`);
-    assert.doesNotMatch(status, /all .*checks passed|checks passed$/i, 'incomplete: the studio does not say the checks passed');
+    // By hand: the starter (labStarters.ts) has no connections and 8 vectors over SUM and Cout, so
+    // 16 checks, and an output nothing drives is never credited with a level - every check fails.
+    assert.ok(state.run, `incomplete: the Run records the starter (${status})`);
+    assert.equal(state.run.status, 'fail', `incomplete: the starter must not pass (${status})`);
+    assert.equal(state.run.checks, 16, 'incomplete: the 8 vectors grade SUM and Cout');
+    assert.equal(state.run.failing.length, 16, `incomplete: no undriven output is credited (${state.run.failing.join(', ')})`);
+    assert.match(status, /16 of 16 checks failed/i, 'incomplete: the studio says how many checks failed');
     results.push({ kind: 'incomplete', status: status.trim(), run: state.run?.status ?? null });
     console.log(`ok incomplete: "${status.trim()}"`);
   }
