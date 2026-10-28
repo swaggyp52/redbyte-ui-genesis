@@ -370,7 +370,9 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: Medium (two derivations of one document can drift)
 - Current evidence: `packages/rb-apps/src/apps/ide/ideExportProject.ts` rebuilds the workbench export project (top HDL, constraint text, IO mapping, schedule contract) from runtime state field by field, mirroring IdeApp's `hierarchyHdl` / `hdlText` / `xdcText` / `exportProject` / `liveScheduleContract` memos, so studio Runs carry the same schedule contract and the same blocking-design rule (`ideDesignBlocking.ts`). Three private helpers moved verbatim out of IdeApp into that module, and `buildCurrentVerifyReplayHash` with its helpers moved verbatim into `verifyReplayHash.ts`; IdeApp imports and re-exports them. Classic-versus-studio RunIdentity and output-digest parity is gate-checked on the counter only.
 - Next step (P4, with the lazy derivation graph): one shared derivation consumed by IdeApp and the studio; delete the mirror. Until then, add hierarchical and sequential-in-module parity fixtures to the slice gate.
-- Status: Open (deadline: P4)
+- Resolution (2026-10-28): `ideExportProject.ts` is the one derivation. IdeApp's `hdlText`, `hierarchyHdl`, `projectIoMapping` and hand-built `exportProject` memos are deleted; IdeApp memoizes `deriveIdeExportHdl` (generated VHDL) apart from `assembleIdeExportProject` (so editing stimulus does not regenerate HDL), and the studio calls `buildIdeExportProject` (the two in one call). Workbench-only `meta` (guided-lab id, student name, IdeApp's derived scenario authority) is passed in, so the export bytes are unchanged. `exportDerivation.parity.test.tsx` renders IdeApp and clicks Simulate's Run on eleven fixtures (combinational, full adder, enabled register, counter, reusable module, register inside a module, nested hierarchy, incomplete starter, unsupported MUX4, imported VHDL): the classic and studio Runs hand the Run owner the same schedule contract, replay hash, stimulus and clock policy and record the same RunIdentity, output digest and checks, or both refuse naming the part; a source scan fails if IdeApp derives the export itself. Mutation check: building the classic contract without the hierarchy is caught by the register-inside-a-module fixture.
+- Residual (tracked, not a mirror): `meta.scenarioAuthority` is IdeApp's derived authority in the workbench export and the stored runtime field elsewhere; Simulate labels event rows (`event-01`) that the studio leaves unlabelled (stimulus, identity and digest agree).
+- Status: Fixed on claude/redbyte-v1-reliability (2026-10-28).
 
 ### RB-DEBT-027 - The domain entry still reaches the `@redbyte/rb-utils` barrel (C)
 
@@ -385,3 +387,17 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Current evidence: `unconnectedInputPins` (rb-studio-kernel `resolver.ts`) marks every undriven input, and the studio inspector and sheet say "unconnected · read as 0". The behaviours do not all default to 0 (`rb-logic-core/src/builtins.ts`, `readFirstNumber` fallbacks): a DFlipFlop reads an unconnected EN as 1, and a Register1/RegisterBus/StateBank reads an unconnected EN as 1 unless its config sets `hasEnable`, in which case it reads 0. Data, clock and reset inputs default to 0. The shipped examples wire every EN they draw, so no shipped design shows the wrong line.
 - Next step (P2): derive the read-as value per pin from the behaviour's own fallback (a shared table exported next to `readFirstNumber`), say "unconnected · read as 1" where that is the fallback, and add a unit test per sequential type.
 - Status: Fixed on claude/redbyte-v1-reliability (207832975 + 973d9c8a4). The engine reads EN per configuration; the Signal Journey, Meridian inspector and status count use describeInputPin; engine v3; v2 recordings read "Engine changed" and are refused for Reproduce.
+
+### RB-DEBT-029 - Schematic pin targets are 16 px tall at 100% (C)
+
+- Severity: Low (pointer precision; keyboard wiring and the endpoint picker exist)
+- Current evidence: `SchematicNodeView` gives each pin a 24 x 16 world-unit hit rectangle that extends 6 units past the pin end, so two symbols placed pin-end to pin-end share hit area and the later-drawn pin wins (the nested-adder layout). The July gate `ide-design-port-target-authority` asked for 24 x 24 targets and dense-port clusters; it targets markup that no longer exists and is not in `verify:gates`.
+- Next step (P2): decide the pin target contract for the schematic (WCAG 2.5.8 spacing exception or 24 px targets), resolve overlapping targets to the pin whose stub holds the pointer, then rewrite or retire the July gate against it.
+- Status: Open
+
+### RB-DEBT-030 - Wire guidance needs its own row when the inspector is open at 1366 or 1440 (C)
+
+- Severity: Low (one 22 px move of the canvas when Wire is chosen; none while wiring)
+- Current evidence: the wire cue shares the command row (fixed 2026-10-28; `design-core-authoring` holds at 1280x650). With the inspector open the row is 766-840 px and cannot hold the tools, the Wire badge with Cancel, and Explore/Test, so the header takes its own row for the whole of Wire mode; the message is truncated at 1280. The `ide-design-port-target-authority` contract keeps guidance in the header and off the canvas.
+- Next step (P2): a compact Wire state in the tool segment itself (badge and Cancel there, message in the status line) so no width change can move the canvas.
+- Status: Open

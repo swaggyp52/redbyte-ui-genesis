@@ -35,6 +35,27 @@ Found while proving the journeys (not unit reds): Generators covered the Event t
 contract test); the run strip said "0 change in failing checks" (now "no change"); board legends
 were 1.8-4.3:1 (fixed with label tokens and a contrast test).
 
+## Candidate journeys that failed on rc.5 (2026-10-28, second pass)
+
+verify-candidate on rc.5 passed 16 of 21. Each failure was reproduced against the running package
+and against the sealed baseline, then closed with its assertions kept:
+
+| Journey | Class | What it was | Closed by |
+| --- | --- | --- | --- |
+| `nested-adder` | journey layout | Column 1 was placed where INPUT A's output pin end and XOR x1's input pin end meet at one point, so their hit targets overlapped and the click aimed at A out armed x1 a; every later wire shifted by one (7/12). Identical at 2fc2a015e | Column 1 moved clear; a guard fails the journey if any two pins of different symbols share hit area (red on the old layout), and every wire must land as the connection it names |
+| `design-core-authoring` | **real defect** + stale contract | Entering Wire put the wire cue on a row of its own (`64bf7aa93`), pushing the canvas down 44 px; the camera re-centred, so the pin moved 22 px. Earlier the wrap depended on the message length, so arming and completing a wire moved the target pins. Edit in Design now opens the live design | The cue shares the command row and its message claims no width (`contain: inline-size`); the journey's "must not move the port" contract holds at 1280x650. Edit-in-Design step follows the shipped behaviour |
+| `full-adder-operational` | stale contract | "got" became "observed"; Edit in Design keeps the student's selection and names the failing output as the Verify focus; Connectivity is a closed inspector section; the recording pickers moved into closed disclosures (role queries cannot see them); the recorded value moved from the readout to the selected wire | Each step performs the student's action on the shipped UI; every assertion (mismatch names signal/expected/observed, driver row selects the SUM gate, retained recording immutable, recorded value of the failed sample) is kept |
+| `project-persistence` | stale contract | Save As asks for the copy's name (Milestone 4); the recorded value moved to the selected wire | Confirms Save As; reads the wire value |
+| `project-experience` | stale contract | The Top entity editor moved into the closed Project details disclosure | Opens it, then requires it to be reachable by a pointer |
+| `ide-design-port-target-authority` (gate, not in `verify:gates`) | stale contract (July UI) | Targets `ide-design-workspace-header`, `data-port-cluster` and `ide-design-tool-hud`, none of which exist since the schematic redesign; fails identically on rc.5 | Not run by any gate list or CI; its live intent (wire guidance owned by the header, never over the canvas) is kept by the wire-cue fix. Retire or rewrite with the schematic pin contract (RB-DEBT-029) |
+
+Found by the responsive/theme sweep (new `responsive-theme-sweep` journey: 4 viewports x light and
+dark x 16/24 px text x 5 stages): library headings that wrap drew their second line over the next
+heading at 1440x900 (fixed rows became min-height); Show left/right panel floated over the
+workspace and covered Simulate's event Delete at 720x450 with 150% text (moved into the status
+line). The sweep is red on rc.5 for the palette and green on the fixed build; its contrast check
+was proven by injecting low-contrast text.
+
 ## Qualification boundary
 
 The release gate is the full suite with no exclusions. Out of scope for V1, and enforced by
