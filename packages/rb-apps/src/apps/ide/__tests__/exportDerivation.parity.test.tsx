@@ -317,6 +317,7 @@ describe('one export derivation for the workbench and the studio (RB-DEBT-026)',
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('IdeApp builds its export project only from the shared derivation', () => {

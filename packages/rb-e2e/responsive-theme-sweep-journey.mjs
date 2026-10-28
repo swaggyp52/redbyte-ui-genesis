@@ -3,9 +3,10 @@
 // the page scrolling sideways, text drawn over other text, a status-line control drawn over another
 // or cut off at the edge, or text below WCAG 1.4.3 contrast (4.5:1, 3:1 for large text). A short
 // window at double text size checks the status line, where Show left / right panel live.
-// Not inspected: text inside svg and canvas drawings (the schematic, board views, waveforms and
-// figures; the Design, Board and Simulate journeys own those), and the painted-order test cannot
-// see elements with pointer-events: none.
+// Not inspected: text inside svg and canvas drawings anywhere (board views, figures), everything
+// inside the Design canvas (its banners and toasts included), the recorded-circuit inspector and
+// the Simulate waveform region (the Design, Simulate and recorded-investigation journeys own
+// those), and text marked aria-hidden. The painted-order test cannot see pointer-events: none.
 import fs from 'node:fs';
 import path from 'node:path';
 import { BASE_URL, evidenceDir, launchChromium } from './harness.mjs';
@@ -106,12 +107,15 @@ function inspect(stage) {
   // The status line: no control drawn over another, none outside the bar.
   const statusLine = [];
   const bar = document.querySelector('[data-testid="ide-status-bar"]');
+  if (!bar) statusLine.push('no status line');
   if (bar) {
     const edge = bar.getBoundingClientRect();
+    if (edge.top < 0 || edge.bottom > innerHeight + 0.5) statusLine.push(`the status line is outside the window (${Math.round(edge.top)}-${Math.round(edge.bottom)} of ${innerHeight})`);
     const controls = [...bar.querySelectorAll('button')].filter((button) => visible(button)).map((button) => ({
       label: (button.getAttribute('aria-label') || button.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30),
       r: button.getBoundingClientRect(),
     }));
+    if (controls.length === 0) statusLine.push('the status line shows no controls');
     for (const { label, r } of controls) {
       if (r.left < edge.left - 0.5 || r.right > edge.right + 0.5 || r.top < edge.top - 0.5 || r.bottom > edge.bottom + 0.5) statusLine.push(`"${label}" outside the status line`);
     }

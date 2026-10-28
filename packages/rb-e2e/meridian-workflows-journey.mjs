@@ -149,8 +149,28 @@ async function sheetShowsRecording(page) {
     const compared = drawn.filter(({ net }) => sample && net in sample.signals);
     const wrong = compared.filter(({ net, shown }) => String(sample.signals[net]).toLowerCase() !== shown)
       .map(({ net, shown }) => `${net} drawn ${shown}, recorded ${sample.signals[net]}`);
-    return { state: title?.getAttribute('data-value-state'), tick, drawn: drawn.length, compared: compared.length, wrong };
+    // A wire leaving a module instance has no key of its own in the recording (the recording keys
+    // the cell inside it); the caller checks those against values worked out by hand.
+    const uncompared = drawn.filter(({ net }) => !(sample && net in sample.signals));
+    return { state: title?.getAttribute('data-value-state'), tick, drawn: drawn.length, compared: compared.length, wrong, uncompared, signals: sample?.signals ?? {} };
   });
+}
+
+/**
+ * By hand, the hierarchical 4-bit adder's instance outputs at a sample: cell i adds A_i, B_i and
+ * the carry in (cell 0's is ground); SUM_i and COUT_i are the wires leaving u-fa<i>.
+ */
+function rippleAdderInstanceWires(signals) {
+  const expected = {};
+  let carry = 0;
+  for (let i = 0; i < 4; i += 1) {
+    const a = Number(signals[`a${i}.out`]);
+    const b = Number(signals[`b${i}.out`]);
+    expected[`u-fa${i}.SUM`] = String(a ^ b ^ carry);
+    carry = (a & b) | (carry & (a ^ b));
+    expected[`u-fa${i}.COUT`] = String(carry);
+  }
+  return expected;
 }
 
 async function reloadKeepsRecording(page, runId) {
@@ -177,10 +197,30 @@ try {
     assert.equal(sheet.state, 'recorded', `${kind}: the sheet shows the recording`);
     assert.ok(Number.isInteger(sheet.tick) && sheet.compared > 0, `${kind}: the sheet draws recorded values at t${sheet.tick} (${sheet.compared} of ${sheet.drawn} nets compared)`);
     assert.deepEqual(sheet.wrong, [], `${kind}: every value on the sheet is the recorded one at t${sheet.tick}`);
+    const instanceWiresByHand = (at) => (example === 'four-bit-adder-hierarchical' ? rippleAdderInstanceWires(at.signals) : {});
+    const checkInstanceWires = (at) => {
+      const byHand = Object.entries(instanceWiresByHand(at)).map(([net, value]) => `${net}=${value}`).sort();
+      assert.deepEqual(at.uncompared.map(({ net, shown }) => `${net}=${shown}`).sort(), byHand, `${kind}: at t${at.tick} every value the recording cannot key is drawn as worked out by hand`);
+      assert.equal(at.compared + at.uncompared.length, at.drawn);
+    };
+    checkInstanceWires(sheet);
+    if (example === 'four-bit-adder-hierarchical') {
+      // Every recorded case, so the carries are seen rippling, not only the all-zero first sample.
+      let carries = 0;
+      for (const tick of [...new Set(run.rows.map((row) => row.tick))]) {
+        await page.getByTestId(`meridian-tick-${tick}`).click();
+        await page.waitForFunction((t) => new RegExp(String.raw`\bt${t}\b`).test(document.querySelector('[data-testid="meridian-title-block"]')?.textContent ?? ''), tick);
+        const at = await sheetShowsRecording(page);
+        assert.deepEqual(at.wrong, [], `${kind}: every recorded value on the sheet at t${tick}`);
+        checkInstanceWires(at);
+        carries += Object.entries(instanceWiresByHand(at)).filter(([net, value]) => net.endsWith('.COUT') && value === '1').length;
+      }
+      assert.ok(carries > 0, `${kind}: the cases ripple a carry through the instances`);
+    }
     assert.match(await page.getByTestId('meridian-run-status').innerText(), /passed/i, `${kind}: the studio says the checks passed`);
     await reloadKeepsRecording(page, run.runId);
     results.push({ kind, example, runId: run.runId, checks: run.checks, nodes: (await runtime(page)).nodes });
-    console.log(`ok ${kind} (${example}, ${(await runtime(page)).nodes} parts): ${run.checks} checks pass; ${sheet.compared} sheet values match t${sheet.tick}; recording survives reload`);
+    console.log(`ok ${kind} (${example}, ${(await runtime(page)).nodes} parts): ${run.checks} checks pass; ${sheet.compared} recorded and ${sheet.uncompared.length} instance-wire values of ${sheet.drawn} match t${sheet.tick}; recording survives reload`);
   }
 
   // 2. A register imported as a project file: Q follows D only while EN is high (by hand above).

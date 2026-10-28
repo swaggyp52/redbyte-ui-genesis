@@ -46,12 +46,13 @@ try {
       const canvasTop = async () => (await tid('ide-design-canvas').boundingBox()).y;
       const cueSize = async () => { const box = await tid('ide-design-wire-cuebar').boundingBox(); return `${box.width.toFixed(1)}x${box.height.toFixed(1)}`; };
       const top = await canvasTop();
-      const cue = await cueSize();
+      // A finished wire returns to Select; clicking the next source port starts Wire again.
+      const cue = await tid('ide-design-wire-cuebar').count() ? await cueSize() : null;
       await tid(`port-${from}-${fromPort}`).click();
       await tid('ide-design-wire-cancel').waitFor();
       assert.ok(Math.abs(await canvasTop() - top) <= 1, `Arming a wire must not move the canvas (${top} -> ${await canvasTop()})`);
       // Esc cancels and Cancel share one cell: arming cannot change the row's width and rewrap it.
-      assert.equal(await cueSize(), cue, 'Arming a wire keeps the Wire cue one size');
+      if (cue) assert.equal(await cueSize(), cue, 'Arming a wire keeps the Wire cue one size');
       await tid(`port-${to}-${toPort}`).click();
     };
     const rename = async (id, label) => {
@@ -87,12 +88,31 @@ try {
       const toolbarAfter = await tid('ide-design-toolbar').boundingBox();
       // What to do next is said in full, in the announced status line. Beside the commands (rc.6) it
       // had 13px of this window.
-      const guidance = await page.evaluate(() => {
+      const readCue = () => page.evaluate(() => {
         const cue = document.querySelector('[data-testid="ide-design-wire-cue"]');
-        return cue && { text: cue.textContent.trim(), shown: cue.clientWidth, needs: cue.scrollWidth, announced: Boolean(cue.closest('[role="status"]')) };
+        return cue && { text: cue.textContent.trim(), width: cue.clientWidth, needsWidth: cue.scrollWidth, height: cue.clientHeight, needsHeight: cue.scrollHeight, announced: Boolean(cue.closest('[role="status"]')) };
       });
+      // Sizes are whole pixels of fractional boxes: one pixel of rounding is not a clipped line.
+      const readable = (cue) => cue && cue.text.length > 0 && cue.width > 0 && cue.needsWidth <= cue.width + 1 && cue.needsHeight <= cue.height + 1;
+      const barHeight = async () => (await tid('ide-status-bar').boundingBox()).height;
+      const guidance = await readCue();
+      const idleBar = await barHeight();
       assert.ok(guidance?.announced, `Wire guidance must be in the announced status line: ${JSON.stringify(guidance)}`);
-      assert.ok(guidance.shown >= guidance.needs, `Wire guidance must be readable in full at 1280x650: ${JSON.stringify(guidance)}`);
+      assert.ok(readable(guidance), `Wire guidance must be readable in full at 1280x650: ${JSON.stringify(guidance)}`);
+      // The longest message the Wire tool has: an output clicked as the target of an output.
+      await tid(`port-${a}-out`).click();
+      await tid('ide-design-wire-cancel').waitFor();
+      await tid(`port-${b}-out`).click();
+      await tid('ide-design-wire-feedback').waitFor();
+      const refusal = await readCue();
+      assert.match(refusal.text, /Outputs cannot be wired directly/);
+      assert.ok(readable(refusal), `A refusal must be readable in full at 1280x650: ${JSON.stringify(refusal)}`);
+      // Two lines fit the status line's own height: a long message never moves the workspace.
+      assert.ok(Math.abs(await barHeight() - idleBar) < 0.5, `The status line keeps its height for a refusal (${idleBar} -> ${await barHeight()})`);
+      await tid('ide-design-wire-cancel').click(); // ends the wire and Wire mode
+      await page.waitForFunction(() => !document.querySelector('[data-testid="ide-design-wire-cuebar"]'));
+      await tid('ide-design-tool-wire').click();
+      await tid('ide-design-wire-cuebar').waitFor();
       await wire(a, 'out', gate, kind === 'register' ? 'D' : 'a');
       await wire(b, 'out', gate, kind === 'register' ? 'CLK' : 'b');
       await wire(gate, kind === 'register' ? 'Q' : 'out', output, 'in');
