@@ -159,7 +159,8 @@ Reads recognise -> resume -> understand -> inspect:
    (`ide-project-continue`) that follows where the reader last worked. Overview never nominates
    itself and imposes no stage march.
 2. `rb-project-stage` - the circuit at full width, centred, capped at 52vh with a legibility floor,
-   with the Top entity editable in the canvas footer beside `Open in Design` and `Architecture`;
+   with `Open in Design` and `Architecture` in the canvas footer (the Top entity is edited in
+   `ide-project-details` since the 2026-10-20 candidate seal);
    and beside it three status lines (`ide-project-fact-simulation`, `-mapping`, `-package`), each
    linking to the workspace that owns it, plus the single problem most worth attention with a route
    to the place that fixes it.

@@ -69,6 +69,12 @@ async function renameNode(map, name, label) {
 async function wire(map, src, srcPort, dst, dstPort) {
   await portOf(map[src], srcPort).click(); await page.waitForTimeout(90);
   await portOf(map[dst], dstPort).click(); await page.waitForTimeout(120);
+  const landed = await page.evaluate(([f, fp, t, tp]) => window.__RB_PROJECT_RUNTIME__.getState().circuit.connections
+    .some((c) => c.from.nodeId === f && c.from.portName === fp && c.to.nodeId === t && c.to.portName === tp), [map[src], srcPort, map[dst], dstPort]);
+  if (!landed) {
+    const status = await page.locator('[data-testid="logic-canvas-svg"]').getAttribute('data-wire-source-label').catch(() => null);
+    throw new Error(`wire ${src}.${srcPort} -> ${dst}.${dstPort} did not land (armed source: ${status ?? 'none'})`);
+  }
 }
 
 // ── Setup ───────────────────────────────────────────────────────────────────
@@ -87,8 +93,8 @@ const fa = {};
 await place('A', 'ide-design-palette-input', 'INPUT', 70, 70, fa);
 await place('B', 'ide-design-palette-input', 'INPUT', 70, 200, fa);
 await place('CIN', 'ide-design-palette-input', 'INPUT', 70, 330, fa);
-await place('x1', 'ide-design-palette-xor', 'XOR', 265, 105, fa);
-await place('a1', 'ide-design-palette-and', 'AND', 265, 300, fa);
+await place('x1', 'ide-design-palette-xor', 'XOR', 300, 105, fa);
+await place('a1', 'ide-design-palette-and', 'AND', 300, 300, fa);
 await place('x2', 'ide-design-palette-xor', 'XOR', 450, 70, fa);
 await place('a2', 'ide-design-palette-and', 'AND', 450, 250, fa);
 await place('o1', 'ide-design-palette-or', 'OR', 450, 430, fa);
@@ -109,6 +115,20 @@ if ((await fitWholeCircuit.count()) > 0 && (await fitWholeCircuit.first().isVisi
   await fitWholeCircuit.first().click();
   await page.waitForTimeout(500);
 }
+// No two pins of different symbols may share hit area: a student pointing at one would get the other.
+const pinHitOverlaps = await page.evaluate(() => {
+  const pins = [...document.querySelectorAll('[data-testid^="port-"].rb-sym-pin-hit')].map((el) => ({
+    id: el.getAttribute('data-testid'), node: el.closest('[data-node-id]')?.getAttribute('data-node-id'), r: el.getBoundingClientRect(),
+  }));
+  const out = [];
+  for (let i = 0; i < pins.length; i += 1) for (let j = i + 1; j < pins.length; j += 1) {
+    const a = pins[i], b = pins[j];
+    if (a.node === b.node) continue;
+    if (a.r.left < b.r.right && b.r.left < a.r.right && a.r.top < b.r.bottom && b.r.top < a.r.bottom) out.push(`${a.id}~${b.id}`);
+  }
+  return out;
+});
+if (pinHitOverlaps.length) throw new Error(`STAGE A layout puts pins on top of each other: ${pinHitOverlaps.join(', ')}`);
 await page.getByTestId('ide-design-tool-wire').click(); await page.waitForTimeout(150);
 await wire(fa, 'A', 'out', 'x1', 'a');
 await wire(fa, 'B', 'out', 'x1', 'b');

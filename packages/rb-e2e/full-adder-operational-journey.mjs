@@ -37,6 +37,13 @@ const JSZip = createRequire(new URL('../rb-apps/package.json', import.meta.url))
 
 const tid = (t) => `[data-testid="${t}"]`;
 
+// Since 64bf7aa93 the recording pickers sit in closed disclosures (Recordings & details;
+// Recorded signals & connections). Open the one that holds a control, as a student would.
+async function revealDisclosed(control) {
+  const details = control.page().locator('details', { has: control }).last();
+  if ((await details.count()) > 0 && !(await details.evaluate((node) => node.open))) await details.locator('summary').first().click();
+  return control;
+}
 async function revealDesignInspector(page) {
   const reveal = page.locator(tid('ide-show-right-dock'));
   if (await reveal.isVisible()) await reveal.click();
@@ -185,6 +192,24 @@ async function setExpectedCell(page, tick, signalId, want, assert) {
 async function summaryKind(page) {
   return page.locator(tid('ide-run-check-result')).getAttribute('data-check-status');
 }
+// Simulate's evidence state is the recording strip: data-currency (current | differs) and what changed.
+async function evidence(page) {
+  return page.evaluate(() => {
+    const strip = document.querySelector('[data-testid="ide-run-identity"]');
+    if (!strip) return '';
+    const currency = strip.getAttribute('data-currency');
+    const changes = document.querySelector('[data-testid="ide-run-input-changes"]')?.textContent?.trim() ?? '';
+    return currency === 'current' ? 'RECORDED · CURRENT' : `RECORDED · STALE (${currency}) ${changes}`.trim();
+  });
+}
+async function evidenceIs(page, pattern, timeout = 8000) {
+  await page.waitForFunction((source) => {
+    const strip = document.querySelector('[data-testid="ide-run-identity"]');
+    if (!strip) return false;
+    const label = strip.getAttribute('data-currency') === 'current' ? 'RECORDED · CURRENT' : 'RECORDED · STALE';
+    return new RegExp(source, 'i').test(label);
+  }, pattern.source, { timeout }).catch(() => {});
+}
 async function text(page, t) {
   return (await page.locator(tid(t)).textContent().catch(() => '')) ?? '';
 }
@@ -264,12 +289,8 @@ async function run(width, height) {
   assert(authoredWrong === wrongSum,
     `authoring must reach the canonical document (was ${beforeAuthoring}, cell set to ${wrongSum}, document holds ${authoredWrong})`);
   // Semantic wait: the edit invalidates the run, and every surface must say so.
-  await page.waitForFunction(
-    () => /STALE/i.test(document.querySelector('[data-testid="ide-verify-evidence-state"]')?.textContent ?? ''),
-    undefined,
-    { timeout: 8000 }
-  ).catch(() => {});
-  assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')),
+  await evidenceIs(page, /STALE/);
+  assert(/STALE/i.test(await evidence(page)),
     'editing an expectation must invalidate the current evidence');
   assert(await page.getByTestId('ide-status-run').count() === 0,
     'Historical run state belongs in Simulate, not the global status bar');
@@ -323,7 +344,8 @@ async function run(width, height) {
   const failedRecording = await page.evaluate(() => { const run = window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun; return JSON.stringify({ report: run.report, waveform: run.waveform, circuit: run.circuitSnapshot }); });
   assert((await summaryKind(page)) === 'fail', `broken circuit should FAIL (got ${await summaryKind(page)})`);
   const failNav = await text(page, 'ide-verify-fail-nav-summary');
-  assert(/LD1|SUM/i.test(failNav) && /expected/i.test(failNav) && /got/i.test(failNav),
+  // The focus reads "LD1 (SUM) Case 4 expected 0 observed 1" ("got" before the 2026-10-20 seal).
+  assert(/LD1|SUM/i.test(failNav) && /expected/i.test(failNav) && /observed|got/i.test(failNav),
     `first mismatch names signal + expected + observed (got "${failNav}")`);
   // The failure focus owns "Trace in Design": it sits beside the mismatch it traces, in the run
   // line, which every representation of the experiment renders. `ide-sim-inspector-trace-design`
@@ -339,11 +361,18 @@ async function run(width, height) {
   console.log(`[${label}] E. Trace in Design opened the Design surface`);
 
   // ── F. REPAIR + RERUN -> PASS ───────────────────────────────────────────────
-  // Trace in Design arrives with the failing SIGNAL selected (LD1, the object the
-  // check named); the inspector's Connectivity section names its driver, and one
-  // click on that row selects the driving gate — the student follows the causality
-  // upstream and repairs it via the compatible-gate swap. No store mutation.
+  // Edit in Design opens the live design (64bf7aa93) with the failing check as its Verify focus
+  // ("Inspect LD1 (SUM) first") and the student's own selection kept. The student selects LD1 on
+  // the canvas as the focus asks; the inspector's Connectivity section names its driver, and one
+  // click on that row selects the driving gate — the student follows the causality upstream and
+  // repairs it via the compatible-gate swap. No store mutation.
   await page.waitForSelector(tid('node-OR-xor2_node'), { timeout: 8000 });
+  await page.waitForFunction(
+    () => /LD1/.test(document.querySelector('[data-testid="ide-design-verify-focus"]')?.textContent ?? ''),
+    undefined,
+    { timeout: 8000 }
+  );
+  await page.click(tid('node-OUTPUT-ld1_node'));
   await page.waitForFunction(
     () => document.querySelector('[data-testid="node-OUTPUT-ld1_node"]')?.getAttribute('data-node-selected') === '1',
     undefined,
@@ -351,6 +380,9 @@ async function run(width, height) {
   );
   const driverRow = page.locator(tid('ide-design-driver-row-in'));
   await revealDesignInspector(page);
+  // Connectivity is a closed inspector section until the student opens it.
+  const connectivity = page.locator(tid('ide-design-inspector-connectivity-toggle'));
+  if ((await connectivity.getAttribute('aria-expanded')) !== 'true') await connectivity.click();
   await driverRow.waitFor({ state: 'visible', timeout: 6000 });
   assert(/XOR2|SUM/i.test(await driverRow.textContent()), 'Connectivity names the failing output\'s driver (XOR2 / SUM)');
   await driverRow.click();
@@ -359,7 +391,7 @@ async function run(width, height) {
     undefined,
     { timeout: 6000 }
   );
-  console.log(`[${label}] F. Trace arrived on LD1; its driver row selected the SUM gate`);
+  console.log(`[${label}] F. Design named LD1 as the Verify focus; selecting it, its driver row selected the SUM gate`);
   await page.waitForSelector(tid('ide-design-swap-xor'), { state: 'visible', timeout: 6000 });
   await page.click(tid('ide-design-swap-xor')); // repair: OR -> XOR
   await page.waitForSelector(tid('node-XOR-xor2_node'), { timeout: 6000 });
@@ -371,8 +403,9 @@ async function run(width, height) {
 
   // Inspect the retained failed recording through the real run picker after repair.
   // Its old OR topology and actual failed sample must survive the new passing run unchanged.
-  const recordingPicker = page.getByRole('combobox', { name: 'Recorded run', exact: true });
-  await recordingPicker.selectOption(brokenCircuitRun.runId);
+  // By label, not role: a closed disclosure hides the picker from the accessibility tree.
+  const recordingPicker = page.getByLabel('Recorded run', { exact: true });
+  await (await revealDisclosed(recordingPicker)).selectOption(brokenCircuitRun.runId);
   await page.waitForFunction((id) => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId === id, brokenCircuitRun.runId);
   const retainedRecording = await page.evaluate(() => { const run = window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun; return JSON.stringify({ report: run.report, waveform: run.waveform, circuit: run.circuitSnapshot }); });
   assert(retainedRecording === failedRecording, 'failed recording report, samples and topology are immutable after repair');
@@ -382,6 +415,8 @@ async function run(width, height) {
   assert(failedTickIndex >= 0, 'the failed case has a recorded waveform sample');
   // A historical run cannot apply repairs to the current design. Its recorded scrubber
   // remains available to inspect any sample, including the original failure.
+  // The scrubber belongs to the waveform view; the student is still on the case table.
+  await page.click(tid('ide-verify-view-waveform'));
   const scrubber = page.locator(tid('ide-verify-tick-scrubber'));
   await scrubber.focus();
   await scrubber.press('Home');
@@ -394,11 +429,14 @@ async function run(width, height) {
   // Follow the known failed output's real schematic port. Its recorded alias may
   // differ from the report's stored field id, so the circuit owns that resolution.
   await recordedCircuit.locator(tid('port-ld1_node-in')).click();
-  const recordedSignal = await recordedCircuit.getByRole('combobox', { name: 'Recorded circuit signal', exact: true }).inputValue();
+  const recordedSignal = await recordedCircuit.getByLabel('Recorded circuit signal', { exact: true }).inputValue();
   assert(/ld1|sum/i.test(recordedSignal), `the recorded output port selects the SUM signal (${recordedSignal})`);
+  // The readout names the sample and signal; the selected signal's wire carries its recorded value
+  // (64bf7aa93; recorded-investigation reads it the same way).
   const recordedContext = await recordedCircuit.locator(tid('ide-recorded-circuit-context')).textContent();
-  assert(recordedContext.includes(`t${failedCase.tick}`) && recordedContext.includes(`${recordedSignal} = ${failedCase.actual}`),
-    `retained investigation shows the recorded failed signal/sample (${recordedContext})`);
+  const recordedWireValue = await recordedCircuit.locator('[data-recorded-wire-value]:has([data-wire-selected="1"])').first().getAttribute('data-recorded-wire-value');
+  assert(recordedContext.includes(`t${failedCase.tick}`) && recordedContext.includes(recordedSignal) && recordedWireValue === String(failedCase.actual),
+    `retained investigation shows the recorded failed signal/sample (${recordedContext}; wire ${recordedWireValue}, recorded ${failedCase.actual})`);
   assert(await page.locator(tid('ide-verify-region-inspector')).count() === 0,
     'connected circuit investigation has one interpretation owner, without the legacy lower inspector');
   assert(await page.locator(tid('ide-verify-drawer-toggle')).count() === 0,
@@ -419,7 +457,7 @@ async function run(width, height) {
   await page.screenshot({ path: path.join(EVIDENCE_DIR, `full-adder-run-inspector-expanded-${label}.png`) });
   await runInspectorToggle.click();
   await page.waitForSelector(tid('ide-verify-region-inspector'), { state: 'hidden' });
-  await recordingPicker.selectOption(repairedCircuitRun.runId);
+  await (await revealDisclosed(recordingPicker)).selectOption(repairedCircuitRun.runId);
   await page.waitForFunction((id) => window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId === id, repairedCircuitRun.runId);
   assert((await summaryKind(page)) === 'pass', 'restoring the repaired recording restores current passing evidence');
   console.log(`[${label}] F2. Retained FAILED run — selected through UI, old OR snapshot and exact failure retained; repaired PASS restored`);
@@ -440,9 +478,10 @@ async function run(width, height) {
   assert(!/E19/.test(await text(page, 'ide-hw-xdc-line-ld1')), 'cleared signal has no package pin in its constraint line');
   // The recorded run depends on the mapping: it must read STALE now.
   await page.click(tid('mode-button-verify'));
-  await page.waitForSelector(tid('ide-verify-evidence-state'), { timeout: 8000 });
-  assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')), 'clearing a pin makes the recorded run STALE');
-  assert(/mapping/i.test(await text(page, 'ide-verify-evidence-state-reason')), 'the stale reason names the mapping');
+  await page.waitForSelector(tid('ide-run-identity'), { timeout: 8000 });
+  await evidenceIs(page, /STALE/);
+  assert(/STALE/i.test(await evidence(page)), 'clearing a pin makes the recorded run STALE');
+  assert(/mapping|pin|board/i.test(await evidence(page)), `the stale reason names the mapping (${await evidence(page)})`);
   await page.click(tid('mode-button-hardware'));
   await page.waitForSelector(tid('ide-hw-map-row-ld1'), { timeout: 8000 });
   await page.click(tid('ide-hw-map-row-ld1'));
@@ -458,19 +497,15 @@ async function run(width, height) {
   // Restoring the pin does not re-bless the recorded run: evidence becomes current by running,
   // not by undoing an edit — and every surface must say so with one voice.
   await page.click(tid('mode-button-verify'));
-  await page.waitForSelector(tid('ide-verify-evidence-state'), { timeout: 8000 });
-  assert(/STALE/i.test(await text(page, 'ide-verify-evidence-state')), 'restoring the pin does not silently re-bless the run');
-  const statusAfterRestore = await text(page, 'ide-verify-evidence-state');
+  await page.waitForSelector(tid('ide-run-identity'), { timeout: 8000 });
+  assert(/STALE/i.test(await evidence(page)), 'restoring the pin does not silently re-bless the run');
+  const statusAfterRestore = await evidence(page);
   assert(/stale/i.test(statusAfterRestore), `the status bar agrees the simulation is stale (got "${statusAfterRestore.trim()}")`);
   await runAndSettle(page, 'restored-mapping Compare', assert);
   assert((await summaryKind(page)) === 'pass', 'Compare passes again on the restored mapping');
-  await page.waitForFunction(
-    () => /RECORDED/i.test(document.querySelector('[data-testid="ide-verify-evidence-state"]')?.textContent ?? ''),
-    undefined,
-    { timeout: 8000 }
-  );
-  assert(/CURRENT/i.test(await text(page, 'ide-verify-evidence-state')), 'the new run is CURRENT');
-  assert(!/stale/i.test(await text(page, 'ide-verify-evidence-state')), 'Simulate identifies the current recording');
+  await evidenceIs(page, /CURRENT/);
+  assert(/CURRENT/i.test(await evidence(page)), 'the new run is CURRENT');
+  assert(!/stale/i.test(await evidence(page)), 'Simulate identifies the current recording');
   console.log(`[${label}] G. Board — clear LD1 -> STALE (mapping) -> Use LD1 -> still stale -> re-run -> CURRENT; XDC follows`);
 
   // ── H. PACKAGE — trusted build, real download, ZIP inspected ───────────────
@@ -588,8 +623,8 @@ async function run(width, height) {
   // Isolate the reload: read the evidence in Simulate BEFORE reloading, so a stale chip can be
   // attributed to the package build rather than to persistence.
   await page.click(tid('mode-button-verify'));
-  await page.waitForSelector(tid('ide-verify-evidence-state'), { timeout: 8000 });
-  const chipAfterPackage = (await text(page, 'ide-verify-evidence-state')).trim();
+  await page.waitForSelector(tid('ide-run-identity'), { timeout: 8000 });
+  const chipAfterPackage = await evidence(page);
   assert(/RECORDED/i.test(chipAfterPackage) && /CURRENT/i.test(chipAfterPackage),
     `building and downloading a package must not invalidate simulation evidence (chip reads "${chipAfterPackage}")`);
   await page.click(tid('mode-button-export'));
@@ -608,7 +643,7 @@ async function run(width, height) {
       activeScenarioId: state.activeScenarioId ?? null,
       ioRows: (state.projectIoRows ?? []).map((row) => `${row.id}:${row.pin ?? ''}`).join(','),
       scenarioVectorIds: ((state.scenarios ?? []).find((s) => s.id === state.activeScenarioId)?.vectors ?? []).map((v) => v.id ?? '(none)').join(','),
-      chip: document.querySelector('[data-testid="ide-verify-evidence-state"]')?.textContent ?? null,
+      chip: document.querySelector('[data-testid="ide-run-identity"]')?.getAttribute('data-currency') ?? null,
     };
   });
 
@@ -665,8 +700,8 @@ async function run(width, height) {
   assert(/download|build|rebuild/i.test(primaryAfterReload[0]),
     `the primary action after reload must lead to the package (got ${primaryAfterReload[0]})`);
   await page.click(tid('mode-button-verify'));
-  await page.waitForSelector(tid('ide-verify-evidence-state'), { timeout: 10000 });
-  const evidenceAfterReload = (await text(page, 'ide-verify-evidence-state')).trim();
+  await page.waitForSelector(tid('ide-run-identity'), { timeout: 10000 });
+  const evidenceAfterReload = await evidence(page);
   const authorityAfterReload = await page.evaluate(() => {
     const state = window.__RB_PROJECT_RUNTIME__.getState();
     return {

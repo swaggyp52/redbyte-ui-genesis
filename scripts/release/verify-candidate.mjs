@@ -12,7 +12,8 @@ if (health.sourceDigest !== state.sourceDigest) throw Error('Running candidate d
 const names = ['determinism', 'scenario-partnership', 'causal-capture', 'recorded-investigation', 'complex-import',
   'full-adder-operational', 'vcd-analyzer', 'nested-adder', 'studio-coherence', 'project-experience', 'studio-scale',
   'board-check-composition', 'studio-accessibility', 'project-persistence', 'large-experiment',
-  'recording-comparison', 'design-core-authoring', 'constraint-sets', 'session-portability', 'session-recovery', 'storage-transaction'];
+  'recording-comparison', 'design-core-authoring', 'constraint-sets', 'session-portability', 'session-recovery', 'storage-transaction',
+  'responsive-theme-sweep', 'meridian-workflows'];
 const only = process.argv.slice(2);
 const selected = only.length ? names.filter(name => only.includes(name)) : names;
 if (!selected.length) throw Error('No matching journeys');

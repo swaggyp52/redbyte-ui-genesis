@@ -137,15 +137,13 @@ try {
         await expectation.click(); // Blank → expected 1; AND at 00 actually records 0.
         const failed = await run();
         assert.equal(failed.status, 'fail');
+        // Edit in Design opens the live design to change it (64bf7aa93); the recorded failure is
+        // investigated in Simulate (causal-capture and recorded-investigation journeys).
         await tid('ide-verify-fail-focus-trace').click();
-        await tid('ide-design-current-design').waitFor();
-        assert.equal(await tid('ide-design-replay-controls').getAttribute('open'), null);
-        assert.equal(await tid('ide-design-failure-details').getAttribute('open'), null);
+        await tid('ide-design-toolbar').waitFor();
+        assert.equal(await tid('ide-design-current-design').count(), 0, 'Edit in Design edits the current design, not a recorded view');
         assert.equal(await page.locator('.ide-design-canvasWrap [data-testid="ide-design-debug-context-banner"]').count(), 0);
-        await page.screenshot({ path: path.join(out, 'failure-investigation-1280x650.png') });
-        await tid('ide-design-failure-details').locator('summary').click();
-        await tid('ide-design-debug-context-focus-driver').click();
-        await tid('ide-design-failure-details').locator('summary').click();
+        await page.screenshot({ path: path.join(out, 'failure-edit-design-1280x650.png') });
         await tid('ide-design-test-design').click();
         await tid('ide-verify-view-table').click();
         await expectation.click(); // 1 → 0 repairs the deliberately incorrect check.

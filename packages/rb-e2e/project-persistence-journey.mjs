@@ -15,6 +15,13 @@ import { BASE_URL, launchChromium, evidenceDir } from './harness.mjs';
 const OUT = evidenceDir('persistence', process.env.RB_SHOT_LABEL ?? 'current');
 const VIEWPORT = { width: 1440, height: 900 };
 const tid = (id) => `[data-testid="${id}"]`;
+// Since 64bf7aa93 the recording pickers sit in closed disclosures (Recordings & details;
+// Recorded signals & connections). Open the one that holds a control, as a student would.
+async function revealDisclosed(control) {
+  const details = control.page().locator('details', { has: control }).last();
+  if ((await details.count()) > 0 && !(await details.evaluate((node) => node.open))) await details.locator('summary').first().click();
+  return control;
+}
 
 const browser = await launchChromium();
 const context = await browser.newContext({ viewport: VIEWPORT });
@@ -333,6 +340,8 @@ try {
 
   // ── P2. Save As — a new identity that owns its own evidence ────────────────
   await runCommand('project.save-as');
+  await page.getByTestId('ide-save-as-confirm').click();
+  await page.waitForFunction((id) => window.__RB_PROJECT_RUNTIME__.getState().projectId !== id, runA.projectId);
   const afterSaveAs = await state();
   assert(afterSaveAs.projectId !== runA.projectId,
     `Save As did not change identity (still ${afterSaveAs.projectId})`);
@@ -944,10 +953,14 @@ try {
   await page.getByRole('button', { name: 'Inspect with circuit', exact: true }).first().click();
   await page.getByTestId('ide-recorded-circuit').waitFor();
   for (const identity of [instanceEvidence.a, instanceEvidence.b]) {
-    await page.getByLabel('Recorded circuit signal', { exact: true }).selectOption(identity.display);
+    await (await revealDisclosed(page.getByLabel('Recorded circuit signal', { exact: true }))).selectOption(identity.display);
     await page.waitForTimeout(150);
+    // The readout names the recording, sample and signal; the selected signal's wire carries its
+    // recorded value (64bf7aa93; recorded-investigation reads it the same way).
     const readout = await page.getByTestId('ide-recorded-circuit-context').innerText();
-    assert(readout.includes(`${identity.display} = ${identity.value}`), `wrong instance value: ${readout}`);
+    assert(readout.includes(`t${instanceEvidence.tick}`) && readout.includes(identity.display), `wrong instance selected: ${readout}`);
+    const wireValue = await page.locator('[data-testid="ide-recorded-circuit"] [data-recorded-wire-value]:has([data-wire-selected="1"])').first().getAttribute('data-recorded-wire-value');
+    assert(wireValue === String(identity.value), `wrong instance value: the ${identity.display} wire carries ${wireValue}, recorded ${identity.value}`);
     const shownNodes = await page.getByTestId('ide-recorded-circuit-svg').locator('[data-node-id]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-node-id')));
     const other = identity.key === instanceEvidence.a.key ? instanceEvidence.b : instanceEvidence.a;

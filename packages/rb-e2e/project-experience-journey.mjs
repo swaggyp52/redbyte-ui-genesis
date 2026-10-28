@@ -154,7 +154,18 @@ async function run(width, height) {
     `Overview does not state its own state: ${JSON.stringify(composition.facts)}`);
   assert(composition.openDetails.length === 0,
     `Overview opens with disclosures already expanded: ${JSON.stringify(composition.openDetails)}`);
-  assert(composition.topReachable, 'the Top editor is in the document but not reachable by a pointer');
+  // The Top entity lives in Project details (64bf7aa93): open it as a student would, then reach it.
+  await page.getByTestId('ide-project-details').locator('summary').first().click();
+  const topReachable = await page.getByTestId('ide-project-fpga-top').evaluate((top) => {
+    const box = top.getBoundingClientRect();
+    if (!(box.width > 0 && box.height > 0)) return false;
+    top.scrollIntoView({ block: 'nearest' });
+    const at = top.getBoundingClientRect();
+    const hit = document.elementFromPoint(at.left + at.width / 2, at.top + at.height / 2);
+    return Boolean(hit && (hit === top || top.contains(hit) || hit.contains(top)));
+  });
+  assert(topReachable, 'the Top editor is not reachable by a pointer once Project details is open');
+  await page.getByTestId('ide-project-details').locator('summary').first().click();
   assert(composition.overflowX === 0, `Overview scrolls sideways by ${composition.overflowX}px`);
   console.log(`${at} ④ Overview: ${composition.canvasWidth}×${composition.canvasHeight} circuit, ` +
     `1 continuation "${composition.continuation}", ${composition.facts.join(' · ')}, ` +
