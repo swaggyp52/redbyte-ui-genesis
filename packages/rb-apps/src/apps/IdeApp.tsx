@@ -9,7 +9,6 @@ import { analyzeSequentialLogic, type Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import {
   installFatalCapture,
-  materializeIoMappingFromHardwareMappingV2,
   pushMount,
   type TestVector,
 } from '@redbyte/rb-utils';
@@ -128,8 +127,12 @@ import {
   sameLocation,
   type EngineeringLocation,
 } from './ide/engineeringLocation';
-import { generateHierarchicalVhdlProject } from './ide/hierarchicalVhdl';
-import { buildConstraintText, deriveIdeLiveScheduleContract, normalizeProjectCircuit } from './ide/ideExportProject';
+import {
+  assembleIdeExportProject,
+  buildConstraintText,
+  deriveIdeExportHdl,
+  deriveIdeLiveScheduleContract,
+} from './ide/ideExportProject';
 import {
   FULL_ADDER_LAB_ID,
   FULL_ADDER_SCRATCH_LAB,
@@ -183,10 +186,7 @@ import {
   getActiveScenario,
   type VerifyScenario,
 } from './ide/verifyScenario';
-import { netlistFromCircuit } from '../export/netlistExport';
-import { vhdlFromNetlist } from '../export/vhdlExport';
 import type { HdlSource } from '../fpga/toolchainBackend';
-import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
 import type { HardwareMappingV2EditOperation } from './ide/hardwareMappingV2EditorModel';
 
 const loadDesignSurface = () =>
@@ -1332,25 +1332,6 @@ const IdeWorkspace: React.FC = () => {
         })),
     [projectIoRows]
   );
-  const hdlText = useMemo(() => {
-    try {
-      const netlist = netlistFromCircuit(simulationCircuit);
-      const ioMappingForExport = {
-        inputs: projectIoRows
-          .filter((r) => r.direction === 'in')
-          .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
-        outputs: projectIoRows
-          .filter((r) => r.direction === 'out')
-          .map((r) => ({ id: r.id, nodeId: r.nodeId, port: r.port, label: r.label, pin: r.pin })),
-      };
-      const hasMappedPins =
-        ioMappingForExport.inputs.length > 0 || ioMappingForExport.outputs.length > 0;
-      const bindings = hasMappedPins ? buildVhdlTopLevelBindings(ioMappingForExport) : {};
-      return vhdlFromNetlist(netlist, { entityName: effectiveTopEntityName, ...bindings }).vhd;
-    } catch {
-      return '';
-    }
-  }, [effectiveTopEntityName, projectIoRows, simulationCircuit]);
   const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
   // ── Live source ↔ visual cross-probe (a derived read-model, not an authority) ──
   const crossProbeModules = useMemo<CrossProbeDesignModule[]>(() => {
@@ -1419,102 +1400,58 @@ const IdeWorkspace: React.FC = () => {
     if (crossProbeConstraint?.id === 'active.xdc') labels['active.xdc'] = 'active.xdc (live pins)';
     return labels;
   }, [sourceModel, crossProbeConstraint]);
-  const projectIoMapping = useMemo(
-    () => materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
-    [hardwareMappingV2],
+  // The export project is the one derivation the Meridian studio also uses (RB-DEBT-026). Its
+  // generated HDL is memoized apart, so editing stimulus or checks does not regenerate VHDL.
+  const exportHdl = useMemo(
+    () => deriveIdeExportHdl({ projectName, activeTop, circuit, hierarchy, projectIoRows, hardwareMappingV2 }),
+    [activeTop, circuit, hardwareMappingV2, hierarchy, projectIoRows, projectName],
   );
-  const hierarchyHdl = useMemo(
-    () => generateHierarchicalVhdlProject({
-      kind: 'rb-project',
-      version: 1,
-      createdAt: '2026-02-19T00:00:00.000Z',
-      updatedAt: '2026-02-19T00:00:00.000Z',
-      name: projectName,
-      circuit: normalizeProjectCircuit(circuit),
-      hierarchy,
-      ioMapping: projectIoMapping,
-      hdl: { top: effectiveTopEntityName, sources: [] },
-      fpga: { board: fpgaConfig.board, part: fpgaConfig.part, top: effectiveTopEntityName },
-    }),
-    [circuit, effectiveTopEntityName, fpgaConfig.board, fpgaConfig.part, hierarchy, projectIoMapping, projectName],
-  );
-
   const exportProject = useMemo<RBProject>(
-    () => ({
-      kind: 'rb-project',
-      version: 1,
-      createdAt: '2026-02-19T00:00:00.000Z',
-      updatedAt: '2026-02-19T00:00:00.000Z',
-      name: projectName,
-      description: projectDescription,
-      circuit: normalizeProjectCircuit(circuit),
-      hdl: {
-        top: effectiveTopEntityName,
-        sources: [
-          {
-            path: 'top.vhd',
-            language: 'vhdl',
-            text: hierarchyHdl?.topVhd ?? hdlText,
-          },
-          ...(hierarchyHdl?.moduleSources.map((source) => ({
-            path: source.path,
-            language: 'vhdl' as const,
-            text: source.text,
-          })) ?? []),
-        ],
-      },
-      fpga: {
-        board: fpgaConfig.board,
-        part: fpgaConfig.part,
-        top: effectiveTopEntityName,
-        constraints: {
-          type: 'xdc',
-          text: xdcText,
+    () =>
+      assembleIdeExportProject(
+        {
+          projectId,
+          projectName,
+          projectDescription,
+          projectKind,
+          sourceExampleId,
+          scenarioAuthority,
+          activeTop,
+          circuit,
+          hierarchy,
+          projectIoRows,
+          hardwareMappingV2,
+          sourceModel,
+          constraintSets: constraintSetsDoc,
+          scenarios,
+          activeScenarioId,
+          customComponents,
+          macros,
         },
-      },
-      ioMapping: projectIoMapping,
-      hardwareMappingV2,
-      sourceModel,
-      constraintSets: constraintSetsDoc,
-      vectors: authoritativeProjectVectors,
-      hierarchy,
-      customComponents: customComponents.length > 0 ? customComponents : undefined,
-      macros: macros.length > 0 ? macros : undefined,
-      meta: {
-        appSurface: 'ide-export',
-        projectId,
-        projectKind,
-        sourceExampleId,
-        scenarioAuthority,
-        ...(activeGuidedLabTask ? { labId: activeGuidedLabTask.id } : {}),
-        ...(studentName.trim() ? { studentName: studentName.trim() } : {}),
-      },
-    }),
+        exportHdl,
+        { scenarioAuthority, labId: activeGuidedLabTask?.id, studentName },
+      ),
     [
-      activeGuidedLabTask,
+      activeGuidedLabTask?.id,
+      activeScenarioId,
+      activeTop,
       circuit,
+      constraintSetsDoc,
       customComponents,
+      exportHdl,
+      hardwareMappingV2,
       hierarchy,
-      hierarchyHdl,
-      hdlText,
       macros,
       projectDescription,
       projectId,
       projectIoRows,
-      projectIoMapping,
-      hardwareMappingV2,
-      sourceModel,
-      constraintSetsDoc,
       projectKind,
       projectName,
-      authoritativeProjectVectors,
       scenarioAuthority,
+      scenarios,
       sourceExampleId,
+      sourceModel,
       studentName,
-      effectiveTopEntityName,
-      fpgaConfig.board,
-      fpgaConfig.part,
-      xdcText,
     ]
   );
   const determinismHash = useMemo(

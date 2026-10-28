@@ -29,8 +29,9 @@ import { computeExecutionStimulusHash, computeScenarioContentHash, getActiveScen
  * turns checks off while a Design issue blocks checked runs; the Run still records.
  * The Run owner (projectRuntime.startVerification) resolves, normalizes and executes.
  *
- * Parity with Simulate is asserted in the browser (`ide-meridian-counter-slice`): both Runs
- * of the same project must carry the same RunIdentity and output digest.
+ * Parity with Simulate is asserted in the browser (`ide-meridian-counter-slice`) and on eleven
+ * fixtures in `exportDerivation.parity.test.tsx`: both Runs of the same project must carry the
+ * same schedule contract and record the same RunIdentity and output digest.
  */
 export type StudioRunState = IdeExportState & Pick<ProjectRuntimeState, 'customVectors' | 'verifyLastRun'>;
 

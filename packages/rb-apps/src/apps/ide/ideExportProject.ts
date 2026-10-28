@@ -14,13 +14,12 @@ import { getActiveScenario } from './verifyScenario';
 
 /**
  * The project the workbench exports and checks before a Run, as a pure function of runtime
- * state. IdeApp derives the same document from the same state across several memos
- * (`hierarchyHdl`, `hdlText`, `xdcText`, `exportProject`, `liveScheduleContract`); this module
- * lets a surface outside IdeApp - the Meridian studio - ask the workbench's own question: which
- * live schedule contract a Run must carry. (Whether a Design issue forbids checked runs is
- * ideDesignBlocking.ts.) Mirrors those memos field by field; one shared derivation replaces
- * both in P4 (RB-DEBT-026). Workbench-only UI state (the guided-lab id and the student name)
- * appears only in `meta` and is omitted.
+ * state: the one derivation IdeApp and the Meridian studio share (RB-DEBT-026). IdeApp memoizes
+ * its two parts separately - `deriveIdeExportHdl` (generated VHDL, which only Design edits and
+ * the top name change) and `assembleIdeExportProject` (everything else) - so editing stimulus
+ * does not regenerate HDL; `buildIdeExportProject` is the two in one call for every other
+ * caller. Which live schedule contract a Run must carry is `deriveIdeLiveScheduleContract`;
+ * whether a Design issue forbids checked runs is ideDesignBlocking.ts.
  */
 export type IdeExportState = Pick<
   ProjectRuntimeState,
@@ -45,7 +44,29 @@ export type IdeExportState = Pick<
 
 const DEFAULT_FPGA_PART = 'xc7a35tcpg236-1';
 
-export function buildIdeExportProject(state: IdeExportState): RBProject {
+export type IdeExportHdlState = Pick<
+  IdeExportState,
+  'projectName' | 'activeTop' | 'circuit' | 'hierarchy' | 'projectIoRows' | 'hardwareMappingV2'
+>;
+
+/** The export's top entity and VHDL sources (top.vhd first, then one file per module). */
+export interface IdeExportHdl {
+  readonly top: string;
+  readonly sources: NonNullable<RBProject['hdl']>['sources'];
+}
+
+/**
+ * Workbench presentation that only the workbench knows and that appears only in `meta`: the
+ * guided-lab id, the student's name, and the scenario authority IdeApp derives from the open
+ * project's verification (without it, `meta.scenarioAuthority` is the stored runtime field).
+ */
+export interface IdeExportWorkbenchMeta {
+  readonly scenarioAuthority?: IdeExportState['scenarioAuthority'];
+  readonly labId?: string;
+  readonly studentName?: string;
+}
+
+export function deriveIdeExportHdl(state: IdeExportHdlState): IdeExportHdl {
   const effectiveTopEntityName = normalizeTopEntityName(state.activeTop, buildTopEntityName(state.projectName));
   const projectIoMapping = materializeIoMappingFromHardwareMappingV2(state.hardwareMappingV2);
   const simulationCircuit = elaborateProjectHierarchy(state.circuit, state.hierarchy);
@@ -78,7 +99,22 @@ export function buildIdeExportProject(state: IdeExportState): RBProject {
   } catch {
     hdlText = '';
   }
+  return {
+    top: effectiveTopEntityName,
+    sources: [
+      { path: 'top.vhd', language: 'vhdl', text: hierarchyHdl?.topVhd ?? hdlText },
+      ...(hierarchyHdl?.moduleSources.map((source) => ({ path: source.path, language: 'vhdl' as const, text: source.text })) ?? []),
+    ],
+  };
+}
+
+export function assembleIdeExportProject(
+  state: IdeExportState,
+  hdl: IdeExportHdl,
+  workbench: IdeExportWorkbenchMeta = {},
+): RBProject {
   const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+  const studentName = workbench.studentName?.trim() ?? '';
   return {
     kind: 'rb-project',
     version: 1,
@@ -87,20 +123,14 @@ export function buildIdeExportProject(state: IdeExportState): RBProject {
     name: state.projectName,
     description: state.projectDescription,
     circuit: normalizeProjectCircuit(state.circuit),
-    hdl: {
-      top: effectiveTopEntityName,
-      sources: [
-        { path: 'top.vhd', language: 'vhdl', text: hierarchyHdl?.topVhd ?? hdlText },
-        ...(hierarchyHdl?.moduleSources.map((source) => ({ path: source.path, language: 'vhdl' as const, text: source.text })) ?? []),
-      ],
-    },
+    hdl: { top: hdl.top, sources: [...hdl.sources] },
     fpga: {
       board: 'basys3',
       part: DEFAULT_FPGA_PART,
-      top: effectiveTopEntityName,
+      top: hdl.top,
       constraints: { type: 'xdc', text: buildConstraintText([...state.projectIoRows]) },
     },
-    ioMapping: projectIoMapping,
+    ioMapping: materializeIoMappingFromHardwareMappingV2(state.hardwareMappingV2),
     hardwareMappingV2: state.hardwareMappingV2,
     sourceModel: state.sourceModel,
     constraintSets: state.constraintSets,
@@ -113,9 +143,15 @@ export function buildIdeExportProject(state: IdeExportState): RBProject {
       projectId: state.projectId,
       projectKind: state.projectKind,
       sourceExampleId: state.sourceExampleId,
-      scenarioAuthority: state.scenarioAuthority,
+      scenarioAuthority: workbench.scenarioAuthority ?? state.scenarioAuthority,
+      ...(workbench.labId ? { labId: workbench.labId } : {}),
+      ...(studentName ? { studentName } : {}),
     },
   } as RBProject;
+}
+
+export function buildIdeExportProject(state: IdeExportState, workbench: IdeExportWorkbenchMeta = {}): RBProject {
+  return assembleIdeExportProject(state, deriveIdeExportHdl(state), workbench);
 }
 
 /**
@@ -135,7 +171,7 @@ export interface IdeBlockingDesignIssue {
   readonly hint?: string;
 }
 
-// ── Moved verbatim from IdeApp.tsx (it imports them from here) ──
+// ── Helpers IdeApp also imports ──
 
 export function normalizeProjectCircuit(circuit: RBProject['circuit']): RBProject['circuit'] {
   return {
