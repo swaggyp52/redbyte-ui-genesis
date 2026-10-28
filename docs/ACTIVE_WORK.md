@@ -8,6 +8,30 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## V1 release candidate rc.6 - one derivation, candidate journeys green - 2026-10-28
+
+`claude/redbyte-v1-reliability` at `febe25b82` is packaged as 1.0.0-rc.6 (release report:
+`docs/validation/v1-release-candidate-rc6-2026-10-28.md`). Local only: not pushed, merged or
+deployed; it awaits owner acceptance.
+
+**What changed since rc.5**
+- **Design**: the wire cue shares the command row, so choosing Wire and wiring no longer move the
+  canvas under the pointer; wrapped library headings no longer overlap; Show left/right panel live in
+  the status line instead of over the workspace.
+- **RB-DEBT-026 fixed**: IdeApp and Meridian share `ideExportProject.ts`; an eleven-fixture parity test
+  drives the real Simulate Run (mutation-checked).
+- **Imported HDL V1 decision** (manual 12.2): reconstructed circuits only; other sources stay ports
+  only and refused, with the source preserved. Mode B feasibility is proven with GHDL and deferred.
+- **Journeys**: the five rc.5 failures closed with assertions kept; new `meridian-workflows` and
+  `responsive-theme-sweep` join verify-candidate. RB-DEBT-029/030 opened.
+
+**Evidence (rc.6 package, bundled runtime)**: verify-candidate 23/23, counter-proof gate and 14
+journeys 15/15, Meridian counter slice 134/134; vitest all green, typecheck +0, verify:gates 0,
+build 0. E0 only: no Vivado (E1), programming or board (E2/E3) claim.
+
+**Next**: owner review of rc.6; on acceptance, the owner decides merge and deployment. Then
+RB-DEBT-029/030 and the Mode B handoff with Vivado evidence.
+
 ## V1 integration closure - one reliability branch, every baseline red dispositioned - 2026-10-28
 
 `claude/redbyte-v1-reliability` now carries P0 (HDL port authority, GHDL-proven), P1-020
