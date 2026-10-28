@@ -1165,12 +1165,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setWireFeedbackText(message);
     if (message) setWireFeedbackCount((count) => count + 1);
   }, []);
+  // A message cut to two lines in the status line offers its whole text on request (More).
+  const wireMessageRef = useRef<HTMLSpanElement | null>(null);
+  const [wireMessageClamped, setWireMessageClamped] = useState(false);
+  const [wireMessageExpanded, setWireMessageExpanded] = useState(false);
   // The workbench's status line, where the Wire tool says what to do next. A surface rendered on
   // its own keeps the message in its cue.
   const [statusHintSlot, setStatusHintSlot] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
     setStatusHintSlot(window.document.getElementById(STATUS_HINT_SLOT_ID));
   }, []);
+  // The command row never changes with the tool: a cue in it took a row of its own wherever the
+  // commands left no room (the inspector open at 1366 or 1440), so every armed or finished wire
+  // moved the canvas 44px between a student's two clicks. The status line is always there.
+  const inStatusHint = (cue: React.ReactElement) => (statusHintSlot ? createPortal(cue, statusHintSlot) : cue);
   const [focusedIssueSignalKey, setFocusedIssueSignalKey] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
@@ -3823,6 +3831,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     endWire();
     setWireFeedback(null);
   }, [endWire]);
+  // Each new message starts folded; one cut to two lines offers More.
+  useLayoutEffect(() => {
+    setWireMessageExpanded(false);
+  }, [wireFeedback, wireFeedbackCount, wireStartPort, toolMode]);
+  useLayoutEffect(() => {
+    const message = wireMessageRef.current;
+    setWireMessageClamped(Boolean(message && !wireMessageExpanded && message.scrollHeight > message.clientHeight + 1));
+  });
   const handleWireModePointerDownCapture = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (toolMode !== 'wire' || isPlacementMode || event.button !== 0) return;
@@ -8006,29 +8022,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </>
                 ) : null}
               </nav>
-              {toolMode === 'wire' && !isPlacementMode ? (
+              {toolMode === 'wire' && !isPlacementMode ? inStatusHint(
                 <div className="rb-design-wirecue" data-testid="ide-design-wire-cuebar" data-wire-active={wireStartPort ? '1' : '0'}>
                   <span className="rb-design-wirecue-badge">Wire</span>
-                  {(() => {
-                    const message = (
-                      <span
-                        className={`rb-design-wirecue-msg${wireFeedback ? ' is-error' : ''}`}
-                        data-testid="ide-design-wire-cue"
-                        data-wire-source-label={wireSourceLabel ?? ''}
-                        data-wire-active={wireStartPort ? '1' : '0'}
-                        title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
-                      >
-                        {wireFeedback ? (
-                          <span key={wireFeedbackCount} data-testid="ide-design-wire-feedback">{wireFeedback}</span>
-                        ) : wireStartPort ? (
-                          <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
-                        ) : (
-                          <span>Choose an output port to start a wire</span>
-                        )}
-                      </span>
-                    );
-                    return statusHintSlot ? createPortal(message, statusHintSlot) : message;
-                  })()}
+                  <span
+                    ref={wireMessageRef}
+                    className={`rb-design-wirecue-msg${wireFeedback ? ' is-error' : ''}${wireMessageExpanded ? ' is-expanded' : ''}`}
+                    data-testid="ide-design-wire-cue"
+                    data-wire-source-label={wireSourceLabel ?? ''}
+                    data-wire-active={wireStartPort ? '1' : '0'}
+                    title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
+                  >
+                    {wireFeedback ? (
+                      <span key={wireFeedbackCount} data-testid="ide-design-wire-feedback">{wireFeedback}</span>
+                    ) : wireStartPort ? (
+                      <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
+                    ) : (
+                      <span>Choose an output port to start a wire</span>
+                    )}
+                  </span>
+                  {wireMessageClamped || wireMessageExpanded ? (
+                    <button
+                      type="button"
+                      className="wb-btn wb-btn--ghost rb-design-wirecue-more"
+                      aria-expanded={wireMessageExpanded}
+                      onClick={() => setWireMessageExpanded((open) => !open)}
+                      data-testid="ide-design-wire-more"
+                    >
+                      {wireMessageExpanded ? 'Less' : 'More'}
+                    </button>
+                  ) : null}
                   <span className="rb-design-wirecue-end">
                     <span className="rb-design-wirecue-sizer wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
                     <span className="rb-design-wirecue-sizer wb-btn wb-btn--ghost" aria-hidden="true">Cancel</span>
@@ -8042,8 +8065,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </span>
                 </div>
               ) : null}
-              {isPlacementMode && placementModeLabel ? (
-                <span className="wb-toolbar-meta" data-testid="ide-design-placement-hint">
+              {isPlacementMode && placementModeLabel ? inStatusHint(
+                <span className="wb-toolbar-meta rb-design-placement-hint" data-testid="ide-design-placement-hint">
                   Placing <code>{placementModeLabel}</code> · click the canvas · Esc cancels
                 </span>
               ) : null}

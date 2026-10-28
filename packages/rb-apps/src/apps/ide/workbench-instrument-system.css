@@ -661,11 +661,18 @@
 /* Where the controls do not fit on one line (a narrow window, enlarged text) the line wraps:
    a control is never drawn over another or cut off at the edge. */
 .ide-root .wb-status-spacer { flex: 1 1 0; min-width: 0; }
-/* A long refusal takes a second line in the same height (two lines of the 14px status text at 1.05,
-   with a pixel below for descenders, fill 30.4px of the 31px inside the line's 2rem and its border),
-   so it is read in full where one line would end in an ellipsis. */
+/* The active tool's cue: Wire (its badge, what to do next, Cancel) or placement. A long message
+   takes a second line in the same height (two lines of the 14px status text at 1.05, with a pixel
+   below for descenders, fill 30.4px of the 31px inside the line's 2rem and its border); one cut
+   even so offers More, which the student opens on purpose. */
 .ide-root .wb-status-hint-slot { display: flex; align-items: center; overflow: hidden; }
-.ide-root .wb-status-hint-slot > * { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; padding-bottom: 0.0625rem; overflow: hidden; line-height: 1.05; white-space: normal; }
+.ide-root .wb-status-hint-slot > .rb-design-wirecue { display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; white-space: nowrap; }
+.ide-root .wb-status-hint-slot .rb-design-wirecue-msg { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; flex: 0 1 auto; min-width: 0; padding-bottom: 0.0625rem; overflow: hidden; line-height: 1.05; white-space: normal; }
+.ide-root .wb-status-hint-slot .rb-design-wirecue-msg.is-expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+/* Opened, the cue takes a line of the status line to itself, so the message reads across the window. */
+.ide-root .wb-status-hint-slot:has(.rb-design-wirecue-msg.is-expanded) { flex-basis: 100%; order: 99; }
+.ide-root .wb-status-hint-slot .rb-design-wirecue .wb-btn { height: 1.625rem; min-height: 0; padding: 0 8px; }
+.ide-root .wb-status-hint-slot > .rb-design-placement-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Collapsed, the bottom panel's handle sits in the status line and the panel takes no room:
    one line at the bottom of the window instead of a status line under an empty strip. */
 .ide-root .wb-status-console-slot { display: inline-flex; align-items: center; flex: none; }

@@ -283,9 +283,12 @@ describe('DesignSurface authoring issues', () => {
     fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]')!);
     await waitFor(() => expect(view.getByTestId('ide-design-wire-feedback')).not.toBe(first));
     expect(view.getByTestId('ide-design-wire-feedback').textContent).toBe(first.textContent);
+    // The whole cue (badge, message, Cancel) is in the status line; the command row holds none of it,
+    // so arming or finishing a wire can never change the row above the canvas.
     const cue = view.getByTestId('ide-design-wire-cuebar');
-    expect(cue.contains(view.getByTestId('ide-design-wire-cue'))).toBe(false);
+    expect(hint.contains(cue)).toBe(true);
     expect(cue.contains(view.getByTestId('ide-design-wire-cancel'))).toBe(true);
+    expect(view.getByTestId('ide-design-control-bar').querySelector('[data-testid^="ide-design-wire"]')).toBeNull();
 
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => {

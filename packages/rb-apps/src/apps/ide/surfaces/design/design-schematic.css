@@ -4,7 +4,11 @@
    mismatch states, and the plane the schematic sits on. Tokens only; no
    !important; strokes are non-scaling so lines stay crisp at every zoom. */
 
-:root[data-redbyte-mode='ide'] {
+/* The sheet's own appearance governs its ink: a light canvas keeps dark ink in the dark workbench
+   (its part names were near-white on the light sheet) and a dark canvas keeps light ink in the
+   light one. 'system' follows the workbench. */
+:root[data-redbyte-mode='ide'],
+.ide-root [data-canvas-appearance='light'] {
   --rb-schematic-bg: #f4f6f9;
   --rb-schematic-grid-minor: #e4e9f0;
   --rb-schematic-grid-major: #d2dae4;
@@ -22,7 +26,8 @@
   --rb-schematic-issue: var(--rb-state-warning);
 }
 :root[data-redbyte-mode='ide'][data-rb-theme='dark'],
-:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] {
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'],
+.ide-root [data-canvas-appearance='dark'] {
   --rb-schematic-bg: #10161f;
   --rb-schematic-grid-minor: #1a222d;
   --rb-schematic-grid-major: #232e3c;

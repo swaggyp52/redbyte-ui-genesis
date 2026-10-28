@@ -31,12 +31,12 @@
 .ide-root .rb-design-health-slot .rb-design-health-counts { flex: none; }
 @container (max-width: 11rem) { .ide-root .rb-design-health-slot .rb-design-health-label { display: none; } }
 @container (max-width: 4.5rem) { .ide-root .rb-design-health-slot > .rb-design-health { display: none; } }
-/* Entering Wire keeps the same row: the cue here is only its badge and Cancel, and what to do next
-   is said in the status line. On a row of its own (2026-10-20) the cue pushed the canvas down 44px
-   and the pin a student was about to click moved 22px under the pointer; sharing the row with its
-   message (rc.6) left the message 13px of a 1280px window. Where even the badge and Cancel do not
-   fit beside the commands (the inspector open at 1366 or 1440), the header takes its own row for
-   the whole of Wire mode, never per message or per click. */
+/* The command row never holds a tool's cue: Wire and placement say what to do next in the status
+   line (DesignSurface inStatusHint). On a row of its own (2026-10-20) the cue pushed the canvas down
+   44px; sharing the row with its message (rc.6) left the message 13px of a 1280px window; and with
+   the badge and Cancel still in the row (rc.7) the row wrapped wherever the inspector was open at
+   1366 or 1440, so each armed and each finished wire moved the canvas 44px between two clicks.
+   The rules below serve only a surface rendered without the workbench's status line. */
 .ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > :not(.rb-design-toolbar):not(.rb-design-header) { order: 3; flex: 1 0 100%; }
 /* At the top level the trail is the project's own name, which the application bar already
    shows. It appears once there is a module to come back from. */
