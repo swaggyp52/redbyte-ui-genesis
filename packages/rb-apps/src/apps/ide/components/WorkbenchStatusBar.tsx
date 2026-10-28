@@ -3,6 +3,8 @@ import React from 'react';
 /** Where a workspace shell places its collapsed bottom-panel handle. */
 export const STATUS_CONSOLE_SLOT_ID = 'rb-status-console-slot';
 export const STATUS_PANEL_SLOT_ID = 'rb-status-panel-slot';
+/** Where the active tool says what to do next, or why a click was refused. */
+export const STATUS_HINT_SLOT_ID = 'rb-status-hint-slot';
 
 export interface WorkbenchStatusBarProps {
   problemsCount: number;
@@ -51,7 +53,9 @@ export const WorkbenchStatusBar: React.FC<WorkbenchStatusBarProps> = ({
       {/* While the Problems panel is collapsed its handle lives here, so the bottom of the
           window is one line rather than a status line under a second, empty strip. */}
       <span className="wb-status-console-slot" id={STATUS_CONSOLE_SLOT_ID} data-testid="ide-status-console-slot" />
-      <span className="wb-status-spacer" />
+      {/* The active tool's guidance (the Wire tool's next step, or why a click was refused) is
+          said here and announced: the line is always present, so the canvas never moves for it. */}
+      <span className="wb-status-spacer wb-status-hint-slot" id={STATUS_HINT_SLOT_ID} data-testid="ide-status-hint-slot" role="status" />
       {/* Show left / right panel live here, never over the workspace they would cover. */}
       <span className="wb-status-panel-slot" id={STATUS_PANEL_SLOT_ID} data-testid="ide-status-panel-slot" />
       {runState ? (

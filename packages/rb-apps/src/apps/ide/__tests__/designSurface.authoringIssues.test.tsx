@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
+import { WorkbenchStatusBar } from '../components/WorkbenchStatusBar';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
@@ -240,5 +241,50 @@ describe('DesignSurface authoring issues', () => {
       expect(view.queryByTestId('ide-design-wire-feedback')).toBeNull();
     });
     expect(useLogicViewStore.getState().editingState.wireStartPort).toBeUndefined();
+  });
+
+  it('says what the Wire tool needs, and why a click was refused, in the announced status line', async () => {
+    // Beside the commands the message had 13px of a 1280px window. The status line is always
+    // present, so saying it there moves nothing, and its status role announces each change.
+    const withSecondInput = structuredClone(ISSUE_CIRCUIT);
+    withSecondInput.nodes.push({ id: 'sw1_node', type: 'INPUT', label: 'SW1', position: { x: 120, y: 260 } });
+    useCircuitStore.setState({ circuit: withSecondInput, isDirty: false, past: [], future: [] });
+    const view = render(
+      <>
+        <DesignSurface
+          runtimeSim={makeRuntimeSim()}
+          ioRows={[]}
+          onRuntimeSimStep={vi.fn()}
+          onRuntimeSimReset={vi.fn()}
+          onRuntimeSimToggleProbe={vi.fn()}
+          onRuntimeSimSetSelectedSignal={vi.fn()}
+          onGoToProject={vi.fn()}
+          onGoToVerify={vi.fn()}
+        />
+        <WorkbenchStatusBar problemsCount={0} />
+      </>
+    );
+    await waitFor(() => {
+      expect(view.container.querySelector('[data-testid="node-INPUT-sw1_node"]')).not.toBeNull();
+    });
+    const hint = view.getByTestId('ide-status-hint-slot');
+    expect(hint.getAttribute('role')).toBe('status');
+
+    fireEvent.pointerDown(view.getByTestId('logic-canvas-svg'));
+    fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw0_node"] [data-port-id="out"]')!);
+    fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]')!);
+
+    await waitFor(() => {
+      expect(hint.textContent).toContain('Outputs cannot be wired directly to each other. Source kept: SW0 out.');
+    });
+    expect(hint.contains(view.getByTestId('ide-design-wire-feedback'))).toBe(true);
+    const cue = view.getByTestId('ide-design-wire-cuebar');
+    expect(cue.contains(view.getByTestId('ide-design-wire-cue'))).toBe(false);
+    expect(cue.contains(view.getByTestId('ide-design-wire-cancel'))).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-design-wire-feedback')).toBeNull();
+    });
   });
 });

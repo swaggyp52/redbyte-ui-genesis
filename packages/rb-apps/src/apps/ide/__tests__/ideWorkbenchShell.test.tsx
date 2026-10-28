@@ -4,6 +4,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { IdeWorkbenchShell } from '../components/IdeWorkbenchShell';
+import { WorkbenchStatusBar } from '../components/WorkbenchStatusBar';
 import { workspacePreferencesStore } from '../workspacePreferences';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -164,5 +165,33 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     expect(view.getByTestId('ide-mode-body').scrollTop).toBe(0);
     expect(view.getByTestId('panel-body').scrollTop).toBe(0);
     expect(workspacePreferencesStore.getSnapshot().surfaces.design.docks.left.sizePx).toBe(284);
+  });
+
+  it('returns focus to Show left panel in the status line when Escape closes a narrow Project panel', () => {
+    // IdeApp renders the status line beside the shell, so Show left / right panel live in its slot,
+    // outside the shell. Closing a panel must still hand focus to the control that reopens it.
+    vi.stubGlobal('innerWidth', 800);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    workspacePreferencesStore.setDock('project', 'left', { visible: true });
+    const view = render(
+      <>
+        <IdeWorkbenchShell
+          mode="project"
+          workspace={<div>Overview</div>}
+          leftDock={<button type="button" data-testid="files">Files</button>}
+          rightDock={<div>Details</div>}
+        />
+        <WorkbenchStatusBar problemsCount={0} />
+      </>
+    );
+    expect(view.getByTestId('ide-mode-project')).toHaveAttribute('data-narrow-project', 'true');
+    view.getByTestId('files').focus();
+    act(() => { fireEvent.keyDown(view.getByTestId('ide-left-dock'), { key: 'Escape' }); });
+    act(() => { frames.splice(0).forEach((callback) => callback(0)); });
+
+    const show = view.getByTestId('ide-show-left-dock');
+    expect(view.getByTestId('ide-status-panel-slot').contains(show)).toBe(true);
+    expect(document.activeElement).toBe(show);
   });
 });

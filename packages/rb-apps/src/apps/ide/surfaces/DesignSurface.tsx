@@ -7,7 +7,9 @@ import React, {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { ProblemsPanel } from '../components/ProblemsPanel';
+import { STATUS_HINT_SLOT_ID } from '../components/WorkbenchStatusBar';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
 import { BUS_MEMBER_SPACING, busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
@@ -1156,6 +1158,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [diagnosticsDialogOpen, setDiagnosticsDialogOpen] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [wireFeedback, setWireFeedback] = useState<string | null>(null);
+  // The workbench's status line, where the Wire tool says what to do next. A surface rendered on
+  // its own keeps the message in its cue.
+  const [statusHintSlot, setStatusHintSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setStatusHintSlot(window.document.getElementById(STATUS_HINT_SLOT_ID));
+  }, []);
   const [focusedIssueSignalKey, setFocusedIssueSignalKey] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
@@ -7994,28 +8002,37 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {toolMode === 'wire' && !isPlacementMode ? (
                 <div className="rb-design-wirecue" data-testid="ide-design-wire-cuebar" data-wire-active={wireStartPort ? '1' : '0'}>
                   <span className="rb-design-wirecue-badge">Wire</span>
-                  <span
-                    className={`rb-design-wirecue-msg${wireFeedback ? ' is-error' : ''}`}
-                    data-testid="ide-design-wire-cue"
-                    data-wire-source-label={wireSourceLabel ?? ''}
-                    data-wire-active={wireStartPort ? '1' : '0'}
-                    title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
-                  >
-                    {wireFeedback ? (
-                      <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
-                    ) : wireStartPort ? (
-                      <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
+                  {(() => {
+                    const message = (
+                      <span
+                        className={`rb-design-wirecue-msg${wireFeedback ? ' is-error' : ''}`}
+                        data-testid="ide-design-wire-cue"
+                        data-wire-source-label={wireSourceLabel ?? ''}
+                        data-wire-active={wireStartPort ? '1' : '0'}
+                        title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
+                      >
+                        {wireFeedback ? (
+                          <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
+                        ) : wireStartPort ? (
+                          <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
+                        ) : (
+                          <span>Choose an output port to start a wire</span>
+                        )}
+                      </span>
+                    );
+                    return statusHintSlot ? createPortal(message, statusHintSlot) : message;
+                  })()}
+                  <span className="rb-design-wirecue-end">
+                    <span className="rb-design-wirecue-sizer wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
+                    <span className="rb-design-wirecue-sizer wb-btn wb-btn--ghost" aria-hidden="true">Cancel</span>
+                    {wireStartPort ? (
+                      <button type="button" className="wb-btn wb-btn--ghost" onClick={cancelActiveWire} data-testid="ide-design-wire-cancel">
+                        Cancel
+                      </button>
                     ) : (
-                      <span>Choose an output port to start a wire</span>
+                      <span className="wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
                     )}
                   </span>
-                  {wireStartPort ? (
-                    <button type="button" className="wb-btn wb-btn--ghost" onClick={cancelActiveWire} data-testid="ide-design-wire-cancel">
-                      Cancel
-                    </button>
-                  ) : (
-                    <span className="wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
-                  )}
                 </div>
               ) : null}
               {isPlacementMode && placementModeLabel ? (

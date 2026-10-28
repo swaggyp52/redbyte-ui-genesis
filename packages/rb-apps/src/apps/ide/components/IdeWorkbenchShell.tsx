@@ -168,13 +168,25 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     });
   }, [mode]);
 
+  // The status line offers a slot for the collapsed bottom-panel handle. Where there is no
+  // status line (a surface rendered on its own) the handle stays in place, as before.
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  // Show left / right panel join it there: floating over the workspace, they covered its controls
+  // in a short window with enlarged text (Simulate's event Delete at 720x450, 150% text).
+  const [panelSlot, setPanelSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setStatusSlot(window.document.getElementById(STATUS_CONSOLE_SLOT_ID));
+    setPanelSlot(window.document.getElementById(STATUS_PANEL_SLOT_ID));
+  }, []);
   const setDockVisible = (dockId: WorkspaceDockId, visible: boolean) => {
     if (visible && dockId !== 'bottom' && (layoutMode === 'compact' || splitDesign)) {
       workspacePreferencesStore.setDock(mode, dockId === 'left' ? 'right' : 'left', { visible: false });
     }
     workspacePreferencesStore.setDock(mode, dockId, { visible });
     if (narrowProject && !visible && dockId !== 'bottom') {
-      requestAnimationFrame(() => shellRef.current?.querySelector<HTMLElement>(`[data-testid="ide-show-${dockId}-dock"]`)?.focus());
+      // The reveal lives in the status line when there is one, outside this shell.
+      const revealRoot = panelSlot ?? shellRef.current;
+      requestAnimationFrame(() => revealRoot?.querySelector<HTMLElement>(`[data-testid="ide-show-${dockId}-dock"]`)?.focus());
     }
   };
 
@@ -222,16 +234,6 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     );
   };
 
-  // The status line offers a slot for the collapsed bottom-panel handle. Where there is no
-  // status line (a surface rendered on its own) the handle stays in place, as before.
-  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
-  // Show left / right panel join it there: floating over the workspace, they covered its controls
-  // in a short window with enlarged text (Simulate's event Delete at 720x450, 150% text).
-  const [panelSlot, setPanelSlot] = useState<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    setStatusSlot(window.document.getElementById(STATUS_CONSOLE_SLOT_ID));
-    setPanelSlot(window.document.getElementById(STATUS_PANEL_SLOT_ID));
-  }, []);
   const inStatusLine = (handle: React.ReactElement, collapsed: boolean) =>
     collapsed && statusSlot ? createPortal(handle, statusSlot) : handle;
   const inPanelSlot = (controls: React.ReactElement) => (panelSlot ? createPortal(controls, panelSlot) : controls);

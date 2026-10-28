@@ -141,7 +141,7 @@
 /* ── Application frame ─────────────────────────────────────────────────────── */
 
 .ide-root {
-  grid-template-rows: auto minmax(0, 1fr) var(--wb-status-h);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-columns: minmax(0, 1fr);
   height: 100dvh;
   overflow: hidden;
@@ -642,7 +642,9 @@
   align-items: center;
   gap: var(--wb-space-3);
   min-width: 0;
-  height: var(--wb-status-h);
+  flex-wrap: wrap;
+  row-gap: 0;
+  min-height: var(--wb-status-h);
   padding: 0 var(--wb-space-2);
   overflow: hidden;
   border-top: 1px solid var(--wb-border-strong);
@@ -654,10 +656,14 @@
 .ide-root .wb-status-item { display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap; }
 .ide-root .wb-status-item code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
 .ide-root .wb-status-item strong { color: var(--wb-text); font-weight: 600; }
-.ide-root .wb-status-spacer { flex: 1 1 auto; min-width: 0; }
+/* Where the controls do not fit on one line (a narrow window, enlarged text) the line wraps:
+   a control is never drawn over another or cut off at the edge. */
+.ide-root .wb-status-spacer { flex: 1 1 0; min-width: 0; }
+.ide-root .wb-status-hint-slot { display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
+.ide-root .wb-status-hint-slot > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Collapsed, the bottom panel's handle sits in the status line and the panel takes no room:
    one line at the bottom of the window instead of a status line under an empty strip. */
-.ide-root .wb-status-console-slot { display: inline-flex; align-items: center; min-width: 0; }
+.ide-root .wb-status-console-slot { display: inline-flex; align-items: center; flex: none; }
 /* Show left / right panel, in the status line rather than floating over the workspace. */
 .ide-root .wb-status-panel-slot { display: inline-flex; align-items: center; flex: none; }
 .ide-root .wb-status-panel-slot .ide-workbench-panel-controls {
