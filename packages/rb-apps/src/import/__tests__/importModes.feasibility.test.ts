@@ -117,7 +117,7 @@ describe('imported HDL the importer cannot rebuild: Mode B feasibility, refusal 
     const { circuit } = useProjectRuntime.getState();
     expect([...new Set(circuit.nodes.map((node) => node.type))].sort()).toEqual(['INPUT', 'OUTPUT']);
     const outputs = new Set(circuit.nodes.filter((node) => node.type === 'OUTPUT').map((node) => node.id));
-    expect(circuit.connections.filter((connection) => outputs.has(connection.to.nodeId))).toEqual([]);
+    expect(circuit.connections.filter((connection) => outputs.has(typeof connection.to === 'string' ? connection.to : connection.to.nodeId))).toEqual([]);
   });
 
   it('claims no browser simulation and ships no generated HDL in place of the source', () => {

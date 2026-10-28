@@ -93,7 +93,7 @@ function registerInModuleProject(): { project: RBProject; vectors: TestVector[] 
   const { project: flat, vectors } = enabledRegisterProject();
   const base: Circuit = {
     nodes: [...flat.circuit.nodes.filter((node) => node.id !== 'q'), { id: 'n', type: 'NOT', ...at(300) }, { id: 'q', type: 'OUTPUT', label: 'LD0', ...at(400) }],
-    connections: [...flat.circuit.connections.filter((connection) => connection.to.nodeId !== 'q'), wire('w5', 'r', 'Q', 'n', 'in'), wire('w6', 'n', 'out', 'q', 'in')],
+    connections: [...flat.circuit.connections.filter((connection) => connection.id !== 'w4'), wire('w5', 'r', 'Q', 'n', 'in'), wire('w6', 'n', 'out', 'q', 'in')],
   };
   const cell = createModuleFromSelection(base, createEmptyProjectHierarchy(), { moduleName: 'HeldInverse', instanceName: 'u_held', selectedNodeIds: ['r', 'n'], nowIso: NOW });
   expect(cell.circuit.nodes.some((node) => node.type === 'Register1'), 'the register lives only inside the module').toBe(false);
