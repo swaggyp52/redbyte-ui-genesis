@@ -5,6 +5,14 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## rc.6 review closure - 2026-10-28
+
+`apps/toolchain-route.test.tsx`, the last row of the 2026-09-06 Open table below that still
+failed, is deleted: its subject (a root `src/App`, `@redbyte/rb-shell` and the toolchain route) was
+removed in 9f31efe95 and 677559527. Every other row of that table passes at HEAD; the qualification
+now runs every directory the root vitest config includes (see
+`v1-baseline-red-classification-2026-10-28.md`, third pass).
+
 ## Overnight contract closure and rc3 owner trial - 2026-10-01
 
 Raw rb-apps TypeScript is now genuinely clean: 545 diagnostics in 167 files

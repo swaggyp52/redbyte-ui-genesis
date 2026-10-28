@@ -8,7 +8,37 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## V1 release candidate rc.7 - rc.6 adversarially reviewed, defects fixed - 2026-10-28
+
+`claude/redbyte-v1-reliability` at `b0d16cad7` is packaged as 1.0.0-rc.7 (release report:
+`docs/validation/v1-release-candidate-rc7-2026-10-28.md`); it supersedes rc.6. Local only: not
+pushed, merged or deployed; it awaits owner acceptance.
+
+**Why a new candidate**: two independent reviewers and a fix-verification round confirmed defects
+that every rc.6 gate passed (third pass in `v1-baseline-red-classification-2026-10-28.md`).
+- **Product**: the Wire tool's guidance had 13 px of 230 at 1280x650, unannounced (now in the
+  status line's announced hint slot, two lines in the same height, repeats announced); the status
+  line drew Show left panel over Hide bottom panel at 720x450 with 200% text (now wraps); hiding a
+  panel lost keyboard focus (now goes to its reveal); the Wire cue changed size on arming (one
+  cell); Meridian drew the hierarchical adder's carries with no value (`moduleInstanceOutputSources`).
+- **Tests**: the parity test compared a function with itself (now reads IdeApp's autosaved export,
+  truth by hand, two mutations caught); the feasibility test accepted any refusal; the sweep slept
+  250 ms and failed only below 3:1; Meridian values were counted, not compared.
+- **Claims corrected**: rc.6 "vitest all green" skipped nine packages (32 files; they pass); the
+  Wire canvas claim held only without the inspector at 1366/1440 (RB-DEBT-030); an obsolete test
+  (`apps/toolchain-route`) deleted.
+
+**Evidence (rc.7 package, bundled runtime; kept in `.redbyte/releases/redbyte-1.0.0-rc.7-evidence/`)**:
+verify-candidate 23/23, counter-proof gate and 14 journeys 15/15, Meridian counter slice 134/134;
+vitest every included directory green (IDE 2175, rest 1852, packages 1011), typecheck +0,
+verify:gates 0, build 0. E0 only.
+
+**Next**: owner review of rc.7; on acceptance, the owner decides merge and deployment. Then
+RB-DEBT-029/030/031 and the Mode B handoff with Vivado evidence.
+
 ## V1 release candidate rc.6 - one derivation, candidate journeys green - 2026-10-28
+
+Superseded by rc.7 (above); two claims below were corrected there.
 
 `claude/redbyte-v1-reliability` at `febe25b82` is packaged as 1.0.0-rc.6 (release report:
 `docs/validation/v1-release-candidate-rc6-2026-10-28.md`). Local only: not pushed, merged or

@@ -1,7 +1,8 @@
 # RedByte 1.0.0-rc.6 release candidate (2026-10-28)
 
-Status: **local candidate, awaiting owner acceptance.** Not pushed, not merged into `main`, not
-deployed. The public site still serves its earlier revision and was not touched.
+Status: **superseded by rc.7** (`v1-release-candidate-rc7-2026-10-28.md`). An adversarial review of
+this candidate found defects its gates had passed and claims below that the evidence did not
+support; rc.7 lists the corrections. Never pushed, merged into `main` or deployed.
 
 ## Identity
 

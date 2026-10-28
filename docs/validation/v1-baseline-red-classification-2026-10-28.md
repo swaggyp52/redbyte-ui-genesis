@@ -56,9 +56,38 @@ workspace and covered Simulate's event Delete at 720x450 with 150% text (moved i
 line). The sweep is red on rc.5 for the palette and green on the fixed build; its contrast check
 was proven by injecting low-contrast text.
 
+## Adversarial review of rc.6 (2026-10-28, third pass)
+
+After rc.6 passed every gate and 23/23 candidate journeys, two independent reviewers (product
+source; tests, journeys and docs) and then a fix-verification reviewer read the changes since
+rc.5. Each finding was reproduced on the running rc.6 package before it was fixed, and each fix
+was proven red on rc.6 (or by a mutation) before it was accepted.
+
+| Finding | Class | What it was | Closed by |
+| --- | --- | --- | --- |
+| Wire guidance unreadable | **real defect** (rc.6) | Sharing the command row left the message 13 px of 230 at 1280x650 and no live region | Message in the status line's announced hint slot; two lines in the same height for a long refusal; `design-core-authoring` red on rc.6 |
+| Status-line overlap | **real defect** (rc.6) | Show left panel drew over Hide bottom panel at 720x450 with 32 px text and left the bar at 480/375 px | The line wraps, one control at a time; sweep red on rc.6 |
+| Focus lost on hide | **real defect** (rc.6, wider before) | The reveal was portalled out of the shell, and only narrow Project restored focus | Focus goes to the reveal on every stage; unit tests red without the fix |
+| Cue resized on arming | **real defect** (rc.6) | Esc cancels and Cancel differed in size (height 19.6 vs 32 px) | One shared cell; measured identical; journey asserts it |
+| Meridian instance wires blank | **real defect** (found by the second round) | Carries between FullAdderCell instances drawn with no value: the recording keys the cell, not the instance port | `moduleInstanceOutputSources`; studio test red without it (ripple carry worked by hand) |
+| Repeated refusal silent | a11y defect | The same words again changed nothing in the live region | The refusal is a new element each time; unit test red without it |
+| Parity test tautology | test defect | Compared the derivation with itself, never IdeApp's export; agreement only | Reads IdeApp's autosaved project; schedule, modules and passing Runs by hand; two mutations caught |
+| Feasibility accepted any refusal | test defect | `refusal || all X`, `.out` samples unread | Recording required; every output signal checked; injected `.out` levels fail it |
+| Sweep sleep and thresholds | test defect | Fixed 250 ms wait could audit a loading placeholder; failed only below 3:1; exclusions understated | Waits for the stage's painted text; fails at 4.5:1 (3:1 large); status-line check; exact exclusions |
+| Weak journey checks | test defect | Edit in Design by absence only; Meridian values counted, not compared; incomplete starter vacuous; sleeps before new reads | Failed output named; every drawn value compared (instance wires by hand at every tick); 16/16 by hand; condition waits |
+| "vitest all green" | doc overclaim | The rc.6 chunks skipped nine packages (32 files) and `apps/**` | All 32 pass; the qualification script now covers every directory the root config includes |
+| `apps/toolchain-route.test.tsx` | obsolete test | Imported a root `src/App`, rb-shell and a toolchain route removed in 9f31efe95 and 677559527 | Deleted; typecheck baseline 139 -> 138 (its TS2307 only) |
+
+Tracked, not fixed: RB-DEBT-030 (header row with the inspector open at 1366/1440), RB-DEBT-031
+(status line wraps in a narrow window with enlarged text); about 80 fixed sleeps that predate rc.5
+remain in nested-adder, project-persistence and project-experience outside the reads the review
+named (they fail safe: a slow page fails the journey rather than passing it).
+
 ## Qualification boundary
 
-The release gate is the full suite with no exclusions. Out of scope for V1, and enforced by
+The release gate is the full suite with no exclusions: every directory the root vitest config
+includes, run as bounded chunks (`apps/**` holds no tests since the obsolete route test was
+deleted). Out of scope for V1, and enforced by
 refusal rather than silence: analog simulation; imported HDL that the importer cannot rebuild
 (ports only, named refusal); MUX4 and other unsupported parts (blocked by name). Vivado synthesis,
 bitstream and board behaviour are separate evidence tiers (E1-E3) that a browser build cannot claim.
