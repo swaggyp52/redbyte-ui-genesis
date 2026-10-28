@@ -1025,6 +1025,13 @@ Result: Reconstructed fidelity. Circuit topology is correct, but node positions 
 
 Supported RedByte-generated concurrent-assignment `top.vhd` follows this same reconstructed-fidelity path: the supported circuit graph is rebuilt, but the manifest is still required for lossless layout, authored Verify documents, mapping, and metadata. Arbitrary behavioral/process HDL may remain ports-only or blocked.
 
+**Imported HDL in V1 (decision, 2026-10-28).** RedByte is not a general VHDL importer. An import takes one of two outcomes, and RedByte says which:
+
+- **Reconstructed circuit (Mode A).** When the importer rebuilds the source exactly (supported gates, generated concurrent assignments, and register processes it maps to native registers), you get an editable circuit, browser simulation, regenerated HDL and Export. The browser, the exported testbench in GHDL and the source agree on every checked value (`hdlImport.productPath.ghdl`).
+- **Ports only, refused (V1 limit).** When it cannot (for example `numeric_std` arithmetic, or a next-state expression it does not rebuild), RedByte keeps your source unchanged in **Sources** and takes the interface (ports, pins) from the entity, but builds no logic in its place: a Run records every output as unknown (`X`), never a 0 or 1 it did not compute, and Export refuses by name (RBEX4103, the undriven outputs) instead of shipping generated HDL or constants for your design.
+
+Preserving the source as the design (Mode B: hand the original HDL to Vivado and validate it with an external simulator) is technically feasible: the preserved source is byte-identical and GHDL runs it against a hand-computed testbench (`importModes.feasibility`). It is not offered in V1 because the browser cannot compute the expected values for a design it does not rebuild, so Export could not grade it, and the original-source handoff has no Vivado (E1) evidence yet. Until then, open the original project in Vivado, or rebuild the design in Design.
+
 ### 12.3 Importing Constraint Files
 
 To import pin assignments from an XDC file:
