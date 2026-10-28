@@ -284,7 +284,7 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Current evidence: v2 evaluates feedback graphs in node array order (`packages/rb-logic-core/src/CircuitEngine.ts`, evaluation loop) while the project codec re-sorts nodes on save (`projectFormat.ts`).
 - Why it matters: the same RunIdentity could produce different results before and after a reload for order-sensitive feedback circuits.
 - Next step (P2 test, P5 fix): an order-permutation fixture with feedback, compared before/after save and reload.
-- Status: Open (hypothesis)
+- Status: Fixed on claude/redbyte-v1-reliability (824a346c5; integrated b5c67f3e2). Kahn over strongly connected components; every permutation records identically (CircuitEngine.orderIndependence, runDeterminism.nodeOrder). Engine v3; manual 4.3 documents the order.
 
 ### RB-DEBT-015 - Saved components (CompositeNode) may be missing from the Run worker (H)
 
@@ -300,7 +300,7 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Current evidence: `localeCompare` in `packages/rb-logic-core/src/ir/elaborator.ts:185-195` and `packages/rb-apps/src/apps/ide/runDeterminism.ts:39`.
 - Why it matters: identities could differ between browser locales; the codec already uses codepoint order.
 - Next step (P2/P5): codepoint comparison behind an explicit identity/engine version bump; old identities fail closed.
-- Status: Open (hypothesis)
+- Status: Fixed on claude/redbyte-v1-reliability (708540e80, 693556aa3, b5c67f3e2). Codepoint order for identities, the persisted IO row, fingerprints and module order; identityCollationAudit, identityLocale (4 collations: irHash, RunIdentity, replay fingerprint, canonical row, mixed-case modules) and exampleIdentity.golden (15 examples).
 
 ### RB-DEBT-017 - Production ships the `window.__RB_*` store hooks (C)
 
@@ -328,7 +328,7 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: High (inspection mutates authored data)
 - Current evidence: during the 2026-10-20 walkthrough a single inspection click on the EN stimulus lane changed the scenario ("The scenario changed after this run..."). Editable and recorded lanes look alike.
 - Next step: separate editing affordance (explicit edit mode or handle), and a gate that one click never mutates a scenario.
-- Status: Open
+- Status: Fixed on claude/redbyte-v1-reliability (merge 6e85a1475). Proven in the browser by the determinism, studio-coherence and student journeys (build 2026-10-28).
 
 ### RB-DEBT-021 - Orthogonal routes can pass through gate bodies (C)
 
@@ -349,7 +349,7 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Current evidence: two of three runs of `scripts/perf/meridian-baseline.mjs` that navigated immediately after the workbench import of the 321-node fixture (in-memory project name confirmed) reopened the previous 13-node counter - in the workbench pages too, not only the studio (their fan-out Run took the counter's 130 ms). The runtime writes the session to IndexedDB asynchronously after `set()` (`durableProjectStorage.ts`, `runtimePersistence.flush`) and registers no `pagehide`/`beforeunload` flush. On the production build the stored session named the fixture 12 ms after the in-memory import (299 ms -> 311 ms); the script now waits for that record and every later run measured the fixture.
 - Next step (P4, with the persistence work): flush or block navigation while a session write is pending; a navigation-race test (import, navigate within the pending window, compare project identity).
 - Resolution (2026-10-27, `claude/p1-023-durable-nav`): `runtimePersistence` is revisioned. Every requested write takes the next revision synchronously (`currentRevision`); a revision is acknowledged (`acknowledgedRevision`, `whenDurable`) only when every write up to it has completed its IndexedDB transaction, a later landed snapshot of a record covering its earlier revisions; a failed write rejects its waiters, at once for a late waiter, and leaves the acknowledged revision unchanged until a retry lands. Session metadata (`rb.ide.sessionMeta.v1`) is written by `writeAfterRuntime`: it lands only after every earlier write of the working session, and records `runtimeRevision`, the stored revision of the runtime record it follows (optional; older metadata without it opens as before). `SessionStorageBackend` gains `revision(key)`. At boot, metadata ahead of the stored record shows `ide-session-unfinished` (role alert) and opens the stored session. The workbench leave guard and save indicator include unacknowledged writes; ErrorBoundary Reload App waits for the last change, and on a failure says why and offers Reload anyway; the Meridian rail links (Project, Package, Classic) wait the same way, with `meridian-leave-notice` and Leave anyway on failure, and the studio asks on `beforeunload` while a change is unacknowledged. No timers or sleeps. Proof: `durableProjectStorage.revisions` (9), `ideApp.durableSession` (4), `railNavigation` (3) over a held multi-document disk on which unload drops uncommitted transactions; native IndexedDB revisions, interruption and recovery in `rb-e2e/storage-transaction-journey.mjs`.
-- Status: Fixed locally (pending integration and the app-level browser journey)
+- Status: Fixed on claude/redbyte-v1-reliability (a52d38962, 409bfac3c). packages/rb-e2e/durable-navigation-journey.mjs: import then reload (normal and slow disk), import then Meridian, rapid switching, failed write and retry, browser restart, metadata ahead of its record. The original race is pinned by unit tests; in the browser only the metadata-ahead step separates the builds.
 
 ### RB-DEBT-024 - Studio scrub and Time-lens open cost at 321 nodes (C)
 
@@ -363,7 +363,7 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: Medium (test infrastructure: a focused or root run over `packages/rb-logic-view/src` never prints its summary)
 - Current evidence: `packages/rb-logic-view/src/__tests__/crash-guard.test.tsx` alone runs until the 200 s bound and ends with "Worker exited unexpectedly" under Node 20.19.0 / vitest 2.1.8. The same file loaded from a pristine `64bf7aa93` worktree hangs identically, and the test and `LogicCanvas.tsx` are byte-identical to that baseline, so the Meridian slice did not cause it. The other 20 rb-logic-view test files pass. It renders the classic `LogicCanvas` with a mocked malformed view store.
 - Next step: isolate the render loop or open handle under the mock (classic canvas; outside the studio slice), then restore it to the routine focused run.
-- Status: Open
+- Status: Fixed (2026-10-28). Root cause: the test mocked useUiTickStore without honouring its selector, so LogicCanvas read a fresh object as uiTick on every render; the endless effect loop ran the worker out of memory. The mock now behaves like the store; the malformed-selection guard remains under test.
 
 ### RB-DEBT-026 - The studio mirrors IdeApp's export-project derivation (C, deletion deadline P4)
 
@@ -384,4 +384,4 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: Low (a misleading inspector line on rare registers; the studio's explanations avoid the claim)
 - Current evidence: `unconnectedInputPins` (rb-studio-kernel `resolver.ts`) marks every undriven input, and the studio inspector and sheet say "unconnected · read as 0". The behaviours do not all default to 0 (`rb-logic-core/src/builtins.ts`, `readFirstNumber` fallbacks): a DFlipFlop reads an unconnected EN as 1, and a Register1/RegisterBus/StateBank reads an unconnected EN as 1 unless its config sets `hasEnable`, in which case it reads 0. Data, clock and reset inputs default to 0. The shipped examples wire every EN they draw, so no shipped design shows the wrong line.
 - Next step (P2): derive the read-as value per pin from the behaviour's own fallback (a shared table exported next to `readFirstNumber`), say "unconnected · read as 1" where that is the fallback, and add a unit test per sequential type.
-- Status: Open
+- Status: Fixed on claude/redbyte-v1-reliability (207832975 + 973d9c8a4). The engine reads EN per configuration; the Signal Journey, Meridian inspector and status count use describeInputPin; engine v3; v2 recordings read "Engine changed" and are refused for Reproduce.

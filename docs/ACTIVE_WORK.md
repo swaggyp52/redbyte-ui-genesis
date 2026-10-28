@@ -1,12 +1,42 @@
 ---
 doc_status: current
-last_validated: 2026-10-25
+last_validated: 2026-10-28
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
 ---
 
 # RedByte - Active Work Cockpit
+
+## V1 integration closure - one reliability branch, every baseline red dispositioned - 2026-10-28
+
+`claude/redbyte-v1-reliability` now carries P0 (HDL port authority, GHDL-proven), P1-020
+(read-only inspection), the 028 follow-ups (engine v3, register EN semantics), 014/016 (node-order
+and locale independence) and 023 (durable navigation). Committed locally; nothing pushed, merged
+into main or deployed. Students stay on the currently deployed release.
+
+**What changed**
+- **One branch**: 020 merged (6e85a1475), 028 follow-ups merged (2a5163c79), 014/016 and 023
+  fast-forwarded (b5c67f3e2, 409bfac3c), then 0f660faa2 and 81f3cb979.
+- **Determinism**: shipped-example identities pinned (15 examples); the persisted IO row, design
+  fingerprint, case order, module order and replay fingerprint no longer follow the browser's
+  collation (a Lithuanian locale used to keep LD9 instead of LD0). Manual 4.3 states the v3 order.
+- **Durable navigation**: `packages/rb-e2e/durable-navigation-journey.mjs` (import then reload,
+  slow disk, Meridian, rapid switching, failed write and retry, browser restart, metadata ahead).
+- **Student-facing fixes found by the journeys**: Generators no longer covers the Event table at
+  1280x650; the lab 8 starter expects LOCK on the completing edge; run-strip and Reproduce copy;
+  board legend contrast in both themes; stage-named landmarks.
+- **Baseline reds**: all closed with a class and evidence in
+  `docs/validation/v1-baseline-red-classification-2026-10-28.md` (product, stale contract, test
+  defect, out of scope). Analog simulation is out of V1 and refused by name.
+
+**Evidence (final build of 81f3cb979's tree, 2026-10-28)**: counter-proof gate and 14 browser
+journeys pass on the production preview; per-candidate qualification logs are recorded in the
+release report. Source and browser proof only: no Vivado (E1), programming or board (E2/E3) claim.
+
+**Next**: full qualification on the final HEAD, release-candidate package (revision, build
+identity, checksums, rollback), then RB-DEBT-026 (one derivation for classic and Meridian) and the
+imported-HDL preserved-source decision.
 
 ## Meridian Atlas completion pass - every view tells the same story - 2026-10-25
 
