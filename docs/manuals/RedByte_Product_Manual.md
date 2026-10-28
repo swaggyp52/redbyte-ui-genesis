@@ -252,7 +252,9 @@ The canonical connection format is:
 
 ### 4.3 Simulation Model
 
-RedByte's simulation engine operates on discrete **ticks**. Each tick, the engine evaluates every node in the circuit in **topological order** — nodes whose inputs depend only on already-evaluated nodes are evaluated first. This ordering guarantees that signal propagation is deterministic and race-free.
+RedByte's simulation engine operates on discrete **ticks**. Each tick, clock-capture parts (flip-flops, registers, counters) first publish the state they hold; then the engine evaluates every node once, source to sink — a node runs after every node that drives it.
+
+The order depends only on the circuit's connections and node ids, never on the order in which parts were placed, loaded or saved, or on the browser's language (engine `redbyte-browser-v3`, RB-DEBT-014/016). A **feedback loop** that does not pass through a clock-capture part (a Delay, DLatch or RSLatch, or gates wired in a ring) has no source-to-sink order: the engine evaluates the loop's parts in a fixed order (by node id), and a part that runs before its driver in the loop reads that driver's value from the previous tick. Such a loop is therefore deterministic — the same circuit and inputs always record the same samples — but its timing is RedByte's, not a model of real gate delays; the exported HDL simulates it with delta cycles and may settle differently. Every node downstream of a loop runs after the whole loop.
 
 For **combinational circuits** (circuits with no flip-flops or other sequential elements), evaluation typically stabilizes within one or two ticks. The engine supports a stabilization loop that continues ticking until no signals change, up to a configurable maximum.
 
@@ -1276,11 +1278,11 @@ submission.rbproj.zip
 
 **Test vector.** A row in the verification truth table specifying input values and expected output values for one test case.
 
-**Tick.** One discrete time step of the simulation engine. All nodes are evaluated once per tick in topological order.
+**Tick.** One discrete time step of the simulation engine. Clock-capture parts publish their held state, then every node is evaluated once, source to sink (feedback loops in node-id order; see 4.3).
 
 **Time instrument.** Simulate's sequential representation: one lane per signal on a tick axis, with authored inputs, generated clock/reset and recorded outputs, cursor, edge navigation, measurement and failure navigation. The combinational counterpart is the **Table** with **Recorded trace**.
 
-**Topological sort.** The algorithm RedByte uses to determine the evaluation order of nodes. Guarantees that a node is evaluated only after all its input dependencies have been evaluated.
+**Topological sort.** The algorithm RedByte uses to determine the evaluation order of nodes: a node is evaluated only after all its input dependencies, except inside a feedback loop, whose parts run in node-id order and read in-loop drivers' previous-tick values (4.3). The order never depends on how the circuit was authored or on the browser's locale.
 
 **Vivado Kit.** The ZIP file produced by Package, containing `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts (`vivado_import.tcl`, `program_and_test.tcl`), and documentation files.
 
