@@ -37,7 +37,8 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     expect(leftDock.nextElementSibling).toBe(workspace);
     expect(workspace.nextElementSibling).toBe(rightDock);
     expect(view.container.querySelectorAll('main')).toHaveLength(1);
-    expect(workspace).toHaveAttribute('aria-label', 'design workspace');
+    // Named for the stage a student sees, not the route id.
+    expect(workspace).toHaveAttribute('aria-label', 'Design workspace');
     expect(shell).toHaveAttribute('data-left-dock-state', 'visible');
     expect(shell).toHaveAttribute('data-right-dock-state', 'visible');
     expect(shell).toHaveAttribute('data-support-dock-policy', 'persistent-configurable');
@@ -69,7 +70,7 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     expect(view.queryByTestId('ide-show-left-dock')).toBeNull();
     expect(view.queryByTestId('ide-show-right-dock')).toBeNull();
     expect(view.getByTestId('ide-mode-body').tagName).toBe('MAIN');
-    expect(view.getByTestId('ide-mode-body')).toHaveAttribute('aria-label', 'design workspace');
+    expect(view.getByTestId('ide-mode-body')).toHaveAttribute('aria-label', 'Design workspace');
     expect(view.container.querySelector('[class*="dock-toggle-rail"]')).toBeNull();
   });
 

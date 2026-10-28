@@ -6,6 +6,13 @@ import { summarizeRepetitions, outputDigest } from '../../runDeterminism';
 import { describeRecordingState, type RecordingState } from './recordingState';
 import './run-identity.css';
 
+/** How the failing-check count moved since the previous checked recording, in words. */
+function describeFailedDelta(delta: number): string {
+  if (delta === 0) return 'no change in failing checks';
+  const count = Math.abs(delta);
+  return `${count} ${delta < 0 ? 'fewer' : 'more'} failing ${count === 1 ? 'check' : 'checks'}`;
+}
+
 export function RunIdentityStrip({ run, archive, changes, recording, currencyReason, onSelect, onDifference, onReproduce, reproduceDisabledReason }: {
   run: RuntimeVerifyRun;
   archive: readonly RuntimeVerifyRun[];
@@ -46,7 +53,7 @@ export function RunIdentityStrip({ run, archive, changes, recording, currencyRea
       {reproduceDisabledReason && <p>{reproduceDisabledReason}</p>}
       {repeatStatus}
       <p data-testid="ide-run-comparison" data-run-id={state.runId ?? ''}>
-        {state.comparison?.previous ? `Previous checked recording #${state.comparison.previous.ordinal} · ${Math.abs(state.comparison.failedDelta ?? 0)} ${state.comparison.failedDelta === 0 ? 'change in' : (state.comparison.failedDelta ?? 0) < 0 ? 'fewer' : 'more'} failing checks`
+        {state.comparison?.previous ? `Previous checked recording #${state.comparison.previous.ordinal} · ${describeFailedDelta(state.comparison.failedDelta ?? 0)}`
           : 'No previous comparison'}
       </p>
     <div className="rb-run-identity__equation">

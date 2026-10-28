@@ -25,7 +25,7 @@ end top;
 architecture Behavioral of top is
   signal tmp : STD_LOGIC;
 begin
-  out_y <= in_a AND in_b;
+  out_y <= in_a when in_b = '1' else '0';
   tmp <= in_a OR in_b;
 end Behavioral;
 `;
@@ -47,6 +47,8 @@ describe('parseVhdl diagnostics', () => {
   });
 
   it('Tier B: complex signal assignment → warning has line pointing to lhs', () => {
+    // Plain AND/OR assignments are rebuilt as gates since the P0 importer work; a conditional
+    // assignment is still not reconstructed, so it is the construct that must name its line.
     const result = parseVhdl(ENTITY_WITH_ASSIGNMENT);
     const w = result.warnings.find((x) => x.message.includes('not fully supported'));
     expect(w).toBeDefined();

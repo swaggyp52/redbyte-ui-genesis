@@ -33,7 +33,7 @@ const GOLDEN = new Map<string, { irHash: string; design: string; stimulus: strin
   ['lab5-adder', { irHash: 'enm5oc', design: 'a589a970', stimulus: '257e4daf', output: '743d1bf7', samples: 4 }],
   ['lab6-full-adder', { irHash: 'enm5oc', design: '6e35c7ac', stimulus: '203d1498', output: 'f4eefc9d', samples: 8 }],
   ['lab7-comparator', { irHash: 'enm5oc', design: '0412dfcc', stimulus: 'd7813896', output: 'dfa35411', samples: 4 }],
-  ['23_lab8-fsm-lock-starter-basys3', { irHash: 'i2mb9i', design: 'eec80740', stimulus: '3d84bf03', output: '1e3a407e', samples: 76 }], // irHash was mmkae2 before RB-DEBT-016
+  ['23_lab8-fsm-lock-starter-basys3', { irHash: 'i2mb9i', design: 'eec80740', stimulus: '45aff0c8', output: '1e3a407e', samples: 76 }], // irHash was mmkae2 before RB-DEBT-016; stimulus was 3d84bf03 before the tick-74 LOCK expectation was corrected to the edge row (lab8 starter, 2026-10-28)
 ]);
 
 describe('shipped example identities (engine v3)', () => {

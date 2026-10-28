@@ -85,6 +85,16 @@ describe('Simulate inner grid — one owner at every viewport', () => {
     const gapOwner = ruleBody(simulateCss, ".ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-workspace > .rb-sim-panel > .ide-panel-body");
     expect(gapOwner).toContain('gap: 0');
   });
+
+  it('never lets the composer shrink under its own content, so an open Generators panel follows it', () => {
+    // A fixed 132px floor let the composer's Event table summary overflow under Generators at 1280x650.
+    const composer = ruleBody(simulateCss, '.ide-root .rb-sim-region--stimulus > .rb-timing');
+    expect(composer).toContain('min-height: min-content');
+    const openGenerators = ruleBody(simulateCss, '.ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure[open]');
+    expect(openGenerators).toContain('max-height: 55%');
+    expect(openGenerators).toContain('overflow: auto');
+    expect(ruleBody(simulateCss, '.ide-root .rb-sim-lab-grid > .rb-sim-region--stimulus')).toContain('overflow: auto');
+  });
 });
 
 describe('ide-root.css — the retired verify layout owners are gone', () => {

@@ -400,7 +400,10 @@
    than the 1px box holding it - painted over the composer bar above, so elementFromPoint at
    every one of Add event / Duplicate / Delete / run length returned this summary and pressing
    Add event closed the panel instead of adding an event. It takes a bounded share and scrolls;
-   the instrument keeps a floor it cannot be pushed below. */
+   the instrument keeps a floor it cannot be pushed below. That floor is the instrument's own
+   content, not a fixed height: at 1280x650 a 132px floor let the composer shrink under its
+   Event table summary, and the open Generators panel, laid out after the shrunken box, covered
+   it. The timeline inside keeps its own minimum and scrolls; the region scrolls past both. */
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure { flex: none; margin: 0; border: 0; border-top: 1px solid var(--wb-border); border-radius: 0; background: transparent; }
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure[open] {
   flex: 0 1 auto;
@@ -408,7 +411,7 @@
   max-height: 55%;
   overflow: auto;
 }
-.ide-root .rb-sim-region--stimulus > .rb-timing { min-height: 132px; }
+.ide-root .rb-sim-region--stimulus > .rb-timing { min-height: min-content; }
 .ide-root .rb-sim-region--stimulus > .ide-scenario-table-disclosure > summary { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 var(--wb-space-3); border: 0; color: var(--wb-text-2); font: 500 var(--wb-text-sm) var(--wb-font-ui); cursor: pointer; list-style: none; }
 /* `display: flex` on a summary removes the browser's own marker, so this one had no
    affordance at all and read as a stray sentence under the instrument. */

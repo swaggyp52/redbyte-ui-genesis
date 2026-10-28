@@ -180,7 +180,8 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-mode-export').getAttribute('data-left-dock-state')).toBe('hidden');
     expect(getByTestId('ide-mode-export').getAttribute('data-right-dock-state')).toBe('hidden');
     expect(getByTestId('ide-mode-export').getAttribute('data-console-state')).toBe('collapsed');
-    expect(getByTestId('ide-mode-body').getAttribute('aria-label')).toBe('export workspace');
+    // The Package stage's landmark, named as the student sees it (not the "export" route id).
+    expect(getByTestId('ide-mode-body').getAttribute('aria-label')).toBe('Package workspace');
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');

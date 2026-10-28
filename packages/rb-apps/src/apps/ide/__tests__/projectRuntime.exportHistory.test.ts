@@ -35,15 +35,17 @@ describe('projectRuntime.exportHistory', () => {
     expect(state.projectHealthCore.lastExport?.packageHash).toBe('bbb');
   });
 
-  it('bounds the ledger to 20 entries', () => {
+  // P2.6C (f4bb64fd3) retains complete sessions: package receipts are evidence and are no longer
+  // pruned at 20. Every receipt stays, oldest first, and the newest is the current export.
+  it('retains every package receipt in order', () => {
     act(() => {
       for (let i = 0; i < 30; i += 1) {
         useProjectRuntime.getState().recordExport(ex({ packageHash: `h${i}` }));
       }
     });
     const history = useProjectRuntime.getState().exportHistory;
-    expect(history).toHaveLength(20);
-    expect(history[history.length - 1].packageHash).toBe('h29');
+    expect(history.map((entry) => entry.packageHash)).toEqual(Array.from({ length: 30 }, (_, i) => `h${i}`));
+    expect(useProjectRuntime.getState().projectHealthCore.lastExport?.packageHash).toBe('h29');
   });
 
   it('round-trips the ledger through a persisted merge', () => {

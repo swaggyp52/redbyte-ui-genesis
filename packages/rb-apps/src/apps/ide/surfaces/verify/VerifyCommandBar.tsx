@@ -220,7 +220,9 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       {/* Reproduce re-executes this recording's own inputs, so it sits with the recording. Run is
           the one primary action and uses the scenario as it is now. */}
       {onReproduce && !recordingSlot && <details className="rb-sim-recording-actions"><summary>Recording actions</summary><IdeButton tone="secondary" onClick={onReproduce} disabled={runDisabled || Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
-        title={reproduceDisabledReason || 'Run this recording\'s own design and stimulus again with the same engine.'}>Reproduce recording</IdeButton></details>}
+        title={reproduceDisabledReason || 'Run this recording\'s own design and stimulus again with the same engine.'}>Reproduce recording</IdeButton>
+        {/* A disabled button's title never reaches keyboard or touch users: the reason is text, as in the recording strip. */}
+        {reproduceDisabledReason && <p className="rb-sim-recording-actions-reason" data-testid="ide-vcb-reproduce-reason">{reproduceDisabledReason}</p>}</details>}
       <span className="wb-toolbar-spacer" />
       <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
         <IdeButton

@@ -8,8 +8,11 @@ const noop = () => {};
 const runProvider = importedVcdProvider('run.vcd');
 
 describe('SimulationProviderBar', () => {
-  it('shows both providers with honest tiers; imported disabled without a waveform', () => {
-    render(
+  // 232fe970a: with only RedByte's own simulator there is nothing to choose, so the bar renders
+  // nothing; the Vivado/hardware boundary is stated once in Package, and imported-waveform honesty
+  // ("replayed, never executed") in the VCD analyzer (vcdAnalyzerPanel.test).
+  it('renders nothing while the RedByte simulator is the only source', () => {
+    const { container } = render(
       <SimulationProviderBar
         hasImportedWaveform={false}
         activeProvider="browser-logic"
@@ -17,14 +20,8 @@ describe('SimulationProviderBar', () => {
         nativeRunLabel="Run 3 · passing"
       />,
     );
-    expect(screen.getByTestId('ide-sim-provider-browser-logic')).toBeTruthy();
-    expect((screen.getByTestId('ide-sim-provider-imported-vcd') as HTMLButtonElement).disabled).toBe(true);
-    // Active is Browser Logic, provenance is Browser-E0 and names the run.
-    expect(screen.getByTestId('ide-sim-provider-active').textContent).toContain('Browser logic');
-    const provenance = screen.getByTestId('ide-sim-provenance').textContent ?? '';
-    expect(provenance).toContain('Browser E0');
-    expect(provenance).toContain('not Vivado');
-    expect(screen.getByTestId('ide-sim-provenance-run').textContent).toContain('Run 3');
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByTestId('ide-sim-provider-bar')).toBeNull();
   });
 
   it('enables and selects the imported provider once a waveform is loaded', () => {
@@ -43,7 +40,7 @@ describe('SimulationProviderBar', () => {
     expect(onSelectProvider).toHaveBeenCalledWith('imported-vcd');
   });
 
-  it('states the imported evidence tier honestly when active', () => {
+  it('states each source\'s evidence tier and marks the active one', () => {
     render(
       <SimulationProviderBar
         hasImportedWaveform
@@ -52,9 +49,12 @@ describe('SimulationProviderBar', () => {
         onSelectProvider={noop}
       />,
     );
-    expect(screen.getByTestId('ide-sim-provider-active').textContent).toContain('Imported waveform');
-    const provenance = screen.getByTestId('ide-sim-provenance').textContent ?? '';
-    expect(provenance).toContain('outside RedByte');
-    expect(provenance).toContain('never executed');
+    const imported = screen.getByTestId('ide-sim-provider-imported-vcd');
+    const native = screen.getByTestId('ide-sim-provider-browser-logic');
+    expect(imported.getAttribute('aria-checked')).toBe('true');
+    expect(native.getAttribute('aria-checked')).toBe('false');
+    expect(imported.getAttribute('title')).toContain('outside RedByte');
+    expect(native.getAttribute('title')).toContain('Browser E0');
+    expect(screen.getByRole('radiogroup', { name: 'Simulation source' })).toBeTruthy();
   });
 });

@@ -5,7 +5,8 @@ describe('gate harness contract', () => {
     const gateHarness = await import('../../../../../../scripts/gates/_gateHarness.mjs');
 
     const functionNames = [
-      'assert', 'visible', 'openDesignBoardPalette', 'designInputIds',
+      // editStimulus: the explicit Edit stimulus mode every lane-cell edit after a Run needs (RB-DEBT-020).
+      'assert', 'visible', 'editStimulus', 'openDesignBoardPalette', 'designInputIds',
       'selectDesignInput', 'assertBuildFreshReplacementDialog',
       'assertBuildFreshReplacementModal', 'loadStarterProject',
       'ensureVerifyVectorsReady', 'clickVerifyRun', 'setVerifyRunMode',

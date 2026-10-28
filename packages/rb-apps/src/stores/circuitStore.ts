@@ -407,7 +407,7 @@ function createCircuitStore() {
           'AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR',
           'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
           'Clock', 'Delay',
-          'VoltageSource', 'LDR', 'FixedResistor', 'VoltageDivider', 'LM358',
+          // Analog parts (LM358, LDR, ...) left the engine in e6a2df714 and are refused by Verify.
           'RSLatch', 'SRLatch', 'DLatch', 'DFlipFlop', 'TFlipFlop', 'JKFlipFlop',
           'Register1', 'RegisterBus', 'StateBank',
           'FullAdder', 'Counter4Bit', 'Ground',

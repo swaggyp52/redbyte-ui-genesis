@@ -29,7 +29,7 @@ const SCENARIOS: VerifyScenario[] = [
 
 describe('Testbench-first Verify contracts', () => {
   it('names the student task directly and keeps session context visible without details', () => {
-    const { getByRole, getByTestId, getByText, container } = render(
+    const { getByRole, getByTestId, container } = render(
       <VerifyContextHeader
         projectName="Half Adder"
         stateLabel="Stale"
@@ -38,8 +38,12 @@ describe('Testbench-first Verify contracts', () => {
       />
     );
 
-    expect(getByRole('heading', { name: 'Simulation Studio' })).toBeTruthy();
-    expect(getByText('Simulate', { selector: '.ide-verify-job-kicker' })).toBeTruthy();
+    // fb7776b17: the header no longer repeats the stage as a heading or kicker; the workbench
+    // <main> landmark names it ("Simulate workspace", ideLandmarks.singleMain). The header is the
+    // session's context, labelled as such.
+    expect(container.querySelector('h1, h2, h3, .ide-verify-job-kicker')).toBeNull();
+    // A label on a generic div is not exposed; as a named group it is.
+    expect(getByRole('group', { name: 'Simulation session context' })).toBeTruthy();
     expect(getByTestId('ide-verify-context-project').textContent).toBe('Half Adder');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Stale');
     expect(getByTestId('ide-verify-context-scenario').textContent).toContain('Half Adder Cases');

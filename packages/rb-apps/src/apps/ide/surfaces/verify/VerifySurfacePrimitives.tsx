@@ -43,7 +43,7 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
       className="ide-verify-context-header ide-verify-job-header"
       data-testid="ide-verify-context-header"
     >
-      <div className="ide-verify-context-details" aria-label="Simulation session context">
+      <div className="ide-verify-context-details" role="group" aria-label="Simulation session context">
         <div className="ide-verify-context-identity">
           <span className="ide-verify-context-label">Active scenario</span>
           <span

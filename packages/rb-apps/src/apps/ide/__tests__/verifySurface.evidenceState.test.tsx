@@ -119,5 +119,9 @@ describe('Simulate evidence state word', () => {
     view.rerender(<VerifySurface {...props} lastRun={first} />);
     expect(view.getByTestId('ide-run-comparison').textContent).toContain('No previous comparison');
     expect(view.getByTestId('ide-run-check-result').textContent).toContain('checks passed');
+    // An unchanged result says so in words, never "0 change in failing checks".
+    const fourth = { ...makeRun(), runId: 'fourth', sequence: 4 };
+    view.rerender(<VerifySurface {...props} runArchive={[...archive, fourth]} lastRun={fourth} />);
+    expect(view.getByTestId('ide-run-comparison').textContent).toBe('Previous checked recording #3 · no change in failing checks');
   });
 });

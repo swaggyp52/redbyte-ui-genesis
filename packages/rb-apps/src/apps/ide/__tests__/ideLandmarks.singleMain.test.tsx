@@ -21,6 +21,7 @@ import { saveIdeProjectSnapshot } from '../projectPersistence';
 import { saveLabSessionMeta } from '../persistence/labSession';
 import { useProjectRuntime } from '../projectRuntime';
 import { IdeApp } from '../../IdeApp';
+import { getIdeModeLabel } from '../workflowStages';
 
 const PROJECT_ID = 'rb-landmark-contract';
 
@@ -132,6 +133,8 @@ describe('IDE landmark contract: exactly one visible <main> per surface', () => 
       );
       expect(described, `expected one visible <main>, got: ${described.join(' + ')}`).toHaveLength(1);
       expect(mains[0].getAttribute('data-testid')).toBe('ide-mode-body');
+      // The landmark is named for the stage a student sees, never the internal route id.
+      expect(mains[0].getAttribute('aria-label')).toBe(`${getIdeModeLabel(mode)} workspace`);
     });
   }
 

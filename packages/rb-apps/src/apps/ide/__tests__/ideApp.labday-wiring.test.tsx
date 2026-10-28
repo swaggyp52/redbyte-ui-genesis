@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { ThemeProvider } from '@redbyte/rb-theme';
 import type { RBProject } from '../../../export/projectFormat';
@@ -9,6 +9,7 @@ import { IdeApp } from '../../IdeApp';
 import { useProjectRuntime } from '../projectRuntime';
 import { computeScenarioContentHash } from '../verifyScenario';
 import { workspacePreferencesStore } from '../workspacePreferences';
+import { InlineVerificationWorker } from './inlineVerificationWorker';
 
 // The active mode is no longer a top-bar label (`ide-topbar-mode-label` was
 // removed when the stage-nav became the single workflow authority). The current
@@ -287,6 +288,8 @@ describe('IdeApp lab-day wiring', () => {
     workspacePreferencesStore.reset();
     localStorage.setItem('rb-onboarding-v1-seen', '1');
     seedIdeRoute('project');
+    // Run executes in a module worker (64bf7aa93); jsdom has none, so the real computation runs inline.
+    vi.stubGlobal('Worker', InlineVerificationWorker);
   });
 
   afterEach(() => {
@@ -296,6 +299,8 @@ describe('IdeApp lab-day wiring', () => {
     localStorage.clear();
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
+    useProjectRuntime.getState().cancelVerification();
+    vi.unstubAllGlobals();
   });
 
   // SKIP: Import nav button removed from left rail in Phase-1 (Import demoted to utility action).
@@ -355,7 +360,9 @@ describe('IdeApp lab-day wiring', () => {
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a35tcpg236-1');
   });
 
-  it('resets inherited top authority when Build Fresh is renamed', async () => {
+  // Manual, Milestone 4 (2026-10-05): friendly names leave the HDL top, ports and constraints
+  // intact. This test predates that decision (19ad3997f expected the top to follow the name).
+  it('keeps the HDL top when Build Fresh is renamed, and changes it only where it is edited', async () => {
     const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     fireEvent.click(await view.findByTestId('ide-project-build-fresh-primary'));
@@ -396,11 +403,14 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     fireEvent.click(view.getByTestId('mode-button-project'));
-    await waitFor(() => {
-      expect((view.getByTestId('ide-project-fpga-top') as HTMLInputElement).value).toBe(
-        'full_adder'
-      );
-    });
+    const top = (await view.findByTestId('ide-project-fpga-top')) as HTMLInputElement;
+    expect(useProjectRuntime.getState().projectName).toBe('Full Adder');
+    expect(top.value).toBe('untitled_project');
+    expect(useProjectRuntime.getState().activeTop).toBe('untitled_project');
+    // The top changes where it is shown, and the export reads it live.
+    fireEvent.change(top, { target: { value: 'full_adder' } });
+    await waitFor(() => expect(useProjectRuntime.getState().activeTop).toBe('full_adder'));
+    expect(top.value).toBe('full_adder');
   }, 15000);
 
   it('keeps a structural Design blocker dominant over missing Compare evidence', async () => {

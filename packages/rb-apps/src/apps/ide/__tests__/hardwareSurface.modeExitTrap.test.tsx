@@ -16,6 +16,7 @@ import type { ProjectHealth } from '../projectHealth';
 import { deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
+import { BOARD_CONSTRAINTS_STAGE_LABEL } from '../workflowStages';
 
 afterEach(() => {
   cleanup();
@@ -92,7 +93,8 @@ describe('HardwareSurface Board recovery navigation', () => {
     const banner = getByTestId('ide-hw-mode-exit-banner');
     expect(banner).toBeTruthy();
     const backBtn = getByTestId('ide-hw-mode-exit-back');
-    expect(backBtn.textContent).toMatch(/back to board & constraints/i);
+    // The return names the Board stage by its one label owner (Board since 64bf7aa93).
+    expect(backBtn.textContent).toMatch(new RegExp(`Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}$`));
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Board Check active/i);
   });
 

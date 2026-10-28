@@ -37,7 +37,7 @@ describe('Run explains its actual inputs and checks', () => {
     fireEvent.click(view.getByTestId('ide-vcb-reproduce')); expect(onReproduce).toHaveBeenCalledOnce();
   });
   it('explains unavailable saved inputs without disabling the current draft run', () => {
-    const onReproduce = vi.fn(); const reason = 'This recording did not retain reproduction inputs.';
+    const onReproduce = vi.fn(); const reason = 'This older recording did not retain reproduction inputs.';
     const view = render(<VerifyCommandBar {...BASE} onReproduce={onReproduce} reproduceDisabledReason={reason} />);
     expect(view.getByText(reason)).toBeTruthy();
     fireEvent.click(view.getByTestId('ide-vcb-reproduce')); expect(onReproduce).not.toHaveBeenCalled();

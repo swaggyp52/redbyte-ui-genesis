@@ -1990,9 +1990,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             lastExport: result,
             dirtySinceExport: result.status === 'ok' ? false : state.projectHealthCore.dirtySinceExport,
           },
-          // Append every generation/download event to the bounded history so
-          // the package workspace can compare successive packages and show
-          // provenance. lastExport stays the single "current" pointer.
+          // Append every generation/download event to the history so the package
+          // workspace can compare successive packages and show provenance. Receipts
+          // are retained evidence (P2.6C: complete sessions, never pruned).
+          // lastExport stays the single "current" pointer.
           exportHistory: [...state.exportHistory, result],
         }));
       },

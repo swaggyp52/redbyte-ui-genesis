@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS_CONSOLE_SLOT_ID } from './WorkbenchStatusBar';
+import { getIdeModeLabel } from '../workflowStages';
 import {
   WORKSPACE_DOCK_SIZE_LIMITS,
   workspacePreferencesStore,
@@ -299,7 +300,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         <main
           className={`ide-main-area ide-workbench-workspace ide-workbench-workspace--${surfaceFrame}`}
           data-testid="ide-mode-body"
-          aria-label={`${mode} workspace`}
+          // The landmark names the stage a student sees (Simulate, Board, Package), never the route id.
+          aria-label={`${getIdeModeLabel(mode)} workspace`}
         >
           {workspace}
           <div className="ide-workbench-panel-controls" aria-label="Workspace panels">

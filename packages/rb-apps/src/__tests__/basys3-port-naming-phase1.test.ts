@@ -62,8 +62,11 @@ describe('Phase 1 — port naming: label takes precedence over nodeId_port', () 
       outputs: [{ id: 'out0', nodeId: 'g1', port: 'out', label: 'ld0', pin: 'LD0' }],
     };
     const result = exportBasys3Bundle(makeCircuitWithNode('g1'), ioMapping);
-    expect(result.readme).toContain('| sw0 | SW0 |');
-    expect(result.readme).toContain('| ld0 | LD0 |');
+    // The pin map names logical signal, artifact port, board resource, package pin and direction.
+    expect(result.readme).toContain('| sw0 | sw0 | Slide switch SW0 | V17 | input |');
+    expect(result.readme).toContain('| ld0 | ld0 | LED LD0 | U16 | output |');
+    expect(result.readme).not.toContain('g1_in1');
+    expect(result.readme).not.toContain('g1_out');
   });
 
   it('sanitizes label for valid VHDL/Verilog identifier', () => {
