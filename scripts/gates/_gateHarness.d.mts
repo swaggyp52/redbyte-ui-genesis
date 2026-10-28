@@ -13,6 +13,8 @@ export type IdeGateScenario = (context: IdeGateScenarioContext) => void | Promis
 
 export function assert(condition: unknown, message: string): asserts condition;
 export function visible(locator: Locator): Promise<boolean>;
+/** Turn on the Time instrument's explicit Edit stimulus mode (RB-DEBT-020). Idempotent. */
+export function editStimulus(page: Page): Promise<void>;
 export function openDesignBoardPalette(page: Page): Promise<void>;
 export function designInputIds(page: Page): Promise<string[]>;
 export function selectDesignInput(page: Page, nodeId: string): Promise<Locator>;

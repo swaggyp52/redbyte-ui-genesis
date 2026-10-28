@@ -1,5 +1,5 @@
-#!/usr/bin/env node
-
+// Shared gate helpers. Imported by every gate, never executed directly, so it carries no shebang:
+// Vite's SSR transform hoists imports above one, which made the module unloadable in vitest.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import net from 'node:net';

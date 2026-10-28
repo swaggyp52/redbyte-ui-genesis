@@ -6,7 +6,7 @@ const viteNode=path.join(path.dirname(require.resolve('vite-node/package.json',{
 execFileSync(process.execPath,[viteNode,'--config','vitest.config.ts','packages/rb-e2e/fixtures/large-recorded-experiment.ts'],{stdio:'pipe'});
 const out=evidenceDir('large-experiment',process.env.RB_SHOT_LABEL??'current');const browser=await launchChromium();let page;
 try{
- page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});page.setDefaultTimeout(20000);const tid=id=>page.getByTestId(id);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});page.setDefaultTimeout(20000);const tid=id=>page.getByTestId(id);const reveal=async control=>{const holder=page.locator('details',{has:control}).last();if(await holder.count()&&!await holder.evaluate(x=>x.open))await holder.locator('summary').first().click();return control;};const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(BASE_URL,{waitUntil:'networkidle'});await tid('ide-project-file-input').setInputFiles(path.resolve('.redbyte/e2e-evidence/large-experiment/fixture.rbproj'));
  await tid('mode-button-design').click();await tid('ide-design-test-design').click();
  const start=Date.now();await tid('ide-vcb-run').click();await tid('ide-run-identity').waitFor();const runMs=Date.now()-start;
@@ -17,7 +17,7 @@ try{
  const selected=()=>page.evaluate(()=>JSON.parse(JSON.stringify(window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun)));
  const archive=()=>page.evaluate(()=>JSON.parse(JSON.stringify(window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive)));
  const timings=[];
- const execute=async(reproduce=false)=>{const previous=(await selected()).runId;const start=Date.now();await tid(reproduce?'ide-vcb-reproduce':'ide-vcb-run').click();await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId!==id,previous,{timeout:60000});const next=await selected();assert.equal(next.waveform.length,512);assert.equal(next.report.rows.length,2560);assert.ok(next.circuitSnapshot&&next.executionInput&&next.identity);timings.push({runId:next.runId,reproduce,milliseconds:Date.now()-start});console.log('Recorded '+next.sequence+' in '+(Date.now()-start)+'ms');return next;};
+ const execute=async(reproduce=false)=>{const previous=(await selected()).runId;const start=Date.now();if(reproduce)await reveal(tid('ide-vcb-reproduce'));await tid(reproduce?'ide-vcb-reproduce':'ide-vcb-run').click();await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId!==id,previous,{timeout:60000});const next=await selected();assert.equal(next.waveform.length,512);assert.equal(next.report.rows.length,2560);assert.ok(next.circuitSnapshot&&next.executionInput&&next.identity);timings.push({runId:next.runId,reproduce,milliseconds:Date.now()-start});console.log('Recorded '+next.sequence+' in '+(Date.now()-start)+'ms');return next;};
  const command=async id=>{await tid('ide-topbar-command-palette').waitFor();await tid('ide-topbar-command-palette').click();await tid('ide-command-palette').waitFor();if(!await tid('ide-command-'+id).count())await tid('ide-command-palette-query').fill(id.split('.').pop());await tid('ide-command-'+id).click();};
  const save=async()=>{await tid('ide-topbar-save-btn').click();await page.locator('[data-testid="ide-save-state"][data-state="saved"]').waitFor({timeout:60000});};
  await tid('ide-verify-view-waveform').click();await tid('ide-verify-tick-scrubber').fill('511');
@@ -26,13 +26,13 @@ try{
  const options=await page.getByLabel('Recorded circuit signal').locator('option').evaluateAll(nodes=>nodes.map(node=>({value:node.value,label:node.textContent})));
  fs.writeFileSync(path.join(out,'signal-options.json'),JSON.stringify(options,null,2));
  const sum=options.find(option=>/^SUM.*2/i.test(option.label));assert.ok(sum,'The mapped top-level SUM bit is offered');
- await page.getByLabel('Recorded circuit signal').selectOption(sum.value);
+ await (await reveal(page.getByLabel('Recorded circuit signal'))).selectOption(sum.value);
  const inspectionMs=Date.now()-inspectionStart;
  await page.screenshot({path:path.join(out,'hierarchical-recording-1440x900.png')});
  assert.match(await tid('ide-recorded-circuit-context').innerText(),/511/);
  const labels=await page.getByLabel('Recorded circuit signal').locator('option').allTextContents();
  assert.ok(labels.some(label=>/u_fa0|fulladdercell0/i.test(label)) && labels.some(label=>/u_fa1|fulladdercell1/i.test(label)),'Internal names retain distinct instance identity');
- await page.getByLabel('Close circuit investigation').click();await tid('ide-vcb-reproduce').click();await page.waitForFunction(()=>document.querySelector('[data-testid="ide-run-repetition"]')?.textContent?.includes('2 runs'));
+ await page.getByLabel('Close circuit investigation').click();await reveal(tid('ide-vcb-reproduce'));await tid('ide-vcb-reproduce').click();await page.waitForFunction(()=>document.querySelector('[data-testid="ide-run-repetition"]')?.textContent?.includes('2 runs'));
  assert.equal(await tid('ide-run-output-digest').getAttribute('data-digest'),initialDigest);
  // Four executions of configuration A, then three each of two authored stimulus edits.
  for(let i=0;i<2;i++)assert.equal((await execute(true)).outputDigest,initialDigest);
@@ -58,9 +58,9 @@ try{
  assert.equal(await page.evaluate(()=>window.__RB_PROJECT_RUNTIME__.getState().projectKind),'home','Reload must preserve the fully committed closed state');
  await command('project.open');await tid('ide-load-project-'+projectId).click();await tid('mode-button-verify').click();
  assert.deepEqual(await archive(),retained,'Close and browser reload preserve every complete record');
- const picker=page.getByLabel('Recorded run',{exact:true});await picker.selectOption(run.runId);assert.deepEqual(await selected(),run);await picker.selectOption(newest.runId);assert.deepEqual(await selected(),newest);
+ const picker=page.getByLabel('Recorded run',{exact:true});await reveal(picker);await picker.selectOption(run.runId);assert.deepEqual(await selected(),run);await picker.selectOption(newest.runId);assert.deepEqual(await selected(),newest);
  await tid('mode-button-export').click();await tid('ide-export-package-files').waitFor();assert.equal(await tid('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust'),trust);assert.equal((await tid('ide-export-package-sha256').innerText()).trim(),packageSha256);
- await tid('mode-button-verify').click();await picker.selectOption(run.runId);const oldestRepeat=await execute(true);
+ await tid('mode-button-verify').click();await reveal(picker);await picker.selectOption(run.runId);const oldestRepeat=await execute(true);
  assert.deepEqual(oldestRepeat.nativeTrace,run.nativeTrace);assert.deepEqual(oldestRepeat.executionInput,run.executionInput);assert.deepEqual(oldestRepeat.circuitSnapshot,run.circuitSnapshot);assert.equal(oldestRepeat.outputDigest,initialDigest);assert.equal((await archive()).length,11);
  await save();
  const durableStorage=await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('redbyte-ide-sessions-v1');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});const records=await new Promise((resolve,reject)=>{const r=db.transaction('records').objectStore('records').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();return {records:records.map(r=>({key:r.key,chars:r.value?.length??0,revision:r.revision})),estimate:await navigator.storage.estimate()};});

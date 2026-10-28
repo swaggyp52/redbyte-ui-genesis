@@ -180,6 +180,10 @@ async function setupScenario(name, events, create=false) {
   assert.equal(scenario.vectors.length,events.length); step('authored-scenario',{name,id:scenario.id,events:events.length});
   return scenario.id;
 }
+// The recording picker lives in Recordings & details; open it as a student would.
+async function openRunDetails() {
+  const details=tid('ide-run-details'); if(!await details.evaluate(node=>node.open)) await details.locator('summary').click();
+}
 async function run(expected) {
   const old=(await read()).run?.runId; await tid('ide-vcb-run').click();
   await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().verifyLastRun?.runId!==id,old);
@@ -299,7 +303,8 @@ try {
     step('logic-failure-discovered',{scenarioId:counting});
     const failed=(await read()).run;
     await tid('ide-verify-fail-focus-trace').click(); await shot('04-logic-driver-investigation');
-    await tid('ide-design-current-design').click(); await fit();
+    if (await tid('ide-design-current-design').count()) await tid('ide-design-current-design').click();
+    await tid('ide-design-toolbar').waitFor(); assert.equal(await tid('ide-design-current-design').count(), 0, 'Editing the current design, not a recorded view'); await fit();
     const wrong=(await read()).circuit.connections.find(c=>c.to.nodeId===ids.S2&&c.to.portName==='CARRY');assert(wrong);
     await disconnectVisibleWire(wrong); await wire(ids.S1,'CARRY_OUT',ids.S2,'CARRY');
     await tid('ide-design-test-design').click(); const countingPass=await run('pass');
@@ -310,20 +315,23 @@ try {
     await chooseEvent(5); await expectedBit('COUNT0',1); await run('fail'); await shot('05-wrong-expectation');
     await chooseEvent(5); await expectedBit('COUNT0',0); const holdPass=await run('pass');
     assert.deepEqual((await read()).scenarios.find(s=>s.id===holding).vectors,beforeExpectation.vectors,'expectation repair restores intended stimulus/checks');
-    await setupScenario('Pause and resume without a clock edge',resumeEvents,true);await run('fail');
-    // Data must settle before the active clock edge, just as in the generated HDL.
-    // Move EN's first assertion to the preceding low-clock event through the editor;
-    // retain the independently derived output checks and all other scenarios.
+    // EN rises on the same row as the clock edge. Engine v3 (RB-DEBT-014) evaluates the slice that
+    // feeds each register before the register captures, and the shipped bench drives a row's data
+    // 1 ns before its rising clock (P0-2), so Verify and the HDL both capture the row's EN and the
+    // independently derived checks pass. (Under v2 the outcome depended on node order.)
+    await setupScenario('Pause and resume without a clock edge',resumeEvents,true);await run('pass');
+    // Hardware has no such ordering between a switch and a button pressed together, so the student
+    // still establishes EN during the preceding low-clock event; the checks must still hold.
     await chooseEvent(1);const enField=(await read()).rows.find(r=>r.label==='EN');
     await tid(`ide-scenario-input-${enField.id}`).click();await run('pass');
     step('stimulus-setup-repaired',{signal:'EN',movedBeforeEdgeAt:2,assertedAt:1,expectedChecksUnchanged:true});
     assert.deepEqual((await read()).scenarios.find(s=>s.id===counting),beforeOther,'other scenario edits cannot contaminate count/wrap');
     await tid(`ide-testbench-document-tab-${counting}`).click();
-    await page.getByLabel('Recorded run',{exact:true}).selectOption(failed.runId);
+    await openRunDetails(); await page.getByLabel('Recorded run',{exact:true}).selectOption(failed.runId);
     assert.equal((await read()).run.status,'fail'); assert.notEqual((await read()).run.runId,countingPass.runId);
     assert.match(await tid('ide-run-identity').getAttribute('data-currency'),/historical|differs|stale/,'old wiring recording remains historical');
     await shot('06-historical-wiring-failure');
-    await page.getByLabel('Recorded run',{exact:true}).selectOption(countingPass.runId);
+    await openRunDetails(); await page.getByLabel('Recorded run',{exact:true}).selectOption(countingPass.runId);
     const fresh=await run('pass');
     await tid('mode-button-hardware').click();
     for(const [label,resource] of Object.entries({CLK:'CLK100MHZ',EN:'SW0',RST:'BTNC',COUNT0:'LD0',COUNT1:'LD1',COUNT2:'LD2'})) {
@@ -344,7 +352,7 @@ try {
     step('close-browser-process-and-reopen',{projectId:original.projectId,profile});
     await fileMenu('project.close');await tid('ide-project-build-fresh-primary').click();await save();const other=(await read()).projectId;
     assert.notEqual(other,original.projectId);await openSaved(original.projectId);assert.deepEqual(authoring(await read()),originalAuthoring);
-    await fileMenu('project.save-as');await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().projectId!==id,original.projectId);
+    await fileMenu('project.save-as');/* Save As asks for the copy's friendly name (Milestone 4) */await tid('ide-save-as-confirm').click();await page.waitForFunction(id=>window.__RB_PROJECT_RUNTIME__.getState().projectId!==id,original.projectId);
     const copied=await read();assert.notEqual(copied.projectId,original.projectId);
     assert.deepEqual(authoring(copied),originalAuthoring);await fileMenu('project.duplicate');
     await fileMenu('project.open');await tid('ide-load-project-list').getByRole('button').filter({hasText:`${original.name} Copy`}).first().click();
