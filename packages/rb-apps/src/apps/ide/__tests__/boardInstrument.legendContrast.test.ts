@@ -21,17 +21,18 @@ function block(css: string, selector: RegExp): string {
   return css.match(selector)?.[1] ?? '';
 }
 
+// A theme's schematic block may list more selectors after the root one (the canvas appearance).
 const LIGHT: Theme = {
   board: block(boardCss, /:root\[data-redbyte-mode='ide'\]\s*\{([\s\S]*?)\}/),
   fallback: '',
   product: block(productCss, /:root[^{]*\{([^}]*--rb-action:\s*#2563eb[^}]*)\}/),
-  schematic: block(schematicCss, /:root\[data-redbyte-mode='ide'\]\s*\{([\s\S]*?)\}/),
+  schematic: block(schematicCss, /:root\[data-redbyte-mode='ide'\]\s*(?:,[^{}]*)?\{([\s\S]*?)\}/),
 };
 const DARK: Theme = {
   board: block(boardCss, /:root\[data-redbyte-mode='ide'\]\[data-rb-theme='midnight'\]\s*\{([\s\S]*?)\}/),
   fallback: LIGHT.board,
   product: block(productCss, /\{([^}]*--rb-action:\s*#2e5fd0[^}]*)\}/),
-  schematic: block(schematicCss, /\[data-rb-theme='midnight'\]\s*\{([\s\S]*?)\}/),
+  schematic: block(schematicCss, /\[data-rb-theme='midnight'\]\s*(?:,[^{}]*)?\{([\s\S]*?)\}/),
 };
 
 function declared(body: string, name: string): string | undefined {
