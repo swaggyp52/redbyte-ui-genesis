@@ -386,38 +386,13 @@ describe('authored vectors against the models', () => {
   });
 
   /**
-   * Known content defects (see the disposition in each entry). The list is exact: fixing an
-   * example, or a new disagreement, fails this test until the list is updated.
+   * Every authored expectation agrees with the model of its lab text. The two content defects this
+   * test used to pin are fixed (2026-10-28): the lab 8 IDE starter expected LOCK one row late at
+   * bit 12 (row 74), and the lab 7 checkpoint listed each count one pulse early under its own
+   * clocked_macro post-edge sampling (30 bits on 16 rows); its first pulse now resets.
    */
-  const LAB7_ROW_BITS_OFF: Record<number, string> = {
-    0: 'q0', 1: 'q0 q1', 2: 'q0', 3: 'q0 q1 q2', 4: 'q0', 5: 'q0 q1', 6: 'q0', 7: 'q0 q1 q2 q3',
-    8: 'q0', 9: 'q0 q1', 10: 'q0', 11: 'q0 q1 q2', 12: 'q0', 13: 'q0 q1', 14: 'q0', 15: 'q0 q1 q2 q3',
-  };
-
-  it('every disagreement is a known, investigated content defect', () => {
+  it('no authored expectation disagrees with its model', () => {
     const found = results.flatMap((r) => r.result.disagreements.map((d) => ({ set: `${r.key} ${r.set}`, ...d })));
-    const others = found.filter((d) => !d.set.startsWith('json:22_lab7') && !d.set.startsWith('ide:23_lab8'));
-    expect(others).toEqual([]);
-
-    // Lab 8 IDE starter: authored LOCK lags one row behind the ENTER rising edge at bit 12
-    // (labStarters.ts uses unlockedBeforePulse on the ENTER=1 row). Manual-clock rows are settled
-    // samples, so LOCK = m4.Q is already 1 on that row.
-    expect(found.filter((d) => d.set.startsWith('ide:23_lab8'))).toEqual([
-      { set: 'ide:23_lab8-fsm-lock-starter-basys3 vectors', row: 74, tick: 74, signal: 'led_lock', authored: 0, model: 1 },
-    ]);
-
-    // Lab 7 checkpoint: authored row k is the count k, but under its declared clocked_macro
-    // schedule row k is sampled after pulse k+1, i.e. count (k+1) mod 16. Off by one on every row.
-    const lab7 = found.filter((d) => d.set.startsWith('json:22_lab7'));
-    const offBits = Object.fromEntries(Object.keys(LAB7_ROW_BITS_OFF).map((row) => [
-      row, lab7.filter((d) => d.row === Number(row)).map((d) => d.signal.replace('led_', '')).sort().join(' '),
-    ]));
-    expect(offBits).toEqual(LAB7_ROW_BITS_OFF);
-    expect(lab7).toHaveLength(30);
-    for (const d of lab7) {
-      const bitIndex = Number(d.signal.slice(-1));
-      expect(d.authored, `row ${d.row} ${d.signal}`).toBe((d.row >> bitIndex) & 1);
-      expect(d.model, `row ${d.row} ${d.signal}`).toBe((((d.row + 1) % 16) >> bitIndex) & 1);
-    }
+    expect(found).toEqual([]);
   });
 });

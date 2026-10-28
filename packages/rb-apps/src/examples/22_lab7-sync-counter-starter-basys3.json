@@ -72,14 +72,14 @@
         "id": "counter-sequence-proof",
         "type": "truth-table",
         "title": "Counter sequence proof (0..15)",
-        "description": "With EN=1 and RST=0, prove the complete 4-bit sequence window.",
+        "description": "Each row is one CLK pulse, sampled after the edge. The first pulse has RST=1 (synchronous reset wins over EN), so it reads 0000; with EN=1 and RST=0 the next fifteen pulses read 0001 through 1111.",
         "config": {
           "schedule": "clocked_macro",
           "clockSignal": "sw_clk",
           "inputs": ["sw_en", "sw_rst"],
           "outputs": ["led_q3", "led_q2", "led_q1", "led_q0"],
           "table": [
-            { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": false, "led_q0": false } },
+            { "inputs": { "sw_en": true, "sw_rst": true }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": false, "led_q0": false } },
             { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": false, "led_q0": true } },
             { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": true, "led_q0": false } },
             { "inputs": { "sw_en": true, "sw_rst": false }, "outputs": { "led_q3": false, "led_q2": false, "led_q1": true, "led_q0": true } },
