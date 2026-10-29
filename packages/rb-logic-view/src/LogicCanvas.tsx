@@ -1667,6 +1667,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         onPointerMove={handlePointerMoveForWirePreview}
         onPointerUp={canvasInput.onPointerUp}
         onPointerCancel={canvasInput.onPointerCancel}
+        onDoubleClick={(e) => {
+          // Pressing on a part captures the pointer to the sheet for dragging, so a real
+          // double-click lands here rather than on the part (a module instance never opened).
+          // Hand it to the part under the pointer; the part's own handler decides what it means.
+          if (e.target !== e.currentTarget) return;
+          const part = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-node-id]');
+          if (!part || !e.currentTarget.contains(part)) return;
+          part.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY }));
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           if (!onCanvasContextMenu) return;
