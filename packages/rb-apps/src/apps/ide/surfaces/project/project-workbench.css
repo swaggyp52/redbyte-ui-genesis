@@ -551,7 +551,10 @@
   .ide-root .rb-start { grid-template-columns: 150px minmax(240px, 300px) minmax(0, 1fr); }
 }
 @media (max-width: 899px) {
-  .ide-root .rb-start { grid-template-columns: 1fr; grid-template-rows: auto minmax(160px, 38%) minmax(0, 1fr); }
+  /* Stacked, the preview keeps room for its title and its Open / Start action, and the page scrolls
+     when the three rows are taller than the window: at 720x450 with 150% text the preview had
+     collapsed to 0 px and the status line covered Open starter (owner acceptance V10). */
+  .ide-root .rb-start { grid-template-columns: 1fr; grid-template-rows: auto minmax(160px, 38%) minmax(10rem, 1fr); overflow-y: auto; }
   .ide-root .rb-start-nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--wb-border); }
   .ide-root .rb-start-nav-actions { flex-direction: row; margin: 0 0 0 auto; padding: 0; border: 0; }
   .ide-root .rb-start-list-pane { border-right: 0; border-bottom: 1px solid var(--wb-border); }

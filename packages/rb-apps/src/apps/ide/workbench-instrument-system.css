@@ -668,6 +668,12 @@
 .ide-root .wb-status-hint-slot { display: flex; align-items: center; overflow: hidden; }
 .ide-root .wb-status-hint-slot > .rb-design-wirecue { display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; white-space: nowrap; }
 .ide-root .wb-status-hint-slot .rb-design-wirecue-msg { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; flex: 0 1 auto; min-width: 0; padding-bottom: 0.0625rem; overflow: hidden; line-height: 1.05; white-space: normal; }
+/* Two lines always fit inside the line's own height: with enlarged text the clamped message is
+   set no larger than half the line (at 150% text it grew the line from 48 to 53px when a wire was
+   armed, RB-DEBT-031). At 100% this is the 14px status text; what is cut still offers More. */
+.ide-root .wb-status-hint-slot .rb-design-wirecue-msg:not(.is-expanded) { font-size: min(1em, calc((var(--wb-status-h) - 1px - 0.0625rem) / 2.1)); }
+/* A port name in code keeps the message's line height (its own 'normal' made each line 28px). */
+.ide-root .wb-status-hint-slot .rb-design-wirecue-msg code { line-height: inherit; }
 .ide-root .wb-status-hint-slot .rb-design-wirecue-msg.is-expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
 /* Opened, the cue takes a line of the status line to itself, so the message reads across the window. */
 .ide-root .wb-status-hint-slot:has(.rb-design-wirecue-msg.is-expanded) { flex-basis: 100%; order: 99; }
