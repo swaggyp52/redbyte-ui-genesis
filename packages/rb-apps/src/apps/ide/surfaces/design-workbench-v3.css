@@ -941,12 +941,20 @@
     --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px);
   }
 
+  /* With both panels open the inspector yields before the circuit does: it keeps its preferred
+     width only while the canvas track still has 856px (an 840px sheet inside 8px gutters), and
+     narrows no further than 240px. At 1366x768 that is a 240px inspector and an 822px sheet;
+     from about 1450px wide, and on any screen where a resized inspector fits, nothing changes. */
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock) {
     grid-template-columns:
       var(--ide-workbench-left-width)
       minmax(0, 1fr)
-      var(--ide-workbench-right-width) !important;
+      clamp(
+        240px,
+        calc(100% - var(--ide-workbench-left-width) - 856px),
+        var(--ide-workbench-right-width)
+      ) !important;
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
