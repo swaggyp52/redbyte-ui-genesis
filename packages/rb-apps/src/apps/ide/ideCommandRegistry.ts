@@ -41,6 +41,7 @@ export const IDE_COMMAND_IDS = {
   reopenClosedDocument: 'document.reopen-closed',
   toggleWorkspacePanel: 'workspace.panel.toggle',
   resetWorkspaceLayout: 'workspace.layout.reset',
+  openMeridianPreview: 'workspace.meridian-preview.open',
   useAuthoringPreset: 'workspace.preset.authoring',
   useSimulationPreset: 'workspace.preset.simulation',
   useBoardPreset: 'workspace.preset.board',

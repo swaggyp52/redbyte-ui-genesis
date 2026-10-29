@@ -112,6 +112,8 @@
 [data-rb-studio] .mrd-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 0 1 auto; max-width: 40%; }
 [data-rb-studio] .mrd-brand-mark { font-weight: 700; letter-spacing: 0.02em; color: var(--mrd-ink); }
 [data-rb-studio] .mrd-brand-mark span { color: var(--mrd-now); }
+[data-rb-studio] .mrd-preview-label { padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; color: var(--mrd-ink-2); font: 600 var(--mrd-text-sm) var(--mrd-font-mono); white-space: nowrap; cursor: help; }
+[data-rb-studio] .mrd-back-link { text-decoration: none; white-space: nowrap; }
 [data-rb-studio] .mrd-project { font-size: var(--mrd-text-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 [data-rb-studio] .mrd-bar-spacer { flex: 1 1 auto; }
 [data-rb-studio] .mrd-run-status { font: 500 var(--mrd-text-sm) var(--mrd-font-mono); color: var(--mrd-ink-2); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

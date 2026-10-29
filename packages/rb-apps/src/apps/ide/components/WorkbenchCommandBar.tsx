@@ -89,6 +89,7 @@ export const DEFAULT_WORKBENCH_MENUS: readonly WorkbenchMenuSpec[] = [
         IDE_COMMAND_IDS.resetWorkspaceLayout,
       ],
       [IDE_COMMAND_IDS.useLightTheme, IDE_COMMAND_IDS.useDarkTheme, IDE_COMMAND_IDS.useSystemTheme],
+      [IDE_COMMAND_IDS.openMeridianPreview],
     ],
   },
   {

@@ -12,6 +12,8 @@
  * These are re-exports of existing modules; their behavior is unchanged.
  */
 
+// Workbench mode and Meridian stage, both ways.
+export { ideModeForMeridianStage, meridianPreviewSearch, meridianStageForIdeMode, type MeridianStage } from './apps/ide/startupMode';
 // Recorded moment: values, source spans, structural derivation.
 export {
   generateJourneySource,

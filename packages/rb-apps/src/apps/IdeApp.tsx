@@ -65,6 +65,7 @@ import type { VerifyFailureTarget } from './ide/surfaces/VerifySurface';
 import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
 import { resolveIdeBuildIdentity } from './ide/buildIdentity';
 import {
+  meridianPreviewSearch,
   normalizeIdeMode,
   resolveInitialIdeModeFromSearch,
   resolveRequestedIdeMode,
@@ -2634,6 +2635,15 @@ const IdeWorkspace: React.FC = () => {
     return true;
   }, [createRecoveryBackup, hasUnsavedWork, projectKind, refreshSavedProjects, replaceWithBlankProject, setLastSavedAt]);
 
+  // Meridian Preview opens the same project in this tab. What is open is saved first (the
+  // autosave waits 0.7 s, and leaving inside that window lost the change), and the move waits
+  // until the session is stored; a failure keeps the student here, where the banner says why.
+  const handleOpenMeridianPreview = useCallback(async () => {
+    if (hasUnsavedWork && !(await handleSaveProject())) return;
+    try { await runtimePersistence.whenDurable(); } catch { return; }
+    window.location.assign(`${window.location.pathname}${meridianPreviewSearch(activeMode)}`);
+  }, [activeMode, handleSaveProject, hasUnsavedWork]);
+
   const handleCloseProject = useCallback(async () => {
     const closedName = projectName;
     // Never blank work that is not stored. A failed save has already said why.
@@ -2763,6 +2773,19 @@ const IdeWorkspace: React.FC = () => {
       { id: IDE_COMMAND_IDS.openProject, title: 'Open Existing Project...', category: 'project', keywords: ['recent', 'local'], execute: handleOpenLoadModal },
       { id: IDE_COMMAND_IDS.buildFreshProject, title: 'Build Fresh Project', category: 'project', keywords: ['blank', 'new'], execute: handleBuildFreshProject },
       { id: IDE_COMMAND_IDS.closeProject, title: 'Close Project', category: 'project', keywords: ['close', 'done', 'put away', 'resume'], execute: handleCloseProject },
+      {
+        id: IDE_COMMAND_IDS.openMeridianPreview,
+        title: 'Open in Meridian Preview',
+        category: 'workspace',
+        keywords: ['meridian', 'preview', 'lenses', 'time', 'explain', 'studio'],
+        availability: (context: IdeShellCommandContext) =>
+          !context.hasCircuit
+            ? { state: 'disabled' as const, reason: 'Open a project with a design first.' }
+            : ['preparing', 'computing', 'publishing'].includes(useProjectRuntime.getState().verificationExecution.status)
+              ? { state: 'disabled' as const, reason: 'Wait for the simulation to finish.' }
+              : available,
+        execute: handleOpenMeridianPreview,
+      },
       { id: 'project.open-starter', title: 'Open Starter...', category: 'project', keywords: ['example', 'lab', 'catalog', 'course'], execute: () => setStarterPickerOpen(true) },
       { id: IDE_COMMAND_IDS.restoreRecoverySnapshot, title: 'Restore Recovery Snapshot', category: 'project', keywords: ['backup', 'recover'], availability: () => repositoryState.recoveryAvailable ? available : { state: 'disabled', reason: 'No recovery snapshot is available in this session.' }, execute: handleRecoverProject },
       { id: IDE_COMMAND_IDS.undoDesignEdit, title: 'Undo Design Edit', category: 'edit', keywords: ['history'], shortcut: { key: 'z', modifiers: ['primary'], label: 'Ctrl Z' }, availability: (context) => context.canUndo ? available : { state: 'disabled', reason: 'There is no design edit to undo.' }, execute: undoProjectEdit },
@@ -2865,7 +2888,7 @@ const IdeWorkspace: React.FC = () => {
       { id: 'workspace.panel.toggle-bottom', title: 'Toggle Bottom Panel', category: 'workspace', keywords: ['problems', 'console', 'output', 'dock'], execute: () => { const dock = workspacePreferencesStore.getSnapshot().surfaces[activeMode].docks.bottom; workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: !dock.visible }); } },
     ];
     return createIdeCommandRegistry(commands);
-  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleExportProjectBackup, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleSaveAsProject, handleSaveCommand, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
+  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleExportProjectBackup, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleOpenMeridianPreview, handleSaveAsProject, handleSaveCommand, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
 
   // ── Document host + global engineering selection ────────────────────────────
   const isSequentialProject = useMemo(

@@ -8,7 +8,7 @@ export async function bootstrapStudio(): Promise<void> {
   const root = document.getElementById('root');
   if (!root) throw new Error('RedByte studio: #root element missing');
   document.documentElement.dataset.redbyteMode = 'studio';
-  document.title = 'RedByte Studio';
+  document.title = 'RedByte · Meridian Preview';
   const [{ createElement, StrictMode }, { createRoot }, { MeridianStudio }] = await Promise.all([
     import('react'),
     import('react-dom/client'),

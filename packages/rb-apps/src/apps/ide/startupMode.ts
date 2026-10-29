@@ -32,3 +32,19 @@ export function resolveInitialIdeModeFromSearch(search: string): IdeMode {
 export function resolveRestoredIdeMode(search: string): IdeMode {
   return resolveRequestedIdeMode(search) ?? 'project';
 }
+
+/** Meridian Preview's stages and the workbench modes they correspond to (Design, Simulate, Board). */
+export type MeridianStage = 'design' | 'simulate' | 'board';
+
+export function meridianStageForIdeMode(mode: IdeMode): MeridianStage {
+  return mode === 'verify' ? 'simulate' : mode === 'hardware' ? 'board' : 'design';
+}
+
+export function ideModeForMeridianStage(stage: string | null | undefined): IdeMode {
+  return stage === 'simulate' ? 'verify' : stage === 'board' ? 'hardware' : 'design';
+}
+
+/** The address of Meridian Preview on the open project: never `example`, which would replace it. */
+export function meridianPreviewSearch(mode: IdeMode): string {
+  return `?studio=meridian&stage=${meridianStageForIdeMode(mode)}`;
+}

@@ -8,6 +8,7 @@ import {
   findVerifyRunLedgerEntry,
   generateJourneySource,
   getActiveScenario,
+  ideModeForMeridianStage,
   moduleInstanceOutputSources,
   planStudioRun,
   type RuntimeVerifyRun,
@@ -325,8 +326,10 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
   // reason and a Leave anyway path. A modified click opens a new tab and keeps this document.
   const [leaveNotice, setLeaveNotice] = useState<{ href: string; reason: string } | null>(null);
   const leavingAnywayRef = useRef(false);
+  // One session has one live document: a second tab would write the same saved project and fork it.
+  // So every way of following a workbench link, a modified or middle click too, leaves in this tab.
   const leaveStudio = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (event.button !== 0 && event.button !== 1) return;
     event.preventDefault();
     const href = event.currentTarget.getAttribute('href') ?? '';
     setLeaveNotice(null);
@@ -981,6 +984,8 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
       <header className="mrd-bar" style={{ position: 'relative' }}>
         <div className="mrd-brand">
           <span className="mrd-brand-mark">Red<span>Byte</span></span>
+          <span className="mrd-preview-label" data-testid="meridian-preview-label"
+            title="Meridian Preview: the same project, saved in this browser. Here: move parts, wire pins, delete wires, Explore, Run and read recordings. In the classic workbench: add, rename or delete parts, edit cases, map pins, open modules, save copies and build the package.">Meridian Preview</span>
           <span className="mrd-project" data-testid="meridian-project" title={projectName}>{projectName}</span>
         </div>
         <div className="mrd-bar-spacer" />
@@ -990,6 +995,8 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
         ) : (
           <button type="button" className="mrd-btn mrd-btn--primary" onClick={startRun} data-testid="meridian-run">Run <kbd className="mrd-kbd">Ctrl+Enter</kbd></button>
         )}
+        <a className="mrd-btn mrd-back-link" href={`?mode=${ideModeForMeridianStage(stage)}`} onClick={leaveStudio} onAuxClick={leaveStudio}
+          data-testid="meridian-back-to-classic" title="Open this project, at this stage, in the classic workbench">Back to classic workbench</a>
         <button type="button" className="mrd-btn" aria-pressed={showKeys} onClick={() => setShowKeys((open) => !open)} aria-label="Keyboard shortcuts">?</button>
         {busy ? <div className="mrd-run-progress" aria-hidden="true" /> : null}
       </header>
@@ -1003,7 +1010,7 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
       ) : null}
 
       <nav className="mrd-rail" aria-label="Stages">
-        <a className="mrd-rail-item mrd-rail-link" href="?mode=project" onClick={leaveStudio} title="Project · opens the classic workbench">Project<span aria-hidden="true">↗</span></a>
+        <a className="mrd-rail-item mrd-rail-link" href="?mode=project" onClick={leaveStudio} onAuxClick={leaveStudio} title="Project · opens the classic workbench">Project<span aria-hidden="true">↗</span></a>
         <div className="mrd-rail-rule" role="presentation" />
         {STAGES.map((entry) => (
           <button key={entry.id} type="button" className="mrd-rail-item" aria-current={stage === entry.id ? 'page' : undefined}
@@ -1012,8 +1019,8 @@ const Studio: React.FC<{ reducedMotion: boolean; notice: React.ReactNode }> = ({
           </button>
         ))}
         <div className="mrd-rail-rule" role="presentation" />
-        <a className="mrd-rail-item mrd-rail-link" href="?mode=export" onClick={leaveStudio} title="Package · opens the classic workbench">Package<span aria-hidden="true">↗</span></a>
-        <a className="mrd-rail-item mrd-rail-link mrd-rail-classic" href="?mode=design" onClick={leaveStudio} title="Open this project in the classic workbench">Classic<span aria-hidden="true">↗</span></a>
+        <a className="mrd-rail-item mrd-rail-link" href="?mode=export" onClick={leaveStudio} onAuxClick={leaveStudio} title="Package · opens the classic workbench">Package<span aria-hidden="true">↗</span></a>
+        <a className="mrd-rail-item mrd-rail-link mrd-rail-classic" href={`?mode=${ideModeForMeridianStage(stage)}`} onClick={leaveStudio} onAuxClick={leaveStudio} title="Open this project in the classic workbench">Classic<span aria-hidden="true">↗</span></a>
       </nav>
 
       <main className="mrd-work" data-preset={stage} data-inspector={inspectorOpen ? 'open' : 'closed'} data-testid="meridian-work">
