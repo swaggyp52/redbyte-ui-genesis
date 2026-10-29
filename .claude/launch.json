@@ -42,6 +42,24 @@
       "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
       "runtimeArgs": ["/c", "node", "api/server.mjs"],
       "port": 3001
+    },
+    {
+      "name": "playground-prod-preview",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "pnpm", "--filter", "@redbyte/playground", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", "4319", "--strictPort"],
+      "port": 4319
+    },
+    {
+      "name": "baseline-2fc2-prod-preview",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "cd /d .redbyte\\worktrees\\base-2fc2 && pnpm --filter @redbyte/playground exec vite preview --host 127.0.0.1 --port 4320 --strictPort"],
+      "port": 4320
+    },
+    {
+      "name": "p023-prod-preview",
+      "runtimeExecutable": "C:\\Windows\\System32\\cmd.exe",
+      "runtimeArgs": ["/c", "cd /d .redbyte\\worktrees\\023-durable-nav && pnpm --filter @redbyte/playground exec vite preview --host 127.0.0.1 --port 4321 --strictPort"],
+      "port": 4321
     }
   ]
 }
