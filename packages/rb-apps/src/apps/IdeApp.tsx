@@ -369,6 +369,7 @@ const IdeWorkspace: React.FC = () => {
   const [designFocusRequest, setDesignFocusRequest] = useState<DesignFocusRequest | null>(null);
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   const [saveAsInitialName, setSaveAsInitialName] = useState<string | null>(null);
+  const [nameOnSaveOpen, setNameOnSaveOpen] = useState(false);
   const saveAsInFlightRef = useRef(false);
   const [projectFileError, setProjectFileError] = useState<string | null>(null);
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
@@ -1602,9 +1603,9 @@ const IdeWorkspace: React.FC = () => {
   }, [activeScenarioId, currentRunSignature, exportProject, projectHash, projectId, projectName, refreshSavedProjects, scenarios, setLastSavedAt]);
 
   const handleRenameProject = useCallback(
-    async (nextName: string) => {
+    async (nextName: string): Promise<boolean> => {
       const trimmed = nextName.trim();
-      if (trimmed.length === 0 || trimmed === projectName) return;
+      if (trimmed.length === 0 || trimmed === projectName) return false;
       const renamedProject: RBProject = {
         ...exportProject,
         name: trimmed,
@@ -1648,10 +1649,11 @@ const IdeWorkspace: React.FC = () => {
         saveLabSessionMeta(nextSessionMeta);
         setLastSavedAt(`Renamed and saved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
         refreshSavedProjects();
-        return;
+        return true;
       }
 
       setLastSavedAt('Unsaved changes - project renamed');
+      return false;
     },
     [
       activeExampleId,
@@ -1672,6 +1674,24 @@ const IdeWorkspace: React.FC = () => {
       activeScenarioId,
     ]
   );
+
+  // A project is first saved under a name the student gives it, so it can be found under Open saved
+  // and its Vivado package is not named after an internal id (owner acceptance V8).
+  const handleSaveCommand = useCallback(async (): Promise<boolean> => {
+    if (projectName.trim() === 'Untitled Project') {
+      setNameOnSaveOpen(true);
+      return false;
+    }
+    return handleSaveProject();
+  }, [handleSaveProject, projectName]);
+
+  const handleNameOnSave = useCallback(async (name: string): Promise<SaveCopyResult> => {
+    const listed = projectRepository.list();
+    if (!listed.ok) return { ok: false, message: listed.error.message };
+    const validation = copyNameError(name, listed.value.projects.filter((entry) => entry.projectId !== projectId).map((entry) => entry.projectName), 'project');
+    if (validation) return { ok: false, message: validation };
+    return (await handleRenameProject(name)) ? { ok: true } : { ok: false, message: 'The project could not be saved.' };
+  }, [handleRenameProject, projectId]);
 
   const handleSaveAsProject = useCallback(() => {
     if (saveAsInFlightRef.current) return;
@@ -2737,7 +2757,7 @@ const IdeWorkspace: React.FC = () => {
       { id: IDE_COMMAND_IDS.openBoardSurface, title: `Open ${getIdeModeLabel('hardware')}`, category: 'navigation', keywords: ['pins', 'mapping', 'xdc', 'basys3'], shortcut: { key: '4', label: '4' }, availability: requiresCircuit, execute: () => setCurrentMode('hardware') },
       { id: IDE_COMMAND_IDS.openExportSurface, title: `Open ${getIdeModeLabel('export')}`, category: 'navigation', keywords: ['vivado', 'package', 'handoff'], shortcut: { key: '5', label: '5' }, availability: requiresCircuit, execute: () => setCurrentMode('export') },
       { id: IDE_COMMAND_IDS.openImportRecover, title: 'Import / Recover', category: 'project', keywords: ['restore', 'archive'], execute: () => setCurrentMode('import') },
-      { id: IDE_COMMAND_IDS.saveProject, title: 'Save Project', category: 'project', keywords: ['checkpoint', 'local'], shortcut: { key: 's', modifiers: ['primary'], label: 'Ctrl S' }, execute: async () => { await handleSaveProject(); } },
+      { id: IDE_COMMAND_IDS.saveProject, title: 'Save Project', category: 'project', keywords: ['checkpoint', 'local'], shortcut: { key: 's', modifiers: ['primary'], label: 'Ctrl S' }, execute: async () => { await handleSaveCommand(); } },
       { id: IDE_COMMAND_IDS.saveProjectAs, title: 'Save Project As...', category: 'project', keywords: ['copy', 'new identity'], execute: handleSaveAsProject },
       { id: IDE_COMMAND_IDS.duplicateProject, title: 'Duplicate Project', category: 'project', keywords: ['copy', 'clone'], execute: handleDuplicateProject },
       { id: IDE_COMMAND_IDS.openProject, title: 'Open Existing Project...', category: 'project', keywords: ['recent', 'local'], execute: handleOpenLoadModal },
@@ -2845,7 +2865,7 @@ const IdeWorkspace: React.FC = () => {
       { id: 'workspace.panel.toggle-bottom', title: 'Toggle Bottom Panel', category: 'workspace', keywords: ['problems', 'console', 'output', 'dock'], execute: () => { const dock = workspacePreferencesStore.getSnapshot().surfaces[activeMode].docks.bottom; workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: !dock.visible }); } },
     ];
     return createIdeCommandRegistry(commands);
-  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleExportProjectBackup, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleSaveAsProject, handleSaveProject, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
+  }, [activeMode, activeScenario, applyDebugTickIndex, authoritativeProjectVectors, currentVerifyReplayHash, customVectors, handleApplyWorkspacePreset, handleBuildFreshProject, handleDuplicateProject, handleExportProjectBackup, handleOpenLoadModal, handleRecoverProject, handleResetWorkspace, handleRunVerification, handleSaveAsProject, handleSaveCommand, hasCircuit, redoProjectEdit, repositoryState.recoveryAvailable, setThemeVariant, undoProjectEdit, verifyLastRun?.waveform.length]);
 
   // ── Document host + global engineering selection ────────────────────────────
   const isSequentialProject = useMemo(
@@ -3323,7 +3343,7 @@ const IdeWorkspace: React.FC = () => {
         checkedCommandIds={checkedCommandIds}
         onRenameProject={handleRenameProject}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-        onSave={handleSaveProject}
+        onSave={handleSaveCommand}
         selectionPath={journeyOpen ? null : selectionPath}
         selectionKind={selectionKindLabel}
         runState={hasCircuit && runtimeSim.running ? { label: 'Running', tone: 'warn' } : null}
@@ -3813,6 +3833,9 @@ const IdeWorkspace: React.FC = () => {
           actions={<IdeButton onClick={() => setProjectFileError(null)}>Close</IdeButton>}
           onClose={() => setProjectFileError(null)} />
       ) : null}
+      {nameOnSaveOpen ? <SaveAsDialog purpose="name" initialName=""
+        existingNames={savedProjects.filter(entry => entry.projectId !== projectId).map(entry => entry.projectName)}
+        onSave={handleNameOnSave} onClose={() => setNameOnSaveOpen(false)} /> : null}
       {saveAsInitialName != null ? <SaveAsDialog initialName={saveAsInitialName}
         existingNames={[projectName, ...savedProjects.map(entry => entry.projectName)]}
         onSave={handleSaveNamedCopy} onClose={handleCloseSaveAs} /> : null}
