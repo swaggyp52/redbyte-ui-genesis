@@ -14,6 +14,7 @@ import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewMode
 import { buildVivadoProjectFolderZip, deriveVivadoProjectSlug } from '../fpga/vivado/vivadoProjectFolder';
 import type { RBProject } from '../export/projectFormat';
 import type { TestVector } from '@redbyte/rb-utils';
+import { ghdlRequired } from './helpers/ghdlHarness';
 
 /**
  * Vivado E1 harness fail-closed contract (Defect B).
@@ -26,7 +27,7 @@ import type { TestVector } from '@redbyte/rb-utils';
  *      Vivado commands), including a mode where GHDL really simulates the package;
  *   4. the real redbyte-e1-certify.ps1 wrapper against a real exported package and the fake.
  * Tiers 2-4 need tclsh (REDBYTE_TCLSH or Git for Windows'); tier 4 also needs Windows.
- * Missing tools report as skipped, never as passed.
+ * Missing tools report as skipped, never as passed; with REDBYTE_REQUIRE_GHDL=1 a missing GHDL fails.
  */
 
 const REPO = resolve(__dirname, '../../../..');
@@ -323,6 +324,12 @@ function flipExpectation(vectors: TestVector[], index: number): TestVector[] {
     return { ...vector, expected: { ...vector.expected, [key]: vector.expected[key] ? 0 : 1 } };
   });
 }
+
+describe.skipIf(ghdlAvailable)('redbyte-e1-certify.tcl with GHDL standing in for xsim (GHDL unavailable)', () => {
+  it.skipIf(!ghdlRequired)('REDBYTE_GHDL is not set to a ghdl executable; the GHDL tier did not run', () => {
+    expect(ghdlAvailable, 'REDBYTE_REQUIRE_GHDL=1 but REDBYTE_GHDL is not a ghdl executable').toBe(true);
+  });
+});
 
 describe.skipIf(!TCLSH || !ghdlAvailable)('redbyte-e1-certify.tcl with GHDL standing in for xsim', () => {
   it.each([

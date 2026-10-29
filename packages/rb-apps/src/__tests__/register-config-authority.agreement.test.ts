@@ -8,6 +8,7 @@ import type { TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
 import { runTestVectors } from '../fpga/boards/basys3/vectorRunner';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
+import { ghdlRequired } from './helpers/ghdlHarness';
 
 /**
  * RB-DEBT-028 (b): a register's configuration is the authority for its EN and RST pins, and the
@@ -18,7 +19,7 @@ import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewMode
  * The expectations come from that rule, not from either implementation. The simulator must pass
  * them (Verify's own vector runner), and the exported self-checking testbench must pass them in
  * GHDL (opt-in: REDBYTE_GHDL names a ghdl executable; without it that case is skipped, never
- * reported as passed).
+ * reported as passed, and with REDBYTE_REQUIRE_GHDL=1 it fails).
  *
  * Stimulus: an input wired to a register's RST is the design's reset, and the board-clock policy
  * drives it as a reset sequence (1 in the first cycle, then 0) in Verify and in the exported
@@ -165,5 +166,7 @@ describe.skipIf(!ghdlAvailable)('register configuration authority in GHDL', () =
 });
 
 describe.skipIf(ghdlAvailable)('register configuration authority in GHDL (unavailable)', () => {
-  it.skip('REDBYTE_GHDL is not set to a ghdl executable; the exported design was not simulated', () => {});
+  it.skipIf(!ghdlRequired)('REDBYTE_GHDL is not set to a ghdl executable; the exported design was not simulated', () => {
+    expect(ghdlAvailable, 'REDBYTE_REQUIRE_GHDL=1 but REDBYTE_GHDL is not a ghdl executable').toBe(true);
+  });
 });

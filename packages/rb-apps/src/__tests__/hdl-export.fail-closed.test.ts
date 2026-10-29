@@ -20,6 +20,7 @@ import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewMode
 import { isDesignOwnedExportDiagnostic } from '../apps/ide/projectWorkflowAuthority';
 import { exportProjectAsBasys3 } from '../fpga/boards/basys3/basys3ExportService';
 import { findVhdlXdcPortMismatches } from '../fpga/boards/basys3/basys3Bundle';
+import { ghdlRequired } from './helpers/ghdlHarness';
 import { generateJourneySource } from '../apps/ide/signalJourney';
 
 /**
@@ -587,6 +588,13 @@ describe('flat emitter resolves every output port exactly', () => {
 
 const GHDL = process.env.REDBYTE_GHDL?.trim() ?? '';
 const ghdlAvailable = GHDL.length > 0 && existsSync(GHDL);
+
+// Without GHDL a developer run skips the agreement below; a release run (REDBYTE_REQUIRE_GHDL=1) fails here.
+describe.skipIf(ghdlAvailable)('shipped hierarchical HDL agrees with the simulator (GHDL unavailable)', () => {
+  it.skipIf(!ghdlRequired)('REDBYTE_GHDL is not set to a ghdl executable; the shipped HDL was not simulated', () => {
+    expect(ghdlAvailable, 'REDBYTE_REQUIRE_GHDL=1 but REDBYTE_GHDL is not a ghdl executable').toBe(true);
+  });
+});
 
 describe.skipIf(!ghdlAvailable)('shipped hierarchical HDL agrees with the simulator (GHDL)', () => {
   it('E1: every switch combination passes the exported self-checking testbench', () => {

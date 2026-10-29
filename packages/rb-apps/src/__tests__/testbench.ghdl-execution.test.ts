@@ -13,12 +13,14 @@ import {
 import { exportProjectAsBasys3 } from '../fpga/boards/basys3/basys3ExportService';
 import { generateTestbenchVhdl, TESTBENCH_RESULT_FILE } from '../fpga/boards/basys3/testbenchGenerator';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
+import { ghdlRequired } from './helpers/ghdlHarness';
 
 /**
  * Executes generated testbenches in GHDL (Defect A proof).
  *
  * Opt-in: set REDBYTE_GHDL to a ghdl executable. Without it every case is
- * reported as skipped, never as passed. Source-level text contracts live in
+ * reported as skipped, never as passed; with REDBYTE_REQUIRE_GHDL=1 (release
+ * qualification) a missing GHDL fails instead. Source-level text contracts live in
  * fpga/boards/basys3/__tests__/testbenchGenerator.selfCheck.test.ts.
  */
 
@@ -225,5 +227,7 @@ describe.skipIf(!ghdlAvailable)('generated testbenches executed in GHDL', () => 
 });
 
 describe.skipIf(ghdlAvailable)('generated testbenches executed in GHDL (unavailable)', () => {
-  it.skip('REDBYTE_GHDL is not set to a ghdl executable; simulator execution was not performed', () => {});
+  it.skipIf(!ghdlRequired)('REDBYTE_GHDL is not set to a ghdl executable; simulator execution was not performed', () => {
+    expect(ghdlAvailable, 'REDBYTE_REQUIRE_GHDL=1 but REDBYTE_GHDL is not a ghdl executable').toBe(true);
+  });
 });

@@ -38,6 +38,7 @@
         "build:unified": "node scripts/unified-build.mjs",
         "release:package:local": "node scripts/package-candidate.mjs",
         "release:verify:local": "node scripts/release/verify-candidate.mjs",
+        "release:ghdl-preflight": "node scripts/release/ghdl-preflight.mjs",
         "preview": "pnpm --filter @redbyte/playground exec vite preview --host 127.0.0.1 --port 4173 --open",
         "preview:lab3": "pnpm --filter @redbyte/lab3-webapp exec vite preview --host --port 5173 --open",
         "preview:playground": "pnpm --filter @redbyte/playground exec vite preview --host --port 4173 --open",
