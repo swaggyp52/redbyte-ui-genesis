@@ -106,7 +106,7 @@ describe('buildEngineeringProblems', () => {
     expect(problems.find((problem) => problem.code === 'check-failed')?.freshness).toBe('stale');
   });
 
-  it('turns an unmapped required port into a board error and suppresses the duplicate export diagnostic', () => {
+  it('turns an unmapped required port into a board warning and suppresses the duplicate export diagnostic', () => {
     const problems = buildEngineeringProblems(
       baseInput({
         mappingProjection: [
@@ -144,6 +144,9 @@ describe('buildEngineeringProblems', () => {
     const board = problems.filter((problem) => problem.category === 'board');
     expect(board).toHaveLength(1);
     expect(board[0].message).toBe('SUM[2] has no board resource');
+    // Incomplete mapping is not a circuit failure (owner acceptance V3); Package still offers a draft only.
+    expect(board[0].severity).toBe('warning');
+    expect(countProblems(problems).error).toBe(0);
     expect(board[0].document).toEqual({ kind: 'board-io', constraintSetId: 'cs1' });
     expect(problems.some((problem) => problem.id === 'export:x1')).toBe(false);
   });

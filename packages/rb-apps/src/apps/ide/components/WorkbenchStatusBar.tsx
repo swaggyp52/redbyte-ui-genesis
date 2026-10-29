@@ -12,6 +12,8 @@ export interface WorkbenchStatusBarProps {
   /** Informational entries in the same ledger. Counted apart: a note is not a problem. */
   noteCount?: number;
   onShowProblems?: () => void;
+  /** Errors among `problemsCount`; the line turns red for these only. Without it every problem counts as one. */
+  errorCount?: number;
   /** Evidence freshness where relevant (Simulate / Design replay). */
   runState?: { label: string; tone: 'ok' | 'warn' | 'error' | 'idle' } | null;
 }
@@ -27,6 +29,7 @@ export const WorkbenchStatusBar: React.FC<WorkbenchStatusBarProps> = ({
   problemScope,
   noteCount = 0,
   onShowProblems,
+  errorCount,
   runState = null,
 }) => {
   // A note is not a problem, so "No problems" stays true when only notes exist - but saying
@@ -44,7 +47,7 @@ export const WorkbenchStatusBar: React.FC<WorkbenchStatusBarProps> = ({
         type="button"
         className="wb-status-btn"
         data-testid="ide-status-problems"
-        data-tone={problemsCount > 0 ? 'error' : undefined}
+        data-tone={(errorCount ?? problemsCount) > 0 ? 'error' : problemsCount > 0 ? 'warn' : undefined}
         onClick={onShowProblems}
         title="Show problems"
       >

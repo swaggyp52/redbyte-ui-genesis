@@ -3809,6 +3809,7 @@ const IdeWorkspace: React.FC = () => {
       <WorkbenchStatusBar
         problemScope={journeyOpen ? 'Current editable design' : undefined}
         problemsCount={problemCounts.error + problemCounts.warning}
+        errorCount={problemCounts.error}
         noteCount={problemCounts.info}
         onShowProblems={() =>
           workspacePreferencesStore.setDock(activeMode, 'bottom', { visible: true, expanded: true })

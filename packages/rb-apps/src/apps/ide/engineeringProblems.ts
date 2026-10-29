@@ -283,9 +283,12 @@ export function buildEngineeringProblems(input: EngineeringProblemsInput): Engin
       boardProblemPorts.add(projection.artifactPortName);
       boardProblemPorts.add(projection.logicalSignalId);
       if (relation) { boardProblemPorts.add(relation.fieldId); if (relation.nodeId) boardProblemPorts.add(relation.nodeId); }
+      // Incomplete mapping, not a failure of the circuit: a warning while the student designs and
+      // simulates (rc.8 showed red errors under a passing run, owner acceptance V3). Package still
+      // offers only a draft until every required pin has a resource.
       push({
         id: `board:unmapped:${projection.logicalSignalId}`,
-        severity: 'error',
+        severity: 'warning',
         category: 'board',
         code: 'board-unmapped',
         message: `${logicalLabel} has no board resource`,
