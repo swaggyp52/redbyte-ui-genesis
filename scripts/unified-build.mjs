@@ -19,8 +19,9 @@ try {
 
     // 0. Pre-build all packages so apps can resolve them via node_modules
     console.log('0. Pre-building workspace packages...');
+    // Dependencies first: rb-apps resolves rb-logic-core through its dist (the verification
+    // worker), so on a clean checkout rb-apps must build after the packages it imports.
     const packagesToBuild = [
-        'rb-apps',
         'rb-theme',
         'rb-icons',
         'rb-utils',
@@ -28,6 +29,7 @@ try {
         'rb-logic-core',
         'rb-instruments',
         'rb-lab-engine',
+        'rb-apps',
     ];
     for (const pkg of packagesToBuild) {
         const manifest = JSON.parse(fs.readFileSync(`packages/${pkg}/package.json`, 'utf8'));
