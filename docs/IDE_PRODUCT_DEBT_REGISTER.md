@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-10-20
+last_validated: 2026-10-28
 owner: Connor Angiel
 used_by_claude: true
 role: canonical IDE product debt register
@@ -21,6 +21,7 @@ This file owns IDE product debt. The current composition is the P2.6C Studio con
 - Legacy root/polish CSS still participates in the product. Broad deletion remains unsafe; any future cleanup needs scoped source and browser evidence.
 - 2026-10-20: the Meridian investigation and P1 studio slice filed RB-DEBT-013 to RB-DEBT-027 (below). The studio entry is isolated from the legacy cascade; it does not change the classic workbench debt above.
 - 2026-10-25: the Meridian Atlas completion pass filed RB-DEBT-028 (below).
+- 2026-10-28: owner acceptance of 1.0.0-rc.7 fixed RB-DEBT-030 in rc.8 and filed RB-DEBT-032 to RB-DEBT-034 (below; decision document `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md`).
 
 ## Historical July 2026 stable truths
 
@@ -394,6 +395,7 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: Low (pointer precision; keyboard wiring and the endpoint picker exist)
 - Current evidence: `SchematicNodeView` gives each pin a 24 x 16 world-unit hit rectangle that extends 6 units past the pin end, so two symbols placed pin-end to pin-end share hit area and the later-drawn pin wins (the nested-adder layout). The July gate `ide-design-port-target-authority` asked for 24 x 24 targets and dense-port clusters; it targets markup that no longer exists and is not in `verify:gates`.
 - Next step (P2): decide the pin target contract for the schematic (WCAG 2.5.8 spacing exception or 24 px targets), resolve overlapping targets to the pin whose stub holds the pointer, then rewrite or retire the July gate against it.
+- Acceptance (2026-10-28, rc.7 package at 1440x900, 100%): a part's pins are 32 px apart, so 24 px circles centred on adjacent targets do not intersect and the WCAG 2.5.8 spacing exception holds for pins on one part; the overlap remains where two symbols meet pin-end to pin-end. Kept post-release (dossier section 5).
 - Status: Open
 
 ### RB-DEBT-030 - Wire guidance needs its own row when the inspector is open at 1366 or 1440 (C)
@@ -402,11 +404,34 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Current evidence (2026-10-28, after the rc.6 review): the cue in the command row is the Wire badge and Cancel only; its message is in the status line (below). With the inspector open the row is 766-840 px and cannot hold the tools, the badge with Cancel, and Explore/Test, so the header takes its own row for the whole of Wire mode and choosing Wire moves the canvas once. Guidance stays off the canvas. (The July gate `ide-design-port-target-authority` that asserted header placement targets markup that no longer exists; see RB-DEBT-029.)
 - Next step (P2): a compact Wire state in the tool segment itself (badge and Cancel there, message in the status line) so no width change can move the canvas.
 - Partial resolution (2026-10-28, rc.6 review): sharing the row left the message 13 px of 230 at 1280x650 (93-232 px of a 500 px refusal at 990-1150 px rows), with no live region. The message now lives in the status line's announced hint slot (`role="status"`). A long refusal takes a second line inside the line's own height (14 px at 1.05 with a pixel for descenders: 30.4 of the 31 px inside the 2rem line and its border), so the bar stays 32 px. Measured in full at 1440, 1366, 1280 (16 and 24 px text), 1024 and 720x450 at 16 px (the 140-character output-to-output refusal is two lines in 826 px at 1280x650); at 720x450 with 24 px text the 85-character no-destination refusal needs three lines and shows two with an ellipsis, the whole text in its title and its announcement. A repeated identical refusal is a new element, so it is announced again. Esc cancels and Cancel share one cell of one size (measured identical armed and unarmed), so arming a wire cannot rewrap the row. `design-core-authoring` requires the idle guidance and the longest refusal in full, the status line's height unchanged by the refusal, and the canvas and cue still when a wire is armed. Remaining: the badge and Cancel still sit in the header, which takes its own row in Wire mode where the commands leave no room for them (the inspector open at 1366 or 1440).
-- Status: Open (partially resolved)
+- Correction and resolution (2026-10-28, owner acceptance of rc.7): with the inspector open at 1440x900 and 1366x768 the header row came and went with every wire, because a finished wire returns to Select, so the target pin moved 44 px on choosing Wire, on arming and on a refusal, not once (`.redbyte/releases/redbyte-1.0.0-rc.8-evidence/probes/wire-narrow-rc7.json`). rc.8 (`a29573231`) puts the whole Wire cue in the status line's hint slot: the badge, the message (two lines at most), More for a refusal that does not fit (it shows the refusal whole on a line of its own until the next wire event) and Cancel; the command row never holds a tool's cue. On rc.8 no pin moves at 1440, 1366, 1280 or 1024 px (`wire-narrow-rc8.json`). Journey `design-workspace-stability` (red on rc.7) keeps every pin and the command row still over three wires at both sizes with the inspector open, and reads the longest refusal whole through More at 720x450.
+- Status: Fixed in 1.0.0-rc.8 (owner acceptance pending)
 
 ### RB-DEBT-031 - The status line wraps in a narrow window with enlarged text, changing the workspace height (C)
 
 - Severity: Low (narrow windows and enlarged text only; at 720 px and wider with 16 or 24 px text the line holds one row)
 - Current evidence: since the rc.6 review the status line wraps rather than drawing Show left / right panel over the Problems handle (rc.6 overlapped them by 13 px at 720x450 with 32 px text and left the bar at 480 and 375 px). Its grid row is `auto`, so where the controls do not fit on one line, a change in what the line holds (the problems label gaining a note count, a reveal appearing when a panel is hidden) can add or remove a line and change the workspace height by one line; an untouched framed sheet then re-centres. Measured line heights: 32 px at 720x450 with 16 px text, 48 px (one line) with 24 px, 105 px (two lines) with 32 px; 157 px at 375 px with 32 px text. The Wire tool's hint never causes a wrap (its slot takes only left-over room).
 - Next step (P2): shorter labels for the line's controls in a narrow container (a container query on the status line), so the line keeps one row down to 720 px at 200% text.
+- Acceptance (2026-10-28, rc.7 and rc.8 packages, `.redbyte/releases/redbyte-1.0.0-rc.8-evidence/probes/wire-narrow-*.json`): at classroom sizes the line holds one row. With 150% text it grows 5 px (48 to 53) while a wire is armed at 1024x640 (both candidates) and, since rc.8 put the Wire badge and Cancel in it, at 1280x650; no pin moves (the sheet keeps its top). At 720x450 the Design workspace is taller than the window and scrolls (the surface grid sits 346 px down after Fit), so the toolbar is out of view and reaching it scrolls the circuit; at 720x450 with 150% text the Start page's preview pane collapses to 0 px and the status line covers Open starter (keyboard only). Kept post-release (dossier V10).
+- Status: Open
+
+### RB-DEBT-032 - REDBYTE_REQUIRE_GHDL=1 does not cover four GHDL suites (C)
+
+- Severity: Medium for evidence (a qualification without GHDL would pass with more skips instead of failing); none for the product
+- Current evidence (2026-10-28, `.redbyte/releases/redbyte-1.0.0-rc.8-evidence/qual-delta/ghdl-negative-control.log`): with `REDBYTE_REQUIRE_GHDL=1` and `REDBYTE_GHDL` naming a missing file, eight GHDL suites fail (47 tests) as their headers promise, but `testbench.ghdl-execution`, `register-config-authority.agreement`, `hdl-export.fail-closed` and `vivado-e1-harness` gate on their own `existsSync` check with `describe.skipIf(!ghdlAvailable)` and never read `ghdlRequired`, so they skip (16 more skips). The rc.7 and rc.8 qualifications ran GHDL: their skip counts are the GHDL-present ones.
+- Next step: use the shared `ghdlHarness` probe in those four suites and fail when `ghdlRequired` and GHDL is absent; keep the negative control in the qualification script.
+- Status: Open
+
+### RB-DEBT-033 - 1.0 acceptance findings: student-facing polish (C)
+
+- Severity: Medium (none blocks a task; several confuse a first-time student)
+- Current evidence: `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md` section 4, V3-V14 and C1-C9, each with a screenshot from the rc.7 or rc.8 package and steps to reproduce: problem counts that disagree and board-mapping errors shown while designing (V3), internal ids in student text (V4), duplicate default names (V5), Board drawing overlaps and its SW2 recommendation (V6, V7), Save without a name (V8), double-click into an instance (V9), the 720x450 layouts (V10), a repeated refusal sentence and overlapping labels in Problems (V11), the import Mode label (V12), Meridian's hierarchy drawing (V13), the hierarchical starter's framing (V14).
+- Next step: the dossier's section 11.D gives each an acceptance criterion; V3, V4 and V8 first.
+- Status: Open
+
+### RB-DEBT-034 - Eight browser journeys no release run includes are stale (C)
+
+- Severity: Low (no product defect; dead test surface that reads as coverage)
+- Current evidence (2026-10-28, `.redbyte/releases/redbyte-1.0.0-rc.8-evidence/unrun-journeys/`): `a11y-scale`, `bench-board-sync`, `compare-verdict`, `pin-planner`, `runs-document`, `shell-status-authority`, `signature` and `sim-provider` fail identically on rc.7 and rc.8 and were last edited 2026-09-05 to 09-08. Two target a removed surface (`ide-vcb-workspace-bench`); one waits for `VerifyResultsSummary`, which nothing renders; two expect the VCD tools outside the "Imported evidence" disclosure (`vcd-analyzer` passes); one reads the runs table's first cell (the run number) as the verdict; one expects a run readout no caller has passed to the status bar since 2026-09-02; one reads the Board binding chain with innerText inside a collapsed disclosure (the chain follows keyboard selection: `acceptance-board-detail2`). The other eight unrun journeys pass on rc.8, `nested-create-module` among them.
+- Next step: retire the four whose subjects are gone or covered; rewrite `runs-document`, `pin-planner` and `shell-status-authority` against the current contracts if their subjects matter, then add the passing ones to a release run.
 - Status: Open

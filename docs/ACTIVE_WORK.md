@@ -8,6 +8,37 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## 1.0 owner acceptance - rc.7 not accepted, rc.8 recommended - 2026-10-28
+
+Decision document: `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md`; candidate report:
+`docs/validation/v1-release-candidate-rc8-2026-10-28.md`. Local only: nothing pushed, merged or
+deployed; redbyteapps.dev still serves `57c8a94` (built 2026-07-27).
+
+**Acceptance on the rc.7 package** (clean extraction, stripped environment, fresh profiles; the
+fifteen owner tasks by pointer and keyboard; GHDL on the downloaded package; screenshots of every
+principal state, light and dark, narrow and enlarged text) found six release blockers: the canvas
+moved 44 px on every wire with the inspector open at 1366/1440 (RB-DEBT-030); no third-party notices;
+an unlicensed fan-art `wallpaper.jpg`; "Vivado-ready" and "Synthesizable" overclaims; QUICKSTART
+`.logs` and rc.4 steps; part names at 1.14:1 in Workbench dark. All fixed (`a29573231`,
+`f9eb1d34f`; manual `9cc2ac081`), each with a regression that is red on rc.7.
+
+**rc.8** = `bc5ec62eb`, SHA-256 `82e179deb31b860ae337cadf6fd262017251d9ccf9e19072d6b676494bc12d8b`.
+Qualification exit 0 everywhere after one test-only fix (the legend-contrast test's CSS parser broke
+on the new selector list; teeth proven); verify-candidate 24/24, journeys 15/15, Meridian slice
+134/134; clean copy: no external requests, lifecycle and crash recovery as designed. E0 only.
+
+**Owner decisions before any distribution**: D1 the LICENSE grant (it grants no right to use and
+names no licensor), D3 Gannon/ECE141 consent; before the public cutover also D2 source maps, D5
+multi-file preserved import, D7 `public/` leftovers, D8 the generated README line, D9 cutover. The
+deployment sequence and rollback are prepared in the dossier (section 12).
+
+**Filed**: RB-DEBT-032 (the GHDL require flag misses four suites; a GHDL-less run would skip, not
+fail), RB-DEBT-033 (acceptance findings V3-V14), RB-DEBT-034 (eight stale journeys). RB-DEBT-030
+fixed in rc.8; 029 and 031 measured and kept post-release.
+
+**Next**: owner decision on rc.8 and D1-D11. No feature work on this branch; V1.1 (Meridian as the
+reason to use RedByte) is roadmapped in the dossier.
+
 ## V1 release candidate rc.7 - rc.6 adversarially reviewed, defects fixed - 2026-10-28
 
 `claude/redbyte-v1-reliability` at `b0d16cad7` is packaged as 1.0.0-rc.7 (release report:

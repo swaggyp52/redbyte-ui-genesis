@@ -1,5 +1,15 @@
 # AI State
 
+## 1.0 owner acceptance - 2026-10-28
+
+On claude/redbyte-v1-reliability (local; nothing pushed, merged or deployed). Acceptance testing of
+the packaged 1.0.0-rc.7 found six release blockers; 1.0.0-rc.8 (`bc5ec62eb`, SHA-256 `82e179de…2d8b`)
+fixes them and nothing else, and is recommended for owner acceptance. Its qualification, the
+24 release journeys, 15 classroom journeys and the Meridian slice pass on the package; E0 only (no
+Vivado or board evidence). Distribution waits on owner decisions, first the LICENSE grant and the
+course-naming consent. Decision document and roadmap: docs/validation/v1-owner-acceptance-dossier-2026-10-28.md;
+cockpit: docs/ACTIVE_WORK.md.
+
 ## Meridian Atlas completion pass - 2026-10-25
 
 Continues the P1 slice on claude/redbyte-meridian-slice (baseline 64bf7aa93); committed locally,
