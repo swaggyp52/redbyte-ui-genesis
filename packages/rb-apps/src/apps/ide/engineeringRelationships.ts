@@ -6,6 +6,7 @@ import { xdcLinesForAssignment, xdcPortToken } from './hardwareXdcPreview';
 import type { ProjectHierarchyDocument } from './projectHierarchy';
 import { useProjectRuntime, type ProjectIoRow, type RuntimeVerifyRun } from './projectRuntime';
 import { buildFieldSignalResolver, normalizeSignalId, type ResolvedFieldSignal } from './signalIdentity';
+import { studentPartName } from './studentPartNames';
 import type { VerifyScenario } from './verifyScenario';
 import type { WorkbenchDocument } from './workbenchDocuments';
 
@@ -126,9 +127,8 @@ function portRefOf(ref: PortRef | string): PortRef {
   return at === -1 ? { nodeId: ref, portName: '' } : { nodeId: ref.slice(0, at), portName: ref.slice(at + 1) };
 }
 
-function nodeLabelOf(node: Node | undefined, nodeId: string): string {
-  const label = (node as { label?: string } | undefined)?.label?.trim();
-  return label && label.length > 0 ? label : nodeId;
+function nodeLabelOf(node: Node | undefined, nodeId: string, circuit: Circuit): string {
+  return node ? studentPartName(node, nodeId, circuit) : nodeId;
 }
 
 function endpointOf(
@@ -139,7 +139,7 @@ function endpointOf(
 ): RelationEndpoint {
   const node = circuit.nodes.find((entry) => entry.id === nodeId);
   const nodeType = node?.type ?? 'unknown';
-  const nodeLabel = nodeLabelOf(node, nodeId);
+  const nodeLabel = nodeLabelOf(node, nodeId, circuit);
   const module = hierarchy?.modules.find((entry) => entry.name === nodeType) ?? null;
   return {
     nodeId,

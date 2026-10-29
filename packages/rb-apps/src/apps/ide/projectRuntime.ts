@@ -1693,7 +1693,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const rowPort = direction === 'input' ? 'out' : 'in';
           const rowLabelBase = direction === 'input' ? 'Input' : 'Output';
           const existingBoundaryCount = state.circuit.nodes.filter((node) => node.type === type).length;
-          const rowLabel = `${rowLabelBase} ${existingBoundaryCount + 1}`;
+          const takenLabels = new Set(
+            [...state.circuit.nodes.map((node) => node.label), ...state.projectIoRows.map((row) => row.label)]
+              .filter((label): label is string => typeof label === 'string')
+              .map((label) => label.trim().toLowerCase())
+          );
+          let rowLabelNumber = existingBoundaryCount + 1;
+          while (takenLabels.has(`${rowLabelBase} ${rowLabelNumber}`.toLowerCase())) rowLabelNumber += 1;
+          const rowLabel = `${rowLabelBase} ${rowLabelNumber}`;
           const rowId = getNextIoRowId(state.projectIoRows, normalizeBoardRowId(rowLabel));
           const nodeId = getNextDesignNodeId(state.circuit);
           const normalizedPosition = {
@@ -4066,29 +4073,38 @@ function getBoundaryFallbackBase(node: Circuit['nodes'][number]): 'Input' | 'Out
 
 function getNextBoundaryFallbackLabel(
   node: Circuit['nodes'][number],
-  counts: Map<'Input' | 'Output' | 'Clock', number>
+  counts: Map<'Input' | 'Output' | 'Clock', number>,
+  taken: Set<string> = new Set()
 ): string {
   const base = getBoundaryFallbackBase(node);
-  const nextCount = (counts.get(base) ?? 0) + 1;
+  let nextCount = counts.get(base) ?? 0;
+  let label: string;
+  do {
+    nextCount += 1;
+    label = base === 'Clock' && nextCount === 1 ? 'Clock' : `${base} ${nextCount}`;
+  } while (taken.has(label.toLowerCase()));
   counts.set(base, nextCount);
+  taken.add(label.toLowerCase());
+  return label;
+}
 
-  if (base === 'Clock' && nextCount === 1) {
-    return 'Clock';
-  }
-
-  return `${base} ${nextCount}`;
+function preferredBoundaryStudentLabel(
+  node: Circuit['nodes'][number],
+  canonicalRow: ProjectIoRow | null | undefined
+): string | undefined {
+  const preferredLabel = [node.label, canonicalRow?.label, canonicalRow?.id].find((candidate) =>
+    isUsableBoundaryStudentLabel(candidate)
+  );
+  return preferredLabel?.trim() || undefined;
 }
 
 function resolveBoundaryStudentLabel(
   node: Circuit['nodes'][number],
   canonicalRow: ProjectIoRow | null | undefined,
-  counts: Map<'Input' | 'Output' | 'Clock', number>
+  counts: Map<'Input' | 'Output' | 'Clock', number>,
+  taken?: Set<string>
 ): string {
-  const preferredLabel = [node.label, canonicalRow?.label, canonicalRow?.id].find((candidate) =>
-    isUsableBoundaryStudentLabel(candidate)
-  );
-
-  return preferredLabel?.trim() || getNextBoundaryFallbackLabel(node, counts);
+  return preferredBoundaryStudentLabel(node, canonicalRow) || getNextBoundaryFallbackLabel(node, counts, taken);
 }
 
 function shouldRekeyBoundaryRowId(row: ProjectIoRow, nextLabel: string): boolean {
@@ -4140,9 +4156,16 @@ function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): Proje
 
   const synchronized: ProjectIoRow[] = [];
   const fallbackLabelCounts = new Map<'Input' | 'Output' | 'Clock', number>();
+  // Names already on the sheet (the student's, or kept from an earlier synchronisation) are taken
+  // before any part gets a default, so two unnamed pins never share one ("Input 1" twice).
+  const takenLabels = new Set<string>();
+  for (const [normalizedNodeId, { node }] of boundaryNodes.entries()) {
+    const preferred = preferredBoundaryStudentLabel(node, chooseCanonicalIoRow(rowsByNodeId.get(normalizedNodeId) ?? []));
+    if (preferred) takenLabels.add(preferred.toLowerCase());
+  }
   for (const [normalizedNodeId, { node, shape }] of boundaryNodes.entries()) {
     const canonicalRow = chooseCanonicalIoRow(rowsByNodeId.get(normalizedNodeId) ?? []);
-    const nextLabel = resolveBoundaryStudentLabel(node, canonicalRow, fallbackLabelCounts);
+    const nextLabel = resolveBoundaryStudentLabel(node, canonicalRow, fallbackLabelCounts, takenLabels);
     if (canonicalRow) {
       const nextRowId = shouldRekeyBoundaryRowId(canonicalRow, nextLabel)
         ? getNextIoRowId(synchronized, nextLabel)

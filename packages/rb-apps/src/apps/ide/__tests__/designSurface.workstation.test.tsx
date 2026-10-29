@@ -522,10 +522,11 @@ describe('DesignSurface workstation redesign', () => {
       expect(setSelectedSignal).toHaveBeenCalledWith('q1_out.in');
     });
 
-    expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('Verify focus q1');
+    // The alias resolves through the row id (q1) and is shown by the row's label (acceptance V4).
+    expect(view.getByTestId('ide-design-verify-link-badge').textContent).toContain('Verify focus LD1');
     expect(view.getByTestId('ide-design-verify-focus').textContent).toContain('Inspect LD1 first');
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Verify: what drives LD1 · in');
-    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus q1');
+    expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Verify focus LD1');
     expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toContain('LD1');
     expect(view.getByTestId('ide-design-inspector-focus-node').textContent).toContain('LD1');
 

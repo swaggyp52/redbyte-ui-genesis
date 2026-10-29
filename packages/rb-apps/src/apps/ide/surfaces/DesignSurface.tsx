@@ -13,6 +13,7 @@ import { STATUS_HINT_SLOT_ID } from '../components/WorkbenchStatusBar';
 import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
 import { BUS_MEMBER_SPACING, busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
+import { studentPartName } from '../studentPartNames';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
   FIT_ZOOM_STEPS,
@@ -4627,7 +4628,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return {
           port: resolveConnectionEndpoint(conn.to).portName,
           driverNodeId: src.nodeId,
-          driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId)),
+          driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId), editorCircuit),
           value: liveSignals.get(`${src.nodeId}.${src.portName}`) ?? null,
         };
       });
@@ -4668,8 +4669,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       snapshot,
       sourceNodeId: parsed.fromNodeId,
       targetNodeId: parsed.toNodeId,
-      sourceLabel: describeEndpointLabel(parsed.fromNodeId, sourceNode, ioRowByNodeId.get(parsed.fromNodeId)),
-      targetLabel: describeEndpointLabel(parsed.toNodeId, targetNode, ioRowByNodeId.get(parsed.toNodeId)),
+      sourceLabel: describeEndpointLabel(parsed.fromNodeId, sourceNode, ioRowByNodeId.get(parsed.fromNodeId), editorCircuit),
+      targetLabel: describeEndpointLabel(parsed.toNodeId, targetNode, ioRowByNodeId.get(parsed.toNodeId), editorCircuit),
       branchCount,
       sourcePort: parsed.fromPort,
       targetPort: parsed.toPort,
@@ -4693,7 +4694,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       signalKey: activeInspectorSignalKey,
       nodeId,
       portName,
-      nodeLabel: describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId)),
+      nodeLabel: describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId), editorCircuit),
       signalLabel: describeStudentSignalKey(activeInspectorSignalKey, editorCircuit, ioRowByNodeId),
     };
   }, [activeInspectorSignalKey, editorCircuit, ioRowByNodeId]);
@@ -4716,9 +4717,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return describeReplayCausation({
       snapshot: selectedNodeSignalSnapshot,
       driverLabels: selectedNodeInputDrivers.map((entry) => entry.driverLabel),
-      inspectLabel: describeEndpointLabel(selectedNode.id, selectedNode, selectedNodeIoRow),
+      inspectLabel: describeEndpointLabel(selectedNode.id, selectedNode, selectedNodeIoRow, editorCircuit),
     });
-  }, [isReplayMode, selectedNode, selectedNodeInputDrivers, selectedNodeIoRow, selectedNodeSignalSnapshot]);
+  }, [editorCircuit, isReplayMode, selectedNode, selectedNodeInputDrivers, selectedNodeIoRow, selectedNodeSignalSnapshot]);
   const selectedWireReplayCausation = useMemo(() => {
     if (!isReplayMode || !selectedWireContext) return null;
     return describeReplayCausation({
@@ -4769,7 +4770,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!nodeId || !portName) return null;
 
     const targetNode = editorCircuit.nodes.find((entry) => entry.id === nodeId);
-    const targetLabel = describeEndpointLabel(nodeId, targetNode, ioRowByNodeId.get(nodeId));
+    const targetLabel = describeEndpointLabel(nodeId, targetNode, ioRowByNodeId.get(nodeId), editorCircuit);
     const exactIncoming = editorCircuit.connections.find((connection) => {
       const to = resolveConnectionEndpoint(connection.to);
       return to.nodeId === nodeId && to.portName === portName;
@@ -4813,7 +4814,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       signalKey: debugRepairSignalKey,
       targetLabel,
       targetType: targetNode ? nodeTypeLabel(targetNode.type) : 'Signal',
-      driverLabel: describeEndpointLabel(from.nodeId, driverNode, ioRowByNodeId.get(from.nodeId)),
+      driverLabel: describeEndpointLabel(from.nodeId, driverNode, ioRowByNodeId.get(from.nodeId), editorCircuit),
       driverType: driverNode ? nodeTypeLabel(driverNode.type) : 'Unknown node',
       driverNodeId: from.nodeId,
       incomingWires,
@@ -4826,7 +4827,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return buildDesignDebugSignalTrace(editorCircuit, {
       targetSignalKey: activeDebugRepairContext.signalKey,
       maxDepth: 4,
-      resolveNodeLabel: (node, nodeId) => describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId)),
+      resolveNodeLabel: (node, nodeId) => describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId), editorCircuit),
       resolveNodeTypeLabel: (node) => (node ? nodeTypeLabel(node.type) : 'Signal'),
     });
   }, [activeDebugRepairContext?.signalKey, editorCircuit, ioRowByNodeId]);
@@ -5099,7 +5100,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       sourceKey: `path:${nodeId}`,
       label: `Focused path · ${
         selectedNode
-          ? describeEndpointLabel(nodeId, selectedNode, ioRowByNodeId.get(nodeId))
+          ? describeEndpointLabel(nodeId, selectedNode, ioRowByNodeId.get(nodeId), editorCircuit)
           : selectedWireContext?.targetLabel ?? nodeId
       }`,
       signalKey: selectedWireContext?.signalKey ?? `${nodeId}.${preferredNodeTracePort ?? 'out'}`,
@@ -6534,7 +6535,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         const target = editorCircuit.nodes.find((node) => node.id === to.nodeId);
         return {
           key: `${to.nodeId}.${to.portName}`,
-          label: target ? describeEndpointLabel(to.nodeId, target, ioRowByNodeId.get(to.nodeId)) : to.nodeId,
+          label: target ? describeEndpointLabel(to.nodeId, target, ioRowByNodeId.get(to.nodeId), editorCircuit) : to.nodeId,
           port: to.portName,
         };
       });
@@ -10426,7 +10427,7 @@ function resolveDirectSignalDriverLabels(
     .map((connection) => {
       const from = resolveConnectionEndpoint(connection.from);
       const sourceNode = circuit.nodes.find((entry) => entry.id === from.nodeId);
-      return describeEndpointLabel(from.nodeId, sourceNode, ioRowByNodeId.get(from.nodeId));
+      return describeEndpointLabel(from.nodeId, sourceNode, ioRowByNodeId.get(from.nodeId), circuit);
     });
 
   if (driverLabels.length > 0) {
@@ -10435,7 +10436,7 @@ function resolveDirectSignalDriverLabels(
 
   if (portName === 'out') {
     const node = circuit.nodes.find((entry) => entry.id === nodeId);
-    return [describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId))];
+    return [describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId), circuit)];
   }
 
   return [];
@@ -10655,24 +10656,21 @@ function describeNodeConnectionSummary(
   return { fanIn, fanOut, incomingLabel };
 }
 
-function describeEndpointLabel(nodeId: string, node?: Node, ioRow?: DesignIoRow | null): string {
+function describeEndpointLabel(nodeId: string, node?: Node, ioRow?: DesignIoRow | null, circuit?: Circuit): string {
   const label = ioRow?.label?.trim() || node?.label?.trim();
-  return label && label.length > 0 ? label : node?.type === 'INPUT' || node?.type === 'OUTPUT' ? nodeId : node?.id ?? nodeId;
+  if (label && label.length > 0) return label;
+  return node ? studentPartName(node, nodeId, circuit) : nodeId;
 }
 
 function findNodeById(circuit: Circuit, nodeId: string): Node | undefined {
   return circuit.nodes.find((n) => n.id === nodeId);
 }
 
-/** Board / instance name for trace banners — prefers Map Pins label, then schematic label, then type + id. */
-function formatTracePartName(node: Node | undefined, ioRow: DesignIoRow | undefined, nodeId: string): string {
+/** Board / instance name for trace banners — prefers Map Pins label, then schematic label, then the part's student name. */
+function formatTracePartName(node: Node | undefined, ioRow: DesignIoRow | undefined, nodeId: string, circuit?: Circuit): string {
   const name = ioRow?.label?.trim() || node?.label?.trim();
   if (name) return name;
-  if (node) {
-    const t = nodeTypeLabel(node.type);
-    return nodeId.length > 8 ? `${t} (…${nodeId.slice(-4)})` : `${t} (${nodeId})`;
-  }
-  return nodeId;
+  return node ? studentPartName(node, nodeId, circuit) : nodeId;
 }
 
 function buildStudentFaninPortTraceLabel(
@@ -10682,7 +10680,7 @@ function buildStudentFaninPortTraceLabel(
   ioByNodeId: Map<string, DesignIoRow>
 ): string {
   const node = findNodeById(circuit, nodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId, circuit);
   return `What feeds ${part} · ${portName} — drivers on this input highlighted`;
 }
 
@@ -10692,7 +10690,7 @@ function buildStudentFanoutPortTraceLabel(
   ioByNodeId: Map<string, DesignIoRow>
 ): string {
   const node = findNodeById(circuit, sourceNodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(sourceNodeId), sourceNodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(sourceNodeId), sourceNodeId, circuit);
   return `What ${part} drives — every path from this source highlighted`;
 }
 
@@ -10703,7 +10701,7 @@ function buildStudentWireNetTraceLabel(
   ioByNodeId: Map<string, DesignIoRow>
 ): string {
   const node = findNodeById(circuit, fromNodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(fromNodeId), fromNodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(fromNodeId), fromNodeId, circuit);
   return `One net: ${part} · ${fromPort} — every segment of this signal highlighted`;
 }
 
@@ -10716,7 +10714,7 @@ function buildStudentVerifyDebugTraceLabel(
   const [nodeId, portName = 'out'] = signalKey.split('.');
   if (!nodeId) return `${mode}: ${signalKey}`;
   const node = findNodeById(circuit, nodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId, circuit);
   return `${mode}: what drives ${part} · ${portName} — same highlight`;
 }
 
@@ -10763,7 +10761,7 @@ function summarizeMultiWireNetSelection(
     const p = parseWireId(sampleWire);
     if (!p) continue;
     const node = findNodeById(circuit, p.fromNodeId);
-    const part = formatTracePartName(node, ioByNodeId.get(p.fromNodeId), p.fromNodeId);
+    const part = formatTracePartName(node, ioByNodeId.get(p.fromNodeId), p.fromNodeId, circuit);
     groupLabels.push(`${part} · ${p.fromPort}`);
   }
   const distinct = groupLabels.length;
@@ -11227,8 +11225,10 @@ function describeSignalFocusPresentation(input: {
   needsBridge: boolean;
 } | null {
   const { focusLabel, signalKey, circuit, ioRowByNodeId } = input;
-  const rawFocusLabel = focusLabel?.trim();
-  if (!rawFocusLabel) return null;
+  const focusKey = focusLabel?.trim();
+  if (!focusKey) return null;
+  const focusRow = [...ioRowByNodeId.values()].find((row) => normalizeSignalLookup(row.id) === normalizeSignalLookup(focusKey));
+  const rawFocusLabel = focusRow?.label?.trim() || focusKey;
 
   const normalizedFocusLabel = normalizeSignalLookup(rawFocusLabel);
   let inspectLabel = rawFocusLabel;

@@ -260,7 +260,8 @@ describe('DesignSurface inspector hierarchy', () => {
     const state = view.getByTestId('ide-design-context-inspector');
     expect(details.compareDocumentPosition(state) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('Verify focus');
-    expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('ld0');
+    // The focus names the signal as the student does, by its label, never by its row id (acceptance V4).
+    expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('Verify focusLD0');
   });
 
   it('merges broken-selection guidance into the primary identity panel before signal/state metrics', async () => {

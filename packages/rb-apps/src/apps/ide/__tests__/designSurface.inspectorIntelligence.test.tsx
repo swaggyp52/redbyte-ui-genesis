@@ -363,6 +363,8 @@ describe('Inspector Signal Intelligence — active signal context and controls',
 
     const row = view.getByTestId('ide-design-wire-connection');
     expect(row.textContent).toContain('SW0');
-    expect(row.textContent).toContain('and0');
+    // An unlabelled gate is named by its kind and place, never by its node id (acceptance V4).
+    expect(row.textContent).toContain('AND 1');
+    expect(row.textContent).not.toContain('and0');
   });
 });
