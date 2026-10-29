@@ -14,7 +14,8 @@ concurrency:
 jobs:
   truth-gates:
     name: Classroom Truth Gates
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest is now 26.04, which Playwright 1.58.1 cannot install chromium on.
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     permissions:
       contents: read
