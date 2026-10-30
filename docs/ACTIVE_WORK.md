@@ -8,6 +8,35 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## Wiring simplification gate green again - 2026-10-30
+
+Branch `claude/funny-wozniak-33wsvo`, stacked on PR #88 (`claude/redbyte-v1-reliability-vszl4j`
+at db877a54a). `ide:gate:design-wiring-simplification-flow` (outside the classroom chain; required
+by the July camera ticket) failed at its first Board placement on every build since Milestone A.
+The gate followed the retired July library: Board moved to the library's Board I/O tab on
+2026-08-01, starts expanded there, and keeps its test ids. The gate now follows the current owners
+(the Board I/O and Components tabs, schematic symbol bodies, the status-line cue's "Source kept"
+wording) with every threshold kept and the cue check stricter.
+
+**Product**: past the palette the gate found a real defect. With a part selected, a plain click on
+a wire left the part selected too, so the inspector kept the part, Disconnect never appeared, and
+Delete would have removed the part with the wire. A plain click now selects only what it hits;
+Shift, Ctrl or Cmd still add (`useLogicViewStore`; Design spec, inspector section).
+
+**Evidence**: Node 20.19.0 / pnpm 10.24.0 in a cloud container, fresh `build:unified`: the gate,
+`design-workbench-v1`, `design-library-not-cropped` and `design-palette-build-contract` pass, and
+so do 16 other Design and selection gates; without the store fix the gate fails at Disconnect.
+The new plain-click store and DesignSurface tests fail before the fix; the logic-view and
+DesignSurface suites pass (51 files, 358 tests); `typecheck:app` 0; `verify:gates` exits 0,
+both classroom golden export SHA gates included. Dispositions: `docs/validation/test-debt.md`.
+Browser E0 only.
+
+**Next**: three more gates outside the chain stop on the same July library helper
+(`blank-adder-authoring-depth`, `wrong-build-diagnosis-repair-flow`,
+`scratch-testbench-repair-flow`), and `testbench-preservation-after-design-edit` stops at
+Simulate's rename menu. Each stops before the selection change can matter and fails the same way
+on a build without it.
+
 ## PR #88 classroom chain - the circuit gets the room - 2026-10-30
 
 Branch `claude/redbyte-v1-reliability-vszl4j` (PR #88, draft). The branch was pushed for the first

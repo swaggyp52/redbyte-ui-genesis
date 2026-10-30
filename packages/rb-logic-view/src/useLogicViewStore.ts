@@ -180,9 +180,14 @@ function createLogicViewStore() {
         } else {
           nodes.add(nodeId);
         }
+        // A plain click selects only the part it hit; an additive click keeps the selected wires.
+        const wires = addToSelection ? state.selection.wires : new Set<string>();
 
         // Check if selection actually changed
-        if (setsEqual(nodes, state.selection.nodes)) {
+        if (
+          setsEqual(nodes, state.selection.nodes) &&
+          (addToSelection || safeSet<string>(state.selection.wires).size === 0)
+        ) {
           return state;
         }
 
@@ -198,6 +203,7 @@ function createLogicViewStore() {
           selection: {
             ...state.selection,
             nodes,
+            wires,
           },
         };
       }),
@@ -210,9 +216,14 @@ function createLogicViewStore() {
         } else {
           wires.add(wireId);
         }
+        // A plain click selects only the wire it hit; an additive click keeps the selected parts.
+        const nodes = addToSelection ? state.selection.nodes : new Set<string>();
 
         // Check if selection actually changed
-        if (setsEqual(wires, state.selection.wires)) {
+        if (
+          setsEqual(wires, state.selection.wires) &&
+          (addToSelection || safeSet<string>(state.selection.nodes).size === 0)
+        ) {
           return state;
         }
 
@@ -227,6 +238,7 @@ function createLogicViewStore() {
         return {
           selection: {
             ...state.selection,
+            nodes,
             wires,
           },
         };

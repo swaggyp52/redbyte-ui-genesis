@@ -1,5 +1,16 @@
 # AI State
 
+## Wiring simplification gate green again - 2026-10-30
+
+On claude/funny-wozniak-33wsvo, stacked on PR #88 (db877a54a). `ide:gate:design-wiring-simplification-flow`
+failed at its first placement because it followed the July library: Milestone A (2026-08-01) moved
+the Basys3 resources to the library's Board I/O tab, where Board starts expanded. The gate now
+follows the current owners with every threshold kept. Past the palette it found a product defect,
+fixed: a plain click on a wire left a selected part selected, so the wire's Disconnect never
+appeared; a plain click now selects only what it hits. Evidence (Node 20.19.0, fresh build, browser
+E0): the gate and the three classroom Design gates pass. Dispositions: docs/validation/test-debt.md;
+cockpit: docs/ACTIVE_WORK.md.
+
 ## 1.0 owner acceptance - 2026-10-28
 
 On claude/redbyte-v1-reliability (local; nothing pushed, merged or deployed). Acceptance testing of
