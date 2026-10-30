@@ -113,7 +113,31 @@ function snap(value: number, grid: number): number {
   return Math.round(value / grid) * grid;
 }
 
-/** Pick the vertical channel x between `left` and `right` with the fewest body crossings, nearest the midpoint. */
+/** A vertical run another net already drew, from `lo` to `hi` at `x`. */
+interface ClaimedRun {
+  readonly x: number;
+  readonly lo: number;
+  readonly hi: number;
+}
+
+/** Number of other nets' vertical runs a vertical segment at `x` spanning [y1,y2] would lie along. */
+function sharedRuns(claimed: readonly ClaimedRun[], x: number, y1: number, y2: number): number {
+  const lo = Math.min(y1, y2);
+  const hi = Math.max(y1, y2);
+  let n = 0;
+  for (const run of claimed) {
+    if (Math.abs(run.x - x) < 0.5 && Math.min(hi, run.hi) - Math.max(lo, run.lo) > 0.5) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Pick the vertical channel x between `left` and `right` with the fewest body crossings, nearest the
+ * midpoint. Two nets on one vertical line read as one wire, with each net's junction dots on the
+ * other, so a lane another net already uses over an overlapping height counts as worse than
+ * crossing a body: inputs stacked in one column, feeding gates in the next, used to share a trunk
+ * and look shorted together.
+ */
 function chooseChannel(
   boxes: readonly Box[],
   left: number,
@@ -122,6 +146,7 @@ function chooseChannel(
   yHi: number,
   grid: number,
   legs?: { readonly source: Point; readonly loads: readonly Point[] },
+  claimed: readonly ClaimedRun[] = [],
 ): number {
   const mid = (left + right) / 2;
   const first = snap(left + grid, grid);
@@ -135,7 +160,7 @@ function chooseChannel(
       crossings += horizontalCollisions(boxes, legs.source.y, legs.source.x, x);
       for (const load of legs.loads) crossings += horizontalCollisions(boxes, load.y, x, load.x);
     }
-    const score = crossings * 10_000 + Math.abs(x - mid);
+    const score = crossings * 10_000 + sharedRuns(claimed, x, yLo, yHi) * 20_000 + Math.abs(x - mid);
     if (score < bestScore) {
       bestScore = score;
       best = x;
@@ -182,6 +207,16 @@ export function routeCircuit(
   }
 
   const nets: RoutedNet[] = [];
+  // Vertical runs drawn so far, so a later net does not lay its trunk along an earlier net's.
+  const claimed: ClaimedRun[] = [];
+  const claim = (x: number, y1: number, y2: number) => {
+    if (y1 !== y2) claimed.push({ x, lo: Math.min(y1, y2), hi: Math.max(y1, y2) });
+  };
+  // Horizontal runs back across a corridor, in the same form with x and y swapped.
+  const claimedAcross: ClaimedRun[] = [];
+  const claimAcross = (y: number, x1: number, x2: number) => {
+    if (x1 !== x2) claimedAcross.push({ x: y, lo: Math.min(x1, x2), hi: Math.max(x1, x2) });
+  };
   for (const [netId, group] of Array.from(byDriver.entries()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
     const source = pinWorldPoint(index.get(group.driver.nodeId), group.driver.port);
     const sourceEntry = index.get(group.driver.nodeId);
@@ -213,8 +248,11 @@ export function routeCircuit(
     }
 
     const s = { x: source.x, y: source.y };
-    const forwardLoads = loads.filter((load) => load.point && load.point.x >= s.x + 2 * grid);
-    const backwardLoads = loads.filter((load) => !load.point || load.point.x < s.x + 2 * grid);
+    // A load a grid or more to the right is forward, with its jog between the two pins. Counted
+    // as backward below two grids, a gate's output feeding the next gate's input one grid away
+    // detoured through that gate and along its output wire, and read as joined to it.
+    const forwardLoads = loads.filter((load) => load.point && load.point.x >= s.x + grid);
+    const backwardLoads = loads.filter((load) => !load.point || load.point.x < s.x + grid);
     const wires: RoutedWire[] = [];
     const junctions: Point[] = [];
     let longestRun: { len: number; anchor: Point } | null = null;
@@ -229,7 +267,8 @@ export function routeCircuit(
       const yLo = Math.min(s.y, ...forwardLoads.map((load) => load.point!.y));
       const yHi = Math.max(s.y, ...forwardLoads.map((load) => load.point!.y));
       const channel = chooseChannel(boxes, s.x, nearestX, yLo, yHi, grid,
-        options.avoidBodiesOnLegs ? { source: s, loads: forwardLoads.map((load) => load.point!) } : undefined);
+        options.avoidBodiesOnLegs ? { source: s, loads: forwardLoads.map((load) => load.point!) } : undefined, claimed);
+      claim(channel, yLo, yHi);
       const trunkOwners = forwardLoads.length;
       for (const load of forwardLoads) {
         const t = load.point!;
@@ -282,7 +321,7 @@ export function routeCircuit(
       const targetBelow = t.y >= s.y;
       const gapLo = targetBelow ? sBox.maxY : tBox.maxY;
       const gapHi = targetBelow ? tBox.minY : sBox.minY;
-      const clearY =
+      const baseClearY =
         gapHi - gapLo >= grid
           ? snap((gapLo + gapHi) / 2, grid)
           : targetBelow
@@ -290,13 +329,33 @@ export function routeCircuit(
             : snap(Math.min(sBox.minY, tBox.minY) - grid, grid);
       const spans = (a: number, b: number, box: { minY: number; maxY: number }) =>
         Math.min(a, b) < box.maxY && Math.max(a, b) > box.minY;
-      let x1 = Math.max(s.x + grid, sBox.maxX + grid);
-      if (spans(s.y, clearY, tBox)) x1 = Math.max(x1, tBox.maxX + grid);
-      let x2 = Math.min(t.x - grid, tBox.minX - grid);
-      if (spans(clearY, t.y, sBox)) x2 = Math.min(x2, sBox.minX - grid);
-      x1 = snap(x1, grid);
-      x2 = snap(x2, grid);
+      const legsAt = (y: number) => {
+        let left = Math.max(s.x + grid, sBox.maxX + grid);
+        if (spans(s.y, y, tBox)) left = Math.max(left, tBox.maxX + grid);
+        let right = Math.min(t.x - grid, tBox.minX - grid);
+        if (spans(y, t.y, sBox)) right = Math.min(right, sBox.minX - grid);
+        return { x1: snap(left, grid), x2: snap(right, grid) };
+      };
+      // The run back across the corridor takes the first height, nearest the corridor's middle,
+      // that no other net already runs along: two feedback wires between the same pair of parts
+      // otherwise crossed back on one line and read as one wire.
+      let clearY = baseClearY;
+      for (const offset of [0, grid, -grid, 2 * grid, -2 * grid]) {
+        const { x1: a, x2: b } = legsAt(baseClearY + offset);
+        if (sharedRuns(claimedAcross, baseClearY + offset, a, b) === 0) {
+          clearY = baseClearY + offset;
+          break;
+        }
+      }
+      let { x1, x2 } = legsAt(clearY);
+      // Step a leg off a lane another net already runs along (outward, a grid at a time), so a
+      // feedback wire is not drawn on top of a forward net's trunk beside the same target.
+      for (let step = 0; step < 4 && sharedRuns(claimed, x1, s.y, clearY) > 0; step += 1) x1 += grid;
+      for (let step = 0; step < 4 && sharedRuns(claimed, x2, clearY, t.y) > 0; step += 1) x2 -= grid;
       const points = dedupe([s, { x: x1, y: s.y }, { x: x1, y: clearY }, { x: x2, y: clearY }, { x: x2, y: t.y }, t]);
+      claim(x1, s.y, clearY);
+      claim(x2, clearY, t.y);
+      claimAcross(clearY, x1, x2);
       for (let i = 1; i < points.length; i += 1) trackRun(points[i - 1], points[i]);
       wires.push({
         wireId: load.wireId,
