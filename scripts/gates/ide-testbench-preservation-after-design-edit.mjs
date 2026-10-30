@@ -2,6 +2,7 @@
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { readDurableRecord } from './_durableStorage.mjs';
 import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
 import {
   assertBuildHash,
@@ -43,6 +44,8 @@ await runIdeGate('IDE testbench preservation after Design edit satisfied', async
   const authored = await readDocumentState(page);
   assert(authored.name === 'Student XOR Preservation', `authored testbench name was not committed: ${JSON.stringify(authored)}`);
   assert(authored.expectedValues.flat().filter((value) => value === 1).length > 0, 'authored testbench must contain nonzero expected values');
+  // The later "evidence is no longer current" checks must be able to fail: the passing run is current here.
+  assert(authored.hasCurrentRun, `initial authored Compare must be current PASS/FAIL evidence: ${JSON.stringify(authored)}`);
   await capture(page, '01-authored-pass');
 
   await openMode(page, baseUrl, 'design', 'testbench-preservation-delete-wire');
@@ -68,20 +71,20 @@ await runIdeGate('IDE testbench preservation after Design edit satisfied', async
   // Let the normal autosave path persist the invalidated project and its local
   // testbench sidecar, then prove a real reload restores the same document.
   await page.waitForTimeout(2200);
-  const persistedBeforeReload = await page.evaluate(() => {
-    const session = JSON.parse(localStorage.getItem('rb.ide.sessionMeta.v1') ?? 'null');
-    const projectId = session?.projectId ?? null;
-    const snapshot = projectId
-      ? JSON.parse(localStorage.getItem(`rb.ide.project.v1:${projectId}`) ?? 'null')
-      : null;
-    const active = snapshot?.scenarios?.find((scenario) => scenario.id === snapshot.activeScenarioId);
-    return {
-      projectId,
-      activeScenarioId: snapshot?.activeScenarioId ?? null,
-      scenarioName: active?.name ?? null,
-      scenarioCount: snapshot?.scenarios?.length ?? 0,
-    };
-  });
+  // Saved sessions moved from localStorage to IndexedDB on 2026-09-14 (f4bb64f) with the same
+  // record keys and encodings; read the committed records, as the other storage gates do.
+  const session = JSON.parse((await readDurableRecord(page, 'rb.ide.sessionMeta.v1')) ?? 'null');
+  const projectId = session?.projectId ?? null;
+  const snapshot = projectId
+    ? JSON.parse((await readDurableRecord(page, `rb.ide.project.v1:${projectId}`)) ?? 'null')
+    : null;
+  const activeSaved = snapshot?.scenarios?.find((scenario) => scenario.id === snapshot.activeScenarioId);
+  const persistedBeforeReload = {
+    projectId,
+    activeScenarioId: snapshot?.activeScenarioId ?? null,
+    scenarioName: activeSaved?.name ?? null,
+    scenarioCount: snapshot?.scenarios?.length ?? 0,
+  };
   console.log(`    persisted sidecar before reload: ${JSON.stringify(persistedBeforeReload)}`);
   assert(
     persistedBeforeReload.scenarioName === authored.name,
@@ -131,7 +134,14 @@ await runIdeGate('IDE testbench preservation after Design edit satisfied', async
 });
 
 async function renameActiveTestbench(page, name) {
+  // Rename is an item of the scenario explorer's Manage testbench menu (2026-09-02, 3f546e3);
+  // a student opens that menu through its visible control before choosing Rename.
   const rename = page.locator('[data-testid="ide-scenario-rename-btn"]').first();
+  if (!(await rename.isVisible().catch(() => false))) {
+    const manage = page.getByLabel('Manage testbench', { exact: true });
+    await manage.waitFor({ state: 'visible', timeout: 10000 });
+    await manage.click();
+  }
   await rename.waitFor({ state: 'visible', timeout: 10000 });
   await rename.click();
   const input = page.locator('[data-testid="ide-scenario-rename-input"]').first();
@@ -148,27 +158,32 @@ async function renameActiveTestbench(page, name) {
 }
 
 async function authorWithoutChangingTruth(page) {
-  const cell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
-  await cell.waitFor({ state: 'visible', timeout: 10000 });
-  const testId = await cell.getAttribute('data-testid');
-  const original = await cell.getAttribute('title');
+  // A combinational scenario's expected outputs are authored in the case table (Case Lab,
+  // 2026-08-31, e8a9c06). Its cell shows the value ('1', '0', or '·' for no check), which the
+  // retired stimulus-canvas cell carried in its title; a click steps 1 -> 0 -> none -> 1.
+  const first = page.locator('[data-testid^="ide-case-lab-exp-"]').first();
+  await first.waitFor({ state: 'visible', timeout: 10000 });
+  const testId = await first.getAttribute('data-testid');
+  const cell = page.locator(`[data-testid="${testId}"]`);
+  const readValue = async () => ((await cell.textContent()) ?? '').trim();
+  const original = await readValue();
   await cell.click();
   await page.waitForFunction(
-    ({ id, title }) => document.querySelector(`[data-testid="${id}"]`)?.getAttribute('title') !== title,
-    { id: testId, title: original },
+    ({ id, value }) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim() !== value,
+    { id: testId, value: original },
     { timeout: 5000 },
   );
-  const second = await cell.getAttribute('title');
+  const second = await readValue();
   await cell.click();
   await page.waitForFunction(
-    ({ id, title }) => document.querySelector(`[data-testid="${id}"]`)?.getAttribute('title') !== title,
-    { id: testId, title: second },
+    ({ id, value }) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim() !== value,
+    { id: testId, value: second },
     { timeout: 5000 },
   );
   await cell.click();
   await page.waitForFunction(
-    ({ id, title }) => document.querySelector(`[data-testid="${id}"]`)?.getAttribute('title') === title,
-    { id: testId, title: original },
+    ({ id, value }) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim() === value,
+    { id: testId, value: original },
     { timeout: 5000 },
   );
 }
@@ -185,7 +200,11 @@ async function readDocumentState(page) {
       inputValues: (scenario?.vectors ?? []).map((vector) => Object.values(vector.inputs ?? {})),
       expectedValues: (scenario?.vectors ?? []).map((vector) => Object.values(vector.expected ?? {})),
       scenarioAuthority: state?.scenarioAuthority ?? null,
-      hasCurrentRun: Boolean(state?.verifyLastRun),
+      // Since 2026-07-26 (a5b67274) a behavioral Design edit keeps the last run as an
+      // inspectable stale recording; dirtySinceVerify is what withholds its PASS/FAIL
+      // authority (deriveVerifyCurrent), so a retained run alone is not current evidence.
+      hasCurrentRun: Boolean(state?.verifyLastRun) && state?.projectHealthCore?.dirtySinceVerify !== true,
+      hasRetainedRun: Boolean(state?.verifyLastRun),
       archivedRunCount: state?.verifyRunHistory?.length ?? 0,
     };
   });
@@ -200,16 +219,50 @@ function assertSameAuthoredDocument(expected, actual, label) {
   assert(JSON.stringify(actual.expectedValues) === JSON.stringify(expected.expectedValues), `${label}: expected values changed`);
 }
 
+// The recording header (identity strip) owns a run's check result since 2026-09-12 (57f4df2),
+// which retired the PASS hero and results summary. Its data-currency says whether the current
+// work still matches the recording: 'current' or 'differs'.
+async function readRecordingHeaders(page) {
+  return page.locator('[data-testid="ide-run-identity"]').evaluateAll((headers) => headers.map((header) => {
+    const text = (testId) => (header.querySelector(`[data-testid="${testId}"]`)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    return {
+      currency: header.getAttribute('data-currency'),
+      checkStatus: header.querySelector('[data-testid="ide-run-check-result"]')?.getAttribute('data-check-status') ?? null,
+      result: text('ide-run-check-result'),
+      currencyLabel: text('ide-run-currency'),
+      changes: text('ide-run-input-changes'),
+    };
+  }));
+}
+
 async function assertCurrentPass(page, label) {
-  const hero = page.locator('[data-testid="ide-verify-pass-hero"]').first();
-  await hero.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await hero.getAttribute('data-stale')) !== 'true', `${label}: PASS is stale`);
+  // The PASS hero appeared only for a passing run; a passing check result is its successor.
+  const passing = '[data-testid="ide-run-check-result"][data-check-status="pass"]';
+  const hero = page.locator(passing).first();
+  const shown = await hero.waitFor({ state: 'visible', timeout: 10000 }).then(() => true, () => false);
+  assert(shown, `${label}: no passing check result is visible: ${JSON.stringify(await readRecordingHeaders(page))}`);
+  const header = page.locator('[data-testid="ide-run-identity"]').filter({ has: page.locator(passing) }).first();
+  const currency = await header.getAttribute('data-currency');
+  assert(currency === 'current', `${label}: PASS is stale (recording currency ${currency})`);
 }
 
 async function assertNoVisiblePass(page, label) {
   assert(await page.locator('[data-testid="ide-verify-pass-hero"]').count() === 0, `${label}: old PASS hero is still visible`);
   const text = ((await page.locator('[data-testid="ide-verify-results-summary"]').first().textContent().catch(() => '')) ?? '').trim();
   assert(!/Checks passed/i.test(text), `${label}: old PASS text is still authoritative: ${text}`);
+  // The same two checks against the current owners. The retained recording may still read
+  // "N checks passed", but only as a recording the current work differs from, naming the
+  // Design change; neither the Simulate status nor a case verdict may report a pass.
+  const headers = await readRecordingHeaders(page);
+  for (const header of headers.filter((entry) => entry.checkStatus === 'pass')) {
+    assert(header.currency === 'differs', `${label}: old PASS hero is still visible: ${JSON.stringify(header)}`);
+    assert(/differs/i.test(header.currencyLabel), `${label}: old PASS text is still authoritative: ${JSON.stringify(header)}`);
+    assert(/Design changed/i.test(header.changes), `${label}: old PASS does not name the Design change: ${JSON.stringify(header)}`);
+  }
+  const status = ((await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')) ?? '').trim();
+  assert(!/pass/i.test(status), `${label}: old PASS text is still authoritative: ${status}`);
+  const passingCases = await page.locator('[data-testid^="ide-case-lab-row-"].is-pass').count();
+  assert(passingCases === 0, `${label}: ${passingCases} case rows still report pass`);
 }
 
 async function fitCircuit(page) {
