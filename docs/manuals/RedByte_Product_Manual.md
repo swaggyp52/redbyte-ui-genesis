@@ -839,7 +839,7 @@ Result: a retained recording whenever the scenario runs successfully. With no ch
 
 **N checks passed.** All saved checks produced the expected outputs. The circuit behaves correctly for the tested cases.
 
-**M of N checks failed.** One or more saved checks produced incorrect outputs. The failure focus row names the failing signal and tick with `expected X · got Y`; **First** / **Previous** / **Next** walk the failures and the instrument highlights the failing rows or ticks. The hint system evaluates 14 diagnostic conditions and displays matching fact-grounded suggestions for diagnosing the failure.
+**M of N checks failed.** One or more saved checks produced incorrect outputs. The selected result names the failing signal and case with `expected X` and `observed Y` and marks it `≠ Mismatch`; **First** / **Previous** / **Next** walk the failures and the instrument highlights the failing rows or ticks. The hint system evaluates 14 diagnostic conditions and displays matching fact-grounded suggestions for diagnosing the failure.
 
 **STALE.** The design, the saved checks or the browser session changed after the selected recording. The detail names the cause (for example **Design changed — run again to record the current circuit.**); the recording stays selectable and reproducible, but it is not current evidence.
 

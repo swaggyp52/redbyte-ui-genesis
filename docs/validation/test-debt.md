@@ -5,6 +5,57 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## Classroom chain after the Studio restart - 2026-10-30
+
+The 2026-10-05 Studio restart (sealed in 64bf7aa93 on 2026-10-20) was validated with
+`verify:gates`, `repo:status` and the journeys, not `classroom:gate` (ACTIVE_WORK.md, Studio
+restart entry). PR #88 CI runs `classroom:gate`: at 055c83bc9, 12 of its 72 stages failed, each
+passing on the a46d7ed01 build and failing on the 64bf7aa93 build (cloud container, Node 22, not
+the pinned 20.19.0). Dispositions, with every threshold kept:
+
+Product changes (the gate's requirement stands):
+
+- `workbench-obstruction-usability`, `primary-work-object-dominance`, `design-dual-tool-windows`:
+  with both panels open the sheet was 766px at 1366x768, 856px at 1440x900 and 1320px at
+  1920x1080. A 64px rail, a 240-256px inspector that leaves the sheet at least 60% of the window,
+  and 8px gutters give 828px, 896px and 1376px.
+- `shell-workbench-hierarchy`, `shell-navigation-overhaul`, `workbench-reconstruction-v1`: the
+  status line is 28px (was 32px); two Wire-cue lines still fit, and port names in the cue follow
+  its size, so arming a wire leaves the line's height alone at 100% and 150% text.
+- `verify-postrun-workbench-usability` (also inside `verify-task-plane-usability`): the Details >
+  Checks panel has one `minmax(0, 1fr)` column, so the mismatch table's minimum width no longer
+  widens the repair panel past the inspector that clips it.
+- `design-workbench-v1`, view-switch steps: a camera the student zoomed keeps the world point in
+  the middle of the sheet through Canvas, Code and Split.
+
+Consumer migrations (retired markup or wording; stricter where noted):
+
+- `design-workbench-v1`, panel steps (node move, library and inspector shown or hidden): the
+  world-centre anchor is replaced by the page position of the drawing within 1px, because the
+  owner's rule is that selecting a part does not shift the canvas; the world centre is re-taken
+  after each panel change for the view switches that follow. Added: an untouched frame holds
+  through three select-and-release rounds. The July ticket records the supersession.
+- `workbench-stability-overhaul`: Fit, Selection and zoom are measured against the view dock
+  (`ide-design-viewdock`) they moved to, with the same containment and trial click; added, the
+  dock must fit the sheet.
+- `verify-saved-checks-default`: after a run the count comes from the recording header
+  (`ide-run-check-result`, "12 checks passed"), which retired the pre-run count; added, its
+  `data-check-status` must be `pass`.
+- `verify-evidence-workbench` (`ide-verify-evidence-workbench-integrity.mjs`): the selected
+  result says "observed" where the retired row said "got"; the gate now reads both values and
+  requires the expected value it wrote and the value the circuit recorded (stricter).
+- `testbench-editor-and-export-confidence-flow`: the waveform's STALE badge
+  (`ide-verify-evidence-state`) is retired; the gate reads the recording header's
+  `data-currency="differs"` and its visible change line, which must name the checks change. That
+  line always ends "Rerun uses current inputs", so "Rerun" alone no longer passes (stricter).
+- `shell-density-contract` (not in the classroom chain): the rail follows the declared
+  `--wb-rail-w` instead of a literal 80px, and may still not exceed 80px at 16px text.
+
+Outside CI, the `design-core-authoring` journey (release run) had failed since 11f30d4 ("students
+see part names, never node ids"): it looked for the report's signal id `y` in "Inspect Y first".
+It now matches the failed output's name as a word, ignoring case, and passes. The `a11y-scale`
+journey fails as before; it is one of the stale journeys no release run includes (RB-DEBT-034).
+
 ## rc.6 review closure - 2026-10-28
 
 `apps/toolchain-route.test.tsx`, the last row of the 2026-09-06 Open table below that still

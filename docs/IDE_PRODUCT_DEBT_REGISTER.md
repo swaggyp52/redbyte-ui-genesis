@@ -22,6 +22,7 @@ This file owns IDE product debt. The current composition is the P2.6C Studio con
 - 2026-10-20: the Meridian investigation and P1 studio slice filed RB-DEBT-013 to RB-DEBT-027 (below). The studio entry is isolated from the legacy cascade; it does not change the classic workbench debt above.
 - 2026-10-25: the Meridian Atlas completion pass filed RB-DEBT-028 (below).
 - 2026-10-28: owner acceptance of 1.0.0-rc.7 fixed RB-DEBT-030 in rc.8 and filed RB-DEBT-032 to RB-DEBT-034 (below; decision document `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md`).
+- 2026-10-30: PR #88's classroom chain (12 stages red since the 2026-10-20 seal) filed RB-DEBT-035 and RB-DEBT-036 (below); the space, status-line and camera fixes are recorded in the V1 contract entry of that date and in `docs/validation/test-debt.md`.
 
 ## Historical July 2026 stable truths
 
@@ -434,4 +435,18 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: Low (no product defect; dead test surface that reads as coverage)
 - Current evidence (2026-10-28, `.redbyte/releases/redbyte-1.0.0-rc.8-evidence/unrun-journeys/`): `a11y-scale`, `bench-board-sync`, `compare-verdict`, `pin-planner`, `runs-document`, `shell-status-authority`, `signature` and `sim-provider` fail identically on rc.7 and rc.8 and were last edited 2026-09-05 to 09-08. Two target a removed surface (`ide-vcb-workspace-bench`); one waits for `VerifyResultsSummary`, which nothing renders; two expect the VCD tools outside the "Imported evidence" disclosure (`vcd-analyzer` passes); one reads the runs table's first cell (the run number) as the verdict; one expects a run readout no caller has passed to the status bar since 2026-09-02; one reads the Board binding chain with innerText inside a collapsed disclosure (the chain follows keyboard selection: `acceptance-board-detail2`). The other eight unrun journeys pass on rc.8, `nested-create-module` among them.
 - Next step: retire the four whose subjects are gone or covered; rewrite `runs-document`, `pin-planner` and `shell-status-authority` against the current contracts if their subjects matter, then add the passing ones to a release run.
+- Status: Open
+
+### RB-DEBT-035 - The view dock can cover the bottom of the circuit after the inspector slides the view (C)
+
+- Severity: Low (a pin label partly hidden in one starter; no control or value is lost)
+- Current evidence (2026-10-30, triage of PR #88 at 055c83bc9): on the signal-tour starter at 1366x768, selecting LD0 opens the inspector, which would cover LD0, so the view slides; the view dock (Fit, Selection, zoom: 12px inset, 40px tall, lower left) then hides the lower 8px of `sw3_node`'s "W17" pin label (`elementFromPoint` returns `ide-design-viewdock`). Fit keeps a symmetric 48px margin around node geometry, and pin aliases hang below that geometry. logic-gates and the other six starters are clear at load, at Fit and after selection. No gate can see it: `ide-design-canvas-direct-workbench.mjs` checks that camera controls do not overlap nodes or wires against the toolbar's rectangle, which the dock left on 2026-10-05.
+- Next step: point that gate's camera-control host at `ide-design-viewdock` (measured clean for logic-gates at both classroom sizes), then keep the dock's corner clear when framing (count pin aliases in the frame's bounds, or reserve the dock's height at the bottom of the frame).
+- Status: Open
+
+### RB-DEBT-036 - Simulate Details: the mismatch table's Review column is clipped by its panel (C)
+
+- Severity: Low (the Review buttons remain reachable by keyboard; part of the column is not drawn)
+- Current evidence (2026-10-30): in Details > Checks the mismatch table's five unbreakable columns need 367px at the 15/16px type scale, wider than the inspector-hosted panel (313-347px at 1093-1440 widths), whose `overflow: hidden` clips the Review column by about 54px at 1093x614, 44px at 1366x768 and 20px at 1440x900 (24px already at a46d7ed01). PR #88 gave the panel one `minmax(0, 1fr)` column, so the repair panel and its actions now fit; the table itself still overflows its cell.
+- Next step: wrap the table in the existing `.ide-table-wrap` horizontal scroller, or tighten its inspector padding, and add the Review column to `ide-verify-postrun-workbench-usability`'s reachable controls.
 - Status: Open

@@ -74,6 +74,7 @@
 - **Status:** Fixed locally; remote and production acceptance pending
 - **Fix PR / commit:** One authorized direct-main recovery commit with message `fix: stabilize Design split view camera`; exact hash is produced only after the final origin-parent guard
 - **Notes:** The original three-node/one-wire visibility floor is retained and expanded with geometry, camera, persistence, interaction, reload, and failure-artifact proof. No assertion or hit-test is bypassed. Broad stale inspector assertions and a missing `SchematicView` test import reproduce on the unchanged parent and remain separate debt.
+- **Superseded in part, 2026-10-30 (owner direction, PR #88; `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`):** the world-centre rule is kept for real host resizes caused by a view switch (Canvas / Code / Split): the world point in the middle of the sheet stays in the middle at the student's zoom, and `ide:gate:design-workbench-v1` still asserts it within 1 world px. For Library and Inspector transitions it no longer holds: selecting a part must not shift the canvas, so a panel opening or closing beside the sheet leaves every part where it is on the screen, and the gate asserts that within 1 px instead (re-taking the world centre after each panel change). The visibility floor, zoom preservation, SVG-to-host geometry and persisted-reload checks are unchanged. Since 2026-10-20 the product had followed neither rule for those transitions (the camera stayed put while the sheet's left edge moved); the gate had not been run on it until PR #88.
 
 ## Out of Scope
 

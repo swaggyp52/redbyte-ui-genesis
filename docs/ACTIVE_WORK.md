@@ -8,6 +8,32 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## PR #88 classroom chain - the circuit gets the room - 2026-10-30
+
+Branch `claude/redbyte-v1-reliability-vszl4j` (PR #88, draft). The branch was pushed for the first
+time on 2026-10-29; its CI runs `classroom:gate`, which the 2026-10-05 Studio restart had never
+run. At 055c83bc9, 12 of the chain's 72 stages failed. Each passes on the a46d7ed01 build and
+fails on the 64bf7aa93 seal (bisected; matrix in the PR). Owner direction: keep the gates and
+make the product meet them; the circuit gets the room, the inspector stays readable, selecting a
+part never shifts the canvas (V1 contract entry, 2026-10-30).
+
+**Product**: with both panels open the sheet keeps 60% of the window (1366x768: 828px, was 766;
+1440x900: 896px; 1920x1080: 1376px) with a 64px labelled rail, a 240-256px inspector and 8px
+gutters; inspector labels wrap instead of being cut. The status line is 28px and a Wire cue never
+changes its height. The camera keeps the world centre through Schematic/Split/Code, and moves
+nothing on the screen when the inspector or library opens or closes; the inspector never moves an
+untouched frame (it used to creep half the inspector per select and release). Simulate's Details >
+Checks panel no longer clips its repair actions.
+
+**Gates**: four consumer migrations to the restart's current owners (view dock, recording header,
+"observed" wording, recording currency), each with every threshold kept and three stricter; the
+camera gate's panel steps assert page position (1px) instead of the world centre, with the July
+ticket marked superseded in part; `design-core-authoring` follows 11f30d4's part names. Recorded in
+`docs/validation/test-debt.md`. Filed RB-DEBT-035 (the view dock over a pin label) and RB-DEBT-036
+(the mismatch table's Review column).
+
+Evidence boundary: cloud container, Node 22 (not the pinned 20.19.0); browser E0 only.
+
 ## 1.0 owner acceptance - rc.7 not accepted, rc.8 recommended - 2026-10-28
 
 Decision document: `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md`; candidate report:

@@ -821,6 +821,43 @@ migrates it with written deletion deadlines. IdeApp code moved verbatim into sha
 request and export project (RB-DEBT-026, deadline P4). The
 design authority is `docs/ide/studio/MERIDIAN_DESIGN_SYSTEM.md`.
 
+### 2026-10-30 - The circuit gets the room, and selecting moves nothing
+
+Owner direction for PR #88; not yet visually accepted. RedByte gives the space to what the
+student is doing: while designing, the circuit has the most room; while inspecting, the
+inspector stays readable without taking the workspace. Selecting a part must not shift the
+canvas or make controls overlap. A classroom gate is not lowered to pass; the product meets it.
+
+Space, with the library and the inspector both open:
+
+- The sheet keeps at least 60% of the window, the classroom gates' measure. The inspector takes
+  what is left up to 256px and never less than 240px: 1366x768 gives a 250px inspector and an
+  828px sheet, 1440x900 256px and 896px, 1920x1080 256px and 1376px.
+- The rail is 64px and keeps its icons and 13px labels. The library keeps 208px. The sheet's
+  side gutters are 8px at desktop widths.
+- The status line is 28px. Two lines of the Wire cue still fit in it (set at about 12.4px at
+  100% text, port names at the cue's own size), so a cue or a refusal never changes its height.
+- Inspector labels and values wrap rather than being cut, and the inspector's term column grows
+  with enlarged text.
+
+The camera, by kind of change:
+
+- A view switch (Schematic, Split, Code) keeps the world point in the middle of the sheet in the
+  middle of the new sheet, at the student's zoom. An untouched frame is framed again for the new
+  sheet. This is the 2026-07-14 rule, kept for view switches.
+- A panel opening or closing beside the sheet moves nothing on the screen: the inspector opening
+  with a selection, or the library shown or hidden (the camera takes up the sheet's moved edge).
+  A part is slid back on only when the resize itself would hide it, and by the least amount.
+- The inspector never moves a framed view nobody has touched, opening or closing.
+
+| Superseded | Why |
+|---|---|
+| Every real resize, the library and inspector included, keeping the world point at the middle of the sheet (2026-07-14) | With the inspector beside the sheet it slid every part half the inspector's width whenever a part was selected. |
+| Keeping a selected part's 72px neighbourhood on the sheet on every resize | It nudged a part that was fully visible and covered by nothing. |
+| Re-centring an untouched frame when the inspector closed | Each select and release walked the drawing right by half the inspector. |
+| An 80px rail, a 280px inspector and a 32px status line at laptop widths | They left the sheet 766px at 1366x768, under the classroom gates' 820px. |
+| Inspector labels cut with an ellipsis at a fixed 96px | Long part names and "Board resource" could not be read with enlarged text. |
+
 ## Attribution
 
 Connor Angiel
