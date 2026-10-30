@@ -55,7 +55,8 @@ Also passing on the fixed build: `authoring-depth-release-safety`, `design-wire-
 (6 tests; the 4 plain-click cases are red before the fix, the 2 additive ones pass either way) and
 a wire-click case in `designSurface.selectionContext.test.tsx` (red before the fix, with a
 Shift-click companion); the logic-view and DesignSurface suites pass, 51 files / 358 tests;
-`typecheck:app` 0.
+`typecheck:app` 0; `verify:gates` exits 0 (typecheck ratchet +0, both classroom golden export SHA
+gates pass under this Node 20.19.0 run).
 
 Found, not fixed here (outside the classroom chain; each stops before the selection change can
 matter, and fails the same way on a build without it): `blank-adder-authoring-depth`,

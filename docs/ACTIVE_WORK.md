@@ -27,8 +27,9 @@ Shift, Ctrl or Cmd still add (`useLogicViewStore`; Design spec, inspector sectio
 `design-workbench-v1`, `design-library-not-cropped` and `design-palette-build-contract` pass, and
 so do 16 other Design and selection gates; without the store fix the gate fails at Disconnect.
 The new plain-click store and DesignSurface tests fail before the fix; the logic-view and
-DesignSurface suites pass (51 files, 358 tests); `typecheck:app` 0. Dispositions:
-`docs/validation/test-debt.md`. Browser E0 only.
+DesignSurface suites pass (51 files, 358 tests); `typecheck:app` 0; `verify:gates` exits 0,
+both classroom golden export SHA gates included. Dispositions: `docs/validation/test-debt.md`.
+Browser E0 only.
 
 **Next**: three more gates outside the chain stop on the same July library helper
 (`blank-adder-authoring-depth`, `wrong-build-diagnosis-repair-flow`,
