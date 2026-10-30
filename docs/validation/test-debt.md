@@ -76,6 +76,12 @@ Outside CI, the `design-core-authoring` journey (release run) had failed since 1
 see part names, never node ids"): it looked for the report's signal id `y` in "Inspect Y first".
 It now matches the failed output's name as a word, ignoring case, and passes. The `a11y-scale`
 journey fails as before; it is one of the stale journeys no release run includes (RB-DEBT-034).
+The `nested-adder` journey's own layout pass moved the top symbol of each pile to a fixed screen
+slot. Once the selection's slide-back changed by 25px while the four adder instances were placed,
+it dropped two instances onto SUM outputs it had not moved yet, then found nothing left to grab
+("layout deadlock"). Where the cascade lands depends on the view the parts were placed into, so
+the pass now first moves a symbol whose slot buries nobody. It passes on the db877a54a and
+9b9434c4a builds, with no assertion changed.
 `ide:gate:design-wiring-simplification-flow` (not in the classroom chain; listed by the July
 camera ticket) fails at its first placement, "palette entry ide-design-board-input-sw0 must be
 visible", identically on the a46d7ed01, b914e2918 and ea900ee86 builds: it predates the restart

@@ -356,18 +356,44 @@ const grabPoint = (nodeId) => page.evaluate((nid) => {
   }
   return null;
 }, nodeId);
+// Where a symbol's body would land if moved to its slot, and whether that would bury another
+// symbol still waiting for its own slot. Where the cascade lands depends on the view the parts
+// were placed into; dropping an instance onto a SUM output that had not moved yet hid it for good.
+const bodyRect = (nodeId) => page.evaluate((nid) => {
+  const body = document.querySelector(`[data-node-id="${nid}"] .rb-sym-body`) ?? document.querySelector(`[data-node-id="${nid}"]`);
+  const r = body?.getBoundingClientRect();
+  return r ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+}, nodeId);
+async function wouldBury(nodeId) {
+  const r = await bodyRect(nodeId);
+  if (!r) return false;
+  const dx = SLOT[nodeId][0] - (r.left + r.right) / 2;
+  const dy = SLOT[nodeId][1] - (r.top + r.bottom) / 2;
+  for (const other of pending) {
+    if (other === nodeId) continue;
+    const o = await bodyRect(other);
+    if (o && r.left + dx < o.right && r.right + dx > o.left && r.top + dy < o.bottom && r.bottom + dy > o.top) return true;
+  }
+  return false;
+}
 const pending = new Set(Object.keys(SLOT));
 while (pending.size > 0) {
   const order = (await page.evaluate(() => [...document.querySelectorAll('[data-node-id]')].map((e) => e.getAttribute('data-node-id')))).reverse();
   let progressed = false;
-  for (const id of order) {
-    if (!pending.has(id)) continue;
-    const grab = await grabPoint(id);
-    if (!grab) continue;
-    await moveNodeTo(id, grab, SLOT[id][0], SLOT[id][1]);
-    pending.delete(id);
-    progressed = true;
-    break;
+  // A symbol whose move buries nobody goes first; one that would bury another goes only when
+  // nothing else can move.
+  for (const avoidBurying of [true, false]) {
+    for (const id of order) {
+      if (!pending.has(id)) continue;
+      const grab = await grabPoint(id);
+      if (!grab) continue;
+      if (avoidBurying && await wouldBury(id)) continue;
+      await moveNodeTo(id, grab, SLOT[id][0], SLOT[id][1]);
+      pending.delete(id);
+      progressed = true;
+      break;
+    }
+    if (progressed) break;
   }
   if (!progressed) throw new Error(`layout deadlock, unplaced: ${[...pending].join(',')}`);
 }
