@@ -75,7 +75,7 @@ await runIdeGate('IDE Verify saved checks remain active in unified simulation sa
     assert(JSON.stringify(after.expectedValues) === JSON.stringify(before.expectedValues),
       `${viewport.label}: Run must preserve every authored expected value`);
     assert(
-      after.checkCount === before.checkCount,
+      after.checkStatus === 'pass' && after.checkCount === before.checkCount,
       `${viewport.label}: saved checks must remain intact after PASS, got ${JSON.stringify(after)}`
     );
     assert(
@@ -130,7 +130,15 @@ async function readRunModeState(page) {
     const run = document.querySelector('[data-testid="ide-vcb-run"]');
     const explainer = document.querySelector('[data-testid="ide-vcb-mode-explainer"]');
     const expected = [...document.querySelectorAll('[data-testid^="ide-case-lab-exp-"]')];
-    const countText = document.querySelector('[data-testid="ide-vcb-check-count"]')?.textContent ?? '';
+    // Before the first recording the experiment row states the authored count ("12 optional
+    // checks"). Once a recording exists its header owns the count ("12 checks passed",
+    // "3 of 12 checks failed") and the pre-run fact is retired (docs/ide/03-verify.md, the
+    // manual's Experiment / Recording header). A recording that did not evaluate the saved
+    // checks has no count and reads as 0.
+    const result = document.querySelector('[data-testid="ide-run-check-result"]');
+    const countText = result
+      ? result.textContent?.match(/(\d+)\s+checks?\s+(?:passed|failed)/i)?.[1] ?? ''
+      : document.querySelector('[data-testid="ide-vcb-check-count"]')?.textContent ?? '';
     const checkCount = Number(countText.match(/\d+/)?.[0] ?? 0);
     return {
       scenarioSelected: Boolean(table && table.getBoundingClientRect().height > 0),
@@ -138,6 +146,7 @@ async function readRunModeState(page) {
       checksAvailable: expected.length > 0,
       expectedValues: expected.map(cell => ({ id: cell.getAttribute('data-testid'), value: cell.textContent?.trim() })),
       checkCount,
+      checkStatus: result?.getAttribute('data-check-status') ?? 'no-recording',
       runLabel: run?.textContent?.trim() ?? '',
       modeExplainer: explainer?.textContent?.trim() ?? '',
     };

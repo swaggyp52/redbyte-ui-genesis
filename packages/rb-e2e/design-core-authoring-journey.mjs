@@ -184,7 +184,10 @@ try {
         assert.equal(await tid('ide-design-current-design').count(), 0, 'Edit in Design edits the current design, not a recorded view');
         assert.equal(await tid('ide-design-tool-wire').isEnabled(), true, 'the editing tools are live');
         const focus = await tid('ide-design-verify-focus').innerText();
-        assert.ok(failedSignals.some((signal) => focus.includes(signal)), `Edit in Design points at the failed output (${failedSignals.join(', ')}): "${focus}"`);
+        // The focus names the output as the student sees it, by its label (11f30d4: "Inspect Y
+        // first" for the report's signal y), so the name is matched as a word, ignoring case.
+        const namesSignal = (signal) => new RegExp(`(^|[^A-Za-z0-9_])${signal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^A-Za-z0-9_])`, 'i').test(focus);
+        assert.ok(failedSignals.some(namesSignal), `Edit in Design points at the failed output (${failedSignals.join(', ')}): "${focus}"`);
         assert.equal(await page.locator('.ide-design-canvasWrap [data-testid="ide-design-debug-context-banner"]').count(), 0);
         await page.screenshot({ path: path.join(out, 'failure-edit-design-1280x650.png') });
         await tid('ide-design-test-design').click();

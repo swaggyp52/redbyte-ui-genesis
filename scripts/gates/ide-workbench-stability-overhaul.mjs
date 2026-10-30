@@ -17,6 +17,15 @@ const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
   ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
 ]);
 
+// Each direct Design control and the group that holds it. Select and Wire are in the command
+// row; Fit, Selection and zoom are the view dock in the sheet's lower left corner, "not in the
+// toolbar" since the 2026-10-05 Studio restart (docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md,
+// docs/ide/02-design.md). Every control must still be whole inside its group and actionable.
+const DIRECT_CONTROL_OWNERS = [
+  ['ide-design-toolbar', ['ide-design-tool-select', 'ide-design-tool-wire']],
+  ['ide-design-viewdock', ['ide-design-fit-circuit-canvas', 'ide-design-center-selection-canvas', 'ide-design-zoom-out', 'ide-design-zoom-readout', 'ide-design-zoom-in']],
+];
+
 const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR)
   : null;
@@ -119,14 +128,18 @@ async function assertCleanWorkbench(page, viewport, label) {
 }
 
 async function assertDirectDesignControls(page, viewport) {
-  const toolbar = page.getByTestId('ide-design-toolbar');
-  const box = await toolbar.boundingBox();
-  assert(box, `${viewport.label}: Design toolbar must be measurable`);
-  for (const id of ['ide-design-tool-select', 'ide-design-tool-wire', 'ide-design-fit-circuit-canvas', 'ide-design-center-selection-canvas', 'ide-design-zoom-out', 'ide-design-zoom-readout', 'ide-design-zoom-in']) {
-    const control = page.getByTestId(id);
-    const rect = await control.boundingBox();
-    assert(rect && rect.x >= box.x && rect.y >= box.y && rect.x + rect.width <= box.x + box.width + 1 && rect.y + rect.height <= box.y + box.height + 1, `${viewport.label}: direct control ${id} must fit its toolbar`);
-    if (await control.isEnabled()) await control.click({ trial: true });
+  const fits = (inner, outer) => Boolean(inner && outer && inner.x >= outer.x && inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width + 1 && inner.y + inner.height <= outer.y + outer.height + 1);
+  const sheet = await page.getByTestId('ide-design-canvas-wrap').boundingBox();
+  for (const [ownerId, ids] of DIRECT_CONTROL_OWNERS) {
+    const box = await page.getByTestId(ownerId).boundingBox();
+    assert(box, `${viewport.label}: ${ownerId} must be measurable`);
+    if (ownerId === 'ide-design-viewdock') assert(fits(box, sheet), `${viewport.label}: the view dock must fit the sheet it acts on`);
+    for (const id of ids) {
+      const control = page.getByTestId(id);
+      assert(fits(await control.boundingBox(), box), `${viewport.label}: direct control ${id} must fit ${ownerId}`);
+      if (await control.isEnabled()) await control.click({ trial: true });
+    }
   }
   const viewMenu = page.getByTestId('ide-design-toolbar-overflow');
   assert(await viewMenu.isVisible(), 'View menu must remain reachable');

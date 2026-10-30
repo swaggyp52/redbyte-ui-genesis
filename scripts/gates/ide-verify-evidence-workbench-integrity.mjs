@@ -289,7 +289,15 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   await requireVisible(page, '[data-testid="ide-verify-results-summary-open-fail"]', 'failure primary action');
   await requireVisible(page, '[data-testid="ide-verify-fail-nav-summary"]', 'first mismatch summary');
   const failNav = await text(page.locator('[data-testid="ide-verify-fail-nav-summary"]'));
-  assert(/expected/i.test(failNav) && /got/i.test(failNav), `first mismatch summary must show expected and observed values, got "${failNav}"`);
+  // The selected result reads "LD0 Case 1 expected 1 observed 0" and marks the mismatch; the
+  // failure-focus row it replaced at the 2026-10-20 seal said "got" for observed. Both values must
+  // be shown, and they must be this mismatch's: the value written and the value the circuit gave.
+  const shownExpected = /expected\s*([01])/i.exec(failNav)?.[1];
+  const shownObserved = /(?:observed|got)\s*([01])/i.exec(failNav)?.[1];
+  assert(
+    shownExpected === String(wrongValue) && shownObserved === String(target.value),
+    `first mismatch summary must show expected ${wrongValue} and observed ${target.value}, got "${failNav}"`,
+  );
   await page.getByTestId('ide-verify-details').click();
   await assertWorkbenchGeometry(page, 'simulation-fail-replay');
   await capture(page, '03-simulation-fail-first-mismatch.png');

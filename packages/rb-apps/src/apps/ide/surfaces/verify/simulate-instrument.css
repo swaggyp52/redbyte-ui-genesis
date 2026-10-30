@@ -324,6 +324,11 @@
 /* Details owns scrolling for the complete analysis, including repair actions. */
 .ide-root .rb-sim-inspector .ide-verify-drawer-body, .ide-root .rb-sim-inspector .ide-verify-tab-panel { flex: none; min-height: 0; max-height: none; background: var(--wb-surface); color: var(--wb-text); overflow: visible; }
 .ide-root .rb-sim-inspector .ide-verify-analysis-tab-nav { position: static; flex-wrap: wrap; background: var(--wb-surface-2); color: var(--wb-text); }
+/* The Checks analysis is one column no wider than the inspector. Its implicit `auto` column took
+   the min-content width of the mismatch table (five unbreakable columns, 367px at the 15/16px
+   type scale), so the repair panel was laid out wider than the overflow-hidden panel that clips
+   it and its full-width repair actions lost their right edge (5.5px at 1093x614 after scrolling). */
+.ide-root .rb-sim-inspector .ide-verify-mismatch-panel { grid-template-columns: minmax(0, 1fr); }
 .ide-root .rb-sim-inspector .ide-verify-repair-panel__actions { grid-template-columns: minmax(0, 1fr); }
 .ide-root .rb-sim-inspector .ide-verify-repair-panel__path-actions { flex-direction: column; align-items: stretch; }
 .ide-root .rb-sim-inspector .ide-verify-repair-panel__path-actions .ide-button { width: 100%; min-height: var(--wb-control-h); height: auto; padding: 4px 8px; }

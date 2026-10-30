@@ -147,12 +147,19 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   await openReplayWorkspace(page);
-  const staleSummary = page.getByTestId('ide-verify-evidence-state');
-  await staleSummary.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await staleSummary.getAttribute('data-state')) === 'stale', 'Verify latest-run authority must be marked stale after an expected-output edit');
-  const staleText = await text(page.getByTestId('ide-verify-evidence-state-reason'));
+  // Since the 2026-10-20 seal the recording header owns whether a recording is current
+  // (recordingState.ts, docs/ide/03-verify.md): data-currency="differs" and a visible line that
+  // names what changed. The waveform's live STALE badge it replaced is retired. That line always
+  // ends "Rerun uses current inputs", so the change itself must be named.
+  const recordingHeader = page.getByTestId('ide-run-identity').first();
+  await recordingHeader.waitFor({ state: 'visible', timeout: 10000 });
+  await page
+    .waitForFunction(() => document.querySelector('[data-testid="ide-run-identity"]')?.getAttribute('data-currency') === 'differs', null, { timeout: 10000 })
+    .catch(() => null);
+  assert((await recordingHeader.getAttribute('data-currency')) === 'differs', 'Verify latest-run authority must be marked stale after an expected-output edit');
+  const staleText = await text(page.getByTestId('ide-run-input-changes'));
   assert(
-    /Checks changed|scenario changed|Rerun/i.test(staleText),
+    /\bchecks?\b[^.]*\bchanged\b|scenario changed/i.test(staleText),
     `Verify must name stale testbench evidence after edit, got "${staleText}"`,
   );
   await capture(page, '10-testbench-edit-stale.png');
