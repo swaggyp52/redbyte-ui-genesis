@@ -42,6 +42,18 @@ Consumer migrations (retired markup or wording; stricter where noted):
   library is hidden and shown with a part selected. Both additions fail on the ea900ee86 build: at
   1366x768 a wire selection framed it again (it moved about 108px and its zoom fell from 1.6 to
   1.54), and hiding the library left it 101px off centre. The July ticket records the supersession.
+  After an independent review of db877a54a (all five confirmed gate and camera findings fixed):
+  - The panel steps really hide and really show each panel, and assert the dock's own state. A
+    reveal of a panel already open had compared the view with itself.
+  - The library round accepts a new frame only if it is smaller and equals Fit for the sheet.
+    "Any zoom change" passed a one-step zoom-out.
+  - The untouched rounds assert the inspector opened in the standard layout, and start only once
+    the camera and sheet read the same twice.
+  - Added: a part released earlier is not followed when a wire is selected; a part 40px on the
+    sheet, once selected, is slid wholly back sideways only; the bottom panel after a view switch
+    moves nothing; a module round trip returns both levels exactly (1366x768,
+    four-bit-adder-hierarchical). On db877a54a these measured 255px, 0% visible, 110px, and 44px
+    per trip.
 - `workbench-stability-overhaul`: Fit, Selection and zoom are measured against the view dock
   (`ide-design-viewdock`) they moved to, with the same containment and trial click; added, the
   dock must fit the sheet.
@@ -56,7 +68,9 @@ Consumer migrations (retired markup or wording; stricter where noted):
   `data-currency="differs"` and its visible change line, which must name the checks change. That
   line always ends "Rerun uses current inputs", so "Rerun" alone no longer passes (stricter).
 - `shell-density-contract` (not in the classroom chain): the rail follows the declared
-  `--wb-rail-w` instead of a literal 80px, and may still not exceed 80px at 16px text.
+  `--wb-rail-w` instead of a literal 80px. It is bounded both ways (56-80px at 16px text, the
+  owner's range up to the Studio restart's width), and every workspace label must fit its rail
+  button. A 3rem rail had passed the token check while it cut "Simulate".
 
 Outside CI, the `design-core-authoring` journey (release run) had failed since 11f30d4 ("students
 see part names, never node ids"): it looked for the report's signal id `y` in "Inspect Y first".

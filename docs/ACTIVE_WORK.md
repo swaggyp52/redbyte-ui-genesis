@@ -37,7 +37,26 @@ control under 24px across five starters at 1366x768, 1440x900 and 1920x1080 at 1
 **CI on ea900ee86**: the 12 repaired stages passed; the chain stopped at stage 60,
 `action-first-entry-surfaces`, which no earlier run had reached. Import's "Paste HDL" was 91px on
 the runner against the gate's 92px (92.03px here) since the restart's 13px button text. The
-source switch's buttons now keep 6rem (96px).
+source switch's buttons now keep 6rem (96px). CI on db877a54a: all 72 classroom stages, the labs
+and the golden exports green; the local chain matched it (72/72).
+
+**Independent review of db877a54a** (three reviewers, each finding then tested by a skeptic;
+13 confirmed, 2 refuted):
+- **Camera:**
+  - A module round trip shifted each level 44px per trip. Fixed: the camera is left to the
+    module's own restore, and a first visit frames the module's parts, not the parent's.
+  - A part already cut by the edge could vanish under the inspector.
+  - Slide-back moved the drawing vertically and too far.
+  - A part released long ago was followed.
+  - A settled view switch re-centred on later panel changes.
+- **Inspector:** at 125% and 150% text the inspector broke pins mid-name ("U1" over "6"); each
+  term now sits above its value there.
+- **Gates:** two gate checks could not fail as written, and the camera gate now adds the review's
+  scenarios. Details are in test-debt.md.
+- **Refuted:**
+  - A stored 280px inspector width: no released build had the store. It is migrated anyway, for
+    pre-release machines.
+  - The rail check's bound: the gate is stronger now regardless.
 
 **Gates**: four consumer migrations to the restart's current owners (view dock, recording header,
 "observed" wording, recording currency), each with every threshold kept and three stricter; the

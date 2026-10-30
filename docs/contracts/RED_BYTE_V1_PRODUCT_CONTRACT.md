@@ -837,21 +837,30 @@ Space, with the library and the inspector both open:
   side gutters are 8px at desktop widths.
 - The status line is 28px. Two lines of the Wire cue still fit in it (set at about 12.4px at
   100% text, port names at the cue's own size), so a cue or a refusal never changes its height.
-- Inspector labels and values wrap rather than being cut, and the inspector's term column grows
-  with enlarged text.
+- Inspector labels and values wrap rather than being cut. At 100% text the term takes 6rem beside
+  its value; with enlarged text each term sits above its value, so a pin, a board resource or
+  CLK100MHZ stays whole (side by side at 150%, U16 read "U1" over "6"). An inspector width saved as
+  the old 280px default is read as 256px.
 
 The camera, by kind of change:
 
 - A view switch (Schematic, Split, Code) keeps the world point in the middle of the sheet in the
-  middle of the new sheet, at the student's zoom. An untouched frame is framed again for the new
-  sheet. This is the 2026-07-14 rule, kept for view switches.
+  middle of the new sheet, at the student's zoom, through the resizes that settle it. An untouched
+  frame is framed again for the new sheet. This is the 2026-07-14 rule, kept for view switches; a
+  panel shown, hidden or resized afterwards (the bottom panel and a dock's width included), or a
+  pan or zoom, ends it.
 - A panel opening or closing beside the sheet moves nothing of a view the student zoomed or
-  panned: the inspector opening with a selection, or the library shown or hidden (the camera
-  takes up the sheet's moved edge). A part is slid back on only when the resize itself would hide
-  it, and by the least amount.
-- The inspector never moves a framed view nobody has touched, opening or closing. When the library
-  is shown or hidden, such a frame stays centred on the sheet with a part selected or not, sliding
-  by half the change at its zoom, and is framed again only when the work no longer fits.
+  panned: the inspector opening with a selection, the library shown, hidden or resized (the camera
+  takes up the sheet's moved edge), the bottom panel. The selected part, or one released a moment
+  ago, is slid back only when the resize itself would hide more of it, even one the edge already
+  cut: until it is wholly on the sheet, by the least amount, and only across the edge that
+  covered it.
+- The inspector moves a framed view nobody has touched only to slide back a selected part it
+  would cover. When the library is shown or hidden, such a frame stays centred on the sheet with
+  a part selected or not, sliding by half the change at its zoom, and is framed again only when
+  the work no longer fits.
+- Opening a module and coming back returns each level to the view it had: a view the student
+  chose exactly, an untouched frame framed again. A first visit frames the module's own parts.
 
 | Superseded | Why |
 |---|---|
