@@ -8,6 +8,28 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## Testbench preservation gate green again - 2026-10-30
+
+Branch `claude/gracious-albattani-gnnw0p`, stacked on `claude/funny-wozniak-33wsvo` (draft PR #89 at
+290124fd0, which carries be6d2fa5). `ide:gate:testbench-preservation-after-design-edit` (outside
+the classroom chain; CI never runs it) stopped at Simulate's first step on every current build:
+Rename now lives in the scenario explorer's closed Manage testbench menu. Behind it the gate met
+four more retired owners: Case Lab's expectation cells, the recording header that replaced the
+PASS hero, a Design edit that now keeps the run as a stale recording, and IndexedDB session
+storage. The gate now follows each with every assertion and threshold kept and three checks
+stricter. Its no-PASS check had been passing against retired markup; it now also reads the
+recording header, the Simulate status and the case verdicts.
+
+**Product**: no change; no regression found.
+
+**Evidence**: Node 20.19.0 / pnpm 10.24.0 in a cloud container, fresh `build:unified`: the gate
+passes, reload-persistence phase included; negative controls make each migrated check fail in
+the opposite state; the gate also passes with be6d2fa5 reverted (nothing is selected at its wire
+click). Dispositions: `docs/validation/test-debt.md`; scope: Verify spec. Browser E0 only.
+
+**Next**: `blank-adder-authoring-depth`, `wrong-build-diagnosis-repair-flow` and
+`scratch-testbench-repair-flow` still stop on the July library helper.
+
 ## Wiring simplification gate green again - 2026-10-30
 
 Branch `claude/funny-wozniak-33wsvo`, stacked on PR #88 (`claude/redbyte-v1-reliability-vszl4j`
@@ -34,8 +56,8 @@ Browser E0 only.
 **Next**: three more gates outside the chain stop on the same July library helper
 (`blank-adder-authoring-depth`, `wrong-build-diagnosis-repair-flow`,
 `scratch-testbench-repair-flow`), and `testbench-preservation-after-design-edit` stops at
-Simulate's rename menu. Each stops before the selection change can matter and fails the same way
-on a build without it.
+Simulate's rename menu (closed the same day; see the entry above). Each stops before the selection
+change can matter and fails the same way on a build without it.
 
 ## PR #88 classroom chain - the circuit gets the room - 2026-10-30
 

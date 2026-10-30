@@ -5,6 +5,71 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## `testbench-preservation-after-design-edit` green again - 2026-10-30
+
+The gate (added 2026-07-25 in c054b07; not in `classroom:gate`, so CI never runs it) stopped at
+its first Simulate step on every current build, with and without be6d2fa5. Migrating one step at a
+time on a fresh pinned build found five retired owners in its path and one check that had been
+passing against retired markup. None is a product regression: each owner was replaced by a dated
+product change, and the product meets the gate's requirement through the new owner. Every
+assertion and threshold is kept; three checks are stricter. No product change.
+
+Consumer migrations, in the order the gate meets them (each message is what the original step
+reports once the steps before it are migrated):
+
+- Rename, "waiting for ... ide-scenario-rename-btn to be visible" (25 × resolved to hidden): since
+  3f546e3 (2026-09-02) Rename is an item of the scenario explorer's Manage testbench menu (the `⋯`
+  summary of a closed `<details>`). The gate opens that menu through its visible summary, as
+  `sequential-testbench-authority` already does, then keeps the same 10s/5s waits and the runtime
+  name check.
+- Touching an expectation, "waiting for ... ide-stimulus-expected- to be visible": Case Lab
+  (e8a9c06, 2026-08-31) edits a combinational scenario's expectations; the stimulus canvas remains
+  only under Timeline's "Generators and full event editor". The gate clicks the first
+  `ide-case-lab-exp-*` cell three times and reads its shown value ('0', '1', or '·' for no check)
+  where it read the retired cell's title, which spelled the value. The three 5s waits are
+  unchanged: the value changes twice and returns to the original (here 0, ·, 1, 0).
+- Current PASS, "waiting for ... ide-verify-pass-hero to be visible": 57f4df2 (2026-09-12) replaced
+  the results summary and its PASS hero with the recording header, which owns the check result
+  (Verify spec, P2.6B). The gate waits 10s for a passing check result
+  (`ide-run-check-result[data-check-status="pass"]`, which like the hero exists only for a pass) and
+  requires its header's `data-currency` to be `current` where it required the hero not to be
+  `data-stale` (stricter: `differs` and a missing value both fail).
+- Evidence after the Design edit, "behavioral Design edit must clear current PASS/FAIL evidence":
+  since a5b67274 (2026-07-26, the day after the gate was written) a behavioral Design edit keeps
+  `verifyLastRun` as an inspectable stale recording, and `dirtySinceVerify` withholds its PASS/FAIL
+  authority (`deriveVerifyCurrent`). The gate read any retained run as current. `hasCurrentRun` now
+  means a last run with `dirtySinceVerify` clear, and the artifact reports `hasRetainedRun`
+  separately. Added (stricter): the first passing run must be current by that measure, so the
+  later `!hasCurrentRun` checks after the edit and after reload can fail.
+- Autosave before reload, "autosave did not persist authored scenario before reload" (projectId
+  null): f4bb64f (2026-09-14) moved saved sessions from localStorage to IndexedDB
+  (`redbyte-ide-sessions-v1`) with the same record keys and encodings. The gate reads
+  `rb.ide.sessionMeta.v1` and `rb.ide.project.v1:<projectId>` through the shared
+  `_durableStorage.mjs` reader, after the same 2.2s wait.
+
+Vacuous since 57f4df2 (not a failure): "old PASS hero is still visible" and "old PASS text is still
+authoritative" counted the retired hero and read the retired summary, so they could not fail. With
+every other step migrated, the original gate passes. Both checks stay, and the same checks now
+also read the current owners (stricter): a passing recording header must have
+`data-currency="differs"`, show "Current work differs" and name "Design changed"; the Simulate
+status must not report a pass; no case row may read pass.
+
+Unchanged and passing: Fit, the wire click and Disconnect, the connection counts, the reload
+landing in Simulate, every `assertSameAuthoredDocument` comparison (id, name, version, ticks,
+stimulus, expected values), `scenarioAuthority === 'stale'`, the port-to-port reconnect and the
+rerun.
+
+Evidence (cloud container, Node 20.19.0 / pnpm 10.24.0; Playwright 1.58.1 drove the container's
+Chromium 153 through a local browser-path symlink, not CI's Chromium 145): on a fresh
+`build:unified` served by `vite preview`, the gate passes, reload-persistence phase included
+(about 100s a run). Step-wise migration reproduced each message above in order. Negative controls
+on the same build: the migrated PASS check fails before any run ("no passing check result is
+visible") and on the stale recording ("PASS is stale (recording currency differs)"); the migrated
+no-PASS check fails while the PASS is current ("old PASS hero is still visible", currency
+`current`); `hasCurrentRun` is true after the first run and false after the edit, with the run
+retained. Phase 2 does not depend on be6d2fa5: nothing is selected when the gate clicks the wire,
+and the migrated gate also passes on a build with be6d2fa5 reverted.
+
 ## `design-wiring-simplification-flow` green again - 2026-10-30
 
 The gate (outside the classroom chain; required by the July camera ticket) had not been migrated
@@ -63,7 +128,8 @@ matter, and fails the same way on a build without it): `blank-adder-authoring-de
 `wrong-build-diagnosis-repair-flow` and
 `scratch-testbench-repair-flow` keep the same July library helper and stop at "palette entry
 ide-design-board-input-sw0 must be visible"; `testbench-preservation-after-design-edit` stops
-before Design, at Simulate's rename (`ide-scenario-rename-btn` is now a hidden menu item).
+before Design, at Simulate's rename (`ide-scenario-rename-btn` is now a hidden menu item; closed
+the same day, see the section above).
 
 ## Classroom chain after the Studio restart - 2026-10-30
 
