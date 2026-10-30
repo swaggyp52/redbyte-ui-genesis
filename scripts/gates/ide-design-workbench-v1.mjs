@@ -136,6 +136,7 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
   });
   await loadStarterDesign(page, baseUrl, 'logic-gates', `camera-stress-${viewport.label}`);
   await assertUntouchedFrameHoldsThroughSelection(page, viewport);
+  await assertSelectionFollowsOnlyTheSelection(page, viewport);
 
   // Two rules, one per kind of change (owner decision 2026-10-30, docs/ide/02-design.md):
   // - a view switch (Schematic, Split, Code) keeps the world point in the middle of the sheet in
@@ -173,16 +174,50 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
 
   await clickDesignView(page, 'canvas');
   let panelBaseline = await assertCameraTransitionState(page, viewport, 'Moved graph Split to Canvas', 'canvas', worldCenterAnchor);
-  await revealDesignRail(page, 'left');
-  panelBaseline = await assertCameraTransitionState(page, viewport, 'Library stable', 'canvas', null, pageAnchorOf(panelBaseline));
-  await collapseDesignRail(page, 'left');
-  panelBaseline = await assertCameraTransitionState(page, viewport, 'Library remains stable', 'canvas', null, pageAnchorOf(panelBaseline));
-  await selectFirstVisibleNode(page);
-  await revealDesignRail(page, 'right');
-  await assertSelectionState(page, { node: true });
-  panelBaseline = await assertCameraTransitionState(page, viewport, 'Inspector stable', 'canvas', null, pageAnchorOf(panelBaseline));
-  await collapseDesignRail(page, 'right');
-  panelBaseline = await assertCameraTransitionState(page, viewport, 'Inspector remains stable', 'canvas', null, pageAnchorOf(panelBaseline));
+  // Each panel is really hidden and really shown, ending hidden; revealing a panel that was
+  // already open compared the view with itself. The dock's own state confirms every step.
+  for (const side of ['left', 'right']) {
+    const name = side === 'left' ? 'Library' : 'Inspector';
+    if (side === 'right') {
+      await selectFirstVisibleNode(page);
+      await assertSelectionState(page, { node: true });
+    }
+    const shownAtStart = await page.getByTestId(`ide-${side}-dock`).isVisible().catch(() => false);
+    for (const step of shownAtStart ? ['hidden', 'shown', 'hidden'] : ['shown', 'hidden']) {
+      if (step === 'hidden') await collapseDesignRail(page, side);
+      else await revealDesignRail(page, side);
+      await assertDockState(page, side, step === 'shown' ? 'visible' : 'hidden', `${viewport.label} ${name} ${step}`);
+      panelBaseline = await assertCameraTransitionState(page, viewport, `${name} ${step}`, 'canvas', null, pageAnchorOf(panelBaseline));
+    }
+  }
+  // A view switch keeps the middle only while it settles: the bottom panel opened afterwards
+  // moves nothing, as it does in a view that was never switched (it used to re-centre the old
+  // middle, half the panel's height).
+  await clickDesignView(page, 'split');
+  await assertCameraTransitionState(page, viewport, 'Split before the bottom panel', 'split', panelBaseline.worldCenter);
+  await clickDesignView(page, 'canvas');
+  panelBaseline = await assertCameraTransitionState(page, viewport, 'Canvas before the bottom panel', 'canvas', panelBaseline.worldCenter);
+  const consoleToggle = page.getByTestId('ide-console-toggle').first();
+  if (viewport.width >= 1344 && await consoleToggle.isVisible().catch(() => false)) {
+    let beforePanel = await readSheetAndParts(page);
+    for (const step of ['opened', 'closed']) {
+      await consoleToggle.click();
+      await page.waitForTimeout(300);
+      const afterPanel = await readSheetAndParts(page);
+      if (step === 'opened') {
+        assert(afterPanel.sheet.height < beforePanel.sheet.height - 20,
+          `${viewport.label}: the bottom panel must take height from the sheet (${beforePanel.sheet.height} -> ${afterPanel.sheet.height})`);
+      }
+      const shift = Math.hypot(afterPanel.anchor.x - beforePanel.anchor.x, afterPanel.anchor.y - beforePanel.anchor.y);
+      assert(
+        shift <= 1 && afterPanel.anchor.zoom === beforePanel.anchor.zoom,
+        `${viewport.label}: the bottom panel ${step} after a view switch moved the drawing ${shift.toFixed(3)} px ` +
+          `(zoom ${beforePanel.anchor.zoom} -> ${afterPanel.anchor.zoom})`
+      );
+      beforePanel = afterPanel;
+    }
+    panelBaseline = await assertCameraTransitionState(page, viewport, 'Canvas after the bottom panel', 'canvas', null, pageAnchorOf(panelBaseline));
+  }
   worldCenterAnchor = panelBaseline.worldCenter;
 
   await clickDesignView(page, 'hdl');
@@ -229,6 +264,7 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
     await assertMovedNodePosition(page, movedNode);
   }
   await capture(page, viewport, '11-camera-transition-stress');
+  if (viewport.label === '1366x768') await assertModuleRoundTripKeepsEachView(page, baseUrl, viewport);
 }
 
 async function setCanvasZoom125(page) {
@@ -272,18 +308,32 @@ function pageAnchorOf(metrics) {
 // re-centring the frame on every release used to walk the drawing right by half the inspector
 // each time, and at 1366x768 selecting a wire framed it again at a smaller zoom.
 async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
+  // Settled means the drawing fills its sheet and neither the camera nor the sheet changed between
+  // two reads: a check started while the first frame was still being placed (the status strip
+  // settles after the first fit) measured that placing, not the selection.
   const settled = async () => {
     let metrics = null;
+    let previous = null;
     for (let attempt = 0; attempt < 50; attempt += 1) {
       metrics = await readWorkbenchMetrics(page);
-      if (metrics.cameraFinite && metrics.logicCanvasWidthDelta <= 2 && metrics.logicCanvasHeightDelta <= 2) break;
-      await page.waitForTimeout(200);
+      const sized = metrics.cameraFinite && metrics.logicCanvasWidthDelta <= 2 && metrics.logicCanvasHeightDelta <= 2;
+      const still = Boolean(previous?.camera && metrics.camera) &&
+        previous.camera.x === metrics.camera.x && previous.camera.y === metrics.camera.y &&
+        previous.camera.zoom === metrics.camera.zoom &&
+        previous.liveCanvasClientWidth === metrics.liveCanvasClientWidth &&
+        previous.liveCanvasClientHeight === metrics.liveCanvasClientHeight;
+      if (sized && still) break;
+      previous = metrics;
+      await page.waitForTimeout(150);
     }
     return metrics;
   };
   const start = await settled();
   assert(start?.cameraFinite, `${viewport.label}: untouched frame must have a finite camera`);
   const startAnchor = pageAnchorOf(start);
+  // In the standard layout a selection opens the inspector; in the compact one it does not, so
+  // there the rounds only show that selecting alone moves nothing.
+  const inspectorOpensOnSelect = viewport.width >= 1344;
   for (let round = 1; round <= 3; round += 1) {
     for (const step of ['select', 'release', 'select a wire', 'release the wire']) {
       if (step === 'select') await selectFirstVisibleNode(page);
@@ -291,6 +341,9 @@ async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
       else {
         await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.clearSelection?.());
         await page.waitForTimeout(150);
+      }
+      if (inspectorOpensOnSelect && step.startsWith('select')) {
+        await assertDockState(page, 'right', 'visible', `${viewport.label} untouched frame, ${step} ${round}`);
       }
       const metrics = await settled();
       const placed = pageAnchorOf(metrics);
@@ -318,18 +371,209 @@ async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
     const centredY = before.camera.y + (after.liveCanvasClientHeight - before.liveCanvasClientHeight) / 2;
     const offCentre = Math.hypot(after.camera.x - centredX, after.camera.y - centredY);
     const sameZoom = Math.abs(after.camera.zoom - before.camera.zoom) < 0.0005;
-    const framedAgain = !sameZoom && after.usefullyVisibleNodeCount === after.editorNodes;
-    assert(
-      (sameZoom && offCentre <= 1) || framedAgain,
-      `${viewport.label} untouched frame with a part selected, library ${step}: the frame is ${offCentre.toFixed(3)} px ` +
-        `from centred (zoom ${before.camera.zoom} -> ${after.camera.zoom}, ` +
-        `${after.usefullyVisibleNodeCount}/${after.editorNodes} parts in view)`
-    );
-    before = after;
+    if (sameZoom) {
+      assert(
+        offCentre <= 1,
+        `${viewport.label} untouched frame with a part selected, library ${step}: the frame is ${offCentre.toFixed(3)} px ` +
+          `from centred at zoom ${after.camera.zoom}`
+      );
+    } else {
+      // Framed again, which is right only when the work no longer fits at its zoom: the frame can
+      // only shrink, and it must be exactly the frame Fit makes for this sheet.
+      assert(
+        after.camera.zoom < before.camera.zoom,
+        `${viewport.label} untouched frame with a part selected, library ${step}: a frame that still fitted was ` +
+          `rescaled (zoom ${before.camera.zoom} -> ${after.camera.zoom})`
+      );
+      const fitted = await fitDesignToSheet(page, viewport);
+      const fromFit = Math.hypot(after.camera.x - fitted.x, after.camera.y - fitted.y);
+      assert(
+        fromFit <= 0.5 && Math.abs(after.camera.zoom - fitted.zoom) < 0.0005,
+        `${viewport.label} untouched frame with a part selected, library ${step}: framed again ${fromFit.toFixed(3)} px ` +
+          `from Fit (zoom ${after.camera.zoom} vs ${fitted.zoom})`
+      );
+    }
+    before = await settled();
   }
   if (!libraryWasShown) await collapseDesignRail(page, 'left');
   await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.clearSelection?.());
   await page.waitForTimeout(150);
+}
+
+async function assertDockState(page, side, expected, label) {
+  let state = null;
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    state = await page.evaluate((attribute) =>
+      document.querySelector(`[${attribute}]`)?.getAttribute(attribute) ?? null, `data-${side}-dock-state`);
+    if (state === expected) return;
+    await page.waitForTimeout(80);
+  }
+  assert(false, `${label}: the ${side === 'left' ? 'library' : 'inspector'} must be ${expected}, got ${state}`);
+}
+
+// The camera the product's own Fit makes for the sheet as it is now.
+async function fitDesignToSheet(page, viewport) {
+  const direct = page.locator('[data-testid="ide-design-fit-circuit-canvas"]:visible').first();
+  if (await direct.isVisible().catch(() => false)) {
+    await direct.click();
+  } else {
+    const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert(await overflow.isVisible().catch(() => false), `${viewport.label}: Fit must be reachable`);
+    if ((await overflow.getAttribute('open')) === null) await overflow.locator('summary').click();
+    await page.locator('[data-testid="ide-design-menu-fit"]:visible').first().click();
+  }
+  await page.waitForTimeout(250);
+  return page.evaluate(() => ({ ...window.__RB_LOGIC_VIEW_STORE__.getState().camera }));
+}
+
+// The drawing's position on the screen, the live sheet, and each part's box relative to it.
+async function readSheetAndParts(page) {
+  return page.evaluate(() => {
+    const host = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    const svg = document.querySelector('[data-testid="logic-canvas-svg"]')?.getBoundingClientRect();
+    const sheet = host.getBoundingClientRect();
+    const camera = { ...window.__RB_LOGIC_VIEW_STORE__.getState().camera };
+    const parts = Array.from(document.querySelectorAll('[data-node-id]')).map((node) => {
+      const box = node.getBoundingClientRect();
+      const shownWidth = Math.max(0, Math.min(box.right, sheet.right) - Math.max(box.left, sheet.left));
+      const shownHeight = Math.max(0, Math.min(box.bottom, sheet.bottom) - Math.max(box.top, sheet.top));
+      return {
+        id: node.getAttribute('data-node-id'),
+        left: box.left - sheet.left,
+        right: box.right - sheet.left,
+        top: box.top - sheet.top,
+        bottom: box.bottom - sheet.top,
+        shown: box.width > 0 && box.height > 0 ? (shownWidth * shownHeight) / (box.width * box.height) : 0,
+      };
+    });
+    return {
+      anchor: { x: (svg?.left ?? 0) + camera.x, y: (svg?.top ?? 0) + camera.y, zoom: camera.zoom },
+      sheet: { width: host.clientWidth, height: host.clientHeight },
+      camera,
+      parts,
+    };
+  });
+}
+
+async function panPartTo(page, partId, sheetX) {
+  const state = await readSheetAndParts(page);
+  const part = state.parts.find((candidate) => candidate.id === partId);
+  assert(Boolean(part), `part ${partId} must be on the sheet`);
+  await page.evaluate((dx) => {
+    const store = window.__RB_LOGIC_VIEW_STORE__.getState();
+    store.setCamera({ ...store.camera, x: store.camera.x + dx });
+  }, sheetX - part.left);
+  await page.waitForTimeout(250);
+}
+
+// Selecting moves the drawing only to keep the selection on the sheet. A part released earlier is
+// not followed later: with it remembered for good, selecting a wire slid the student's view to
+// keep that old part clear of the inspector. And a part the sheet's edge already cut is still slid
+// back when the inspector would cover the rest of it, by the least amount and only sideways.
+async function assertSelectionFollowsOnlyTheSelection(page, viewport) {
+  if (viewport.width < 1344) return; // the compact layout opens no inspector on selection
+  const start = await readSheetAndParts(page);
+  // A logic part: releasing an input or output leaves its signal pinned in the inspector, which
+  // then stays open and the wire below would open nothing.
+  const logicPartIds = await page.evaluate(() =>
+    (window.__RB_CIRCUIT_STORE__?.getState?.()?.circuit?.nodes ?? [])
+      .filter((node) => !/INPUT|OUTPUT|LED|SWITCH|BUTTON|CLOCK|PORT/i.test(String(node.type ?? '')))
+      .map((node) => node.id));
+  const rightmost = [...start.parts]
+    .filter((part) => part.shown > 0.99 && logicPartIds.includes(part.id))
+    .sort((a, b) => b.right - a.right)[0];
+  assert(Boolean(rightmost), `${viewport.label}: a logic part must be wholly on the sheet`);
+
+  await page.evaluate((id) => window.__RB_LOGIC_VIEW_STORE__.getState().selectMultipleNodes([id], false), rightmost.id);
+  await page.waitForTimeout(250);
+  await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__.getState().clearSelection());
+  await page.waitForTimeout(250);
+  await assertDockState(page, 'right', 'hidden', `${viewport.label} released ${rightmost.id}`);
+  // The student pans that part back to where the inspector will cover it.
+  await panPartTo(page, rightmost.id, start.sheet.width - (rightmost.right - rightmost.left) - 40);
+  const beforeWire = await readSheetAndParts(page);
+  await selectFirstVisibleWire(page);
+  await assertDockState(page, 'right', 'visible', `${viewport.label} wire selected`);
+  await page.waitForTimeout(250);
+  const afterWire = await readSheetAndParts(page);
+  const wireShift = Math.hypot(afterWire.anchor.x - beforeWire.anchor.x, afterWire.anchor.y - beforeWire.anchor.y);
+  assert(
+    wireShift <= 1 && afterWire.anchor.zoom === beforeWire.anchor.zoom,
+    `${viewport.label}: selecting a wire moved the drawing ${wireShift.toFixed(3)} px to follow ${rightmost.id}, released earlier`
+  );
+  await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__.getState().clearSelection());
+  await page.waitForTimeout(250);
+
+  // Only 40px of the part on the sheet; selecting it opens the inspector over the rest.
+  await panPartTo(page, rightmost.id, start.sheet.width - 40);
+  const cut = await readSheetAndParts(page);
+  const cutPart = cut.parts.find((part) => part.id === rightmost.id);
+  assert(cutPart.shown > 0 && cutPart.shown < 1, `${viewport.label}: ${rightmost.id} must be partly on the sheet`);
+  await page.evaluate((id) => window.__RB_LOGIC_VIEW_STORE__.getState().selectMultipleNodes([id], false), rightmost.id);
+  await assertDockState(page, 'right', 'visible', `${viewport.label} ${rightmost.id} selected at the edge`);
+  await page.waitForTimeout(250);
+  const followed = await readSheetAndParts(page);
+  const followedPart = followed.parts.find((part) => part.id === rightmost.id);
+  assert(
+    followedPart.shown > 0.99,
+    `${viewport.label}: ${rightmost.id}, selected with ${Math.round(cutPart.shown * 100)}% on the sheet, ` +
+      `was left ${Math.round(followedPart.shown * 100)}% visible beside the inspector`
+  );
+  assert(
+    Math.abs(followed.anchor.y - cut.anchor.y) <= 1 && followed.anchor.zoom === cut.anchor.zoom,
+    `${viewport.label}: sliding ${rightmost.id} back moved the drawing ${(followed.anchor.y - cut.anchor.y).toFixed(3)} px ` +
+      `up or down (zoom ${cut.anchor.zoom} -> ${followed.anchor.zoom}); only its covered edge was cut`
+  );
+  await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__.getState().clearSelection());
+  await page.waitForTimeout(250);
+}
+
+// Opening a module and coming back returns each level to the view it had. Holding the camera on
+// the page while the module's strips appeared shifted each level 44px on every trip.
+async function assertModuleRoundTripKeepsEachView(page, baseUrl, viewport) {
+  await loadStarterDesign(page, baseUrl, 'four-bit-adder-hierarchical', `module-round-trip-${viewport.label}`);
+  const camera = () => page.evaluate(() => ({ ...window.__RB_LOGIC_VIEW_STORE__.getState().camera }));
+  const activeModule = () => page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().hierarchy?.activeModuleId ?? 'top');
+  const nudge = (dx, dy, zoom) => page.evaluate(([x, y, z]) => {
+    const store = window.__RB_LOGIC_VIEW_STORE__.getState();
+    store.setCamera({ x: store.camera.x + x, y: store.camera.y + y, zoom: z });
+  }, [dx, dy, zoom]);
+  const enter = async () => {
+    const instance = page.locator('[data-node-id="u-fa1"]').first();
+    const box = await instance.boundingBox();
+    assert(Boolean(box), `${viewport.label}: module instance u-fa1 must be on the sheet`);
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForFunction(() => window.__RB_PROJECT_RUNTIME__.getState().hierarchy?.activeModuleId !== 'top', null, { timeout: 5000 });
+    await page.waitForTimeout(600);
+  };
+  const leave = async () => {
+    await page.locator('[data-testid="ide-design-module-breadcrumb"] button').first().click();
+    await page.waitForFunction(() => (window.__RB_PROJECT_RUNTIME__.getState().hierarchy?.activeModuleId ?? 'top') === 'top', null, { timeout: 5000 });
+    await page.waitForTimeout(600);
+  };
+  const same = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) <= 0.5 && Math.abs(a.zoom - b.zoom) < 0.0005;
+  await page.waitForTimeout(600);
+  await nudge(-30, -10, 1.1);
+  await page.waitForTimeout(300);
+  const top = await camera();
+  let inside = null;
+  for (let trip = 1; trip <= 3; trip += 1) {
+    await enter();
+    const moduleCamera = await camera();
+    if (trip === 1) {
+      await nudge(-20, -15, 1.3);
+      await page.waitForTimeout(300);
+      inside = await camera();
+    } else {
+      assert(same(moduleCamera, inside), `${viewport.label} module trip ${trip}: the module view came back moved ` +
+        `(${(moduleCamera.x - inside.x).toFixed(2)}, ${(moduleCamera.y - inside.y).toFixed(2)}) at zoom ${moduleCamera.zoom} vs ${inside.zoom}`);
+    }
+    await leave();
+    assert((await activeModule()) === 'top', `${viewport.label} module trip ${trip}: the breadcrumb must return to the top level`);
+    const back = await camera();
+    assert(same(back, top), `${viewport.label} module trip ${trip}: the top-level view came back moved ` +
+      `(${(back.x - top.x).toFixed(2)}, ${(back.y - top.y).toFixed(2)}) at zoom ${back.zoom} vs ${top.zoom}`);
+  }
 }
 
 async function assertCameraTransitionState(page, viewport, label, expectedView, worldCenterAnchor = null, pageAnchor = null) {

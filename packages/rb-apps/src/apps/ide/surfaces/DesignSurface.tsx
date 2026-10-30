@@ -135,6 +135,7 @@ import {
   wasFramedDesignCamera,
   type DesignCanvasCamera,
   type DesignCanvasGraphAnchor,
+  type DesignCanvasRegion,
   type DesignCanvasViewport,
 } from './designCanvasCamera';
 import type { IdeChromeContract } from '../chromeContract';
@@ -534,8 +535,8 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
 
 /** Three-input variants of a two-input gate; offered one step away in the library. */
 const WIDE_GATE_TYPE = /^(AND|OR|NAND|NOR|XOR|XNOR)3$/i;
-/** World-space room kept around a selected part when a pane opens beside the sheet. */
-const SELECTION_VIEW_PAD = 72;
+/** Screen room kept between a part slid back onto the sheet and the edge that had covered it. */
+const SELECTION_VIEW_INSET = 16;
 
 /** The sheet's top-left on the screen and which panels were beside it when it was measured. */
 interface DesignCanvasPlacement {
@@ -2845,9 +2846,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   cameraGraphAnchorsRef.current = cameraGraphAnchors;
   const editorNodesRef = useRef(editorCircuit.nodes);
   editorNodesRef.current = editorCircuit.nodes;
-  // The parts most recently selected, kept after the selection is cleared.
+  // The parts most recently selected, kept after the selection is cleared only while the release
+  // settles: a part placed and released with Escape as the inspector opened is still followed.
+  // After that it is just a part on the sheet. Kept for good, a part released long ago slid the
+  // student's view whenever a wire was selected or the library was shown.
   const lastTouchedNodeIdsRef = useRef<ReadonlySet<string>>(new Set());
   if (selection.nodes.size > 0) lastTouchedNodeIdsRef.current = selection.nodes;
+  useEffect(() => {
+    if (selection.nodes.size > 0 || lastTouchedNodeIdsRef.current.size === 0) return;
+    let second = 0;
+    const first = window.requestAnimationFrame(() => {
+      second = window.requestAnimationFrame(() => {
+        if (useLogicViewStore.getState().selection.nodes.size === 0) lastTouchedNodeIdsRef.current = new Set();
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(first);
+      window.cancelAnimationFrame(second);
+    };
+  }, [selection.nodes]);
   // Which parts are on the sheet, and where. Save As gives the open work a new project
   // identity without changing a single part; this is how that is told apart from a different
   // project arriving.
@@ -2908,6 +2925,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       lastMeasuredCanvasViewportRef.current = nextViewport;
       lastCanvasPlacementRef.current = nextPlacement;
       if (!previousViewport) return;
+      // Opening or leaving a module changes the strips above the sheet with the work on it. The
+      // camera in the store still belongs to the module being left, and the next module's own
+      // camera replaces it a frame later, so the sheet is measured but the camera is left alone.
+      // Holding it on the page here shifted each module's remembered view by the strips'
+      // difference (44px) on every trip in and out, adding up until the work left the sheet.
+      if (activeModuleKeyRef.current !== cameraModuleRef.current) return;
 
       const viewState = useLogicViewStore.getState();
       const currentCamera = viewState.camera;
@@ -2915,8 +2938,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const untouched = Boolean(framedCamera && sameDesignCamera(framedCamera, currentCamera));
       // A view switch (Schematic, Split, Code) owns the commits that settle it, before any
       // selection or last-touched part is followed: the switch is the student's choice of sheet.
-      // A panel opening or closing by itself ends it, and so does a camera moved by anything else.
-      if (viewSwitchRef.current && cause !== 'view' && docksChanged) viewSwitchRef.current = null;
+      // Any panel shown, hidden or resized ends it, including the bottom panel and a dock's width,
+      // which change no dock state; so does a camera moved by anything else. Kept through those,
+      // it re-centred the old middle long after the switch had settled.
+      if (viewSwitchRef.current && cause !== 'view' && (cause === 'panel' || docksChanged)) {
+        viewSwitchRef.current = null;
+      }
       const viewSwitch = viewSwitchRef.current;
       if (viewSwitch?.kind === 'frame') {
         // The frame was never the student's to keep: it is framed again for the new sheet.
@@ -2981,37 +3008,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         heldCamera = centred;
       }
       const selectedIds = viewState.selection.nodes;
-      const regionOf = (ids: { has(id: string): boolean }, pad: number) => {
-        let region: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
-        for (const node of editorNodesRef.current) {
-          if (!ids.has(node.id)) continue;
-          const x = node.position?.x ?? node.x ?? 0;
-          const y = node.position?.y ?? node.y ?? 0;
-          region = region
-            ? { minX: Math.min(region.minX, x - pad), minY: Math.min(region.minY, y - pad), maxX: Math.max(region.maxX, x + pad), maxY: Math.max(region.maxY, y + pad) }
-            : { minX: x - pad, minY: y - pad, maxX: x + pad, maxY: y + pad };
-        }
-        return region;
-      };
       // Panning to keep a selection or a just-placed part on the sheet is the workbench's move, not
       // the student's: an untouched frame stays one (a later view switch still frames it again).
       const keepFramed = (kept: typeof currentCamera) => {
         if (untouched) lastFittedCameraRef.current = kept;
         setCamera(kept);
       };
-      // Only what the resize takes away is followed. A part that was wholly on the sheet and would
-      // not be after it (the inspector opening over an output) is slid back by the least amount;
-      // a part that stays on the sheet is not nudged, and one that was already partly off it is
-      // left where the student left it.
+      // How much of a part a sheet shows, in screen pixels squared.
+      const shownArea = (camera: DesignCanvasCamera, viewport: DesignCanvasViewport, box: DesignCanvasRegion) => {
+        const width = Math.min(viewport.width, box.maxX * camera.zoom + camera.x) - Math.max(0, box.minX * camera.zoom + camera.x);
+        const height = Math.min(viewport.height, box.maxY * camera.zoom + camera.y) - Math.max(0, box.minY * camera.zoom + camera.y);
+        return width > 0 && height > 0 ? width * height : 0;
+      };
+      // Only what the resize takes away is followed. A part the student could see some of before
+      // the resize and would see less of after it (the inspector opening over an output, the
+      // library shown over an input, a part already cut by the edge now covered entirely) is slid
+      // back until it is wholly on the sheet: by the least amount, and only across the edge that
+      // cut it. A part the resize leaves as it was is not nudged, and one that was off the sheet
+      // stays where the student left it. Following a padded neighbourhood on both axes moved the
+      // drawing up or down when only its right edge had been covered.
       const followed = (ids: ReadonlySet<string>) => {
         const box = unionBounds(
           [...ids].map((id) => geometry.get(id)).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
         );
         if (!box) return null;
-        const wasOnSheet = keepRegionInView(currentCamera, previousViewport, box, 0) === currentCamera;
-        if (!wasOnSheet || keepRegionInView(heldCamera, nextViewport, box, 0) === heldCamera) return heldCamera;
-        const region = regionOf(ids, SELECTION_VIEW_PAD);
-        return region ? keepRegionInView(heldCamera, nextViewport, region) : heldCamera;
+        const before = shownArea(currentCamera, previousViewport, box);
+        if (before <= 0 || shownArea(heldCamera, nextViewport, box) >= before - 0.5) return heldCamera;
+        const kept = keepRegionInView(heldCamera, nextViewport, box, SELECTION_VIEW_INSET);
+        const across = (start: number, end: number, size: number) => start < 0 || end > size;
+        const x = across(box.minX * heldCamera.zoom + heldCamera.x, box.maxX * heldCamera.zoom + heldCamera.x, nextViewport.width)
+          ? kept.x : heldCamera.x;
+        const y = across(box.minY * heldCamera.zoom + heldCamera.y, box.maxY * heldCamera.zoom + heldCamera.y, nextViewport.height)
+          ? kept.y : heldCamera.y;
+        return x === heldCamera.x && y === heldCamera.y ? heldCamera : { x, y, zoom: heldCamera.zoom };
       };
       if (selectedIds.size > 0) {
         const kept = followed(selectedIds);
@@ -3184,6 +3213,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       rememberedCameraKeyRef.current = designCameraKeyValue;
       return;
     }
+    // A module just opened or left keeps the previous module's camera until its own is restored
+    // a frame later; recorded now (when the module's parts arrive), it became the module's memory.
+    if (cameraModuleRef.current !== activeModuleKeyRef.current) return;
     if (!cameraEstablishedRef.current || editorCircuit.nodes.length === 0) return;
     const framed = lastFittedCameraRef.current;
     rememberDesignCamera(designCameraKeyValue, { x: camera.x, y: camera.y, zoom: camera.zoom },
@@ -4566,6 +4598,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   /** Which instance a definition was entered through, for breadcrumb context. */
   const [drilledInstance, setDrilledInstance] = useState<{ moduleId: string; instanceName: string } | null>(null);
   const activeModuleKey = hierarchy?.activeModuleId ?? TOP_MODULE_ID;
+  const activeModuleKeyRef = useRef(activeModuleKey);
+  activeModuleKeyRef.current = activeModuleKey;
+  // The module whose camera the store holds. It catches up when that module's camera is restored.
+  const cameraModuleRef = useRef(activeModuleKey);
   useEffect(() => {
     setDrilledInstance((current) =>
       current && current.moduleId !== activeModuleKey ? null : current
@@ -4582,21 +4618,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const storedKey = designCameraKey(projectId, activeModuleKey);
     const stored = recallDesignCamera(storedKey);
     if (stored && wasFramedDesignCamera(storedKey)) {
-      fitToCircuit();
+      fitToCircuitRef.current();
     } else if (stored) {
       lastFittedCameraRef.current = null;
       setCamera(stored);
     } else {
-      fitToCircuit();
+      fitToCircuitRef.current();
     }
   };
   useEffect(() => {
     const previous = lastCameraLocationRef.current;
-    if (previous !== null && previous !== activeModuleKey) {
-      rememberDesignCamera(designCameraKey(projectId, previous), useLogicViewStore.getState().camera);
-      restoreCameraForLocationRef.current();
-    }
     lastCameraLocationRef.current = activeModuleKey;
+    if (previous === null || previous === activeModuleKey) return;
+    // The store's camera belongs to the module last restored (a switch interrupted before its
+    // restore leaves it with the one before). An untouched frame is remembered as one, so it is
+    // framed again on return instead of coming back as a view the student chose.
+    const camera = useLogicViewStore.getState().camera;
+    const framed = lastFittedCameraRef.current;
+    rememberDesignCamera(designCameraKey(projectId, cameraModuleRef.current), camera,
+      Boolean(framed && sameDesignCamera(framed, camera)));
+    viewSwitchRef.current = null;
+    lastTouchedNodeIdsRef.current = new Set();
+    // The module's parts reach the editor a render after its name does: restored now, a first
+    // visit framed the parent's circuit. The next frame has the module's own.
+    const frame = window.requestAnimationFrame(() => {
+      restoreCameraForLocationRef.current();
+      cameraModuleRef.current = activeModuleKeyRef.current;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [activeModuleKey]);
 
   const activeNativeModule = useMemo(
