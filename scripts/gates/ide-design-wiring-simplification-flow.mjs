@@ -136,8 +136,13 @@ async function proveInvalidTargetKeepsSource(page, nodes) {
   assert(/Source kept/i.test(feedback), `invalid feedback must say source kept: "${feedback}"`);
   assert(/green target|Esc/i.test(feedback), `invalid feedback must explain recovery: "${feedback}"`);
 
-  const cue = await text(page.getByTestId('ide-design-wire-cue').first());
-  assert(/Source:\s*A out/i.test(cue), `wire cue must name the source, got "${cue}"`);
+  // The cue is the status line's one wire message: a refusal takes the place of the armed-source
+  // prompt and names the source it kept ("Source kept: A out").
+  const cueElement = page.getByTestId('ide-design-wire-cue').first();
+  const cue = await text(cueElement);
+  assert(/Source(?: kept)?:\s*A out/i.test(cue), `wire cue must name the source, got "${cue}"`);
+  const cueSource = await cueElement.getAttribute('data-wire-source-label').catch(() => null);
+  assert(cueSource === 'A out', `wire cue must carry the armed source, got "${cueSource}"`);
   assert(await page.getByTestId('ide-design-wire-cancel').isVisible().catch(() => false), 'Cancel wire button must be visible while source is armed');
 
   await page.keyboard.press('Escape');
@@ -153,6 +158,12 @@ async function placeAndLabel(page, selector, label, position) {
 
 async function placeFromPalette(page, selector, position) {
   await revealDesignLibrary(page);
+  // Board resources are listed in the library's Board I/O tab, parts under Components. The tab is
+  // only opened, never a section expanded: Board must already be open, as the spec requires.
+  await page
+    .locator(`[data-testid="${selector.includes('ide-design-board-') ? 'ide-design-left-tab-board' : 'ide-design-left-tab-components'}"]`)
+    .first()
+    .click();
   const before = await readNodeIds(page);
   const button = page.locator(selector).first();
   assert(await button.isVisible().catch(() => false), `palette entry ${selector} must be visible`);
@@ -198,16 +209,21 @@ async function editNodeLabel(page, nodeId, label) {
 }
 
 async function revealDesignLibrary(page) {
-  const palette = page.locator('[data-testid="ide-design-dock-palette"]').first();
-  if (await palette.isVisible().catch(() => false)) return;
-  const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"], [data-testid="ide-design-library-toggle"]').first();
+  const library = page.locator('[data-testid="ide-left-dock"]').first();
+  if (await library.isVisible().catch(() => false)) return;
+  const toggle = page.locator('[data-testid="ide-show-left-dock"]').first();
   assert(await toggle.isVisible().catch(() => false), 'Design library toggle must be visible');
   await toggle.click();
-  await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 10000 });
+  await library.waitFor({ state: 'visible', timeout: 10000 });
+}
+
+// Parts are drawn as schematic symbols (`.rb-sym-body`); `.logic-node-body` is the older chip body.
+function nodeBody(page, nodeId) {
+  return page.locator(`[data-node-id="${nodeId}"] .rb-sym-body, [data-node-id="${nodeId}"] .logic-node-body`).first();
 }
 
 async function clickNode(page, nodeId) {
-  const body = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
+  const body = nodeBody(page, nodeId);
   const box = await body.boundingBox();
   assert(Boolean(box), `node ${nodeId} must have a clickable box`);
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
@@ -284,7 +300,7 @@ async function dragNode(page, nodeId, dx, dy) {
 }
 
 async function moveNodeToCanvasFraction(page, nodeId, position) {
-  const node = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
+  const node = nodeBody(page, nodeId);
   const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
   const nodeBox = await node.boundingBox();
   const canvasBox = await canvas.boundingBox();
