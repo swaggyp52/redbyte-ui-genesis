@@ -139,6 +139,13 @@
   gap: 8px;
 }
 
+/* The source switch offers equal choices, so each keeps a target that reads and hits the same at
+   any text size. At the 13px button text "Paste HDL" alone came to about 92px, and 91px with the
+   CI runner's font rendering. */
+.ide-import-v3__source-switch > .ide-button {
+  min-width: 6rem;
+}
+
 .ide-import-v3__keyboard-help {
   margin: 0;
   padding: 8px 10px;
