@@ -20,10 +20,24 @@ part never shifts the canvas (V1 contract entry, 2026-10-30).
 **Product**: with both panels open the sheet keeps 60% of the window (1366x768: 828px, was 766;
 1440x900: 896px; 1920x1080: 1376px) with a 64px labelled rail, a 240-256px inspector and 8px
 gutters; inspector labels wrap instead of being cut. The status line is 28px and a Wire cue never
-changes its height. The camera keeps the world centre through Schematic/Split/Code, and moves
-nothing on the screen when the inspector or library opens or closes; the inspector never moves an
-untouched frame (it used to creep half the inspector per select and release). Simulate's Details >
-Checks panel no longer clips its repair actions.
+changes its height. The camera keeps the world centre through Schematic/Split/Code. A view the
+student zoomed or panned stays where it is on the screen when the inspector or library opens or
+closes; the inspector never moves an untouched frame (it used to creep half the inspector per
+select and release), and the library keeps one centred with a part selected or not. Simulate's
+Details > Checks panel no longer clips its repair actions.
+
+**Self-review of the pushed head (ea900ee86)**: two untouched-frame defects, both reproduced by
+new `design-workbench-v1` steps that fail on that build and pass after the fix. At 1366x768 the
+60% rule leaves a fractional sheet, and the size observer's re-measure (1px) after the inspector
+opened framed the view again on a wire selection (108px, zoom 1.6 to 1.54); a pixel with nothing
+else changed is now not a resize. Hiding the library with a part selected left the frame 101px
+off centre; it now stays centred. Inspector audit: no clipped, cut or past-edge content and no
+control under 24px across five starters at 1366x768, 1440x900 and 1920x1080 at 125% text.
+
+**CI on ea900ee86**: the 12 repaired stages passed; the chain stopped at stage 60,
+`action-first-entry-surfaces`, which no earlier run had reached. Import's "Paste HDL" was 91px on
+the runner against the gate's 92px (92.03px here) since the restart's 13px button text. The
+source switch's buttons now keep 6rem (96px).
 
 **Gates**: four consumer migrations to the restart's current owners (view dock, recording header,
 "observed" wording, recording currency), each with every threshold kept and three stricter; the

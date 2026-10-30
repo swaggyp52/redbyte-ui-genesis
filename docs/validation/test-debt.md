@@ -27,6 +27,10 @@ Product changes (the gate's requirement stands):
   widens the repair panel past the inspector that clips it.
 - `design-workbench-v1`, view-switch steps: a camera the student zoomed keeps the world point in
   the middle of the sheet through Canvas, Code and Split.
+- `action-first-entry-surfaces` (first reached by CI on ea900ee86, behind the stages above): with
+  the restart's 13px button text the Import source switch's "Paste HDL" came to 92.03px locally
+  and 91px on the CI runner, against the gate's 92px (96.8px at 14px on a46d7ed01). The source
+  switch's buttons keep a 6rem minimum, 96px at 100% text.
 
 Consumer migrations (retired markup or wording; stricter where noted):
 
@@ -34,7 +38,10 @@ Consumer migrations (retired markup or wording; stricter where noted):
   world-centre anchor is replaced by the page position of the drawing within 1px, because the
   owner's rule is that selecting a part does not shift the canvas; the world centre is re-taken
   after each panel change for the view switches that follow. Added: an untouched frame holds
-  through three select-and-release rounds. The July ticket records the supersession.
+  through three rounds of selecting and releasing a part and a wire, then stays centred while the
+  library is hidden and shown with a part selected. Both additions fail on the ea900ee86 build: at
+  1366x768 a wire selection framed it again (it moved about 108px and its zoom fell from 1.6 to
+  1.54), and hiding the library left it 101px off centre. The July ticket records the supersession.
 - `workbench-stability-overhaul`: Fit, Selection and zoom are measured against the view dock
   (`ide-design-viewdock`) they moved to, with the same containment and trial click; added, the
   dock must fit the sheet.
@@ -55,6 +62,10 @@ Outside CI, the `design-core-authoring` journey (release run) had failed since 1
 see part names, never node ids"): it looked for the report's signal id `y` in "Inspect Y first".
 It now matches the failed output's name as a word, ignoring case, and passes. The `a11y-scale`
 journey fails as before; it is one of the stale journeys no release run includes (RB-DEBT-034).
+`ide:gate:design-wiring-simplification-flow` (not in the classroom chain; listed by the July
+camera ticket) fails at its first placement, "palette entry ide-design-board-input-sw0 must be
+visible", identically on the a46d7ed01, b914e2918 and ea900ee86 builds: it predates the restart
+and PR #88, and is left for its own fix.
 
 ## rc.6 review closure - 2026-10-28
 
