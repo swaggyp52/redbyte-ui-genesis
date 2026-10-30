@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -366,5 +366,59 @@ describe('DesignSurface — multi-select inspector action groups', () => {
     const summary = view.getByTestId('ide-design-multiselect-summary');
     expect(summary.textContent).not.toContain('Bulk actions');
     expect(summary.textContent).not.toContain('drag to move as a unit');
+  });
+});
+
+// ─── Clicking a wire with a part selected ─────────────────────────────────────
+
+describe('DesignSurface — a wire clicked after a part', () => {
+  const WIRE_ID = 'sw0_node.out-ld0_node.in';
+
+  beforeEach(() => {
+    useCircuitStore.setState({
+      circuit: {
+        ...structuredClone(BASE_CIRCUIT),
+        connections: [
+          { id: 'w_sw0_ld0', from: { nodeId: 'sw0_node', portName: 'out' }, to: { nodeId: 'ld0_node', portName: 'in' } },
+        ],
+      },
+      isDirty: false,
+      past: [],
+      future: [],
+    });
+  });
+
+  // A student labels a part, wires, then clicks the wire: the part used to stay selected under
+  // it, so the inspector kept the part and Disconnect never appeared.
+  it('selects only the wire and offers Disconnect', async () => {
+    const view = renderSurface();
+    act(() => { useLogicViewStore.getState().selectNode('ld0_node'); });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
+    });
+
+    const wire = view.container.querySelector(`[data-wire-id="${WIRE_ID}"]`);
+    expect(wire).not.toBeNull();
+    fireEvent.click(wire!);
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-context-delete-wire')).toBeTruthy();
+    });
+    const selection = useLogicViewStore.getState().selection;
+    expect(Array.from(selection.nodes)).toEqual([]);
+    expect(Array.from(selection.wires)).toEqual([WIRE_ID]);
+  });
+
+  it('keeps the part when the wire is Shift-clicked onto the selection', async () => {
+    const view = renderSurface();
+    act(() => { useLogicViewStore.getState().selectNode('ld0_node'); });
+
+    const wire = view.container.querySelector(`[data-wire-id="${WIRE_ID}"]`);
+    expect(wire).not.toBeNull();
+    fireEvent.click(wire!, { shiftKey: true });
+
+    const selection = useLogicViewStore.getState().selection;
+    expect(Array.from(selection.nodes)).toEqual(['ld0_node']);
+    expect(Array.from(selection.wires)).toEqual([WIRE_ID]);
   });
 });
