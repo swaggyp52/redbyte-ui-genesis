@@ -44,7 +44,28 @@ await runIdeGate('IDE shell density contract satisfied', async ({ page, baseUrl 
     Math.abs(leftRailBox.width - declaredRailWidth) <= 1,
     `left rail must follow the declared --wb-rail-w (${declaredRailWidth}px), got ${leftRailBox.width}`
   );
-  assert(leftRailBox.width <= 80, `left rail must stay dense (<=80px at 16px text), got ${leftRailBox.width}`);
+  // Bounded both ways, as the literal 80px was: the owner's 56-64px range at the low end, the
+  // Studio restart's 80px at the high end. Following the token alone cannot fail, because the
+  // rail's grid track is sized by that same token.
+  assert(
+    leftRailBox.width >= 56 && leftRailBox.width <= 80,
+    `left rail must stay dense and keep its labels (56-80px at 16px text), got ${leftRailBox.width}`
+  );
+  // Every workspace label stays whole inside its rail button: a narrower rail would cut
+  // "Simulate" and "Package" while the width check alone still passed.
+  const cutLabels = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-testid="ide-workspace-rail"] .wb-rail-btn > span:not(.wb-rail-dot)'))
+      .map((label) => {
+        const button = label.closest('.wb-rail-btn');
+        const labelBox = label.getBoundingClientRect();
+        const buttonBox = button?.getBoundingClientRect();
+        const cut = label.scrollWidth > label.clientWidth + 1 ||
+          (buttonBox ? labelBox.left < buttonBox.left - 0.5 || labelBox.right > buttonBox.right + 0.5 : false);
+        return cut ? `${(label.textContent || '').trim()} (${Math.round(label.scrollWidth)}px in ${Math.round(buttonBox?.width ?? 0)}px)` : null;
+      })
+      .filter(Boolean)
+  );
+  assert(cutLabels.length === 0, `rail labels must fit their buttons, cut: ${cutLabels.join(', ')}`);
 
   if (consoleCount > 0) {
     const consolePanel = page.locator('[data-testid="ide-workbench-console"]').first();
