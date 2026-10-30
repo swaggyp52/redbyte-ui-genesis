@@ -1,5 +1,18 @@
 # AI State
 
+## Testbench preservation gate green again - 2026-10-30
+
+On claude/gracious-albattani-gnnw0p, stacked on claude/funny-wozniak-33wsvo (290124fd0).
+`ide:gate:testbench-preservation-after-design-edit` (not in classroom:gate) stopped at Simulate's
+rename, now an item of the Manage testbench menu. Behind it the gate followed four more retired
+owners: the stimulus-canvas expectation cells (Case Lab), the PASS hero (recording header), a
+Design edit clearing `verifyLastRun` (it is retained as a stale recording since a5b67274;
+`dirtySinceVerify` withholds authority), and localStorage sessions (IndexedDB since f4bb64f). The
+gate follows the current owners with every assertion and threshold kept, three checks stricter;
+no product change. Evidence (Node 20.19.0, fresh build, browser E0): the gate passes including
+reload, with negative controls. Dispositions: docs/validation/test-debt.md; cockpit:
+docs/ACTIVE_WORK.md.
+
 ## Wiring simplification gate green again - 2026-10-30
 
 On claude/funny-wozniak-33wsvo, stacked on PR #88 (db877a54a). `ide:gate:design-wiring-simplification-flow`
