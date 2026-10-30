@@ -373,6 +373,8 @@
 .ide-root .rb-insp-props,
 .ide-root .rb-insp-canvas-default,
 .ide-root .rb-insp-board { display: block; padding: 0; }
+/* The inspector's body is the container its rows measure (see the design-inspector query below). */
+.ide-root .ide-workbench-dock-right .rb-design-dock-body { container: design-inspector / inline-size; }
 .ide-root .rb-insp-identity-card,
 .ide-root .rb-insp-idle-card,
 .ide-root .rb-insp-empty-card,
@@ -455,8 +457,11 @@
 /* The button names the part it renames, so a long name wraps onto a second line rather than being
    cut ("Rename LD0 (CARR..."); a short one keeps the single compact row. */
 .ide-root .rb-insp-name-control .ide-design-label-editor > .ide-button { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; text-align: left; }
-/* The term column is in rem so it grows with enlarged text (96px at 100%); terms and values wrap
-   instead of being cut, so every label stays readable in the narrower inspector. */
+/* Side by side, the term takes 6rem (96px at 100% text) and the value the rest. Terms and
+   values wrap instead of being cut, and a value breaks inside a word only when that word alone is
+   wider than its column. With enlarged text in the 256px inspector the term sits above its value
+   instead (design-inspector container, below): side by side at 150%, 6rem left values 37px and
+   pins read "U1" over "6". */
 .ide-root .rb-insp-field { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
 .ide-root .rb-insp-field > label,
 .ide-root .rb-insp-field > span:first-child { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
@@ -518,7 +523,7 @@
   min-width: 0;
   color: var(--wb-text-3);
   font: var(--wb-text-sm) var(--wb-font-ui);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .ide-root .rb-insp-signal-model > div > strong {
   margin: 0;
@@ -526,16 +531,27 @@
   color: var(--wb-text);
   font: var(--wb-text-sm) var(--wb-font-mono);
   font-weight: 500;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .ide-root .rb-insp-facts dt,
 .ide-root .rb-insp-row > :first-child,
 .ide-root .rb-insp-idle-stat > :first-child,
-.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; min-width: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow-wrap: anywhere; }
+.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; min-width: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow-wrap: break-word; }
 .ide-root .rb-insp-facts dd,
 .ide-root .rb-insp-row > :last-child,
 .ide-root .rb-insp-idle-stat > :last-child,
-.ide-root .rb-insp-io-state-value { margin: 0; min-width: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow-wrap: anywhere; }
+.ide-root .rb-insp-io-state-value { margin: 0; min-width: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow-wrap: break-word; }
+/* A term over its value once the inspector's body is narrower than 12rem: never at 100% text
+   (the body is 205-211px beside a 250-256px inspector), always at 125% and 150%, where side by
+   side a 6rem term left too little for a pin, a board resource or CLK100MHZ to stay whole. */
+@container design-inspector (max-width: 12rem) {
+  .ide-root .rb-insp-field:not(.rb-insp-field--checkbox),
+  .ide-root .rb-insp-facts > div,
+  .ide-root .rb-insp-row,
+  .ide-root .rb-insp-idle-stat,
+  .ide-root .rb-insp-io-state-list > *,
+  .ide-root .rb-insp-signal-model > div { grid-template-columns: minmax(0, 1fr); row-gap: 1px; }
+}
 .ide-root .rb-insp-idle-stats { display: block; }
 /* An action group stacks its label over its controls. A label-left column was measured and
    rejected: in a 238px dock it left 108px for the controls, so the five swap chips wrapped onto

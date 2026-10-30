@@ -179,6 +179,9 @@ export const WORKSPACE_DOCK_SIZE_LIMITS: Readonly<
   bottom: Object.freeze({ min: 140, max: 440 }),
 });
 
+/** The Design inspector's default width before 2026-10-30; see normalizeWorkspacePreferences. */
+const LEGACY_DESIGN_INSPECTOR_SIZE_PX = 280;
+
 const AUTHORING_SURFACES = createSurfacePreferences({
   project: {
     left: { visible: true, sizePx: 248, expanded: false },
@@ -192,7 +195,8 @@ const AUTHORING_SURFACES = createSurfacePreferences({
     // selection, wiring and inspection; widening it is the student's explicit, remembered choice.
     left: { visible: true, sizePx: 208, expanded: false },
     // 256px holds the inspector's labels and buttons; at laptop widths it narrows to 240px so
-    // the circuit keeps 60% of the window (design-workbench-v3.css).
+    // the circuit keeps 60% of the window (design-workbench-v3.css). A stored 280, the default
+    // before 2026-10-30, is read as this one (normalizeWorkspacePreferences).
     right: { visible: true, sizePx: 256, expanded: false },
   },
   verify: {
@@ -300,6 +304,19 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
       rawSurfaces[surfaceId],
       defaults.surfaces[surfaceId]
     );
+  }
+  // 280px was the Design inspector's default until 2026-10-30, and any saved preference carried
+  // it (a view switch writes the whole object). The circuit now keeps 60% of the window beside a
+  // 256px inspector; a stored 280 is that old default, not a width the student chose, and kept it
+  // left the sheet 1352px at 1920x1080.
+  const designInspector = surfaces.design.docks.right;
+  if (designInspector.sizePx === LEGACY_DESIGN_INSPECTOR_SIZE_PX) {
+    surfaces.design = deepFreeze({
+      docks: {
+        ...surfaces.design.docks,
+        right: Object.freeze({ ...designInspector, sizePx: defaults.surfaces.design.docks.right.sizePx }),
+      },
+    });
   }
 
   const rawDesign = isRecord(value.design) ? value.design : {};

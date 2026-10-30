@@ -36,6 +36,24 @@ describe('workspace preferences', () => {
     );
   });
 
+  it('reads the Design inspector width saved as the old 280px default as the current default', () => {
+    const saved = (sizePx: number) => parseWorkspacePreferences(
+      JSON.stringify({
+        version: 1,
+        surfaces: { design: { docks: { right: { visible: true, sizePx, explicitlyToggled: true } } } },
+      })
+    ).surfaces.design.docks.right;
+
+    expect(saved(280)).toEqual({
+      visible: true,
+      sizePx: DEFAULT_WORKSPACE_PREFERENCES.surfaces.design.docks.right.sizePx,
+      expanded: false,
+      explicitlyToggled: true,
+    });
+    // Any other width is the student's own and is kept.
+    expect(saved(296).sizePx).toBe(296);
+  });
+
   it('normalizes partial dock geometry, Design view, and ordered toolbar IDs', () => {
     const parsed = parseWorkspacePreferences(
       JSON.stringify({
