@@ -5,6 +5,65 @@ used_by_claude: true
 
 # RedByte — test debt inventory
 
+## `design-wiring-simplification-flow` green again - 2026-10-30
+
+The gate (outside the classroom chain; required by the July camera ticket) had not been migrated
+since July. On a fresh pinned build it met three retired owners and one product defect, in this
+order. Every assertion and threshold is kept; one is stricter.
+
+Consumer migrations (retired markup or wording):
+
+- First placement, "palette entry ide-design-board-input-sw0 must be visible": not a regression.
+  Milestone A (c656d24c, 2026-08-01) moved the Basys3 resources out of the Components list into
+  the library's Board I/O tab (`ide-design-left-tab-board`); the spec recorded the tab on
+  2026-09-12 and the classroom gates followed it on 2026-09-14 and 2026-10-01. On a fresh design
+  at 1366x768 the Components tab renders no SW0 chip; one click on the visible Board I/O tab
+  renders Board with `data-collapsed="false"` and SW0 visible. The test id and alias are
+  unchanged. The gate opens the owning tab and expands nothing, so its visibility assertion still
+  fails if Board starts collapsed. The library reveal follows `ide-show-left-dock` /
+  `ide-left-dock` (the July toggles are retired) and keeps "toggle must be visible".
+- Parts are drawn as schematic symbols (`.rb-sym-body`, 2026-09-02): click and move read that
+  body, falling back to `.logic-node-body`, with the same box assertions.
+- Wire cue: since rc.8 the cue is the status line's one wire message, and a refusal takes the
+  place of the armed-source prompt, naming the source as "Source kept: A out". The check accepts
+  `Source:` or `Source kept:` before `A out`; added, the cue's `data-wire-source-label` must be
+  `A out` (stricter).
+
+Product change (the gate's requirement stands):
+
+- Selected-wire Disconnect: `selectWire(id, false)` replaced only the selected wires and
+  `selectNode(id, false)` only the parts, so a plain click on a wire with a part selected left
+  both selected. The inspector kept the part, the wire's Disconnect never rendered, and Delete
+  would have removed the part with the wire. A real click on the wire reproduces it, not only the
+  gate's store call. July's single Esc cleared the selection with the armed wire and hid the
+  defect; the Studio restart's one-step Esc (`MERIDIAN_DESIGN_SYSTEM.md`: a pending wire first,
+  the selection last) exposed it. A plain click now selects only what it hits, as
+  `selectMultiple`, `selectMultipleNodes` and the app's view-state store already did; Shift, Ctrl
+  or Cmd still add. The gate's wire step is unchanged.
+
+Evidence (cloud container, Node 20.19.0 / pnpm 10.24.0; Playwright 1.58.1 drove the container's
+Chromium 153 through a local browser-path symlink, not CI's Chromium 145): on a fresh
+`build:unified` served by `vite preview`, the gate passes (five runs), and so do
+`design-workbench-v1`, `design-library-not-cropped` and `design-palette-build-contract`. With the
+same gate on a build without the store fix it fails where the defect is, waiting for Disconnect.
+Also passing on the fixed build: `authoring-depth-release-safety`, `design-wire-interaction-contract`,
+`design-no-bridge-required`, `design-canvas-zoom-integrity`, `design-workbench-integrity`,
+`design-canvas-direct-workbench`, `design-workspace-crash-proof`, `workbench-stability-overhaul`,
+`design-correctness-contract`, `complex-build-signal-trace-debugging`, `design-dual-tool-windows`,
+`design-tool-window-coexistence`, `student-task-completion-flow`, `sequential-testbench-authority`,
+`design-multiselect-contract` and `design-inspector-contract`. Unit: `selection-replace.test.ts`
+(6 tests; the 4 plain-click cases are red before the fix, the 2 additive ones pass either way) and
+a wire-click case in `designSurface.selectionContext.test.tsx` (red before the fix, with a
+Shift-click companion); the logic-view and DesignSurface suites pass, 51 files / 358 tests;
+`typecheck:app` 0.
+
+Found, not fixed here (outside the classroom chain; each stops before the selection change can
+matter, and fails the same way on a build without it): `blank-adder-authoring-depth`,
+`wrong-build-diagnosis-repair-flow` and
+`scratch-testbench-repair-flow` keep the same July library helper and stop at "palette entry
+ide-design-board-input-sw0 must be visible"; `testbench-preservation-after-design-edit` stops
+before Design, at Simulate's rename (`ide-scenario-rename-btn` is now a hidden menu item).
+
 ## Classroom chain after the Studio restart - 2026-10-30
 
 The 2026-10-05 Studio restart (sealed in 64bf7aa93 on 2026-10-20) was validated with
@@ -65,7 +124,7 @@ journey fails as before; it is one of the stale journeys no release run includes
 `ide:gate:design-wiring-simplification-flow` (not in the classroom chain; listed by the July
 camera ticket) fails at its first placement, "palette entry ide-design-board-input-sw0 must be
 visible", identically on the a46d7ed01, b914e2918 and ea900ee86 builds: it predates the restart
-and PR #88, and is left for its own fix.
+and PR #88, and is left for its own fix (closed the same day; see the section above).
 
 ## rc.6 review closure - 2026-10-28
 

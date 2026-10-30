@@ -102,8 +102,8 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 2. Stable left library
 - Search and the core build categories stay first.
-- Default palette order is `Board -> IO -> Logic -> Sequential -> Reusable`.
-- `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately reachable; it remains a helper layer, not the primary dashboard story.
+- The library is tabbed (`ide-design-left-tab-*`). **Components** lists `IO -> Logic -> Sequential -> Reusable`; **Board I/O** (`ide-design-board-dock`, top module only) lists the Basys3 resources. Milestone A (2026-08-01) moved Board out of the single July list `Board -> IO -> Logic -> Sequential -> Reusable`.
+- `Board` starts expanded in its tab, so Basys3 resources and `CLK100MHZ` are one tab click away with nothing to expand (a student's collapse persists per browser); it remains a helper layer, not the primary dashboard story.
 - Sim `Clock` is not a student-authored palette item in the current release. Imported `config.role === "sim"` Clock nodes may render for recovery/migration, but board-ready sequential designs should use the `CLK100MHZ` Board Resource.
 - At desktop/laptop Canvas widths the library remains a stable `200-220px` region. Constrained mode changes may reflow support content automatically; students do not manage the basic page layout.
 
@@ -125,6 +125,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - 2026-10-05, local candidate: within Actions for one selected part the groups are, in the markup and on screen, Value → Net tracing → Edit. Selection details, Connectivity, Evidence and Related start closed with their content hidden, and open from the keyboard. Running copy names the other workspaces as the rail does ("Open in Board", "Open Board").
 - The inspector is organised as named sections over existing authorities, in this order: Identity (the properties surface: name, kind, rename; there is no standalone Properties section) → Actions → Selection details → **Connectivity** (pin values, input drivers, what the selection drives) → **Evidence** (`ide-design-context-inspector`: live or replayed state, verify focus, probes) → **Mapping** (board resource, package pin, constraint set, the constraint lines the package writes, Open in Board & Constraints) → **Source** (the generated VHDL lines that name the signal, Show HDL beside the schematic; collapsed by default) → **Related** (the documents the signal appears in, as a list). Mapping renders when the selection has a board row or relation, and Related when the signal resolves to a boundary relation; Source renders for any single selected node and says so plainly when the signal is not named in the generated source. Board relations always name the package pin, even when the row stores the board alias.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
+- Selection, 2026-10-30: a plain click selects only the part or wire it hits; Shift, Ctrl or Cmd adds to the selection. Before, a part stayed selected under a clicked wire, so the inspector kept the part, the wire's Disconnect (`ide-design-context-delete-wire`) never appeared, and Delete removed the part with the wire. Esc still backs out one step at a time: a pending wire first, the selection last.
 - With no selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It stays secondary to the canvas.
 
 5. Port interaction authority
@@ -151,6 +152,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - Before/after visual proof for this closeout is local-only under `.redbyte/product-immersion/design-workbench-v1/`.
 - `ide:gate:design-port-target-authority` is the RC interaction gate for direct/cluster target geometry, keyboard operation, compact port disambiguation, and normal wiring at the constrained laptop viewport.
 - `ide:gate:design-build-contract` and the adjacent wiring gate protect build/placement continuity after the target changes.
+- `ide:gate:design-wiring-simplification-flow` (outside the classroom chain) builds a FullAdder from the Board I/O and Components tabs at `1366x768`: labels, refused output-to-output wiring with the source kept and named in the status-line cue, Esc, Disconnect on a clicked wire, five wires, and a connected part moved without losing one.
 - These are source-slice gates until they are rerun on the final reconstructed docs-complete SHA.
 
 ## Error / Status Rules
