@@ -267,9 +267,10 @@ function pageAnchorOf(metrics) {
   };
 }
 
-// Selecting a part opens the inspector beside the sheet and releasing it closes the inspector.
-// Neither may move a framed view nobody has touched, however often it happens: re-centring the
-// frame on every release used to walk the drawing right by half the inspector each time.
+// Selecting a part or a wire opens the inspector beside the sheet and releasing it closes the
+// inspector. Neither may move a framed view nobody has touched, however often it happens:
+// re-centring the frame on every release used to walk the drawing right by half the inspector
+// each time, and at 1366x768 selecting a wire framed it again at a smaller zoom.
 async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
   const settled = async () => {
     let metrics = null;
@@ -284,8 +285,9 @@ async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
   assert(start?.cameraFinite, `${viewport.label}: untouched frame must have a finite camera`);
   const startAnchor = pageAnchorOf(start);
   for (let round = 1; round <= 3; round += 1) {
-    for (const step of ['select', 'release']) {
+    for (const step of ['select', 'release', 'select a wire', 'release the wire']) {
       if (step === 'select') await selectFirstVisibleNode(page);
+      else if (step === 'select a wire') await selectFirstVisibleWire(page);
       else {
         await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.clearSelection?.());
         await page.waitForTimeout(150);
@@ -300,6 +302,34 @@ async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
       );
     }
   }
+  // Showing or hiding the library is answered as it is with nothing selected: the frame stays
+  // centred on the sheet, sliding by half the change in the sheet's size at its zoom, or is framed
+  // again when the work no longer fits. With a part selected it used to keep its camera, so the
+  // whole drawing jumped with the sheet's left edge and was left off centre.
+  const libraryWasShown = await page.getByTestId('ide-left-dock').isVisible().catch(() => false);
+  await selectFirstVisibleNode(page);
+  await revealDesignRail(page, 'left');
+  let before = await settled();
+  for (const step of ['hidden', 'shown']) {
+    if (step === 'hidden') await collapseDesignRail(page, 'left');
+    else await revealDesignRail(page, 'left');
+    const after = await settled();
+    const centredX = before.camera.x + (after.liveCanvasClientWidth - before.liveCanvasClientWidth) / 2;
+    const centredY = before.camera.y + (after.liveCanvasClientHeight - before.liveCanvasClientHeight) / 2;
+    const offCentre = Math.hypot(after.camera.x - centredX, after.camera.y - centredY);
+    const sameZoom = Math.abs(after.camera.zoom - before.camera.zoom) < 0.0005;
+    const framedAgain = !sameZoom && after.usefullyVisibleNodeCount === after.editorNodes;
+    assert(
+      (sameZoom && offCentre <= 1) || framedAgain,
+      `${viewport.label} untouched frame with a part selected, library ${step}: the frame is ${offCentre.toFixed(3)} px ` +
+        `from centred (zoom ${before.camera.zoom} -> ${after.camera.zoom}, ` +
+        `${after.usefullyVisibleNodeCount}/${after.editorNodes} parts in view)`
+    );
+    before = after;
+  }
+  if (!libraryWasShown) await collapseDesignRail(page, 'left');
+  await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.clearSelection?.());
+  await page.waitForTimeout(150);
 }
 
 async function assertCameraTransitionState(page, viewport, label, expectedView, worldCenterAnchor = null, pageAnchor = null) {

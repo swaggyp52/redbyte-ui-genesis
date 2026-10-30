@@ -2889,9 +2889,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         Math.abs(previousPlacement!.left - nextPlacement.left) >= 0.5 ||
         Math.abs(previousPlacement!.top - nextPlacement.top) >= 0.5);
       if (sameSize && !sheetMoved && !docksChanged) return;
+      setCanvasSize((current) =>
+        current.width === nextViewport.width && current.height === nextViewport.height ? current : nextViewport
+      );
+      // The same sheet measured twice differs by a pixel at most: the panel and view commits read
+      // the host's whole-pixel client size, the size observer floors its content box. With nothing
+      // beside the sheet changed, that pixel is not a resize: the canvas takes the size, the camera
+      // stays (an untouched frame refitted to it lost its zoom and slid about 100px whenever a
+      // wire was selected at 1366x768). The sheet is still measured against the last real one, so
+      // such pixels never add up unseen.
+      if (
+        previousViewport && !sheetMoved && !docksChanged &&
+        Math.abs(nextViewport.width - previousViewport.width) <= 1 &&
+        Math.abs(nextViewport.height - previousViewport.height) <= 1
+      ) {
+        return;
+      }
       lastMeasuredCanvasViewportRef.current = nextViewport;
       lastCanvasPlacementRef.current = nextPlacement;
-      if (!sameSize) setCanvasSize(nextViewport);
       if (!previousViewport) return;
 
       const viewState = useLogicViewStore.getState();
@@ -2928,12 +2943,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       // the left. Showing or hiding the library moves the sheet's left edge instead, so a camera
       // the student chose takes up that move. If the selection would now be off the sheet it is
       // panned back in by the least amount; the zoom is the student's until they press Fit.
-      const heldCamera = !untouched && previousPlacement
-        ? holdDesignCanvasOnPage(
-          currentCamera,
-          { ...previousViewport, left: previousPlacement.left, top: previousPlacement.top },
-          { ...nextViewport, left: nextPlacement.left, top: nextPlacement.top })
-        : currentCamera;
+      const geometry = buildGeometryIndex(editorNodesRef.current as Node[]);
+      const centredFrame = () => {
+        const bounds = unionBounds(geometry.values());
+        const stillFits = !bounds || (
+          (bounds.maxX - bounds.minX) * currentCamera.zoom <= nextViewport.width - 96 &&
+          (bounds.maxY - bounds.minY) * currentCamera.zoom <= nextViewport.height - 96);
+        return stillFits
+          ? {
+            x: currentCamera.x + (nextViewport.width - previousViewport.width) / 2,
+            y: currentCamera.y + (nextViewport.height - previousViewport.height) / 2,
+            zoom: currentCamera.zoom,
+          }
+          : null;
+      };
+      // The library shown, hidden or resized: the sheet's left edge moved.
+      const libraryMoved = Boolean(previousPlacement) && (
+        previousPlacement!.leftDock !== nextPlacement.leftDock ||
+        Math.abs(previousPlacement!.left - nextPlacement.left) >= 0.5);
+      let heldCamera = currentCamera;
+      if (!untouched) {
+        if (previousPlacement) {
+          heldCamera = holdDesignCanvasOnPage(
+            currentCamera,
+            { ...previousViewport, left: previousPlacement.left, top: previousPlacement.top },
+            { ...nextViewport, left: nextPlacement.left, top: nextPlacement.top });
+        }
+      } else if (libraryMoved) {
+        // A framed view nobody has touched stays centred when the library is shown or hidden, the
+        // same with a part selected or not (with one it used to keep its camera, so the drawing
+        // jumped with the sheet's left edge and was left off centre).
+        const centred = centredFrame();
+        if (!centred) {
+          fitToCircuitRef.current(nextViewport);
+          return;
+        }
+        heldCamera = centred;
+      }
       const selectedIds = viewState.selection.nodes;
       const regionOf = (ids: { has(id: string): boolean }, pad: number) => {
         let region: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
@@ -2957,7 +3003,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       // not be after it (the inspector opening over an output) is slid back by the least amount;
       // a part that stays on the sheet is not nudged, and one that was already partly off it is
       // left where the student left it.
-      const geometry = buildGeometryIndex(editorNodesRef.current as Node[]);
       const followed = (ids: ReadonlySet<string>) => {
         const box = unionBounds(
           [...ids].map((id) => geometry.get(id)).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
@@ -2986,6 +3031,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         }
       }
       if (untouched) {
+        if (libraryMoved) {
+          lastFittedCameraRef.current = heldCamera;
+          setCamera(heldCamera);
+          return;
+        }
         // The inspector never moves a framed view nobody has touched: it opens and closes with
         // the selection, and re-centring the frame every time it closed walked the drawing right
         // by half the inspector on each select and release.
@@ -2993,22 +3043,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           previousPlacement!.leftDock === nextPlacement.leftDock &&
           previousPlacement!.rightDock !== nextPlacement.rightDock;
         if (onlyInspector) return;
-        // Otherwise an untouched frame stays centred as the sheet settles or the library is shown
-        // or hidden: it slides by half the change in size, at its zoom while the work still fits
-        // the sheet; when the sheet became too small for it, it is framed again.
-        const bounds = unionBounds(buildGeometryIndex(editorNodesRef.current as Node[]).values());
-        const stillFits = !bounds || (
-          (bounds.maxX - bounds.minX) * currentCamera.zoom <= nextViewport.width - 96 &&
-          (bounds.maxY - bounds.minY) * currentCamera.zoom <= nextViewport.height - 96);
-        if (!stillFits) {
+        // Otherwise an untouched frame stays centred as the sheet settles: it slides by half the
+        // change in size, at its zoom while the work still fits the sheet; when the sheet became
+        // too small for it, it is framed again.
+        const centred = centredFrame();
+        if (!centred) {
           fitToCircuitRef.current(nextViewport);
           return;
         }
-        const centred = {
-          x: currentCamera.x + (nextViewport.width - previousViewport.width) / 2,
-          y: currentCamera.y + (nextViewport.height - previousViewport.height) / 2,
-          zoom: currentCamera.zoom,
-        };
         lastFittedCameraRef.current = centred;
         setCamera(centred);
         return;

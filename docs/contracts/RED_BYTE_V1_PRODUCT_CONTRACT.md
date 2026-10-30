@@ -845,16 +845,20 @@ The camera, by kind of change:
 - A view switch (Schematic, Split, Code) keeps the world point in the middle of the sheet in the
   middle of the new sheet, at the student's zoom. An untouched frame is framed again for the new
   sheet. This is the 2026-07-14 rule, kept for view switches.
-- A panel opening or closing beside the sheet moves nothing on the screen: the inspector opening
-  with a selection, or the library shown or hidden (the camera takes up the sheet's moved edge).
-  A part is slid back on only when the resize itself would hide it, and by the least amount.
-- The inspector never moves a framed view nobody has touched, opening or closing.
+- A panel opening or closing beside the sheet moves nothing of a view the student zoomed or
+  panned: the inspector opening with a selection, or the library shown or hidden (the camera
+  takes up the sheet's moved edge). A part is slid back on only when the resize itself would hide
+  it, and by the least amount.
+- The inspector never moves a framed view nobody has touched, opening or closing. When the library
+  is shown or hidden, such a frame stays centred on the sheet with a part selected or not, sliding
+  by half the change at its zoom, and is framed again only when the work no longer fits.
 
 | Superseded | Why |
 |---|---|
 | Every real resize, the library and inspector included, keeping the world point at the middle of the sheet (2026-07-14) | With the inspector beside the sheet it slid every part half the inspector's width whenever a part was selected. |
 | Keeping a selected part's 72px neighbourhood on the sheet on every resize | It nudged a part that was fully visible and covered by nothing. |
 | Re-centring an untouched frame when the inspector closed | Each select and release walked the drawing right by half the inspector. |
+| An untouched frame keeping its camera when the library was shown or hidden with a part selected | The whole drawing jumped with the sheet's left edge and was left off centre. |
 | An 80px rail, a 280px inspector and a 32px status line at laptop widths | They left the sheet 766px at 1366x768, under the classroom gates' 820px. |
 | Inspector labels cut with an ellipsis at a fixed 96px | Long part names and "Board resource" could not be read with enlarged text. |
 
