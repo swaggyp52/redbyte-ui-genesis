@@ -22285,9 +22285,9 @@ button:disabled,
   padding: 8px 16px 16px !important;
 }
 
-/* On a laptop-width screen the sheet's side gutters are 8px: the circuit gets the room, and the
-   sheet still sits framed inside the workspace. */
-@media (min-width: 1180px) and (max-width: 1599px) {
+/* Beside the library and the inspector the sheet's side gutters are 8px: the circuit gets the
+   room, and the sheet still sits framed inside the workspace. */
+@media (min-width: 1180px) {
   [data-ide-mode-marker='design'] .ide-workbench-workspace {
     padding-inline: 8px !important;
   }

@@ -452,8 +452,12 @@
 .ide-root .rb-insp-name-control .ide-design-label-editor { min-width: 0; }
 .ide-root .rb-insp-name-control .ide-design-label-editor-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .ide-root .rb-insp-name-control .ide-design-label-editor-row input { flex: 1 1 96px; min-width: 0; }
-.ide-root .rb-insp-name-control .ide-design-label-editor > .ide-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ide-root .rb-insp-field { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
+/* The button names the part it renames, so a long name wraps onto a second line rather than being
+   cut ("Rename LD0 (CARR..."); a short one keeps the single compact row. */
+.ide-root .rb-insp-name-control .ide-design-label-editor > .ide-button { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+/* The term column is in rem so it grows with enlarged text (96px at 100%); terms and values wrap
+   instead of being cut, so every label stays readable in the narrower inspector. */
+.ide-root .rb-insp-field { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
 .ide-root .rb-insp-field > label,
 .ide-root .rb-insp-field > span:first-child { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
 .ide-root .rb-insp-field--checkbox { grid-template-columns: auto minmax(0, 1fr); }
@@ -477,7 +481,7 @@
 .ide-root .rb-insp-idle-stat,
 .ide-root .rb-insp-io-state-list > * {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 6rem minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   min-height: 24px;
@@ -500,7 +504,7 @@
 .ide-root .rb-insp-facts > .rb-insp-signal-model { display: block; }
 .ide-root .rb-insp-signal-model > div {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-columns: 6rem minmax(0, 1fr);
   align-items: baseline;
   gap: 6px;
   min-height: 24px;
@@ -514,9 +518,7 @@
   min-width: 0;
   color: var(--wb-text-3);
   font: var(--wb-text-sm) var(--wb-font-ui);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .ide-root .rb-insp-signal-model > div > strong {
   margin: 0;
@@ -529,11 +531,11 @@
 .ide-root .rb-insp-facts dt,
 .ide-root .rb-insp-row > :first-child,
 .ide-root .rb-insp-idle-stat > :first-child,
-.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; min-width: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow-wrap: anywhere; }
 .ide-root .rb-insp-facts dd,
 .ide-root .rb-insp-row > :last-child,
 .ide-root .rb-insp-idle-stat > :last-child,
-.ide-root .rb-insp-io-state-value { margin: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-insp-io-state-value { margin: 0; min-width: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow-wrap: anywhere; }
 .ide-root .rb-insp-idle-stats { display: block; }
 /* An action group stacks its label over its controls. A label-left column was measured and
    rejected: in a 238px dock it left 108px for the controls, so the five swap chips wrapped onto
@@ -662,7 +664,7 @@
 /* The library and the inspector get the width their labels need. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
   --ide-workbench-left-width: clamp(200px, var(--rb-workbench-pref-left-width, 208px), 400px);
-  --ide-workbench-right-width: clamp(256px, var(--rb-workbench-pref-right-width, 280px), 440px);
+  --ide-workbench-right-width: clamp(256px, var(--rb-workbench-pref-right-width, 256px), 440px);
 }
 
 /* An input's value is a switch. It is the same unrecorded Explore value the canvas toggles. */

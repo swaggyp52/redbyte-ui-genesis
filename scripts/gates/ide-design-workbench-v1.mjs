@@ -135,10 +135,17 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
     localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
   await loadStarterDesign(page, baseUrl, 'logic-gates', `camera-stress-${viewport.label}`);
+  await assertUntouchedFrameHoldsThroughSelection(page, viewport);
 
+  // Two rules, one per kind of change (owner decision 2026-10-30, docs/ide/02-design.md):
+  // - a view switch (Schematic, Split, Code) keeps the world point in the middle of the sheet in
+  //   the middle of the new sheet, at the student's zoom (the July 2026 rule, kept);
+  // - a panel opening or closing beside the sheet (the inspector with a selection, the library)
+  //   moves nothing on the screen: selecting a part must not shift the canvas. The world point in
+  //   the middle of the sheet changes with the sheet, so it is taken again after every panel.
   await setCanvasZoom125(page);
   const baselineMetrics = await assertCameraTransitionState(page, viewport, '125% Canvas baseline', 'canvas');
-  const worldCenterAnchor = baselineMetrics.worldCenter;
+  let worldCenterAnchor = baselineMetrics.worldCenter;
 
   await clickDesignView(page, 'hdl');
   await page.waitForSelector('[data-testid="ide-design-hdl-pane"]', { timeout: 10000 });
@@ -153,8 +160,11 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
   }
 
   await clickDesignView(page, 'canvas');
+  const beforeMove = await assertCameraTransitionState(page, viewport, 'Split to Canvas before node move', 'canvas', worldCenterAnchor);
   const movedNode = await dragFirstVisibleNode(page);
-  await assertCameraTransitionState(page, viewport, 'Canvas after node move', 'canvas', worldCenterAnchor);
+  // The drag starts by selecting the part, which opens the inspector beside the sheet.
+  const afterMove = await assertCameraTransitionState(page, viewport, 'Canvas after node move', 'canvas', null, pageAnchorOf(beforeMove));
+  worldCenterAnchor = afterMove.worldCenter;
   await assertMovedNodePosition(page, movedNode);
   await clickDesignView(page, 'hdl');
   await clickDesignView(page, 'split');
@@ -162,16 +172,18 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
   await assertMovedNodePosition(page, movedNode);
 
   await clickDesignView(page, 'canvas');
+  let panelBaseline = await assertCameraTransitionState(page, viewport, 'Moved graph Split to Canvas', 'canvas', worldCenterAnchor);
   await revealDesignRail(page, 'left');
-  await assertCameraTransitionState(page, viewport, 'Library stable', 'canvas', worldCenterAnchor);
+  panelBaseline = await assertCameraTransitionState(page, viewport, 'Library stable', 'canvas', null, pageAnchorOf(panelBaseline));
   await collapseDesignRail(page, 'left');
-  await assertCameraTransitionState(page, viewport, 'Library remains stable', 'canvas', worldCenterAnchor);
+  panelBaseline = await assertCameraTransitionState(page, viewport, 'Library remains stable', 'canvas', null, pageAnchorOf(panelBaseline));
   await selectFirstVisibleNode(page);
   await revealDesignRail(page, 'right');
   await assertSelectionState(page, { node: true });
-  await assertCameraTransitionState(page, viewport, 'Inspector stable', 'canvas', worldCenterAnchor);
+  panelBaseline = await assertCameraTransitionState(page, viewport, 'Inspector stable', 'canvas', null, pageAnchorOf(panelBaseline));
   await collapseDesignRail(page, 'right');
-  await assertCameraTransitionState(page, viewport, 'Inspector remains stable', 'canvas', worldCenterAnchor);
+  panelBaseline = await assertCameraTransitionState(page, viewport, 'Inspector remains stable', 'canvas', null, pageAnchorOf(panelBaseline));
+  worldCenterAnchor = panelBaseline.worldCenter;
 
   await clickDesignView(page, 'hdl');
   await clickDesignView(page, 'split');
@@ -245,7 +257,52 @@ async function setCanvasZoom125(page) {
   }, undefined, { timeout: 5000 });
 }
 
-async function assertCameraTransitionState(page, viewport, label, expectedView, worldCenterAnchor = null) {
+// Where the drawing sits on the screen: the SVG's top-left plus the camera's translation, and the
+// zoom. Equal anchors mean every part is drawn at the same place on the screen.
+function pageAnchorOf(metrics) {
+  return {
+    x: metrics.logicCanvas.left + metrics.camera.x,
+    y: metrics.logicCanvas.top + metrics.camera.y,
+    zoom: metrics.camera.zoom,
+  };
+}
+
+// Selecting a part opens the inspector beside the sheet and releasing it closes the inspector.
+// Neither may move a framed view nobody has touched, however often it happens: re-centring the
+// frame on every release used to walk the drawing right by half the inspector each time.
+async function assertUntouchedFrameHoldsThroughSelection(page, viewport) {
+  const settled = async () => {
+    let metrics = null;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      metrics = await readWorkbenchMetrics(page);
+      if (metrics.cameraFinite && metrics.logicCanvasWidthDelta <= 2 && metrics.logicCanvasHeightDelta <= 2) break;
+      await page.waitForTimeout(200);
+    }
+    return metrics;
+  };
+  const start = await settled();
+  assert(start?.cameraFinite, `${viewport.label}: untouched frame must have a finite camera`);
+  const startAnchor = pageAnchorOf(start);
+  for (let round = 1; round <= 3; round += 1) {
+    for (const step of ['select', 'release']) {
+      if (step === 'select') await selectFirstVisibleNode(page);
+      else {
+        await page.evaluate(() => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.clearSelection?.());
+        await page.waitForTimeout(150);
+      }
+      const metrics = await settled();
+      const placed = pageAnchorOf(metrics);
+      const shift = Math.hypot(placed.x - startAnchor.x, placed.y - startAnchor.y);
+      assert(
+        Math.abs(placed.zoom - startAnchor.zoom) < 0.0005 && shift <= 1,
+        `${viewport.label} untouched frame, ${step} ${round}: the drawing moved ${shift.toFixed(3)} px on the screen ` +
+          `(zoom ${startAnchor.zoom} -> ${placed.zoom})`
+      );
+    }
+  }
+}
+
+async function assertCameraTransitionState(page, viewport, label, expectedView, worldCenterAnchor = null, pageAnchor = null) {
   let metrics = null;
   const compactViewport = viewport.width <= 1100;
   const viewMatches = (actual) =>
@@ -297,6 +354,14 @@ async function assertCameraTransitionState(page, viewport, label, expectedView, 
     );
     assert(drift <= 1, `${label}: world-center anchor drifted (${drift.toFixed(3)} world px)`);
   }
+  if (pageAnchor) {
+    const placed = pageAnchorOf(metrics);
+    const shift = Math.hypot(placed.x - pageAnchor.x, placed.y - pageAnchor.y);
+    assert(
+      shift <= 1,
+      `${label}: the drawing moved ${shift.toFixed(3)} px on the screen; a panel opening or closing beside the sheet must leave every part where it is`
+    );
+  }
   assert(metrics.rootOverflowX <= 2, `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`);
   assert(metrics.badAttributes.length === 0, `${label}: SVG contains invalid geometry`);
   assert(
@@ -310,6 +375,7 @@ async function assertCameraTransitionState(page, viewport, label, expectedView, 
     effectiveDesignView: metrics.effectiveDesignView,
     camera: metrics.camera,
     worldCenter: metrics.worldCenter,
+    pageAnchor: metrics.camera ? pageAnchorOf(metrics) : null,
     host: {
       clientWidth: metrics.liveCanvasClientWidth,
       clientHeight: metrics.liveCanvasClientHeight,

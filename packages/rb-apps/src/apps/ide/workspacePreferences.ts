@@ -191,7 +191,9 @@ const AUTHORING_SURFACES = createSurfacePreferences({
     // A compact, labeled library: symbol and name on one line. It keeps this form through
     // selection, wiring and inspection; widening it is the student's explicit, remembered choice.
     left: { visible: true, sizePx: 208, expanded: false },
-    right: { visible: true, sizePx: 280, expanded: false },
+    // 256px holds the inspector's labels and buttons; at laptop widths it narrows to 240px so
+    // the circuit keeps 60% of the window (design-workbench-v3.css).
+    right: { visible: true, sizePx: 256, expanded: false },
   },
   verify: {
     left: { visible: true, sizePx: 240, expanded: false },

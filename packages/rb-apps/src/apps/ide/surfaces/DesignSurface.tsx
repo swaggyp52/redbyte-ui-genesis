@@ -122,7 +122,10 @@ import {
   type DesignArtifact,
 } from './designWorkspaceConfig';
 import {
+  centerDesignCanvasOn,
   centerDesignSelectionWithContext,
+  designCanvasWorldCenter,
+  holdDesignCanvasOnPage,
   readDesignCanvasViewport,
   reconcileDesignCanvasCamera,
   keepRegionInView,
@@ -130,6 +133,7 @@ import {
   rememberDesignCamera,
   recallDesignCamera,
   wasFramedDesignCamera,
+  type DesignCanvasCamera,
   type DesignCanvasGraphAnchor,
   type DesignCanvasViewport,
 } from './designCanvasCamera';
@@ -532,6 +536,45 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
 const WIDE_GATE_TYPE = /^(AND|OR|NAND|NOR|XOR|XNOR)3$/i;
 /** World-space room kept around a selected part when a pane opens beside the sheet. */
 const SELECTION_VIEW_PAD = 72;
+
+/** The sheet's top-left on the screen and which panels were beside it when it was measured. */
+interface DesignCanvasPlacement {
+  left: number;
+  top: number;
+  leftDock: string | null;
+  rightDock: string | null;
+}
+
+/**
+ * Why the sheet is being measured: a Schematic, Split or Code switch, a panel shown or hidden
+ * (known to Design before the change is painted), or anything else the size observer reports.
+ */
+type DesignCanvasCommitCause = 'view' | 'panel' | 'observed';
+
+/**
+ * A view switch still settling. An untouched frame is framed again for the new sheet; a camera
+ * the student chose keeps the world point that was in the middle of the sheet in the middle,
+ * at the student's zoom. `camera` is the camera the switch last left, so a camera moved by
+ * anything else ends the switch.
+ */
+type DesignViewSwitch =
+  | { kind: 'frame' }
+  | { kind: 'middle'; middle: DesignCanvasGraphAnchor; camera: DesignCanvasCamera };
+
+function readDesignCanvasPlacement(host: HTMLElement): DesignCanvasPlacement {
+  const rect = host.getBoundingClientRect();
+  const shell = host.closest('[data-left-dock-state]');
+  return {
+    left: rect.left,
+    top: rect.top,
+    leftDock: shell?.getAttribute('data-left-dock-state') ?? null,
+    rightDock: shell?.getAttribute('data-right-dock-state') ?? null,
+  };
+}
+
+function sameDesignCamera(a: DesignCanvasCamera, b: DesignCanvasCamera): boolean {
+  return a.x === b.x && a.y === b.y && a.zoom === b.zoom;
+}
 
 const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   key: 'sequentialRegisters' | 'sequentialTiming' | 'sequentialLegacy';
@@ -1143,6 +1186,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setCanvasHostElement((current) => (current === element ? current : element));
   }, []);
   const lastMeasuredCanvasViewportRef = useRef<DesignCanvasViewport | null>(null);
+  // Where the sheet sat on the screen, and which panels were beside it, at the last commit.
+  const lastCanvasPlacementRef = useRef<DesignCanvasPlacement | null>(null);
+  // The observer's commit, for the layout effects that know why the sheet changed (a view switch,
+  // a panel opening or closing) and must settle the camera before the change is painted.
+  const commitCanvasViewportRef = useRef<(viewport: DesignCanvasViewport, cause: DesignCanvasCommitCause) => void>(() => {});
+  // A Schematic, Split or Code switch still settling (see the view-switch layout effect).
+  const viewSwitchRef = useRef<DesignViewSwitch | null>(null);
   const canvasObservationGenerationRef = useRef(0);
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
@@ -1315,16 +1365,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setTraceState(null);
   }, []);
 
-  // Switching the Design view (Schematic, Split, Code) is the student's own choice of sheet, not
-  // an incidental resize: an untouched framed view is framed again for the new sheet (the Split
-  // proof: all 13 counter parts stay inside), while a view the student zoomed or panned is kept.
-  const viewSwitchRefitRef = useRef(false);
-  const lastDesignViewForFitRef = useRef(designView);
   // Force canvas host to recompute its size when view mode changes.
   // Double-rAF: first frame applies display changes, second measures new dims.
   useLayoutEffect(() => {
-    if (lastDesignViewForFitRef.current !== designView) viewSwitchRefitRef.current = true;
-    lastDesignViewForFitRef.current = designView;
     const outer = requestAnimationFrame(() => {
       requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
     });
@@ -2825,7 +2868,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     let pendingFrame: number | null = null;
     let pendingViewport: DesignCanvasViewport | null = null;
 
-    const commitViewport = (nextViewport: DesignCanvasViewport) => {
+    const commitViewport = (nextViewport: DesignCanvasViewport, cause: DesignCanvasCommitCause = 'observed') => {
       if (
         !active ||
         canvasObservationGenerationRef.current !== generation ||
@@ -2834,32 +2877,63 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
       const previousViewport = lastMeasuredCanvasViewportRef.current;
-      if (
+      const previousPlacement = lastCanvasPlacementRef.current;
+      const nextPlacement = readDesignCanvasPlacement(canvasHostElement);
+      const sameSize =
         previousViewport?.width === nextViewport.width &&
-        previousViewport.height === nextViewport.height
-      ) {
-        return;
-      }
+        previousViewport.height === nextViewport.height;
+      const docksChanged = Boolean(previousPlacement) && (
+        previousPlacement!.leftDock !== nextPlacement.leftDock ||
+        previousPlacement!.rightDock !== nextPlacement.rightDock);
+      const sheetMoved = Boolean(previousPlacement) && (
+        Math.abs(previousPlacement!.left - nextPlacement.left) >= 0.5 ||
+        Math.abs(previousPlacement!.top - nextPlacement.top) >= 0.5);
+      if (sameSize && !sheetMoved && !docksChanged) return;
       lastMeasuredCanvasViewportRef.current = nextViewport;
-      setCanvasSize(nextViewport);
+      lastCanvasPlacementRef.current = nextPlacement;
+      if (!sameSize) setCanvasSize(nextViewport);
       if (!previousViewport) return;
 
       const viewState = useLogicViewStore.getState();
       const currentCamera = viewState.camera;
-      // A view switch (Schematic, Split, Code) frames an untouched frame again for the new sheet,
-      // before any selection or last-touched part is followed: the switch is the student's choice
-      // of sheet, and the frame was never theirs to keep.
-      const untouchedFrame = lastFittedCameraRef.current;
-      if (viewSwitchRefitRef.current && untouchedFrame && currentCamera.x === untouchedFrame.x &&
-          currentCamera.y === untouchedFrame.y && currentCamera.zoom === untouchedFrame.zoom) {
-        fitToCircuitRef.current(nextViewport);
-        return;
+      const framedCamera = lastFittedCameraRef.current;
+      const untouched = Boolean(framedCamera && sameDesignCamera(framedCamera, currentCamera));
+      // A view switch (Schematic, Split, Code) owns the commits that settle it, before any
+      // selection or last-touched part is followed: the switch is the student's choice of sheet.
+      // A panel opening or closing by itself ends it, and so does a camera moved by anything else.
+      if (viewSwitchRef.current && cause !== 'view' && docksChanged) viewSwitchRef.current = null;
+      const viewSwitch = viewSwitchRef.current;
+      if (viewSwitch?.kind === 'frame') {
+        // The frame was never the student's to keep: it is framed again for the new sheet.
+        if (untouched) {
+          fitToCircuitRef.current(nextViewport);
+          return;
+        }
+        viewSwitchRef.current = null;
+      } else if (viewSwitch?.kind === 'middle') {
+        // A view the student zoomed or panned keeps the part of the circuit they were looking at
+        // in the middle of the new sheet, at their zoom, through every commit of the switch.
+        if (sameDesignCamera(viewSwitch.camera, currentCamera)) {
+          const centred = centerDesignCanvasOn(viewSwitch.middle, nextViewport, currentCamera.zoom);
+          viewSwitchRef.current = { ...viewSwitch, camera: centred };
+          setCamera(centred);
+          return;
+        }
+        viewSwitchRef.current = null;
       }
-      // A resized sheet never rescales the work. Selecting a part opens the inspector, which
-      // narrows the sheet; refitting the whole circuit into what was left turned a readable
-      // schematic into a small one at the moment a student wanted to look closely. The camera
-      // stays where it is. If the selection would now be off the sheet it is panned back in by
-      // the least amount; the zoom is the student's until they press Fit.
+      // A resized sheet never rescales the work, and nothing on it moves on the screen. Selecting
+      // a part opens the inspector, which narrows the sheet from the right; refitting the whole
+      // circuit into what was left turned a readable schematic into a small one at the moment a
+      // student wanted to look closely, and re-centring it slid every part half the inspector to
+      // the left. Showing or hiding the library moves the sheet's left edge instead, so a camera
+      // the student chose takes up that move. If the selection would now be off the sheet it is
+      // panned back in by the least amount; the zoom is the student's until they press Fit.
+      const heldCamera = !untouched && previousPlacement
+        ? holdDesignCanvasOnPage(
+          currentCamera,
+          { ...previousViewport, left: previousPlacement.left, top: previousPlacement.top },
+          { ...nextViewport, left: nextPlacement.left, top: nextPlacement.top })
+        : currentCamera;
       const selectedIds = viewState.selection.nodes;
       const regionOf = (ids: { has(id: string): boolean }, pad: number) => {
         let region: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
@@ -2876,49 +2950,57 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       // Panning to keep a selection or a just-placed part on the sheet is the workbench's move, not
       // the student's: an untouched frame stays one (a later view switch still frames it again).
       const keepFramed = (kept: typeof currentCamera) => {
-        const framed = lastFittedCameraRef.current;
-        if (framed && framed.x === currentCamera.x && framed.y === currentCamera.y && framed.zoom === currentCamera.zoom) {
-          lastFittedCameraRef.current = kept;
-        }
+        if (untouched) lastFittedCameraRef.current = kept;
         setCamera(kept);
       };
+      // Only what the resize takes away is followed. A part that was wholly on the sheet and would
+      // not be after it (the inspector opening over an output) is slid back by the least amount;
+      // a part that stays on the sheet is not nudged, and one that was already partly off it is
+      // left where the student left it.
+      const geometry = buildGeometryIndex(editorNodesRef.current as Node[]);
+      const followed = (ids: ReadonlySet<string>) => {
+        const box = unionBounds(
+          [...ids].map((id) => geometry.get(id)).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+        );
+        if (!box) return null;
+        const wasOnSheet = keepRegionInView(currentCamera, previousViewport, box, 0) === currentCamera;
+        if (!wasOnSheet || keepRegionInView(heldCamera, nextViewport, box, 0) === heldCamera) return heldCamera;
+        const region = regionOf(ids, SELECTION_VIEW_PAD);
+        return region ? keepRegionInView(heldCamera, nextViewport, region) : heldCamera;
+      };
       if (selectedIds.size > 0) {
-        viewSwitchRefitRef.current = false;
-        const region = regionOf(selectedIds, SELECTION_VIEW_PAD);
-        if (region) {
-          const kept = keepRegionInView(currentCamera, nextViewport, region);
+        const kept = followed(selectedIds);
+        if (kept) {
           if (kept !== currentCamera) keepFramed(kept);
           return;
         }
       }
       // Nothing is selected, but the part last worked on still matters: a part placed a moment
       // ago and released with Escape while the inspector was opening has no selection to follow.
-      // If it was on the sheet before this resize and would not be after it, it is slid back.
-      // A part that was already out of view is left where the student left it.
       const touched = lastTouchedNodeIdsRef.current;
       if (touched.size > 0) {
-        const spot = regionOf(touched, 8);
-        if (spot && keepRegionInView(currentCamera, previousViewport, spot, 0) === currentCamera) {
-          const region = regionOf(touched, SELECTION_VIEW_PAD);
-          const kept = region ? keepRegionInView(currentCamera, nextViewport, region) : currentCamera;
-          if (kept !== currentCamera) {
-            keepFramed(kept);
-            return;
-          }
+        const kept = followed(touched);
+        if (kept && kept !== heldCamera) {
+          keepFramed(kept);
+          return;
         }
       }
-      // A framed view nobody has touched stays centred as the sheet settles or a pane is
-      // shown or hidden: it slides by half the change in size. It is not rescaled.
-      const framedCamera = lastFittedCameraRef.current;
-      if (framedCamera && currentCamera.x === framedCamera.x &&
-          currentCamera.y === framedCamera.y && currentCamera.zoom === framedCamera.zoom) {
-        // An untouched frame keeps its zoom while the work still fits the sheet at that zoom;
-        // after a view switch, or when the sheet became too small for it, it is framed again.
+      if (untouched) {
+        // The inspector never moves a framed view nobody has touched: it opens and closes with
+        // the selection, and re-centring the frame every time it closed walked the drawing right
+        // by half the inspector on each select and release.
+        const onlyInspector = Boolean(previousPlacement) && !sheetMoved &&
+          previousPlacement!.leftDock === nextPlacement.leftDock &&
+          previousPlacement!.rightDock !== nextPlacement.rightDock;
+        if (onlyInspector) return;
+        // Otherwise an untouched frame stays centred as the sheet settles or the library is shown
+        // or hidden: it slides by half the change in size, at its zoom while the work still fits
+        // the sheet; when the sheet became too small for it, it is framed again.
         const bounds = unionBounds(buildGeometryIndex(editorNodesRef.current as Node[]).values());
         const stillFits = !bounds || (
           (bounds.maxX - bounds.minX) * currentCamera.zoom <= nextViewport.width - 96 &&
           (bounds.maxY - bounds.minY) * currentCamera.zoom <= nextViewport.height - 96);
-        if (viewSwitchRefitRef.current || !stillFits) {
+        if (!stillFits) {
           fitToCircuitRef.current(nextViewport);
           return;
         }
@@ -2931,13 +3013,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         setCamera(centred);
         return;
       }
-      viewSwitchRefitRef.current = false;
       const stillShowsWork = cameraGraphAnchorsRef.current.some((anchor) => {
-        const screenX = anchor.x * currentCamera.zoom + currentCamera.x;
-        const screenY = anchor.y * currentCamera.zoom + currentCamera.y;
+        const screenX = anchor.x * heldCamera.zoom + heldCamera.x;
+        const screenY = anchor.y * heldCamera.zoom + heldCamera.y;
         return screenX >= 0 && screenX <= nextViewport.width && screenY >= 0 && screenY <= nextViewport.height;
       });
-      if (stillShowsWork) return;
+      if (stillShowsWork) {
+        if (heldCamera !== currentCamera) setCamera(heldCamera);
+        return;
+      }
       const reconciledCamera = reconcileDesignCanvasCamera(
         currentCamera,
         previousViewport,
@@ -2964,11 +3048,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       });
     };
 
+    commitCanvasViewportRef.current = commitViewport;
     const initialViewport = readDesignCanvasViewport(
       canvasHostElement.clientWidth,
       canvasHostElement.clientHeight
     );
-    if (initialViewport) commitViewport(initialViewport);
+    // A sheet mounting while a view switch settles is that switch's sheet (Code to Split).
+    if (initialViewport) commitViewport(initialViewport, viewSwitchRef.current ? 'view' : 'observed');
     const observer = new ResizeObserver((entries) => {
       const entry = entries.find((candidate) => candidate.target === canvasHostElement) ?? entries[0];
       if (!entry) return;
@@ -2982,6 +3068,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       observer.disconnect();
     };
   }, [canvasHostElement, setCamera]);
+
+  // Switching the Design view (Schematic, Split, Code) is the student's own choice of sheet, not
+  // an incidental resize. An untouched framed view is framed again for the new sheet (the Split
+  // proof: all 13 counter parts stay inside); a view the student zoomed or panned keeps the part
+  // of the circuit they were looking at in the middle of the new sheet, at their zoom. The switch
+  // is settled here, before it is painted, and by the commits that follow it (Split's first ratio,
+  // the stacked fallback, the sheet that mounts after Code).
+  const cameraViewRef = useRef(designView);
+  useLayoutEffect(() => {
+    if (cameraViewRef.current === designView) return;
+    cameraViewRef.current = designView;
+    const camera = useLogicViewStore.getState().camera;
+    const framed = lastFittedCameraRef.current;
+    const sheet = lastMeasuredCanvasViewportRef.current;
+    if (framed && sameDesignCamera(framed, camera)) {
+      viewSwitchRef.current = { kind: 'frame' };
+    } else {
+      const middle = sheet ? designCanvasWorldCenter(camera, sheet) : null;
+      viewSwitchRef.current = middle ? { kind: 'middle', middle, camera } : null;
+    }
+    const host = canvasHostRef.current;
+    const viewport = host ? readDesignCanvasViewport(host.clientWidth, host.clientHeight) : null;
+    if (viewport) commitCanvasViewportRef.current(viewport, 'view');
+  }, [designView]);
 
   // Entering Design: return to where this project and module were last being worked on. Work
   // that has not been viewed yet in this session is framed once. This used to frame the whole
@@ -4921,6 +5031,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     hasMultiWireSelection ||
     !!selectedWireContext ||
     !!activeInspectorSignalKey;
+  // A panel shown or hidden beside the sheet (the inspector opening with a selection, the library
+  // hidden by the student) is settled before it is painted, so no part is drawn for a frame in a
+  // place it then jumps back from. The size observer catches anything this does not.
+  const designDockPreferences = workspacePreferences.surfaces.design.docks;
+  useLayoutEffect(() => {
+    const host = canvasHostRef.current;
+    const viewport = host ? readDesignCanvasViewport(host.clientWidth, host.clientHeight) : null;
+    if (viewport) commitCanvasViewportRef.current(viewport, 'panel');
+  }, [
+    designDockPreferences,
+    effectiveLearningMode,
+    focusedAssetContext,
+    hasInspectorSelectionContext,
+    hierarchicalLive,
+    workspacePreset.leftDockMode,
+    workspacePreset.rightDockMode,
+  ]);
   const primarySelectionIssue = selectionAuthoringIssues[0] ?? null;
   const primarySelectionDiagnostic = selectedNodeDiagnostics[0] ?? null;
   const selectionStatusLabel = primarySelectionIssue

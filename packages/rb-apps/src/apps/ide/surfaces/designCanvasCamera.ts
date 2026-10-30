@@ -237,6 +237,57 @@ export function keepRegionInView(
 }
 
 /**
+ * A sheet and where its top-left sits on the screen. The camera is measured from that corner,
+ * so when the corner moves (the library is shown or hidden) the same camera draws every part
+ * somewhere else on the screen.
+ */
+export interface DesignCanvasFrame extends DesignCanvasViewport {
+  left: number;
+  top: number;
+}
+
+/** The world point drawn at the middle of the sheet, or null for an unusable camera or sheet. */
+export function designCanvasWorldCenter(
+  camera: DesignCanvasCamera,
+  viewport: DesignCanvasViewport
+): DesignCanvasGraphAnchor | null {
+  if (!isFiniteCamera(camera) || viewport.width <= 0 || viewport.height <= 0) return null;
+  return {
+    x: (viewport.width / 2 - camera.x) / camera.zoom,
+    y: (viewport.height / 2 - camera.y) / camera.zoom,
+  };
+}
+
+/**
+ * The camera at `zoom` that draws `point` at the middle of the sheet. A view switch (Schematic,
+ * Split, Code) uses it to keep the part of the circuit the student was looking at in the middle
+ * of the sheet they chose.
+ */
+export function centerDesignCanvasOn(
+  point: DesignCanvasGraphAnchor,
+  viewport: DesignCanvasViewport,
+  zoom: number
+): DesignCanvasCamera {
+  return { x: viewport.width / 2 - point.x * zoom, y: viewport.height / 2 - point.y * zoom, zoom };
+}
+
+/**
+ * Keeps every part where it is on the screen when the sheet's top-left moves: the camera takes
+ * up the move. A sheet whose corner did not move (the inspector opening on the right) returns
+ * the very same camera.
+ */
+export function holdDesignCanvasOnPage(
+  camera: DesignCanvasCamera,
+  previous: DesignCanvasFrame,
+  next: DesignCanvasFrame
+): DesignCanvasCamera {
+  const dx = previous.left - next.left;
+  const dy = previous.top - next.top;
+  if (!isFiniteCamera(camera) || (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5)) return camera;
+  return { x: camera.x + dx, y: camera.y + dy, zoom: camera.zoom };
+}
+
+/**
  * Where a student was working, per project and module, for this session. Design unmounts when
  * another workspace is opened; without this it reframed the whole circuit on every return and
  * discarded a deliberate zoom. It is view state only and is never saved with the project.

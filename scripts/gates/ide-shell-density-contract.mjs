@@ -27,10 +27,24 @@ await runIdeGate('IDE shell density contract satisfied', async ({ page, baseUrl 
   assert(Boolean(leftRailBox), 'left rail bounding box unavailable');
 
   assert(topBarBox.height <= 52, `top bar must stay dense (<=52px), got ${topBarBox.height}`);
+  // The rail follows its one declared width (--wb-rail-w, 4rem) and stays dense: it may not grow
+  // past 80px at the default 16px text, which is what the Studio restart had given it.
+  const declaredRailWidth = await page.evaluate(() => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--wb-rail-w').trim();
+    if (!raw) return null;
+    const probe = document.createElement('div');
+    probe.style.cssText = `position:absolute;visibility:hidden;width:${raw}`;
+    document.body.appendChild(probe);
+    const measured = probe.getBoundingClientRect().width;
+    probe.remove();
+    return Math.round(measured * 100) / 100;
+  });
+  assert(declaredRailWidth !== null, '--wb-rail-w is not declared, so the rail has no owner');
   assert(
-    leftRailBox.width === 80,
-    `left rail must follow the existing workbench 5rem (80px) width, got ${leftRailBox.width}`
+    Math.abs(leftRailBox.width - declaredRailWidth) <= 1,
+    `left rail must follow the declared --wb-rail-w (${declaredRailWidth}px), got ${leftRailBox.width}`
   );
+  assert(leftRailBox.width <= 80, `left rail must stay dense (<=80px at 16px text), got ${leftRailBox.width}`);
 
   if (consoleCount > 0) {
     const consolePanel = page.locator('[data-testid="ide-workbench-console"]').first();

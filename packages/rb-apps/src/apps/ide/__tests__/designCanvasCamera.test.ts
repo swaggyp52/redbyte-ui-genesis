@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  centerDesignCanvasOn,
   centerDesignSelectionWithContext,
   designCameraKey,
+  designCanvasWorldCenter,
   forgetDesignCameras,
+  holdDesignCanvasOnPage,
   keepRegionInView,
   recallDesignCamera,
   rememberDesignCamera,
@@ -178,6 +181,78 @@ describe('Design canvas camera: a narrower sheet keeps its scale', () => {
     const broken = { x: Number.NaN, y: 0, zoom: 1 };
     expect(keepRegionInView(broken, { width: 900, height: 600 }, part)).toBe(broken);
     expect(keepRegionInView(camera, { width: 0, height: 600 }, part)).toBe(camera);
+  });
+});
+
+// Switching Schematic, Split and Code is the student's choice of sheet: the part of the circuit
+// they were looking at stays in the middle of whichever sheet they chose, at their zoom.
+describe('Design canvas camera: a view switch keeps the middle of the work', () => {
+  const zoomed = { x: -212.5, y: -87.25, zoom: 1.2544 };
+  const canvas = { width: 1078, height: 561 };
+  const split = { width: 762, height: 561 };
+
+  it('reads the world point drawn at the middle of the sheet', () => {
+    const middle = designCanvasWorldCenter(zoomed, canvas);
+    expect(middle).not.toBeNull();
+    expect(middle!.x * zoomed.zoom + zoomed.x).toBeCloseTo(canvas.width / 2, 6);
+    expect(middle!.y * zoomed.zoom + zoomed.y).toBeCloseTo(canvas.height / 2, 6);
+  });
+
+  it('draws that point at the middle of the next sheet without changing the zoom', () => {
+    const middle = designCanvasWorldCenter(zoomed, canvas)!;
+    const next = centerDesignCanvasOn(middle, split, zoomed.zoom);
+    expect(next.zoom).toBe(zoomed.zoom);
+    expect(designCanvasWorldCenter(next, split)!.x).toBeCloseTo(middle.x, 6);
+    expect(designCanvasWorldCenter(next, split)!.y).toBeCloseTo(middle.y, 6);
+  });
+
+  it('comes back to the very same view after Canvas, Split and Canvas again', () => {
+    let camera = zoomed;
+    for (let round = 0; round < 20; round += 1) {
+      camera = centerDesignCanvasOn(designCanvasWorldCenter(camera, canvas)!, split, camera.zoom);
+      camera = centerDesignCanvasOn(designCanvasWorldCenter(camera, split)!, canvas, camera.zoom);
+    }
+    expect(camera.x).toBeCloseTo(zoomed.x, 6);
+    expect(camera.y).toBeCloseTo(zoomed.y, 6);
+    expect(camera.zoom).toBe(zoomed.zoom);
+  });
+
+  it('has no middle to keep for an unusable camera or sheet', () => {
+    expect(designCanvasWorldCenter({ x: 0, y: 0, zoom: 0 }, canvas)).toBeNull();
+    expect(designCanvasWorldCenter(zoomed, { width: 0, height: 561 })).toBeNull();
+  });
+});
+
+// The camera is measured from the sheet's top-left. Showing or hiding the library moves that
+// corner, so the same camera would draw every part somewhere else on the screen.
+describe('Design canvas camera: showing or hiding the library leaves the parts where they are', () => {
+  const camera = { x: 40, y: 30, zoom: 1.2544 };
+  const onPage = (cam: { x: number; y: number; zoom: number }, frame: { left: number; top: number }, point: { x: number; y: number }) => ({
+    x: frame.left + point.x * cam.zoom + cam.x,
+    y: frame.top + point.y * cam.zoom + cam.y,
+  });
+  const withLibrary = { left: 280, top: 103, width: 828, height: 561 };
+  const withoutLibrary = { left: 72, top: 103, width: 1036, height: 561 };
+  const part = { x: 310, y: 180 };
+
+  it('takes up the move of the sheet so every part stays put on the screen', () => {
+    const next = holdDesignCanvasOnPage(camera, withLibrary, withoutLibrary);
+    expect(next.zoom).toBe(camera.zoom);
+    expect(onPage(next, withoutLibrary, part).x).toBeCloseTo(onPage(camera, withLibrary, part).x, 6);
+    expect(onPage(next, withoutLibrary, part).y).toBeCloseTo(onPage(camera, withLibrary, part).y, 6);
+    const back = holdDesignCanvasOnPage(next, withoutLibrary, withLibrary);
+    expect(back.x).toBeCloseTo(camera.x, 6);
+    expect(back.y).toBeCloseTo(camera.y, 6);
+  });
+
+  it('returns the very same camera when the sheet did not move (the inspector opens on the right)', () => {
+    const inspectorOpen = { ...withLibrary, width: 572 };
+    expect(holdDesignCanvasOnPage(camera, withLibrary, inspectorOpen)).toBe(camera);
+  });
+
+  it('leaves an unusable camera alone', () => {
+    const broken = { x: Number.NaN, y: 0, zoom: 1 };
+    expect(holdDesignCanvasOnPage(broken, withLibrary, withoutLibrary)).toBe(broken);
   });
 });
 
