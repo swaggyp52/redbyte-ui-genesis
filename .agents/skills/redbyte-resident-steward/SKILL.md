@@ -7,7 +7,7 @@ description: Use when acting as a RedByte repo steward, coordinating product dir
 
 ## Start Here
 
-1. Read `AGENTS.md`, `AI_STATE.md`, `CLAUDE.md`, `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md`.
+1. Follow `AGENTS.md`: read newest complete status sections, then task-specific references. Do not load full chronological history or repeat the CLAUDE import.
 2. Verify the canonical local worktree is `C:\Users\conno\redbyte-ui-genesis-main` unless the user explicitly chooses another folder.
 3. Treat `C:\Users\conno\OneDrive\Documents\RedByte FPGA` as historical/local source context only. Do not continue work there unless the user explicitly reselects it.
 4. Verify branch, remote, short commit, `git status --short`, Node version, `pnpm -v`, and `corepack pnpm -v` before trusting prompt carryover.
@@ -38,7 +38,7 @@ Report branch, commit, validation commands, dirty/clean status, push status, and
 Before any push, verify:
 
 - current folder is `C:\Users\conno\redbyte-ui-genesis-main`
-- branch is `main`
+- branch and PR base match the currently authorized delivery target (do not switch to main by default)
 - remote `origin` is `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 - `git status --short` is clean
 - validation gates passed in this worktree

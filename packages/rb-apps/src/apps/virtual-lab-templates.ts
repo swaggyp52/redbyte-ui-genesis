@@ -31,6 +31,7 @@ export const VIRTUAL_LAB_TEMPLATES: VirtualLabTemplate[] = [
   },
   {
     ...basys3MvpLab,
+    name: 'Basys3 MVP Lab',
     hardware_target: 'basys3',
   },
 ];

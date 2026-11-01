@@ -15,6 +15,8 @@ import {
   type ParsedIdeSubmission,
 } from '../../../export/parseIdeSubmission';
 import type { IdeExampleIoRow } from '../examplesCatalog';
+import { ImportReviewPanel } from '../components/ImportReviewPanel';
+import { buildImportReviewPlan, type ImportSourceInput } from '../importReview';
 import { unifyImportDiagnostics } from '../diagnostics';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -914,6 +916,23 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const hasImportBlocker = importBlockerReasons.length > 0;
 
+  // Review-before-apply plan: what applying this import would do (sources →
+  // fileset/tier/action, blockers, confirmation), computed from the parsed
+  // import. Import always reviews before replacing, so hasCurrentProject is true.
+  const importReviewPlan = useMemo(() => {
+    if (!parsedHdl) return null;
+    const sources: ImportSourceInput[] = [];
+    const topPath = zipInspection?.detectedTopPath ?? `top.${parsedHdl.lang === 'vhdl' ? 'vhd' : 'v'}`;
+    sources.push({
+      path: topPath,
+      language: parsedHdl.lang === 'vhdl' ? 'vhdl' : 'verilog',
+      reconstruction: effectiveReconstructionLevel,
+    });
+    const xdcPath = zipInspection?.detectedXdcPath ?? (xdcText.trim() ? 'top.xdc' : undefined);
+    if (xdcPath) sources.push({ path: xdcPath, language: 'xdc' });
+    return buildImportReviewPlan({ sources, hasCurrentProject: true, blockers: importBlockerReasons });
+  }, [parsedHdl, zipInspection, effectiveReconstructionLevel, xdcText, importBlockerReasons]);
+
   const commitPreview = useMemo(() => {
     if (!pendingApplyProject || !parsedHdl) return null;
     const inPorts = parsedHdl.ports.filter((p) => p.direction === 'in');
@@ -1052,7 +1071,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 : 'blocked',
         detail:
           showVerifyResetNotice
-            ? 'Project replaced; rerun Verify'
+            ? 'Project replaced; rerun Simulate'
             : pendingApplyProject
               ? 'Confirm project replacement'
               : detectedBehavioralConstructs.length > 0
@@ -2665,6 +2684,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   return (
     <IdeSurfaceLayout
+      inspector={null}
       mode="import"
       layoutIntent="workbench"
       leftDockMode="hidden"
@@ -2672,22 +2692,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       consoleMode="hidden"
       consoleHasBlocking={blockingErrors.length > 0 || hasImportBlocker}
       consoleHasEntries={warnings.length > 0 || blockingErrors.length > 0}
-      productSpine={{
-        currentStage: workflowActiveLabel,
-        nextStage: currentWorkflowStepId === 'apply' ? 'Design' : currentWorkflowStepId === 'review' ? 'Apply' : 'Review',
-        status: showVerifyResetNotice
-          ? 'Applied'
-          : hasImportBlocker
-            ? 'Blocked'
-            : detectedBehavioralConstructs.length > 0
-              ? 'Reviewable · apply blocked'
-              : canImport
-                ? 'Ready to review'
-                : 'In progress',
-        owner: 'Import',
-        title: showVerifyResetNotice ? 'Project replacement complete' : activeImportTaskLabel,
-        detail: statusMessage,
-      }}
     >
       <IdePanel testId="ide-import-panel">
         <section className="ide-import-v3" data-testid="ide-import-workbench" aria-label="Import recovery workflow">
@@ -2728,11 +2732,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           {showVerifyResetNotice ? (
             <IdeCallout tone="success" title="Project replaced" testId="ide-import-verify-reset-notice">
               <p className="ide-copy ide-copy--flush">
-                The reviewed import is now the active project. Run Verify again because prior evidence belongs to the replaced design.
+                The reviewed import is now the active project. Run Simulate again because prior evidence belongs to the replaced design.
               </p>
               <div className="ide-inline-actions">
                 {onGoToDesign ? <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-open-design">Open Design</IdeButton> : null}
-                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Verify</IdeButton> : null}
+                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Simulate</IdeButton> : null}
               </div>
             </IdeCallout>
           ) : null}
@@ -2788,7 +2792,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               ) : null}
 
               {tab === 'upload' && !zipInspection ? (
-                <details className="ide-import-v3__samples">
+                <details className="ide-import-v3__samples" data-testid="ide-import-example-disclosure">
                   <summary>No ZIP available? Try an example</summary>
                   <div>
                     <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">
@@ -2971,7 +2975,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     ) : null}
                     {onGoToExport ? (
                       <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-import-go-to-export">
-                        Open Export
+                        Open Build &amp; Export
                       </IdeButton>
                     ) : null}
                   </div>
@@ -3055,6 +3059,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   <strong>{commitPreview.removedPortNames.length > 0 ? commitPreview.removedPortNames.join(', ') : 'None'}</strong>
                 </div>
               </div>
+
+              <ImportReviewPanel plan={importReviewPlan} />
 
               {hasImportBlocker ? (
                 <IdeCallout tone="error" title="Replacement blocked" testId="ide-import-behavioral-blocker">

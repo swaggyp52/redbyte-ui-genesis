@@ -5,3 +5,59 @@
   width: 100%;
   height: auto;
 }
+
+/* A resource says its state with its outline and fill, which the Board stylesheet owns as
+   tokens. There is no glow: a drop shadow in the "mapped" green was indistinguishable from an
+   LED that is on, and the same halo in three colours carried three unrelated meanings. */
+.resource {
+  transition: fill 140ms ease, stroke 140ms ease;
+}
+
+.resourceSelected,
+.resourceMapped,
+.resourceConflict {
+  filter: none;
+}
+
+.board[data-layer-labels='0'] .aliasLabel {
+  display: none;
+}
+
+.resourceMappedUnavailable {
+  opacity: 0.7;
+}
+
+.resourceUnavailable {
+  opacity: 0.55;
+}
+
+/* Labels keep a hairline of the board's own colour behind them so a name stays legible where
+   it crosses an outline. */
+.aliasLabel,
+.secondaryLabel,
+.sectionLabel {
+  paint-order: stroke fill;
+  stroke: var(--rb-board-plane, #f4f6f9);
+  stroke-linejoin: round;
+}
+
+.aliasLabel {
+  font-weight: 600;
+  stroke-width: 2px;
+}
+
+.secondaryLabel {
+  font-weight: 600;
+  stroke-width: 1px;
+}
+
+.sectionLabel {
+  font-weight: 600;
+  stroke-width: 0.9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resource {
+    transition: none;
+  }
+}

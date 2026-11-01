@@ -1,3 +1,5 @@
+> **SUPERSEDED (historical).** This document describes an earlier RedByte era and does not reflect the current five-workspace product (Project / Design / Simulate / Board & Constraints / Build & Export). Current truth: `docs/course/STUDENT_QUICKSTART.md`.
+
 # Classroom Quickstart (Student) — Basys3 Lab 4 ALU
 
 ## 1) Load the Lab 4 ALU starter

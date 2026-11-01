@@ -52,10 +52,12 @@ powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-collect.ps1 -
 6. Run this command:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages -OutDir .redbyte/vivado-e1/<timestamp>
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir .redbyte/vivado-e1-packages
 ```
 
-7. Attach `results.md` and `manifest.json`.
+   Each run writes a new `.redbyte/vivado-e1/<timestamp>/` folder, printed as `runRoot=`. An explicit `-OutDir` must not exist yet (or be empty); a used folder is refused with exit code 2.
+
+7. Attach `results.md` and `manifest.json` from the `runRoot=` folder.
 
 8. Also attach `environment.json`, `package-summary.json`, and the `designs/` and `logs/` folders.
 

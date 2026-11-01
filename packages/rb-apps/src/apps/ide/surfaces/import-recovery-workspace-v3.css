@@ -4,7 +4,7 @@
   gap: 10px;
   padding: 2px;
   color: var(--ide-text-primary, #e8edf6);
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3 h2,
@@ -103,13 +103,13 @@
 }
 
 .ide-import-v3__steps strong {
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__steps small {
   overflow: hidden;
   color: var(--ide-text-muted, #9da9bb);
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -139,20 +139,27 @@
   gap: 8px;
 }
 
+/* The source switch offers equal choices, so each keeps a target that reads and hits the same at
+   any text size. At the 13px button text "Paste HDL" alone came to about 92px, and 91px with the
+   CI runner's font rendering. */
+.ide-import-v3__source-switch > .ide-button {
+  min-width: 6rem;
+}
+
 .ide-import-v3__keyboard-help {
   margin: 0;
   padding: 8px 10px;
   border-left: 2px solid rgba(96, 165, 250, 0.72);
   background: rgba(30, 64, 175, 0.11);
   color: #c6d3e1;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1.45;
 }
 
 .ide-import-v3 button,
 .ide-import-v3 select {
   min-height: 36px;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__dropzone {
@@ -174,7 +181,7 @@
 }
 
 .ide-import-v3__dropzone strong {
-  font-size: 16px;
+  font-size: var(--rb-text-title);
 }
 
 .ide-import-v3__dropzone p {
@@ -192,7 +199,7 @@
 .ide-import-v3__samples {
   padding: 0 12px 12px;
   color: var(--ide-text-muted, #9da9bb);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-import-v3__samples > summary {
@@ -202,8 +209,8 @@
   border: 1px solid var(--ide-border-subtle, rgba(148, 163, 184, 0.22));
   border-radius: 6px;
   color: var(--ide-text-secondary, #c5cfdd);
-  font-size: 14px;
-  font-weight: 650;
+  font-size: var(--rb-text-head);
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -217,7 +224,7 @@
 .ide-import-v3__safe-state {
   margin-top: 7px;
   color: var(--ide-text-secondary, #c5cfdd);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ide-import-v3__zip-summary {
@@ -246,13 +253,13 @@
 .ide-import-v3__apply-facts span,
 .ide-import-v3__replacement span {
   color: var(--ide-text-muted, #9da9bb);
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-import-v3 dd {
   overflow-wrap: anywhere;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-import-v3__editor {
@@ -272,7 +279,7 @@
   gap: 5px;
   min-width: 180px;
   color: var(--ide-text-muted, #9da9bb);
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__editor select {
@@ -282,7 +289,7 @@
   border-radius: 6px;
   background: var(--ide-surface-raised, #111a29);
   color: inherit;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__editor textarea {
@@ -295,7 +302,7 @@
   background: var(--ide-surface-code, #090f19);
   color: var(--ide-text-primary, #e8edf6);
   font-family: var(--ide-font-mono, ui-monospace, monospace);
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   line-height: 1.55;
 }
 
@@ -322,12 +329,12 @@
 .ide-import-v3__apply-facts strong,
 .ide-import-v3__replacement strong {
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__review-facts small {
   color: var(--ide-text-muted, #9da9bb);
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-import-v3__reconstruction {
@@ -339,7 +346,7 @@
   padding: 10px 12px;
   border-left: 3px solid var(--ide-success, #56b98a);
   background: rgba(62, 173, 119, 0.08);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-import-v3__review-workspace {
@@ -368,13 +375,13 @@
 
 .ide-import-v3__review-workspace h4 {
   margin-top: 3px;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__review-workspace input {
   min-width: 120px;
   min-height: 36px;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-import-v3__schematic {
@@ -394,7 +401,7 @@
 
 .ide-import-v3__review-actions > p {
   color: var(--ide-text-secondary, #c5cfdd);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-import-v3__replacement {
@@ -416,7 +423,7 @@
 }
 
 .ide-import-v3 .ide-callout-title {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 @media (max-width: 1120px) {
@@ -497,7 +504,7 @@
   background:
     linear-gradient(rgba(104, 179, 240, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(104, 179, 240, 0.025) 1px, transparent 1px),
-    #0a0f16;
+    var(--ide-surface-inset, #0a0f16);
   background-size: 22px 22px;
 }
 
@@ -523,4 +530,68 @@
   .ide-root .ide-import-v3 {
     padding: 8px;
   }
+}
+
+/* Import review panel — review-before-apply plan projection */
+.ide-import-review {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-1, var(--rb-surface));
+}
+.ide-import-review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ide-import-review-head > span {
+  color: var(--rb-text-muted);
+  font-size: var(--rb-text-meta);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-import-review-head > strong { font-size: var(--rb-text-meta); color: var(--rb-text); }
+.ide-import-review-apply { margin: 6px 0; font-size: var(--rb-text-meta); color: var(--rb-text-muted); }
+.ide-import-review-apply.is-replace-current { color: var(--rb-warning, #9a6700); }
+.ide-import-review-blockers {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: var(--rb-danger, #b3261e);
+  font-size: var(--rb-text-meta);
+}
+.ide-import-review-sources { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.ide-import-review-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--rb-text-meta);
+  flex-wrap: wrap;
+}
+.ide-import-review-source-path { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-import-review-source-fileset,
+.ide-import-review-source-tier,
+.ide-import-review-source-action {
+  flex: 0 0 auto;
+  font-size: var(--rb-text-micro);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--rb-border);
+  color: var(--rb-text-muted);
+}
+.ide-import-review-source-note {
+  flex: 0 0 auto;
+  font-size: var(--rb-text-micro);
+  font-weight: 700;
+  color: var(--rb-warning, #9a6700);
+}
+.ide-import-review-invariants {
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--rb-border);
+  font-size: var(--rb-text-meta);
+  color: var(--rb-text-muted);
 }

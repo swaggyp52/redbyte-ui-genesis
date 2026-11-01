@@ -74,6 +74,7 @@ function makePassiveSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: undefined,
     speedHz: 10,
     irHash: 'ir-hash',
@@ -91,6 +92,7 @@ function makeRunningSim(): RuntimeSimState {
   return {
     tick: 3,
     running: true,
+    stepMode: false,
     lastAction: 'run',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -155,11 +157,8 @@ function renderSurface(
     <DesignSurface
       runtimeSim={options.sim ?? makePassiveSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onRuntimeSimSetInput={options.onRuntimeSimSetInput}
       onGoToProject={vi.fn()}
@@ -364,6 +363,8 @@ describe('Inspector Signal Intelligence — active signal context and controls',
 
     const row = view.getByTestId('ide-design-wire-connection');
     expect(row.textContent).toContain('SW0');
-    expect(row.textContent).toContain('and0');
+    // An unlabelled gate is named by its kind and place, never by its node id (acceptance V4).
+    expect(row.textContent).toContain('AND 1');
+    expect(row.textContent).not.toContain('and0');
   });
 });

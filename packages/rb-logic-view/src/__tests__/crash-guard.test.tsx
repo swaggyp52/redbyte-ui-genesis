@@ -43,7 +43,10 @@ vi.mock('@redbyte/rb-utils', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@redbyte/rb-utils')>();
     return {
         ...actual,
-        useUiTickStore: () => ({ uiTick: 0 }),
+        // A selector hook, as the real store is: LogicCanvas reads `state => state.uiTick`. Returning a
+        // fresh object instead made uiTick a new value every render, an endless effect loop that ran
+        // the test worker out of memory ("Worker exited unexpectedly") at every commit to 2fc2a015e.
+        useUiTickStore: (selector?: (state: { uiTick: number }) => unknown) => (selector ? selector({ uiTick: 0 }) : { uiTick: 0 }),
         trackRender: vi.fn()
     }
 });

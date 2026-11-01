@@ -76,7 +76,7 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).getByText('Vectors')).toBeTruthy();
   });
@@ -85,7 +85,7 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).queryByText('Truth Table')).toBeNull();
   });
@@ -94,7 +94,7 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).queryByText('K-Map')).toBeNull();
   });
@@ -103,7 +103,7 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-cmp" lastRun={makeCompareRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).getByText('Vectors')).toBeTruthy();
   });
@@ -112,7 +112,7 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-cmp" lastRun={makeCompareRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).queryByText('Truth Table')).toBeNull();
   });
@@ -121,28 +121,29 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-cmp" lastRun={makeCompareRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).queryByText('K-Map')).toBeNull();
   });
 
-  it('Observe mode shows exactly: Inspect + Vectors tabs', () => {
+  it('offers authored checks in Details even when an older recording has no checks', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).getByText('Inspect')).toBeTruthy();
     expect(within(nav).getByText('Vectors')).toBeTruthy();
-    // Checks only appears in Compare mode
-    expect(within(nav).queryByText('Checks')).toBeNull();
+    // Current authored checks remain editable; this does not grade the old recording.
+    expect(within(nav).getByText('Checks')).toBeTruthy();
+    expect(getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-configured');
   });
 
   it('Compare mode shows exactly: Inspect + Checks + Vectors tabs', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-cmp" lastRun={makeCompareRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).getByText('Inspect')).toBeTruthy();
     expect(within(nav).getByText('Checks')).toBeTruthy();
@@ -153,7 +154,7 @@ describe('VerifySurface drawer consolidation', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     fireEvent.click(within(nav).getByText('Vectors'));
     expect(getByTestId('ide-verify-vectors-table')).toBeTruthy();

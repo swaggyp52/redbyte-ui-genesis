@@ -1,4 +1,4 @@
-import type { CircuitNode } from '@redbyte/rb-logic-core';
+import type { Node } from '@redbyte/rb-logic-core';
 
 /**
  * Distance in world units within which the dragged node's position is considered
@@ -24,7 +24,7 @@ export interface AlignmentGuides {
 export function computeAlignmentGuides(
   draggedNodeId: string,
   dragPos: { x: number; y: number },
-  nodes: readonly CircuitNode[],
+  nodes: readonly Node[],
   threshold = ALIGNMENT_THRESHOLD_WORLD,
 ): AlignmentGuides {
   const verticals: number[] = [];
@@ -42,5 +42,5 @@ export function computeAlignmentGuides(
     }
   }
 
-  return { verticals, horizontals };
+  return { verticals: [...new Set(verticals)], horizontals: [...new Set(horizontals)] };
 }

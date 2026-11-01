@@ -21,13 +21,13 @@
 
 ## What Is Outdated
 
-- ISE primitives m8_1e (MUX), d3_8e (decoder), bufe (tri-state buffer) — replaced by RedByte MUX4
+- ISE primitives m8_1e (MUX), d3_8e (decoder), bufe (tri-state buffer) — replaced by 4:1 selects built from AND/OR/NOT gates (the `MUX4` part is not supported: RedByte does not simulate, verify or export it)
 - Decoder+tristate implementation variant — removed (tri-state not modeled in RedByte)
 - NAND, NOR, XNOR operations — removed from scope (reduces to 4 clean operations)
 
 ## Modern Workflow
 
-- Starter: `19_lab4-alu-starter-basys3` (pre-places AND3, OR3, XOR3, FA blocks + 4x MUX4)
-- Student wires: A/B paths, FA carry chain, opcode select (SW[10:8]) to MUX selects
+- Starter: `19_lab4-alu-starter-basys3` (pre-places AND, OR, XOR and FA blocks plus four unsupported MUX4 blocks that the student replaces with gate-built selects; Simulate and Package refuse the design while a MUX4 remains)
+- Student wires: A/B paths, FA carry chain, opcode select (SW[10:8]) into the gate-built selects
 - Hardware: SW[3:0]=A, SW[7:4]=B, SW[10:8]=S2/S1/S0, LED[3:0]=result, LED[4]=Cout
 - Gate: `opcode-coverage` — must test all 4 opcodes in vectors

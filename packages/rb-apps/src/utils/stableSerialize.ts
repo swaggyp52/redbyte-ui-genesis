@@ -62,7 +62,7 @@ export async function stableHash(value: unknown): Promise<string> {
   const data = new TextEncoder().encode(json);
 
   if (typeof globalThis.crypto?.subtle?.digest === 'function') {
-    const buffer = await crypto.subtle.digest('SHA-256', data);
+    const buffer = await crypto.subtle.digest('SHA-256', new Uint8Array(data));
     const bytes = new Uint8Array(buffer);
     return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   }
@@ -80,7 +80,7 @@ export async function stableHash(value: unknown): Promise<string> {
  */
 export async function hashBytes(data: ArrayBuffer): Promise<string> {
   if (typeof globalThis.crypto?.subtle?.digest === 'function') {
-    const buffer = await crypto.subtle.digest('SHA-256', data);
+    const buffer = await crypto.subtle.digest('SHA-256', new Uint8Array(data));
     const bytes = new Uint8Array(buffer);
     return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   }

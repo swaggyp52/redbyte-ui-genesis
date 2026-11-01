@@ -3,6 +3,7 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 if (!HTMLElement.prototype.scrollIntoView) {
@@ -12,9 +13,14 @@ if (!HTMLElement.prototype.scrollIntoView) {
   });
 }
 
-const vectors = [
+const vectors: VerifyAuthorVector[] = [
   { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: {} },
   { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: {} },
+];
+
+const vectorsWithChecks: VerifyAuthorVector[] = [
+  { id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+  { id: 'v1', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
 ];
 
 function makeTraceRun(): RuntimeVerifyRun {
@@ -37,12 +43,19 @@ function makeTraceRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'scenario',
+      scenarioName: 'No-check scenario',
+      status: 'pass',
+      deterministicHash: 'hash',
+      generatedAtIso: '2026-07-26T00:00:00.000Z',
+      reportHash: 'report',
       vectors,
       inputsAtTick: { 0: { sw0: 0 }, 1: { sw0: 1 } },
       inputsByVectorId: { v0: { sw0: 0 }, v1: { sw0: 1 } },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [
       { tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] },
       { tick: 1, signals: { sw0: '1', ld0: '1' }, mismatches: [] },
@@ -71,8 +84,8 @@ describe('Verify Simulation Studio', () => {
       <VerifySurface {...baseProps} onRunVerification={onRunVerification} />
     );
 
-    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Run simulation');
-    expect(view.getByTestId('ide-vcb-workspace-checks').textContent).toBe('Checks');
+    expect(view.getByTestId('ide-vcb-run').textContent).toBe('Run');
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toContain('0 optional checks');
     fireEvent.click(view.getByTestId('ide-vcb-run'));
 
     expect(onRunVerification).toHaveBeenCalledWith(expect.objectContaining({
@@ -86,18 +99,33 @@ describe('Verify Simulation Studio', () => {
       <VerifySurface {...baseProps} lastRun={makeTraceRun()} onGoToDesign={vi.fn()} />
     );
 
-    expect(view.getByTestId('ide-verify-results-summary-headline').textContent).toBe('Simulation complete');
-    expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('No checks configured');
-    expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
-    expect(view.getByTestId('ide-vcb-workspace-replay').getAttribute('aria-selected')).toBe('true');
-    expect(view.getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();
+    expect(view.getByTestId('ide-run-check-result').textContent).toBe('No checks · outputs recorded');
+    expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-configured');
+    expect(view.getByTestId('ide-verify-inspect-circuit')).toBeTruthy();
   });
 
-  it('moves expected-output authoring into the optional Checks workspace', () => {
+  it('distinguishes authored checks from checks that an observation run did not evaluate', () => {
+    const view = render(
+      <VerifySurface
+        {...baseProps}
+        vectors={vectorsWithChecks}
+        lastRun={{ ...makeTraceRun(), assertionStatus: 'not-evaluated' }}
+        onGoToDesign={vi.fn()}
+      />
+    );
+
+    expect(view.queryByTestId('ide-vcb-check-count')).toBeNull();
+    expect(view.getByTestId('ide-case-lab-exp-0-ld0').textContent).toBe('0');
+    expect(view.getByTestId('ide-case-lab-exp-1-ld0').textContent).toBe('1');
+    expect(view.getByTestId('ide-run-check-result').textContent).toBe('Checks not evaluated');
+    expect(view.getByTestId('ide-run-check-result').getAttribute('data-check-status')).toBe('not-evaluated');
+  });
+
+  it('keeps expected-output authoring optional and cell-level in the Case Lab', () => {
     const view = render(<VerifySurface {...baseProps} />);
 
-    expect(view.getByTestId('ide-verify-stimulus-summary').textContent).toContain('Run the scenario');
-    fireEvent.click(view.getByTestId('ide-vcb-workspace-checks'));
-    expect(view.getByTestId('ide-verify-stimulus-summary').textContent).toContain('Add optional expected outputs');
+    expect(view.getByTestId('ide-case-lab')).toBeTruthy();
+    // No check authored yet: the expected cell is an empty slot, not a requirement.
+    expect(view.getByTestId('ide-case-lab-exp-0-ld0').textContent?.trim()).toBe('\u00b7');
   });
 });

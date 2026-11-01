@@ -256,8 +256,8 @@ async function main() {
 
   const zipRun1 = await buildDeterministicZip(zipEntries);
   const zipRun2 = await buildDeterministicZip(zipEntries);
-  const sha1 = sha256Hex(zipRun1);
-  const sha2 = sha256Hex(zipRun2);
+  const sha1 = await sha256Hex(zipRun1);
+  const sha2 = await sha256Hex(zipRun2);
   if (sha1 !== sha2) {
     fail(`Deterministic smoke bundle mismatch: run1=${sha1} run2=${sha2}`);
   }

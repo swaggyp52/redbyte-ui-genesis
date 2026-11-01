@@ -39,7 +39,7 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
   await page.locator('[data-testid="ide-export-open-technical-evidence"]').first().click();
   await page.waitForSelector('[data-testid="ide-export-technical-dialog"]', { state: 'visible', timeout: 10000 });
   const verifyProvenance = await text(page.locator('[data-testid="ide-export-gate-verify"]'));
-  assert(/Verify evidence/i.test(verifyProvenance) && /Ready|Current/i.test(verifyProvenance), `technical evidence must show current Compare provenance, got "${verifyProvenance}"`);
+  assert(/Simulate/i.test(verifyProvenance) && /Ready|Current/i.test(verifyProvenance), `technical evidence must show current Compare provenance, got "${verifyProvenance}"`);
   assert(await page.locator('[data-testid="ide-export-deterministic-checks"]').first().isVisible(), 'deterministic package checks must be visible');
   assert(await page.locator('[data-testid="ide-export-copy-report"]').first().isVisible(), 'copy debug report action must be visible');
   assert(await page.locator('[data-testid="ide-export-blockers-list"]').first().isVisible(), 'technical diagnostics must be visible');

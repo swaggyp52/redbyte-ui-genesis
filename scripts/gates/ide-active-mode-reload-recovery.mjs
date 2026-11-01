@@ -27,9 +27,17 @@ async function assertModeRoute(page, mode, label) {
     `${label} should sync route mode=${mode}; got ${routeMode ?? '(missing)'} at ${page.url()}`
   );
 
-  const topbarMode = await text(page.locator('[data-testid="ide-topbar-mode-label"]'));
+  const topbarMode = await text(page.locator('[data-testid="mode-button-' + mode + '"][aria-selected="true"]'));
   assert(
-    topbarMode.toLowerCase() === (mode === 'hardware' ? 'map pins' : mode),
+    topbarMode.toLowerCase() === (
+      mode === 'verify'
+        ? 'simulate'
+        : mode === 'hardware'
+          ? 'board'
+          : mode === 'export'
+            ? 'package'
+            : mode
+    ),
     `${label} should show ${mode}; topbar showed "${topbarMode}"`
   );
 }

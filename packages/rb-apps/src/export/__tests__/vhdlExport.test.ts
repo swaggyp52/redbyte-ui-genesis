@@ -207,9 +207,11 @@ describe('vhdlFromNetlist', () => {
     expect(result.vhd).toContain('Lab 4 ALU');
   });
 
-  it('reports warnings for unconnected outputs', () => {
+  it('blocks an unconnected output by name', () => {
+    // An output nothing drives is X in Verify: it blocks by name, never a tied-low warning.
     const result = vhdlFromNetlist(unconnectedOutputNetlist, { entityName: 'top' });
-    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.errors).toEqual([expect.stringMatching(/^Output port ".+" on node "led_floating" has no driver: /)]);
+    expect(result.vhd).toMatch(/<= RBEX_UNDRIVEN_\w+; -- undriven output: blocked/);
   });
 
   it('normalizes uppercase DFlipFlop ports and emits Q_inv support', () => {
@@ -488,3 +490,20 @@ describe('vhdlFromNetlist', () => {
       expect(result.warnings).toEqual([]);
     });
   });
+
+
+// Contract changed 2026-10-26 (Defect C): an unknown primitive is a blocking
+// RBEX4100 error with a marker comment, no longer a warning about a skipped node.
+it('reports an unknown primitive as an unsupported-part error, never a silent skip', () => {
+  const result = vhdlFromNetlist({
+    ...minimalAndNetlist,
+    nodes: [
+      ...minimalAndNetlist.nodes,
+      { id: 'unsupported', type: 'CustomUnsupportedPrimitive', ports: [] },
+    ],
+  });
+  expect(result.errors).toHaveLength(1);
+  expect(result.errors[0]).toMatch(/^Unsupported synth subset node type "CustomUnsupportedPrimitive" on node "unsupported"\. Fix: /);
+  expect(result.vhd).toContain('-- RBEX4100 unsupported primitive CustomUnsupportedPrimitive (unsupported): not exported');
+  expect(result.vhd).toContain('entity top is');
+});

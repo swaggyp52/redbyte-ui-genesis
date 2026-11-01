@@ -3,9 +3,9 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { Circuit, Node } from '@redbyte/rb-logic-core';
-import type { RunStimulusEvent } from './runRecord';
+import type { InputToggleStimulusEvent, RunStimulusEvent } from './runRecord';
 
-const applyInputToggle = (node: Node, event: RunStimulusEvent) => {
+const applyInputToggle = (node: Node, event: InputToggleStimulusEvent) => {
   if (node.type !== 'Switch' && node.type !== 'INPUT') return node;
   return {
     ...node,
@@ -19,8 +19,9 @@ const applyInputToggle = (node: Node, event: RunStimulusEvent) => {
 export const applyStimulusEvents = (circuit: Circuit, events: RunStimulusEvent[]) => {
   if (!events.length) return circuit;
 
-  const eventsByNode = new Map<string, RunStimulusEvent[]>();
+  const eventsByNode = new Map<string, InputToggleStimulusEvent[]>();
   events.forEach((event) => {
+    if (event.type !== 'input_toggled') return;
     const list = eventsByNode.get(event.nodeId) ?? [];
     list.push(event);
     eventsByNode.set(event.nodeId, list);

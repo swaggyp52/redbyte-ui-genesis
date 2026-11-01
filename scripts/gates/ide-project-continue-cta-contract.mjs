@@ -23,11 +23,12 @@ await runIdeGate('IDE project continue CTA contract satisfied', async ({ page, b
     const buildFresh = page.locator('[data-testid="ide-project-build-fresh-primary"]').first();
     const buildFreshText = await text(buildFresh);
     assert(
-      buildFreshText.toLowerCase().includes('build fresh'),
-      `project landing must expose Build Fresh primary action, got "${buildFreshText}"`
+      /blank project/i.test(buildFreshText),
+      `project landing must expose its direct Blank project action, got "${buildFreshText}"`
     );
     await buildFresh.click();
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+    assert(await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes.length === 0), 'Blank project must open an empty authoring canvas');
     return;
   }
 
@@ -42,8 +43,8 @@ await runIdeGate('IDE project continue CTA contract satisfied', async ({ page, b
   // The command strip's primary CTA text is the canonical "Continue to <surface>" label.
   const nextTargetText = ctaText;
   assert(
-    nextTargetText.toLowerCase().includes('verify'),
-    `expected initial next target to route to Verify, got "${nextTargetText}"`
+    /simulate/i.test(nextTargetText),
+    `expected initial next target to route to Simulate, got "${nextTargetText}"`
   );
 
   await continueCta.click();

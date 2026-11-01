@@ -12,7 +12,7 @@
 
 import React, { useCallback, useMemo } from 'react';
 import type { HardwareState } from '../../stores/hardwareStore';
-import type { BoardInteractionHandler } from '../BoardPanel';
+import type { BoardInteractionHandler } from './boardInteraction';
 import { SevenSegmentDisplay } from './SevenSegmentDisplay';
 
 interface Basys3BoardProps {

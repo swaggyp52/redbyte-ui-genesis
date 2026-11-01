@@ -158,10 +158,9 @@ export const synthesizableVerilogFromNetlist = (
 
   // Generate top module
   const lines: string[] = [];
-  lines.push('// RedByte Synthesizable Verilog Export');
+  lines.push('// RedByte Verilog preview: read-only, not part of the Vivado package; RedByte does not compile or synthesize it');
   lines.push(`// Generated: ${new Date().toISOString()}`);
   lines.push(`// Target Board: ${board}`);
-  lines.push('// Requires: rb_primitives.v');
   lines.push('');
   lines.push('`timescale 1ns / 1ps');
   lines.push('');

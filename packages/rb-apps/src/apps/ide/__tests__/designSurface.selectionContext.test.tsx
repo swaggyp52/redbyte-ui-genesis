@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -74,19 +76,17 @@ function installResizeObserver(width = 1320, height = 720) {
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }
 
-function renderSurface() {
+function renderSurface(extra: Partial<React.ComponentProps<typeof DesignSurface>> = {}) {
   return render(
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
+      {...extra}
     />
   );
 }
@@ -97,6 +97,7 @@ beforeEach(() => {
   useCircuitStore.getState().reset();
   useCircuitStore.setState({ circuit: structuredClone(BASE_CIRCUIT), isDirty: false, past: [], future: [] });
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -209,7 +210,7 @@ describe('DesignSurface — single-node inspector action groups', () => {
     expect(traceGroup).toBeTruthy();
 
     // Trace actions must live inside the trace group, not at the top level
-    const traceBtn = view.getByTestId('ide-design-context-trace');
+    const traceBtn = view.getByTestId('ide-design-context-focus-path');
     expect(traceGroup.contains(traceBtn)).toBe(true);
   });
 
@@ -225,8 +226,13 @@ describe('DesignSurface — single-node inspector action groups', () => {
     expect(view.getByTestId('ide-design-trace-group').textContent).toContain('Net tracing');
   });
 
-  it('edit actions (Copy, Duplicate, Rename) appear before trace group in DOM', async () => {
-    const view = renderSurface();
+  // The approved reading order for one selected part is the order of use: the value a student
+  // sets, the tracing that explains it, then the editing commands. This used to assert Copy
+  // ahead of tracing. The order is asserted on the markup itself, because that is what a
+  // keyboard and a screen reader follow; a CSS reordering would not satisfy it.
+  it('orders the groups value, then net tracing, then edit, in the markup', async () => {
+    const onRuntimeSimSetInput = vi.fn();
+    const view = renderSurface({ onRuntimeSimSetInput });
 
     act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
 
@@ -234,19 +240,73 @@ describe('DesignSurface — single-node inspector action groups', () => {
       expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     });
 
-    const copyBtn = view.getByTestId('ide-design-copy-btn');
+    const valueGroup = view.getByTestId('ide-design-inspector-input-control');
     const traceGroup = view.getByTestId('ide-design-trace-group');
+    const editGroup = view.getByTestId('ide-design-inspector-edit-group');
+    const follows = (earlier: Element, later: Element) =>
+      Boolean(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING);
 
-    // Copy button must come before trace group in document order
-    const position = copyBtn.compareDocumentPosition(traceGroup);
-    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(follows(valueGroup, traceGroup)).toBe(true);
+    expect(follows(traceGroup, editGroup)).toBe(true);
+    // The three are siblings of one stack, so no ancestor can present them in another order.
+    expect(valueGroup.parentElement).toBe(traceGroup.parentElement);
+    expect(traceGroup.parentElement).toBe(editGroup.parentElement);
+
+    // Each command is still in the group that names it.
+    expect(valueGroup.contains(view.getByTestId('ide-design-inspector-input-toggle'))).toBe(true);
+    expect(editGroup.contains(view.getByTestId('ide-design-copy-btn'))).toBe(true);
+    expect(editGroup.contains(view.getByTestId('ide-design-duplicate-btn'))).toBe(true);
+    expect(editGroup.contains(view.getByTestId('ide-design-inspector-delete'))).toBe(true);
+
+    // Tab order follows the same sequence: the value switch is reached before any trace
+    // command, and every trace command before Copy.
+    const actionStack = valueGroup.parentElement as HTMLElement;
+    const tabStops = Array.from(actionStack.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
+    const toggleStop = tabStops.indexOf(view.getByTestId('ide-design-inspector-input-toggle'));
+    const copyStop = tabStops.indexOf(view.getByTestId('ide-design-copy-btn'));
+    const traceStops = tabStops.map((el, index) => (traceGroup.contains(el) ? index : -1)).filter((index) => index >= 0);
+    expect(toggleStop).toBeGreaterThanOrEqual(0);
+    expect(traceStops.length).toBeGreaterThan(0);
+    expect(toggleStop).toBeLessThan(Math.min(...traceStops));
+    expect(Math.max(...traceStops)).toBeLessThan(copyStop);
+  });
+
+  it('the leading value switch drives the live input it names', async () => {
+    const onRuntimeSimSetInput = vi.fn();
+    const view = renderSurface({ onRuntimeSimSetInput });
+
+    act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-input-toggle')).toBeTruthy();
+    });
+
+    const toggle = view.getByTestId('ide-design-inspector-input-toggle');
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    act(() => { toggle.click(); });
+    expect(onRuntimeSimSetInput).toHaveBeenCalledTimes(1);
+    expect(onRuntimeSimSetInput.mock.calls[0]).toEqual(['sw0_node', 1]);
+  });
+
+  it('a part with no settable value starts at net tracing, with editing after it', async () => {
+    // No live-input handler: the value group is absent rather than shown empty.
+    const view = renderSurface();
+
+    act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
+    });
+
+    expect(view.queryByTestId('ide-design-inspector-input-control')).toBeNull();
+    const traceGroup = view.getByTestId('ide-design-trace-group');
+    const editGroup = view.getByTestId('ide-design-inspector-edit-group');
+    expect(Boolean(traceGroup.compareDocumentPosition(editGroup) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   });
 });
 
 // ─── Multi-select inspector action hierarchy ──────────────────────────────────
 
 describe('DesignSurface — multi-select inspector action groups', () => {
-  it('shows an Arrange group with align-left and align-top actions before Danger', async () => {
+  it('shows the full Align/Distribute arrangement group before Danger', async () => {
     const view = renderSurface();
 
     act(() => {
@@ -261,11 +321,22 @@ describe('DesignSurface — multi-select inspector action groups', () => {
     const dangerGroup = view.getByTestId('ide-design-inspector-danger-group');
     const position = arrangeGroup.compareDocumentPosition(dangerGroup);
 
-    expect(arrangeGroup.textContent).toContain('Arrange');
-    expect(view.getByTestId('ide-design-align-left-btn').textContent).toContain('Align left');
-    expect(view.getByTestId('ide-design-align-top-btn').textContent).toContain('Align top');
-    expect(view.getByTestId('ide-design-distribute-horizontal-btn').textContent).toContain('Distribute horizontally');
+    expect(arrangeGroup.textContent).toContain('Align');
+    expect(arrangeGroup.textContent).toContain('Distribute');
+    // The complete professional set: both axes, both edges, both centers.
+    for (const testId of [
+      'ide-design-align-left-btn',
+      'ide-design-align-hcenter-btn',
+      'ide-design-align-right-btn',
+      'ide-design-align-top-btn',
+      'ide-design-align-vcenter-btn',
+      'ide-design-align-bottom-btn',
+    ]) {
+      expect(view.getByTestId(testId)).toBeTruthy();
+    }
+    // Distribution needs three nodes; with two selected both stay disabled.
     expect((view.getByTestId('ide-design-distribute-horizontal-btn') as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByTestId('ide-design-distribute-vertical-btn') as HTMLButtonElement).disabled).toBe(true);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, runIdeGate, openDesignBoardPalette, designInputIds, selectDesignInput, visible } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
@@ -52,12 +52,7 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
-  const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
-  const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
-  if (!boardPaletteVisible) {
-    await page.locator('[data-testid="ide-design-palette-toggle-board"]').first().click();
-    await boardPalette.waitFor({ state: 'visible', timeout: 10000 });
-  }
+  await openDesignBoardPalette(page);
 
   // Board-first palette: selecting board chips enters placement mode, then clicking
   // blank canvas commits the Switch/Lamp nodes into the circuit.
@@ -86,14 +81,11 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   await toggles.nth(0).click();
   await toggles.nth(1).click();
 
-  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
-  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
-    await liveInputsToggle.click();
+  const inputIds = await designInputIds(page);
+  assert(inputIds.length >= 2, `expected at least two placed circuit inputs, got ${inputIds.length}`);
+  for (const id of inputIds) {
+    const input = await selectDesignInput(page, id);
+    const pressed = await input.getAttribute('aria-pressed');
+    assert(pressed === 'true' || pressed === 'false', 'input inspector must expose binary state');
   }
-  const quickInputCount = await page.locator('[data-testid^="ide-design-input-toggle-"]').count();
-  assert(quickInputCount >= 2, `expected at least two quick input toggles, got ${quickInputCount}`);
-
-  const firstQuickInput = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
-  const pressed = await firstQuickInput.getAttribute('aria-pressed');
-  assert(pressed === 'true' || pressed === 'false', 'quick input toggle must expose binary state');
 });

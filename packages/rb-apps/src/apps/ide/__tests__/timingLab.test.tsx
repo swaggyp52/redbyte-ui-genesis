@@ -1,0 +1,180 @@
+import React from 'react';
+import { fireEvent, render } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { TimingLab } from '../surfaces/verify/TimingLab';
+import type { VerifyAuthorVector } from '../surfaces/ScenarioBuilderPanel';
+import { ScenarioTestbenchPreview } from '../surfaces/verify/ScenarioTestbenchPreview';
+
+const inputFields = [
+  { id: 'a', label: 'A' },
+  { id: 'b', label: 'B' },
+];
+const outputFields = [{ id: 'sum', label: 'SUM' }];
+const vectors: VerifyAuthorVector[] = [
+  { id: 'event-a', tick: 0, inputs: { a: 0 as const, b: 0 as const }, expected: {} },
+  { id: 'event-b', tick: 1, inputs: { a: 1 as const, b: 0 as const }, expected: { sum: 1 as const } },
+];
+
+function renderComposer(
+  onVectorsChange = vi.fn(),
+  lens: 'scenario' | 'checks' = 'scenario'
+) {
+  return {
+    onVectorsChange,
+    view: render(
+      <TimingLab
+        scenarioName="Full Adder truth table"
+        vectors={vectors}
+        inputFields={inputFields}
+        outputFields={outputFields}
+        selectedTick={0}
+        lens={lens}
+        onSelectTick={vi.fn()}
+        onVectorsChange={onVectorsChange}
+        caseEvidenceByTick={{ 0: 'observed', 1: 'pass' }}
+        observedValuesByTick={{ 0: { sum: '0' } }}
+      />
+    ),
+  };
+}
+
+describe('TimingLab', () => {
+  it('clears the final authored event and starts a fresh scenario without inherited stimulus or checks', () => {
+    const onVectorsChange = vi.fn();
+    const props = { scenarioName: 'Fresh scenario', inputFields, outputFields, selectedTick: 0,
+      lens: 'scenario' as const, onSelectTick: vi.fn(), onVectorsChange };
+    const view = render(<TimingLab {...props} vectors={[{ id: 'old', tick: 0,
+      inputs: { a: 1, b: 1 }, expected: { sum: 1 } }]} />);
+    fireEvent.click(view.getByTestId('ide-scenario-delete-event'));
+    expect(onVectorsChange).toHaveBeenLastCalledWith([]);
+    view.rerender(<TimingLab {...props} vectors={[]} />);
+    expect(view.getByTestId('ide-scenario-event-editor-empty')).toBeTruthy();
+    fireEvent.click(view.getByTestId('ide-scenario-composer-add-event'));
+    expect(onVectorsChange).toHaveBeenLastCalledWith([
+      { id: 'event-01', tick: 0, inputs: { a: 0, b: 0 }, expected: {} },
+    ]);
+    view.rerender(<TimingLab {...props} onVectorsChange={undefined} vectors={[
+      { id: 'read-only', tick: 0, inputs: { a: 0, b: 0 }, expected: {} },
+    ]} />);
+    expect((view.getByTestId('ide-scenario-delete-event') as HTMLButtonElement).disabled).toBe(true);
+  });
+  it('offers the auto clock run length on the bar and reports edits in cycles', () => {
+    const runLengthVectors = vectors.map((vector) => ({ ...vector, expected: { ...vector.expected } as Record<string, 0 | 1> }));
+    const onRunCyclesChange = vi.fn();
+    const view = render(
+      <TimingLab
+        scenarioName="Counter"
+        vectors={runLengthVectors}
+        inputFields={inputFields}
+        outputFields={outputFields}
+        selectedTick={0}
+        lens="scenario"
+        onSelectTick={vi.fn()}
+        onVectorsChange={vi.fn()}
+        runCycles={6}
+        onRunCyclesChange={onRunCyclesChange}
+      />
+    );
+    const input = view.getByTestId('ide-timing-run-length-input') as HTMLInputElement;
+    expect(input.value).toBe('6');
+    fireEvent.change(input, { target: { value: '9' } });
+    expect(onRunCyclesChange).toHaveBeenCalledWith(9);
+    view.unmount();
+    const manual = render(
+      <TimingLab
+        scenarioName="Counter"
+        vectors={runLengthVectors}
+        inputFields={inputFields}
+        outputFields={outputFields}
+        selectedTick={0}
+        lens="scenario"
+        onSelectTick={vi.fn()}
+        runCycles={null}
+        onRunCyclesChange={onRunCyclesChange}
+      />
+    );
+    expect(manual.queryByTestId('ide-timing-run-length')).toBeNull();
+  });
+
+  it('shows policy-generated lanes as the run will use them and refuses to edit them', () => {
+    const onVectorsChange = vi.fn();
+    const view = render(
+      <TimingLab
+        scenarioName="Counter"
+        vectors={vectors.map((vector) => ({ ...vector, expected: { ...vector.expected } as Record<string, 0 | 1> }))}
+        inputFields={[{ id: 'rst', label: 'RST' }, ...inputFields]}
+        outputFields={outputFields}
+        selectedTick={0}
+        lens="scenario"
+        onSelectTick={vi.fn()}
+        onVectorsChange={onVectorsChange}
+        generatedFieldIds={new Set(['rst'])}
+        generatedValueAt={(fieldId, tick) => (fieldId === 'rst' ? (tick === 0 ? 1 : 0) : null)}
+        generatedNote="Auto board clock: the reset sequence is generated at run time."
+      />
+    );
+    // The bar states the fact in the room it has; the sentence is the tooltip. The note used to
+    // be written into a fixed-width strip and was cut mid-word at 1440px.
+    const generatedNote = view.getByTestId('ide-timing-generated');
+    expect(generatedNote.textContent).toContain('clock + reset generated');
+    expect(generatedNote.getAttribute('title')).toContain('generated at run time');
+    const lane = view.getByTestId('ide-timing-lane-rst');
+    expect(lane.getAttribute('data-generated')).toBe('true');
+    const cell = view.getByTestId('ide-timing-cell-rst-1');
+    expect(cell.getAttribute('aria-label')).toContain('RST at t1: 0 (generated by the clock policy)');
+    fireEvent.click(cell);
+    expect(onVectorsChange).not.toHaveBeenCalled();
+  });
+
+  it('adds a stable event at the next time and carries forward the current stimulus', () => {
+    const { onVectorsChange, view } = renderComposer();
+    fireEvent.click(view.getByTestId('ide-scenario-composer-add-event'));
+
+    expect(onVectorsChange).toHaveBeenCalledWith([
+      ...vectors,
+      { id: 'event-03', tick: 2, inputs: { a: 1, b: 0 }, expected: {} },
+    ]);
+  });
+
+  it('edits an input in place without replacing the event identity', () => {
+    const { onVectorsChange, view } = renderComposer();
+    fireEvent.click(view.getByTestId('ide-scenario-input-a'));
+
+    expect(onVectorsChange).toHaveBeenCalledWith([
+      { ...vectors[0], inputs: { a: 1, b: 0 } },
+      vectors[1],
+    ]);
+  });
+
+  it('rejects an event-time collision instead of silently reordering ambiguous events', () => {
+    const { onVectorsChange, view } = renderComposer();
+    fireEvent.change(view.getByTestId('ide-scenario-event-time'), { target: { value: '1' } });
+
+    expect(view.getByRole('alert').textContent).toContain('t1 already contains an event');
+    expect(onVectorsChange).not.toHaveBeenCalled();
+  });
+
+  it('authors an optional expected-output check from the same selected event', () => {
+    const { onVectorsChange, view } = renderComposer(vi.fn(), 'checks');
+    fireEvent.click(view.getByTestId('ide-scenario-check-sum'));
+
+    expect(onVectorsChange).toHaveBeenCalledWith([
+      { ...vectors[0], expected: { sum: 0 } },
+      vectors[1],
+    ]);
+  });
+
+  it('keeps the generated testbench visibly tied to the active scenario and package source', () => {
+    const view = render(
+      <ScenarioTestbenchPreview
+        scenarioName="Full Adder truth table"
+        source={'library ieee;\nentity testbench is\nend entity;'}
+      />
+    );
+
+    expect(view.getByText('testbench.vhd')).toBeTruthy();
+    expect(view.getByText('Full Adder truth table')).toBeTruthy();
+    expect(view.getByText('Same source that Package exports')).toBeTruthy();
+    expect(view.getByText('entity testbench is')).toBeTruthy();
+  });
+});

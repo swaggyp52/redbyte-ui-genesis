@@ -1,15 +1,35 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { ProblemsPanel } from '../components/ProblemsPanel';
+import { STATUS_HINT_SLOT_ID } from '../components/WorkbenchStatusBar';
+import { selectProblemCount, useEngineeringProblems } from '../engineeringProblems';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
-import { getComponentSupport, isNodeTypeSupportedFor, TickEngine } from '@redbyte/rb-logic-core';
+import { BUS_MEMBER_SPACING, busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
+import { studentPartName } from '../studentPartNames';
+import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
+  FIT_ZOOM_STEPS,
   LogicCanvas,
   describePortRefForStudents,
   describeWireRejectionForStudents,
+  blockBodySize,
   findSmartSpawnPosition,
+  measureNodeSize,
   useLogicViewStore,
   wireRejectionMessage,
   type ChipMetadata,
   type NodeIoPresentation,
+  buildGeometryIndex,
+  unionBounds,
+  type SchematicBusGroup,
 } from '@redbyte/rb-logic-view';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
@@ -21,6 +41,9 @@ import {
   type DesignFocusContext,
 } from '../components/DesignFocusBanner';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
+import { PaletteSymbol } from '../components/PaletteSymbol';
+import { LiveHierarchyExplorer } from '../components/LiveHierarchyExplorer';
+import { buildLiveHierarchy } from '../liveHierarchy';
 import { buildDesignDebugSignalTrace, getFaninCone, getFanoutCone } from '../pathTrace';
 import { arrangeCircuitByDependency, hasRunnableBoundaryPath } from '../designGraphLayout';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
@@ -41,7 +64,7 @@ import {
   findPreviousReplayIndex,
 } from '../sequentialReplay';
 import type { RuntimeLogicValue } from '../sim/simTypes';
-import { useBoardSignal } from '../BoardSignalContext';
+import { resolveBoardSignal, useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import type { TimingGuidance } from '../timingGuidance';
 import type {
@@ -57,8 +80,15 @@ import {
 import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
+import type { HdlSource } from '../../../fpga/toolchainBackend';
+import { deriveSemanticZoomTier, type SemanticZoomTier } from '../semanticZoom';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
-import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
+import {
+  getBasys3BoardResource,
+  isBasys3ResourceCompatibleWithSignal,
+  listBasys3CompatibleResources,
+} from '../../../fpga/boards/basys3/basys3Pins';
+import { listBasys3DesignBoardResourceInventory } from '../../../fpga/boards/basys3/basys3BoardSurfaceProjection';
 import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3SignalSemantics';
 import { SIGNAL_LANGUAGE } from '../productLanguage';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
@@ -92,14 +122,64 @@ import {
   type DesignArtifact,
 } from './designWorkspaceConfig';
 import {
+  centerDesignCanvasOn,
   centerDesignSelectionWithContext,
+  designCanvasWorldCenter,
+  holdDesignCanvasOnPage,
   readDesignCanvasViewport,
   reconcileDesignCanvasCamera,
+  keepRegionInView,
+  designCameraKey,
+  rememberDesignCamera,
+  recallDesignCamera,
+  wasFramedDesignCamera,
+  type DesignCanvasCamera,
   type DesignCanvasGraphAnchor,
+  type DesignCanvasRegion,
   type DesignCanvasViewport,
 } from './designCanvasCamera';
 import type { IdeChromeContract } from '../chromeContract';
+import {
+  deriveDesignHierarchy,
+  deriveDesignSources,
+  flattenDesignHierarchy,
+} from '../designProjectProjection';
+import {
+  COMPONENT_DEFINITION_REGISTRY,
+  createComponentDefinitionRegistry,
+  type ComponentDefinition,
+  type ComponentDefinitionCategory,
+  type ComponentDesignPaletteSection,
+} from '../componentDefinitions';
+import { deriveLibraryCardFacts } from '../componentLibraryPresentation';
+import {
+  DESIGN_TOOLBAR_COMMAND_GROUPS,
+  IDE_COMMAND_IDS,
+  IDE_COMMAND_EVENT_NAME,
+  REQUIRED_DESIGN_TOOLBAR_COMMAND_IDS,
+  listDesignToolbarCommandGroupOrder,
+  moveDesignToolbarCommandGroup,
+  type DesignToolbarCommandGroupId,
+  type IdeCommandId,
+} from '../ideCommandRegistry';
+import { workspacePreferencesStore } from '../workspacePreferences';
+import { useEngineeringSelection } from '../engineeringSelection';
+import { RelatedMenu } from '../components/RelatedMenu';
+import { relatedDocumentsForSignal, useEngineeringRelationshipIndex } from '../engineeringRelationships';
+import { openWorkbenchDocument } from '../workbenchNavigation';
+import {
+  TOP_MODULE_ID,
+  analyzeModuleSelection,
+  moduleUsageCount,
+  readInstanceName,
+  type CreateModuleInput,
+  type CreateModuleResult,
+  type ModuleSelectionAnalysis,
+  type ProjectHierarchyDocument,
+} from '../projectHierarchy';
 import './design-workbench-v3.css';
+import './design/design-schematic.css';
+import './design/design-instrument.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'design',
@@ -152,9 +232,17 @@ export function connectionRejectedMessage(reason: string): string {
 }
 
 export interface DesignSurfaceProps {
+  projectId?: string;
+  projectName?: string;
   onCircuitMutated?: (circuit: Circuit) => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  onRuntimeCreateBus?: (input: {
+    name: string;
+    direction: 'input' | 'output';
+    width: number;
+    position?: { x: number; y: number };
+  }) => { ok: true; busId: string } | { ok: false; error: string };
   onRuntimeAddBoardIo?: (input: {
     alias: string;
     direction: 'in' | 'out';
@@ -183,11 +271,13 @@ export interface DesignSurfaceProps {
   designFocusRequest?: DesignFocusRequest | null;
   onClearDesignFocus?: () => void;
   runtimeSim: RuntimeSimState;
-  onRuntimeSimRun?: () => void;
-  onRuntimeSimPause?: () => void;
+  liveTopCircuit?: Circuit;
+  /**
+   * Apply one clock edge while exploring. There is no Run: a free-running clock in Design is a
+   * simulation session that records nothing, and Simulate is where a run happens.
+   */
   onRuntimeSimStep?: () => void;
   onRuntimeSimReset?: () => void;
-  onRuntimeSimSetSpeed?: (hz: number) => void;
   onRuntimeSimSetInput?: (nodeId: string, value: 0 | 1) => void;
   onRuntimeSimSetSelectedSignal?: (signalKey: string | null) => void;
   onRuntimeSimToggleProbe?: (probe: RuntimeSignalProbe) => void;
@@ -207,15 +297,31 @@ export interface DesignSurfaceProps {
     pin: string;
     port: string;
     direction: 'in' | 'out';
+    required?: boolean;
+    timingRole?: HardwareTimingRole;
+    boardResourceType?: HardwareBoardResourceType;
   }>;
+  onSetMappingPin?: (rowId: string, pin: string) => void;
   onGoToHardware?: () => void;
   onGoToImport?: () => void;
   onGoToProject?: () => void;
   onGoToVerify?: () => void;
   onClearDiagnostic?: () => void;
   topHdl?: string;
+  hdlSources?: readonly HdlSource[];
   onApplyHdl?: (hdl: string) => void;
   topEntityName?: string;
+  hierarchy?: ProjectHierarchyDocument;
+  onOpenModule?: (moduleId: string) => void;
+  onCreateModuleFromSelection?: (input: CreateModuleInput) => CreateModuleResult | null;
+  onPlaceModuleInstance?: (
+    moduleId: string,
+    position: { x: number; y: number },
+    instanceName?: string,
+  ) => Node | null;
+  onRenameModuleInstance?: (nodeId: string, instanceName: string) => void;
+  onDuplicateModuleDefinition?: (moduleId: string) => string | null;
+  onDeleteModuleDefinition?: (moduleId: string) => boolean;
   onSaveAsComponent?: (def: CompositeNodeDef) => void;
   customComponentTypes?: Array<{ type: string; title: string; description: string }>;
   /**
@@ -274,12 +380,13 @@ interface StaleReplayBreadcrumb {
 
 type DesignReplaySession =
   Pick<RuntimeVerifyRun, 'waveform' | 'meta'> &
-  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence'>>;
+  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence' | 'scenarioName' | 'runId'>>;
 
 interface PaletteItem {
   type: string;
   title: string;
-  category: 'IO' | 'Logic' | 'Sequential' | 'Components';
+  category: ComponentDefinitionCategory;
+  section: ComponentDesignPaletteSection;
   subtitle: string;
   glyph: string;
   searchTerms: string[];
@@ -287,6 +394,14 @@ interface PaletteItem {
   sequentialTier?: 'registers' | 'timing' | 'legacy';
   /** Optional badge on the palette card (e.g. Native / Legacy). */
   paletteBadge?: string;
+  /** Compact interface line rendered on the card (e.g. "A, B → Y"). */
+  portSummary?: string;
+  /** One port per line, surfaced through the card tooltip. */
+  interfaceDetail?: string;
+  /** Support chip when the part is not fully simulatable + exportable. */
+  capabilityBadge?: string | null;
+  /** Tooltip explanation for the capability chip. */
+  capabilityTitle?: string | null;
 }
 
 interface BoardIoPaletteItem {
@@ -322,8 +437,24 @@ interface BoardPaletteGroup {
   entries: BoardIoPaletteItem[];
 }
 
+const DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS: readonly {
+  id: IdeCommandId;
+  label: string;
+}[] = [
+  { id: IDE_COMMAND_IDS.selectDesignTool, label: 'Select tool' },
+  { id: IDE_COMMAND_IDS.selectWireTool, label: 'Wire tool' },
+  { id: IDE_COMMAND_IDS.undoDesignEdit, label: 'Undo' },
+  { id: IDE_COMMAND_IDS.redoDesignEdit, label: 'Redo' },
+  { id: IDE_COMMAND_IDS.arrangeDesign, label: 'Arrange circuit' },
+  { id: IDE_COMMAND_IDS.fitDesignCanvas, label: 'Fit canvas' },
+  { id: IDE_COMMAND_IDS.zoomOutDesignCanvas, label: 'Zoom out' },
+  { id: IDE_COMMAND_IDS.zoomInDesignCanvas, label: 'Zoom in' },
+];
+
 const CANVAS_PLACEMENT_BLOCK_SELECTOR =
   '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
+
+const LIBRARY_COLLAPSED_SECTIONS_KEY = 'rb.ide.design.libraryCollapsed.v1';
 
 function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
   if (!target) return false;
@@ -336,232 +467,39 @@ function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
   );
 }
 
-const CORE_PALETTE_ITEMS: PaletteItem[] = [
-  {
-    type: 'AND',
-    title: 'AND Gate',
-    category: 'Logic',
-    subtitle: '2-input gate that goes high only when both inputs are high.',
-    glyph: 'AND',
-    searchTerms: ['gate', 'logic', 'combinational'],
-  },
-  {
-    type: 'OR',
-    title: 'OR Gate',
-    category: 'Logic',
-    subtitle: '2-input gate that goes high when either input is high.',
-    glyph: 'OR',
-    searchTerms: ['gate', 'logic', 'combinational'],
-  },
-  {
-    type: 'XOR',
-    title: 'XOR Gate',
-    category: 'Logic',
-    subtitle: 'Exclusive OR for difference and parity checks.',
-    glyph: 'XOR',
-    searchTerms: ['gate', 'logic', 'exclusive or', 'parity'],
-  },
-  {
-    type: 'NOT',
-    title: 'NOT Gate',
-    category: 'Logic',
-    subtitle: 'Single-input inverter for complementing a signal.',
-    glyph: 'NOT',
-    searchTerms: ['gate', 'logic', 'inverter', 'invert'],
-  },
-  {
-    type: 'NAND',
-    title: 'NAND Gate',
-    category: 'Logic',
-    subtitle: 'Universal gate that outputs low only when both inputs are high.',
-    glyph: 'NAND',
-    searchTerms: ['gate', 'logic', 'universal'],
-  },
-  {
-    type: 'NOR',
-    title: 'NOR Gate',
-    category: 'Logic',
-    subtitle: 'Universal gate that outputs high only when both inputs are low.',
-    glyph: 'NOR',
-    searchTerms: ['gate', 'logic', 'universal'],
-  },
-  {
-    type: 'XNOR',
-    title: 'XNOR Gate',
-    category: 'Logic',
-    subtitle: 'Equality gate that goes high when inputs match.',
-    glyph: 'XNOR',
-    searchTerms: ['gate', 'logic', 'equality', 'equivalence'],
-  },
-  {
-    type: 'AND3',
-    title: 'AND3 Gate',
-    category: 'Logic',
-    subtitle: '3-input AND: high only when all three inputs are high.',
-    glyph: 'AND3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input'],
-  },
-  {
-    type: 'OR3',
-    title: 'OR3 Gate',
-    category: 'Logic',
-    subtitle: '3-input OR: high when any input is high.',
-    glyph: 'OR3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input'],
-  },
-  {
-    type: 'NAND3',
-    title: 'NAND3 Gate',
-    category: 'Logic',
-    subtitle: '3-input NAND: low only when all three inputs are high.',
-    glyph: 'NAND3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input', 'universal'],
-  },
-  {
-    type: 'NOR3',
-    title: 'NOR3 Gate',
-    category: 'Logic',
-    subtitle: '3-input NOR: high only when all three inputs are low.',
-    glyph: 'NOR3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input', 'universal'],
-  },
-  {
-    type: 'XOR3',
-    title: 'XOR3 Gate',
-    category: 'Logic',
-    subtitle: '3-input XOR: high when an odd number of inputs are high.',
-    glyph: 'XOR3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input', 'parity'],
-  },
-  {
-    type: 'Register1',
-    title: 'Register (1-bit)',
-    category: 'Sequential',
-    sequentialTier: 'registers',
-    paletteBadge: 'Native',
-    subtitle: 'Preferred 1-bit register: width, CE, reset kind, and polarities are first-class.',
-    glyph: 'REG1',
-    searchTerms: ['register', 'dff', 'state', 'memory', 'fdce', 'sequential', 'flip flop'],
-  },
-  {
-    type: 'RegisterBus',
-    title: 'Register (Bus)',
-    category: 'Sequential',
-    sequentialTier: 'registers',
-    paletteBadge: 'Native',
-    subtitle: 'Packed multi-bit register with per-bit D[i] / Q[i] taps for combinational logic.',
-    glyph: 'REGB',
-    searchTerms: ['register', 'bus', 'state', 'bank', 'vector', 'slice', 'tap', 'bit'],
-  },
-  {
-    type: 'StateBank',
-    title: 'State Bank',
-    category: 'Sequential',
-    sequentialTier: 'registers',
-    paletteBadge: 'Native',
-    subtitle: 'Grouped state for FSM-style clusters — same semantics as Register (Bus), different intent.',
-    glyph: 'BANK',
-    searchTerms: ['state', 'bank', 'register bank', 'fsm', 'sequential'],
-  },
-  // Slice N7 — chrome rebuild: Sim Clock palette entry REMOVED.
-  // Canonical clock model (Plan §4.1): one clock concept visible to the user — the
-  // board clock CLK100MHZ from Board Resources. Pure-sim sequential designs auto-
-  // inject `__sim_clk__` (rb-apps/.../verifySchedule.ts), so students never need
-  // to place a Clock node themselves. Existing serialized projects with legacy
-  // Clock nodes (no role) continue to load and elaborate correctly via the IR
-  // backward-compat path established in Slice M.
-  {
-    type: 'DFlipFlop',
-    title: 'DFF',
-    category: 'Sequential',
-    sequentialTier: 'legacy',
-    paletteBadge: 'Legacy',
-    subtitle: 'Classic single-bit D flip-flop — prefer Register (1-bit) for new native projects.',
-    glyph: 'DFF',
-    searchTerms: ['flip flop', 'flipflop', 'register', 'state', 'memory'],
-  },
-  {
-    type: 'INPUT',
-    title: 'Input Pin',
-    category: 'IO',
-    subtitle: 'Generic named input — give it any signal name. To start from a specific Basys3 switch, button, or clock, use Board Resources instead.',
-    glyph: 'IN',
-    searchTerms: ['input', 'pin', 'source', 'io', 'i/o'],
-  },
-  {
-    type: 'OUTPUT',
-    title: 'Output Pin',
-    category: 'IO',
-    subtitle: 'Generic named output — give it any signal name. To start from a specific Basys3 LED or display segment, use Board Resources instead.',
-    glyph: 'OUT',
-    searchTerms: ['output', 'pin', 'sink', 'probe', 'io', 'i/o'],
-  },
-  {
-    type: 'Ground',
-    title: 'Ground',
-    category: 'IO',
-    subtitle: 'Constant logic 0 source for reset and clear wiring.',
-    glyph: '0',
-    searchTerms: ['ground', 'constant', 'zero', 'low', 'clear'],
-  },
-];
+function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
+  const facts = deriveLibraryCardFacts(definition);
+  return {
+    type: definition.runtimeType,
+    title: definition.displayName,
+    category: definition.category,
+    section: definition.designPalette.section,
+    subtitle: definition.description,
+    glyph: definition.symbol,
+    searchTerms: [...definition.searchTerms],
+    sequentialTier: definition.designPalette.sequentialTier,
+    paletteBadge: definition.designPalette.badge,
+    portSummary: facts.portSummary,
+    interfaceDetail: facts.interfaceDetail,
+    capabilityBadge: facts.capabilityBadge,
+    capabilityTitle: facts.capabilityTitle,
+  };
+}
 
-const CORE_COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
-  {
-    type: 'RSLatch',
-    title: 'RS Latch',
-    category: 'Components',
-    paletteBadge: '⚠ Latch',
-    subtitle: 'Bistable latch with set/reset. Vivado warns on inferred latches — use Register (1-bit) for FPGA designs. Latches are valid for simulation and theory work.',
-    glyph: 'RS',
-    searchTerms: ['latch', 'memory', 'state', 'bistable'],
-  },
-  {
-    type: 'DLatch',
-    title: 'D Latch',
-    category: 'Components',
-    paletteBadge: '⚠ Latch',
-    subtitle: 'Level-sensitive latch with enable. Vivado warns on inferred latches — use Register (1-bit) for FPGA designs. Latches are valid for simulation and theory work.',
-    glyph: 'DL',
-    searchTerms: ['latch', 'memory', 'state', 'gated', 'level'],
-  },
-  {
-    type: 'JKFlipFlop',
-    title: 'JK Flip-Flop',
-    category: 'Components',
-    subtitle: 'Toggle-capable sequential primitive with J and K inputs.',
-    glyph: 'JK',
-    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state'],
-  },
-  {
-    type: 'TFlipFlop',
-    title: 'T Flip-flop',
-    category: 'Components',
-    paletteBadge: 'Legacy',
-    subtitle: 'Legacy toggle primitive — prefer Register (1-bit) with feedback for new builds.',
-    glyph: 'TFF',
-    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state', 'tff'],
-  },
-  {
-    type: 'FullAdder',
-    title: 'Full Adder',
-    category: 'Components',
-    subtitle: 'Built-in arithmetic block for sum and carry logic.',
-    glyph: 'ADD',
-    searchTerms: ['adder', 'arithmetic', 'sum', 'carry'],
-  },
-  // Counter4Bit removed from palette — stub implementation (no real counting logic).
-  // Restore when Counter4Bit composite is properly implemented with flip-flops.
-];
+// Built-in cards are a projection of ComponentDefinition. The registry omits
+// the retired Sim Clock and unsupported Counter4Bit entries, while its current
+// support capabilities decide which definitions are student-authorable.
+const BUILTIN_PALETTE_ITEMS: readonly PaletteItem[] = COMPONENT_DEFINITION_REGISTRY.definitions
+  .filter(
+    (definition) =>
+      definition.designPalette.authoringCapability.supported &&
+      definition.designPalette.classroomCapability.supported
+  )
+  .map(definitionToPaletteItem);
 
-const PALETTE_ITEMS: PaletteItem[] = CORE_PALETTE_ITEMS.filter((item) =>
-  isNodeTypeSupportedFor(item.type, 'authoring') &&
-  isNodeTypeSupportedFor(item.type, 'classroom')
-);
-
-const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = CORE_COMPOSITE_PALETTE_ITEMS.filter((item) =>
-  isNodeTypeSupportedFor(item.type, 'authoring') &&
-  isNodeTypeSupportedFor(item.type, 'classroom')
+const PALETTE_ITEMS = BUILTIN_PALETTE_ITEMS.filter((item) => item.section !== 'reusable');
+const COMPOSITE_PALETTE_ITEMS = BUILTIN_PALETTE_ITEMS.filter(
+  (item) => item.section === 'reusable'
 );
 
 const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
@@ -569,7 +507,7 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
     id: 'board',
     title: 'Board Resources',
     description:
-      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Map Pins.',
+      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Board.',
   },
   {
     id: 'io',
@@ -595,6 +533,50 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
   },
 ];
 
+/** Three-input variants of a two-input gate; offered one step away in the library. */
+const WIDE_GATE_TYPE = /^(AND|OR|NAND|NOR|XOR|XNOR)3$/i;
+/** Screen room kept between a part slid back onto the sheet and the edge that had covered it. */
+const SELECTION_VIEW_INSET = 16;
+
+/** The sheet's top-left on the screen and which panels were beside it when it was measured. */
+interface DesignCanvasPlacement {
+  left: number;
+  top: number;
+  leftDock: string | null;
+  rightDock: string | null;
+}
+
+/**
+ * Why the sheet is being measured: a Schematic, Split or Code switch, a panel shown or hidden
+ * (known to Design before the change is painted), or anything else the size observer reports.
+ */
+type DesignCanvasCommitCause = 'view' | 'panel' | 'observed';
+
+/**
+ * A view switch still settling. An untouched frame is framed again for the new sheet; a camera
+ * the student chose keeps the world point that was in the middle of the sheet in the middle,
+ * at the student's zoom. `camera` is the camera the switch last left, so a camera moved by
+ * anything else ends the switch.
+ */
+type DesignViewSwitch =
+  | { kind: 'frame' }
+  | { kind: 'middle'; middle: DesignCanvasGraphAnchor; camera: DesignCanvasCamera };
+
+function readDesignCanvasPlacement(host: HTMLElement): DesignCanvasPlacement {
+  const rect = host.getBoundingClientRect();
+  const shell = host.closest('[data-left-dock-state]');
+  return {
+    left: rect.left,
+    top: rect.top,
+    leftDock: shell?.getAttribute('data-left-dock-state') ?? null,
+    rightDock: shell?.getAttribute('data-right-dock-state') ?? null,
+  };
+}
+
+function sameDesignCamera(a: DesignCanvasCamera, b: DesignCanvasCamera): boolean {
+  return a.x === b.x && a.y === b.y && a.zoom === b.zoom;
+}
+
 const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   key: 'sequentialRegisters' | 'sequentialTiming' | 'sequentialLegacy';
   title: string;
@@ -610,7 +592,7 @@ const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   {
     key: 'sequentialTiming',
     title: 'Timing',
-    description: 'Clock sources that drive sequential updates (map to board timing in Map Pins).',
+    description: 'Clock sources that drive sequential updates (map to board timing in Board).',
     testId: 'ide-design-palette-sequential-timing',
   },
   {
@@ -621,41 +603,19 @@ const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   },
 ];
 
-const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = [
-  ...Array.from({ length: 16 }, (_, index) => ({
-    alias: `SW${index}`,
-    direction: 'in' as const,
-    kind: 'switch' as const,
-  })),
-  { alias: 'BTNC', direction: 'in', kind: 'button' },
-  { alias: 'BTNU', direction: 'in', kind: 'button' },
-  { alias: 'BTNL', direction: 'in', kind: 'button' },
-  { alias: 'BTNR', direction: 'in', kind: 'button' },
-  { alias: 'BTND', direction: 'in', kind: 'button' },
-  { alias: 'CLK100MHZ', direction: 'in', kind: 'clock' },
-  { alias: 'RST', direction: 'in', kind: 'reset' },
-];
+const BASYS3_DESIGN_BOARD_ITEMS = listBasys3DesignBoardResourceInventory({
+  // RST is a logical authoring helper, not a Basys3 board resource. Keep it
+  // only through the projection's explicit synthetic-non-board contract.
+  includeSyntheticReset: true,
+});
 
-const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = [
-  ...Array.from({ length: 16 }, (_, index) => ({
-    alias: `LD${index}`,
-    direction: 'out' as const,
-    kind: 'led' as const,
-  })),
-  ...Array.from({ length: 7 }, (_, index) => ({
-    alias: `SEG${index}`,
-    direction: 'out' as const,
-    kind: 'segment' as const,
-  })),
-  ...Array.from({ length: 4 }, (_, index) => ({
-    alias: `AN${index}`,
-    direction: 'out' as const,
-    kind: 'anode' as const,
-  })),
-  { alias: 'DP', direction: 'out', kind: 'dp' },
-];
+const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filter(
+  (item) => item.direction === 'in'
+);
 
-const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
+const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filter(
+  (item) => item.direction === 'out'
+);
 
 function tokenizePaletteQuery(value: string): string[] {
   return value
@@ -689,17 +649,17 @@ function groupBoardPaletteItems(
   inputs: BoardIoPaletteItem[],
   outputs: BoardIoPaletteItem[]
 ): BoardPaletteGroup[] {
-  return [
+  const groups: BoardPaletteGroup[] = [
     {
       id: 'switches',
       title: 'Switches (SW0–SW15)',
-      description: 'Adds a pre-named input pin. Assign its board mapping in Map Pins.',
+      description: 'Adds a pre-named input pin. Assign its board mapping in Board.',
       entries: inputs.filter((entry) => entry.kind === 'switch'),
     },
     {
       id: 'buttons',
       title: 'Buttons (BTNC/U/L/R/D)',
-      description: 'Adds a pre-named button input. Assign its board mapping in Map Pins.',
+      description: 'Adds a pre-named button input. Assign its board mapping in Board.',
       entries: inputs.filter((entry) => entry.kind === 'button'),
     },
     {
@@ -714,18 +674,19 @@ function groupBoardPaletteItems(
     {
       id: 'leds',
       title: 'LEDs (LD0–LD15)',
-      description: 'Adds a pre-named output pin. Assign its board mapping in Map Pins.',
+      description: 'Adds a pre-named output pin. Assign its board mapping in Board.',
       entries: outputs.filter((entry) => entry.kind === 'led'),
     },
     {
       id: 'display',
       title: 'Seven Segment Display',
-      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Map Pins.',
+      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Board.',
       entries: outputs.filter(
         (entry) => entry.kind === 'segment' || entry.kind === 'anode' || entry.kind === 'dp'
       ),
     },
-  ].filter((group) => group.entries.length > 0);
+  ];
+  return groups.filter((group) => group.entries.length > 0);
 }
 
 function snapFitZoom(rawZoom: number): number {
@@ -764,10 +725,10 @@ interface DesignDebugSignalSample {
 
 interface DesignDebugToggleSample {
   nodeId: string;
-  source: 'canvas' | 'dock';
+  source: 'canvas' | 'dock' | 'inspector';
   requestedValue: 0 | 1;
   requestedAtIso: string;
-  uiBefore: 0 | 1;
+  uiBefore: RuntimeLogicValue;
   simInputBefore: 0 | 1;
   downstreamBefore: DesignDebugSignalSample | null;
 }
@@ -900,14 +861,14 @@ function resolveNodeInspectionTeachingProfile(
     if (node.type === 'INPUT' || node.type === 'Switch') {
       return {
         partKind: 'Board I/O',
-        whatItIs: 'Drives a test or board input into the schematic — Map Pins ties it to a physical switch or pin when you go to the board.',
+        whatItIs: 'Drives a test or board input into the schematic — the Board workspace ties it to a physical switch or pin.',
         structureHint: null,
       };
     }
     if (node.type === 'OUTPUT' || node.type === 'Lamp') {
       return {
         partKind: 'Board I/O',
-        whatItIs: 'Receives a net that should reach an LED or other board output; Map Pins assigns the Basys3 pin name.',
+        whatItIs: 'Receives a net that should reach an LED or other board output; the Board workspace assigns the Basys3 pin.',
         structureHint: null,
       };
     }
@@ -934,7 +895,7 @@ function resolveNodeInspectionTeachingProfile(
 }
 
 function resolveDesignDebugSample(
-  signals: Record<string, 0 | 1>,
+  signals: Record<string, RuntimeLogicValue>,
   preferredKeys: readonly string[]
 ): DesignDebugSignalSample | null {
   for (const key of preferredKeys) {
@@ -976,9 +937,12 @@ const GATE_SWAP_FAMILIES: Partial<Record<string, readonly string[]>> = {
 };
 
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
+  projectId,
+  projectName,
   onCircuitMutated,
   onRuntimeAddNode,
   onRuntimeAddIo,
+  onRuntimeCreateBus,
   onRuntimeAddBoardIo,
   onRuntimeConnect,
   onRuntimeUndo,
@@ -991,25 +955,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   designFocusRequest,
   onClearDesignFocus,
   runtimeSim,
-  onRuntimeSimRun,
-  onRuntimeSimPause,
+  liveTopCircuit,
   onRuntimeSimStep,
   onRuntimeSimReset,
-  onRuntimeSimSetSpeed,
   onRuntimeSimSetInput,
   onRuntimeSimSetSelectedSignal,
   onRuntimeSimToggleProbe,
   viewportSeed,
   starterContext,
   ioRows = [],
+  onSetMappingPin,
   onGoToHardware,
   onGoToImport,
   onGoToProject,
   onGoToVerify,
   onClearDiagnostic,
   topHdl,
+  hdlSources = [],
   onApplyHdl,
   topEntityName,
+  hierarchy,
+  onOpenModule,
+  onCreateModuleFromSelection,
+  onPlaceModuleInstance,
+  onRenameModuleInstance,
+  onDuplicateModuleDefinition,
+  onDeleteModuleDefinition,
   onSaveAsComponent,
   customComponentTypes,
   customComponentDefs,
@@ -1073,6 +1044,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const editorCircuit = useMemo(() => normalizeCircuitForCanvas(circuit), [circuit]);
 
+  // ── Engineering-object continuity ──────────────────────────────────────
+  // The schematic publishes its single-node selection to the workbench and
+  // follows node/signal selections made elsewhere (Cases, Board, Package).
+  const selectNodeInStore = useLogicViewStore((state) => state.selectNode);
+  const globalSelected = useEngineeringSelection((state) => state.selected);
+  const publishEngineeringSelection = useEngineeringSelection((state) => state.select);
+  const globalOrigin = useEngineeringSelection((state) => state.origin);
+  const publishSelection = useEngineeringSelection((state) => state.select);
+  const clearGlobalSelection = useEngineeringSelection((state) => state.clear);
+  const relationshipIndex = useEngineeringRelationshipIndex();
+  const schematicModuleId = hierarchy?.activeModuleId ?? TOP_MODULE_ID;
+  useEffect(() => {
+    if (selection.nodes.size === 1) {
+      const nodeId = Array.from(selection.nodes)[0];
+      const relation = schematicModuleId === TOP_MODULE_ID ? relationshipIndex.resolveNode(nodeId) : null;
+      const next = relation
+        ? { kind: 'signal' as const, fieldId: relation.fieldId, runSignal: relation.run?.resolution.runSignal ?? null, nodeId }
+        : { kind: 'node' as const, moduleId: schematicModuleId, nodeId };
+      if (globalSelected && JSON.stringify(globalSelected) === JSON.stringify(next)) return;
+      publishSelection(next, 'schematic');
+      return;
+    }
+    if (selection.nodes.size === 0 && globalOrigin === 'schematic' && globalSelected && (globalSelected.kind === 'node' || globalSelected.kind === 'signal')) {
+      clearGlobalSelection();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection, schematicModuleId]);
+  useEffect(() => {
+    if (!globalSelected || globalOrigin === 'schematic') return;
+    const nodeId =
+      globalSelected.kind === 'node' && globalSelected.moduleId === schematicModuleId
+        ? globalSelected.nodeId
+        : globalSelected.kind === 'signal' && schematicModuleId === TOP_MODULE_ID
+          ? globalSelected.nodeId ?? relationshipIndex.resolveField(globalSelected.fieldId)?.nodeId ?? null
+          : null;
+    if (!nodeId || !editorCircuit.nodes.some((node) => node.id === nodeId)) return;
+    if (selection.nodes.size === 1 && selection.nodes.has(nodeId)) return;
+    selectNodeInStore(nodeId, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSelected, globalOrigin, schematicModuleId]);
+
   // ── Live HDL generation (VHDL + Verilog from current circuit) ────────────
   const liveHdlResult = useMemo(() => {
     try {
@@ -1112,6 +1124,61 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [circuit, topEntityName, ioRows]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
+  // The part under keyboard focus or the pointer, for the one-line interface readout below
+  // the library. A native tooltip carried this before, which a keyboard cannot summon.
+  const [libraryDetail, setLibraryDetail] = useState<{ title: string; ports: string | null } | null>(null);
+  /**
+   * Collapsed library sections persist per browser so a student's rail
+   * arrangement survives reloads. Storage failures degrade to all-open.
+   */
+  const [collapsedLibrarySections, setCollapsedLibrarySections] = useState<ReadonlySet<string>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(LIBRARY_COLLAPSED_SECTIONS_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+      } catch {
+        return new Set<string>();
+      }
+    }
+  );
+  const toggleLibrarySection = useCallback((sectionId: string) => {
+    setCollapsedLibrarySections((previous) => {
+      const next = new Set(previous);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      try {
+        localStorage.setItem(LIBRARY_COLLAPSED_SECTIONS_KEY, JSON.stringify([...next]));
+      } catch {
+        // Storage-denied environments simply lose collapse persistence.
+      }
+      return next;
+    });
+  }, []);
+  /** Keyboard navigation between library cards: Arrow/Home/End roving focus. */
+  const handleLibraryRailKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const cards = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        'button.rb-lib-row, button.rb-lib-chip'
+      )
+    ).filter((card) => !card.disabled);
+    if (cards.length === 0) return;
+    const activeIndex = cards.findIndex((card) => card === document.activeElement);
+    event.preventDefault();
+    const nextIndex =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? cards.length - 1
+          : event.key === 'ArrowDown'
+            ? Math.min(cards.length - 1, activeIndex + 1)
+            : Math.max(0, activeIndex - 1);
+    cards[nextIndex]?.focus();
+  }, []);
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [canvasHostElement, setCanvasHostElement] = useState<HTMLDivElement | null>(null);
@@ -1120,18 +1187,119 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setCanvasHostElement((current) => (current === element ? current : element));
   }, []);
   const lastMeasuredCanvasViewportRef = useRef<DesignCanvasViewport | null>(null);
+  // Where the sheet sat on the screen, and which panels were beside it, at the last commit.
+  const lastCanvasPlacementRef = useRef<DesignCanvasPlacement | null>(null);
+  // The observer's commit, for the layout effects that know why the sheet changed (a view switch,
+  // a panel opening or closing) and must settle the camera before the change is painted.
+  const commitCanvasViewportRef = useRef<(viewport: DesignCanvasViewport, cause: DesignCanvasCommitCause) => void>(() => {});
+  // A Schematic, Split or Code switch still settling (see the view-switch layout effect).
+  const viewSwitchRef = useRef<DesignViewSwitch | null>(null);
   const canvasObservationGenerationRef = useRef(0);
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [paneRowSize, setPaneRowSize] = useState({ width: 0, height: 0 });
-  const presentationZoom: 'dense' | 'classroom' = 'dense';
+  // Model-driven semantic zoom: the canvas density tier follows the camera —
+  // zoom out to read the whole design (legible `classroom`), zoom in to edit
+  // closely (compact `dense`). Hysteresis (previous tier) prevents flicker.
+  const semanticZoomTierRef = useRef<SemanticZoomTier>('dense');
+  const presentationZoom: SemanticZoomTier = deriveSemanticZoomTier(
+    camera.zoom,
+    semanticZoomTierRef.current,
+  );
+  semanticZoomTierRef.current = presentationZoom;
   const [diagnosticsDialogOpen, setDiagnosticsDialogOpen] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
-  const [wireFeedback, setWireFeedback] = useState<string | null>(null);
+  const [wireFeedback, setWireFeedbackText] = useState<string | null>(null);
+  // Each refusal is an event: the same words again must reach the status line's announcement, so
+  // the message is a new element every time.
+  const [wireFeedbackCount, setWireFeedbackCount] = useState(0);
+  const setWireFeedback = useCallback((message: string | null) => {
+    setWireFeedbackText(message);
+    if (message) setWireFeedbackCount((count) => count + 1);
+  }, []);
+  // A message cut to two lines in the status line offers its whole text on request (More).
+  const wireMessageRef = useRef<HTMLSpanElement | null>(null);
+  const [wireMessageClamped, setWireMessageClamped] = useState(false);
+  const [wireMessageExpanded, setWireMessageExpanded] = useState(false);
+  // The workbench's status line, where the Wire tool says what to do next. A surface rendered on
+  // its own keeps the message in its cue.
+  const [statusHintSlot, setStatusHintSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setStatusHintSlot(window.document.getElementById(STATUS_HINT_SLOT_ID));
+  }, []);
+  // The command row never changes with the tool: a cue in it took a row of its own wherever the
+  // commands left no room (the inspector open at 1366 or 1440), so every armed or finished wire
+  // moved the canvas 44px between a student's two clicks. The status line is always there.
+  const inStatusHint = (cue: React.ReactElement) => (statusHintSlot ? createPortal(cue, statusHintSlot) : cue);
   const [focusedIssueSignalKey, setFocusedIssueSignalKey] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
-  const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
+  const workspacePreferences = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  );
+  const designView: 'canvas' | 'hdl' | 'split' =
+    workspacePreferences.design.view === 'code'
+      ? 'hdl'
+      : workspacePreferences.design.view;
+  const setDesignView = useCallback((view: 'canvas' | 'hdl' | 'split') => {
+    workspacePreferencesStore.setDesignView(view === 'hdl' ? 'code' : view);
+  }, []);
+  const canvasAppearance = workspacePreferences.design.canvasAppearance;
+  const canvasDensity = workspacePreferences.design.canvasDensity;
+  const designLayers = workspacePreferences.design.layers;
+  // Boundary buses, derived from signal identity: one bracket per NAME[i] family.
+  const designBusGroups = useMemo<SchematicBusGroup[]>(() => {
+    const groups = new Map<string, { name: string; direction: 'in' | 'out'; bits: { nodeId: string; bit: number }[] }>();
+    for (const relation of relationshipIndex.signals) {
+      if (!relation.bus) continue;
+      const key = `${relation.direction}:${relation.bus.name}`;
+      const group = groups.get(key) ?? { name: relation.bus.name, direction: relation.direction, bits: [] };
+      group.bits.push({ nodeId: relation.nodeId, bit: relation.bus.bit });
+      groups.set(key, group);
+    }
+    return Array.from(groups.values()).filter((group) => group.bits.length > 1);
+  }, [relationshipIndex.signals]);
+  const toolbarCommandIds = workspacePreferences.design.toolbarCommandIds;
+  const toolbarCommandSet = useMemo(() => new Set(toolbarCommandIds), [toolbarCommandIds]);
+  const toolbarVisible = useCallback(
+    (commandId: IdeCommandId) => toolbarCommandSet.has(commandId),
+    [toolbarCommandSet]
+  );
+  const toggleToolbarCommand = useCallback((commandId: IdeCommandId, visible: boolean) => {
+    const current = workspacePreferencesStore.getSnapshot().design.toolbarCommandIds;
+    const next = visible
+      ? [...current, commandId]
+      : current.filter((id) => id !== commandId);
+    workspacePreferencesStore.setDesignToolbarCommandIds(next);
+  }, []);
+  const orderedToolbarGroupIds = useMemo(
+    () => listDesignToolbarCommandGroupOrder(toolbarCommandIds),
+    [toolbarCommandIds]
+  );
+  const toolbarGroupOrder = useMemo(
+    () => new Map(orderedToolbarGroupIds.map((groupId, index) => [groupId, index + 1])),
+    [orderedToolbarGroupIds]
+  );
+  const reorderToolbarGroup = useCallback(
+    (groupId: DesignToolbarCommandGroupId, direction: 'up' | 'down') => {
+      const current = workspacePreferencesStore.getSnapshot().design.toolbarCommandIds;
+      workspacePreferencesStore.setDesignToolbarCommandIds(
+        moveDesignToolbarCommandGroup(current, groupId, direction)
+      );
+    },
+    []
+  );
+  const [activeLeftDockTab, setActiveLeftDockTab] = useState<
+    'components' | 'hierarchy' | 'sources' | 'board'
+  >('components');
+  const [activeRightDockTab, setActiveRightDockTab] = useState<
+    'inspector' | 'properties' | 'constraints'
+  >('inspector');
+  const [activeBottomDockTab, setActiveBottomDockTab] = useState<
+    'problems' | 'console' | 'simulation'
+  >('problems');
   const [designDebugEnabled, setDesignDebugEnabled] = useState(() => readDesignDebugQueryParam());
   const [hdlDraftText, setHdlDraftText] = useState('');
   const [primaryArtifact, setPrimaryArtifact] = useState<DesignArtifact>('vhdl');
@@ -1146,6 +1314,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [saveComponentOpen, setSaveComponentOpen] = useState(false);
   const [saveComponentName, setSaveComponentName] = useState('');
   const [savedComponentToast, setSavedComponentToast] = useState<string | null>(null);
+  const [moduleDialog, setModuleDialog] = useState<{
+    analysis: ModuleSelectionAnalysis;
+    moduleName: string;
+    instanceName: string;
+    portNames: Record<string, string>;
+    error: string | null;
+  } | null>(null);
   const savedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current); }, []);
 
@@ -1161,10 +1336,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState('');
+  const [editingModuleInstanceId, setEditingModuleInstanceId] = useState<string | null>(null);
+  const [moduleInstanceNameDraft, setModuleInstanceNameDraft] = useState('');
 
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
   const [wireContextMenu, setWireContextMenu] = useState<DesignWireContextMenuState | null>(null);
+  const [nodeContextMenu, setNodeContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState<{ x: number; y: number } | null>(null);
+  /** True when the label editor should float over the node on the canvas
+   * (double-click, F2, context menu) instead of the inspector row. */
+  const [renameOnCanvas, setRenameOnCanvas] = useState(false);
   const lastTracedPortRef = useRef<string | null>(null);
   const previousToolModeRef = useRef(toolMode);
   const previousHasSelectionRef = useRef(false);
@@ -1173,6 +1355,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const autoTracedNodeRef = useRef<string | null>(null);
   /** When set, traceState wire-net was auto-applied from a lone wire selection (clears on deselect / clear / non-wire trace). */
   const autoWireSelectionTraceIdRef = useRef<string | null>(null);
+  /** Signal focus projected from a selected wire; clear only this owned focus when that wire selection ends. */
+  const selectedWireSignalFocusRef = useRef<string | null>(null);
   const traceStateRef = useRef<DesignTraceState | null>(null);
   traceStateRef.current = traceState;
 
@@ -1200,13 +1384,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [designView, setSplitRatio, splitRatio]);
   const hasAutoFitRef = useRef(false);
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
+  const lastSeedProjectRef = useRef<string | null>(null);
   const pendingDebugToggleRef = useRef<DesignDebugToggleSample | null>(null);
   const [staleReplayBreadcrumb, setStaleReplayBreadcrumb] = useState<StaleReplayBreadcrumb | null>(null);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1);
   const [designLearningMode, setDesignLearningMode] = useState<'edit' | 'live'>('edit');
   const runtimeSimTick = runtimeSim.tick;
-  const simSpeed = runtimeSim.speedHz;
   const runtimeLiveSignals = useMemo(() => {
     const entries = Object.entries(runtimeSim.signals)
       .map(([key, value]) => [key, value] as const)
@@ -1300,7 +1484,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return mergedSignals;
   }, [liveSignals, runtimeSim.signals]);
   const simTick = isReplayMode ? effectiveExternalDebugTick : runtimeSimTick;
-  const simRunning = !isReplayMode && runtimeSim.running;
+  const simRunning = false;
+  /** Applying a clock edge means something only where there is state for it to move. */
+  const circuitHasState = useMemo(
+    () =>
+      editorCircuit.nodes.some(
+        (node) => Boolean(getComponentSupport(node.type)?.clockPort)
+      ),
+    [editorCircuit.nodes]
+  );
   const simModeLabel = isReplayMode ? 'Replay' : simRunning ? 'Running' : 'Paused';
   const ioRowByNodeId = useMemo(() => {
     const index = new Map<string, (typeof ioRows)[number]>();
@@ -1409,7 +1601,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       });
   }, [editorCircuit.nodes, ioRowByNodeId, liveSignals]);
   const liveInputValueById = useMemo(() => {
-    const valueById = new Map<string, 0 | 1>();
+    const valueById = new Map<string, RuntimeLogicValue>();
     for (const row of allLiveInputRows) {
       valueById.set(row.id, row.value);
     }
@@ -1475,11 +1667,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal,
   ]);
   const getChipMetadata = useCallback((nodeType: string, node?: Node): ChipMetadata | undefined => {
+    const moduleDefinitionId = node && typeof node.config?.moduleDefinitionId === 'string'
+      ? node.config.moduleDefinitionId
+      : null;
+    const nativeModule = hierarchy?.modules.find(
+      (module) => module.id === moduleDefinitionId || module.name === nodeType,
+    );
+    if (nativeModule) {
+      return {
+        name: nativeModule.displayName,
+        inputs: nativeModule.ports
+          .filter((port) => port.direction === 'input')
+          .map((port) => ({ id: port.name, name: port.name })),
+        outputs: nativeModule.ports
+          .filter((port) => port.direction === 'output')
+          .map((port) => ({ id: port.name, name: port.name })),
+        color: '#5b68d8',
+        layer: 1,
+      };
+    }
     if (node) {
       return getDesignChipMetadataForNode(node) ?? getDesignChipMetadata(nodeType);
     }
     return getDesignChipMetadata(nodeType);
-  }, []);
+  }, [hierarchy]);
 
   const { setActiveBoardSignal } = useBoardSignal();
   const activeInsertionMacro = useMemo(
@@ -1489,7 +1700,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
   const starterNextAction =
     starterContext?.nextAction?.trim() ||
-    'Inspect the scaffold on the canvas, then continue editing or move to Verify.';
+    'Inspect the scaffold on the canvas, then continue editing or move to Simulate.';
   const isPlacementMode = placementModeLabel != null;
   // NOTE: commitRuntimeMutation was removed. onRuntime* callbacks (addDesignNode,
   // addDesignIo, addDesignBoardIo, connectDesignNodes) mutate projectRuntime directly.
@@ -1523,17 +1734,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     observer.observe(paneRowRef.current);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (!simRunning || !onRuntimeSimStep) return;
-    const intervalMs = Math.max(24, Math.round(1000 / Math.max(1, simSpeed)));
-    const timer = window.setInterval(() => {
-      onRuntimeSimStep();
-    }, intervalMs);
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [onRuntimeSimStep, simRunning, simSpeed]);
 
   const deleteSelection = useCallback(() => {
     const selectedNodeIds = Array.from(selection.nodes);
@@ -1624,112 +1824,102 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     deleteSelection();
   }, [deleteSelection, handleCopy, selection.nodes]);
 
-  const handleAlignSelection = useCallback((edge: 'left' | 'top') => {
-    if (selection.nodes.size < 2) return;
-    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
-    if (selectedNodes.length < 2) return;
+  const applySelectionPositions = useCallback(
+    (positionById: Map<string, { x: number; y: number }>, toast: string) => {
+      let didChange = false;
+      const next = {
+        ...circuit,
+        nodes: circuit.nodes.map((node) => {
+          const target = positionById.get(node.id);
+          if (!target) return node;
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          if (current.x === target.x && current.y === target.y) return node;
+          didChange = true;
+          return { ...node, position: target };
+        }),
+      };
+      if (!didChange) return;
+      updateCircuit(next, { skipHistory: true, enforceLimits: true });
+      setActionToast(toast);
+      emitCircuitMutation(next);
+    },
+    [circuit, emitCircuitMutation, updateCircuit]
+  );
 
-    const targetCoordinate =
-      edge === 'left'
-        ? Math.min(...selectedNodes.map((node) => node.position?.x ?? 0))
-        : Math.min(...selectedNodes.map((node) => node.position?.y ?? 0));
+  const handleAlignSelection = useCallback(
+    (edge: 'left' | 'right' | 'h-center' | 'top' | 'bottom' | 'v-center') => {
+      if (selection.nodes.size < 2) return;
+      const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+      if (selectedNodes.length < 2) return;
 
-    let didChange = false;
-    const next = {
-      ...circuit,
-      nodes: circuit.nodes.map((node) => {
-        if (!selection.nodes.has(node.id)) return node;
-        const currentPosition = {
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        };
-        const nextPosition =
-          edge === 'left'
-            ? { x: targetCoordinate, y: currentPosition.y }
-            : { x: currentPosition.x, y: targetCoordinate };
+      const axis = edge === 'left' || edge === 'right' || edge === 'h-center' ? 'x' : 'y';
+      const coordinates = selectedNodes.map((node) => node.position?.[axis] ?? 0);
+      const minimum = Math.min(...coordinates);
+      const maximum = Math.max(...coordinates);
+      const target =
+        edge === 'left' || edge === 'top'
+          ? minimum
+          : edge === 'right' || edge === 'bottom'
+            ? maximum
+            : (minimum + maximum) / 2;
 
-        if (
-          currentPosition.x === nextPosition.x &&
-          currentPosition.y === nextPosition.y
-        ) {
-          return node;
-        }
+      const positionById = new Map(
+        selectedNodes.map((node) => {
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          return [node.id, axis === 'x' ? { x: target, y: current.y } : { x: current.x, y: target }] as const;
+        })
+      );
+      const edgeLabel =
+        edge === 'h-center' ? 'horizontal center' : edge === 'v-center' ? 'vertical center' : edge;
+      applySelectionPositions(
+        new Map(positionById),
+        `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edgeLabel}.`
+      );
+    },
+    [applySelectionPositions, circuit.nodes, selection.nodes]
+  );
 
-        didChange = true;
-        return {
-          ...node,
-          position: nextPosition,
-        };
-      }),
-    };
+  const handleDistributeSelection = useCallback(
+    (axis: 'horizontal' | 'vertical') => {
+      if (selection.nodes.size < 3) return;
+      const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+      if (selectedNodes.length < 3) return;
 
-    if (!didChange) return;
+      const key = axis === 'horizontal' ? 'x' : 'y';
+      const secondary = axis === 'horizontal' ? 'y' : 'x';
+      const sortedNodes = [...selectedNodes].sort((left, right) => {
+        const primaryDelta = (left.position?.[key] ?? 0) - (right.position?.[key] ?? 0);
+        if (primaryDelta !== 0) return primaryDelta;
+        const secondaryDelta = (left.position?.[secondary] ?? 0) - (right.position?.[secondary] ?? 0);
+        if (secondaryDelta !== 0) return secondaryDelta;
+        return left.id.localeCompare(right.id);
+      });
 
-    updateCircuit(next, { skipHistory: true, enforceLimits: true });
-    setActionToast(
-      `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edge}.`
-    );
-    emitCircuitMutation(next);
-  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+      const first = sortedNodes[0]?.position?.[key] ?? 0;
+      const last = sortedNodes[sortedNodes.length - 1]?.position?.[key] ?? 0;
+      const step = (last - first) / (sortedNodes.length - 1);
+      const positionById = new Map(
+        sortedNodes.map((node, index) => {
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          const distributed = first + step * index;
+          return [
+            node.id,
+            key === 'x' ? { x: distributed, y: current.y } : { x: current.x, y: distributed },
+          ] as const;
+        })
+      );
+      applySelectionPositions(
+        new Map(positionById),
+        `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} ${axis === 'horizontal' ? 'horizontally' : 'vertically'}.`
+      );
+    },
+    [applySelectionPositions, circuit.nodes, selection.nodes]
+  );
 
-  const handleDistributeSelectionHorizontally = useCallback(() => {
-    if (selection.nodes.size < 3) return;
-    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
-    if (selectedNodes.length < 3) return;
-
-    const sortedNodes = [...selectedNodes].sort((left, right) => {
-      const leftX = left.position?.x ?? 0;
-      const rightX = right.position?.x ?? 0;
-      if (leftX !== rightX) return leftX - rightX;
-      const leftY = left.position?.y ?? 0;
-      const rightY = right.position?.y ?? 0;
-      if (leftY !== rightY) return leftY - rightY;
-      return left.id.localeCompare(right.id);
-    });
-
-    const leftmostX = sortedNodes[0]?.position?.x ?? 0;
-    const rightmostX = sortedNodes[sortedNodes.length - 1]?.position?.x ?? 0;
-    const step = (rightmostX - leftmostX) / (sortedNodes.length - 1);
-    const distributedXById = new Map(
-      sortedNodes.map((node, index) => [node.id, leftmostX + step * index])
-    );
-
-    let didChange = false;
-    const next = {
-      ...circuit,
-      nodes: circuit.nodes.map((node) => {
-        if (!selection.nodes.has(node.id)) return node;
-        const targetX = distributedXById.get(node.id);
-        if (typeof targetX !== 'number') return node;
-
-        const currentPosition = {
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        };
-
-        if (currentPosition.x === targetX) {
-          return node;
-        }
-
-        didChange = true;
-        return {
-          ...node,
-          position: {
-            x: targetX,
-            y: currentPosition.y,
-          },
-        };
-      }),
-    };
-
-    if (!didChange) return;
-
-    updateCircuit(next, { skipHistory: true, enforceLimits: true });
-    setActionToast(
-      `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} horizontally.`
-    );
-    emitCircuitMutation(next);
-  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+  const handleDistributeSelectionHorizontally = useCallback(
+    () => handleDistributeSelection('horizontal'),
+    [handleDistributeSelection]
+  );
 
   const handleNudgeSelection = useCallback((dx: number, dy: number) => {
     if (selection.nodes.size === 0) return;
@@ -1764,16 +1954,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    for (const node of nodesToFit) {
-      const px = node.position?.x ?? 0;
-      const py = node.position?.y ?? 0;
-      minX = Math.min(minX, px);
-      maxX = Math.max(maxX, px);
-      minY = Math.min(minY, py);
-      maxY = Math.max(maxY, py);
+    // Measure the symbols as the canvas draws them - body, pins, stubs and labels - not
+    // the node anchors. Anchors put the outermost symbol half off the sheet after a fit.
+    const fitBounds = unionBounds(buildGeometryIndex(nodesToFit as Node[]).values());
+    if (!fitBounds) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
     }
+    const { minX, maxX, minY, maxY } = fitBounds;
     const spanX = Math.max(96, maxX - minX);
     const spanY = Math.max(96, maxY - minY);
     const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
@@ -1911,7 +2099,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const current = editorCircuit.connections.length;
     if (current > previous) {
       setWireFeedback(null);
-      setActionToast(previous === 0 ? 'First wire linked.' : 'Wire linked.');
     }
     previousWireCountRef.current = current;
   }, [editorCircuit.connections.length]);
@@ -1935,19 +2122,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         item.title,
         item.type,
         item.category,
+        item.section,
         item.subtitle,
         ...item.searchTerms,
       ])
     );
-    const sequential = filtered.filter((item) => item.category === 'Sequential');
+    const sequential = filtered.filter((item) => item.section === 'sequential');
     return {
-      logic: filtered.filter((item) => item.category === 'Logic'),
+      logic: filtered.filter((item) => item.section === 'logic'),
       sequential,
       sequentialRegisters: sequential.filter((item) => item.sequentialTier === 'registers'),
       sequentialTiming: sequential.filter((item) => item.sequentialTier === 'timing'),
       sequentialLegacy: sequential.filter((item) => item.sequentialTier === 'legacy'),
-      io: filtered.filter((item) => item.category === 'IO'),
-      components: filtered.filter((item) => item.category === 'Components'),
+      io: filtered.filter((item) => item.section === 'io'),
+      components: filtered.filter((item) => item.section === 'reusable'),
     };
   }, [paletteQueryTerms]);
   const commonPaletteItems = useMemo(() => {
@@ -2046,17 +2234,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),
     [boardIoRowByAlias]
   );
+  // Placement clears the symbol it is about to draw, so every spawn says what it is placing.
+  // An I/O boundary is wider and shorter than a gate; a module block is larger than both.
+  const nodeTypeSpawnFootprint = useCallback((nodeType: string | undefined) => {
+    if (!nodeType) return undefined;
+    const size = measureNodeSize({
+      id: '__spawn-probe__',
+      type: nodeType,
+      position: { x: 0, y: 0 },
+      config: {},
+      state: {},
+    } as Node);
+    return { width: size.width, height: size.height };
+  }, []);
+
   const resolveCanvasPlacementPosition = useCallback(
-    (clientX: number, clientY: number) => {
+    (clientX: number, clientY: number, nodeType?: string) => {
       if (!canvasHostRef.current) return null;
       const rect = canvasHostRef.current.getBoundingClientRect();
       const worldPoint = {
         x: (clientX - rect.left - camera.x) / camera.zoom,
         y: (clientY - rect.top - camera.y) / camera.zoom,
       };
-      return findSmartSpawnPosition(editorCircuit.nodes as Node[], worldPoint);
+      return findSmartSpawnPosition(
+        editorCircuit.nodes as Node[],
+        worldPoint,
+        undefined,
+        nodeTypeSpawnFootprint(nodeType)
+      );
     },
-    [camera.x, camera.y, camera.zoom, editorCircuit.nodes]
+    [camera.x, camera.y, camera.zoom, editorCircuit.nodes, nodeTypeSpawnFootprint]
   );
 
   const spawnAtCanvasCenter = useCallback(
@@ -2065,7 +2272,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, nodeTypeSpawnFootprint(nodeType));
       const position = {
         x: basePosition.x + extraOffset.x,
         y: basePosition.y + extraOffset.y,
@@ -2152,13 +2359,73 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     ]
   );
 
+  // A module instance is drawn as a block with one pin row per port and a header, so it is
+  // roughly twice a gate in both axes. Placement has to be told that, or clicking Place four
+  // times stacks the instances until some have no exposed body left to click.
+  const moduleSpawnFootprint = useCallback(
+    (definition: { displayName?: string; name: string; ports: readonly { name: string; direction: string }[] }) => {
+      const size = blockBodySize({
+        kind: 'module',
+        instanceName: definition.displayName ?? definition.name,
+        typeLabel: definition.name,
+        inputPortNames: definition.ports.filter((port) => port.direction === 'input').map((port) => port.name),
+        outputPortNames: definition.ports.filter((port) => port.direction === 'output').map((port) => port.name),
+      });
+      return { width: size.width, height: size.height };
+    },
+    []
+  );
+
+  // Bus authoring dialog: create a first-class vector boundary (A[3:0]) as
+  // one durable action. Members land on the canvas and gain IO rows for Board.
+  const [busDialog, setBusDialog] = useState<{
+    direction: 'input' | 'output';
+    name: string;
+    width: number;
+    error: string | null;
+  } | null>(null);
+  const openBusDialog = useCallback((direction: 'input' | 'output') => {
+    setBusDialog({ direction, name: '', width: 4, error: null });
+  }, []);
+  const submitBusDialog = useCallback(() => {
+    if (!busDialog || !onRuntimeCreateBus) {
+      setBusDialog(null);
+      return;
+    }
+    const center = {
+      x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+      y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+    };
+    // A bus creates one symbol per bit, stacked downwards, so the spawn search has to
+    // clear the whole column. Clearing only the first bit left the rest on top of
+    // whatever already occupied the canvas below it.
+    const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, {
+      slots: busDialog.width,
+      spacing: BUS_MEMBER_SPACING,
+    });
+    const outcome = onRuntimeCreateBus({
+      name: busDialog.name.trim(),
+      direction: busDialog.direction,
+      width: busDialog.width,
+      position: { x: basePosition.x, y: basePosition.y },
+    });
+    if (outcome.ok) {
+      setBusDialog(null);
+      setActionToast(
+        `Created ${busDialog.name.trim()}[${Math.max(0, busDialog.width - 1)}:0] ${busDialog.direction} bus.`
+      );
+    } else {
+      setBusDialog({ ...busDialog, error: outcome.error });
+    }
+  }, [busDialog, onRuntimeCreateBus, canvasSize.width, canvasSize.height, camera.x, camera.y, camera.zoom, editorCircuit]);
+
   const addIoPins = useCallback(() => {
     if (onRuntimeAddIo) {
       const center = {
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, nodeTypeSpawnFootprint('INPUT'));
       onRuntimeAddIo('input', { x: basePosition.x - 120, y: basePosition.y - 24 });
       onRuntimeAddIo('output', { x: basePosition.x + 120, y: basePosition.y - 24 });
     } else {
@@ -2166,7 +2433,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
     }
     setActionToast('Added starter IO pins.');
-  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, nodeTypeSpawnFootprint, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
     if (onRuntimeAddIo && onRuntimeAddNode && onRuntimeConnect) {
@@ -2174,7 +2441,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
       };
-      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+      const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, nodeTypeSpawnFootprint('INPUT'));
       const [inputAId, inputBId, andId, outputId] = predictNextNodeIds(editorCircuit, 4);
 
       onRuntimeAddIo('input', { x: basePosition.x - 170, y: basePosition.y - 72 });
@@ -2250,7 +2517,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const commitPendingPlacement = useCallback(
     (clientX: number, clientY: number, options?: { keepPlacing?: boolean }) => {
       if (!pendingPlacement) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
+      const position = resolveCanvasPlacementPosition(clientX, clientY, pendingPlacement.nodeType);
       if (!position) return;
       const keepPlacing = options?.keepPlacing === true;
 
@@ -2315,7 +2582,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const updatePlacementGhost = useCallback(
     (clientX: number, clientY: number) => {
       if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
+      const position = resolveCanvasPlacementPosition(clientX, clientY, pendingPlacement.nodeType);
       if (!position) return;
       setPlacementGhost({
         screenX: position.x * camera.zoom + camera.x,
@@ -2342,6 +2609,92 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const rect = canvasHostRef.current.getBoundingClientRect();
     updatePlacementGhost(rect.left + rect.width / 2, rect.top + rect.height / 2);
   }, [activeInsertionMacro, canvasSize.height, canvasSize.width, pendingPlacement, updatePlacementGhost]);
+
+  /**
+   * Palette drag-to-place. A press on a library card starts a potential drag;
+   * moving past the threshold arms the same pendingPlacement pipeline the
+   * click path uses, the ghost follows the pointer, and releasing over the
+   * canvas commits through commitPendingPlacement (Shift keeps placing).
+   * Releasing anywhere else cancels. A press-and-release without movement
+   * stays a plain click, so the click-to-arm flow is unchanged.
+   */
+  const paletteDragRef = useRef<{
+    spec:
+      | { kind: 'node'; nodeType: string; label: string }
+      | { kind: 'board-io'; entry: BoardIoPaletteItem; label: string };
+    startX: number;
+    startY: number;
+    armed: boolean;
+  } | null>(null);
+
+  const beginPaletteCardDrag = useCallback(
+    (
+      event: React.PointerEvent,
+      spec:
+        | { kind: 'node'; nodeType: string; label: string }
+        | { kind: 'board-io'; entry: BoardIoPaletteItem; label: string }
+    ) => {
+      if (event.button !== 0 || isReplayMode) return;
+      paletteDragRef.current = {
+        spec,
+        startX: event.clientX,
+        startY: event.clientY,
+        armed: false,
+      };
+    },
+    [isReplayMode]
+  );
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      const drag = paletteDragRef.current;
+      if (!drag) return;
+      if (!drag.armed) {
+        if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
+        drag.armed = true;
+        if (drag.spec.kind === 'node') {
+          beginNodePlacement(drag.spec.nodeType);
+        } else {
+          beginBoardIoPlacement(drag.spec.entry);
+        }
+      }
+      updatePlacementGhost(event.clientX, event.clientY);
+    };
+    const handleUp = (event: PointerEvent) => {
+      const drag = paletteDragRef.current;
+      paletteDragRef.current = null;
+      if (!drag?.armed) return;
+      const host = canvasHostRef.current;
+      const rect = host?.getBoundingClientRect();
+      const overCanvas =
+        rect != null &&
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      const releaseTarget =
+        typeof document.elementFromPoint === 'function'
+          ? (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)
+          : null;
+      if (overCanvas && !isCanvasPlacementBlocked(releaseTarget)) {
+        commitPendingPlacement(event.clientX, event.clientY, { keepPlacing: event.shiftKey });
+      } else {
+        cancelPendingPlacement('cancel');
+      }
+    };
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    return () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+  }, [
+    beginBoardIoPlacement,
+    beginNodePlacement,
+    cancelPendingPlacement,
+    commitPendingPlacement,
+    updatePlacementGhost,
+  ]);
 
   const setSelectMode = useCallback(() => {
     cancelActivePlacement('tool');
@@ -2423,6 +2776,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return readDesignCanvasViewport(canvasHostRef.current.clientWidth, canvasHostRef.current.clientHeight);
   }, []);
 
+  const lastFittedCameraRef = useRef<{ x: number; y: number; zoom: number } | null>(null);
   const fitToCircuit = useCallback((viewportOverride?: unknown) => {
     const viewport = isDesignCanvasViewport(viewportOverride)
       ? viewportOverride
@@ -2436,37 +2790,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (const node of editorCircuit.nodes) {
-      const px = node.position?.x ?? node.x ?? 0;
-      const py = node.position?.y ?? node.y ?? 0;
-      minX = Math.min(minX, px);
-      maxX = Math.max(maxX, px);
-      minY = Math.min(minY, py);
-      maxY = Math.max(maxY, py);
-    }
-    if (!Number.isFinite(minX)) {
+    const bounds = unionBounds(buildGeometryIndex(editorCircuit.nodes as Node[]).values());
+    if (!bounds) {
       setCamera({ x: 0, y: 0, zoom: 1 });
       return;
     }
-    const spanX = Math.max(96, maxX - minX);
-    const spanY = Math.max(96, maxY - minY);
-    const padding = Math.max(56, Math.min(140, Math.round(Math.max(spanX, spanY) * 0.14)));
-    const boundsWidth = Math.max(1, spanX + padding * 2);
-    const boundsHeight = Math.max(1, spanY + padding * 2);
-    const zoomX = (viewport.width * 0.9) / boundsWidth;
-    const zoomY = (viewport.height * 0.9) / boundsHeight;
-    const nextZoom = snapFitZoom(Math.max(0.55, Math.min(2.4, Math.min(zoomX, zoomY))));
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    setCamera({
+    // This fit already consumed the new viewport. A queued ResizeObserver must
+    // not apply the old-to-new translation to this newly fitted camera again.
+    lastMeasuredCanvasViewportRef.current = viewport;
+    const FIT_MARGIN = 48;
+    const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
+    const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
+    const zoomX = (viewport.width - FIT_MARGIN * 2) / boundsWidth;
+    const zoomY = (viewport.height - FIT_MARGIN * 2) / boundsHeight;
+    // Continuous fit: fill the sheet inside the margin, floored so a large design stays
+    // legible and capped so a small one does not balloon. Zoom in/out still steps.
+    const nextZoom = Math.round(Math.max(0.35, Math.min(1.6, Math.min(zoomX, zoomY))) * 100) / 100;
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    const fittedCamera = {
       x: viewport.width / 2 - centerX * nextZoom,
       y: viewport.height / 2 - centerY * nextZoom,
       zoom: nextZoom,
-    });
+    };
+    lastFittedCameraRef.current = fittedCamera;
+    setCamera(fittedCamera);
   }, [canvasSize, editorCircuit.nodes, measureCanvasViewport, setCamera]);
 
   const fitToCircuitRef = useRef(fitToCircuit);
@@ -2496,6 +2844,38 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const cameraGraphAnchorsRef = useRef(cameraGraphAnchors);
   cameraGraphAnchorsRef.current = cameraGraphAnchors;
+  const editorNodesRef = useRef(editorCircuit.nodes);
+  editorNodesRef.current = editorCircuit.nodes;
+  // The parts most recently selected, kept after the selection is cleared only while the release
+  // settles: a part placed and released with Escape as the inspector opened is still followed.
+  // After that it is just a part on the sheet. Kept for good, a part released long ago slid the
+  // student's view whenever a wire was selected or the library was shown.
+  const lastTouchedNodeIdsRef = useRef<ReadonlySet<string>>(new Set());
+  if (selection.nodes.size > 0) lastTouchedNodeIdsRef.current = selection.nodes;
+  useEffect(() => {
+    if (selection.nodes.size > 0 || lastTouchedNodeIdsRef.current.size === 0) return;
+    let second = 0;
+    const first = window.requestAnimationFrame(() => {
+      second = window.requestAnimationFrame(() => {
+        if (useLogicViewStore.getState().selection.nodes.size === 0) lastTouchedNodeIdsRef.current = new Set();
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(first);
+      window.cancelAnimationFrame(second);
+    };
+  }, [selection.nodes]);
+  // Which parts are on the sheet, and where. Save As gives the open work a new project
+  // identity without changing a single part; this is how that is told apart from a different
+  // project arriving.
+  const sheetWorkIdentity = useMemo(
+    () => editorCircuit.nodes
+      .map((node) => `${node.id}@${node.position?.x ?? node.x ?? 0},${node.position?.y ?? node.y ?? 0}`)
+      .sort()
+      .join('\u0001'),
+    [editorCircuit.nodes]
+  );
+  const shownSheetWorkIdentityRef = useRef(sheetWorkIdentity);
 
   useLayoutEffect(() => {
     if (!canvasHostElement) return;
@@ -2505,7 +2885,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     let pendingFrame: number | null = null;
     let pendingViewport: DesignCanvasViewport | null = null;
 
-    const commitViewport = (nextViewport: DesignCanvasViewport) => {
+    const commitViewport = (nextViewport: DesignCanvasViewport, cause: DesignCanvasCommitCause = 'observed') => {
       if (
         !active ||
         canvasObservationGenerationRef.current !== generation ||
@@ -2514,17 +2894,205 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
       const previousViewport = lastMeasuredCanvasViewportRef.current;
-      if (
+      const previousPlacement = lastCanvasPlacementRef.current;
+      const nextPlacement = readDesignCanvasPlacement(canvasHostElement);
+      const sameSize =
         previousViewport?.width === nextViewport.width &&
-        previousViewport.height === nextViewport.height
+        previousViewport.height === nextViewport.height;
+      const docksChanged = Boolean(previousPlacement) && (
+        previousPlacement!.leftDock !== nextPlacement.leftDock ||
+        previousPlacement!.rightDock !== nextPlacement.rightDock);
+      const sheetMoved = Boolean(previousPlacement) && (
+        Math.abs(previousPlacement!.left - nextPlacement.left) >= 0.5 ||
+        Math.abs(previousPlacement!.top - nextPlacement.top) >= 0.5);
+      if (sameSize && !sheetMoved && !docksChanged) return;
+      setCanvasSize((current) =>
+        current.width === nextViewport.width && current.height === nextViewport.height ? current : nextViewport
+      );
+      // The same sheet measured twice differs by a pixel at most: the panel and view commits read
+      // the host's whole-pixel client size, the size observer floors its content box. With nothing
+      // beside the sheet changed, that pixel is not a resize: the canvas takes the size, the camera
+      // stays (an untouched frame refitted to it lost its zoom and slid about 100px whenever a
+      // wire was selected at 1366x768). The sheet is still measured against the last real one, so
+      // such pixels never add up unseen.
+      if (
+        previousViewport && !sheetMoved && !docksChanged &&
+        Math.abs(nextViewport.width - previousViewport.width) <= 1 &&
+        Math.abs(nextViewport.height - previousViewport.height) <= 1
       ) {
         return;
       }
       lastMeasuredCanvasViewportRef.current = nextViewport;
-      setCanvasSize(nextViewport);
+      lastCanvasPlacementRef.current = nextPlacement;
       if (!previousViewport) return;
+      // Opening or leaving a module changes the strips above the sheet with the work on it. The
+      // camera in the store still belongs to the module being left, and the next module's own
+      // camera replaces it a frame later, so the sheet is measured but the camera is left alone.
+      // Holding it on the page here shifted each module's remembered view by the strips'
+      // difference (44px) on every trip in and out, adding up until the work left the sheet.
+      if (activeModuleKeyRef.current !== cameraModuleRef.current) return;
 
-      const currentCamera = useLogicViewStore.getState().camera;
+      const viewState = useLogicViewStore.getState();
+      const currentCamera = viewState.camera;
+      const framedCamera = lastFittedCameraRef.current;
+      const untouched = Boolean(framedCamera && sameDesignCamera(framedCamera, currentCamera));
+      // A view switch (Schematic, Split, Code) owns the commits that settle it, before any
+      // selection or last-touched part is followed: the switch is the student's choice of sheet.
+      // Any panel shown, hidden or resized ends it, including the bottom panel and a dock's width,
+      // which change no dock state; so does a camera moved by anything else. Kept through those,
+      // it re-centred the old middle long after the switch had settled.
+      if (viewSwitchRef.current && cause !== 'view' && (cause === 'panel' || docksChanged)) {
+        viewSwitchRef.current = null;
+      }
+      const viewSwitch = viewSwitchRef.current;
+      if (viewSwitch?.kind === 'frame') {
+        // The frame was never the student's to keep: it is framed again for the new sheet.
+        if (untouched) {
+          fitToCircuitRef.current(nextViewport);
+          return;
+        }
+        viewSwitchRef.current = null;
+      } else if (viewSwitch?.kind === 'middle') {
+        // A view the student zoomed or panned keeps the part of the circuit they were looking at
+        // in the middle of the new sheet, at their zoom, through every commit of the switch.
+        if (sameDesignCamera(viewSwitch.camera, currentCamera)) {
+          const centred = centerDesignCanvasOn(viewSwitch.middle, nextViewport, currentCamera.zoom);
+          viewSwitchRef.current = { ...viewSwitch, camera: centred };
+          setCamera(centred);
+          return;
+        }
+        viewSwitchRef.current = null;
+      }
+      // A resized sheet never rescales the work, and nothing on it moves on the screen. Selecting
+      // a part opens the inspector, which narrows the sheet from the right; refitting the whole
+      // circuit into what was left turned a readable schematic into a small one at the moment a
+      // student wanted to look closely, and re-centring it slid every part half the inspector to
+      // the left. Showing or hiding the library moves the sheet's left edge instead, so a camera
+      // the student chose takes up that move. If the selection would now be off the sheet it is
+      // panned back in by the least amount; the zoom is the student's until they press Fit.
+      const geometry = buildGeometryIndex(editorNodesRef.current as Node[]);
+      const centredFrame = () => {
+        const bounds = unionBounds(geometry.values());
+        const stillFits = !bounds || (
+          (bounds.maxX - bounds.minX) * currentCamera.zoom <= nextViewport.width - 96 &&
+          (bounds.maxY - bounds.minY) * currentCamera.zoom <= nextViewport.height - 96);
+        return stillFits
+          ? {
+            x: currentCamera.x + (nextViewport.width - previousViewport.width) / 2,
+            y: currentCamera.y + (nextViewport.height - previousViewport.height) / 2,
+            zoom: currentCamera.zoom,
+          }
+          : null;
+      };
+      // The library shown, hidden or resized: the sheet's left edge moved.
+      const libraryMoved = Boolean(previousPlacement) && (
+        previousPlacement!.leftDock !== nextPlacement.leftDock ||
+        Math.abs(previousPlacement!.left - nextPlacement.left) >= 0.5);
+      let heldCamera = currentCamera;
+      if (!untouched) {
+        if (previousPlacement) {
+          heldCamera = holdDesignCanvasOnPage(
+            currentCamera,
+            { ...previousViewport, left: previousPlacement.left, top: previousPlacement.top },
+            { ...nextViewport, left: nextPlacement.left, top: nextPlacement.top });
+        }
+      } else if (libraryMoved) {
+        // A framed view nobody has touched stays centred when the library is shown or hidden, the
+        // same with a part selected or not (with one it used to keep its camera, so the drawing
+        // jumped with the sheet's left edge and was left off centre).
+        const centred = centredFrame();
+        if (!centred) {
+          fitToCircuitRef.current(nextViewport);
+          return;
+        }
+        heldCamera = centred;
+      }
+      const selectedIds = viewState.selection.nodes;
+      // Panning to keep a selection or a just-placed part on the sheet is the workbench's move, not
+      // the student's: an untouched frame stays one (a later view switch still frames it again).
+      const keepFramed = (kept: typeof currentCamera) => {
+        if (untouched) lastFittedCameraRef.current = kept;
+        setCamera(kept);
+      };
+      // How much of a part a sheet shows, in screen pixels squared.
+      const shownArea = (camera: DesignCanvasCamera, viewport: DesignCanvasViewport, box: DesignCanvasRegion) => {
+        const width = Math.min(viewport.width, box.maxX * camera.zoom + camera.x) - Math.max(0, box.minX * camera.zoom + camera.x);
+        const height = Math.min(viewport.height, box.maxY * camera.zoom + camera.y) - Math.max(0, box.minY * camera.zoom + camera.y);
+        return width > 0 && height > 0 ? width * height : 0;
+      };
+      // Only what the resize takes away is followed. A part the student could see some of before
+      // the resize and would see less of after it (the inspector opening over an output, the
+      // library shown over an input, a part already cut by the edge now covered entirely) is slid
+      // back until it is wholly on the sheet: by the least amount, and only across the edge that
+      // cut it. A part the resize leaves as it was is not nudged, and one that was off the sheet
+      // stays where the student left it. Following a padded neighbourhood on both axes moved the
+      // drawing up or down when only its right edge had been covered.
+      const followed = (ids: ReadonlySet<string>) => {
+        const box = unionBounds(
+          [...ids].map((id) => geometry.get(id)).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+        );
+        if (!box) return null;
+        const before = shownArea(currentCamera, previousViewport, box);
+        if (before <= 0 || shownArea(heldCamera, nextViewport, box) >= before - 0.5) return heldCamera;
+        const kept = keepRegionInView(heldCamera, nextViewport, box, SELECTION_VIEW_INSET);
+        const across = (start: number, end: number, size: number) => start < 0 || end > size;
+        const x = across(box.minX * heldCamera.zoom + heldCamera.x, box.maxX * heldCamera.zoom + heldCamera.x, nextViewport.width)
+          ? kept.x : heldCamera.x;
+        const y = across(box.minY * heldCamera.zoom + heldCamera.y, box.maxY * heldCamera.zoom + heldCamera.y, nextViewport.height)
+          ? kept.y : heldCamera.y;
+        return x === heldCamera.x && y === heldCamera.y ? heldCamera : { x, y, zoom: heldCamera.zoom };
+      };
+      if (selectedIds.size > 0) {
+        const kept = followed(selectedIds);
+        if (kept) {
+          if (kept !== currentCamera) keepFramed(kept);
+          return;
+        }
+      }
+      // Nothing is selected, but the part last worked on still matters: a part placed a moment
+      // ago and released with Escape while the inspector was opening has no selection to follow.
+      const touched = lastTouchedNodeIdsRef.current;
+      if (touched.size > 0) {
+        const kept = followed(touched);
+        if (kept && kept !== heldCamera) {
+          keepFramed(kept);
+          return;
+        }
+      }
+      if (untouched) {
+        if (libraryMoved) {
+          lastFittedCameraRef.current = heldCamera;
+          setCamera(heldCamera);
+          return;
+        }
+        // The inspector never moves a framed view nobody has touched: it opens and closes with
+        // the selection, and re-centring the frame every time it closed walked the drawing right
+        // by half the inspector on each select and release.
+        const onlyInspector = Boolean(previousPlacement) && !sheetMoved &&
+          previousPlacement!.leftDock === nextPlacement.leftDock &&
+          previousPlacement!.rightDock !== nextPlacement.rightDock;
+        if (onlyInspector) return;
+        // Otherwise an untouched frame stays centred as the sheet settles: it slides by half the
+        // change in size, at its zoom while the work still fits the sheet; when the sheet became
+        // too small for it, it is framed again.
+        const centred = centredFrame();
+        if (!centred) {
+          fitToCircuitRef.current(nextViewport);
+          return;
+        }
+        lastFittedCameraRef.current = centred;
+        setCamera(centred);
+        return;
+      }
+      const stillShowsWork = cameraGraphAnchorsRef.current.some((anchor) => {
+        const screenX = anchor.x * heldCamera.zoom + heldCamera.x;
+        const screenY = anchor.y * heldCamera.zoom + heldCamera.y;
+        return screenX >= 0 && screenX <= nextViewport.width && screenY >= 0 && screenY <= nextViewport.height;
+      });
+      if (stillShowsWork) {
+        if (heldCamera !== currentCamera) setCamera(heldCamera);
+        return;
+      }
       const reconciledCamera = reconcileDesignCanvasCamera(
         currentCamera,
         previousViewport,
@@ -2551,11 +3119,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       });
     };
 
+    commitCanvasViewportRef.current = commitViewport;
     const initialViewport = readDesignCanvasViewport(
       canvasHostElement.clientWidth,
       canvasHostElement.clientHeight
     );
-    if (initialViewport) commitViewport(initialViewport);
+    // A sheet mounting while a view switch settles is that switch's sheet (Code to Split).
+    if (initialViewport) commitViewport(initialViewport, viewSwitchRef.current ? 'view' : 'observed');
     const observer = new ResizeObserver((entries) => {
       const entry = entries.find((candidate) => candidate.target === canvasHostElement) ?? entries[0];
       if (!entry) return;
@@ -2570,19 +3140,90 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     };
   }, [canvasHostElement, setCamera]);
 
-  // Auto-fit on mode entry: whenever Design mounts with an existing circuit,
-  // frame it immediately. Runs once per mount; does not fight subsequent user pan/zoom.
+  // Switching the Design view (Schematic, Split, Code) is the student's own choice of sheet, not
+  // an incidental resize. An untouched framed view is framed again for the new sheet (the Split
+  // proof: all 13 counter parts stay inside); a view the student zoomed or panned keeps the part
+  // of the circuit they were looking at in the middle of the new sheet, at their zoom. The switch
+  // is settled here, before it is painted, and by the commits that follow it (Split's first ratio,
+  // the stacked fallback, the sheet that mounts after Code).
+  const cameraViewRef = useRef(designView);
+  useLayoutEffect(() => {
+    if (cameraViewRef.current === designView) return;
+    cameraViewRef.current = designView;
+    const camera = useLogicViewStore.getState().camera;
+    const framed = lastFittedCameraRef.current;
+    const sheet = lastMeasuredCanvasViewportRef.current;
+    if (framed && sameDesignCamera(framed, camera)) {
+      viewSwitchRef.current = { kind: 'frame' };
+    } else {
+      const middle = sheet ? designCanvasWorldCenter(camera, sheet) : null;
+      viewSwitchRef.current = middle ? { kind: 'middle', middle, camera } : null;
+    }
+    const host = canvasHostRef.current;
+    const viewport = host ? readDesignCanvasViewport(host.clientWidth, host.clientHeight) : null;
+    if (viewport) commitCanvasViewportRef.current(viewport, 'view');
+  }, [designView]);
+
+  // Entering Design: return to where this project and module were last being worked on. Work
+  // that has not been viewed yet in this session is framed once. This used to frame the whole
+  // circuit on every entry, which threw away a deliberate zoom each time a student came back
+  // from Simulate.
+  const designCameraKeyValue = designCameraKey(projectId, hierarchy?.activeModuleId ?? TOP_MODULE_ID);
+  const designCameraKeyRef = useRef(designCameraKeyValue);
+  designCameraKeyRef.current = designCameraKeyValue;
+  const cameraEstablishedRef = useRef(false);
+  const restoreOrFrameRef = useRef<() => void>(() => {});
+  restoreOrFrameRef.current = () => {
+    const remembered = recallDesignCamera(designCameraKeyRef.current);
+    if (remembered && editorNodesRef.current.length > 0 && wasFramedDesignCamera(designCameraKeyRef.current)) {
+      // An untouched frame was made for the sheet Design had then (before Verify, before a view
+      // switch remounted it); it is framed again for this sheet rather than restored off-centre.
+      fitToCircuitRef.current();
+    } else if (remembered && editorNodesRef.current.length > 0) {
+      // On first entry this runs twice in a row (mount, then the first frame request): the
+      // second finds the frame the first one just made, already remembered. That view is still
+      // an untouched frame and must go on being centred as the sheet settles; only a view that
+      // differs from the last frame is the student's own. Clearing it here unconditionally left
+      // a newly opened project 14px off centre in the production build, where the console strip
+      // moves into the status bar one frame after the fit.
+      const framed = lastFittedCameraRef.current;
+      if (!framed || framed.x !== remembered.x || framed.y !== remembered.y || framed.zoom !== remembered.zoom) {
+        lastFittedCameraRef.current = null;
+      }
+      setCamera(remembered);
+    } else if (editorNodesRef.current.length > 0) {
+      fitToCircuitRef.current();
+    } else {
+      return;
+    }
+    hasAutoFitRef.current = true;
+    cameraEstablishedRef.current = true;
+  };
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const frame = window.requestAnimationFrame(() => {
-      if (editorCircuit.nodes.length > 0) {
-        fitToCircuitRef.current();
-        hasAutoFitRef.current = true;
-      }
-    });
+    const frame = window.requestAnimationFrame(() => restoreOrFrameRef.current());
     return () => window.cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // mount only
+  // Remember the working camera as it changes, under the project and module it belongs to. A
+  // change of key is the moment another view is being restored, so that run records nothing.
+  const rememberedCameraKeyRef = useRef(designCameraKeyValue);
+  useEffect(() => {
+    if (rememberedCameraKeyRef.current !== designCameraKeyValue) {
+      rememberedCameraKeyRef.current = designCameraKeyValue;
+      return;
+    }
+    // A module just opened or left keeps the previous module's camera until its own is restored
+    // a frame later; recorded now (when the module's parts arrive), it became the module's memory.
+    if (cameraModuleRef.current !== activeModuleKeyRef.current) return;
+    if (!cameraEstablishedRef.current || editorCircuit.nodes.length === 0) return;
+    const framed = lastFittedCameraRef.current;
+    rememberDesignCamera(designCameraKeyValue, { x: camera.x, y: camera.y, zoom: camera.zoom },
+      Boolean(framed && framed.x === camera.x && framed.y === camera.y && framed.zoom === camera.zoom));
+  }, [camera.x, camera.y, camera.zoom, designCameraKeyValue, editorCircuit.nodes.length]);
+
+  // The measured viewport observer owns resize reconciliation; changing representation
+  // does not discard a deliberate pan or zoom. Explicit Fit remains available.
 
   const zoomIn = useCallback(() => {
     zoomCamera(120, canvasSize.width / 2, canvasSize.height / 2);
@@ -2591,6 +3232,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const zoomOut = useCallback(() => {
     zoomCamera(-120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
+
+  /** Return to 100% while keeping the world point at the viewport center fixed. */
+  const zoomTo100 = useCallback(() => {
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+    const worldX = (centerX - camera.x) / camera.zoom;
+    const worldY = (centerY - camera.y) / camera.zoom;
+    setCamera({ x: centerX - worldX, y: centerY - worldY, zoom: 1 });
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, setCamera]);
+
+  useEffect(() => {
+    const onIdeCommand = (event: Event) => {
+      const commandId = (event as CustomEvent<{ commandId?: string }>).detail?.commandId;
+      if (commandId === IDE_COMMAND_IDS.arrangeDesign) handleArrangeCircuit();
+      else if (commandId === IDE_COMMAND_IDS.fitDesignCanvas) fitToCircuit();
+      else if (commandId === IDE_COMMAND_IDS.zoomInDesignCanvas) zoomIn();
+      else if (commandId === IDE_COMMAND_IDS.zoomOutDesignCanvas) zoomOut();
+    };
+    window.addEventListener(IDE_COMMAND_EVENT_NAME, onIdeCommand);
+    return () => window.removeEventListener(IDE_COMMAND_EVENT_NAME, onIdeCommand);
+  }, [fitToCircuit, handleArrangeCircuit, zoomIn, zoomOut]);
 
   const resetView = useCallback(() => {
     if (editorCircuit.nodes.length === 0) {
@@ -2679,9 +3341,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       Math.abs(camera.zoom - 1) < 0.001;
     if (!cameraIsDefault) {
       hasAutoFitRef.current = true;
+      cameraEstablishedRef.current = true;
       return;
     }
     hasAutoFitRef.current = true;
+    cameraEstablishedRef.current = true;
     fitToCircuit();
   }, [camera.x, camera.y, camera.zoom, editorCircuit.nodes.length, fitToCircuit]);
 
@@ -2694,16 +3358,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   useEffect(() => {
     if (!viewportSeed) return;
     if (lastViewportSeedRef.current === viewportSeed) return;
+    const firstSeed = lastViewportSeedRef.current === undefined;
+    const sameProject = lastSeedProjectRef.current === (projectId ?? null);
     lastViewportSeedRef.current = viewportSeed;
+    lastSeedProjectRef.current = projectId ?? null;
+    // Save As: the identity changed under a sheet whose parts did not. The student is still
+    // looking at the same work, so the view stays put and becomes the copy's remembered view.
+    if (!firstSeed && !sameProject && editorNodesRef.current.length > 0 &&
+        shownSheetWorkIdentityRef.current === sheetWorkIdentity && cameraEstablishedRef.current) {
+      const kept = useLogicViewStore.getState().camera;
+      rememberDesignCamera(designCameraKeyRef.current, { x: kept.x, y: kept.y, zoom: kept.zoom });
+      return;
+    }
     hasAutoFitRef.current = false;
+    cameraEstablishedRef.current = false;
     const frame = window.requestAnimationFrame(() => {
-      fitToCircuitRef.current();
+      // The same project asking for a new frame (a lab step) is reframed. Arriving at a project,
+      // on mount or by switching, returns to that project's own remembered view if it has one.
+      if (!firstSeed && sameProject) {
+        fitToCircuitRef.current();
+        hasAutoFitRef.current = true;
+        cameraEstablishedRef.current = true;
+      } else {
+        restoreOrFrameRef.current();
+      }
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewportSeed]);
+  // Declared after the effect above so that effect compares against the sheet as it was.
+  useEffect(() => {
+    shownSheetWorkIdentityRef.current = sheetWorkIdentity;
+  }, [sheetWorkIdentity]);
 
   useEffect(() => {
     const previousView = previousDesignViewRef.current;
@@ -2725,21 +3413,37 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     [onRuntimeSimSetInput, queueDesignDebugToggleSample]
   );
 
-  const startSimulation = useCallback(() => {
-    onRuntimeSimRun?.();
-  }, [onRuntimeSimRun]);
-
-  const pauseSimulation = useCallback(() => {
-    onRuntimeSimPause?.();
-  }, [onRuntimeSimPause]);
-
   const stepSimulation = useCallback(() => {
+    const clockInputs = new Set<string>();
+    const nodesById = new Map(editorCircuit.nodes.map((node) => [node.id, node]));
+    for (const connection of editorCircuit.connections) {
+      const from = resolveConnectionEndpoint(connection.from);
+      const to = resolveConnectionEndpoint(connection.to);
+      const target = nodesById.get(to.nodeId);
+      const clockPort = target ? getComponentSupport(target.type)?.clockPort : undefined;
+      if (clockPort === to.portName &&
+          Object.prototype.hasOwnProperty.call(runtimeSim?.inputs ?? {}, from.nodeId)) {
+        clockInputs.add(from.nodeId);
+      }
+    }
+    for (const nodeId of clockInputs) onRuntimeSimSetInput?.(nodeId, 0);
+    for (const nodeId of clockInputs) onRuntimeSimSetInput?.(nodeId, 1);
     onRuntimeSimStep?.();
-  }, [onRuntimeSimStep]);
+    for (const nodeId of clockInputs) onRuntimeSimSetInput?.(nodeId, 0);
+  }, [editorCircuit, runtimeSim?.inputs, onRuntimeSimSetInput, onRuntimeSimStep]);
 
   const resetSimulation = useCallback(() => {
+    // Runtime owns the live inputs; restore their authored defaults through its
+    // existing actions before clearing register state and the exploratory trace.
+    const authoredNodes = new Map(editorCircuit.nodes.map((node) => [node.id, node]));
+    for (const nodeId of Object.keys(runtimeSim?.inputs ?? {})) {
+      const node = authoredNodes.get(nodeId);
+      if (!node) continue;
+      const initial = node.state?.isOn;
+      onRuntimeSimSetInput?.(nodeId, initial === 1 || initial === true || initial === '1' ? 1 : 0);
+    }
     onRuntimeSimReset?.();
-  }, [onRuntimeSimReset]);
+  }, [editorCircuit.nodes, runtimeSim?.inputs, onRuntimeSimSetInput, onRuntimeSimReset]);
 
   const selectedNodeIds = useMemo(() => Array.from(selection.nodes).slice(0, 5), [selection.nodes]);
   const selectedNodeIdsAll = useMemo(() => Array.from(selection.nodes), [selection.nodes]);
@@ -2754,6 +3458,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       selectedNodeIds.length > 0 ? editorCircuit.nodes.find((node) => node.id === selectedNodeIds[0]) : undefined,
     [editorCircuit.nodes, selectedNodeIds]
   );
+  // Related… follows the selected boundary signal into its other representations.
+  const designRelated = selectedNode ? relationshipIndex.resolveNode(selectedNode.id) : null;
+  // Failing checks of the current replay, as schematic nodes. A stale replay
+  // (the design changed since) draws nothing: the failure may no longer exist.
+  const replayMismatchNodeIds = useMemo(() => {
+    const rows = replaySession?.report?.rows ?? [];
+    if (rows.length === 0 || staleReplayBreadcrumb) return null;
+    const nodeIds = new Set<string>();
+    for (const row of rows) {
+      if (row.status !== 'fail') continue;
+      const relation = relationshipIndex.resolveRunSignal(row.signal) ?? relationshipIndex.resolveField(row.signal);
+      if (relation?.nodeId) nodeIds.add(relation.nodeId);
+    }
+    return nodeIds.size > 0 ? nodeIds : null;
+  }, [relationshipIndex, replaySession?.report?.rows, staleReplayBreadcrumb]);
 
   const handleInspectorInputToggle = useCallback(() => {
     if (!selectedNode || !onRuntimeSimSetInput) return;
@@ -2885,6 +3604,50 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current);
     savedToastTimerRef.current = setTimeout(() => setSavedComponentToast(null), 3000);
   }, [saveComponentName, onSaveAsComponent, buildCompositeDefFromSelection]);
+
+  const openModuleDialog = useCallback(() => {
+    const analysis = analyzeModuleSelection(
+      editorCircuit,
+      selectedNodeIdsAll,
+      hierarchy?.modules.map((module) => module.name) ?? [],
+    );
+    const nextNumber = (hierarchy?.modules.length ?? 0) + 1;
+    const moduleName = `LogicBlock${nextNumber}`;
+    setModuleDialog({
+      analysis,
+      moduleName,
+      instanceName: `u_logic_block_${nextNumber}`,
+      portNames: Object.fromEntries(
+        [...analysis.inputs, ...analysis.outputs].map((port) => [port.id, port.suggestedName]),
+      ),
+      error: analysis.errors[0] ?? null,
+    });
+  }, [editorCircuit, hierarchy?.modules, selectedNodeIdsAll]);
+
+  const confirmCreateModule = useCallback(() => {
+    if (!moduleDialog || !onCreateModuleFromSelection || !moduleDialog.analysis.ok) return;
+    try {
+      const created = onCreateModuleFromSelection({
+        moduleName: moduleDialog.moduleName,
+        instanceName: moduleDialog.instanceName,
+        selectedNodeIds: moduleDialog.analysis.selectedNodeIds,
+        portNames: moduleDialog.portNames,
+      });
+      if (!created) {
+        setModuleDialog((current) => current ? { ...current, error: 'The module could not be created.' } : current);
+        return;
+      }
+      setModuleDialog(null);
+      clearSelection();
+      setSavedComponentToast(created.definition.displayName);
+      setActionToast(`Created ${created.definition.displayName} and replaced the selection with ${readInstanceName(created.instance)}.`);
+      if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current);
+      savedToastTimerRef.current = setTimeout(() => setSavedComponentToast(null), 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The module could not be created.';
+      setModuleDialog((current) => current ? { ...current, error: message } : current);
+    }
+  }, [clearSelection, moduleDialog, onCreateModuleFromSelection]);
 
   const openMacroDialog = useCallback(() => {
     const selectedIds = new Set(selectedNodeIdsAll);
@@ -3050,13 +3813,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   useEffect(() => {
-    if (!selectedNode) return;
+    if (!selectedNode) {
+      setActiveBoardSignal(null);
+      return;
+    }
     const row = ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`);
-    if (!row) return;
-    const swM = /^SW(\d+)$/i.exec(row.label);
-    if (swM) { setActiveBoardSignal({ type: 'sw', index: parseInt(swM[1], 10) }); return; }
-    const ldM = /^LD(\d+)$/i.exec(row.label);
-    if (ldM) { setActiveBoardSignal({ type: 'ld', index: parseInt(ldM[1], 10) }); return; }
+    setActiveBoardSignal(resolveBoardSignal(row?.pin));
   }, [selectedNode?.id, ioRowByNodeId, setActiveBoardSignal]);
   const selectedNodePins = useMemo(
     () => deriveNodePins(selectedNode, editorCircuit),
@@ -3072,7 +3834,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [selectedNode, editorCircuit, liveSignals]);
   const selectedNodeSignalMap = useMemo(
     () =>
-      new Map<string, 0 | 1 | null>(
+      new Map<string, RuntimeLogicValue | null>(
         (selectedNodeSignals ?? []).map((entry) => [entry.port, entry.value])
       ),
     [selectedNodeSignals]
@@ -3113,6 +3875,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => [...designIssueMap.all].sort(compareDesignIssues),
     [designIssueMap]
   );
+  const problemsLedgerCount = useEngineeringProblems(selectProblemCount);
   const authoringIssueCounts = useMemo(() => {
     let errorCount = 0;
     let warningCount = 0;
@@ -3167,9 +3930,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [designIssueMap]);
 
   const selectedNodeDiagnostics = useMemo(
-    () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []),
-    [diagnosticsByNode, selectedNode]
+    () => (selectedNode ? diagnosticsByNode.get(selectedNode.id) ?? [] : []).filter((diagnostic) => {
+      // The connectivity authority already offers the actionable draft issue.
+      const requiredPort = /unconnected required input port ['"]([^'"]+)['"]/.exec(diagnostic.message)?.[1];
+      if (!requiredPort || !selectedNode) return true;
+      return !(designIssueMap.byNode.get(selectedNode.id) ?? []).some(
+        (issue) => issue.kind === 'unconnected-input' && issue.focusTarget.portKey === requiredPort
+      );
+    }),
+    [diagnosticsByNode, selectedNode, designIssueMap]
   );
+  const describeCompilerDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
+    let message = diagnostic.message;
+    for (const node of editorCircuit.nodes) {
+      const label = ioRowByNodeId.get(node.id)?.label?.trim() || node.label?.trim() || nodeTypeLabel(node.type);
+      message = message.split(`'${node.id}'`).join(`'${label}'`);
+    }
+    return message;
+  }, [editorCircuit.nodes, ioRowByNodeId]);
   const diagnosticsDrawerRows = useMemo(() => {
     if (diagnosticFilterNodeId) {
       return diagnosticsByNode.get(diagnosticFilterNodeId) ?? [];
@@ -3194,10 +3972,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? 'Wire Mode'
       : 'Select Mode';
   const showBlankStateCard = editorCircuit.nodes.length === 0 && !isPlacementMode;
-  const hasRunnablePath = useMemo(
-    () => hasRunnableBoundaryPath(editorCircuit),
-    [editorCircuit]
-  );
+  const hierarchicalLive = useMemo(() => hierarchy?.modules.length && liveTopCircuit
+    ? buildLiveHierarchy(liveTopCircuit, hierarchy) : null, [liveTopCircuit, hierarchy]);
+  const hasRunnablePath = hierarchicalLive ? hierarchicalLive.supported && hasRunnableBoundaryPath(hierarchicalLive.circuit) : hasRunnableBoundaryPath(editorCircuit);
   const blankWorkflowResetAppliedRef = useRef(false);
   useEffect(() => {
     if (editorCircuit.nodes.length !== 0) {
@@ -3239,6 +4016,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     endWire();
     setWireFeedback(null);
   }, [endWire]);
+  // Each new message starts folded; one cut to two lines offers More.
+  useLayoutEffect(() => {
+    setWireMessageExpanded(false);
+  }, [wireFeedback, wireFeedbackCount, wireStartPort, toolMode]);
+  useLayoutEffect(() => {
+    const message = wireMessageRef.current;
+    setWireMessageClamped(Boolean(message && !wireMessageExpanded && message.scrollHeight > message.clientHeight + 1));
+  });
   const handleWireModePointerDownCapture = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (toolMode !== 'wire' || isPlacementMode || event.button !== 0) return;
@@ -3293,20 +4078,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     emitCircuitMutation();
     setEditingLabelNodeId(null);
     setLabelDraft('');
+    setRenameOnCanvas(false);
   }, [editingLabelNodeId, emitCircuitMutation, labelDraft, updateNode]);
 
   const cancelNodeLabel = useCallback(() => {
     setEditingLabelNodeId(null);
     setLabelDraft('');
+    setRenameOnCanvas(false);
   }, []);
 
   const handleLabelKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') { e.preventDefault(); commitNodeLabel(); }
     if (e.key === 'Escape') { e.preventDefault(); cancelNodeLabel(); }
   }, [commitNodeLabel, cancelNodeLabel]);
-  const beginNodeLabelEdit = useCallback((node: Node) => {
+  const beginNodeLabelEdit = useCallback((node: Node, location: 'inspector' | 'canvas' = 'inspector') => {
     setEditingLabelNodeId(node.id);
     setLabelDraft(node.label ?? '');
+    setRenameOnCanvas(location === 'canvas');
   }, []);
   const liveIoSignals = useMemo(() => {
     const inputRows = editorCircuit.nodes
@@ -3484,14 +4272,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const activeSimulationSummary = activeDebugContext
     ? describeVerifyDebugSummary(activeDebugContext)
     : staleReplayBreadcrumb
-      ? 'Replay invalidated. Resume live edits or return to Verify for a fresh waveform.'
+      ? 'Replay invalidated. Resume live edits or return to Simulate for a fresh waveform.'
       : simulationStory.summary;
   const showSimulationSummary =
     staleReplayBreadcrumb != null ||
     !!activeDebugContext ||
     !!activeVerifySignal ||
     canRenderReplayScrubber ||
-    simRunning ||
     runtimeSim.trace.length > 0;
   const handleReplayScrubberChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -3544,8 +4331,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : !hasLogicalIoBoundary
           ? 'Add circuit I/O'
           : totalAuthoringWarnings > 0 || authoringIssueCounts.draftCount > 0
-            ? 'Ready for Verify — review wiring'
-            : 'Ready for Verify';
+            ? 'Review wiring'
+            : 'Clean';
   const designCommandTone: 'idle' | 'ok' | 'warn' | 'error' =
     totalAuthoringErrors > 0
       ? 'error'
@@ -3553,7 +4340,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         ? 'warn'
         : 'ok';
   const designCommandDescription = totalAuthoringErrors > 0 && primaryDesignIssueSummary
-    ? `${primaryDesignIssueSummary} Repair this Design blocker before Verify or Export.`
+    ? `${primaryDesignIssueSummary} Repair this Design blocker before Simulate or Package.`
     : effectiveExternalDebugTick != null
       ? 'Replay focus is active below. Scrub cases and inspect propagation before resuming live edits.'
       : activeVerifySignal
@@ -3561,10 +4348,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : designView === 'hdl'
           ? `Edit ${primaryArtifactLabel} while keeping the circuit aligned with live propagation.`
           : designView === 'split'
-            ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
-            : 'Build the circuit and inspect live propagation before moving into Verify.';
+            ? `Compare the circuit against ${primaryArtifactLabel} before moving into Simulate.`
+            : 'Build the circuit and inspect live propagation before moving into Simulate.';
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
+    const exposesBoardAssignments = !hierarchy || hierarchy.activeModuleId === TOP_MODULE_ID;
     for (const node of editorCircuit.nodes) {
       if (
         node.type !== 'INPUT' &&
@@ -3575,10 +4363,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ) {
         continue;
       }
-      map[node.id] = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+      const presentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+      map[node.id] = exposesBoardAssignments
+        ? presentation
+        : { ...presentation, pinAlias: undefined };
     }
     return map;
-  }, [editorCircuit.nodes, ioRowByNodeId]);
+  }, [editorCircuit.nodes, hierarchy, ioRowByNodeId]);
   const selectedWireSignalKey = useMemo(() => {
     if (selectedWireIds.length === 0) return null;
     const parsed = parseWireId(selectedWireIds[0]);
@@ -3603,6 +4394,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => resolveVerifyLinkedSignalKey(activeDebugContext?.signal ?? null, ioRows, liveSignals, runtimeSim.signals),
     [activeDebugContext?.signal, ioRows, liveSignals, runtimeSim.signals]
   );
+  const appliedDebugSelectionRef = useRef<{
+    session: DesignReplaySession | null | undefined;
+    signal: string;
+    tick: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!activeDebugContext || !debugLinkedSignalKey) {
+      appliedDebugSelectionRef.current = null;
+      return;
+    }
+    const previous = appliedDebugSelectionRef.current;
+    if (previous && previous.session === replaySession && previous.signal === debugLinkedSignalKey && previous.tick === activeDebugContext.tick) return;
+    const nodeId = debugLinkedSignalKey.split('.')[0];
+    if (!editorCircuit.nodes.some((node) => node.id === nodeId)) return;
+    appliedDebugSelectionRef.current = { session: replaySession, signal: debugLinkedSignalKey, tick: activeDebugContext.tick };
+    // A Trace handoff selects the failed signal before showing its inspector. Later user
+    // selections follow the driver/load path without this recorded context pulling them back.
+    selectMultipleNodes([nodeId], false);
+    setActiveRightDockTab('inspector');
+  }, [activeDebugContext, debugLinkedSignalKey, editorCircuit.nodes, replaySession, selectMultipleNodes]);
   const selectedSignalKey = runtimeSim.selectedSignalKey ?? debugLinkedSignalKey ?? verifyLinkedSignalKey ?? selectedWireSignalKey;
   useEffect(() => {
     if (!verifyLinkedSignalKey) return;
@@ -3717,6 +4528,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const showPartialBlankAuthoring =
     workspacePreset.showCanvasTools &&
+    toolMode !== 'wire' &&
     !showBlankStateCard &&
     !isPlacementMode &&
     editorCircuit.nodes.length > 0 &&
@@ -3731,8 +4543,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const hasMeaningfulSimulationStory =
     showSimulationStrip &&
     (showSimulationSummary || isReplayMode || staleReplayBreadcrumb != null || simulationStory.clockEvent != null);
+  const hasMeaningfulSplitRuntimeContext =
+    isSplitWorkspace &&
+    !showSimulationStrip &&
+    (simRunning || simTick > 0 || runtimeSim.trace.length > 1);
+  const isSelectionOwnedWireTrace =
+    traceState?.kind === 'wire-net' &&
+    autoWireSelectionTraceIdRef.current != null &&
+    traceState.sourceKey === autoWireSelectionTraceIdRef.current;
   const showRuntimeStatus =
-    hasMeaningfulSimulationStory || traceState != null || (isSplitWorkspace && !showSimulationStrip);
+    hasMeaningfulSimulationStory ||
+    (traceState != null && !isSelectionOwnedWireTrace) ||
+    hasMeaningfulSplitRuntimeContext;
   const showWorkspaceStatusBar =
     totalAuthoringErrors > 0 ||
     totalAuthoringWarnings > 0 ||
@@ -3756,6 +4578,176 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
   }, [ioRowByNodeId, selectedNode]);
+  const designHierarchy = useMemo(
+    () =>
+      deriveDesignHierarchy({
+        topModule: {
+          id: projectId?.trim() || topEntityName?.trim() || 'top',
+          name: topEntityName?.trim() || 'top',
+        },
+        circuit: editorCircuit,
+        customComponents: customComponentDefs,
+        selectedNodeId: selectedNode?.id ?? null,
+      }),
+    [customComponentDefs, editorCircuit, projectId, selectedNode?.id, topEntityName]
+  );
+  const designHierarchyRows = useMemo(
+    () => flattenDesignHierarchy(designHierarchy.root),
+    [designHierarchy]
+  );
+  /** Which instance a definition was entered through, for breadcrumb context. */
+  const [drilledInstance, setDrilledInstance] = useState<{ moduleId: string; instanceName: string } | null>(null);
+  const activeModuleKey = hierarchy?.activeModuleId ?? TOP_MODULE_ID;
+  const activeModuleKeyRef = useRef(activeModuleKey);
+  activeModuleKeyRef.current = activeModuleKey;
+  // The module whose camera the store holds. It catches up when that module's camera is restored.
+  const cameraModuleRef = useRef(activeModuleKey);
+  useEffect(() => {
+    setDrilledInstance((current) =>
+      current && current.moduleId !== activeModuleKey ? null : current
+    );
+  }, [activeModuleKey]);
+
+  /**
+   * Per-hierarchy-location camera memory: leaving a module stores its camera,
+   * returning restores it, and a first visit frames the module's content.
+   */
+  const lastCameraLocationRef = useRef<string | null>(null);
+  const restoreCameraForLocationRef = useRef<() => void>(() => {});
+  restoreCameraForLocationRef.current = () => {
+    const storedKey = designCameraKey(projectId, activeModuleKey);
+    const stored = recallDesignCamera(storedKey);
+    if (stored && wasFramedDesignCamera(storedKey)) {
+      fitToCircuitRef.current();
+    } else if (stored) {
+      lastFittedCameraRef.current = null;
+      setCamera(stored);
+    } else {
+      fitToCircuitRef.current();
+    }
+  };
+  useEffect(() => {
+    const previous = lastCameraLocationRef.current;
+    lastCameraLocationRef.current = activeModuleKey;
+    if (previous === null || previous === activeModuleKey) return;
+    // The store's camera belongs to the module last restored (a switch interrupted before its
+    // restore leaves it with the one before). An untouched frame is remembered as one, so it is
+    // framed again on return instead of coming back as a view the student chose.
+    const camera = useLogicViewStore.getState().camera;
+    const framed = lastFittedCameraRef.current;
+    rememberDesignCamera(designCameraKey(projectId, cameraModuleRef.current), camera,
+      Boolean(framed && sameDesignCamera(framed, camera)));
+    viewSwitchRef.current = null;
+    lastTouchedNodeIdsRef.current = new Set();
+    // The module's parts reach the editor a render after its name does: restored now, a first
+    // visit framed the parent's circuit. The next frame has the module's own.
+    const frame = window.requestAnimationFrame(() => {
+      restoreCameraForLocationRef.current();
+      cameraModuleRef.current = activeModuleKeyRef.current;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeModuleKey]);
+
+  const activeNativeModule = useMemo(
+    () => hierarchy?.modules.find((module) => module.id === hierarchy.activeModuleId) ?? null,
+    [hierarchy],
+  );
+  const isEditingTopModule = !hierarchy || hierarchy.activeModuleId === TOP_MODULE_ID;
+  const designSources = useMemo(
+    () =>
+      deriveDesignSources({
+        topModule: {
+          id: projectId?.trim() || topEntityName?.trim() || 'top',
+          name: topEntityName?.trim() || 'top',
+        },
+        circuit: editorCircuit,
+        customComponents: customComponentDefs,
+        hdlSources,
+      }),
+    [customComponentDefs, editorCircuit, hdlSources, projectId, topEntityName]
+  );
+  const selectedBoardResource = useMemo(
+    () =>
+      selectedNodeIoRow
+        ? getBasys3BoardResource(selectedNodeIoRow.pin)
+        : null,
+    [selectedNodeIoRow]
+  );
+  const selectedBoardResourceOptions = useMemo(() => {
+    if (!selectedNodeIoRow) return [];
+    const compatibleResources = listBasys3CompatibleResources(selectedNodeIoRow);
+    if (
+      selectedBoardResource &&
+      !compatibleResources.some((resource) => resource.id === selectedBoardResource.id)
+    ) {
+      compatibleResources.unshift(selectedBoardResource);
+    }
+    return compatibleResources.sort((left, right) =>
+      left.alias.localeCompare(right.alias, 'en-US', { numeric: true })
+    );
+  }, [selectedBoardResource, selectedNodeIoRow]);
+  const selectedBoardResourceCompatible = useMemo(
+    () =>
+      Boolean(
+        selectedNodeIoRow &&
+          selectedBoardResource &&
+          isBasys3ResourceCompatibleWithSignal(selectedBoardResource, selectedNodeIoRow)
+      ),
+    [selectedBoardResource, selectedNodeIoRow]
+  );
+  const componentDefinitionRegistry = useMemo(
+    () => createComponentDefinitionRegistry(customComponentDefs),
+    [customComponentDefs]
+  );
+  const selectedComponentDefinition = useMemo(
+    () => selectedNode ? componentDefinitionRegistry.getByRuntimeType(selectedNode.type) : undefined,
+    [componentDefinitionRegistry, selectedNode]
+  );
+  const selectedNativeModule = useMemo(() => {
+    if (!selectedNode || !hierarchy) return null;
+    const moduleId = typeof selectedNode.config?.moduleDefinitionId === 'string'
+      ? selectedNode.config.moduleDefinitionId
+      : null;
+    return hierarchy.modules.find((module) => module.id === moduleId || module.name === selectedNode.type) ?? null;
+  }, [hierarchy, selectedNode]);
+  const selectedBoardConflict = useMemo(() => {
+    if (!selectedNodeIoRow || !selectedBoardResource) return null;
+    return (
+      ioRows.find((row) => {
+        if (row.id === selectedNodeIoRow.id || !row.pin) return false;
+        return getBasys3BoardResource(row.pin)?.packagePin === selectedBoardResource.packagePin;
+      }) ?? null
+    );
+  }, [ioRows, selectedBoardResource, selectedNodeIoRow]);
+  const handleHierarchyOpen = useCallback(
+    (nodeId: string | null, depth: number, componentType?: string) => {
+      setDesignView('canvas');
+      if (!nodeId) {
+        clearSelection();
+        return;
+      }
+      if (depth === 1) {
+        selectMultipleNodes([nodeId], false);
+        setActiveRightDockTab('inspector');
+        return;
+      }
+      // Native module rows can actually enter the definition; only legacy
+      // composite rows without a module counterpart stay inspect-only.
+      const nativeModule = componentType
+        ? hierarchy?.modules.find(
+            (module) => module.name === componentType || module.displayName === componentType
+          )
+        : undefined;
+      if (nativeModule && onOpenModule) {
+        onOpenModule(nativeModule.id);
+        return;
+      }
+      setPaletteQuery(componentType ?? '');
+      setActiveLeftDockTab('components');
+      setActionToast('Opened the matching custom definition in Components. Nested definitions remain inspect-only.');
+    },
+    [clearSelection, hierarchy, onOpenModule, selectMultipleNodes, setDesignView]
+  );
   const preferredNodeTracePort = useMemo(() => {
     if (!selectedNode) return null;
     if (selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp') return 'in';
@@ -3836,7 +4828,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         const srcNode = editorCircuit.nodes.find((n) => n.id === src.nodeId);
         return {
           port: resolveConnectionEndpoint(conn.to).portName,
-          driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId)),
+          driverNodeId: src.nodeId,
+          driverLabel: describeEndpointLabel(src.nodeId, srcNode, ioRowByNodeId.get(src.nodeId), editorCircuit),
           value: liveSignals.get(`${src.nodeId}.${src.portName}`) ?? null,
         };
       });
@@ -3877,8 +4870,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       snapshot,
       sourceNodeId: parsed.fromNodeId,
       targetNodeId: parsed.toNodeId,
-      sourceLabel: describeEndpointLabel(parsed.fromNodeId, sourceNode, ioRowByNodeId.get(parsed.fromNodeId)),
-      targetLabel: describeEndpointLabel(parsed.toNodeId, targetNode, ioRowByNodeId.get(parsed.toNodeId)),
+      sourceLabel: describeEndpointLabel(parsed.fromNodeId, sourceNode, ioRowByNodeId.get(parsed.fromNodeId), editorCircuit),
+      targetLabel: describeEndpointLabel(parsed.toNodeId, targetNode, ioRowByNodeId.get(parsed.toNodeId), editorCircuit),
       branchCount,
       sourcePort: parsed.fromPort,
       targetPort: parsed.toPort,
@@ -3902,7 +4895,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       signalKey: activeInspectorSignalKey,
       nodeId,
       portName,
-      nodeLabel: describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId)),
+      nodeLabel: describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId), editorCircuit),
       signalLabel: describeStudentSignalKey(activeInspectorSignalKey, editorCircuit, ioRowByNodeId),
     };
   }, [activeInspectorSignalKey, editorCircuit, ioRowByNodeId]);
@@ -3925,9 +4918,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return describeReplayCausation({
       snapshot: selectedNodeSignalSnapshot,
       driverLabels: selectedNodeInputDrivers.map((entry) => entry.driverLabel),
-      inspectLabel: describeEndpointLabel(selectedNode.id, selectedNode, selectedNodeIoRow),
+      inspectLabel: describeEndpointLabel(selectedNode.id, selectedNode, selectedNodeIoRow, editorCircuit),
     });
-  }, [isReplayMode, selectedNode, selectedNodeInputDrivers, selectedNodeIoRow, selectedNodeSignalSnapshot]);
+  }, [editorCircuit, isReplayMode, selectedNode, selectedNodeInputDrivers, selectedNodeIoRow, selectedNodeSignalSnapshot]);
   const selectedWireReplayCausation = useMemo(() => {
     if (!isReplayMode || !selectedWireContext) return null;
     return describeReplayCausation({
@@ -3978,7 +4971,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!nodeId || !portName) return null;
 
     const targetNode = editorCircuit.nodes.find((entry) => entry.id === nodeId);
-    const targetLabel = describeEndpointLabel(nodeId, targetNode, ioRowByNodeId.get(nodeId));
+    const targetLabel = describeEndpointLabel(nodeId, targetNode, ioRowByNodeId.get(nodeId), editorCircuit);
     const exactIncoming = editorCircuit.connections.find((connection) => {
       const to = resolveConnectionEndpoint(connection.to);
       return to.nodeId === nodeId && to.portName === portName;
@@ -4022,7 +5015,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       signalKey: debugRepairSignalKey,
       targetLabel,
       targetType: targetNode ? nodeTypeLabel(targetNode.type) : 'Signal',
-      driverLabel: describeEndpointLabel(from.nodeId, driverNode, ioRowByNodeId.get(from.nodeId)),
+      driverLabel: describeEndpointLabel(from.nodeId, driverNode, ioRowByNodeId.get(from.nodeId), editorCircuit),
       driverType: driverNode ? nodeTypeLabel(driverNode.type) : 'Unknown node',
       driverNodeId: from.nodeId,
       incomingWires,
@@ -4035,7 +5028,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return buildDesignDebugSignalTrace(editorCircuit, {
       targetSignalKey: activeDebugRepairContext.signalKey,
       maxDepth: 4,
-      resolveNodeLabel: (node, nodeId) => describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId)),
+      resolveNodeLabel: (node, nodeId) => describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId), editorCircuit),
       resolveNodeTypeLabel: (node) => (node ? nodeTypeLabel(node.type) : 'Signal'),
     });
   }, [activeDebugRepairContext?.signalKey, editorCircuit, ioRowByNodeId]);
@@ -4080,11 +5073,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const issueTone = primaryIssue.severity === 'draft' ? 'warn' : primaryIssue.severity;
     return (
       <div
-        className={`ide-design-selection-issues is-${issueTone}`}
+        className={`rb-insp-sel-issues is-${issueTone}`}
         data-testid="ide-design-selection-issues"
       >
-        <div className="ide-design-selection-issues-header">
-          <span className={`ide-design-selection-issues-pill is-${issueTone}`}>
+        <div className="rb-insp-sel-issues-header">
+          <span className={`rb-insp-sel-issues-pill is-${issueTone}`}>
             {primaryIssue.severity === 'error'
               ? 'Error'
               : primaryIssue.severity === 'warn'
@@ -4093,14 +5086,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </span>
           <strong data-testid="ide-design-selection-issue-title">{primaryIssue.title}</strong>
         </div>
-        <p className="ide-design-selection-issues-message" data-testid="ide-design-selection-issue-message">
+        <p className="rb-insp-sel-issues-message" data-testid="ide-design-selection-issue-message">
           {primaryIssue.message}
         </p>
-        <p className="ide-design-selection-issues-hint" data-testid="ide-design-selection-issue-hint">
+        <p className="rb-insp-sel-issues-hint" data-testid="ide-design-selection-issue-hint">
           {primaryIssue.hint}
         </p>
         {selectionAuthoringIssues.length > 1 ? (
-          <ul className="ide-design-selection-issues-list">
+          <ul className="rb-insp-sel-issues-list">
             {selectionAuthoringIssues.slice(1).map((issue) => {
               const signalKey = issue.focusTarget.portKey ? `${issue.focusTarget.nodeId}.${issue.focusTarget.portKey}` : null;
               return (
@@ -4129,6 +5122,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     hasMultiWireSelection ||
     !!selectedWireContext ||
     !!activeInspectorSignalKey;
+  // A panel shown or hidden beside the sheet (the inspector opening with a selection, the library
+  // hidden by the student) is settled before it is painted, so no part is drawn for a frame in a
+  // place it then jumps back from. The size observer catches anything this does not.
+  const designDockPreferences = workspacePreferences.surfaces.design.docks;
+  useLayoutEffect(() => {
+    const host = canvasHostRef.current;
+    const viewport = host ? readDesignCanvasViewport(host.clientWidth, host.clientHeight) : null;
+    if (viewport) commitCanvasViewportRef.current(viewport, 'panel');
+  }, [
+    designDockPreferences,
+    effectiveLearningMode,
+    focusedAssetContext,
+    hasInspectorSelectionContext,
+    hierarchicalLive,
+    workspacePreset.leftDockMode,
+    workspacePreset.rightDockMode,
+  ]);
   const primarySelectionIssue = selectionAuthoringIssues[0] ?? null;
   const primarySelectionDiagnostic = selectedNodeDiagnostics[0] ?? null;
   const selectionStatusLabel = primarySelectionIssue
@@ -4141,9 +5151,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? primarySelectionDiagnostic.severity === 'error'
         ? 'Compiler issue'
         : 'Compiler warning'
-      : hasInspectorSelectionContext
-        ? 'Ready'
-        : 'Idle';
+      : // A selection with nothing wrong needs no chip. "Ready" and "Idle" were decoration:
+        // they appeared beside every healthy object and told the student nothing they could
+        // not already see. The chip now exists only when it carries a problem.
+        null;
   const selectionStatusTone =
     (primarySelectionIssue?.severity === 'draft' ? 'warn' : primarySelectionIssue?.severity) ??
     (primarySelectionDiagnostic?.severity === 'error'
@@ -4153,7 +5164,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : 'ok');
   const renderNodeLabelEditor = (node: Node) => (
     <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
-      {editingLabelNodeId === node.id ? (
+      {editingLabelNodeId === node.id && !renameOnCanvas ? (
         <div className="ide-design-label-editor-row">
           <input
             className="ide-text-input ide-design-label-input"
@@ -4295,10 +5306,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const focusSelectedPath = useCallback(() => {
     const nodeId = selectedNode?.id ?? selectedWireContext?.targetNodeId ?? null;
     if (!nodeId) return;
+    // Driver = what drives this node (its fan-in cone). Loads is the fan-out trace.
     const fanin = getFaninCone(editorCircuit, nodeId);
-    const fanout = getFanoutCone(editorCircuit, nodeId);
-    const nodeIds = new Set([...fanin.nodeIds, ...fanout.nodeIds, nodeId]);
-    const wireIds = new Set([...fanin.wireIds, ...fanout.wireIds]);
+    const nodeIds = new Set([...fanin.nodeIds, nodeId]);
+    const wireIds = new Set([...fanin.wireIds]);
     if (selectedWireContext) wireIds.add(selectedWireContext.wireId);
     const wireHighlights = new Map<string, string[]>();
     wireIds.forEach((wireId) => wireHighlights.set(wireId, ['#fbbf24']));
@@ -4307,7 +5318,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       sourceKey: `path:${nodeId}`,
       label: `Focused path · ${
         selectedNode
-          ? describeEndpointLabel(nodeId, selectedNode, ioRowByNodeId.get(nodeId))
+          ? describeEndpointLabel(nodeId, selectedNode, ioRowByNodeId.get(nodeId), editorCircuit)
           : selectedWireContext?.targetLabel ?? nodeId
       }`,
       signalKey: selectedWireContext?.signalKey ?? `${nodeId}.${preferredNodeTracePort ?? 'out'}`,
@@ -4326,10 +5337,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   ]);
 
   useEffect(() => {
-    if (!wireContextMenu) return;
-    const handlePointerDown = () => setWireContextMenu(null);
+    if (!wireContextMenu && !nodeContextMenu && !canvasContextMenu) return;
+    const closeAllMenus = () => {
+      setWireContextMenu(null);
+      setNodeContextMenu(null);
+      setCanvasContextMenu(null);
+    };
+    const handlePointerDown = () => closeAllMenus();
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setWireContextMenu(null);
+      if (event.key === 'Escape') closeAllMenus();
     };
     window.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
@@ -4337,12 +5353,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [wireContextMenu]);
+  }, [canvasContextMenu, nodeContextMenu, wireContextMenu]);
 
   useEffect(() => {
     if (!isPlacementMode) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (event.defaultPrevented || (event.target instanceof Element && event.target.closest('[role="dialog"]'))) return;
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
@@ -4358,12 +5375,42 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   useEffect(() => {
     if (!onRuntimeSimSetSelectedSignal) return;
-    if (!selectedWireSignalKey) return;
-    onRuntimeSimSetSelectedSignal(selectedWireSignalKey);
-  }, [onRuntimeSimSetSelectedSignal, selectedWireSignalKey]);
+    if (selectedWireSignalKey) {
+      selectedWireSignalFocusRef.current = selectedWireSignalKey;
+      if (
+        runtimeSim.selectedSignalKey !== selectedWireSignalKey &&
+        !verifyLinkedSignalKey &&
+        !debugLinkedSignalKey
+      ) {
+        onRuntimeSimSetSelectedSignal(selectedWireSignalKey);
+      }
+      return;
+    }
+
+    const ownedSignalKey = selectedWireSignalFocusRef.current;
+    if (!ownedSignalKey) return;
+    selectedWireSignalFocusRef.current = null;
+    if (
+      runtimeSim.selectedSignalKey === ownedSignalKey &&
+      !verifyLinkedSignalKey &&
+      !debugLinkedSignalKey
+    ) {
+      onRuntimeSimSetSelectedSignal(null);
+    }
+  }, [
+    debugLinkedSignalKey,
+    onRuntimeSimSetSelectedSignal,
+    runtimeSim.selectedSignalKey,
+    selectedWireSignalKey,
+    verifyLinkedSignalKey,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // Exploration owns only inputs and inspection, including when an authoring
+      // selection remains in the canvas store. Its shape controls handle their keys.
+      if (effectiveLearningMode === 'live') return;
+      if (event.defaultPrevented || (event.target instanceof Element && event.target.closest('[role="dialog"]'))) return;
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
@@ -4493,6 +5540,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
 
+      // F2: rename the single selected node in place on the canvas.
+      if (event.key === 'F2' && !isTextInput && !event.defaultPrevented) {
+        const liveSelection = useLogicViewStore.getState().selection;
+        if (liveSelection.nodes.size === 1) {
+          const nodeId = [...liveSelection.nodes][0];
+          const liveNode = useCircuitStore.getState().circuit.nodes.find((n) => n.id === nodeId);
+          if (liveNode) {
+            event.preventDefault();
+            beginNodeLabelEdit(liveNode as Node, 'canvas');
+          }
+        }
+        return;
+      }
+
+      // S: select tool — advertised by the toolbar tooltip. W stays canvas-scoped
+      // inside CanvasHost; S has no canvas binding, so the surface owns it.
+      if (
+        event.key.toLowerCase() === 's' &&
+        !isTextInput &&
+        !event.defaultPrevented &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        setSelectMode();
+        return;
+      }
+
       // Escape: clear selection globally (idempotent — safe even if CanvasHost also fires)
       if (event.key === 'Escape' && !isTextInput) {
         clearSelection();
@@ -4502,7 +5578,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, snapToGrid, toggleSnapToGrid]);
+  }, [effectiveLearningMode, beginNodeLabelEdit, beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -4554,7 +5630,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     filteredBoardGroups.length > 0;
 
   const renderNodePaletteCard = (
-    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'>,
+    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'> &
+      Partial<Pick<PaletteItem, 'portSummary' | 'interfaceDetail' | 'capabilityBadge' | 'capabilityTitle'>>,
     options?: {
       badge?: string;
       className?: string;
@@ -4564,31 +5641,62 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   ) => {
     const isPending = pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
+    const tooltip =
+      options?.title ??
+      [
+        `${item.title} - ${item.subtitle}`,
+        item.portSummary ? `Ports: ${item.portSummary}` : null,
+        item.interfaceDetail || null,
+        item.capabilityTitle || null,
+        'Click to arm placement, or drag onto the canvas.',
+      ]
+        .filter(Boolean)
+        .join('\n');
     return (
       <button
         key={item.type}
         type="button"
-        className={`ide-palette-card${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
+        className={`rb-lib-row${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
         onClick={options?.onClick ?? (() => beginNodePlacement(item.type))}
+        onPointerDown={
+          options?.onClick
+            ? undefined
+            : (event) => beginPaletteCardDrag(event, { kind: 'node', nodeType: item.type, label: item.title })
+        }
         data-testid={options?.testId ?? `ide-design-palette-${item.type.toLowerCase()}`}
         aria-pressed={isPending}
-        title={options?.title ?? `${item.title} - ${item.subtitle}`}
+        aria-describedby="rb-lib-detail"
+        onFocus={() => setLibraryDetail({ title: item.title, ports: item.portSummary ?? null })}
+        onPointerEnter={() => setLibraryDetail({ title: item.title, ports: item.portSummary ?? null })}
+        title={tooltip}
       >
-        <span className="ide-design-component-tile-glyph" aria-hidden="true">
-          {item.glyph}
-        </span>
-        <span className="ide-palette-card-body">
-            <span className="ide-palette-card-title-row">
-            <span className="ide-design-component-tile-title">{item.title}</span>
-            {options?.badge || item.paletteBadge ? (
-              <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
-            ) : null}
-          </span>
-          <span className="ide-palette-card-subtitle">{item.subtitle}</span>
-        </span>
+        <span className="rb-lib-glyph" aria-hidden="true"><PaletteSymbol type={item.type} fallback={item.glyph} /></span>
+        <span className="rb-lib-name ide-design-component-tile-title">{item.title}</span>
+        {item.capabilityBadge ? (
+          <span className="rb-lib-cap" title={item.capabilityTitle ?? undefined}>{item.capabilityBadge}</span>
+        ) : null}
+        {options?.badge || item.paletteBadge ? <span className="rb-lib-badge">{options?.badge ?? item.paletteBadge}</span> : null}
       </button>
     );
   };
+  /** A search always shows every match, regardless of collapsed sections. */
+  const librarySectionOpen = useCallback(
+    (sectionId: string): boolean => paletteHasQuery || !collapsedLibrarySections.has(sectionId),
+    [collapsedLibrarySections, paletteHasQuery]
+  );
+  const renderLibrarySectionToggle = (sectionId: string, label: string) => (
+    <button
+      type="button"
+      className="rb-lib-toggle"
+      aria-expanded={librarySectionOpen(sectionId)}
+      aria-label={`${librarySectionOpen(sectionId) ? 'Collapse' : 'Expand'} ${label}`}
+      onClick={() => toggleLibrarySection(sectionId)}
+      disabled={paletteHasQuery}
+      data-testid={`ide-design-library-toggle-${sectionId}`}
+    >
+      <span aria-hidden="true">{librarySectionOpen(sectionId) ? '▾' : '▸'}</span>
+    </button>
+  );
   const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
     PALETTE_SECTION_ORDER;
   const selectedNodeInspectorModel = selectedNode
@@ -4596,8 +5704,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
         const typeName = nodeTypeLabel(selectedNode.type);
         const studentNodeLabel = describeNodeForStudents(selectedNode, selectedNodeIoRow);
+        const mappedBoardResource = selectedNodeIoRow
+          ? getBasys3BoardResource(selectedNodeIoRow.pin)
+          : null;
         const boardSummary = selectedNodeIoRow
-          ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
+          ? mappedBoardResource
+            ? `${mappedBoardResource.alias} -> ${mappedBoardResource.packagePin}`
+            : 'Unassigned'
           : 'No board mapping';
         const selectedLogicalDirection = selectedNodeIoRow
           ? selectedNodeIoRow.direction === 'in'
@@ -4608,13 +5721,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             : selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp'
               ? `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
               : 'Internal part or signal path';
-        const selectedBoardResource = selectedNodeIoRow?.label?.trim()
-          ? selectedNodeIoRow.label.trim()
-          : selectedNodeIoRow
-            ? 'Unassigned board resource'
-            : 'Not mapped to a board resource';
+        const selectedBoardResource = mappedBoardResource?.alias
+          ?? (selectedNodeIoRow ? 'Unassigned board resource' : 'Not mapped to a board resource');
         const selectedPackagePin = selectedNodeIoRow?.pin?.trim()
-          ? selectedNodeIoRow.pin.trim()
+          ? (mappedBoardResource?.packagePin ?? selectedNodeIoRow.pin.trim())
           : 'No package pin yet';
         const showSelectedSignalModel = Boolean(
           selectedNodeIoRow ||
@@ -4646,28 +5756,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (hasSingleSelectedNode && selectedNode && selectedNodeInspectorModel) {
       const { displayName, typeName } = selectedNodeInspectorModel;
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-selection-inspector">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">{displayName}</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   <span data-testid="ide-design-inspector-part-kind">
                     {selectedNodeTeachingProfile?.partKind ?? 'Part'}
                   </span>
-                  <span className="ide-design-identity-sep"> · </span>
+                  <span className="rb-insp-sep"> · </span>
                   <span data-testid="ide-design-selection-type">{typeName}</span>
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <div className="ide-design-inspector-name-control" data-testid="ide-design-inspector-name-control">
-              <span className="ide-design-inspector-group-label">
+            {/* One field row, label beside control: this block was 64px of a 140px identity card
+                for a single Rename button, in a dock that shows 600px of a 1900px inspector. */}
+            <div className="rb-insp-name-control rb-insp-field" data-testid="ide-design-inspector-name-control">
+              <span>
                 {selectedNode.type === 'INPUT' || selectedNode.type === 'OUTPUT' ? 'Signal name' : 'Part label'}
               </span>
               {renderNodeLabelEditor(selectedNode)}
@@ -4679,28 +5791,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (hasMultiNodeSelection) {
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-multiselect-summary">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-multiselect-count">{selection.nodes.size} nodes selected</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   Use Arrow keys to nudge this group, align shared edges when it gets messy, or press Ctrl+D / Cmd+D to duplicate it.
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
               Keep refining the selection as one working unit, then save it as a reusable block when the group stabilizes.
             </p>
-            <div className="ide-design-selection-pins" data-testid="ide-design-multiselect-types">
+            <div className="rb-insp-sel-pins" data-testid="ide-design-multiselect-types">
               {selectedTypeSummary.map((entry) => (
-                <span key={entry.type} className="ide-design-pin-pill">
+                <span key={entry.type} className="rb-insp-pin">
                   {nodeTypeLabel(entry.type)}: {entry.count}
                 </span>
               ))}
@@ -4711,25 +5823,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (hasMultiWireSelection) {
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-multiselect-summary">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-multiwire-count">{selectedWireIdsAll.length} wire segments selected</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   {multiWireNetSummary?.headline ?? 'Multiple wires — comparing signal paths'}
                 </p>
                 {multiWireNetSummary ? (
-                  <div className="ide-design-inspector-meaning" data-testid="ide-design-multiwire-net-meaning">
-                    <p className="ide-design-inspector-what-it-is" data-testid="ide-design-multiwire-net-detail">
+                  <div className="rb-insp-meaning" data-testid="ide-design-multiwire-net-meaning">
+                    <p className="rb-insp-what-it-is" data-testid="ide-design-multiwire-net-detail">
                       {multiWireNetSummary.detail}
                     </p>
                     {multiWireNetSummary.groupLabels.length > 0 ? (
                       <p
-                        className="ide-design-inspector-structure-hint"
+                        className="rb-insp-structure-hint"
                         data-testid="ide-design-multiwire-group-labels"
                         title={multiWireNetSummary.groupLabels.join('\n')}
                       >
@@ -4739,11 +5851,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
               {multiWireNetSummary?.sameNet
                 ? 'To read live value for one hop, select a single wire. The canvas still shows the full net while several segments on that net stay selected.'
                 : 'Pick one net at a time: deselect until you have one driver in this list, or a single wire, then use Trace and the signal panel on the right.'}
@@ -4755,39 +5867,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (selectedWireContext) {
       const nextStep = primarySelectionIssue?.hint ?? 'Trace this net, pin it, or inspect its source and sink below.';
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-selection-inspector">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">
                     {describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}
                   </strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   Wire net from {selectedWireContext.sourceLabel} to {selectedWireContext.targetLabel}
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+              <span className={`rb-insp-status is-${selectionStatusTone}`} hidden={!selectionStatusLabel}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+            <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
               {nextStep}
             </p>
-            <div className="ide-design-inspector-facts ide-kv-list">
-              <div className="ide-kv-row">
+            <div className="rb-insp-facts rb-insp-facts">
+              <div className="rb-insp-row">
                 <span>Type</span>
                 <span data-testid="ide-design-selection-type">Wire</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Connection</span>
                 <code data-testid="ide-design-selection-id">
                   {`${selectedWireContext.sourceLabel} -> ${selectedWireContext.targetLabel}`}
                 </code>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Branches</span>
                 <span>{selectedWireContext.branchCount}</span>
               </div>
@@ -4818,35 +5930,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ? `Start at ${activeInspectorSignalLandingTarget.signalLabel} and inspect the highlighted path first.`
           : 'Pin this signal or step simulation to inspect how it changes.');
       return (
-        <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
-          <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
-            <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-identity-row">
-              <div className="ide-design-inspector-title-block">
-                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+        <div className="rb-insp-sel-inspector" data-testid="ide-design-selection-inspector">
+          <div className="rb-insp-identity-card" data-testid="ide-design-inspector-identity-card">
+            <span className="rb-insp-eyebrow">Selection</span>
+            <div className="rb-insp-identity-row">
+              <div className="rb-insp-title-block">
+                <div className="rb-insp-sel-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">{activeInspectorSignalLabel}</strong>
                 </div>
-                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   {signalFocusSubtitle}
                 </p>
               </div>
-              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
-                {selectionStatusLabel}
-              </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-              {nextStep}
-            </p>
-            <div className="ide-design-inspector-facts ide-kv-list">
-              <div className="ide-kv-row">
+            {primarySelectionIssue?.hint ? (
+              <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
+                {primarySelectionIssue.hint}
+              </p>
+            ) : null}
+            <div className="rb-insp-facts rb-insp-facts">
+              <div className="rb-insp-row">
                 <span>Type</span>
                 <span data-testid="ide-design-selection-type">Signal</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Signal</span>
                 <code data-testid="ide-design-selection-id">{activeInspectorSignalLabel}</code>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Samples</span>
                 <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
               </div>
@@ -4857,13 +5968,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (isReplayMode) {
       return (
-        <div className="ide-design-inspector-empty-card ide-design-inspector-replay-idle" data-testid="ide-design-inspector-empty">
-          <span className="ide-design-inspector-eyebrow ide-design-inspector-eyebrow--inspect">Inspect mode</span>
-          <div className="ide-design-inspector-title-block">
-            <div className="ide-design-selection-identity">
+        <div className="rb-insp-empty-card rb-insp-replay-idle" data-testid="ide-design-inspector-empty">
+          <span className="rb-insp-eyebrow rb-insp-eyebrow--inspect">Inspect mode</span>
+          <div className="rb-insp-title-block">
+            <div className="rb-insp-sel-identity">
               <strong data-testid="ide-design-inspector-identity-title">{activeReplaySelectionLabel}</strong>
             </div>
-            <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+            <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
               {activeReplayTimingHint ?? 'Verify-authored replay'}
             </p>
           </div>
@@ -4892,9 +6003,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     // real canvas selection to inspect.
     if (focusedAssetContext) {
       return (
-        <div className="ide-design-selection-deferred" data-testid="ide-design-selection-deferred">
+        <div className="rb-insp-sel-deferred" data-testid="ide-design-selection-deferred">
           <p className="ide-copy" style={{ margin: 0 }}>
-            <span className="ide-design-inspector-eyebrow">Canvas selection</span>
+            <span className="rb-insp-eyebrow">Canvas selection</span>
             {' — '}
             Project focus is active. Select a node or wire to inspect it here, or use{' '}
             <strong>Clear focus</strong> on the canvas banner.
@@ -4903,13 +6014,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       );
     }
     return (
-      <div className="ide-design-inspector-empty-card" data-testid="ide-design-inspector-empty">
-        <span className="ide-design-inspector-eyebrow">Inspector</span>
-        <div className="ide-design-inspector-title-block">
-          <div className="ide-design-selection-identity">
+      <div className="rb-insp-empty-card" data-testid="ide-design-inspector-empty">
+        <span className="rb-insp-eyebrow">Inspector</span>
+        <div className="rb-insp-title-block">
+          <div className="rb-insp-sel-identity">
             <strong data-testid="ide-design-inspector-identity-title">Canvas ready</strong>
           </div>
-          <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+          <p className="rb-insp-subtitle" data-testid="ide-design-inspector-identity-subtitle">
             Selection state, mapping, and signal context land here.
           </p>
           <p className="ide-design-logical-io-note" data-testid="ide-design-logical-io-explainer">
@@ -4917,7 +6028,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </p>
         </div>
         {!showBlankStateCard ? (
-          <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+          <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
             Select a node, wire, or verify-linked signal to inspect it without leaving the canvas.
           </p>
         ) : null}
@@ -4927,7 +6038,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const renderSelectionGuidance = () => {
     if (selectionIssueSummary || primarySelectionDiagnostic) {
       return (
-        <div className="ide-design-inspector-guidance" data-testid="ide-design-inspector-guidance">
+        <div className="rb-insp-guidance" data-testid="ide-design-inspector-guidance">
           {selectionIssueSummary}
           {primarySelectionIssue ? (
             <div className="ide-inline-actions">
@@ -4941,14 +6052,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           ) : null}
           {selectedNodeDiagnostics.length > 0 ? (
-            <div className="ide-design-inspector-diagnostics" data-testid="ide-design-selection-diagnostics">
-              <ul className="ide-design-inspector-diagnostic-list">
+            <div className="rb-insp-diagnostics" data-testid="ide-design-selection-diagnostics">
+              <ul className="rb-insp-diagnostic-list">
                 {selectedNodeDiagnostics.slice(0, 3).map((diagnostic) => (
                   <li
                     key={`${diagnostic.code}-${diagnostic.message}`}
-                    className={`ide-design-inspector-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
+                    className={`rb-insp-diagnostic-item is-${diagnostic.severity === 'error' ? 'error' : 'warn'}`}
                   >
-                    <span>{diagnostic.message}</span>
+                    <span>{describeCompilerDiagnostic(diagnostic)}</span>
                   </li>
                 ))}
               </ul>
@@ -4976,32 +6087,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     } = selectedNodeInspectorModel;
 
     return (
-      <div className="ide-design-inspector-selection-details-content">
+      <div className="rb-insp-selection-details-content">
         {selectedNodeTeachingProfile ? (
-          <div className="ide-design-inspector-meaning" data-testid="ide-design-inspector-meaning">
+          <details className="rb-insp-about" data-testid="ide-design-inspector-about">
+          <summary>About this part</summary>
+          <div className="rb-insp-meaning" data-testid="ide-design-inspector-meaning">
             <p
-              className="ide-design-inspector-what-it-is"
+              className="rb-insp-what-it-is"
               data-testid="ide-design-inspector-what-it-is"
             >
               {selectedNodeTeachingProfile.whatItIs}
             </p>
             {selectedNodeTeachingProfile.structureHint ? (
               <p
-                className="ide-design-inspector-structure-hint"
+                className="rb-insp-structure-hint"
                 data-testid="ide-design-inspector-structure-hint"
               >
                 {selectedNodeTeachingProfile.structureHint}
               </p>
             ) : null}
           </div>
+          </details>
         ) : null}
-        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+        <p className="rb-insp-next-step" data-testid="ide-design-inspector-next-step">
           {nextStep}
         </p>
-        <div className="ide-design-inspector-facts ide-kv-list">
+        <div className="rb-insp-facts rb-insp-facts">
           {showSelectedSignalModel ? (
             <div
-              className="ide-design-inspector-signal-model"
+              className="rb-insp-signal-model"
               data-testid="ide-design-selected-signal-model"
             >
               <div>
@@ -5022,21 +6136,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
-          <div className="ide-kv-row">
+          {(() => {
+            const membership = busForNode(editorCircuit, selectedNode.id);
+            if (!membership) return null;
+            return (
+              <div className="rb-insp-row" data-testid="ide-design-selection-bus">
+                <span>Bus</span>
+                <span>
+                  <code>{busRangeLabel(membership.bus)}</code> · bit {membership.index}
+                </span>
+              </div>
+            );
+          })()}
+          <div className="rb-insp-row">
             <span>Reference</span>
             <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
           </div>
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Board mapping</span>
             <span>{boardSummary}</span>
           </div>
           {selectedSequentialInspector ? (
             <>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Timing role</span>
                 <span data-testid="ide-design-sequential-role">{selectedSequentialInspector.roleLabel}</span>
               </div>
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Timing context</span>
                 <span data-testid="ide-design-sequential-timing-context">
                   {selectedSequentialInspector.timingContext}
@@ -5051,72 +6177,47 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const renderSelectionActions = () => {
     if (hasSingleSelectedNode && selectedNode) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-edit-group">
-            <span className="ide-design-inspector-group-label">Edit</span>
-            <div className="ide-design-inspector-action-grid">
-              <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
-                Copy
-              </IdeButton>
-              <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
-                Duplicate
-              </IdeButton>
+        <div className="rb-insp-section-stack">
+          {/* Reading order is the order of use: the value a student sets, the step and the
+              tracing that explain it, then the module and editing commands. The markup is in
+              this order so keyboard and screen-reader order agree with what is seen. */}
+          {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
+            <div className="rb-insp-action-group" data-testid="ide-design-inspector-input-control">
+              <span className="rb-insp-group-label">Value</span>
+              <div className="rb-insp-action-grid">
+                {(() => {
+                  const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
+                  return (
+                    <button
+                      type="button"
+                      className={`ide-design-input-control ${currentVal === 1 ? 'is-on' : 'is-off'}`}
+                      data-testid="ide-design-inspector-input-toggle"
+                      aria-pressed={currentVal === 1}
+                      onClick={handleInspectorInputToggle}
+                    >
+                      <span className="rb-bit-switch-track" aria-hidden="true"><span className="rb-bit-switch-thumb" /></span>
+                      <span className="rb-bit-switch-value">{currentVal}</span>
+                      <span className="rb-bit-switch-word">{currentVal === 1 ? 'HIGH' : 'LOW'}</span>
+                      <span className="rb-bit-switch-note">Exploring · not recorded</span>
+                    </button>
+                  );
+                })()}
+              </div>
             </div>
-            {(() => {
-              const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
-              return swapTargets && swapTargets.length > 0 ? (
-                <div className="ide-design-inspector-subgroup" data-testid="ide-design-swap-group">
-                  <span className="ide-design-inspector-group-label">Swap type</span>
-                  <div className="ide-design-swap-chips">
-                    {swapTargets.map((targetType) => (
-                      <button
-                        key={targetType}
-                        type="button"
-                        className="ide-design-swap-chip"
-                        data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
-                        onClick={() => handleGateSwap(targetType)}
-                      >
-                        {targetType}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null;
-            })()}
-            {renderSelectionProperties()}
-          </div>
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
-            <span className="ide-design-inspector-group-label">Net tracing</span>
-            <div className="ide-design-inspector-action-grid">
-              {primarySelectionIssue ? (
-                <IdeButton tone="secondary" onClick={() => focusDesignIssue(primarySelectionIssue)}>
-                  Focus issue
-                </IdeButton>
-              ) : null}
-              <IdeButton tone="secondary" onClick={focusSelectedPath} disabled={!selectedNode} testId="ide-design-context-focus-path">
-                Focus path
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
-                Trace {'->'}
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
-                {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
-                Clear
-              </IdeButton>
-            </div>
-          </div>
+          ) : null}
           {selectedSequentialInspector?.actionLabel &&
           ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
             (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
-            <div className="ide-design-inspector-action-group" data-testid="ide-design-sequential-action-group">
-              <span className="ide-design-inspector-group-label">Sequential next step</span>
-              <div className="ide-design-inspector-action-grid">
+            <div className="rb-insp-action-group" data-testid="ide-design-sequential-action-group">
+              <span className="rb-insp-group-label">Sequential next step</span>
+              <div className="rb-insp-action-grid">
                   {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
                     <IdeButton
                       tone="secondary"
-                      onClick={() => handlePortClick(selectedNode.id, selectedSequentialInspector.actionPort)}
+                      onClick={() => {
+                        const actionPort = selectedSequentialInspector.actionPort;
+                        if (actionPort) handlePortClick(selectedNode.id, actionPort);
+                      }}
                     testId="ide-design-context-sequential-action"
                   >
                     {selectedSequentialInspector.actionLabel}
@@ -5134,44 +6235,132 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
-          {(selectedNode.type === 'INPUT' || selectedNode.type === 'Switch') && onRuntimeSimSetInput ? (
-            <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-input-control">
-              <span className="ide-design-inspector-group-label">Input control</span>
-              <div className="ide-design-inspector-action-grid">
-                {(() => {
-                  const currentVal = liveSignals.get(`${selectedNode.id}.out`) ?? 0;
-                  return (
-                    <button
-                      type="button"
-                      className={`ide-design-input-control ${currentVal === 1 ? 'is-on' : 'is-off'}`}
-                      data-testid="ide-design-inspector-input-toggle"
-                      aria-pressed={currentVal === 1}
-                      onClick={handleInspectorInputToggle}
-                    >
-                      {currentVal === 1 ? 'HIGH — click to set LOW' : 'LOW — click to set HIGH'}
-                    </button>
-                  );
-                })()}
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Net tracing</span>
+            <div className="rb-insp-action-grid">
+              {primarySelectionIssue ? (
+                <IdeButton tone="secondary" onClick={() => focusDesignIssue(primarySelectionIssue)}>
+                  Focus issue
+                </IdeButton>
+              ) : null}
+              <IdeButton tone="secondary" onClick={focusSelectedPath} disabled={!selectedNode} testId="ide-design-context-focus-path">
+                Focus path
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
+                Trace net
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
+                {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
+                Clear
+              </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
+            </div>
+          </div>
+          {selectedNativeModule ? (
+            <div className="rb-insp-action-group" data-testid="ide-design-module-instance-actions">
+              <span className="rb-insp-group-label">Module instance</span>
+              <p className="ide-design-instance-identity" data-testid="ide-design-instance-identity">
+                <strong>{readInstanceName(selectedNode) || selectedNode.label || selectedNode.id}</strong>
+                <span> : {selectedNativeModule.displayName}</span>
+              </p>
+              <div className="rb-insp-action-grid">
+                <IdeButton
+                  tone="primary"
+                  onClick={() => onOpenModule?.(selectedNativeModule.id)}
+                  testId="ide-design-open-module-definition"
+                >
+                  Open definition
+                </IdeButton>
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => {
+                    setEditingModuleInstanceId(selectedNode.id);
+                    setModuleInstanceNameDraft(readInstanceName(selectedNode));
+                  }}
+                  testId="ide-design-rename-module-instance"
+                >
+                  Rename instance
+                </IdeButton>
               </div>
+              {editingModuleInstanceId === selectedNode.id ? (
+                <div className="ide-design-inline-instance-rename">
+                  <input
+                    value={moduleInstanceNameDraft}
+                    onChange={(event) => setModuleInstanceNameDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && moduleInstanceNameDraft.trim()) {
+                        onRenameModuleInstance?.(selectedNode.id, moduleInstanceNameDraft.trim());
+                        setEditingModuleInstanceId(null);
+                      }
+                      if (event.key === 'Escape') setEditingModuleInstanceId(null);
+                    }}
+                    aria-label="Instance name"
+                    data-testid="ide-design-module-instance-name-input"
+                    autoFocus
+                  />
+                  <IdeButton tone="primary" disabled={!moduleInstanceNameDraft.trim()} onClick={() => {
+                    if (!moduleInstanceNameDraft.trim()) return;
+                    onRenameModuleInstance?.(selectedNode.id, moduleInstanceNameDraft.trim());
+                    setEditingModuleInstanceId(null);
+                  }} testId="ide-design-module-instance-name-save">Save name</IdeButton>
+                  <IdeButton tone="ghost" onClick={() => setEditingModuleInstanceId(null)}>Cancel</IdeButton>
+                </div>
+              ) : null}
+              <p className="ide-copy">
+                {selectedNativeModule.displayName} · {selectedNativeModule.ports.length} ports · editable visual source
+              </p>
             </div>
           ) : null}
-          <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
-            <span className="ide-design-inspector-group-label">Danger</span>
-            <div className="ide-design-inspector-action-grid">
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="rb-insp-group-label">Edit</span>
+            <div className="rb-insp-action-grid">
+              <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
+                Copy
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={handleDuplicate} testId="ide-design-duplicate-btn">
+                Duplicate
+              </IdeButton>
+              {/* Delete is an edit like the two beside it, undoable like them, and red says what it
+                  is; a "Danger" group of one button cost a labelled row of its own. */}
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
-                Delete node
+                Delete
               </IdeButton>
             </div>
+            {(() => {
+              const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
+              return swapTargets && swapTargets.length > 0 ? (
+                <div className="rb-insp-subgroup" data-testid="ide-design-swap-group">
+                  <span className="rb-insp-group-label">Swap type</span>
+                  <div className="ide-design-swap-chips">
+                    {swapTargets.map((targetType) => (
+                      <button
+                        key={targetType}
+                        type="button"
+                        className="ide-design-swap-chip"
+                        data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
+                        onClick={() => handleGateSwap(targetType)}
+                      >
+                        {targetType}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       );
     }
     if (hasMultiNodeSelection) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-edit-group">
-            <span className="ide-design-inspector-group-label">Edit</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-edit-group">
+            <span className="rb-insp-group-label">Edit</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="secondary" onClick={handleCopy} testId="ide-design-copy-btn">
                 Copy ({selection.nodes.size})
               </IdeButton>
@@ -5185,40 +6374,67 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null}
             </div>
           </div>
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-arrange-group">
-            <span className="ide-design-inspector-group-label">Arrange</span>
-            <div className="ide-design-inspector-action-grid">
+          <div className="rb-insp-action-group" data-testid="ide-design-inspector-arrange-group">
+            <span className="rb-insp-group-label">Align</span>
+            <div className="rb-insp-action-grid ide-design-align-grid">
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('left')} testId="ide-design-align-left-btn">
-                Align left
+                Left
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('h-center')} testId="ide-design-align-hcenter-btn">
+                Center
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('right')} testId="ide-design-align-right-btn">
+                Right
               </IdeButton>
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('top')} testId="ide-design-align-top-btn">
-                Align top
+                Top
               </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('v-center')} testId="ide-design-align-vcenter-btn">
+                Middle
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('bottom')} testId="ide-design-align-bottom-btn">
+                Bottom
+              </IdeButton>
+            </div>
+            <span className="rb-insp-group-label">Distribute</span>
+            <div className="rb-insp-action-grid">
               <IdeButton
                 tone="ghost"
                 onClick={handleDistributeSelectionHorizontally}
                 disabled={selection.nodes.size < 3}
                 testId="ide-design-distribute-horizontal-btn"
               >
-                Distribute horizontally
+                Horizontally
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={() => handleDistributeSelection('vertical')}
+                disabled={selection.nodes.size < 3}
+                testId="ide-design-distribute-vertical-btn"
+              >
+                Vertically
               </IdeButton>
             </div>
           </div>
           {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (
-            <div className="ide-design-inspector-action-group">
-              <span className="ide-design-inspector-group-label">Compose</span>
-              <div className="ide-design-inspector-action-grid">
+            <div className="rb-insp-action-group">
+              <span className="rb-insp-group-label">Compose</span>
+              <div className="rb-insp-action-grid">
                 <IdeButton tone="ghost" onClick={openMacroDialog} testId="ide-design-save-macro-open">
                   Save as Macro...
                 </IdeButton>
               </div>
             </div>
           ) : null}
-          {onSaveAsComponent && selectedNodeIdsAll.length >= 2 ? (
-            <div className="ide-design-inspector-action-group">
-              <span className="ide-design-inspector-group-label">Reusable block</span>
-              <div className="ide-design-inspector-action-grid">
-                {saveComponentOpen ? (
+          {(onCreateModuleFromSelection || onSaveAsComponent) && selectedNodeIdsAll.length >= 2 ? (
+            <div className="rb-insp-action-group">
+              <span className="rb-insp-group-label">Hierarchy</span>
+              <div className="rb-insp-action-grid">
+                {onCreateModuleFromSelection ? (
+                  <IdeButton tone="primary" onClick={openModuleDialog} testId="ide-design-create-module-open">
+                    Create component from selection…
+                  </IdeButton>
+                ) : saveComponentOpen ? (
                   <>
                     <input
                       className="ide-text-input"
@@ -5244,14 +6460,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
               {savedComponentToast ? (
                 <IdeCallout tone="success" testId="ide-design-save-component-toast">
-                  Saved "{savedComponentToast}" and added it to the Custom palette.
+                  Created "{savedComponentToast}" as an editable project component.
                 </IdeCallout>
               ) : null}
             </div>
           ) : null}
-          <div className="ide-design-inspector-action-group ide-design-inspector-group--danger" data-testid="ide-design-inspector-danger-group">
-            <span className="ide-design-inspector-group-label">Danger</span>
-            <div className="ide-design-inspector-action-grid">
+          <div className="rb-insp-action-group rb-insp-group--danger" data-testid="ide-design-inspector-danger-group">
+            <span className="rb-insp-group-label">Danger</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-inspector-delete">
                 Delete {selection.nodes.size} nodes
               </IdeButton>
@@ -5262,10 +6478,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (selectedWireContext) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
-            <span className="ide-design-inspector-group-label">Net tracing</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Net tracing</span>
+            <div className="rb-insp-action-grid">
               <IdeButton tone="secondary" onClick={focusSelectedPath} testId="ide-design-context-focus-path">
                 Focus path
               </IdeButton>
@@ -5275,6 +6491,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                 Clear trace
               </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete-wire">
                 Disconnect
               </IdeButton>
@@ -5285,10 +6504,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (activeInspectorSignalKey) {
       return (
-        <div className="ide-design-inspector-section-stack">
-          <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
-            <span className="ide-design-inspector-group-label">Signal actions</span>
-            <div className="ide-design-inspector-action-grid">
+        <div className="rb-insp-section-stack">
+          <div className="rb-insp-action-group" data-testid="ide-design-trace-group">
+            <span className="rb-insp-group-label">Signal actions</span>
+            <div className="rb-insp-action-grid">
               {activeInspectorSignalLandingTarget ? (
                 <IdeButton tone="secondary" onClick={focusActiveInspectorSignalNode} testId="ide-design-inspector-focus-node">
                   Inspect {activeInspectorSignalLandingTarget.nodeLabel}
@@ -5300,6 +6519,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                 Clear trace
               </IdeButton>
+              {designRelated ? (
+                <RelatedMenu relation={designRelated} activeScenarioId={null} hasRun={designRelated.run !== null} origin="schematic" testId="ide-design-related" />
+              ) : null}
             </div>
           </div>
         </div>
@@ -5315,15 +6537,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!registerCfg) return null;
       const registerWidth = registerCfg ? normalizeRegisterWidth(selectedNode.type, registerCfg) : 1;
       return (
-        <div className="ide-design-inspector-inline-editor" data-testid="ide-design-inspector-inline-editor">
+        <div className="rb-insp-inline-editor" data-testid="ide-design-inspector-inline-editor">
           <div className="ide-design-register-config" data-testid="ide-design-register-config">
-              <span className="ide-design-inspector-group-label">Register semantics</span>
-              <p className="ide-design-inspector-hint">
+              <span className="rb-insp-group-label">Register semantics</span>
+              <p className="rb-insp-hint">
                 Matches simulation and export. For bus registers, width controls how many D[i]/Q[i] taps appear on the
                 chip.
               </p>
               {selectedNode.type !== 'Register1' ? (
-                <label className="ide-design-inspector-field">
+                <label className="rb-insp-field">
                   <span>Width (bits)</span>
                   <input
                     type="number"
@@ -5339,7 +6561,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   />
                 </label>
               ) : null}
-              <label className="ide-design-inspector-field ide-design-inspector-field--checkbox">
+              <label className="rb-insp-field rb-insp-field--checkbox">
                 <input
                   type="checkbox"
                   checked={registerCfg.hasEnable === true}
@@ -5348,7 +6570,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 />
                 <span>Model clock enable (EN / CE)</span>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Clock edge</span>
                 <select
                   className="ide-export-pin-input"
@@ -5360,7 +6582,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="falling_edge" disabled>Falling edge · unsupported</option>
                 </select>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Reset kind</span>
                 <select
                   className="ide-export-pin-input"
@@ -5375,7 +6597,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="sync_set" disabled>Synchronous set · unsupported</option>
                 </select>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Reset polarity</span>
                 <select
                   className="ide-export-pin-input"
@@ -5387,7 +6609,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="active_low" disabled>Active low · unsupported</option>
                 </select>
               </label>
-              <label className="ide-design-inspector-field">
+              <label className="rb-insp-field">
                 <span>Enable polarity</span>
                 <select
                   className="ide-export-pin-input"
@@ -5400,7 +6622,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </select>
               </label>
               <IdeCallout tone="info">
-                Supported learning path: one scalar Register1, rising-edge capture,
+                Supported learning path: scalar Register1 registers sharing one clock, rising-edge capture,
                 and optional active-high asynchronous clear. Unsupported imported
                 settings stay visible for repair but cannot be newly selected.
               </IdeCallout>
@@ -5422,11 +6644,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
     return (
       <>
-        <div className="ide-kv-row">
+        <div className="rb-insp-row">
           <span>Selected case</span>
           <span>{activeSimulationSelectionLabel}</span>
         </div>
-        <div className="ide-kv-row">
+        <div className="rb-insp-row">
           <span>State</span>
           <span>
             {staleReplayBreadcrumb
@@ -5436,30 +6658,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 : 'Live circuit'}
           </span>
         </div>
-        <div className="ide-kv-row">
+        <div className="rb-insp-row">
           <span>Mode</span>
           <span>{simModeLabel}</span>
         </div>
         {activeReplayTimingHint ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Sample</span>
             <span>{activeReplayTimingHint}</span>
           </div>
         ) : null}
         {simulationStory.clockEvent ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Clock</span>
             <span>{simulationStory.clockLabel} {simulationStory.clockEvent} edge</span>
           </div>
         ) : null}
         {activeVerifySignal ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Verify focus</span>
             <code>{activeVerifySignalPresentation?.focusLabel ?? activeVerifySignal}</code>
           </div>
         ) : null}
         {activeDebugContext ? (
-          <div className="ide-kv-row">
+          <div className="rb-insp-row">
             <span>Expected / observed</span>
             <span>
               <code>{activeDebugContext.expected}</code> / <code>{activeDebugContext.actual}</code>
@@ -5487,7 +6709,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           onClick={onGoToVerify}
           testId="ide-design-replay-context-return"
         >
-          Return to Verify waveform
+          Return to Simulate waveform
         </IdeButton>
       </div>
     );
@@ -5502,11 +6724,231 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     return { text: traceState!.label, title: undefined as string | undefined };
   };
+  // ── Named inspector sections (P2.5H Wave Four) ──────────────────────────────
+  // Connectivity, Mapping, Source and Related read the authorities the inspector already
+  // uses (the canvas circuit, the io rows, the relationship index, the generated HDL). They
+  // own no state: each is a projection placed where a reader expects it. Identity stays the
+  // properties surface (name, kind, rename); Evidence is the live / replayed signal state.
+  const followSelectedRelation = (document: Parameters<typeof openWorkbenchDocument>[0]) => {
+    if (designRelated) {
+      publishEngineeringSelection(
+        {
+          kind: 'signal',
+          fieldId: designRelated.fieldId,
+          runSignal: designRelated.run?.resolution.runSignal ?? null,
+          nodeId: designRelated.nodeId,
+        },
+        'schematic'
+      );
+    }
+    openWorkbenchDocument(document);
+  };
+
+  const renderConnectivitySection = () => {
+    if (!hasSingleSelectedNode || !selectedNode) return null;
+    const loads = editorCircuit.connections
+      .filter((conn) => resolveConnectionEndpoint(conn.from).nodeId === selectedNode.id)
+      .map((conn) => {
+        const to = resolveConnectionEndpoint(conn.to);
+        const target = editorCircuit.nodes.find((node) => node.id === to.nodeId);
+        return {
+          key: `${to.nodeId}.${to.portName}`,
+          label: target ? describeEndpointLabel(to.nodeId, target, ioRowByNodeId.get(to.nodeId), editorCircuit) : to.nodeId,
+          port: to.portName,
+        };
+      });
+    const pins = selectedNodeSignals ?? [];
+    if (pins.length === 0 && selectedNodeInputDrivers.length === 0 && loads.length === 0) return null;
+    return (
+      <div className="rb-insp-section-stack">
+        {pins.length > 0 ? (
+          <div className="rb-insp-sel-pins" data-testid="ide-design-selection-pins">
+            {pins.map((entry) => {
+              const val = entry.value;
+              const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
+              return (
+                <span
+                  key={`${selectedNode.id}-${entry.port}`}
+                  className={`rb-insp-pin rb-insp-pin--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
+                  data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
+                >
+                  {entry.port}
+                  <span className="rb-insp-pin-value">{valStr}</span>
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
+        {selectedNodeInputDrivers.length > 0 ? (
+          <div className="rb-insp-sel-drivers" data-testid="ide-design-input-drivers">
+            {selectedNodeInputDrivers.map((d) => (
+              // Follow the causality upstream: selecting a driver row selects the driving part.
+              <button
+                key={d.port}
+                type="button"
+                className="rb-insp-row rb-insp-row--link"
+                data-testid={`ide-design-driver-row-${d.port}`}
+                title={`Select ${d.driverLabel}`}
+                onClick={() => selectNodeInStore(d.driverNodeId, false)}
+              >
+                <span>{describePortForStudents(d.port)}</span>
+                <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="rb-insp-facts">
+          <div className="rb-insp-row" data-testid="ide-design-inspector-loads">
+            <span>Drives</span>
+            <span>
+              {loads.length === 0
+                ? 'nothing yet'
+                : loads.map((load) => `${load.label} · ${describePortForStudents(load.port)}`).join(', ')}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMappingSection = () => {
+    if (!hasSingleSelectedNode || !selectedNode) return null;
+    const board = designRelated?.board ?? null;
+    const row = selectedNodeIoRow;
+    if (!board && !row) return null;
+    const pin = (board?.pin ?? row?.pin ?? '').trim();
+    const resource = board?.resource?.alias ?? selectedNodeInspectorModel?.selectedBoardResource ?? null;
+    return (
+      <div className="rb-insp-section-stack">
+        <div className="rb-insp-facts">
+          <div className="rb-insp-row">
+            <span>Board resource</span>
+            <strong data-testid="ide-design-inspector-mapping-resource">{resource ?? 'not assigned'}</strong>
+          </div>
+          <div className="rb-insp-row">
+            <span>Package pin</span>
+            <code data-testid="ide-design-inspector-mapping-pin">{pin || '—'}</code>
+          </div>
+          {board ? (
+            <div className="rb-insp-row">
+              <span>Constraint set</span>
+              <span data-testid="ide-design-inspector-mapping-set">{board.constraintSetId ?? 'default'}</span>
+            </div>
+          ) : null}
+        </div>
+        {board && board.xdcLines.length > 0 ? (
+          <pre className="rb-insp-xdc" data-testid="ide-design-inspector-mapping-xdc">{board.xdcLines.join('\n')}</pre>
+        ) : (
+          <p className="rb-insp-note" data-testid="ide-design-inspector-mapping-note">
+            {pin
+              ? 'The constraint lines are written when the package is built.'
+              : 'Assign a pin in Board to write the constraint lines.'}
+          </p>
+        )}
+        <div className="ide-inline-actions">
+          <IdeButton
+            tone="secondary"
+            testId="ide-design-inspector-mapping-open"
+            onClick={() => followSelectedRelation({ kind: 'board-io', constraintSetId: board?.constraintSetId ?? 'default' })}
+          >
+            Open in Board
+          </IdeButton>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSourceSection = () => {
+    if (!hasSingleSelectedNode || !selectedNode) return null;
+    const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const identifiers = Array.from(
+      new Set(
+        [
+          designRelated?.board?.artifactPort,
+          designRelated?.fieldId,
+          designRelated?.label,
+          selectedNode.label,
+          selectedNodeInspectorModel?.displayName,
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 1)
+          .map((value) => value.trim())
+      )
+    );
+    const matches: Array<{ line: number; text: string }> = [];
+    if (identifiers.length > 0 && primaryVhdlText) {
+      const pattern = new RegExp(`(?<![\\w])(?:${identifiers.map(escapeForRegExp).join('|')})(?![\\w])`, 'i');
+      primaryVhdlText.split(/\r?\n/).forEach((text, index) => {
+        if (matches.length < 4 && pattern.test(text)) matches.push({ line: index + 1, text: text.trim() });
+      });
+    }
+    return (
+      <div className="rb-insp-section-stack">
+        {matches.length > 0 ? (
+          <ol className="rb-insp-source-lines" data-testid="ide-design-inspector-source-lines">
+            {matches.map((match) => (
+              <li key={match.line} className="rb-insp-source-line">
+                <span className="rb-insp-source-ln">L{match.line}</span>
+                <code>{match.text}</code>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="rb-insp-note" data-testid="ide-design-inspector-source-empty">
+            Not named in the generated source; internal logic is written inline in the architecture body.
+          </p>
+        )}
+        <div className="ide-inline-actions">
+          <IdeButton tone="secondary" testId="ide-design-inspector-source-open" onClick={() => setDesignView('split')}>
+            Show HDL beside the schematic
+          </IdeButton>
+        </div>
+      </div>
+    );
+  };
+
+  const renderRelatedSection = () => {
+    if (!hasSingleSelectedNode || !selectedNode || !designRelated) return null;
+    const links = relatedDocumentsForSignal(designRelated, { activeScenarioId: null, hasRun: designRelated.run !== null });
+    if (links.length === 0) return null;
+    return (
+      <ul className="rb-insp-links" data-testid="ide-design-inspector-related-list">
+        {links.map((link) => (
+          <li key={`${link.document.kind}:${link.label}`}>
+            <button
+              type="button"
+              className="rb-insp-link"
+              data-testid={`ide-design-inspector-related-${link.document.kind}`}
+              title={link.detail}
+              onClick={() => followSelectedRelation(link.document)}
+            >
+              <span className="rb-insp-link-label">{link.label}</span>
+              <span className="rb-insp-link-detail">{link.detail}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  /* Unrecorded is not zero. Without a recording there is no previous sample and no transition,
+     and the value on the row is the live exploration value, not evidence - so the rows say so
+     instead of printing "Previous 0 / stable" derived from the live value alone. */
+  const snapshotRows = (snapshot: DesignSignalSnapshot | null | undefined) => {
+    const recorded = Boolean(snapshot && snapshot.samples > 0);
+    const value = (input: RuntimeLogicValue | null | undefined) => (input === null || input === undefined ? '—' : String(input));
+    return {
+      currentLabel: recorded ? 'Current' : 'Live value',
+      current: value(snapshot?.currentValue),
+      previous: recorded ? value(snapshot?.previousValue) : 'not recorded',
+      transition: recorded ? snapshot!.transition : 'not recorded',
+      lastTransition: recorded && snapshot!.lastTransitionTick !== null ? String(snapshot!.lastTransitionTick) : '—',
+    };
+  };
   const renderSelectionState = () => {
     if (hasSingleSelectedNode && selectedNode) {
       if (selectedSequentialInspector) {
         return (
-          <div className="ide-design-inspector-section-stack">
+          <div className="rb-insp-section-stack">
             <IdeCallout
               tone="info"
               title="Sequential guidance"
@@ -5516,14 +6958,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {selectedSequentialInspector.behaviorSummary}
               </span>
             </IdeCallout>
-            <div className="ide-design-live-summary">
-              <div className="ide-kv-list">
-                <div className="ide-kv-row">
+            <div className="rb-insp-live-summary">
+              <div className="rb-insp-facts">
+                <div className="rb-insp-row">
                   <span>Role</span>
                   <span>{selectedSequentialInspector.roleLabel}</span>
                 </div>
                 {selectedSequentialInspector.controlLabel ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>{selectedSequentialInspector.controlLabel}</span>
                     <span data-testid="ide-design-sequential-control-source">
                       {selectedSequentialInspector.controlSourceLabel ?? 'No source wired'}
@@ -5531,55 +6973,62 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
                 {selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>Control activity</span>
                     <span data-testid="ide-design-sequential-control-activity">
                       {selectedSequentialInspector.controlActivity}
                     </span>
                   </div>
                 ) : !selectedSequentialInspector.controlLabel && selectedSequentialInspector.controlActivity ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>Signal activity</span>
                     <span data-testid="ide-design-sequential-control-activity">
                       {selectedSequentialInspector.controlActivity}
                     </span>
                   </div>
                 ) : null}
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>{selectedSequentialInspector.ioSummaryLabel}</span>
                   <span data-testid="ide-design-sequential-input-summary">{selectedSequentialInspector.ioSummary}</span>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>{selectedSequentialInspector.stateSummaryLabel}</span>
                   <span data-testid="ide-design-sequential-output-summary">{selectedSequentialInspector.stateSummary}</span>
                 </div>
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Timing context</span>
                   <span>{selectedSequentialInspector.timingContext}</span>
                 </div>
-                <div className="ide-kv-row">
-                  <span>Current</span>
-                  <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Previous</span>
-                  <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Transition</span>
-                  <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-                </div>
-                <div className="ide-kv-row">
-                  <span>Last transition</span>
-                  <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-                </div>
+                {(() => {
+                  const rows = snapshotRows(selectedNodeSignalSnapshot);
+                  return (
+                    <>
+                      <div className="rb-insp-row">
+                        <span>{rows.currentLabel}</span>
+                        <code data-testid="ide-design-context-current">{rows.current}</code>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Previous</span>
+                        <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Transition</span>
+                        <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                      </div>
+                      <div className="rb-insp-row">
+                        <span>Last transition</span>
+                        <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                      </div>
+                    </>
+                  );
+                })()}
                 {selectedNodeReplayCausation ? (
-                  <div className="ide-kv-row">
+                  <div className="rb-insp-row">
                     <span>Why now</span>
                     <span data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</span>
                   </div>
                 ) : null}
-                <div className="ide-kv-row">
+                <div className="rb-insp-row">
                   <span>Trace state</span>
                   {(() => {
                     const dock = formatTraceStateDock(traceState?.nodeIds.has(selectedNode.id) ?? false);
@@ -5593,55 +7042,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 {renderReplayContextRows()}
               </div>
             </div>
-            {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-              <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
-                {selectedNodeSignals.map((entry) => {
-                  const val = entry.value;
-                  const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
-                  return (
-                    <span
-                      key={`${selectedNode.id}-${entry.port}`}
-                      className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
-                      data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
-                    >
-                      {entry.port}
-                      <span className="ide-design-pin-pill-value">{valStr}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            ) : null}
             {renderReplayContextActions()}
           </div>
         );
       }
       return (
-        <div className="ide-design-inspector-section-stack">
+        <div className="rb-insp-section-stack">
           {selectedNodeReplayCausation ? (
             <div className="ide-design-replay-causation-card" data-testid="ide-design-replay-causation-card">
               <span className="ide-design-replay-causation-label">Why now</span>
               <p className="ide-design-replay-causation-text" data-testid="ide-design-replay-causation">{selectedNodeReplayCausation}</p>
             </div>
           ) : null}
-          <div className="ide-design-live-summary">
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Current</span>
-                <code data-testid="ide-design-context-current">{selectedNodeSignalSnapshot?.currentValue ?? 0}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Previous</span>
-                <code data-testid="ide-design-context-previous">{selectedNodeSignalSnapshot?.previousValue ?? 0}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Transition</span>
-                <span data-testid="ide-design-context-transition">{selectedNodeSignalSnapshot?.transition ?? 'stable'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Last transition</span>
-                <span data-testid="ide-design-context-last-transition">{selectedNodeSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-              </div>
-              <div className="ide-kv-row">
+          <div className="rb-insp-live-summary">
+            <div className="rb-insp-facts">
+              {(() => {
+                const rows = snapshotRows(selectedNodeSignalSnapshot);
+                return (
+                  <>
+                    <div className="rb-insp-row">
+                      <span>{rows.currentLabel}</span>
+                      <code data-testid="ide-design-context-current">{rows.current}</code>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Previous</span>
+                      <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Transition</span>
+                      <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                    </div>
+                    <div className="rb-insp-row">
+                      <span>Last transition</span>
+                      <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                    </div>
+                  </>
+                );
+              })()}
+              <div className="rb-insp-row">
                 <span>Trace state</span>
                 {(() => {
                   const dock = formatTraceStateDock(traceState?.nodeIds.has(selectedNode.id) ?? false);
@@ -5655,81 +7093,60 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {renderReplayContextRows()}
             </div>
           </div>
-          {selectedNodeSignals && selectedNodeSignals.length > 0 ? (
-            <div className="ide-design-selection-pins" data-testid="ide-design-selection-pins">
-              {selectedNodeSignals.map((entry) => {
-                const val = entry.value;
-                const valStr = val === 1 ? '1' : val === 0 ? '0' : '?';
-                return (
-                  <span
-                    key={`${selectedNode.id}-${entry.port}`}
-                    className={`ide-design-pin-pill ide-design-pin-pill--val${val === 1 ? '-hi' : val === 0 ? '-lo' : '-unk'}`}
-                    data-testid={`ide-design-pin-pill-${selectedNode.id}-${entry.port}`}
-                  >
-                    {entry.port}
-                    <span className="ide-design-pin-pill-value">{valStr}</span>
-                  </span>
-                );
-              })}
-            </div>
-          ) : null}
-          {selectedNodeInputDrivers.length > 0 && (
-            <div className="ide-design-selection-drivers" data-testid="ide-design-input-drivers">
-              {selectedNodeInputDrivers.map((d) => (
-                <div key={d.port} className="ide-kv-row" data-testid={`ide-design-driver-row-${d.port}`}>
-                  <span>{describePortForStudents(d.port)}</span>
-                  <span>{d.driverLabel} · {d.value === 1 ? 'HIGH' : d.value === 0 ? 'LOW' : '?'}</span>
-                </div>
-              ))}
-            </div>
-          )}
           {renderReplayContextActions()}
         </div>
       );
     }
     if (selectedWireContext) {
       return (
-        <div className="ide-design-live-summary">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row" data-testid="ide-design-wire-connection">
+        <div className="rb-insp-live-summary">
+          <div className="rb-insp-facts">
+            <div className="rb-insp-row" data-testid="ide-design-wire-connection">
               <span>Connection</span>
               <span>{selectedWireContext.sourceLabel} → {selectedWireContext.targetLabel}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Signal</span>
               <code>{describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)}</code>
             </div>
-            <div className="ide-kv-row">
-              <span>Current</span>
-              <code data-testid="ide-design-context-current">{selectedWireContext.snapshot?.currentValue ?? 0}</code>
-            </div>
-            <div className="ide-kv-row">
-              <span>Previous</span>
-              <code data-testid="ide-design-context-previous">{selectedWireContext.snapshot?.previousValue ?? 0}</code>
-            </div>
-            <div className="ide-kv-row">
-              <span>Transition</span>
-              <span data-testid="ide-design-context-transition">{selectedWireContext.snapshot?.transition ?? 'stable'}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Last transition</span>
-              <span data-testid="ide-design-context-last-transition">{selectedWireContext.snapshot?.lastTransitionTick ?? '—'}</span>
-            </div>
+            {(() => {
+              const rows = snapshotRows(selectedWireContext.snapshot);
+              return (
+                <>
+                  <div className="rb-insp-row">
+                    <span>{rows.currentLabel}</span>
+                    <code data-testid="ide-design-context-current">{rows.current}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Previous</span>
+                    <code data-testid="ide-design-context-previous">{rows.previous}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Transition</span>
+                    <span data-testid="ide-design-context-transition">{rows.transition}</span>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                  </div>
+                </>
+              );
+            })()}
             {selectedWireReplayCausation ? (
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Why now</span>
                 <span data-testid="ide-design-replay-causation">{selectedWireReplayCausation}</span>
               </div>
             ) : null}
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Driver / Source</span>
               <span>{selectedWireContext.sourceLabel} · {describePortForStudents(selectedWireContext.sourcePort)}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Sink</span>
               <span>{selectedWireContext.targetLabel} · {describePortForStudents(selectedWireContext.targetPort)}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Trace state</span>
               {(() => {
                 const inWireTrace = Boolean(
@@ -5751,39 +7168,46 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
     if (activeInspectorSignalKey) {
       return (
-        <div className="ide-design-live-summary">
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
+        <div className="rb-insp-live-summary">
+          <div className="rb-insp-facts">
+            <div className="rb-insp-row">
               <span>Signal</span>
               <code data-testid="ide-design-signal-selected">{activeInspectorSignalLabel}</code>
             </div>
-            <div className="ide-kv-row">
-              <span>Current</span>
-              <code data-testid="ide-design-signal-current-value">{activeInspectorSignalSnapshot?.currentValue ?? 0}</code>
-            </div>
-            <div className="ide-kv-row">
-              <span>Previous</span>
-              <code>{activeInspectorSignalSnapshot?.previousValue ?? 0}</code>
-            </div>
-            <div className="ide-kv-row">
-              <span>Transition</span>
-              <span>{activeInspectorSignalSnapshot?.transition ?? 'stable'}</span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Last transition</span>
-              <span data-testid="ide-design-context-last-transition">{activeInspectorSignalSnapshot?.lastTransitionTick ?? '—'}</span>
-            </div>
+            {(() => {
+              const rows = snapshotRows(activeInspectorSignalSnapshot);
+              return (
+                <>
+                  <div className="rb-insp-row">
+                    <span>{rows.currentLabel}</span>
+                    <code data-testid="ide-design-signal-current-value">{rows.current}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Previous</span>
+                    <code>{rows.previous}</code>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Transition</span>
+                    <span>{rows.transition}</span>
+                  </div>
+                  <div className="rb-insp-row">
+                    <span>Last transition</span>
+                    <span data-testid="ide-design-context-last-transition">{rows.lastTransition}</span>
+                  </div>
+                </>
+              );
+            })()}
             {activeInspectorReplayCausation ? (
-              <div className="ide-kv-row">
+              <div className="rb-insp-row">
                 <span>Why now</span>
                 <span data-testid="ide-design-replay-causation">{activeInspectorReplayCausation}</span>
               </div>
             ) : null}
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Samples</span>
               <span>{activeInspectorSignalSnapshot?.samples ?? selectedSignalHistory.length}</span>
             </div>
-            <div className="ide-kv-row">
+            <div className="rb-insp-row">
               <span>Trace state</span>
               {(() => {
                 const dock = formatTraceStateDock(Boolean(traceState));
@@ -5809,14 +7233,185 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </IdeCallout>
     );
   };
+  const renderInlineBoardAssignment = () => {
+    if (!isEditingTopModule) {
+      return (
+        <IdeEmptyState
+          title="Board mapping belongs to the top module"
+          body="Component definitions expose logical ports. Return to the top module to bind those project signals to Basys3 resources."
+          primaryAction={<IdeButton tone="secondary" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>Return to top</IdeButton>}
+          testId="ide-design-module-board-boundary"
+        />
+      );
+    }
+    if (!selectedNodeIoRow) {
+      return (
+        <IdeEmptyState
+          title="Select a top-level I/O pin"
+          body="Choose an input or output on the canvas to assign its Basys3 resource without leaving Design."
+          primaryAction={
+            onGoToHardware ? (
+              <IdeButton tone="secondary" onClick={onGoToHardware}>
+                Open Board
+              </IdeButton>
+            ) : undefined
+          }
+          testId="ide-design-inline-board-empty"
+        />
+      );
+    }
+
+    return (
+      <section className="rb-insp-board" data-testid="ide-design-inline-board-assignment">
+        <header>
+          <span className="ide-surface-block-label">Top-level {selectedNodeIoRow.direction === 'in' ? 'input' : 'output'}</span>
+          <h3>{selectedNodeIoRow.label}</h3>
+          <p>
+            Logical signal <code>{selectedNodeIoRow.id}</code> keeps its project identity; this control changes only its
+            board binding.
+          </p>
+        </header>
+        <label className="rb-insp-field">
+          <span>Basys3 resource</span>
+          <select
+            value={selectedBoardResource?.packagePin ?? ''}
+            onChange={(event) => onSetMappingPin?.(selectedNodeIoRow.id, event.target.value)}
+            disabled={!onSetMappingPin}
+            data-testid="ide-design-inline-board-resource"
+          >
+            <option value="">Unassigned</option>
+            {selectedBoardResourceOptions.map((resource) => (
+              <option key={resource.id} value={resource.packagePin}>
+                {resource.alias} · {resource.packagePin} · {resource.label}
+                {!isBasys3ResourceCompatibleWithSignal(resource, selectedNodeIoRow)
+                  ? ' · incompatible with this signal role'
+                  : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <dl className="rb-insp-facts">
+          <div><dt>Direction</dt><dd>{selectedNodeIoRow.direction === 'in' ? 'Input' : 'Output'}</dd></div>
+          <div><dt>Required class</dt><dd>{describeRequiredBoardResourceClass(selectedNodeIoRow, selectedBoardResource, timingGuidance)}</dd></div>
+          <div><dt>Package pin</dt><dd>{selectedBoardResource?.packagePin ?? 'Not assigned'}</dd></div>
+          <div><dt>I/O standard</dt><dd>{selectedBoardResource?.ioStandard ?? 'Assigned with resource'}</dd></div>
+          <div><dt>Constraint alias</dt><dd>{selectedBoardResource?.alias ?? 'None'}</dd></div>
+          <div><dt>Timing status</dt><dd>{describeBoardTimingStatus(selectedNodeIoRow, selectedBoardResource, timingGuidance)}</dd></div>
+          <div><dt>Conflict status</dt><dd>{selectedBoardConflict ? `Also used by ${selectedBoardConflict.label}` : 'No conflict'}</dd></div>
+        </dl>
+        {selectedBoardResource && !selectedBoardResourceCompatible ? (
+          <IdeCallout tone="error" title="Incompatible board resource">
+            {selectedBoardResource.alias} does not match the required signal role. Choose a compatible resource before export.
+          </IdeCallout>
+        ) : null}
+        {selectedBoardConflict ? (
+          <IdeCallout tone="error" title="Resource conflict">
+            {selectedBoardResource?.alias} is also assigned to {selectedBoardConflict.label}. Resolve the conflict before export.
+          </IdeCallout>
+        ) : null}
+        <div className="ide-inline-actions">
+          <IdeButton
+            tone="ghost"
+            disabled={!selectedNodeIoRow.pin || !onSetMappingPin}
+            onClick={() => onSetMappingPin?.(selectedNodeIoRow.id, '')}
+            testId="ide-design-inline-board-clear"
+          >
+            Clear assignment
+          </IdeButton>
+          {onGoToHardware ? (
+            <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-inline-board-open-board">
+              Open Board
+            </IdeButton>
+          ) : null}
+        </div>
+        <p className="ide-copy rb-insp-proof-boundary">
+          This creates package constraints for export. It does not prove synthesis, implementation, programming, or physical board behavior.
+        </p>
+      </section>
+    );
+  };
+  const renderBottomWorkspace = () => (
+    <div className="ide-design-bottom-workspace" data-testid="ide-design-bottom-workspace">
+      <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design bottom panel">
+        {(['problems', 'console', 'simulation'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeBottomDockTab === tab}
+            className={`wb-toolwindow-tab${activeBottomDockTab === tab ? ' is-active' : ''}`}
+            onClick={() => setActiveBottomDockTab(tab)}
+            data-testid={`ide-design-bottom-tab-${tab}`}
+          >
+            {tab === 'problems' ? (
+              <>Problems <span className="wb-toolwindow-count">{problemsLedgerCount}</span></>
+            ) : tab === 'simulation' ? 'Explore' : 'Output'}
+          </button>
+        ))}
+      </div>
+      <div className="ide-design-bottom-content">
+        {activeBottomDockTab === 'problems' ? (
+          <ProblemsPanel origin="bottom-panel" />
+        ) : activeBottomDockTab === 'console' ? (
+          <div className="ide-design-console-readout">
+            <strong>{liveHdlResult.error ? 'HDL generation stopped' : 'HDL preview is current'}</strong>
+            <span>{editorCircuit.nodes.length} nodes · {editorCircuit.connections.length} connections · {liveHdlResult.warnings.length} HDL warnings</span>
+            <p>{liveHdlResult.error ?? 'Generated previews are current for this browser session. Package holds the handoff files.'}</p>
+          </div>
+        ) : (
+          <div className="ide-design-simulation-readout">
+            <strong>{isReplayMode ? 'Recorded run from Simulate' : 'Exploring this circuit'}</strong>
+            <span>
+              {isReplayMode
+                ? `${displayTrace.length} recorded samples · ${runtimeSim.probes.length} pinned signals`
+                : `${runtimeSim.probes.length} pinned signals${circuitHasState ? ` · ${runtimeSim.tick} clock edge${runtimeSim.tick === 1 ? '' : 's'} applied` : ''}`}
+            </span>
+            <p className="ide-copy">
+              {isReplayMode
+                ? 'This is the run Simulate recorded. It is read-only evidence.'
+                : 'Values here settle as you drive inputs. Nothing is recorded and nothing is checked — run a scenario in Simulate for evidence.'}
+            </p>
+            <div className="ide-inline-actions">
+              {isReplayMode ? (
+                <IdeButton tone="secondary" onClick={onGoToVerify}>Open Simulate waveform</IdeButton>
+              ) : (
+                <>
+                  {circuitHasState ? (
+                    <IdeButton tone="secondary" onClick={stepSimulation}>Clock edge</IdeButton>
+                  ) : null}
+                  <IdeButton tone="ghost" onClick={resetSimulation}>Reset values</IdeButton>
+                  <IdeButton tone="ghost" onClick={onGoToVerify}>Run a scenario in Simulate</IdeButton>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
   return (
     <>
       <IdeSurfaceLayout
         mode="design"
         layoutIntent="workbench"
-        leftDockMode={workspacePreset.leftDockMode}
-        rightDockMode={hasInspectorSelectionContext ? workspacePreset.rightDockMode : 'hidden'}
-        consoleMode="hidden"
+        leftDockMode={effectiveLearningMode === 'live' && hierarchicalLive ? 'hidden' : workspacePreset.leftDockMode}
+        rightDockMode={
+          !(effectiveLearningMode === 'live' && hierarchicalLive) && (hasInspectorSelectionContext || focusedAssetContext)
+            ? workspacePreset.rightDockMode
+            : 'hidden'
+        }
+        consoleMode="auto"
+        console={renderBottomWorkspace()}
+        // Draft register wiring can be incomplete while a student is placing
+        // parts. Keep its errors visible in the header/Problems strip without
+        // resizing the canvas mid-wire; opening details is an explicit action.
+        consoleHasBlocking={false}
+        consoleHasEntries={
+          authoringIssues.length > 0 ||
+          compilerDiagnostics.length > 0 ||
+          runtimeSim.trace.length > 0 ||
+          liveHdlResult.warnings.length > 0
+        }
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
         productSpine={{
@@ -5824,8 +7419,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           statusTone: designCommandTone,
           detail: designCommandDescription,
           primaryLabel: activeVerifySignal || effectiveExternalDebugTick != null
-            ? 'Return to Verify waveform'
-            : 'Open Verify',
+            ? 'Return to Simulate waveform'
+            : 'Open Simulate',
           onPrimary: onGoToVerify,
           recoveryLabel: onGoToProject ? 'Project' : undefined,
           onRecovery: onGoToProject,
@@ -5847,24 +7442,46 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   : 'No design blocker visible.',
         }}
         dock={
-        <>
+        <div className="ide-design-dock-stack" data-testid="ide-design-left-dock-workspace">
+          <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design tools">
+            {(['components', 'hierarchy', 'sources', 'board'] as const)
+              .filter((tab) => isEditingTopModule || tab !== 'board')
+              .map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeLeftDockTab === tab}
+                className={`wb-toolwindow-tab${activeLeftDockTab === tab ? ' is-active' : ''}`}
+                onClick={() => setActiveLeftDockTab(tab)}
+                data-testid={`ide-design-left-tab-${tab}`}
+              >
+                {tab === 'components' ? 'Components' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+              </button>
+            ))}
+          </div>
+          {activeLeftDockTab === 'components' ? (
           <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
-            <header className="ide-design-subheader ide-design-palette-header">
-              <div>
-                <h3>Component Library</h3>
-              </div>
-            </header>
-            <div className="ide-design-palette-toolbar">
+            <div className="rb-lib-toolbar">
+              <div className="wb-search">
+              <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="6" cy="6" r="4" /><path d="M9 9l3.5 3.5" strokeLinecap="round" /></svg>
               <input
-                type="text"
-                className="ide-design-search"
+                type="search"
+                className="rb-lib-search-input"
+                aria-label="Filter component library"
                 value={paletteQuery}
                 onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search gates or pins..."
+                placeholder="Filter parts"
                 data-testid="ide-design-search"
               />
+              {onRuntimeCreateBus ? (
+                <button type="button" className="wb-btn wb-btn--ghost rb-lib-bus" onClick={() => openBusDialog('input')} data-testid="ide-design-library-new-bus" title="Create a bus port">
+                  Bus +
+                </button>
+              ) : null}
+              </div>
               {paletteHasQuery && (
-                <p className="ide-design-palette-results" data-testid="ide-design-palette-results">
+                <p className="rb-lib-results" data-testid="ide-design-palette-results">
                   {hasPaletteResults
                     ? `${filteredPaletteByCategory.logic.length + filteredPaletteByCategory.sequential.length + filteredPaletteByCategory.io.length + filteredPaletteByCategory.components.length} results`
                     : `No results for "${paletteQuery.trim()}".`}
@@ -5872,60 +7489,389 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               )}
             </div>
 
-            <div className="ide-design-palette-sections">
-              {commonPaletteItems.length > 0 ? (
+            <div className="rb-lib-sections" onKeyDown={handleLibraryRailKeyDown}>
+              {/* One list: every primitive appears once under its category. */}
+              {/* Board Resources — first: primary destination for board-aware work */}
+
+              {/* Inputs & Outputs — second: generic pins for abstract designs */}
+              {filteredPaletteByCategory.io.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--common"
-                  data-testid="ide-design-palette-section-common"
+                  className="rb-lib-section"
+                  data-testid="ide-design-palette-section-io"
+                  data-collapsed={librarySectionOpen('io') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>Common</h4>
-                      <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
+                      <h4>{ioPaletteSection.title}</h4>
+                      <span className="rb-lib-count">
+                        {filteredPaletteByCategory.io.length}
+                      </span>
+                      {renderLibrarySectionToggle('io', ioPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">
-                      Start here for most combinational and first sequential circuits.
-                    </p>
                   </header>
-                  <div className="ide-palette-card-list">
-                    {commonPaletteItems.map((item) =>
-                      renderNodePaletteCard(item, {
-                        testId: `ide-design-common-${item.type.toLowerCase()}`,
-                      })
-                    )}
-                  </div>
+                  {librarySectionOpen('io') ? (
+                    <div className="rb-lib-list">
+                      {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
-              {/* Board Resources — first: primary destination for board-aware work */}
-              {filteredBoardGroups.length > 0 ? (
+
+              {/* Logic Gates */}
+              {filteredPaletteByCategory.logic.length > 0 ? (
                 <section
-                  className="ide-palette-section ide-palette-section--board"
-                  data-testid="ide-design-palette-section-board"
-                  data-collapsed="false"
+                  className="rb-lib-section"
+                  data-testid="ide-design-palette-section-logic"
+                  data-collapsed={librarySectionOpen('logic') ? 'false' : 'true'}
                 >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{boardPaletteSection.title}</h4>
-                    </div>
-                    <div className="ide-palette-section-meta">
-                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
+                      <h4>{logicPaletteSection.title}</h4>
+                      <span className="rb-lib-count">
+                        {filteredPaletteByCategory.logic.length}
+                      </span>
+                      {renderLibrarySectionToggle('logic', logicPaletteSection.title)}
                     </div>
                   </header>
-                  <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
+                  {librarySectionOpen('logic') ? (
+                    <div className="rb-lib-list">
+                      {filteredPaletteByCategory.logic
+                        .filter((item) => paletteQuery.trim().length > 0 || !WIDE_GATE_TYPE.test(item.type))
+                        .map((item) => renderNodePaletteCard(item))}
+                      {paletteQuery.trim().length === 0 && filteredPaletteByCategory.logic.some((item) => WIDE_GATE_TYPE.test(item.type)) ? (
+                        <details className="rb-lib-more" data-testid="ide-design-palette-wide-gates">
+                          <summary>3-input gates</summary>
+                          {filteredPaletteByCategory.logic
+                            .filter((item) => WIDE_GATE_TYPE.test(item.type))
+                            .map((item) => renderNodePaletteCard(item))}
+                        </details>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {/* Sequential & Timing */}
+              {filteredPaletteByCategory.sequential.length > 0 ? (
+                <section
+                  className="rb-lib-section"
+                  data-testid="ide-design-palette-section-sequential"
+                  data-collapsed={librarySectionOpen('sequential') ? 'false' : 'true'}
+                >
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
+                      <h4>{sequentialPaletteSection.title}</h4>
+                      <span className="rb-lib-count">
+                        {filteredPaletteByCategory.sequential.length}
+                      </span>
+                      {renderLibrarySectionToggle('sequential', sequentialPaletteSection.title)}
+                    </div>
+                  </header>
+                  {librarySectionOpen('sequential') ? SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
+                    const items = filteredPaletteByCategory[subsection.key];
+                    if (!items || items.length === 0) return null;
+                    return (
+                      <div key={subsection.key} className="rb-lib-subsection" data-testid={subsection.testId}>
+                        <div className="rb-lib-subheader">
+                          <h5>{subsection.title}</h5>
+                          <span className="rb-lib-count">{items.length}</span>
+                        </div>
+                        <div className="rb-lib-list">
+                          {items.map((item) => renderNodePaletteCard(item))}
+                        </div>
+                      </div>
+                    );
+                  }) : null}
+                  {librarySectionOpen('sequential') ? (
+                    <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
+                      Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
+                      type — useful for counters and multi-bit state.
+                    </p>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {/* Reusable Blocks — macros, custom parts, built-in helpers */}
+              {filteredPaletteByCategory.components.length > 0 ||
+              filteredCustomComponents.length > 0 ||
+              filteredMacros.length > 0 ? (
+                <section
+                  className="rb-lib-section"
+                  data-testid="ide-design-palette-section-reusable"
+                  data-collapsed={librarySectionOpen('reusable') ? 'false' : 'true'}
+                >
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
+                      <h4>{reusablePaletteSection.title}</h4>
+                      <span className="rb-lib-count">
+                        {filteredPaletteByCategory.components.length +
+                          filteredCustomComponents.length +
+                          filteredMacros.length}
+                      </span>
+                      {renderLibrarySectionToggle('reusable', reusablePaletteSection.title)}
+                    </div>
+                  </header>
+
+                  {librarySectionOpen('reusable') && filteredPaletteByCategory.components.length > 0 ? (
+                    <div
+                      className="rb-lib-subsection"
+                      data-testid="ide-design-palette-built-in-blocks"
+                    >
+                      <div className="rb-lib-subheader">
+                        <h5>Built-in Blocks</h5>
+                        <span className="rb-lib-count">
+                          {filteredPaletteByCategory.components.length}
+                        </span>
+                      </div>
+                      <div className="rb-lib-list">
+                        {filteredPaletteByCategory.components.map((item) =>
+                          renderNodePaletteCard(item, { badge: item.paletteBadge ?? 'Built-in' })
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {librarySectionOpen('reusable') && filteredCustomComponents.length > 0 ? (
+                    <div className="rb-lib-subsection" data-testid="ide-palette-group-custom">
+                      <div className="rb-lib-subheader">
+                        <h5>Custom Parts</h5>
+                        <span className="rb-lib-count">
+                          {filteredCustomComponents.length}
+                        </span>
+                      </div>
+                      <div className="rb-lib-list">
+                        {filteredCustomComponents.map((item) => {
+                          const definition = hierarchy?.modules.find((module) => module.name === item.type);
+                          return (
+                            <div key={item.type} className="rb-lib-row rb-lib-row--module" data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                              <span className="rb-lib-glyph" aria-hidden="true">M</span>
+                              <span className="rb-lib-name">{item.title}</span>
+                              <code className="rb-lib-pins">{definition ? `${definition.ports.length} ports` : 'custom'}</code>
+                              <span className="rb-lib-row-actions">
+                                {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
+                                  <button type="button" className="wb-btn wb-btn--ghost" data-testid={`ide-design-palette-place-${definition.id}`} title="Place an instance on the schematic" onClick={() => {
+                                    const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
+                                    onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, moduleSpawnFootprint(definition)));
+                                  }}>Place</button>
+                                ) : null}
+                                {definition && onOpenModule ? <button type="button" className="wb-btn wb-btn--ghost" title="Open the module definition" onClick={() => onOpenModule(definition.id)}>Open</button> : null}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {librarySectionOpen('reusable') ? (
+                    <MacroLibraryPanel
+                      macros={filteredMacros}
+                      totalMacroCount={macros.length}
+                      searchQuery={paletteQuery}
+                      activeMacroId={activeMacroInsertionId}
+                      onSelectMacro={handleSelectMacro}
+                      onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
+                    />
+                  ) : null}
+                </section>
+              ) : null}
+
+            </div>
+            {/* The interface of the part in focus, in a strip of fixed height: it never changes
+                size, so the list above it does not move. */}
+            <p className="rb-lib-detail" id="rb-lib-detail" data-testid="ide-design-palette-detail" aria-live="polite">
+              {libraryDetail ? (
+                <>
+                  <strong>{libraryDetail.title}</strong>
+                  {libraryDetail.ports ? <code>{libraryDetail.ports}</code> : null}
+                </>
+              ) : (
+                <>
+                  <strong>Ports</strong>
+                  <span>Focus or point at a part</span>
+                </>
+              )}
+            </p>
+
+            {!hasPaletteResults && paletteHasQuery ? (
+              <IdeEmptyState
+                title={`No results for "${paletteQuery.trim()}"`}
+                body="Try logic terms like AND or flipflop, or board terms like SW0, LED, or clock."
+                primaryAction={
+                  <IdeButton tone="ghost" onClick={() => setPaletteQuery('')}>
+                    Clear search
+                  </IdeButton>
+                }
+                testId="ide-design-palette-empty"
+              />
+            ) : null}
+          </SurfacePanel>
+          ) : activeLeftDockTab === 'hierarchy' ? (
+            <SurfacePanel className="ide-design-project-browser" testId="ide-design-hierarchy">
+              <header className="ide-design-subheader">
+                <div><h3>Project Hierarchy</h3><p>{projectName ? `${projectName} · ` : ''}Open, reuse, and manage visual module sources.</p></div>
+              </header>
+              {hierarchy ? (
+                <div className="ide-native-module-browser" data-testid="ide-design-native-module-browser">
+                  <button
+                    type="button"
+                    className={isEditingTopModule ? 'is-active' : ''}
+                    onClick={() => onOpenModule?.(TOP_MODULE_ID)}
+                    data-testid="ide-design-open-top-module"
+                  >
+                    <span aria-hidden="true">◇</span>
+                    <span><strong>{topEntityName || 'top'}</strong><small>Top module · board I/O owner</small></span>
+                  </button>
+                  {hierarchy.modules.map((module) => {
+                    // Usage is counted in the circuit currently on the canvas
+                    // (top OR an open module definition), so nested instances count too.
+                    const usageCount = moduleUsageCount(editorCircuit, module.id);
+                    return (
+                      <article key={module.id} className={hierarchy.activeModuleId === module.id ? 'is-active' : ''}>
+                        <button type="button" onClick={() => onOpenModule?.(module.id)} data-testid={`ide-design-open-module-${module.id}`}>
+                          <span aria-hidden="true">▣</span>
+                          <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · {usageCount} instance{usageCount === 1 ? '' : 's'}</small></span>
+                        </button>
+                        <div className="ide-native-module-actions">
+                          {onPlaceModuleInstance && module.id !== hierarchy.activeModuleId ? (
+                            <button
+                              type="button"
+                              data-testid={`ide-design-place-module-${module.id}`}
+                              title={isEditingTopModule ? 'Place an instance in the top design' : 'Place an instance inside the open module'}
+                              onClick={() => {
+                                const center = {
+                                  x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+                                  y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+                                };
+                                onPlaceModuleInstance(module.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center, undefined, moduleSpawnFootprint(module)));
+                              }}
+                            >Use</button>
+                          ) : null}
+                          {isEditingTopModule && usageCount > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const instanceIds = editorCircuit.nodes
+                                  .filter(
+                                    (node) =>
+                                      node.config?.moduleDefinitionId === module.id ||
+                                      node.type === module.name
+                                  )
+                                  .map((node) => node.id);
+                                selectMultipleNodes(instanceIds, false);
+                                setActionToast(
+                                  `Selected ${instanceIds.length} ${module.displayName} instance${instanceIds.length === 1 ? '' : 's'}.`
+                                );
+                              }}
+                              data-testid={`ide-design-select-instances-${module.id}`}
+                            >Instances</button>
+                          ) : null}
+                          {onDuplicateModuleDefinition ? <button type="button" onClick={() => onDuplicateModuleDefinition(module.id)}>Duplicate</button> : null}
+                          {onDeleteModuleDefinition ? <button type="button" disabled={usageCount > 0} onClick={() => onDeleteModuleDefinition(module.id)}>Delete</button> : null}
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {hierarchy.modules.length === 0 ? (
+                    <IdeEmptyState title="No custom components yet" body="Select connected logic on the top canvas, then choose Create component from selection." primaryAction={null} />
+                  ) : null}
+                </div>
+              ) : (
+                <div className="ide-design-tree" role="tree" aria-label="Module hierarchy">
+                  {designHierarchyRows.map((node) => (
+                    <button key={node.hierarchyId} type="button" role="treeitem" aria-level={node.depth + 1} aria-selected={node.selected} className={node.selected ? 'is-selected' : ''} style={{ '--rb-tree-depth': node.depth } as React.CSSProperties} onClick={() => handleHierarchyOpen(node.nodeId, node.depth, node.openTarget.componentType)}>
+                      <span className="ide-design-tree-glyph" aria-hidden="true">{node.depth === 0 ? '◇' : node.children.length > 0 ? '▣' : '◆'}</span>
+                      <span><strong>{node.label}</strong><small>{node.depth === 0 ? 'Top module' : node.runtimeType}</small></span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </SurfacePanel>
+          ) : activeLeftDockTab === 'sources' ? (
+            <SurfacePanel className="ide-design-project-browser" testId="ide-design-sources">
+              <header className="ide-design-subheader">
+                <div><h3>Design Sources</h3><p>Real project-owned documents only.</p></div>
+              </header>
+              <div className="ide-design-source-list">
+                {designSources.entries.map((source) => (
+                  <button
+                    key={source.id}
+                    type="button"
+                    onClick={() => {
+                      if (source.kind === 'visual-circuit') setDesignView('canvas');
+                      else if (source.kind === 'hdl-source') setDesignView('hdl');
+                      else {
+                        setPaletteQuery(source.label);
+                        setActiveLeftDockTab('components');
+                      }
+                    }}
+                    data-testid={`ide-design-source-${source.kind}`}
+                  >
+                    <span aria-hidden="true">{source.kind === 'hdl-source' ? '</>' : source.kind === 'visual-circuit' ? '◇' : '▣'}</span>
+                    <span>
+                      <strong>{source.label}</strong>
+                      <small>
+                        {source.fileBacked
+                          ? `${source.language.toUpperCase()} · preserved read-only source`
+                          : source.kind === 'visual-circuit'
+                            ? `${source.nodeCount} nodes · ${source.connectionCount} connections · canvas editable`
+                            : `${source.nodeCount} nodes · definition inspect-only`}
+                      </small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="ide-copy">Generated VHDL and Verilog previews are outputs of the current visual source, not invented project files.</p>
+            </SurfacePanel>
+          ) : (
+            <SurfacePanel className="ide-design-project-browser" testId="ide-design-board-dock">
+              <header className="ide-design-subheader">
+                <div><h3>Board I/O</h3></div>
+              </header>
+              {/* The list lives here, so the filter does too — one query, filtered per tab. */}
+              <div className="rb-lib-toolbar">
+                <div className="wb-search">
+                  <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="6" cy="6" r="4" /><path d="M9 9l3.5 3.5" /></svg>
+                  <input
+                    type="search"
+                    className="rb-lib-search-input"
+                    aria-label="Filter board resources"
+                    value={paletteQuery}
+                    onChange={(event) => setPaletteQuery(event.target.value)}
+                    placeholder="Filter resources, pins"
+                    data-testid="ide-design-board-search"
+                  />
+                </div>
+              </div>
+              {/* Placeable board resources: switches, buttons, clock, LEDs, seven-segment. */}
+              {filteredBoardGroups.length > 0 ? (
+                <section
+                  className="rb-lib-section"
+                  data-testid="ide-design-palette-section-board"
+                  data-collapsed={librarySectionOpen('board') ? 'false' : 'true'}
+                >
+                  <header className="rb-lib-section-header">
+                    <div className="rb-lib-section-title">
+                      <h4>{boardPaletteSection.title}</h4>
+                    </div>
+                    <div className="rb-lib-section-meta">
+                      <span className="rb-lib-count">{boardResourcesCount}</span>
+                      {renderLibrarySectionToggle('board', boardPaletteSection.title)}
+                    </div>
+                  </header>
+                  {librarySectionOpen('board') ? (
+                  <div className="rb-lib-board-groups" data-testid="ide-design-board-io-palette">
                       {filteredBoardGroups.map((group) => (
                         <div
                           key={group.id}
-                          className="ide-palette-board-group"
+                          className="rb-lib-board-group"
                           data-testid={`ide-design-board-group-${group.id}`}
                         >
-                          <div className="ide-palette-subsection-header">
-                            <div>
-                              <h5>{group.title}</h5>
-                              <p>{group.description}</p>
-                            </div>
-                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
+                          <div className="rb-lib-subheader">
+                            <h5>{group.title}</h5>
+                            <span className="rb-lib-count">{group.entries.length}</span>
                           </div>
-                          <div className="ide-palette-board-grid">
+                          <div className="rb-lib-chips">
                             {group.entries.map((entry) => {
                               const isPlaced = isBoardAliasPlaced(entry);
                               const isPending =
@@ -5939,9 +7885,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               return (
                                 <button
                                   key={entry.alias}
-                                  className={`ide-design-resource-tile${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
+                                  className={`rb-lib-chip${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
                                   type="button"
                                   onClick={() => beginBoardIoPlacement(entry)}
+                                  onPointerDown={(event) =>
+                                    beginPaletteCardDrag(event, {
+                                      kind: 'board-io',
+                                      entry,
+                                      label: entry.alias,
+                                    })
+                                  }
                                   data-testid={testId}
                                   disabled={isPlaced}
                                   title={
@@ -5959,195 +7912,59 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ))}
                   </div>
+                  ) : null}
                 </section>
               ) : null}
-
-              {/* Inputs & Outputs — second: generic pins for abstract designs */}
-              {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section ide-palette-section--io" data-testid="ide-design-palette-section-io">
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{ioPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.io.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Logic Gates */}
-              {filteredPaletteByCategory.logic.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--logic"
-                  data-testid="ide-design-palette-section-logic"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{logicPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.logic.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Sequential & Timing */}
-              {filteredPaletteByCategory.sequential.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--sequential"
-                  data-testid="ide-design-palette-section-sequential"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{sequentialPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.sequential.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
-                  </header>
-                  {SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
-                    const items = filteredPaletteByCategory[subsection.key];
-                    if (!items || items.length === 0) return null;
-                    return (
-                      <div key={subsection.key} className="ide-palette-subsection" data-testid={subsection.testId}>
-                        <div className="ide-palette-subsection-header">
-                          <div>
-                            <h5>{subsection.title}</h5>
-                            <p>{subsection.description}</p>
-                          </div>
-                          <span className="ide-palette-subsection-count">{items.length}</span>
-                        </div>
-                        <div className="ide-palette-card-list">
-                          {items.map((item) => renderNodePaletteCard(item))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
-                    Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
-                    type — useful for counters and multi-bit state.
-                  </p>
-                </section>
-              ) : null}
-
-              {/* Reusable Blocks — macros, custom parts, built-in helpers */}
-              {filteredPaletteByCategory.components.length > 0 ||
-              filteredCustomComponents.length > 0 ||
-              filteredMacros.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--reusable"
-                  data-testid="ide-design-palette-section-reusable"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{reusablePaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.components.length +
-                          filteredCustomComponents.length +
-                          filteredMacros.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
-                  </header>
-
-                  {filteredPaletteByCategory.components.length > 0 ? (
-                    <div
-                      className="ide-palette-subsection"
-                      data-testid="ide-design-palette-built-in-blocks"
+              <div className="ide-design-board-binding-list">
+                {ioRows.map((row) => {
+                  const resource = getBasys3BoardResource(row.pin);
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => {
+                        selectMultipleNodes([row.nodeId], false);
+                        setActiveRightDockTab('constraints');
+                      }}
                     >
-                      <div className="ide-palette-subsection-header">
-                        <div>
-                          <h5>Built-in Blocks</h5>
-                          <p>Ready-made helpers for arithmetic and sequential experiments.</p>
-                        </div>
-                        <span className="ide-palette-subsection-count">
-                          {filteredPaletteByCategory.components.length}
-                        </span>
-                      </div>
-                      <div className="ide-palette-card-list">
-                        {filteredPaletteByCategory.components.map((item) =>
-                          renderNodePaletteCard(item, { badge: item.paletteBadge ?? 'Built-in' })
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {filteredCustomComponents.length > 0 ? (
-                    <div className="ide-palette-subsection" data-testid="ide-palette-group-custom">
-                      <div className="ide-palette-subsection-header">
-                        <div>
-                          <h5>Custom Parts</h5>
-                          <p>Reusable components saved into the project component library.</p>
-                        </div>
-                        <span className="ide-palette-subsection-count">
-                          {filteredCustomComponents.length}
-                        </span>
-                      </div>
-                      <div className="ide-palette-card-list">
-                        {filteredCustomComponents.map((item) =>
-                          renderNodePaletteCard(
-                            {
-                              type: item.type,
-                              title: item.title,
-                              subtitle: item.description || 'Custom reusable block.',
-                              glyph: 'C',
-                            },
-                            {
-                              badge: 'Custom',
-                              className: 'ide-palette-card--custom',
-                              title: item.description || item.title,
-                              testId: `ide-design-palette-custom-${item.type
-                                .toLowerCase()
-                                .replace(/[^a-z0-9]/g, '-')}`,
-                            }
-                          )
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <MacroLibraryPanel
-                    macros={filteredMacros}
-                    totalMacroCount={macros.length}
-                    searchQuery={paletteQuery}
-                    activeMacroId={activeMacroInsertionId}
-                    onSelectMacro={handleSelectMacro}
-                    onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
-                  />
-                </section>
+                      <span><strong>{row.label}</strong><small>{row.direction === 'in' ? 'Input' : 'Output'}</small></span>
+                      <code>{resource ? `${resource.alias} · ${resource.packagePin}` : 'Unassigned'}</code>
+                    </button>
+                  );
+                })}
+              </div>
+              {ioRows.length === 0 ? (
+                <IdeEmptyState title="No top-level I/O" body="Place an input or output pin to create a board-assignable signal." primaryAction={null} />
               ) : null}
-
-            </div>
-
-            {!hasPaletteResults && paletteHasQuery ? (
-              <IdeEmptyState
-                title={`No results for "${paletteQuery.trim()}"`}
-                body="Try logic terms like AND or flipflop, or board terms like SW0, LED, or clock."
-                primaryAction={
-                  <IdeButton tone="ghost" onClick={() => setPaletteQuery('')}>
-                    Clear search
-                  </IdeButton>
-                }
-                testId="ide-design-palette-empty"
-              />
-            ) : null}
-          </SurfacePanel>
-
-        </>
+              {onGoToHardware ? (
+                <IdeButton tone="secondary" onClick={onGoToHardware}>Open Board</IdeButton>
+              ) : null}
+            </SurfacePanel>
+          )}
+        </div>
       }
       inspector={
         <>
+          <div className="rb-design-dock-head">
+          <div className="wb-toolwindow-tabs rb-design-dock-tabs" role="tablist" aria-label="Design inspector">
+            {(['inspector', 'properties', 'constraints'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeRightDockTab === tab}
+                className={`wb-toolwindow-tab${activeRightDockTab === tab ? ' is-active' : ''}`}
+                onClick={() => setActiveRightDockTab(tab)}
+                data-testid={`ide-design-right-tab-${tab}`}
+              >
+                {tab === 'inspector' ? 'Inspector' : tab === 'properties' ? 'Properties' : 'Constraints'}
+              </button>
+            ))}
+          </div>
+            {renderSelectionIdentityCard()}
+          </div>
+          <div className="rb-design-dock-body">
+          <div hidden={activeRightDockTab !== 'inspector'}>
           {focusedAssetContext && (
             <DesignFocusInspector
               context={focusedAssetContext}
@@ -6156,7 +7973,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               instanceCount={focusedComponentInstanceCount}
             />
           )}
-          {renderSelectionIdentityCard()}
           {(() => {
             const content = renderSelectionActions();
             return content ? (
@@ -6167,16 +7983,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           })()}
           {hasSingleSelectedNode && selectedNode ? (
             <IdeInspectorSection
-              title="Selection details"
+              title="Details"
               testId="ide-design-inspector-selection-details"
-              collapsible={false}
+              defaultOpen={false}
+              keepMounted
             >
               {renderSelectedNodeDetails()}
             </IdeInspectorSection>
           ) : null}
+          {(() => {
+            const content = renderConnectivitySection();
+            return content ? (
+              <IdeInspectorSection title="Connectivity" testId="ide-design-inspector-connectivity" defaultOpen={false} keepMounted>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
           {hasInspectorSelectionContext ? (
             <React.Fragment key="design-inspector-selection-context">
-              <IdeInspectorSection title="Live / Signal State" testId="ide-design-context-inspector" collapsible={false}>
+              <IdeInspectorSection title="Evidence" testId="ide-design-context-inspector" defaultOpen={false} keepMounted>
                 {renderSelectionState()}
                 {selectedSignalKey ? (
                   <div className="ide-inline-actions ide-copy-top-gap">
@@ -6195,9 +8020,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
                 {pinnedProbeRows.length > 0 ? (
-                  <div className="ide-kv-list ide-copy-top-gap" data-testid="ide-design-probe-list">
+                  <div className="rb-insp-facts ide-copy-top-gap" data-testid="ide-design-probe-list">
                     {pinnedProbeRows.map((probe) => (
-                      <div className="ide-kv-row" key={probe.key}>
+                      <div className="rb-insp-row" key={probe.key}>
                         <code>{probe.label}</code>
                         <span>{probe.value}</span>
                       </div>
@@ -6225,44 +8050,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 const hasIdleIoState = idleInputRows.length > 0 || idleOutputRows.length > 0;
                 return (
                   <div
-                    className="ide-design-inspector-canvas-default"
+                    className="rb-insp-canvas-default"
                     data-testid="ide-design-inspector-canvas-default"
                   >
                     <div
-                      className="ide-design-inspector-idle-card"
+                      className="rb-insp-idle-card"
                       data-testid="ide-design-inspector-idle-card"
                     >
-                      <span className="ide-design-inspector-idle-eyebrow">
+                      <span className="rb-insp-idle-eyebrow">
                         Design overview
                       </span>
                       {isEmptyCanvas ? (
-                        <p className="ide-copy ide-design-inspector-idle-empty-line">
+                        <p className="ide-copy rb-insp-idle-empty-line">
                           Empty canvas. Drop a gate, an input, or load an example to begin.
                         </p>
                       ) : (
                         <dl
-                          className="ide-design-inspector-idle-stats"
+                          className="rb-insp-idle-stats"
                           data-testid="ide-design-inspector-idle-stats"
                         >
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Inputs</dt>
                             <dd data-testid="ide-design-inspector-idle-inputs">
                               {inputCountIdle}
                             </dd>
                           </div>
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Outputs</dt>
                             <dd data-testid="ide-design-inspector-idle-outputs">
                               {outputCountIdle}
                             </dd>
                           </div>
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Nodes</dt>
                             <dd data-testid="ide-design-inspector-idle-nodes">
                               {nodeCountIdle}
                             </dd>
                           </div>
-                          <div className="ide-design-inspector-idle-stat">
+                          <div className="rb-insp-idle-stat">
                             <dt>Wires</dt>
                             <dd data-testid="ide-design-inspector-idle-wires">
                               {connectionCountIdle}
@@ -6272,27 +8097,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       )}
                       {hasIdleIoState ? (
                         <div
-                          className="ide-design-inspector-io-state"
+                          className="rb-insp-io-state"
                           data-testid="ide-design-inspector-io-state"
                         >
-                          <div className="ide-design-inspector-io-state-header">
+                          <div className="rb-insp-io-state-header">
                             <span>Current I/O</span>
-                            <span className="ide-design-inspector-io-state-kicker">Design state</span>
+                            <span className="rb-insp-io-state-kicker">Design state</span>
                           </div>
-                          <div className="ide-design-inspector-io-state-list">
+                          <div className="rb-insp-io-state-list">
                             {[...idleInputRows, ...idleOutputRows].map((row) => (
                               <div
                                 key={`${row.kind}-${row.id}`}
-                                className={`ide-design-inspector-io-state-row is-${row.kind}`}
+                                className={`rb-insp-io-state-row is-${row.kind}`}
                                 data-testid={`ide-design-inspector-${row.kind}-${row.id}`}
                               >
-                                <span className="ide-design-inspector-io-state-label">
+                                <span className="rb-insp-io-state-label">
                                   <strong>{row.label}</strong>
                                   <span>{row.kind === 'input' ? 'input' : 'output'}</span>
                                   {row.pinAlias ? <code>{row.pinAlias}</code> : null}
                                 </span>
                                 <code
-                                  className="ide-design-inspector-io-state-value"
+                                  className="rb-insp-io-state-value"
                                   data-testid={`ide-design-inspector-${row.kind}-${row.id}-value`}
                                 >
                                   {row.value}
@@ -6301,7 +8126,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             ))}
                           </div>
                           <p
-                            className="ide-copy ide-design-inspector-proof-boundary"
+                            className="ide-copy rb-insp-proof-boundary"
                             data-testid="ide-design-inspector-proof-boundary"
                           >
                             This is live design state only. Verify owns behavior proof before trust or export.
@@ -6310,7 +8135,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       ) : null}
                       {totalErrors > 0 || totalWarnings > 0 ? (
                         <p
-                          className="ide-copy ide-design-inspector-idle-issues"
+                          className="ide-copy rb-insp-idle-issues"
                           data-testid="ide-design-inspector-idle-issues"
                         >
                           {totalErrors > 0
@@ -6322,10 +8147,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             : null}
                           {' '}waiting in build status. Select a part or jump from the top status deck to resolve them.
                         </p>
-                      ) : !isEmptyCanvas ? (
-                        <p className="ide-copy ide-design-inspector-idle-tip">
-                          Select a part, a wire, or a Verify-linked signal to open actions and live state.
-                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -6333,146 +8154,227 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               })()}
             </React.Fragment>
           )}
-
+          {(() => {
+            const content = renderMappingSection();
+            return content ? (
+              <IdeInspectorSection title="Mapping" testId="ide-design-inspector-mapping" defaultOpen>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          {(() => {
+            const content = renderSourceSection();
+            return content ? (
+              <IdeInspectorSection title="Source" testId="ide-design-inspector-source" defaultOpen={false}>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          {(() => {
+            const content = renderRelatedSection();
+            return content ? (
+              <IdeInspectorSection title="Related" testId="ide-design-inspector-related" defaultOpen={false} keepMounted>
+                {content}
+              </IdeInspectorSection>
+            ) : null;
+          })()}
+          </div>
+          {activeRightDockTab === 'properties' ? (
+            <div className="rb-insp-props" data-testid="ide-design-properties-panel">
+              {renderSelectionIdentityCard()}
+              {hasSingleSelectedNode && selectedNode ? (
+                <>
+                  {renderSelectedNodeDetails()}
+                  {renderSelectionProperties()}
+                  {selectedComponentDefinition ? (
+                    <section className="rb-insp-section" data-testid="ide-design-component-contract">
+                      <span className="rb-insp-group-label">Component contract</span>
+                      <dl className="rb-insp-facts">
+                        <div><dt>Component type</dt><dd>{selectedComponentDefinition.displayName}</dd></div>
+                        <div><dt>Category</dt><dd>{selectedComponentDefinition.category.replaceAll('-', ' ')}</dd></div>
+                        <div><dt>Ports</dt><dd>{selectedComponentDefinition.ports.length}</dd></div>
+                        <div><dt>Compatibility</dt><dd>{selectedComponentDefinition.compatibilityTier === 1 ? 'Native visual path' : `Limited path · Tier ${selectedComponentDefinition.compatibilityTier}`}</dd></div>
+                        <div><dt>Simulation</dt><dd>{selectedComponentDefinition.simulationCapability.supported ? 'Supported' : 'Not supported'}</dd></div>
+                        <div><dt>HDL export</dt><dd>{selectedComponentDefinition.exportCapability.supported ? 'Supported' : 'Not supported'}</dd></div>
+                      </dl>
+                      <p className="ide-copy">{selectedComponentDefinition.compatibilityNote}</p>
+                    </section>
+                  ) : null}
+                </>
+              ) : (
+                <IdeEmptyState title="No editable selection" body="Select one component to inspect its current project-owned properties." primaryAction={null} />
+              )}
+            </div>
+          ) : null}
+          {activeRightDockTab === 'constraints' ? renderInlineBoardAssignment() : null}
+          </div>
         </>
       }
     >
-        <DesignWorkspaceFrame view={effectiveDesignView}>
+        <DesignWorkspaceFrame view={effectiveDesignView} canvasAppearance={canvasAppearance} canvasDensity={canvasDensity}>
           <div className="ide-surface-command-stack">
 
-            {/* ── Compact primary toolbar ── */}
-          <div
-            className={`ide-design-control-bar${isCanvasWorkspace ? ' is-canvas' : isSplitWorkspace ? ' is-split' : ' is-code'}${
-              showWorkspaceStatusBar ? ' has-status' : ''
-            }`}
-            data-testid="ide-design-control-bar"
-            data-hierarchy-surface="design"
-            data-hierarchy-role="context"
-          >
+            {/* ── Schematic document header: module trail · wire cue · mode ── */}
             <div
-              className="ide-design-workspace-header"
-              data-testid="ide-design-workspace-header"
-              title={designCommandDescription}
+              className="wb-toolbar rb-design-header"
+              data-testid="ide-design-control-bar"
+              data-hierarchy-surface="design"
+              data-hierarchy-role="context"
             >
-              {toolMode === 'wire' && !isPlacementMode ? (
-                <div
-                  className="ide-design-wire-cuebar"
-                  data-testid="ide-design-wire-cuebar"
-                  data-wire-active={wireStartPort ? '1' : '0'}
-                >
-                  <span className="ide-design-wire-cuebar-badge">Wire</span>
-                  <div
-                    className={`ide-design-wire-cuebar-message${wireFeedback ? ' is-error' : ''}`}
+              <nav className="rb-design-breadcrumb" aria-label="Design hierarchy" data-testid="ide-design-module-breadcrumb">
+                <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)} className={isEditingTopModule ? 'is-current' : ''}>
+                  {topEntityName || 'top'}
+                </button>
+                {activeNativeModule ? (
+                  <>
+                    <span className="wb-sep" aria-hidden="true">›</span>
+                    <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
+                      {drilledInstance?.moduleId === activeNativeModule.id ? (
+                        <span data-testid="ide-design-breadcrumb-instance">
+                          {drilledInstance.instanceName}
+                          <span className="ide-design-breadcrumb-of"> : {activeNativeModule.displayName}</span>
+                        </span>
+                      ) : (
+                        activeNativeModule.displayName
+                      )}
+                    </button>
+                  </>
+                ) : null}
+              </nav>
+              {toolMode === 'wire' && !isPlacementMode ? inStatusHint(
+                <div className="rb-design-wirecue" data-testid="ide-design-wire-cuebar" data-wire-active={wireStartPort ? '1' : '0'}>
+                  <span className="rb-design-wirecue-badge">Wire</span>
+                  <span
+                    ref={wireMessageRef}
+                    className={`rb-design-wirecue-msg${wireFeedback ? ' is-error' : ''}${wireMessageExpanded ? ' is-expanded' : ''}`}
                     data-testid="ide-design-wire-cue"
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-wire-active={wireStartPort ? '1' : '0'}
+                    title={wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected — choose a compatible input` : 'Choose an output port to start a wire')}
                   >
                     {wireFeedback ? (
-                      <>
-                        <span data-testid="ide-design-wire-feedback">{wireFeedback}</span>
-                        {wireStartPort ? (
-                          <span> Source: {wireSourceLabel} selected; compatible inputs are green.</span>
-                        ) : null}
-                      </>
+                      <span key={wireFeedbackCount} data-testid="ide-design-wire-feedback">{wireFeedback}</span>
                     ) : wireStartPort ? (
-                      <span>Source: {wireSourceLabel} selected; compatible inputs are green.</span>
+                      <span><code>{wireSourceLabel}</code> selected — choose a compatible input</span>
                     ) : (
-                      <span>Choose an output port to start the wire.</span>
+                      <span>Choose an output port to start a wire</span>
                     )}
-                  </div>
-                  {wireStartPort ? (
+                  </span>
+                  {wireMessageClamped || wireMessageExpanded ? (
                     <button
                       type="button"
-                      className="ide-design-wire-cuebar-action ide-design-tool-hud-action"
-                      onClick={cancelActiveWire}
-                      data-testid="ide-design-wire-cancel"
+                      className="wb-btn wb-btn--ghost rb-design-wirecue-more"
+                      aria-expanded={wireMessageExpanded}
+                      onClick={() => setWireMessageExpanded((open) => !open)}
+                      data-testid="ide-design-wire-more"
                     >
-                      Cancel wire
+                      {wireMessageExpanded ? 'Less' : 'More'}
                     </button>
-                  ) : (
-                    <span className="ide-design-wire-cuebar-shortcut" aria-hidden="true">Esc cancels</span>
-                  )}
-                </div>
-              ) : (
-                <div className="ide-design-workspace-heading" data-testid="ide-design-workspace-heading">
-                  <span className="ide-design-workspace-label">Design</span>
-                  <div className="ide-design-workspace-heading-main">
-                    <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
-                      {isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
-                    </span>
-                    <p className="ide-design-workspace-summary">
-                      Build the circuit graph here, then use Verify to check its behavior.
-                    </p>
-                    <div
-                      className={`ide-design-authoring-summary ${authoringStatusToneClass}`}
-                      data-testid="ide-design-authoring-summary"
-                      data-ready={designStructureReady ? 'true' : 'false'}
-                    >
-                      <strong data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</strong>
-                    </div>
-                  </div>
-                  {!isCodeWorkspace ? (
-                    <div
-                      className="ide-design-learning-mode"
-                      data-testid="ide-design-learning-mode"
-                      data-mode={effectiveLearningMode}
-                      aria-label="Design workspace mode"
-                    >
-                      <div className="ide-design-learning-mode-tabs" role="group" aria-label="Design mode">
-                        <button
-                          type="button"
-                          className={effectiveLearningMode === 'edit' ? 'is-active' : ''}
-                          aria-pressed={effectiveLearningMode === 'edit'}
-                          onClick={handleResumeLiveEditing}
-                          data-testid="ide-design-learning-mode-edit"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className={effectiveLearningMode === 'live' ? 'is-active' : ''}
-                          aria-pressed={effectiveLearningMode === 'live'}
-                          disabled={!hasRunnablePath}
-                          title={
-                            hasRunnablePath
-                              ? 'Explore current circuit values.'
-                              : 'Connect at least one input to one output through supported logic.'
-                          }
-                          onClick={() => {
-                            onClearExternalDebug?.();
-                            setDesignLearningMode('live');
-                          }}
-                          data-testid="ide-design-learning-mode-live"
-                        >
-                          Live
-                        </button>
-                        <button
-                          type="button"
-                          className={effectiveLearningMode === 'replay' ? 'is-active' : ''}
-                          aria-pressed={effectiveLearningMode === 'replay'}
-                          disabled={!replaySession || replayTrace.length === 0}
-                          title={
-                            replaySession && replayTrace.length > 0
-                              ? 'Inspect the current Verify run without changing the circuit.'
-                              : 'Run a scenario in Verify to create a replay.'
-                          }
-                          onClick={() => onSelectDebugTickIndex?.(0)}
-                          data-testid="ide-design-learning-mode-replay"
-                        >
-                          Replay
-                        </button>
-                      </div>
-                      <span className="ide-design-learning-mode-truth">
-                        {effectiveLearningMode === 'replay'
-                          ? 'Recorded Verify run · read-only evidence'
-                          : effectiveLearningMode === 'live'
-                            ? 'Exploratory simulation · not saved evidence'
-                            : 'Authoring circuit structure'}
-                      </span>
-                    </div>
                   ) : null}
+                  <span className="rb-design-wirecue-end">
+                    <span className="rb-design-wirecue-sizer wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
+                    <span className="rb-design-wirecue-sizer wb-btn wb-btn--ghost" aria-hidden="true">Cancel</span>
+                    {wireStartPort ? (
+                      <button type="button" className="wb-btn wb-btn--ghost" onClick={cancelActiveWire} data-testid="ide-design-wire-cancel">
+                        Cancel
+                      </button>
+                    ) : (
+                      <span className="wb-toolbar-meta" aria-hidden="true">Esc cancels</span>
+                    )}
+                  </span>
                 </div>
-              )}
+              ) : null}
+              {isPlacementMode && placementModeLabel ? inStatusHint(
+                <span className="wb-toolbar-meta rb-design-placement-hint" data-testid="ide-design-placement-hint">
+                  Placing <code>{placementModeLabel}</code> · click the canvas · Esc cancels
+                </span>
+              ) : null}
+              <span className="wb-toolbar-spacer" />
+              {!isCodeWorkspace ? (
+                // The slot takes only the room the commands leave, so the chip can never push
+                // them onto a second row or out of the pane.
+                <div className="rb-design-health-slot">
+                  <div
+                    className={`rb-design-health ${authoringStatusToneClass}`}
+                    data-testid="ide-design-authoring-summary"
+                    title={designStatusNote ?? authoringStatusLabel}
+                  >
+                    <span className="rb-design-health-dot" aria-hidden="true" />
+                    <span className="rb-design-health-label" data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</span>
+                    <code className="rb-design-health-counts" data-testid="ide-design-authoring-summary-counts">
+                      {totalAuthoringErrors}E {totalAuthoringWarnings}W
+                    </code>
+                  </div>
+                </div>
+              ) : null}
+              {effectiveLearningMode === 'live' ? (
+                <div className="wb-toolbar-group" data-testid="ide-design-live-transport" aria-label="Exploration controls">
+                  <span
+                    className="wb-toolbar-meta rb-design-live-note"
+                    data-testid="ide-design-live-note"
+                    title="Click an input to drive it and watch the values settle. Nothing here is recorded and nothing is checked — run a scenario in Simulate for evidence."
+                  >
+                    Exploring · not recorded
+                  </span>
+                  {circuitHasState ? (
+                    <>
+                      <button
+                        type="button"
+                        className="wb-btn wb-btn--ghost"
+                        onClick={stepSimulation}
+                        data-testid="ide-design-live-step"
+                        title="Apply one clock edge to the registers in this circuit"
+                      >
+                        Clock edge
+                      </button>
+                      <span className="wb-toolbar-meta" data-testid="ide-design-live-tick">
+                        <code>{runtimeSim.tick} clock {runtimeSim.tick === 1 ? 'edge' : 'edges'} applied</code>
+                      </span>
+                    </>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="wb-btn wb-btn--ghost"
+                    onClick={resetSimulation}
+                    data-testid="ide-design-live-reset"
+                    title="Return the inputs and any register state to their starting values"
+                  >
+                    Reset values
+                  </button>
+                  <span className="wb-toolbar-sep" />
+                </div>
+              ) : null}
+              {!isCodeWorkspace ? (
+                <div className="wb-toolbar-group rb-design-mode" aria-label="Design actions" data-testid="ide-design-learning-mode" data-mode={effectiveLearningMode}>
+                  {isReplayMode ? (
+                    <>
+                      <span className="wb-toolbar-meta">Recorded view · {replaySession?.scenarioName ?? 'Scenario'} · t{effectiveExternalDebugTick}</span>
+                      <button type="button" className="wb-btn wb-btn--ghost" onClick={handleResumeLiveEditing} data-testid="ide-design-current-design">
+                        Return to current design
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="wb-btn wb-btn--ghost"
+                      aria-pressed={effectiveLearningMode === 'live'}
+                      disabled={!hasRunnablePath}
+                      title={hasRunnablePath ? 'Drive inputs and inspect exploratory values. Nothing is recorded or checked.'
+                        : hierarchicalLive?.reason || 'Connect an input to an output before exploring.'}
+                      onClick={() => {
+                        if (effectiveLearningMode === 'live') handleResumeLiveEditing();
+                        else { onClearExternalDebug?.(); onOpenModule?.(TOP_MODULE_ID); setDesignLearningMode('live'); }
+                      }}
+                      data-testid="ide-design-explore"
+                    >
+                      {effectiveLearningMode === 'live' ? 'Finish exploring' : 'Explore'}
+                    </button>
+                  )}
+                  <button type="button" className="wb-btn wb-btn--primary" onClick={onGoToVerify} data-testid="ide-design-test-design">
+                    {isReplayMode ? 'Return to experiment' : 'Test this design'}
+                  </button>
+                </div>
+              ) : null}
             </div>
             {guidedLabTask && guidedLabDesignChecklist ? (
               <section
@@ -6535,246 +8437,142 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </section>
               </section>
             ) : null}
-            <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
-              <div className="ide-design-toolbar-row-v3">
-              {effectiveLearningMode === 'live' ? (
-                <div
-                  className="ide-toolbar-group is-simulation"
-                  data-testid="ide-design-live-transport"
-                  aria-label="Exploratory simulation controls"
-                >
-                  <span className="ide-design-toolbar-group-label">Simulation</span>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={simRunning ? pauseSimulation : startSimulation}
-                    testId="ide-design-live-run"
-                  >
-                    {simRunning ? 'Pause' : 'Run'}
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-live-step">
-                    Step
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-live-reset">
-                    Reset
-                  </IdeButton>
-                  <span className="ide-design-live-tick" data-testid="ide-design-live-tick">
-                    Tick {runtimeSim.tick}
-                  </span>
-                </div>
-              ) : null}
-              {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
+            {/* ── Schematic toolbar: tool · history · view · camera · layout ── */}
+            <div style={effectiveLearningMode === 'live' && hierarchicalLive ? {display:'none'} : undefined} className="wb-toolbar rb-design-toolbar" data-testid="ide-design-toolbar">
               {isCodeWorkspace ? (
-                <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
-                  <span className="ide-design-code-context-label">Code focus</span>
-                  <span className="ide-design-code-context-desc" data-testid="ide-design-code-context-primary-artifact">
-                    Viewing {primaryArtifactFileName} ({primaryArtifactLabel}) as the primary artifact.
-                    Switch artifacts and open the secondary drawer from the code pane header.
-                  </span>
-                </div>
+                <span className="wb-toolbar-title" data-testid="ide-design-code-context">
+                  <code data-testid="ide-design-code-context-primary-artifact">{primaryArtifactFileName}</code>
+                </span>
               ) : workspacePreset.showCanvasTools ? (
                 <>
-                  {/* Group 1: Mode — primary weight */}
-                  <div className="ide-toolbar-group is-mode">
-                    <span className="ide-design-toolbar-group-label">Mode</span>
-                    <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
-                      <button
-                        type="button"
-                        className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
-                        onClick={setSelectMode}
-                        data-testid="ide-design-tool-select"
-                        aria-pressed={toolMode === 'select'}
-                        title="Select tool (S)"
-                      >
-                        <span className="ide-design-tool-icon" aria-hidden="true">↖</span>
-                        <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
-                        onClick={setWireMode}
-                        data-testid="ide-design-tool-wire"
-                        aria-pressed={toolMode === 'wire'}
-                        title="Wire tool (W)"
-                      >
-                        <span className="ide-design-tool-icon" aria-hidden="true">⌀</span>
-                        <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
-                      </button>
-                    </div>
+                  <div className="wb-segment" data-testid="ide-design-tool-segmented" role="group" aria-label="Tool">
+                    <button type="button" className="wb-btn" onClick={setSelectMode} data-testid="ide-design-tool-select" aria-pressed={toolMode === 'select'} title="Select tool (S)">
+                      <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M3 2l8 5.5-3.6.8L9.2 12l-1.6.7-1.8-3.6L3 11.5z" /></svg>
+                      Select
+                    </button>
+                    <button type="button" className="wb-btn" onClick={setWireMode} data-testid="ide-design-tool-wire" aria-pressed={toolMode === 'wire'} title="Wire tool (W)">
+                      <svg viewBox="0 0 14 14" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2 11h4v-8h6" /><circle cx="2" cy="11" r="1.4" fill="currentColor" /><circle cx="12" cy="3" r="1.4" fill="currentColor" /></svg>
+                      Wire
+                    </button>
                   </div>
-
-                  {/* Group 2: Edit operations */}
-                  <div className="ide-toolbar-group is-edit">
-                    <span className="ide-design-toolbar-group-label">History</span>
-                    <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
-                      Undo
-                    </IdeButton>
-                    <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
-                      Redo
-                    </IdeButton>
-                  </div>
+                  <span className="wb-toolbar-sep" />
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={handleUndo} disabled={undoDepth === 0} data-testid="ide-design-tool-undo" title="Undo (Ctrl Z)" aria-label="Undo">↶</button>
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={handleRedo} disabled={redoDepth === 0} data-testid="ide-design-tool-redo" title="Redo (Ctrl Y)" aria-label="Redo">↷</button>
+                  <span className="wb-toolbar-sep" />
                 </>
               ) : null}
-
-              {/* Group 3: Utilities — floated right */}
-              <div className="ide-toolbar-group is-utils">
-                <span className="ide-design-toolbar-group-label">View</span>
-                <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
-                  {(['canvas', 'hdl', 'split'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={`ide-design-view-btn${designView === v ? ' is-active' : ''}`}
-                      onClick={() => setDesignView(v)}
-                      data-testid={`ide-design-view-${v}`}
-                    >
-                      {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'Code' : 'Split'}
-                    </button>
-                  ))}
-                </div>
-                {workspacePreset.showCanvasTools ? (
-                  <div
-                    className={`ide-design-toolbar-view-tools${showSplitCanvasContext ? ' is-split' : ''}`}
-                    data-testid="ide-design-canvas-view-tools"
-                    data-open="true"
-                    data-blocks-canvas-placement="1"
-                    data-blocks-macro-placement="1"
-                    role="group"
-                    aria-label="Canvas view controls"
+              <div className="wb-segment" data-testid="ide-design-view-toggle" role="group" aria-label="Document view">
+                {(['canvas', 'hdl', 'split'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    className="wb-btn"
+                    aria-pressed={designView === v}
+                    onClick={() => setDesignView(v)}
+                    data-testid={`ide-design-view-${v}`}
                   >
-                    <span className="ide-design-toolbar-group-label">Camera</span>
-                    <div className="ide-design-toolbar-view-meta">
-                      <span
-                        className="ide-design-canvas-zoom-indicator"
-                        data-testid="ide-design-canvas-zoom-indicator"
-                      >
-                        <span data-testid="ide-design-canvas-stat-zoom">{zoomPercent}%</span> zoom
-                      </span>
-                      {showSplitCanvasContext ? (
-                        <span
-                          className="ide-design-canvas-presentation-indicator"
-                          data-testid="ide-design-split-canvas-indicator"
-                        >
-                          Circuit pane
-                        </span>
-                      ) : presentationZoom === 'classroom' ? (
-                        <span
-                          className="ide-design-canvas-presentation-indicator"
-                          data-testid="ide-design-presentation-zoom-indicator"
-                        >
-                          Classroom
-                        </span>
-                      ) : null}
-                    </div>
-                    <div
-                      className="ide-design-toolbar-canvas-controls"
-                      data-testid="ide-design-canvas-controls"
-                    >
-                      <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">
-                        Zoom −
-                      </IdeButton>
-                      <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
-                        Zoom +
-                      </IdeButton>
-                      <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-canvas">
-                        Fit
-                      </IdeButton>
-                      <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">
-                        Reset
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={centerSelection}
-                        disabled={selection.nodes.size === 0}
-                        testId="ide-design-center-selection-canvas"
-                      >
-                        Center
-                      </IdeButton>
-                    </div>
-                  </div>
-                ) : null}
-                {workspacePreset.showCanvasTools ? (
-                  <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
-                    Snap {snapToGrid ? 'On' : 'Off'}
-                  </IdeButton>
-                ) : null}
-                {workspacePreset.showCanvasTools ? (
-                  <div className="ide-design-toolbar-layout" role="group" aria-label="Circuit layout">
-                    <span className="ide-design-toolbar-group-label">Layout</span>
-                    <IdeButton
-                      tone="secondary"
-                      onClick={handleArrangeCircuit}
-                      disabled={editorCircuit.nodes.length < 2 || isReplayMode}
-                      testId="ide-design-arrange"
-                    >
-                      Arrange
-                    </IdeButton>
-                  </div>
-                ) : null}
+                    {v === 'canvas' ? 'Schematic' : v === 'hdl' ? 'HDL' : 'Split'}
+                  </button>
+                ))}
               </div>
-              </div>
+              {workspacePreset.showCanvasTools ? (
+                <>
+                  <span className="wb-toolbar-sep" />
+                  {/* "Related…" for the selected object is offered once, in its inspector. */}
+                  <details className="rb-design-menu" data-testid="ide-design-toolbar-overflow" data-blocks-canvas-placement="1" data-blocks-macro-placement="1">
+                    <summary className="wb-btn wb-btn--ghost" title="Layers, arrangement and canvas appearance">View ▾</summary>
+                    <div className="wb-menu rb-design-menu-popup" aria-label="Layers, layout and canvas">
+                      <p className="wb-menu-group-label">Layers</p>
+                      {(
+                        [
+                          ['netLabels', 'Net labels'],
+                          ['values', 'Live values'],
+                          ['boardBindings', 'Board bindings'],
+                          ['hierarchy', 'Hierarchy boundaries'],
+                          ['buses', 'Bus brackets'],
+                          ['diagnostics', 'Diagnostics'],
+                          ['minimap', 'Overview map'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={designLayers[id]}
+                          className="wb-menu-item"
+                          onClick={() => workspacePreferencesStore.setDesignLayer(id, !designLayers[id])}
+                          data-testid={`ide-design-layer-${id}`}
+                        >
+                          <span className="wb-menu-item-check" aria-hidden="true">{designLayers[id] ? '●' : ''}</span>
+                          <span className="wb-menu-item-label">{label}</span>
+                        </button>
+                      ))}
+                      <div className="wb-menu-sep" />
+                      <button
+                        type="button"
+                        className="wb-menu-item"
+                        onClick={() => {
+                          for (const id of ['netLabels', 'values', 'boardBindings', 'hierarchy', 'buses', 'diagnostics'] as const) workspacePreferencesStore.setDesignLayer(id, true);
+                        }}
+                        data-testid="ide-design-layers-reset"
+                      >
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Show all layers</span>
+                      </button>
+                      <div className="wb-menu-sep" />
+                      <p className="wb-menu-group-label">Canvas</p>
+                      <button type="button" className="wb-menu-item" onClick={handleArrangeCircuit} disabled={editorCircuit.nodes.length < 2 || isReplayMode} data-testid="ide-design-arrange">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Arrange by dependency</span><span className="wb-menu-item-key" />
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={toggleSnapToGrid} data-testid="ide-design-tool-snap" aria-pressed={snapToGrid}>
+                        <span className="wb-menu-item-check" aria-hidden="true">{snapToGrid ? '●' : ''}</span><span className="wb-menu-item-label">Snap to grid</span><span className="wb-menu-item-key">G</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={(event) => {
+                        fitToCircuit();
+                        const menu = event.currentTarget.closest('details');
+                        if (menu instanceof HTMLDetailsElement) menu.open = false;
+                      }} data-testid="ide-design-menu-fit">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Fit design</span><span className="wb-menu-item-key">F</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-menu-fit-selection">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Fit selection</span><span className="wb-menu-item-key">S</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={zoomIn} data-testid="ide-design-menu-zoom-in">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Zoom in</span><span className="wb-menu-item-key" />
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={zoomOut} data-testid="ide-design-menu-zoom-out">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Zoom out</span><span className="wb-menu-item-key" />
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={zoomTo100} data-testid="ide-design-menu-zoom-actual">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Actual size</span><span className="wb-menu-item-key">{`${Math.round(camera.zoom * 100)}%`}</span>
+                      </button>
+                      <button type="button" className="wb-menu-item" onClick={resetView} data-testid="ide-design-zoom-reset">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Reset view</span><span className="wb-menu-item-key" />
+                      </button>
+                      <div className="wb-menu-sep" />
+                      <label className="wb-menu-item rb-design-menu-field">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Canvas</span>
+                        <select value={canvasAppearance} onChange={(event) => workspacePreferencesStore.setDesignCanvasAppearance(event.target.value as 'dark' | 'light' | 'system')} aria-label="Canvas appearance">
+                          <option value="light">Light</option>
+                          <option value="dark">Dark</option>
+                          <option value="system">Follow application</option>
+                        </select>
+                      </label>
+                      <label className="wb-menu-item rb-design-menu-field">
+                        <span className="wb-menu-item-check" aria-hidden="true" /><span className="wb-menu-item-label">Density</span>
+                        <select value={canvasDensity} onChange={(event) => workspacePreferencesStore.setDesignCanvasDensity(event.target.value as 'comfortable' | 'compact')} aria-label="Canvas density">
+                          <option value="comfortable">Comfortable</option>
+                          <option value="compact">Compact</option>
+                        </select>
+                      </label>
+                    </div>
+                  </details>
+                </>
+              ) : null}
+              <span className="wb-toolbar-spacer" />
             </div>
-
             {/* ── Expanded secondary toolbar ── */}
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
-            {starterContext ? (
-              <section
-                className="ide-design-context-disclosure ide-design-starter-context"
-                data-testid="ide-design-starter-disclosure"
-                aria-label={`Starter: ${starterContext.name}`}
-              >
-              <section className="ide-design-starter-banner" data-testid="ide-design-starter-banner">
-                <div className="ide-design-starter-banner-main">
-                  <div className="ide-design-starter-banner-head">
-                    <span className="ide-design-starter-banner-eyebrow">Starter loaded</span>
-                    <div className="ide-design-starter-banner-tags">
-                      {starterContext.lab ? (
-                        <span className="ide-design-starter-banner-tag" data-testid="ide-design-starter-banner-lab">
-                          {starterContext.lab}
-                        </span>
-                      ) : null}
-                      {starterContext.concept ? (
-                        <span className="ide-design-starter-banner-tag">{starterContext.concept}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <h3 className="ide-design-starter-banner-title" data-testid="ide-design-starter-banner-title">
-                    {starterContext.name}
-                  </h3>
-                  {starterContext.summary || starterContext.expectedBehavior ? (
-                    <div
-                      className="ide-design-starter-details"
-                      data-testid="ide-design-starter-details"
-                      data-hierarchy-surface="design"
-                      data-hierarchy-role="advanced"
-                    >
-                      <span className="ide-design-starter-details-label" data-testid="ide-design-starter-details-summary">
-                        Starter brief
-                      </span>
-                      <div className="ide-design-starter-details-body" data-testid="ide-design-starter-details-body">
-                        {starterContext.summary ? (
-                          <p className="ide-design-starter-banner-summary">{starterContext.summary}</p>
-                        ) : null}
-                        {starterContext.expectedBehavior ? (
-                          <p className="ide-design-starter-banner-expected">
-                            <strong>Expected behavior:</strong> {starterContext.expectedBehavior}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="ide-design-starter-banner-next">
-                  <span className="ide-design-starter-banner-next-label">Next</span>
-                  <p
-                    className="ide-design-starter-banner-next-copy"
-                    data-testid="ide-design-starter-banner-next-action"
-                  >
-                    {starterNextAction}
-                  </p>
-                </div>
-              </section>
-              </section>
-            ) : null}
+            {/* Starter identity lives in the project name and the Project overview; no narration strip. */}
 
             {showWorkspaceStatusBar ? (
               <div
@@ -6888,8 +8686,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </p>
                     ) : null}
                     {canRenderReplayScrubber && (
-                      <div
-                        className="ide-design-replay-transport"
+                      <details className="ide-design-replay-controls" data-testid="ide-design-replay-controls">
+                      <summary className="wb-btn wb-btn--ghost">Playback controls</summary>
+                      <div className="ide-design-replay-transport"
                         data-testid="ide-design-replay-transport"
                         tabIndex={0}
                         onKeyDown={(event) => {
@@ -7034,6 +8833,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           ) : null}
                         </div>
                       </div>
+                      </details>
                     )}
                   </div>
                 ) : null}
@@ -7071,7 +8871,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             ) : null}
           </div>
-          </div>
             {effectiveDesignView === 'stacked' && (
               <div className="ide-design-stacked-notice" data-testid="ide-design-stacked-notice">
                 <span className="ide-design-stacked-notice-icon" aria-hidden="true">||</span>
@@ -7082,101 +8881,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             )}
 
-            {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
-            <div
-              ref={paneRowRef}
-              className="ide-design-pane-row"
-              data-design-view={effectiveDesignView}
-              data-testid="ide-design-pane-row"
-            >
-              {workspacePreset.showCanvasPane ? (
-                <div
-                  className="ide-design-pane ide-design-pane--canvas"
-                  style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
-                >
-
-            <div
-              ref={canvasViewportRef}
-              className="ide-design-canvasWrap ide-design-canvas-work-object"
-              data-testid="ide-design-canvas-wrap"
-              data-work-object="circuit"
-              aria-label="Circuit authoring workspace"
-            >
-              {pinnedProbeRows.length > 0 && (
-                <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
-                  {pinnedProbeRows.map((probe) => (
-                    <span
-                      key={probe.key}
-                      className="ide-design-probe-pill"
-                      data-testid={`ide-design-probe-pill-${probe.key}`}
-                    >
-                      <code>{probe.label}</code>
-                      <span className="ide-design-probe-value">{probe.value}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="ide-design-layout ide-design-layout-canvas-only">
-                <section
-                  className="ide-design-canvas"
-                  data-testid="ide-design-canvas"
-                  data-hierarchy-surface="design"
-                  data-hierarchy-role="primary"
-                  data-hierarchy-focal="circuit-canvas"
-                >
-                  {toolMode !== 'wire' || isPlacementMode ? (
-                    <div
-                      className={`ide-design-tool-hud${isPlacementMode ? ' is-placement-mode' : ''}`}
-                      data-testid="ide-design-tool-hud"
-                      data-blocks-canvas-placement="1"
-                    >
-                      <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
-                      <span className="ide-design-tool-hud-hint">{toolHint}</span>
-                    </div>
-                  ) : null}
-                  {focusedAssetContext && (
-                    <DesignFocusBanner
-                      context={focusedAssetContext}
-                      isPlacementArmed={
-                        focusedAssetContext.kind === 'macro' &&
-                        activeMacroInsertionId === focusedAssetContext.macroId
-                      }
-                      onClear={handleClearFocusedAsset}
-                      onBackToProject={onGoToProject}
-                    />
-                  )}
-                  {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
-                    <div
-                      className="ide-design-diagnostic-callout"
-                      data-testid="ide-design-diagnostic-callout"
-                      data-blocks-canvas-placement="1"
-                      data-blocks-macro-placement="1"
-                    >
-                      <IdeCallout tone="warn">
-                        Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
-                        {typeof diagnosticRouteRequest.tick === 'number' ? ` at tick ${diagnosticRouteRequest.tick}` : ''}.
-                        <div className="ide-inline-actions ide-design-diagnostic-callout-actions">
-                          {onGoToProject && (
-                            <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-design-diagnostic-go-mapping">
-                              Open mapping
-                            </IdeButton>
-                          )}
-                          {onGoToVerify && (
-                            <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-diagnostic-go-verify">
-                              Rerun verify
-                            </IdeButton>
-                          )}
-                          {onClearDiagnostic && (
-                            <IdeButton tone="ghost" onClick={onClearDiagnostic} testId="ide-design-diagnostic-dismiss">
-                              Dismiss
-                            </IdeButton>
-                          )}
-                        </div>
-                      </IdeCallout>
-                    </div>
-                  )}
-                  {activeDebugContext ? (
+            {activeDebugContext ? (
+              <details className="ide-design-failure-details" data-testid="ide-design-failure-details">
+                <summary className="wb-btn wb-btn--ghost">
+                  Failure details · {getVerifyDebugDisplaySignal(activeDebugContext)} · expected {activeDebugContext.expected}, observed {activeDebugContext.actual}
+                </summary>
                     <div
                       className="ide-design-debug-context-banner"
                       data-testid="ide-design-debug-context-banner"
@@ -7316,26 +9025,152 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             onClick={onGoToVerify}
                             testId="ide-design-debug-context-return"
                           >
-                            Return to Verify
+                            Return to Simulate
                           </IdeButton>
                         ) : null}
                       </div>
                     </div>
-                  ) : null}
+              </details>
+            ) : null}
+            {/* ── Content Pane Row — owns height below toolbar — switches between column/row ── */}
+            <div
+              ref={paneRowRef}
+              className="ide-design-pane-row"
+              data-design-view={effectiveDesignView}
+              data-testid="ide-design-pane-row"
+            >
+              {workspacePreset.showCanvasPane ? (
+                <div
+                  className="ide-design-pane ide-design-pane--canvas"
+                  style={effectiveDesignView === 'split' ? { flex: `0 0 ${splitRatio * 100}%` } : undefined}
+                >
+
+            <div
+              ref={canvasViewportRef}
+              className="ide-design-canvasWrap ide-design-canvas-work-object"
+              data-testid="ide-design-canvas-wrap"
+              data-work-object="circuit"
+              aria-label="Circuit authoring workspace"
+            >
+              {/* Fit and zoom sit on the sheet they act on, always in its lower left corner. In the
+                  toolbar they were the first things folded away when a pane opened, and they
+                  were what made the command row wrap. */}
+              {workspacePreset.showCanvasTools ? (
+                <div style={effectiveLearningMode === 'live' && hierarchicalLive ? {display:'none'} : undefined} className="rb-design-viewdock" role="group" aria-label="Sheet view" data-testid="ide-design-viewdock"
+                  data-blocks-canvas-placement="1" data-blocks-macro-placement="1"
+                  onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={() => fitToCircuit()} data-testid="ide-design-fit-circuit-canvas" title="Fit the whole circuit on the sheet">Fit</button>
+                  <button type="button" className="wb-btn wb-btn--ghost" onClick={centerSelection} disabled={selection.nodes.size === 0} data-testid="ide-design-center-selection-canvas" title="Bring the selection to the centre of the sheet">Selection</button>
+                  <span className="rb-design-viewdock-sep" aria-hidden="true" />
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomOut} data-testid="ide-design-zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+                  <button type="button" className="wb-btn wb-btn--ghost rb-design-zoom" onClick={zoomTo100} data-testid="ide-design-zoom-readout" title="Zoom — click to return to 100%">
+                    <code data-testid="ide-design-canvas-stat-zoom">{Math.round(camera.zoom * 100)}%</code>
+                  </button>
+                  <button type="button" className="wb-btn wb-btn--ghost wb-btn--icon" onClick={zoomIn} data-testid="ide-design-zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+                </div>
+              ) : null}
+              {pinnedProbeRows.length > 0 && (
+                <div className="ide-design-probe-bar" data-testid="ide-design-probe-bar">
+                  {pinnedProbeRows.map((probe) => (
+                    <span
+                      key={probe.key}
+                      className="ide-design-probe-pill"
+                      data-testid={`ide-design-probe-pill-${probe.key}`}
+                    >
+                      <code>{probe.label}</code>
+                      <span className="ide-design-probe-value">{probe.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="ide-design-layout ide-design-layout-canvas-only">
+                <section
+                  className="rb-sch-frame"
+                  data-testid="ide-design-canvas"
+                  data-hierarchy-surface="design"
+                  data-hierarchy-role="primary"
+                  data-hierarchy-focal="circuit-canvas"
+                >
+                  {focusedAssetContext && (
+                    <DesignFocusBanner
+                      context={focusedAssetContext}
+                      isPlacementArmed={
+                        focusedAssetContext.kind === 'macro' &&
+                        activeMacroInsertionId === focusedAssetContext.macroId
+                      }
+                      onClear={handleClearFocusedAsset}
+                      onBackToProject={onGoToProject}
+                    />
+                  )}
+                  {diagnosticRouteRequest && diagnosticRouteRequest.mode === 'design' && (
+                    <div
+                      className="ide-design-diagnostic-callout"
+                      data-testid="ide-design-diagnostic-callout"
+                      data-blocks-canvas-placement="1"
+                      data-blocks-macro-placement="1"
+                    >
+                      <IdeCallout tone="warn">
+                        Checking{diagnosticRouteRequest.signal ? ` signal ${diagnosticRouteRequest.signal}` : ''}
+                        {typeof diagnosticRouteRequest.tick === 'number' ? ` at tick ${diagnosticRouteRequest.tick}` : ''}.
+                        <div className="ide-inline-actions ide-design-diagnostic-callout-actions">
+                          {onGoToProject && (
+                            <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-design-diagnostic-go-mapping">
+                              Open mapping
+                            </IdeButton>
+                          )}
+                          {onGoToVerify && (
+                            <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-diagnostic-go-verify">
+                              Rerun simulation
+                            </IdeButton>
+                          )}
+                          {onClearDiagnostic && (
+                            <IdeButton tone="ghost" onClick={onClearDiagnostic} testId="ide-design-diagnostic-dismiss">
+                              Dismiss
+                            </IdeButton>
+                          )}
+                        </div>
+                      </IdeCallout>
+                    </div>
+                  )}
                   <div
-                    className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
+                    className={`rb-sch-stage ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
                       presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
                     }`}
                     ref={bindCanvasHost}
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
                     data-interaction-mode={effectiveInteractionMode}
+                    data-learning-mode={effectiveLearningMode}
                     data-wire-active={wireStartPort ? '1' : '0'}
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-placement-active={isPlacementMode ? '1' : '0'}
                     data-presentation-zoom={presentationZoom}
                     data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
-                    onPointerDownCapture={handleWireModePointerDownCapture}
+                    onPointerDownCapture={(event) => {
+                      handleWireModePointerDownCapture(event);
+                      if (effectiveLearningMode !== 'live') return;
+                      const target = event.target as Element;
+                      const nodeId = target.closest('[data-node-id]')?.getAttribute('data-node-id');
+                      if (nodeId && target.getAttribute('data-testid') === `switch-toggle-${nodeId}`) {
+                        // Let live switch clicks reach their control rather than
+                        // being captured by the canvas as a pending drag.
+                        event.stopPropagation();
+                      }
+                    }}
+                    onClickCapture={(event) => {
+                      if (effectiveLearningMode !== 'live') return;
+                      const target = event.target as Element;
+                      const nodeId = target.closest('[data-node-id]')?.getAttribute('data-node-id');
+                      if (!nodeId || target.getAttribute('data-testid') !== `switch-toggle-${nodeId}`) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      selectNodeInStore(nodeId, false);
+                      const current = runtimeSim.inputs[nodeId] ?? liveSignals.get(`${nodeId}.out`) ?? 0;
+                      // Repeated exploration changes runtime values while the
+                      // authored isOn defaults remain available for Reset.
+                      handleInputToggled(nodeId, 'out', current === 1 ? 0 : 1);
+                    }}
                     onClick={handleCanvasPlacementClick}
                     onPointerMove={handleCanvasPlacementPointerMove}
                     onPointerLeave={() => {
@@ -7346,7 +9181,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   >
                     {toolMode !== 'select' || isPlacementMode ? (
                       <div
-                        className="ide-design-canvas-mode-indicator"
+                        className="rb-sch-mode"
                         data-testid="ide-design-canvas-mode-indicator"
                         data-blocks-canvas-placement="1"
                       >
@@ -7461,11 +9296,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         )}
                       </div>
                     )}
-                    <LogicCanvas
+                    {effectiveLearningMode === 'live' && hierarchy?.modules.length && liveTopCircuit ? (
+                      <LiveHierarchyExplorer projectId={projectId ?? 'project'} circuit={liveTopCircuit} hierarchy={hierarchy} sim={runtimeSim} onSetInput={onRuntimeSimSetInput} />
+                    ) : <LogicCanvas
+                      showMinimap={designLayers.minimap}
                       engine={tickEngine}
                       circuit={editorCircuit}
                       width={canvasSize.width}
                       height={canvasSize.height}
+                      appearance={canvasAppearance === 'dark' ? 'dark' : 'light'}
+                      renderer="schematic"
                       showToolbar={false}
                       showHud={false}
                       getChipMetadata={getChipMetadata}
@@ -7482,7 +9322,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       probedPorts={new Set(runtimeSim.probes.map((probe) => probe.key))}
                       showHints={false}
                       isRunning={simRunning}
-                      tickRate={simSpeed}
+                      tickRate={0}
                       tickCount={simTick}
                       debugSignals={effectiveExternalDebugSignals ?? liveSignals}
                       debugTick={effectiveExternalDebugTick ?? simTick}
@@ -7510,9 +9350,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       }}
                       onNodeDoubleClick={(nodeId) => {
                         const node = editorCircuit.nodes.find((n) => n.id === nodeId);
-                        if (node) beginNodeLabelEdit(node);
+                        if (!node) return;
+                        const moduleDefinitionId = typeof node.config?.moduleDefinitionId === 'string'
+                          ? node.config.moduleDefinitionId
+                          : null;
+                        const nativeModule = hierarchy?.modules.find(
+                          (module) => module.id === moduleDefinitionId || module.name === node.type,
+                        );
+                        if (nativeModule && onOpenModule) {
+                          setDrilledInstance({
+                            moduleId: nativeModule.id,
+                            instanceName: readInstanceName(node) || node.label || node.id,
+                          });
+                          onOpenModule(nativeModule.id);
+                          return;
+                        }
+                        beginNodeLabelEdit(node, 'canvas');
                       }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
+                      layers={designLayers}
+                      mismatchNodeIds={replayMismatchNodeIds}
+                      busGroups={designBusGroups}
                       changedNodeIds={changedNodeIds}
                       nodeIssueSeverities={nodeIssueSeverities}
                       issuePortSeverities={issuePortSeverities}
@@ -7535,7 +9393,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           signalKey,
                         });
                       }}
+                      onNodeContextMenu={({ nodeId, clientX, clientY }) => {
+                        if (isReplayMode || !canvasViewportRef.current) return;
+                        const rect = canvasViewportRef.current.getBoundingClientRect();
+                        // Right-click adopts the node into the selection, the standard
+                        // precondition for the selection-based menu actions below.
+                        selectMultipleNodes([nodeId], false);
+                        setNodeContextMenu({
+                          x: Math.max(12, Math.min(rect.width - 188, clientX - rect.left)),
+                          y: Math.max(12, Math.min(rect.height - 190, clientY - rect.top)),
+                          nodeId,
+                        });
+                      }}
+                      onCanvasContextMenu={({ clientX, clientY }) => {
+                        if (isReplayMode || !canvasViewportRef.current) return;
+                        const rect = canvasViewportRef.current.getBoundingClientRect();
+                        setCanvasContextMenu({
+                          x: Math.max(12, Math.min(rect.width - 188, clientX - rect.left)),
+                          y: Math.max(12, Math.min(rect.height - 168, clientY - rect.top)),
+                        });
+                      }}
                     />
+                    }
                     {pendingPlacement && !activeInsertionMacro ? (
                       <div
                         className="ide-design-placement-hit-layer"
@@ -7570,6 +9449,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <IdeButton tone="secondary" onClick={() => beginNodePlacement('OUTPUT')} testId="ide-design-empty-add-output">
                             Add output
                           </IdeButton>
+                          {onRuntimeCreateBus ? (
+                            <IdeButton tone="secondary" onClick={() => openBusDialog('input')} testId="ide-design-empty-add-bus">
+                              Add bus
+                            </IdeButton>
+                          ) : null}
                           <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-empty-place-gate">
                             Place gate
                           </IdeButton>
@@ -7585,7 +9469,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       >
                         <div className="ide-design-authoring-quickstrip-copy">
                           <span className="ide-design-authoring-quickstrip-label">Next on canvas</span>
-                          <strong>Drop a gate, wire ports, then run Verify.</strong>
+                          <strong>Drop a gate, wire ports, then run Simulate.</strong>
                           <p data-testid="ide-design-logical-io-explainer">
                             {SIGNAL_LANGUAGE.designLogicalIo}
                           </p>
@@ -7690,6 +9574,180 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </button>
                       </div>
                     ) : null}
+                    {nodeContextMenu ? (() => {
+                      const menuNode = editorCircuit.nodes.find((n) => n.id === nodeContextMenu.nodeId);
+                      if (!menuNode) return null;
+                      const moduleDefinitionId = typeof menuNode.config?.moduleDefinitionId === 'string'
+                        ? menuNode.config.moduleDefinitionId
+                        : null;
+                      const nativeModule = hierarchy?.modules.find(
+                        (module) => module.id === moduleDefinitionId || module.name === menuNode.type,
+                      );
+                      return (
+                        <div
+                          className="ide-design-wire-context-menu"
+                          data-testid="ide-design-node-context-menu"
+                          data-blocks-canvas-placement="1"
+                          data-blocks-macro-placement="1"
+                          style={{ left: nodeContextMenu.x, top: nodeContextMenu.y }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          {nativeModule && onOpenModule ? (
+                            <button
+                              type="button"
+                              className="ide-design-wire-context-menu-item"
+                              onClick={() => {
+                                setDrilledInstance({
+                                  moduleId: nativeModule.id,
+                                  instanceName:
+                                    readInstanceName(menuNode) || menuNode.label || menuNode.id,
+                                });
+                                onOpenModule(nativeModule.id);
+                                setNodeContextMenu(null);
+                              }}
+                              data-testid="ide-design-node-menu-open-module"
+                            >
+                              Open {nativeModule.displayName} definition
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              beginNodeLabelEdit(menuNode, 'canvas');
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-rename"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              handleDuplicate();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-duplicate"
+                          >
+                            Duplicate
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              handleCopy();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-copy"
+                          >
+                            Copy
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              deleteSelection();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      );
+                    })() : null}
+                    {canvasContextMenu ? (
+                      <div
+                        className="ide-design-wire-context-menu"
+                        data-testid="ide-design-canvas-context-menu"
+                        data-blocks-canvas-placement="1"
+                        data-blocks-macro-placement="1"
+                        style={{ left: canvasContextMenu.x, top: canvasContextMenu.y }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handlePaste();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={!clipboard}
+                          data-testid="ide-design-canvas-menu-paste"
+                        >
+                          Paste
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handleSelectAll();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={editorCircuit.nodes.length === 0}
+                          data-testid="ide-design-canvas-menu-select-all"
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            fitToCircuit();
+                            setCanvasContextMenu(null);
+                          }}
+                          data-testid="ide-design-canvas-menu-fit"
+                        >
+                          Fit view
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handleArrangeCircuit();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={editorCircuit.nodes.length < 2}
+                          data-testid="ide-design-canvas-menu-arrange"
+                        >
+                          Arrange circuit
+                        </button>
+                      </div>
+                    ) : null}
+                    {renameOnCanvas && editingLabelNodeId ? (() => {
+                      const renameNode = editorCircuit.nodes.find((n) => n.id === editingLabelNodeId);
+                      if (!renameNode) return null;
+                      const screenX = (renameNode.position?.x ?? renameNode.x ?? 0) * camera.zoom + camera.x;
+                      const screenY = (renameNode.position?.y ?? renameNode.y ?? 0) * camera.zoom + camera.y;
+                      return (
+                        <div
+                          className="ide-design-canvas-rename"
+                          data-testid="ide-design-canvas-rename"
+                          data-blocks-canvas-placement="1"
+                          data-blocks-macro-placement="1"
+                          style={{
+                            left: Math.max(8, Math.min(canvasSize.width - 168, screenX - 80)),
+                            top: Math.max(8, Math.min(canvasSize.height - 40, screenY + 34)),
+                          }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            className="ide-text-input ide-design-canvas-rename-input"
+                            type="text"
+                            value={labelDraft}
+                            onChange={(e) => setLabelDraft(e.target.value)}
+                            onKeyDown={handleLabelKeyDown}
+                            onBlur={commitNodeLabel}
+                            autoFocus
+                            placeholder="Signal or part name…"
+                            aria-label={`Rename ${nodeTypeLabel(renameNode.type)}`}
+                            data-testid="ide-design-canvas-rename-input"
+                            maxLength={32}
+                          />
+                        </div>
+                      );
+                    })() : null}
                   </div>
                 </section>
               </div>
@@ -7853,9 +9911,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {liveHdlResult.error}
                     </IdeCallout>
                   )}
-                  <IdeCallout tone="info" title="Generated from the circuit" testId="ide-design-generated-code-note">
-                    This code is read-only in Design. Edit the canvas to regenerate it, or use Import to bring HDL into RedByte.
-                  </IdeCallout>
+                  <p className="rb-design-generated-note" data-testid="ide-design-generated-code-note">
+                    Generated · read-only · updates when you edit the circuit
+                  </p>
                   <div className="ide-design-hdl-primary-pane" data-testid="ide-design-primary-artifact-pane">
                     <textarea
                       className={`ide-code-textarea ide-design-hdl-textarea ide-design-hdl-textarea--primary${primaryArtifactIsEditable ? '' : ' is-readonly'}`}
@@ -7916,6 +9974,160 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         onClose={() => setMacroDialogState(null)}
         onSave={handleSaveMacro}
       />
+      {moduleDialog ? (
+        <IdeModal
+          title="Create project component"
+          testId="ide-design-create-module-dialog"
+          onClose={() => setModuleDialog(null)}
+          body={
+            <div className="ide-module-create-dialog">
+              <p className="ide-copy">
+                The selected {moduleDialog.analysis.selectedComponentCount} components will become one editable definition and one reusable instance.
+              </p>
+              <div className="ide-module-create-fields">
+                <label>
+                  <span>Module name</span>
+                  <input value={moduleDialog.moduleName} onChange={(event) => setModuleDialog((current) => current ? { ...current, moduleName: event.target.value, error: null } : current)} data-testid="ide-design-create-module-name" />
+                </label>
+                <label>
+                  <span>Instance name</span>
+                  <input value={moduleDialog.instanceName} onChange={(event) => setModuleDialog((current) => current ? { ...current, instanceName: event.target.value, error: null } : current)} data-testid="ide-design-create-instance-name" />
+                </label>
+              </div>
+              <section className="ide-module-port-editor" aria-label="Module ports">
+                <header><strong>Inferred ports</strong><span>{moduleDialog.analysis.inputs.length} in · {moduleDialog.analysis.outputs.length} out</span></header>
+                {[...moduleDialog.analysis.inputs, ...moduleDialog.analysis.outputs].map((port) => (
+                  <label key={port.id}>
+                    <span className={`is-${port.direction}`}>{port.direction === 'input' ? 'IN' : 'OUT'}</span>
+                    <input
+                      value={moduleDialog.portNames[port.id] ?? ''}
+                      onChange={(event) => setModuleDialog((current) => current ? {
+                        ...current,
+                        portNames: { ...current.portNames, [port.id]: event.target.value },
+                        error: null,
+                      } : current)}
+                      data-testid={`ide-design-create-port-${port.id}`}
+                    />
+                    <code>{port.internalRefs.map((ref) => `${ref.nodeId}.${ref.portName}`).join(', ')}</code>
+                  </label>
+                ))}
+              </section>
+              {moduleDialog.analysis.warnings.map((warning) => <IdeCallout key={warning} tone="warn">{warning}</IdeCallout>)}
+              {moduleDialog.error ? <IdeCallout tone="error" testId="ide-design-create-module-error">{moduleDialog.error}</IdeCallout> : null}
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={() => setModuleDialog(null)}>Cancel</IdeButton>
+              <IdeButton
+                tone="primary"
+                onClick={confirmCreateModule}
+                disabled={!moduleDialog.analysis.ok || !moduleDialog.moduleName.trim() || !moduleDialog.instanceName.trim()}
+                testId="ide-design-create-module-confirm"
+              >
+                Create and replace selection
+              </IdeButton>
+            </>
+          }
+        />
+      ) : null}
+      {busDialog ? (
+        <IdeModal
+          title="Create bus"
+          testId="ide-design-create-bus-dialog"
+          onClose={() => setBusDialog(null)}
+          body={
+            <div className="ide-module-create-dialog">
+              <p className="ide-copy">
+                A bus is a declared vector signal — one identity that carries several
+                bits (for example <code>A[3:0]</code>). Bits appear on the canvas and
+                map to the board as a group.
+              </p>
+              <div className="ide-module-create-fields">
+                <label>
+                  <span>Direction</span>
+                  <select
+                    value={busDialog.direction}
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current
+                          ? { ...current, direction: event.target.value as 'input' | 'output', error: null }
+                          : current
+                      )
+                    }
+                    data-testid="ide-design-create-bus-direction"
+                  >
+                    <option value="input">Input</option>
+                    <option value="output">Output</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Name</span>
+                  <input
+                    value={busDialog.name}
+                    placeholder="A"
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current ? { ...current, name: event.target.value, error: null } : current
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        submitBusDialog();
+                      }
+                    }}
+                    data-testid="ide-design-create-bus-name"
+                  />
+                </label>
+                <label>
+                  <span>Width (bits)</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={32}
+                    value={busDialog.width}
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current
+                          ? {
+                              ...current,
+                              width: Math.max(2, Math.min(32, Number.parseInt(event.target.value, 10) || 2)),
+                              error: null,
+                            }
+                          : current
+                      )
+                    }
+                    data-testid="ide-design-create-bus-width"
+                  />
+                </label>
+              </div>
+              <p className="ide-copy ide-copy--flush" data-testid="ide-design-create-bus-preview">
+                Creates <code>{(busDialog.name.trim() || 'A')}[{Math.max(1, busDialog.width - 1)}:0]</code>{' '}
+                — {busDialog.width} {busDialog.direction} bit{busDialog.width === 1 ? '' : 's'}.
+              </p>
+              {busDialog.error ? (
+                <IdeCallout tone="error" testId="ide-design-create-bus-error">
+                  {busDialog.error}
+                </IdeCallout>
+              ) : null}
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={() => setBusDialog(null)}>Cancel</IdeButton>
+              <IdeButton
+                tone="primary"
+                onClick={submitBusDialog}
+                disabled={busDialog.name.trim().length === 0}
+                testId="ide-design-create-bus-confirm"
+              >
+                Create bus
+              </IdeButton>
+            </>
+          }
+        />
+      ) : null}
       {diagnosticsDialogOpen ? (
         <IdeModal
           title="Design diagnostics"
@@ -7961,7 +10173,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <code>{diagnostic.code}</code>
                         <span>{diagnostic.title}</span>
                       </div>
-                      <p className="ide-copy">{diagnostic.message}</p>
+                      <p className="ide-copy">{describeCompilerDiagnostic(diagnostic)}</p>
                       {diagnostic.hint.length > 0 ? (
                         <p className="ide-copy ide-design-diagnostic-hint">{diagnostic.hint[0]}</p>
                       ) : null}
@@ -7999,6 +10211,135 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 };
 
 type DesignIoRow = NonNullable<DesignSurfaceProps['ioRows']>[number];
+
+type DesignBoardTimingRole = 'clock' | 'reset' | 'none';
+
+interface DesignBoardTimingSemantics {
+  role: DesignBoardTimingRole;
+  manualClock: boolean;
+  physicalCategory: 'clock' | 'switch' | 'button' | null;
+}
+
+function normalizeDesignTimingToken(value: string | undefined): string {
+  return normalizeIoSignalKey(value ?? '').replace(/[_.]/g, '');
+}
+
+function timingGuidanceNamesRow(
+  ioRow: DesignIoRow,
+  timingGuidance?: TimingGuidance
+): boolean {
+  if (timingGuidance?.kind !== 'clock' || !timingGuidance.signalName) return false;
+  const timingToken = normalizeDesignTimingToken(timingGuidance.signalName);
+  if (!timingToken) return false;
+  return [ioRow.id, ioRow.nodeId, ioRow.label]
+    .map(normalizeDesignTimingToken)
+    .some((candidate) => candidate.length > 0 && candidate === timingToken);
+}
+
+function rowHasResetIntent(ioRow: DesignIoRow): boolean {
+  if (ioRow.direction !== 'in') return false;
+  return [ioRow.id, ioRow.nodeId, ioRow.label]
+    .map(normalizeDesignTimingToken)
+    .some((candidate) => /^(reset|rst|clear|clr)/.test(candidate));
+}
+
+function resolveDesignBoardTimingSemantics(
+  ioRow: DesignIoRow,
+  resource: ReturnType<typeof getBasys3BoardResource>,
+  timingGuidance?: TimingGuidance
+): DesignBoardTimingSemantics {
+  const physicalCategory =
+    resource?.category === 'clock' ||
+    resource?.category === 'switch' ||
+    resource?.category === 'button'
+      ? resource.category
+      : ioRow.boardResourceType === 'clock_pin'
+        ? 'clock'
+        : ioRow.boardResourceType === 'switch' || ioRow.boardResourceType === 'button'
+          ? ioRow.boardResourceType
+          : null;
+  const role: DesignBoardTimingRole =
+    ioRow.direction === 'in' &&
+    (
+      ioRow.timingRole === 'clock' ||
+      ioRow.timingRole === 'manual_step' ||
+      ioRow.boardResourceType === 'clock_pin' ||
+      timingGuidanceNamesRow(ioRow, timingGuidance)
+    )
+      ? 'clock'
+      : ioRow.timingRole === 'reset' || rowHasResetIntent(ioRow)
+        ? 'reset'
+        : 'none';
+  const manualClock =
+    role === 'clock' &&
+    (
+      physicalCategory === 'switch' ||
+      physicalCategory === 'button' ||
+      (ioRow.timingRole === 'manual_step' && physicalCategory !== 'clock')
+    );
+  return { role, manualClock, physicalCategory };
+}
+
+function describeRequiredBoardResourceClass(
+  ioRow: DesignIoRow,
+  resource: ReturnType<typeof getBasys3BoardResource>,
+  timingGuidance?: TimingGuidance
+): string {
+  const timing = resolveDesignBoardTimingSemantics(ioRow, resource, timingGuidance);
+  if (timing.role === 'clock') {
+    if (timing.manualClock) {
+      if (timing.physicalCategory === 'switch') return 'Manual clock switch';
+      if (timing.physicalCategory === 'button') return 'Manual clock button';
+      return 'Manual clock switch or button';
+    }
+    return 'Dedicated clock input';
+  }
+  if (timing.role === 'reset') {
+    if (timing.physicalCategory === 'switch') return 'Reset-capable switch';
+    if (timing.physicalCategory === 'button') return 'Reset-capable button';
+    return 'Reset-capable switch or button';
+  }
+  switch (ioRow.boardResourceType) {
+    case 'switch':
+      return 'Slide switch';
+    case 'button':
+      return 'Pushbutton';
+    case 'led':
+      return 'LED';
+    case 'seven_seg':
+      return 'Seven-segment output';
+    default:
+      return ioRow.direction === 'in' ? 'Switch or button' : 'LED or display output';
+  }
+}
+
+function describeBoardTimingStatus(
+  ioRow: DesignIoRow,
+  resource: ReturnType<typeof getBasys3BoardResource>,
+  timingGuidance?: TimingGuidance
+): string {
+  const timing = resolveDesignBoardTimingSemantics(ioRow, resource, timingGuidance);
+  if (timing.role === 'clock') {
+    if (!resource) {
+      return timing.manualClock ? 'Manual clock resource not assigned' : 'Clock source not assigned';
+    }
+    if (resource.category === 'clock') {
+      return `${resource.frequencyMHz ?? 100} MHz board clock assigned`;
+    }
+    if (resource.category === 'switch') return `Manual clock switch ${resource.alias} assigned`;
+    if (resource.category === 'button') return `Manual clock button ${resource.alias} assigned`;
+    return 'Assigned resource is not a clock source';
+  }
+  if (timing.role === 'reset') {
+    if (!resource) return 'Reset resource not assigned';
+    if (resource.category === 'switch') return `Reset switch ${resource.alias} assigned`;
+    if (resource.category === 'button') return `Reset button ${resource.alias} assigned`;
+    return 'Assigned resource is not reset-capable';
+  }
+  return resource?.category === 'clock'
+    ? 'Clock resource is incompatible with this signal'
+    : 'Not a timing-control signal';
+}
 
 function resolveNodeIoPresentation(
   node: Node,
@@ -8220,7 +10561,7 @@ function describeVerifyDebugSummary(context: VerifyDebugContext): string {
   return base;
 }
 
-function formatReplayCausationValue(value: 0 | 1 | null): string {
+function formatReplayCausationValue(value: RuntimeLogicValue | null): string {
   return value == null ? '?' : `${value}`;
 }
 
@@ -8304,7 +10645,7 @@ function resolveDirectSignalDriverLabels(
     .map((connection) => {
       const from = resolveConnectionEndpoint(connection.from);
       const sourceNode = circuit.nodes.find((entry) => entry.id === from.nodeId);
-      return describeEndpointLabel(from.nodeId, sourceNode, ioRowByNodeId.get(from.nodeId));
+      return describeEndpointLabel(from.nodeId, sourceNode, ioRowByNodeId.get(from.nodeId), circuit);
     });
 
   if (driverLabels.length > 0) {
@@ -8313,7 +10654,7 @@ function resolveDirectSignalDriverLabels(
 
   if (portName === 'out') {
     const node = circuit.nodes.find((entry) => entry.id === nodeId);
-    return [describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId))];
+    return [describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId), circuit)];
   }
 
   return [];
@@ -8533,24 +10874,21 @@ function describeNodeConnectionSummary(
   return { fanIn, fanOut, incomingLabel };
 }
 
-function describeEndpointLabel(nodeId: string, node?: Node, ioRow?: DesignIoRow | null): string {
+function describeEndpointLabel(nodeId: string, node?: Node, ioRow?: DesignIoRow | null, circuit?: Circuit): string {
   const label = ioRow?.label?.trim() || node?.label?.trim();
-  return label && label.length > 0 ? label : node?.type === 'INPUT' || node?.type === 'OUTPUT' ? nodeId : node?.id ?? nodeId;
+  if (label && label.length > 0) return label;
+  return node ? studentPartName(node, nodeId, circuit) : nodeId;
 }
 
 function findNodeById(circuit: Circuit, nodeId: string): Node | undefined {
   return circuit.nodes.find((n) => n.id === nodeId);
 }
 
-/** Board / instance name for trace banners — prefers Map Pins label, then schematic label, then type + id. */
-function formatTracePartName(node: Node | undefined, ioRow: DesignIoRow | undefined, nodeId: string): string {
+/** Board / instance name for trace banners — prefers Map Pins label, then schematic label, then the part's student name. */
+function formatTracePartName(node: Node | undefined, ioRow: DesignIoRow | undefined, nodeId: string, circuit?: Circuit): string {
   const name = ioRow?.label?.trim() || node?.label?.trim();
   if (name) return name;
-  if (node) {
-    const t = nodeTypeLabel(node.type);
-    return nodeId.length > 8 ? `${t} (…${nodeId.slice(-4)})` : `${t} (${nodeId})`;
-  }
-  return nodeId;
+  return node ? studentPartName(node, nodeId, circuit) : nodeId;
 }
 
 function buildStudentFaninPortTraceLabel(
@@ -8560,7 +10898,7 @@ function buildStudentFaninPortTraceLabel(
   ioByNodeId: Map<string, DesignIoRow>
 ): string {
   const node = findNodeById(circuit, nodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId, circuit);
   return `What feeds ${part} · ${portName} — drivers on this input highlighted`;
 }
 
@@ -8570,7 +10908,7 @@ function buildStudentFanoutPortTraceLabel(
   ioByNodeId: Map<string, DesignIoRow>
 ): string {
   const node = findNodeById(circuit, sourceNodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(sourceNodeId), sourceNodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(sourceNodeId), sourceNodeId, circuit);
   return `What ${part} drives — every path from this source highlighted`;
 }
 
@@ -8581,7 +10919,7 @@ function buildStudentWireNetTraceLabel(
   ioByNodeId: Map<string, DesignIoRow>
 ): string {
   const node = findNodeById(circuit, fromNodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(fromNodeId), fromNodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(fromNodeId), fromNodeId, circuit);
   return `One net: ${part} · ${fromPort} — every segment of this signal highlighted`;
 }
 
@@ -8594,7 +10932,7 @@ function buildStudentVerifyDebugTraceLabel(
   const [nodeId, portName = 'out'] = signalKey.split('.');
   if (!nodeId) return `${mode}: ${signalKey}`;
   const node = findNodeById(circuit, nodeId);
-  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
+  const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId, circuit);
   return `${mode}: what drives ${part} · ${portName} — same highlight`;
 }
 
@@ -8641,7 +10979,7 @@ function summarizeMultiWireNetSelection(
     const p = parseWireId(sampleWire);
     if (!p) continue;
     const node = findNodeById(circuit, p.fromNodeId);
-    const part = formatTracePartName(node, ioByNodeId.get(p.fromNodeId), p.fromNodeId);
+    const part = formatTracePartName(node, ioByNodeId.get(p.fromNodeId), p.fromNodeId, circuit);
     groupLabels.push(`${part} · ${p.fromPort}`);
   }
   const distinct = groupLabels.length;
@@ -8791,7 +11129,7 @@ function buildSequentialInspectorContext(input: {
       stateSummary: `${fanout} downstream ${fanout === 1 ? 'path' : 'paths'}`,
       timingContext: boardSummary,
       actionKind: ioRow ? null : 'go-to-hardware',
-      actionLabel: ioRow ? null : 'Go to Map Pins',
+      actionLabel: ioRow ? null : 'Go to Board',
       actionPort: null,
     };
   }
@@ -8853,7 +11191,7 @@ function buildSequentialInspectorContext(input: {
       roleLabel,
       behaviorSummary,
       nextStep: controlSource
-        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Verify / Map Pins.`
+        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Simulate / Board.`
         : 'Wire CLK to a clock or manual step source before expecting updates.',
       controlLabel: 'Clock',
       ioSummaryLabel: 'Inputs',
@@ -8964,7 +11302,7 @@ function buildSequentialInspectorContext(input: {
 }
 
 function resolveSequentialRsControlPort(
-  nodeSignals: Map<string, 0 | 1 | null>
+  nodeSignals: Map<string, RuntimeLogicValue | null>
 ): string {
   if (nodeSignals.has('S')) return 'S';
   if (nodeSignals.has('R')) return 'R';
@@ -9003,7 +11341,7 @@ function resolveNodeInputSource(
 }
 
 function summarizeSequentialPorts(
-  nodeSignals: Map<string, 0 | 1 | null>,
+  nodeSignals: Map<string, RuntimeLogicValue | null>,
   ports: readonly string[]
 ): string {
   const entries = ports
@@ -9012,7 +11350,7 @@ function summarizeSequentialPorts(
   return entries.length > 0 ? entries.join(', ') : 'No live signal values yet';
 }
 
-function summarizeRegisterBusOutputs(nodeSignals: Map<string, 0 | 1 | null>, width: number): string {
+function summarizeRegisterBusOutputs(nodeSignals: Map<string, RuntimeLogicValue | null>, width: number): string {
   const bitSummaries: string[] = [];
   const limit = Math.min(width, 8);
   for (let i = 0; i < limit; i += 1) {
@@ -9088,6 +11426,8 @@ function describeStudentSignalKey(
   const node = circuit.nodes.find((entry) => entry.id === nodeId);
   const nodeLabel = describeNodeForStudents(node, ioRowByNodeId?.get(nodeId));
   if (!portName || portName === 'out') return nodeLabel;
+  // An output pin's only port is its feed; the student-facing signal is the pin itself.
+  if (node?.type === 'OUTPUT' && portName === 'in') return nodeLabel;
   return `${nodeLabel} · ${describePortForStudents(portName)}`;
 }
 
@@ -9103,8 +11443,10 @@ function describeSignalFocusPresentation(input: {
   needsBridge: boolean;
 } | null {
   const { focusLabel, signalKey, circuit, ioRowByNodeId } = input;
-  const rawFocusLabel = focusLabel?.trim();
-  if (!rawFocusLabel) return null;
+  const focusKey = focusLabel?.trim();
+  if (!focusKey) return null;
+  const focusRow = [...ioRowByNodeId.values()].find((row) => normalizeSignalLookup(row.id) === normalizeSignalLookup(focusKey));
+  const rawFocusLabel = focusRow?.label?.trim() || focusKey;
 
   const normalizedFocusLabel = normalizeSignalLookup(rawFocusLabel);
   let inspectLabel = rawFocusLabel;

@@ -1,0 +1,594 @@
+import { WorkbenchDisclosure } from '../../components/WorkbenchDisclosure';
+import React, { useMemo, useState } from 'react';
+import type {
+  VerifyAuthorVector,
+  VerifyVectorDraftInput,
+} from '../ScenarioBuilderPanel';
+import type { StimulusCaseEvidenceState } from '../../components/StimulusCanvas';
+import { TimingLanes } from './TimingLanes';
+import { compareCodepoint } from '../../../../export/codepointSort';
+import type { RecordedWordLane } from './recordedWordLanes';
+
+// Timing Lab — the sequential simulation instrument. Events are rows in time:
+// one row per stimulus event (t), one column per driven input and per
+// checked output, a status column, and a dense editor strip for the selected
+// event. The table is the timeline; the strip is where an event is authored.
+//
+// Inspection never edits (RB-DEBT-020). A click, Space or Enter on a stimulus lane
+// edits only in the explicit "Edit stimulus" mode. The mode is on while no recording
+// is on screen, so authoring a new scenario stays one click per value; it turns off
+// whenever a recording is selected (a Run, Reproduce, history, another scenario) or
+// inspected (Inspect circuit), and only the student turns it back on.
+
+type TimingLens = 'scenario' | 'checks';
+
+export interface TimingLabProps {
+  readonly scenarioName: string;
+  readonly vectors: readonly VerifyAuthorVector[];
+  readonly inputFields: readonly VerifyVectorDraftInput[];
+  readonly outputFields: readonly VerifyVectorDraftInput[];
+  readonly extraObservedFields?: readonly VerifyVectorDraftInput[];
+  /** Word lanes of the selected recording, from that recording's own names and samples. */
+  readonly recordedWords?: readonly RecordedWordLane[];
+  readonly playbackControls?: React.ReactNode;
+  readonly selectionReadout?: boolean;
+  readonly navigationControls?: React.ReactNode;
+  readonly formatObservedValue?: (value: string) => string;
+  readonly showExpectedOverlay?: boolean;
+  readonly selectedTick: number | null;
+  readonly selectedSignal?: string | null;
+  readonly onSelectSignal?: (signal: string) => void;
+  readonly cursorA?: number | null;
+  readonly cursorB?: number | null;
+  readonly onSetCursorA?: (tick: number | null) => void;
+  readonly onSetCursorB?: (tick: number | null) => void;
+  readonly lens: TimingLens;
+  readonly onSelectTick: (tick: number) => void;
+  readonly onVectorsChange?: (vectors: VerifyAuthorVector[]) => void;
+  readonly caseEvidenceByTick?: Readonly<Record<number, StimulusCaseEvidenceState>>;
+  readonly observedValuesByTick?: Readonly<Record<number, Readonly<Record<string, string>>>>;
+  /** Clock-like inputs render with a clock glyph and sit first in the timeline. */
+  readonly clockFieldIds?: readonly string[];
+  /** Auto board clock: how many cycles the run covers. Null when the clock is authored by hand. */
+  readonly runCycles?: number | null;
+  readonly onRunCyclesChange?: (cycles: number) => void;
+  /** Lanes the clock policy generates at run time (clock, reset sequence): shown as generated, not editable. */
+  readonly generatedFieldIds?: ReadonlySet<string>;
+  readonly generatedValueAt?: (fieldId: string, tick: number) => 0 | 1 | null;
+  readonly generatedNote?: string;
+  /**
+   * The recording on screen (its run identity), or null when there is none. When omitted, any
+   * recorded sample on screen counts as a recording. A different recording turns stimulus
+   * editing off; no recording turns it on.
+   */
+  readonly recordingId?: string | null;
+  /** True while the recording is open in an investigation view; opening one turns editing off. */
+  readonly inspecting?: boolean;
+}
+
+interface StimulusEditMode {
+  readonly recordingKey: string | null;
+  readonly inspecting: boolean;
+  readonly editing: boolean;
+}
+
+function nextEventId(vectors: readonly VerifyAuthorVector[]): string {
+  const occupied = new Set(vectors.map((vector) => vector.id));
+  let index = vectors.length + 1;
+  while (occupied.has(`event-${String(index).padStart(2, '0')}`)) index += 1;
+  return `event-${String(index).padStart(2, '0')}`;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  pass: 'pass',
+  fail: 'fail',
+  stale: 'stale',
+  observed: 'observed',
+};
+
+function statusLabel(state: StimulusCaseEvidenceState | undefined): string {
+  return state ? STATUS_LABEL[state] ?? '—' : '—';
+}
+
+function previousVector(
+  vectors: readonly VerifyAuthorVector[],
+  selected: VerifyAuthorVector
+): VerifyAuthorVector | null {
+  const index = vectors.findIndex((vector) => vector.id === selected.id);
+  return index > 0 ? vectors[index - 1] ?? null : null;
+}
+
+export const TimingLab: React.FC<TimingLabProps> = ({
+  runCycles = null,
+  onRunCyclesChange,
+  generatedFieldIds,
+  generatedValueAt,
+  generatedNote,
+  scenarioName,
+  vectors,
+  inputFields,
+  outputFields,
+  extraObservedFields = [],
+  recordedWords,
+  selectedTick,
+  selectedSignal, onSelectSignal, cursorA, cursorB, onSetCursorA, onSetCursorB,
+  playbackControls, navigationControls, selectionReadout = true, formatObservedValue = value => value, showExpectedOverlay = true,
+  lens,
+  onSelectTick,
+  onVectorsChange,
+  caseEvidenceByTick,
+  observedValuesByTick,
+  clockFieldIds,
+  recordingId,
+  inspecting = false,
+}) => {
+  const orderedVectors = useMemo(
+    () => [...vectors].sort((left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id)),
+    [vectors]
+  );
+  const orderedInputs = useMemo(() => {
+    if (!clockFieldIds || clockFieldIds.length === 0) return inputFields;
+    const clocks = new Set(clockFieldIds);
+    return [...inputFields].sort((a, b) => Number(clocks.has(b.id)) - Number(clocks.has(a.id)));
+  }, [inputFields, clockFieldIds]);
+  const clockSet = useMemo(() => new Set(clockFieldIds ?? []), [clockFieldIds]);
+  /**
+   * The event AT the cursor, or none. There is no fallback: a cursor on a tick with no event is
+   * a cursor on a tick with no event, and saying otherwise put the highlight on one tick while
+   * the rest of the surface reported another.
+   */
+  const selectedVector =
+    orderedVectors.find((vector) => vector.tick === selectedTick) ?? null;
+  const [timeError, setTimeError] = useState<string | null>(null);
+  // The toolbar slot the lanes render their selection tools into.
+  const [contextHost, setContextHost] = useState<HTMLDivElement | null>(null);
+  const editable = Boolean(onVectorsChange);
+
+  // Edit stimulus: derived from what is on screen when that changes, otherwise the student's.
+  // The previous recording and inspection are kept beside the mode so a change is seen during
+  // render (no effect, so no frame in which a click on a just-selected recording could edit).
+  const recordingKey = recordingId !== undefined
+    ? recordingId
+    : Object.keys(observedValuesByTick ?? {}).length > 0 ? 'recorded' : null;
+  const [editMode, setEditMode] = useState<StimulusEditMode>(() => ({
+    recordingKey,
+    inspecting,
+    editing: recordingKey === null && !inspecting,
+  }));
+  let editing = editMode.editing;
+  if (editMode.recordingKey !== recordingKey || editMode.inspecting !== inspecting) {
+    if (editMode.recordingKey !== recordingKey) editing = recordingKey === null && !inspecting;
+    else if (inspecting) editing = false;
+    setEditMode({ recordingKey, inspecting, editing });
+  }
+  const stimulusEditing = editable && editing;
+
+  const commitVector = (id: string, patch: Partial<VerifyAuthorVector>) => {
+    if (!onVectorsChange) return;
+    onVectorsChange(
+      orderedVectors
+        .map((vector) => (vector.id === id ? { ...vector, ...patch } : vector))
+        .sort((left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id))
+    );
+  };
+
+  const addEvent = () => {
+    if (!onVectorsChange) return;
+    const last = orderedVectors.at(-1);
+    const tick = last ? last.tick + 1 : 0;
+    const inputs = Object.fromEntries(
+      inputFields.map((field) => [field.id, last?.inputs[field.id] === 1 ? 1 : 0])
+    ) as Record<string, 0 | 1>;
+    const next = { id: nextEventId(orderedVectors), tick, inputs, expected: {} };
+    onVectorsChange([...orderedVectors, next]);
+    onSelectTick(tick);
+    setTimeError(null);
+  };
+
+  const duplicateEvent = () => {
+    if (!onVectorsChange || !selectedVector) return;
+    const tick = (orderedVectors.at(-1)?.tick ?? -1) + 1;
+    const next = {
+      ...selectedVector,
+      id: nextEventId(orderedVectors),
+      tick,
+      inputs: { ...selectedVector.inputs },
+      expected: { ...selectedVector.expected },
+    };
+    onVectorsChange([...orderedVectors, next]);
+    onSelectTick(tick);
+  };
+
+  const deleteEvent = () => {
+    if (!onVectorsChange || !selectedVector) return;
+    const next = orderedVectors.filter((vector) => vector.id !== selectedVector.id);
+    onVectorsChange(next);
+    onSelectTick(next[Math.max(0, orderedVectors.indexOf(selectedVector) - 1)]?.tick ?? next[0]?.tick ?? 0);
+  };
+
+  const updateTick = (nextTick: number) => {
+    if (!selectedVector) return;
+    const normalizedTick = Math.max(0, Math.floor(nextTick));
+    if (orderedVectors.some((vector) => vector.id !== selectedVector.id && vector.tick === normalizedTick)) {
+      setTimeError(`t${normalizedTick} already contains an event.`);
+      return;
+    }
+    commitVector(selectedVector.id, { tick: normalizedTick });
+    onSelectTick(normalizedTick);
+    setTimeError(null);
+  };
+
+  const updateInput = (fieldId: string, value: 0 | 1) => {
+    if (!selectedVector) return;
+    commitVector(selectedVector.id, { inputs: { ...selectedVector.inputs, [fieldId]: value } });
+  };
+
+  const cycleCheck = (fieldId: string) => {
+    if (!selectedVector) return;
+    const current = selectedVector.expected[fieldId];
+    const expected = { ...selectedVector.expected };
+    if (current == null) expected[fieldId] = 0;
+    else if (current === 0) expected[fieldId] = 1;
+    else delete expected[fieldId];
+    commitVector(selectedVector.id, { expected });
+  };
+
+  /** Ensure an event exists at a tick, carrying the held stimulus forward; returns the vector list with it. */
+  const ensureEventAt = (tick: number): VerifyAuthorVector[] => {
+    if (orderedVectors.some((vector) => vector.tick === tick)) return [...orderedVectors];
+    const held = [...orderedVectors].filter((vector) => vector.tick < tick).at(-1);
+    const inputs = {
+      ...(held?.inputs ?? {}),
+      ...(Object.fromEntries(inputFields.map((field) => [field.id, held?.inputs[field.id] === 1 ? 1 : 0])) as Record<string, 0 | 1>),
+    } as Record<string, 0 | 1>;
+    return [...orderedVectors, { id: nextEventId(orderedVectors), tick, inputs, expected: {} }].sort(
+      (left, right) => left.tick - right.tick || compareCodepoint(left.id, right.id)
+    );
+  };
+  const driveInputAt = (tick: number, fieldId: string, value: 0 | 1) => {
+    if (!onVectorsChange) return;
+    const next = ensureEventAt(tick).map((vector) =>
+      vector.tick === tick ? { ...vector, inputs: { ...vector.inputs, [fieldId]: value } } : vector
+    );
+    onVectorsChange(next);
+    onSelectTick(tick);
+    setTimeError(null);
+  };
+  const cycleExpectedAt = (tick: number, fieldId: string) => {
+    if (!onVectorsChange) return;
+    const next = ensureEventAt(tick).map((vector) => {
+      if (vector.tick !== tick) return vector;
+      const current = vector.expected?.[fieldId];
+      const expected = { ...vector.expected };
+      if (current == null) expected[fieldId] = 0;
+      else if (current === 0) expected[fieldId] = 1;
+      else delete expected[fieldId];
+      return { ...vector, expected };
+    });
+    onVectorsChange(next);
+    onSelectTick(tick);
+  };
+
+  const previous = selectedVector ? previousVector(orderedVectors, selectedVector) : null;
+  const changedInputs = selectedVector
+    ? Array.from(new Set([...inputFields.map((field) => field.id), ...Object.keys(selectedVector.inputs), ...Object.keys(previous?.inputs ?? {})]))
+        .filter((id) => (selectedVector.inputs[id] ?? 0) !== (previous?.inputs[id] ?? 0))
+        .map((id) => inputFields.find((field) => field.id === id) ?? { id, label: id.toUpperCase() })
+    : [];
+  const eventState = selectedVector ? caseEvidenceByTick?.[selectedVector.tick] : undefined;
+  const checkTotal = orderedVectors.reduce((n, v) => n + Object.keys(v.expected ?? {}).length, 0);
+
+  return (
+    <section
+      className="rb-timing"
+      data-testid="ide-scenario-composer"
+      data-lens={lens}
+      onKeyDown={(event) => {
+        // Keys on the instrument obey the same contract as clicks: they edit only in edit mode.
+        if (event.key === 'Delete' && event.target === event.currentTarget && stimulusEditing) deleteEvent();
+      }}
+      tabIndex={0}
+      aria-label={`Timing Lab — ${scenarioName}`}
+    >
+      <header className="rb-timing-bar" data-testid="ide-timing-lab-bar">
+        {/* One toolbar: what is selected and how to move through the recording on the left, the
+            event being edited in the middle, the views on the right. The selection tools are
+            rendered by the lanes, which own the selection, into this slot. */}
+        <div className="rb-timing-selection" ref={setContextHost} />
+        <span className="rb-timing-spacer" />
+        <button
+          type="button"
+          className="wb-btn rb-timing-edit-mode"
+          aria-pressed={stimulusEditing}
+          disabled={!editable}
+          onClick={() => setEditMode((current) => ({ ...current, editing: !current.editing }))}
+          data-testid="ide-timing-edit-mode"
+          title={!editable
+            ? 'This scenario cannot be edited here.'
+            : stimulusEditing
+              ? 'Editing: a click, Space or Enter on a stimulus cell drives that input. Press to inspect without editing.'
+              : 'Inspecting: a click, Space or Enter selects a tick and signal and never changes the scenario. Press to edit the stimulus.'}
+        >
+          Edit stimulus
+        </button>
+        <div className="rb-timing-edit" role="group" aria-label="Events">
+        <button
+          type="button"
+          className="wb-btn wb-btn--ghost"
+          onClick={addEvent}
+          disabled={!editable}
+          data-testid="ide-scenario-composer-add-event"
+          aria-label="Add event"
+          title="Add an event one tick after the last one, carrying the current stimulus forward"
+        >
+          + Event
+        </button>
+        <button
+          type="button"
+          className="wb-btn wb-btn--ghost"
+          onClick={duplicateEvent}
+          disabled={!editable || !selectedVector}
+          data-testid="ide-scenario-duplicate-event"
+        >
+          Duplicate
+        </button>
+        <button
+          type="button"
+          className="wb-btn wb-btn--ghost rb-timing-danger"
+          onClick={deleteEvent}
+          disabled={!editable || !selectedVector}
+          data-testid="ide-scenario-delete-event"
+        >
+          Delete
+        </button>
+        </div>
+        <WorkbenchDisclosure className="rb-timing-settings" data-testid="ide-timing-settings"
+          summary={<>{orderedVectors.length} events{typeof runCycles === 'number' ? ' · ' + runCycles + ' cycles' : ''}</>}>
+          <div className="rb-timing-settings-body">
+        <span className="rb-timing-count" data-testid="ide-timing-lab-count">
+          {orderedVectors.length} event{orderedVectors.length === 1 ? '' : 's'} · {checkTotal} check{checkTotal === 1 ? '' : 's'}
+        </span>
+        {typeof runCycles === 'number' && onRunCyclesChange ? (
+          <label className="rb-timing-run-length" data-testid="ide-timing-run-length" title="Auto board clock: the run covers this many clock cycles">
+            Run length
+            <input
+              type="number"
+              min={1}
+              max={4096}
+              step={1}
+              value={runCycles}
+              onChange={(event) => onRunCyclesChange(Number(event.target.value || '1'))}
+              data-testid="ide-timing-run-length-input"
+              aria-label="Run length in clock cycles"
+            />
+            cycles
+          </label>
+        ) : null}
+        {generatedFieldIds && generatedFieldIds.size > 0 ? (
+          <span className="rb-timing-generated" data-testid="ide-timing-generated" title={generatedNote ?? 'Clock and reset are generated by the clock policy'}>
+            clock + reset generated
+          </span>
+        ) : null}
+
+          </div>
+        </WorkbenchDisclosure>
+        {navigationControls}
+      </header>
+
+      <TimingLanes
+        selectionReadout={selectionReadout}
+        vectors={orderedVectors}
+        inputFields={orderedInputs}
+        outputFields={[...outputFields, ...extraObservedFields]}
+        clockFieldIds={clockSet}
+        selectedTick={selectedTick}
+        selectedSignal={selectedSignal} onSelectSignal={onSelectSignal}
+        cursorA={cursorA} cursorB={cursorB} onSetCursorA={onSetCursorA} onSetCursorB={onSetCursorB}
+        editable={stimulusEditing}
+        stimulusNote={stimulusEditing ? 'editing' : editable ? 'cells select while inspecting' : 'read-only'}
+        observedValuesByTick={observedValuesByTick}
+        caseEvidenceByTick={caseEvidenceByTick}
+        onSelectTick={onSelectTick}
+        onDriveInput={driveInputAt}
+        onCycleExpected={cycleExpectedAt}
+        playbackControls={playbackControls} formatObservedValue={formatObservedValue} showExpectedOverlay={showExpectedOverlay}
+        generatedFieldIds={generatedFieldIds}
+        generatedValueAt={generatedValueAt}
+        generatedNote={generatedNote}
+        recordedWords={recordedWords}
+        contextHost={contextHost}
+      />
+
+      <details className="rb-timing-table-details" data-testid="ide-scenario-table-disclosure">
+        <summary className="wb-link">Event table</summary>
+      <div className="rb-timing-scroll">
+        <table className="rb-timing-table" data-testid="ide-timing-lab-table" role="list" aria-label="Scenario events">
+          <thead>
+            <tr className="rb-timing-grouphead">
+              <th className="rb-timing-num" scope="col" rowSpan={2}>#</th>
+              <th className="rb-timing-time" scope="col" rowSpan={2}>t</th>
+              <th className="rb-timing-in-group" scope="colgroup" colSpan={orderedInputs.length}>Inputs</th>
+              {outputFields.map((field) => (
+                <th key={field.id} className="rb-timing-out" scope="colgroup" colSpan={2}>
+                  {field.label}
+                </th>
+              ))}
+              <th className="rb-timing-status" scope="col" rowSpan={2}>Status</th>
+            </tr>
+            <tr className="rb-timing-colhead">
+              {orderedInputs.map((field) => (
+                <th key={field.id} className={`rb-timing-in${clockSet.has(field.id) ? ' is-clock' : ''}`} scope="col" title={clockSet.has(field.id) ? `${field.label} (clock)` : field.label}>
+                  {field.label}
+                </th>
+              ))}
+              {outputFields.map((field) => (
+                <React.Fragment key={field.id}>
+                  <th className="rb-timing-exp" scope="col">exp</th>
+                  <th className="rb-timing-obs" scope="col">obs</th>
+                </React.Fragment>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {orderedVectors.length === 0 ? (
+              <tr>
+                <td className="rb-timing-empty" colSpan={3 + orderedInputs.length + outputFields.length * 2}>
+                  No events yet — add the first event to define the inputs at t0.
+                </td>
+              </tr>
+            ) : (
+              orderedVectors.map((vector, index) => {
+                const evidence = caseEvidenceByTick?.[vector.tick];
+                const isSelected = vector.id === selectedVector?.id;
+                const prev = index > 0 ? orderedVectors[index - 1] : null;
+                return (
+                  <tr
+                    key={vector.id}
+                    role="listitem"
+                    className={`rb-timing-row${isSelected ? ' is-selected' : ''} is-${evidence ?? 'not-run'}`}
+                    data-state={evidence ?? 'not-run'}
+                    data-testid={`ide-scenario-event-${vector.id}`}
+                    aria-selected={isSelected}
+                    onClick={() => onSelectTick(vector.tick)}
+                  >
+                    <td className="rb-timing-num">{index + 1}</td>
+                    <td className="rb-timing-time"><code>t{vector.tick}</code></td>
+                    {orderedInputs.map((field) => {
+                      const value = vector.inputs[field.id] === 1 ? 1 : 0;
+                      const changed = prev ? (prev.inputs[field.id] === 1 ? 1 : 0) !== value : false;
+                      return (
+                        <td key={field.id} className={`rb-timing-in${changed ? ' is-changed' : ''}${clockSet.has(field.id) ? ' is-clock' : ''}`}>
+                          <code>{value}</code>
+                        </td>
+                      );
+                    })}
+                    {outputFields.map((field) => {
+                      const expected = vector.expected?.[field.id];
+                      const observed = observedValuesByTick?.[vector.tick]?.[field.id];
+                      const mismatch = expected != null && observed != null && String(expected) !== String(observed);
+                      return (
+                        <React.Fragment key={field.id}>
+                          <td className="rb-timing-exp"><code>{expected == null ? '·' : expected}</code></td>
+                          <td className={`rb-timing-obs${mismatch ? ' is-fail' : ''}`}><code>{observed ?? '·'}</code></td>
+                        </React.Fragment>
+                      );
+                    })}
+                    <td className="rb-timing-status"><span className={`rb-timing-verdict is-${evidence ?? 'not-run'}`}>{statusLabel(evidence)}</span></td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+      </details>
+
+      {!selectedVector && selectedTick != null ? (
+        <p className="rb-timing-editor-empty" data-testid="ide-scenario-event-editor-empty">
+          No event at t{selectedTick}.{editable ? (
+            <>
+              {' '}{stimulusEditing ? 'Click' : <>Turn on <strong>Edit stimulus</strong>, then click</>} a stimulus cell in
+              that column to drive an input there, or use <strong>+ Add event</strong>.
+            </>
+          ) : null}
+        </p>
+      ) : null}
+      {selectedVector ? (
+        <details className="rb-timing-editor-details" data-testid="ide-scenario-event-editor-details">
+          <summary title="Exact time and value for the selected event">
+            Edit event at t{selectedVector.tick}
+            <span className="rb-timing-editor-hint">exact time and value</span>
+          </summary>
+        <div className="rb-timing-editor" data-testid="ide-scenario-event-editor">
+          <label className="rb-timing-field">
+            <span>Event time</span>
+            <span className="rb-timing-time-input">
+              <b>t</b>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={selectedVector.tick}
+                disabled={!editable}
+                onChange={(event) => updateTick(Number(event.target.value))}
+                data-testid="ide-scenario-event-time"
+              />
+            </span>
+          </label>
+          <div className="rb-timing-field">
+            <span>Status</span>
+            <strong className={`rb-timing-verdict is-${eventState ?? 'not-run'}`} data-state={eventState ?? 'not-run'}>{statusLabel(eventState)}</strong>
+          </div>
+          <div className="rb-timing-field rb-timing-field--wide">
+            <span>Changed here</span>
+            <strong>{changedInputs.length > 0 ? changedInputs.map((field) => field.label).join(', ') : 'No input changes'}</strong>
+          </div>
+          {timeError ? <p className="rb-timing-error" role="alert">{timeError}</p> : null}
+
+          {lens === 'scenario' ? (
+            <div className="rb-timing-group" aria-label="Input stimulus">
+              <span className="rb-timing-group-label">Drive inputs at t{selectedVector.tick}</span>
+              <div className="rb-timing-toggles">
+                {orderedInputs.map((field) => {
+                  const value = selectedVector.inputs[field.id] === 1 ? 1 : 0;
+                  return (
+                    <button
+                      key={field.id}
+                      type="button"
+                      className={`rb-timing-toggle${value ? ' is-high' : ' is-low'}${clockSet.has(field.id) ? ' is-clock' : ''}`}
+                      aria-pressed={value === 1}
+                      disabled={!editable}
+                      onClick={() => updateInput(field.id, value === 1 ? 0 : 1)}
+                      data-testid={`ide-scenario-input-${field.id}`}
+                      title={`${field.label} — click to drive ${value === 1 ? 0 : 1}`}
+                    >
+                      <span>{field.label}</span>
+                      <strong>{value}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="rb-timing-group" data-testid="ide-scenario-stimulus-snapshot">
+              <span className="rb-timing-group-label">Stimulus at t{selectedVector.tick}</span>
+              <div className="rb-timing-snapshot">
+                {orderedInputs.map((field) => (
+                  <code key={field.id}>{field.label}={selectedVector.inputs[field.id] === 1 ? 1 : 0}</code>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {outputFields.length > 0 ? (
+            <div className="rb-timing-group" aria-label="Expected output checks">
+              <span className="rb-timing-group-label">Expected outputs — unset outputs are observed, not graded</span>
+              <div className="rb-timing-toggles">
+                {outputFields.map((field) => {
+                  const expected = selectedVector.expected[field.id];
+                  const observed = observedValuesByTick?.[selectedVector.tick]?.[field.id];
+                  return (
+                    <button
+                      key={field.id}
+                      type="button"
+                      className={`rb-timing-toggle${expected == null ? ' is-unset' : expected === 1 ? ' is-high' : ' is-low'}`}
+                      disabled={!editable}
+                      onClick={() => cycleCheck(field.id)}
+                      data-testid={`ide-scenario-check-${field.id}`}
+                      title={`${field.label} — click to cycle 0 / 1 / unset`}
+                    >
+                      <span>{field.label}</span>
+                      <strong>{expected == null ? '·' : expected}</strong>
+                      <small>{observed == null ? 'not observed' : `obs ${observed}`}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        </details>
+      ) : null}
+    </section>
+  );
+};

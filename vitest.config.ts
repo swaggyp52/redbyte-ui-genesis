@@ -16,6 +16,11 @@ export default defineConfig({
       // Package aliases
       { find: '@redbyte/rb-analog-sim', replacement: path.resolve(__dirname, 'packages/rb-analog-sim/src') },
       { find: '@redbyte/fpga-bridge', replacement: path.resolve(__dirname, 'packages/rb-fpga-bridge/src') },
+      // React-free subpaths and the studio packages; specific entries precede their package prefix.
+      { find: '@redbyte/rb-logic-view/scene', replacement: path.resolve(__dirname, 'packages/rb-logic-view/src/scene/index.ts') },
+      { find: '@redbyte/rb-studio-kernel/react', replacement: path.resolve(__dirname, 'packages/rb-studio-kernel/src/react.ts') },
+      { find: '@redbyte/rb-studio-kernel', replacement: path.resolve(__dirname, 'packages/rb-studio-kernel/src') },
+      { find: '@redbyte/rb-studio', replacement: path.resolve(__dirname, 'packages/rb-studio/src') },
       { find: '@redbyte/rb-apps', replacement: path.resolve(__dirname, 'packages/rb-apps/src') },
       { find: '@redbyte/rb-board-profiles', replacement: path.resolve(__dirname, 'packages/rb-board-profiles/src') },
       { find: '@redbyte/rb-fpga-proof-core', replacement: path.resolve(__dirname, 'packages/rb-fpga-proof-core/src') },

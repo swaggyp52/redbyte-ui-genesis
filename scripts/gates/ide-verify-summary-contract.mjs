@@ -26,30 +26,25 @@ await runIdeGate('IDE verify summary contract satisfied', async ({ page, baseUrl
 
   const statusText = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
   if (isVerifyFail(statusText)) {
-    const failStrip = await text(page.locator('[data-testid="ide-verify-strip-fail-count"]'));
-    const bannerText = await text(page.locator('[data-testid="ide-verify-banner"]'));
-    const failEvidence = `${failStrip} ${bannerText}`.trim();
+    const selectedResult = page.locator('[data-testid="ide-verify-selected-result"]');
+    const failEvidence = `${await text(page.locator('[data-testid="ide-run-identity"]'))} ${await text(selectedResult)}`.trim();
 
     const jumpFirst = page
-      .locator('[data-testid="ide-verify-jump-first-failure"], [data-testid="ide-verify-fail-nav-first"]')
+      .locator('[data-testid="ide-verify-fail-nav-first"]')
       .first();
     const jumpVisible = await jumpFirst.isVisible().catch(() => false);
-    const selectedTickVisible = await page
-      .locator('[data-testid="ide-verify-selected-tick"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
+    const selectedTickVisible = await selectedResult.isVisible() && await selectedResult.getAttribute('data-tick') !== null;
     assert(
       /(fail|differ|mismatch)/i.test(failEvidence) && (jumpVisible || selectedTickVisible),
       `verify fail summary must include mismatch evidence and an inspectable failure, got "${failEvidence}"`
     );
 
     if (jumpVisible) {
-      const beforeTick = await text(page.locator('[data-testid="ide-verify-selected-tick"]'));
+      const beforeTick = await selectedResult.getAttribute('data-tick');
       await jumpFirst.click();
-      const afterTick = await text(page.locator('[data-testid="ide-verify-selected-tick"]'));
-      assert(afterTick.length > 0, 'selected tick must remain populated after jump');
-      assert(beforeTick.length > 0 || afterTick.length > 0, 'selected tick must be visible before or after jump');
+      const afterTick = await selectedResult.getAttribute('data-tick');
+      assert(afterTick !== null && afterTick.length > 0, 'selected tick must remain populated after jump');
+      assert((beforeTick?.length ?? 0) > 0 || afterTick.length > 0, 'selected tick must be visible before or after jump');
     }
   }
 });

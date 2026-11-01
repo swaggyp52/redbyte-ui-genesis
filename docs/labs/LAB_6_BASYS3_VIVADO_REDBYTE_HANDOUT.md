@@ -214,9 +214,9 @@ Before running the formal verify, explore the circuit interactively:
    - With **J=1, K=0, CLK=1**: Is Q_JK=1? (SET state.)
    - With **J=0, K=1, CLK=1**: Does Q_JK go to 0? (RESET state.)
 
-#### Step 4 — Enter Test Vectors in the Verify Surface
+#### Step 4 — Enter Test Vectors in the Simulate Workspace
 
-1. Click the **Verify** surface icon.
+1. Open the **Simulate** workspace from the top navigator.
 2. You will see 6 input columns (D, EN, CLK, T, J, K) and 4 output columns
    (Q_DL, Q_DFF, Q_TFF, Q_JK).
 3. Enter the following 14 rows exactly as shown. **Row order matters** — the
@@ -340,7 +340,7 @@ Once programmed, verify each element using the slide switches on the Basys3:
 
 1. **Pre-lab tables**: completed characteristic tables for DLatch, TFF, JKFF.
 2. **Pre-lab question answers** (P2, questions 1–3).
-3. **Screenshot of Verify surface**: all 14 rows showing PASS.
+3. **Screenshot of the Simulate workspace**: all 14 rows showing PASS.
 4. **Annotated circuit diagram**: sketch of the RedByte canvas showing the four
    elements, their input switches, and their output lamps.
 5. **Observations from hardware** (Phase 2): describe what you observed for each
@@ -358,7 +358,7 @@ Once programmed, verify each element using the slide switches on the Basys3:
 - [ ] Pre-lab characteristic tables completed for all three elements (DLatch, TFF, JKFF)
 - [ ] Pre-lab questions answered
 - [ ] RedByte circuit correctly wired (all 4 elements, 6 switches, 4 lamps)
-- [ ] Verify surface shows PASS on all 14 rows
+- [ ] Simulate workspace shows PASS on all 14 rows
 - [ ] Submission ZIP exported
 - [ ] (Phase 2) VHDL `top.vhd` reviewed and shown to instructor
 - [ ] (Phase 2) Bitstream programmed and all four elements verified on hardware

@@ -42,7 +42,10 @@ describe('professional RedByte UI standards', () => {
 
     expect(theme).toContain('--rb-canvas: #0f141a');
     expect(theme).toContain('--rb-action: #356fa8');
-    expect(theme).toContain('--rb-type-body: 14px');
+    // Body size has one owner: the theme's legacy name resolves to the rem scale in
+    // redbyte-type.css rather than holding a second, absolute-pixel value.
+    expect(theme).toContain('--rb-type-body: var(--rb-text-body)');
+    expect(readFileSync(resolve(themeRoot, 'redbyte-type.css'), 'utf8')).toContain('--rb-text-body: 0.9375rem');
     expect(theme).toContain('--rb-control-h: 36px');
     expect(theme).toContain('--rb-control-h-lg: 40px');
     expect(theme).not.toContain('linear-gradient');

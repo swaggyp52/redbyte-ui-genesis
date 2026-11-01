@@ -574,7 +574,7 @@ describe('project workflow authority', () => {
     );
   });
 
-  it('maps stale verify evidence to an advisory Open Verify handoff', () => {
+  it('maps stale verification evidence to an advisory Open Simulate handoff', () => {
     const authority = deriveAuthority({
       core: {
         lastVerify: {
@@ -606,8 +606,8 @@ describe('project workflow authority', () => {
         condition: 'verify-stale',
         severity: 'advisory',
         statusLabel: 'NEEDS REVIEW',
-        title: 'Verify evidence is stale',
-        primaryCtaLabel: 'Open Verify',
+        title: 'Simulation evidence is stale',
+        primaryCtaLabel: 'Open Simulate',
         primaryCtaIntent: 'verify',
       })
     );

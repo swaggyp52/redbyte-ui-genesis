@@ -84,6 +84,8 @@ export interface ProjectHealthExportResult {
   sourceHashes?: ProjectHealthExportSourceHashes;
   sourceCurrentness?: ProjectHealthExportSourceCurrentness;
   artifacts?: string[];
+  /** Short content digest per artifact path at record time — lets two packages be compared file by file. */
+  artifactHashes?: Record<string, string>;
   ranAtIso?: string;
 }
 

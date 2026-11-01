@@ -3,7 +3,7 @@ import fs from 'fs';
 
 /**
  * unified-build.mjs
- * 
+ *
  * Orchestrates the full build pipeline:
  * 0. Pre-build all packages (so apps can resolve them cleanly)
  * 1. Sets UNIFIED_BUILD_INTERNAL=1 to prevent recursion.
@@ -19,8 +19,9 @@ try {
 
     // 0. Pre-build all packages so apps can resolve them via node_modules
     console.log('0. Pre-building workspace packages...');
+    // Dependencies first: rb-apps resolves rb-logic-core through its dist (the verification
+    // worker), so on a clean checkout rb-apps must build after the packages it imports.
     const packagesToBuild = [
-        'rb-apps',
         'rb-theme',
         'rb-icons',
         'rb-utils',
@@ -28,13 +29,30 @@ try {
         'rb-logic-core',
         'rb-instruments',
         'rb-lab-engine',
+        'rb-apps',
     ];
     for (const pkg of packagesToBuild) {
-        try {
-            execSync(`pnpm --filter @redbyte/${pkg} run build`, { stdio: 'pipe', env });
-        } catch (err) {
-            // Some packages may not have a build script, that's OK
+        const manifest = JSON.parse(fs.readFileSync(`packages/${pkg}/package.json`, 'utf8'));
+        if (!manifest.scripts?.build) {
+            console.log(`  ${pkg}: no build script`);
+            continue;
         }
+        console.log(`  Building ${pkg}...`);
+        execSync(`pnpm --filter @redbyte/${pkg} run build`, { stdio: 'inherit', env });
+    }
+
+    // A candidate is exactly one build (RB-DEBT-018). On Windows Vite never empties its output
+    // (emptyOutDir is off there to survive a locked folder), so files from earlier builds would be
+    // merged and packaged. A candidate build starts from an empty playground output or stops.
+    if (process.env.RB_CANDIDATE_VERSION) {
+        const playgroundDist = 'apps/playground/dist';
+        try {
+            fs.rmSync(playgroundDist, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        } catch (error) {
+            console.error(`A candidate build needs an empty ${playgroundDist}; it could not be removed (${error.code ?? error.message}). Stop any preview serving it and build again.`);
+            throw error;
+        }
+        console.log(`  Candidate ${process.env.RB_CANDIDATE_VERSION}: emptied ${playgroundDist}`);
     }
 
     console.log('1. Building playground OS...');

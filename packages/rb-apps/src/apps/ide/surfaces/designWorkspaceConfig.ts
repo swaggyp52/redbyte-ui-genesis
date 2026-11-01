@@ -34,10 +34,9 @@ export interface DesignWorkspacePreset {
   showSimulationStrip: boolean;
 }
 
-// Keep code slightly favored while giving the circuit enough useful area at
-// the 1366px classroom baseline. This also leaves both panes above their
+// Circuit labels need usable scale beside source. Both panes retain their
 // minimum interaction widths before the layout intentionally stacks.
-export const DEFAULT_DESIGN_SPLIT_RATIO = 0.45;
+export const DEFAULT_DESIGN_SPLIT_RATIO = 0.6;
 
 export const DESIGN_ARTIFACT_DESCRIPTORS: Record<DesignArtifact, DesignArtifactDescriptor> = {
   vhdl: {

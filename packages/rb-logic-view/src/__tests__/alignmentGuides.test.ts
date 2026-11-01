@@ -59,4 +59,11 @@ describe('computeAlignmentGuides', () => {
     expect(guides.verticals).toContain(52);
     expect(guides.horizontals).toContain(51);
   });
+  it('renders one guide per coordinate while preserving every unique alignment', () => {
+    const guides = computeAlignmentGuides('dragged', { x: 50, y: 50 }, [
+      node('dragged', 50, 50), node('a', 51, 52), node('b', 51, 52), node('c', 53, 54),
+    ]);
+    expect(guides.verticals).toEqual([51, 53]);
+    expect(guides.horizontals).toEqual([52, 54]);
+  });
 });

@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, fireEvent } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
+import { workspacePreferencesStore } from '../workspacePreferences';
+
+beforeEach(() => workspacePreferencesStore.reset());
 
 const BASE_PROPS = {
   hasVectors: true,
@@ -40,12 +43,19 @@ function makePassRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'pass-scenario',
+      scenarioName: 'Pass Scenario',
+      status: 'pass',
+      deterministicHash: 'po-test',
+      generatedAtIso: '2026-04-08T00:00:00.000Z',
+      reportHash: 'rep-pass',
       vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 0 }],
       inputsAtTick: { 0: { sw0: 0 } },
       inputsByVectorId: { 'vec-01': { sw0: 0 } },
       signalRoles: { sw0: 'input', ld0: 'output' },
       rows: [{ tick: 0, signal: 'ld0', expected: '0', actual: '0', status: 'pass', vectorId: 'vec-01', caseIndex: 0 }],
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [] }],
   };
 }
@@ -68,8 +78,19 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
-      rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '0', status: 'fail' }],
-    } as RuntimeVerifyRun['report'],
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'fail-scenario',
+      scenarioName: 'Fail Scenario',
+      status: 'fail',
+      deterministicHash: 'po-test',
+      generatedAtIso: '2026-04-08T01:00:00.000Z',
+      reportHash: 'rep-fail',
+      vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
+      inputsAtTick: { 0: { sw0: 0 } },
+      inputsByVectorId: { 'vec-01': { sw0: 0 } },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01', caseIndex: 0 }],
+    },
     waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] }],
   };
 }
@@ -88,27 +109,44 @@ describe('VerifySurface panel ownership', () => {
     );
 
     expect(queryByTestId('ide-verify-analysis-tab-nav')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     expect(getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
   });
 
-  it('keeps the signal legend visible in a stable shell rail', () => {
+  it('recovers the signal legend explicitly when the effective viewport is narrow', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    fireEvent.click(getByTestId('ide-show-left-dock'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
-  it('does not require a toggle to expose the signal legend', () => {
+  it('keeps the signal legend available after a passing recording', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
 
+    fireEvent.click(getByTestId('ide-show-left-dock'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+  });
+
+  it('exposes the selected signal as semantic button state', () => {
+    const { getByTestId } = render(
+      <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
+    );
+    fireEvent.click(getByTestId('ide-show-left-dock'));
+    const inputSignal = getByTestId('ide-verify-signal-sw0');
+
+    expect(inputSignal).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(inputSignal);
+    expect(inputSignal).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('removes the right shell inspector rail from Verify', () => {

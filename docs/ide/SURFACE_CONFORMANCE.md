@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: surface change governance
@@ -10,12 +10,20 @@ role: surface change governance
 
 **Document:** RB-SURF-CONF-001 v1.0
 **Original issue date:** 2026-04-21
-**Last validated:** 2026-07-22
+**Last validated:** 2026-09-30
 **Applies to:** IDE surface work in `packages/rb-apps/src/apps/ide/**`
 
 ---
 
 ## Purpose
+
+The September Studio continuation uses current code, contracts and tests as behavior
+authority. The [current finish ticket](../release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md)
+records local candidate evidence and remaining limits. Canonical snapshots, captured
+mapping activation and shared recording ownership supersede older presentation-only
+interpretations. A download receipt identifies requested bytes; it does not confirm
+the browser's final disk destination. Dated proof and print manuals retain their
+historical evidence boundaries.
 
 This document extends the repo's manual-governance model to product legitimacy work. It defines:
 
@@ -43,7 +51,8 @@ Working memory, architecture notes, and bug context may live in the Obsidian vau
 
 ## Canonical Read Order
 
-Before proposing or implementing any product, UX, workflow, or surface change, read:
+After root AGENTS.md and the newest complete state/cockpit entries, read the applicable
+portions for the affected surface. Use the gap audit and proof documents on demand:
 
 1. `docs/contracts/RedByte_Product_Contract.md`
 2. `docs/manuals/RedByte_Product_Manual.md`
@@ -65,12 +74,12 @@ Do not use the stale / OS-era docs listed in `docs/DOC_INDEX.md` as default cont
 | Surface / shared owner | Primary code | Must review | Proof focus |
 |---|---|---|---|
 | Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Product contract Project surface promise, current manual, gap audit workflow/coherence items, IDE system map, manual QA Phase 1, release checklist startup / first-run clauses | next action obvious, readiness truthful, starter/load path coherent |
-| Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-logic-view/src/components/NodeView.tsx` | Product contract Design promise, current manual, gap audit design-legitimacy items, IDE system map Design chrome, manual QA Phase 2 | authoring clarity, live issue visibility, selection/wiring confidence; direct sparse port targets at least `24x24`, dense clusters at least `32x24`, keyboard operation; `62%` laptop canvas conformance floor with `70%` retained as an unmet strategic target |
-| Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `simulationEvidence.ts`, `verifyScenario.ts`, `verifyScenarioSteps.ts`, `projectRuntime.ts`, `sim/simEngineCore.ts` | Product contract Verify promise, current manual, gap audit verify-trust items, IDE system map Verify chrome, manual QA Phase 3 | scenario-first authoring; simulation complete with zero checks; separate simulation/assertion status; Draft/Simulated/Validated evidence tiers; per-document combinational/sequential authorship; durable policy and pulse semantics; waveform/report/check agreement; read-only trace-backed Design replay; separate `Edit expected` versus `Inspect Design` / `Open Design` repair paths |
-| Map Pins (internal hardware mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/fpga/boards/basys3/basys3ExportContract.ts` | Product contract Map Pins promise, current manual, gap audit hardware-clarity items, IDE system map Map Pins workspace, manual QA Phase 4, release / rehearsal hardware docs | grouped Inputs/Outputs/Clock-Reset rows; logical/artifact/resource/pin domains labeled separately; inline conflict repair names all affected signals; Export and generated package consume the same semantic projection |
-| Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `exportTrustState.ts`, `verifyClockPolicy.ts`, `buildExportViewModel.ts`, `testbenchGenerator.ts` | Product contract Export promise, current manual, gap audit export-trust items, IDE system map export path, manual QA Phase 5 | exact structural/`verificationTrust`/action enums stay distinct; shared materialized execution vectors plus resolved clock/schedule projection control generated `testbench.vhd` and package freshness; exact current receipt required for downloaded state; manifest/package projections agree; technical evidence and Vivado proof remain secondary/external |
+| Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-logic-view/src/components/NodeView.tsx` | Product contract Design promise, current manual, gap audit design-legitimacy items, IDE system map Design chrome, manual QA Phase 2 | authoring clarity, live issue visibility, selection/wiring confidence; idle canvas dominance with the Inspector absent until a circuit object or supported workspace asset is selected; bounded contextual Inspector after selection; direct sparse port targets at least `24x24`, dense clusters at least `32x24`, keyboard operation; `62%` selected-context laptop canvas conformance floor with `70%` retained as an unmet strategic target |
+| Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `simulationEvidence.ts`, `verifyScenario.ts`, `verifyScenarioSteps.ts`, `projectRuntime.ts`, `sim/simEngineCore.ts` | Product contract Verify promise, current manual, gap audit verify-trust items, IDE system map Verify chrome, manual QA Phase 3 | scenario-first authoring; integrated signal shelf inside the Simulate workbench with no separate left Signals dock; simulation complete with zero checks; separate simulation/assertion status; Draft/Simulated/Validated evidence tiers; per-document combinational/sequential authorship; durable policy and pulse semantics; waveform/report/check agreement; read-only trace-backed Design replay; separate `Edit expected` versus `Inspect Design` / `Open Design` repair paths |
+| Board (internal hardware mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/fpga/boards/basys3/basys3ExportContract.ts` | Product contract mapping promise, current manual, gap audit hardware-clarity items, IDE system map Board workspace, manual QA Phase 4, release / rehearsal hardware docs | grouped Inputs/Outputs/Clock-Reset rows; logical/artifact/resource/pin domains labeled separately; compatible interactive-board clicks and the selector call the same mapping authority; inline conflict repair names all affected signals; Package and generated XDC consume the same semantic projection |
+| Package (internal export mode) | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `exportTrustState.ts`, `verifyClockPolicy.ts`, `buildExportViewModel.ts`, `testbenchGenerator.ts` | Product contract handoff promise, current manual, gap audit export-trust items, IDE system map Package path, manual QA Phase 5 | exact structural/`verificationTrust`/action enums stay distinct; grouped source navigation and preview remain reachable; Browser-E0 structural validation explicitly excludes Vivado proof; shared execution vectors and resolved clock/schedule control generated `testbench.vhd`; exact current receipt required for downloaded state; manifest/package projections agree |
 | Import utility | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`, `zipImport.ts`, `importPortIdentity.ts` | Product contract Import promise, current manual, gap audit fidelity items, IDE system map import path, manual QA Phase 6 | manifest-first ZIP authority; strict scalar/vector-bit identity; embedded-XDC-only pin restore; loose sibling XDC non-authoritative; explicit Apply confirmation and cancel-without-replacement |
-| Shell / workflow spine | `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/workflowStages.ts`, `packages/rb-apps/src/apps/ide/components/IdeStageNav.tsx`, `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx`, `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx` | Unified Workbench v3 contract, Product Contract Global Shell Contract, current manual workflow language, gap audit coherence items, IDE system map, release checklist startup / determinism clauses | surfaces agree on done / attention / blocked / next / why; five horizontal stages; Import remains a utility; no permanent workflow side rail, passive orientation overlay, core workflow disclosure, contradictory CTA, duplicate status authority, required-work clipping, or unreachable actions; one `main`, named canvas, and deliberate result announcement/focus |
+| Shell / workflow spine | `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/workflowStages.ts`, `packages/rb-apps/src/apps/ide/components/IdeStageNav.tsx`, `packages/rb-apps/src/apps/ide/components/IdeTopBar.tsx`, `packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx` | Unified Workbench v3 contract, Product Contract Global Shell Contract, current manual workflow language, gap audit coherence items, IDE system map, release checklist startup / determinism clauses | one integrated product/stage bar; surfaces agree on done / attention / blocked / next / why; Import remains a utility in overflow; no duplicate stage rail, permanent workflow side rail, passive orientation overlay, contradictory CTA, required-work clipping, or unreachable actions; one `main`, named work object, and deliberate result announcement/focus |
 
 ---
 
@@ -86,9 +95,9 @@ When a change touches one of these file patterns, the corresponding review and p
 | `**/HardwareSurface.tsx` | contract + manual + gap audit + system map + manual QA Phase 4 + relevant rehearsal doc | targeted tests plus a mapping replay or screenshot proving synchronized feedback |
 | `**/ExportSurface.tsx` | contract + manual + gap audit + system map + manual QA Phase 5 | targeted tests plus artifact or screenshot proof of handoff/readiness behavior |
 | `**/ImportSurface.tsx` | contract + manual + gap audit + system map + manual QA Phase 6 | targeted tests plus import replay or screenshot proving fidelity messaging |
-| `**/IdeApp.tsx`, `**/workflowStages.ts`, `**/IdeStageNav.tsx`, `**/IdeTopBar.tsx`, `**/IdeWorkbenchShell.tsx` | Unified Workbench v3/global shell contract + affected surface rows + release checklist | cross-surface proof that horizontal stages, active surface, primary action, status language, Import utility boundary, stable work regions, internal/root clipping, nominal-center pointer hitability, keyboard reachability, one `main`, named canvas, and result announcement/focus stay coherent |
+| `**/IdeApp.tsx`, `**/workflowStages.ts`, `**/IdeStageNav.tsx`, `**/IdeTopBar.tsx`, `**/IdeWorkbenchShell.tsx` | Current Studio/global shell contract + affected surface rows + release checklist | cross-surface proof that workspace rail, active surface, primary action, status language, Import utility boundary, stable work regions, internal/root clipping, nominal-center pointer hitability, keyboard reachability, one `main`, named canvas, and result announcement/focus stay coherent |
 | `**/verifyScenario*.ts`, `**/projectRuntime.ts`, `**/simEngineCore.ts` sequential-scenario paths | Verify manual/spec + system map + manual QA Phase 3 | focused scenario/runtime tests plus standalone `ide:gate:sequential-testbench-authority`; prove save/reload, duplicate/rename, Design repair, Import recovery, flat-clock hold, rising-edge-only capture, and report/waveform/check agreement |
-| `**/basys3ExportContract.ts`, `**/buildExportViewModel.ts`, `**/testbenchGenerator.ts`, `**/basys3ExportService.ts` | Map Pins/Export/Import manual/specs + system map | mapping and testbench-projection tests plus standalone `ide:gate:mapping-preview-package-agreement`; preview, package, embedded manifest, and re-import must agree |
+| `**/basys3ExportContract.ts`, `**/buildExportViewModel.ts`, `**/testbenchGenerator.ts`, `**/basys3ExportService.ts` | Board / Package / Import manual/specs + system map | mapping and testbench-projection tests plus standalone `ide:gate:mapping-preview-package-agreement`; preview, package, embedded manifest, and re-import must agree |
 | `**/exportTrustState.ts`, Export download receipt paths | Export manual/spec + traceability + readiness docs | trust-axis unit tests and current-receipt tests; a draft download must remain draft and stale package bytes must revoke action authority |
 | `**/importPortIdentity.ts`, manifest ZIP projection paths | Import manual/spec + traceability + manual QA Phase 6 | strict identity unit tests plus vector-manifest Review/Apply and `ide:gate:zip-import-recovery-contract` |
 
@@ -159,11 +168,11 @@ These rules apply across all surfaces:
 1. The next correct action must be obvious.
 2. No surface may imply readiness that does not exist.
 3. Status, CTA language, and stage ownership must agree across surfaces.
-4. The five student stages - Project, Design, Verify, Map Pins, and Export - must state the next student action in the owning workspace. Import must remain a separate utility, and neither the stages nor the utility may inject a competing global guidance panel or claim unproven readiness.
+4. The five student stages - Project, Design, Simulate, Board, and Package - must state the next student action in the owning workspace. Import / Recover must remain a separate utility, and neither the stages nor the utility may inject a competing global guidance panel or claim unproven readiness. Internal `verify`, `hardware`, and `export` route IDs remain compatible implementation names only.
 5. Visual cleanup without proof does not count as hardening.
 6. Historical shell / OS narratives are not current product truth.
 7. Behavioral evidence vocabulary is canonical across surfaces: Draft, Simulated, and Validated. `Simulated` means a current completed run even when assertions are absent or failing; `Validated` requires current passing assertions. Downstream vocabulary remains pins mapped, draft export, trusted export, Vivado built, board programmed, and board observed.
-8. Simulation and replay may explain behavior, but only current passing assertions can complete the Verify proof stage for a trusted Export handoff; Map Pins owns only assignment coherence and does not reclassify Verify evidence.
+8. Simulation and replay may explain behavior, but only current passing assertions can complete Simulate proof for a trusted Package handoff; Board owns only assignment coherence and does not reclassify simulation evidence.
 9. Required work and actions may have neither root overflow nor masked internal clipping.
 10. Required action centers must be pointer-hittable and the same actions must remain keyboard reachable.
 11. The active product exposes exactly one `main` landmark and the primary circuit canvas has an accessible name.
@@ -174,7 +183,7 @@ These rules apply across all surfaces:
 16. Manifest-first Import may restore projected vector-bit pins from the manifest's embedded XDC only. Loose sibling HDL/XDC cannot override the manifest.
 17. RC release claims require exact-SHA proof after docs and reconstruction, including separate invocations of `ide:gate:sequential-testbench-authority` and `ide:gate:mapping-preview-package-agreement`, the uninterrupted 72-step classroom aggregate, and required human/reviewer dispositions. The aggregate does not replace either standalone gate.
 
-Fresh frozen unified-gate metrics generated at `2026-07-15T16:47:52.947Z` record available three-region Design workbench canvas share (`canvas / (canvas + library + inspector)`) of `64.81%` at `1366x768`, `66.67%` at `1440x900`, and `75.16%` at `1920x1080`. The `62%` laptop floor conforms; the strategic `70%` laptop target remains unmet debt.
+Fresh frozen unified-gate metrics generated at `2026-07-15T16:47:52.947Z` record the selected-context three-region Design workbench canvas share (`canvas / (canvas + library + inspector)`) of `64.81%` at `1366x768`, `66.67%` at `1440x900`, and `75.16%` at `1920x1080`. Those measurements are selected-object evidence, not an idle-state requirement: idle Design omits the Inspector and returns that width to the canvas. The `62%` selected-context laptop floor conforms; the strategic `70%` selected-context laptop target remains unmet future debt.
 
 ---
 

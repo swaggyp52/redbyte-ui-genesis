@@ -29,6 +29,7 @@ export {
 } from './analysis/componentSupportRegistry';
 export { injectSimClock } from './analysis/injectSimClock';
 export * from './ir';
+export * from './observation';
 
 // Determinism / Event logging (for replay, recording, verification)
 export type { EventLogV1, SimulationEventV1 } from './determinism/eventLog';
@@ -44,6 +45,9 @@ export { getFaninCone } from './pathTrace';
 
 // Types
 export type {
+  BusBitRef,
+  BusDeclaration,
+  BusDirection,
   Circuit,
   CircuitSchemaV1,
   CircuitSchemaV1Node,
@@ -62,6 +66,45 @@ export type {
   TickEngineConfig,
 } from './types';
 
+// First-class bus authority
+export {
+  BUS_INPUT_MEMBER_TYPES,
+  BUS_MEMBER_PORT,
+  BUS_OUTPUT_MEMBER_TYPES,
+  BusRangeError,
+  BusValidationError,
+  BusWidthMismatchError,
+  busBitPortRef,
+  busBitRef,
+  busForNode,
+  busIndices,
+  busIsDescending,
+  busMemberNodeIds,
+  busRangeLabel,
+  busSlice,
+  busWidth,
+  busWordToBits,
+  connectBuses,
+  createBusBoundary,
+  BUS_MEMBER_SPACING,
+  deleteBus,
+  formatBusWordHex,
+  normalizeBusDeclarations,
+  parseVectorLabel,
+  pruneBusBits,
+  readBusWord,
+  renameBus,
+  synthesizeBusDeclarations,
+  validateBusDeclarations,
+} from './bus';
+export type {
+  BusDiagnostic,
+  BusDiagnosticCode,
+  BusWord,
+  CreateBusResult,
+  CreateBusSpec,
+} from './bus';
+
 // Core classes
 export { NodeRegistry } from './NodeRegistry';
 export { CircuitEngine } from './CircuitEngine';
@@ -72,7 +115,8 @@ export { ProbeRecorder } from './ProbeRecorder';
 export type { ProbeSample } from './ProbeRecorder';
 
 // Serialization
-export { serialize, deserialize } from './serialization';
+export { serialize, deserialize, normalizeConnection } from './serialization';
+export type { ConnectionInput } from './serialization';
 
 // Circuit format conversion
 export { toCircuitV1, fromCircuitV1 } from './convertCircuitV1';
@@ -117,7 +161,12 @@ export {
   StateBankBehavior,
   TFlipFlopBehavior,
   JKFlipFlopBehavior,
+  COMPOSITE_UNCONNECTED_INPUT_LEVEL,
+  describeInputPin,
+  inputPinsOf,
+  outputPortsOf,
 } from './builtins';
+export type { InputPinDescription, InputPinReading, InputPinRole, OutputPortReading, OutputPortRole } from './builtins';
 
 // Composite nodes
 export type { CompositeNodeDef } from './CompositeNode';
@@ -129,6 +178,7 @@ export {
   JKFlipFlopDef,
   FullAdderDef,
   Counter4BitDef,
+  BUILTIN_COMPOSITE_DEFS,
 } from './composite-defs';
 
 // Auto-register built-in node types
@@ -163,12 +213,7 @@ import {
   OUTPUTBehavior,
 } from './builtins';
 import { registerCompositeNode } from './CompositeNode';
-import {
-  RSLatchDef,
-  DLatchDef,
-  FullAdderDef,
-  Counter4BitDef,
-} from './composite-defs';
+import { BUILTIN_COMPOSITE_DEFS } from './composite-defs';
 NodeRegistry.register('PowerSource', PowerSourceBehavior);
 NodeRegistry.register('Ground', GroundBehavior);
 NodeRegistry.register('Switch', SwitchBehavior);
@@ -197,11 +242,9 @@ NodeRegistry.register('JKFlipFlop', JKFlipFlopBehavior);
 NodeRegistry.register('INPUT', INPUTBehavior);
 NodeRegistry.register('OUTPUT', OUTPUTBehavior);
 
-// Register composite nodes
-registerCompositeNode(RSLatchDef);
-registerCompositeNode(DLatchDef);
-registerCompositeNode(FullAdderDef);
-registerCompositeNode(Counter4BitDef);
+// Register composite nodes (RSLatch, DLatch, FullAdder, Counter4Bit); describeInputPin reads
+// the same list.
+for (const definition of BUILTIN_COMPOSITE_DEFS) registerCompositeNode(definition);
 
 // Share utilities
 export * from './share/encoding';

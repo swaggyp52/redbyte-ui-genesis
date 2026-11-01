@@ -195,7 +195,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       <div
         className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--first-run"
         data-testid="ide-verify-empty-state"
-        ref={detailsRef}
+        ref={(element) => {
+          if (detailsRef) detailsRef.current = element;
+        }}
       >
         {renderStimulusHeader(false)}
 

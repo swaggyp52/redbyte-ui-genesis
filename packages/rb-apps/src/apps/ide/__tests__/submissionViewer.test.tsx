@@ -17,6 +17,7 @@ import type { IdeSubmissionGradeSummary } from '../../../export/ideSubmissionBun
 import type { RBProject } from '../../../export/projectFormat';
 import { buildVerifyReport } from '../verifyReport';
 import type { RuntimeVerifyRun } from '../projectRuntime';
+import { useProjectRuntime } from '../projectRuntime';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -263,5 +264,35 @@ describe('SubmissionViewerSurface — isolation (does not mutate live runtime)',
         />
       )
     ).not.toThrow();
+  });
+});
+
+
+describe('retained submission viewer source and runtime boundary', () => {
+  it('keeps parsed source and live runtime unchanged until the host explicitly loads', () => {
+    const submission = makeSubmission();
+    const sourceBefore = JSON.stringify(submission);
+    const runtimeBefore = useProjectRuntime.getState();
+    const onLoadIntoIde = vi.fn();
+    const onClose = vi.fn();
+    const { getByTestId, unmount } = render(
+      <SubmissionViewerSurface
+        submission={submission}
+        onLoadIntoIde={onLoadIntoIde}
+        onClose={onClose}
+      />,
+    );
+    try {
+      expect(onLoadIntoIde).not.toHaveBeenCalled();
+      expect(JSON.stringify(submission)).toBe(sourceBefore);
+      expect(useProjectRuntime.getState()).toBe(runtimeBefore);
+      fireEvent.click(getByTestId('ide-submission-close'));
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(onLoadIntoIde).not.toHaveBeenCalled();
+      expect(JSON.stringify(submission)).toBe(sourceBefore);
+      expect(useProjectRuntime.getState()).toBe(runtimeBefore);
+    } finally {
+      unmount();
+    }
   });
 });

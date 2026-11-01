@@ -7,6 +7,10 @@ function buildRegisterProject(
   config: Record<string, unknown>
 ): RBProject {
   return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     name: 'register-boundary',
     circuit: {
       nodes: [
@@ -59,7 +63,7 @@ describe('Export register-family support boundary', () => {
     expect(result.errors.some((error) => error.message.includes('asynchronous preset is not supported'))).toBe(true);
   });
 
-  it('carries supported Register1 configuration into VHDL without hiding the current bundle blocker', () => {
+  it('exports supported Register1 configuration through the canonical VHDL contract', () => {
     const result = exportProjectAsBasys3(buildRegisterProject('Register1', {
       width: 1,
       resetKind: 'async_clear',
@@ -69,8 +73,9 @@ describe('Export register-family support boundary', () => {
       clockPolarity: 'rising_edge',
     }));
 
-    expect(result.success).toBe(false);
-    expect(result.errors.some((error) => error.message.includes('Bundle validation failed'))).toBe(true);
+    expect(result.success).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toContain('Unsupported node: reg (Register1)');
     expect(result.warnings.some((warning) => warning.includes('Register1') && warning.includes('not supported'))).toBe(true);
     expect(result.bundle?.topVhd).toContain("signal reg1_0 : STD_LOGIC := '0';");
     expect(result.bundle?.topVhd).toContain("signal reg1_0_inv : STD_LOGIC := '1';");

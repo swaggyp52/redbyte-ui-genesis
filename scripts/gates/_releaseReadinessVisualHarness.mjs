@@ -5,6 +5,7 @@ import {
   captureBrowserProblems,
   installCleanStudentContext,
   openMode,
+  selectFirstVisibleDesignNode,
 } from './_workbenchReconstructionHarness.mjs';
 
 export const RELEASE_READINESS_VIEWPORTS = [
@@ -32,7 +33,7 @@ export async function openDesignLibrary(page, baseUrl, gateLabel) {
   await openMode(page, baseUrl, 'design', gateLabel);
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
 
-  const leftToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  const leftToggle = page.getByTestId('ide-show-left-dock');
   if (await leftToggle.isVisible().catch(() => false)) {
     await leftToggle.click();
     await page.waitForTimeout(180);
@@ -46,11 +47,8 @@ export async function openDesignInspector(page, baseUrl, gateLabel) {
   await openMode(page, baseUrl, 'design', gateLabel);
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
 
-  const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-  if (await rightToggle.isVisible().catch(() => false)) {
-    await rightToggle.click();
-    await page.waitForTimeout(180);
-  }
+  await selectFirstVisibleDesignNode(page);
+  await page.waitForTimeout(180);
   await page.waitForSelector('[data-testid="ide-right-dock"]', { timeout: 5000 });
 }
 
@@ -58,7 +56,9 @@ export async function openHardwareMapPins(page, baseUrl, gateLabel) {
   await openLogicGatesProject(page, baseUrl, gateLabel);
   await assertBuildHash(page, gateLabel);
   await openMode(page, baseUrl, 'hardware', gateLabel);
-  await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
+  const assignments = page.getByTestId('ide-hw-mode-btn-map');
+  if (await assignments.isVisible()) await assignments.click();
+  await page.getByTestId('ide-hw-map-table').waitFor({ state: 'visible', timeout: 15000 });
 }
 
 export async function getRect(page, selector) {

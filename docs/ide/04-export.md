@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -8,8 +8,47 @@ role: Export surface spec
 
 # Export Mode Spec
 
-Status: Unified Workbench v3 RC trust source; final exact-SHA certification pending
+Status: local P2.6C candidate; exact source digest and current evidence are in the finish ticket
 Mode ID: `export`
+
+## Current local constraints and artifact contract (2026-09-30)
+
+A named captured set stores validated structured assignments. Activating it restores
+those assignments into the canonical mapping, including on file load; subsequent mapping
+edits return to live authority. Imported raw XDC remains a preserved reference and cannot
+activate without a mapping snapshot. Arbitrary Tcl is never executed or trusted as mapping.
+Table, selected-pin editor, board highlight, validation, top.xdc preview, downloaded ZIP,
+embedded project manifest, and receipt must agree. The manifest carries exact emitted
+HDL/XDC bytes; original authoring sources remain separate. Draft/checked/stale labels
+are retained. Generated-file metadata and frame context wrap at enlarged text and actual
+browser zoom without reducing the shared typography. Windows packaging uses the same unified
+dist and bundled pinned Node, with source digest and per-file/ZIP checksums; see local-candidate-quickstart.md.
+
+
+## Current P2.6B operational Package (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+Review refinement: authored vector ids survive scenario cloning and runtime rehydration. An unchanged reload retains byte-identical exported project inputs and the exact current download receipt. The displayed SHA-256 still names the actual ZIP bytes; a retained receipt does not claim the file still exists on disk.
+
+This supersedes the dossier-first section below. Package opens on identity, one Generate and
+download action, plain trust/currentness, generated files and the Vivado next step. Open report
+is explicit secondary navigation with Back to package. A successful browser request displays
+the ZIP SHA-256 beside it; the browser journey saves the real download and hashes its bytes.
+Draft, checked and stale remain distinct; browser generation does not prove Vivado or hardware.
+EXPECTED_IO without trusted run rows preserves authored project expectations. A separate
+simulation must not silently replace a deliberately failing expected value.
+
+## The Package landing is the dossier (2026-09-07)
+
+The `package` workspace root draws the handoff dossier (`ide-package-handoff-document`): the
+project and its board, the export source hash and the package SHA, the mapping count, the
+simulation verdict with its counts, the constraint line count, the file count and byte size, and
+the architecture figure. `package-artifact` draws the file browser, reached from the landing with
+**Package files**; from the browser the same action reads **Handoff overview**.
+
+A file tree is what a reader opens when they want a file. It is not what tells them whether the
+thing is ready to hand in.
 
 ## Purpose
 
@@ -45,7 +84,7 @@ Act as the compiler-like Export handoff station for Basys3 Vivado artifacts whil
 ## Empty State
 
 Headline: `No handoff package yet`
-Primary CTA: the blocker owner's direct action, such as `Open Design`, `Open Verify`, or `Open Map Pins`
+Primary CTA: the blocker owner's direct action, such as `Open Design`, `Open Simulate`, or `Open Board`
 Secondary disclosure: `Readiness details`
 
 ## Error State
@@ -86,7 +125,7 @@ A receipt is current only when all of the following agree: download kind, packag
 
 ## Mapping and manifest agreement
 
-The same semantic mapping projection that Map Pins renders is consumed by the generated `top.xdc`, README, EXPECTED_IO, Export rows, and the embedded `project.rbproj.json`. The manifest projection refreshes generated `top.vhd` and `top.xdc` to the exact packaged content before encoding. Sibling files are transport copies; the manifest is the round-trip authority.
+The same semantic mapping projection that Board renders is consumed by the generated `top.xdc`, README, EXPECTED_IO, Export rows, and the embedded `project.rbproj.json`. The manifest projection refreshes generated `top.vhd` and `top.xdc` to the exact packaged content before encoding. Sibling files are transport copies; the manifest is the round-trip authority.
 
 Keep identity domains explicit:
 
@@ -112,9 +151,9 @@ For pilot labs, Export must state that the RedByte/Vivado ZIP proves browser-E0 
 
 `ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, opening generated-file inspection must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
 
-`ide:gate:testbench-editor-and-export-confidence-flow` guards the Verify-to-Export confidence path: stale Verify/testbench evidence must show Draft/not-trusted export confidence, current Compare PASS plus current mapping must show current browser-E0 confidence, and Vivado build / board observation must remain external rather than being claimed by the browser.
+`ide:gate:testbench-editor-and-export-confidence-flow` guards the Simulate-to-Export confidence path: stale Simulate/testbench evidence must show Draft/not-trusted export confidence, current Compare PASS plus current mapping must show current browser-E0 confidence, and Vivado build / board observation must remain external rather than being claimed by the browser.
 
-`ide:gate:mapping-preview-package-agreement` is the exact required standalone mapping/package authority gate. It compares Map Pins projection, exact XDC preview, generated package content, canonical manifest HDL/XDC, and manifest-first Import. Run it separately from the uninterrupted 72-step `classroom:gate`; the aggregate does not substitute for this gate.
+`ide:gate:mapping-preview-package-agreement` is the exact required standalone mapping/package authority gate. It compares the Board projection, exact XDC preview, generated package content, canonical manifest HDL/XDC, and manifest-first Import. Run it separately from the uninterrupted 72-step `classroom:gate`; the aggregate does not substitute for this gate.
 
 `ide:gate:export-submission-answer-contract` is the required first-viewport submission gate at `1366x768`, `1440x900`, and `1920x1080`.
 

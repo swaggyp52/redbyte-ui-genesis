@@ -20,25 +20,28 @@ const SCREENSHOT_ROOT = process.env.RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR)
   : '';
 
-await runIdeGate('IDE Verify saved checks default to Compare satisfied', async ({ page, baseUrl }) => {
+await runIdeGate('IDE Verify saved checks remain active in unified simulation satisfied', async ({ page: seedPage, baseUrl }) => {
   const consoleFindings = [];
-  page.on('console', (message) => {
-    const text = message.text();
-    if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
-      consoleFindings.push({ type: message.type(), text, location: message.location() });
-    }
-  });
-  page.on('pageerror', (error) => {
-    consoleFindings.push({ type: 'pageerror', text: error.message });
-  });
-
-  await page.addInitScript(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('rb-onboarding-v1-seen', '1');
-  });
-
   for (const viewport of VIEWPORTS) {
+    // Each first-run viewport starts with its own durable-storage profile.
+    const context = await seedPage.context().browser().newContext({ viewport });
+    const page = await context.newPage();
+    page.on('console', (message) => {
+      const text = message.text();
+      if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
+        consoleFindings.push({ type: message.type(), text, location: message.location() });
+      }
+    });
+    page.on('pageerror', (error) => {
+      consoleFindings.push({ type: 'pageerror', text: error.message });
+    });
+
+    await page.addInitScript(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('rb-onboarding-v1-seen', '1');
+    });
+
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openLogicGatesVerify(page, baseUrl, viewport.label);
     await ensureVerifyVectorsReady(page);
@@ -46,20 +49,20 @@ await runIdeGate('IDE Verify saved checks default to Compare satisfied', async (
 
     const before = await readRunModeState(page);
     assert(
-      before.compareAvailable,
-      `${viewport.label}: starter saved checks must make Compare checks available (${JSON.stringify(before)})`
+      before.checkCount > 0,
+      `${viewport.label}: starter saved checks must remain visible in the Checks workspace (${JSON.stringify(before)})`
     );
     assert(
-      before.comparePressed,
-      `${viewport.label}: saved starter checks must arm Compare checks by default, got ${JSON.stringify(before)}`
+      before.scenarioSelected,
+      `${viewport.label}: first-run authoring must remain in Scenario, got ${JSON.stringify(before)}`
     );
     assert(
-      /compare/i.test(before.runLabel),
-      `${viewport.label}: primary Run label must name Compare checks when saved checks are armed, got "${before.runLabel}"`
+      /^Run|Rerun/i.test(before.runLabel),
+      `${viewport.label}: the single Run action must remain simulation-oriented, got "${before.runLabel}"`
     );
     assert(
-      /compare.*run|check.*expected.*run/i.test(before.modeExplainer),
-      `${viewport.label}: mode explainer must describe comparison before the first run, got "${before.modeExplainer}"`
+      /[1-9]\d*\s+saved checks.*evaluated/i.test(before.modeExplainer),
+      `${viewport.label}: run explainer must disclose automatic saved-check evaluation, got "${before.modeExplainer}"`
     );
 
     await clickVerifyRun(page);
@@ -69,28 +72,39 @@ await runIdeGate('IDE Verify saved checks default to Compare satisfied', async (
     await capture(page, viewport, '02-after-compare-pass');
 
     const after = await readRunModeState(page);
+    assert(JSON.stringify(after.expectedValues) === JSON.stringify(before.expectedValues),
+      `${viewport.label}: Run must preserve every authored expected value`);
     assert(
-      after.comparePressed,
-      `${viewport.label}: Compare checks must remain armed after a Compare PASS, got ${JSON.stringify(after)}`
+      after.checkStatus === 'pass' && after.checkCount === before.checkCount,
+      `${viewport.label}: saved checks must remain intact after PASS, got ${JSON.stringify(after)}`
     );
     assert(
-      /compare/i.test(after.runLabel),
-      `${viewport.label}: update Run label must remain Compare-oriented after PASS, got "${after.runLabel}"`
-    );
-
-    await page.locator('[data-testid="ide-vcb-observe-only"]').first().click();
-    const observe = await readRunModeState(page);
-    assert(
-      observe.observePressed && !observe.comparePressed,
-      `${viewport.label}: students must still be able to intentionally switch back to Observe only, got ${JSON.stringify(observe)}`
+      /^Run|Rerun/i.test(after.runLabel),
+      `${viewport.label}: Run must remain a single simulation action after PASS, got "${after.runLabel}"`
     );
 
-    await page.locator('[data-testid="ide-vcb-use-saved-checks"]').first().click();
+    await page.locator('[data-testid="ide-verify-view-table"]').first().click();
+    const checks = await readRunModeState(page);
+    assert(
+      checks.checksSelected,
+      `${viewport.label}: students must be able to open saved checks, got ${JSON.stringify(checks)}`
+    );
+    assert(
+      await page.locator('[data-testid^="ide-case-lab-exp-"]').first().isVisible().catch(() => false),
+      `${viewport.label}: Checks workspace must expose expected-output cells`
+    );
+
+    await page.getByTestId('ide-verify-view-waveform').click();
+    await page.getByTestId('ide-verify-workspace-waveform').waitFor();
+    await page.getByTestId('ide-verify-view-table').click();
     const restored = await readRunModeState(page);
     assert(
-      restored.comparePressed,
-      `${viewport.label}: students must be able to re-arm Compare checks after observing, got ${JSON.stringify(restored)}`
+      restored.scenarioSelected && restored.checkCount === before.checkCount,
+      `${viewport.label}: returning to Scenario must preserve saved checks, got ${JSON.stringify(restored)}`
     );
+    assert(JSON.stringify(restored.expectedValues) === JSON.stringify(before.expectedValues),
+      `${viewport.label}: changing representation must preserve every saved check`);
+    await context.close();
   }
 
   assert(
@@ -112,16 +126,29 @@ async function openLogicGatesVerify(page, baseUrl, viewportLabel) {
 
 async function readRunModeState(page) {
   return page.evaluate(() => {
-    const observe = document.querySelector('[data-testid="ide-vcb-observe-only"]');
-    const compare = document.querySelector('[data-testid="ide-vcb-use-saved-checks"]');
+    const table = document.querySelector('[data-testid="ide-case-lab"]');
     const run = document.querySelector('[data-testid="ide-vcb-run"]');
     const explainer = document.querySelector('[data-testid="ide-vcb-mode-explainer"]');
+    const expected = [...document.querySelectorAll('[data-testid^="ide-case-lab-exp-"]')];
+    // Before the first recording the experiment row states the authored count ("12 optional
+    // checks"). Once a recording exists its header owns the count ("12 checks passed",
+    // "3 of 12 checks failed") and the pre-run fact is retired (docs/ide/03-verify.md, the
+    // manual's Experiment / Recording header). A recording that did not evaluate the saved
+    // checks has no count and reads as 0.
+    const result = document.querySelector('[data-testid="ide-run-check-result"]');
+    const countText = result
+      ? result.textContent?.match(/(\d+)\s+checks?\s+(?:passed|failed)/i)?.[1] ?? ''
+      : document.querySelector('[data-testid="ide-vcb-check-count"]')?.textContent ?? '';
+    const checkCount = Number(countText.match(/\d+/)?.[0] ?? 0);
     return {
-      observePressed: observe?.getAttribute('aria-pressed') === 'true',
-      comparePressed: compare?.getAttribute('aria-pressed') === 'true',
-      compareAvailable: Boolean(compare) && !(compare instanceof HTMLButtonElement && compare.disabled),
-      runLabel: (run?.textContent ?? '').replace(/\s+/g, ' ').trim(),
-      modeExplainer: (explainer?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      scenarioSelected: Boolean(table && table.getBoundingClientRect().height > 0),
+      checksSelected: expected.some(cell => cell.getBoundingClientRect().height > 0),
+      checksAvailable: expected.length > 0,
+      expectedValues: expected.map(cell => ({ id: cell.getAttribute('data-testid'), value: cell.textContent?.trim() })),
+      checkCount,
+      checkStatus: result?.getAttribute('data-check-status') ?? 'no-recording',
+      runLabel: run?.textContent?.trim() ?? '',
+      modeExplainer: explainer?.textContent?.trim() ?? '',
     };
   });
 }

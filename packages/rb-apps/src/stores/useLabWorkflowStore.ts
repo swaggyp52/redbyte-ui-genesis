@@ -4,7 +4,23 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { VectorResult } from '../components/SelfCheckVectorsTable';
+import type { IOSnapshot } from '../services/hardwareClient';
+
+/** Retained lab verification data; independent of the retired table renderer. */
+export interface VectorResult {
+    id: string;
+    name: string;
+    pass: boolean;
+    error?: string;
+    observed?: unknown;
+    expected?: unknown;
+}
+
+/** A captured numeric/string I/O snapshot with optional transport metadata. */
+export interface LabHardwareSnapshot extends IOSnapshot {
+    source?: string;
+    port?: string;
+}
 
 export type LabStep =
     | 'selection'
@@ -23,7 +39,7 @@ export interface LabWorkflowState {
     selectedLabId: string | null;
     studentIdentity: { name: string; id: string } | null;
     verificationResults: VectorResult[];
-    hardwareSnapshots: any[];
+    hardwareSnapshots: LabHardwareSnapshot[];
 
     // Actions
     setStep: (step: LabStep) => void;
@@ -31,7 +47,7 @@ export interface LabWorkflowState {
     selectLab: (labId: string) => void;
     setIdentity: (name: string, id: string) => void;
     setVerificationResults: (results: VectorResult[]) => void;
-    addHardwareSnapshot: (snapshot: any) => void;
+    addHardwareSnapshot: (snapshot: LabHardwareSnapshot) => void;
     getMaxUnlockedStepIndex: () => number;
     reset: () => void;
 }

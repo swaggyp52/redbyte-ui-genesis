@@ -1,4 +1,5 @@
-import { encodeRBProject, type RBProject } from '../../../export/projectFormat';
+import { deriveSourceModel, encodeRBProject, type RBProject } from '../../../export/projectFormat';
+import type { HdlSource } from '../../../fpga/toolchainBackend';
 import { compareCodepoint } from '../../../export/codepointSort';
 import {
   exportProjectAsBasys3,
@@ -10,8 +11,11 @@ import type {
   Basys3SemanticMappingProjection,
 } from '../../../fpga/boards/basys3/basys3ExportContract';
 import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
+import { findVhdlXdcPortMismatches } from '../../../fpga/boards/basys3/basys3Bundle';
 import {
+  detectTestbenchEntityName,
   generateTestbenchVhdl,
+  testbenchEntityNameFor,
   type TestbenchClockDriveView,
 } from '../../../fpga/boards/basys3/testbenchGenerator';
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
@@ -56,6 +60,8 @@ import {
   buildVerifyMappingEvidenceHash,
 } from '../verifyProjectHash';
 import { stableSerialize } from '../../../utils/stableSerialize';
+import { elaborateProjectHierarchy } from '../projectHierarchy';
+import { generateHierarchicalVhdlProject } from '../hierarchicalVhdl';
 
 function getEffectiveIoMapping(project: RBProject): IoMapping | undefined {
   return resolveIoMappingFromProjectFields({
@@ -161,7 +167,7 @@ export interface ExportTopAuthority {
   /** The synthesizable top-entity name used for top.vhd, top.xdc, .xpr, and vivado_import.tcl.
    *  This is the canonical design authority and must never be redefined by simulation artifacts. */
   designTop: string;
-  /** The testbench entity name used for testbench.vhd (typically <designTop>_tb).
+  /** The testbench entity name declared by testbench.vhd (tb_<designTop>), read back from its text.
    *  Simulation-only. Must not appear in the design source set. */
   simulationTop: string;
 }
@@ -195,10 +201,16 @@ interface RequiredPortDescriptor {
 export function buildExportViewModel(
   project: RBProject,
   runtimeVerifyRun?: RuntimeVerifyRun,
-  activeScenario?: VerifyScenario
+  activeScenario?: VerifyScenario,
+  customVectors: readonly TestVector[] = [],
 ): ExportViewModel {
-  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario);
-  const flattenedProject = flattenProjectMacros(project);
+  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario, customVectors);
+  const hierarchyVhdl = generateHierarchicalVhdlProject(project);
+  const flattenedProject = flattenProjectMacros({
+    ...project,
+    sourceModel: project.sourceModel ?? (project.hdl?.sources.length ? deriveSourceModel(project) : undefined),
+    circuit: elaborateProjectHierarchy(project.circuit, project.hierarchy),
+  });
   const runtimeBackedTestbench = buildRuntimeBackedTestbench(
     flattenedProject,
     runtimeVerifyRun,
@@ -206,13 +218,36 @@ export function buildExportViewModel(
     verifyAuthority,
   );
   const exportResult = exportProjectAsBasys3(flattenedProject);
+  if (hierarchyVhdl && exportResult.bundle) {
+    exportResult.bundle.topVhd = hierarchyVhdl.topVhd;
+    exportResult.bundle.importedCompanionSources = hierarchyVhdl.moduleSources.map((source) => ({
+      sourcePath: source.path,
+      exportPath: source.path,
+      content: source.text,
+    }));
+    if (exportResult.projectProjection) {
+      exportResult.projectProjection = {
+        ...exportResult.projectProjection,
+        circuit: project.circuit,
+        hierarchy: project.hierarchy,
+        hdl: {
+          ...(exportResult.projectProjection.hdl ?? { top: resolveTopEntity(project), sources: [] }),
+          top: resolveTopEntity(project),
+          sources: [
+            { path: 'top.vhd', language: 'vhdl', text: hierarchyVhdl.topVhd },
+            ...hierarchyVhdl.moduleSources.map((source) => ({ path: source.path, language: 'vhdl' as const, text: source.text })),
+          ],
+        },
+      };
+    }
+  }
   const runtimeBackedTestbenchErrors = buildRuntimeBackedTestbenchErrors(
     exportResult.bundle?.topVhd,
     runtimeBackedTestbench,
   );
   const diagnostics = collectDiagnostics(
     flattenedProject,
-    [...exportResult.errors, ...runtimeBackedTestbenchErrors],
+    [...exportResult.errors, ...runtimeBackedTestbenchErrors, ...shippedHierarchyErrors(hierarchyVhdl, exportResult.bundle)],
     exportResult.warnings,
   );
   const canonicalDiagnostics = diagnostics.map((entry) => entry.canonical);
@@ -226,7 +261,10 @@ export function buildExportViewModel(
     exportResult.mappingProjection,
   );
   const designTop = resolveTopEntity(flattenedProject);
-  const simulationTop = `${designTop}_tb`;
+  // The shipped testbench text is the authority for its own entity name.
+  const shippedTestbench = runtimeBackedTestbench?.content ?? exportResult.bundle?.testbench;
+  const simulationTop =
+    (shippedTestbench ? detectTestbenchEntityName(shippedTestbench) : undefined) ?? testbenchEntityNameFor(designTop);
   const topAuthority: ExportTopAuthority = { designTop, simulationTop };
   const artifacts = buildArtifacts(
     flattenedProject,
@@ -256,6 +294,30 @@ export function buildExportViewModel(
     topAuthority,
     exportedScenario,
   };
+}
+
+/**
+ * The gate above checks the elaborated flat project, but a hierarchical project
+ * ships the structural top and module sources. Anything those sources could not
+ * express, and any disagreement between the shipped top.vhd and the packaged
+ * top.xdc, blocks the package by name.
+ */
+function shippedHierarchyErrors(
+  hierarchyVhdl: ReturnType<typeof generateHierarchicalVhdlProject>,
+  bundle: ReturnType<typeof exportProjectAsBasys3>['bundle'],
+): Basys3ExportError[] {
+  if (!hierarchyVhdl || !bundle) return [];
+  const errors: Basys3ExportError[] = hierarchyVhdl.diagnostics
+    .filter((diagnostic) => diagnostic.severity === 'error')
+    .map((diagnostic) => ({ type: 'validation' as const, severity: 'error' as const, message: diagnostic.message }));
+  for (const mismatch of findVhdlXdcPortMismatches(hierarchyVhdl.topVhd, bundle.topXdc)) {
+    errors.push({
+      type: 'validation',
+      severity: 'error',
+      message: `Shipped hierarchical top.vhd and top.xdc disagree: ${mismatch}. Fix: re-export; report this if it persists.`,
+    });
+  }
+  return errors;
 }
 
 function buildRuntimeBackedTestbenchErrors(
@@ -522,6 +584,7 @@ function buildArtifacts(
     sourcePaths: vhdlSourcePaths,
     constraintsPath: 'top.xdc',
     simulationPath: 'testbench.vhd',
+    simulationTop: topAuthority?.simulationTop,
   });
   const bringUpProject = verifyAuthority
     ? { ...projectedProject, vectors: verifyAuthority.executionVectors }
@@ -562,9 +625,11 @@ function buildArtifacts(
       preview: buildPreview(bundle.topVhd),
       status: blocked ? 'blocked' : 'ready',
       note:
-        bundle.exportMode === 'preserved-import-rtl'
+        project.hierarchy?.modules.length
+          ? `Structural top-level VHDL with ${project.hierarchy.modules.length} reusable project module source${project.hierarchy.modules.length === 1 ? '' : 's'}. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
+          : bundle.exportMode === 'preserved-import-rtl'
           ? `Preserved imported top-level VHDL (multi-file handoff). designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
-          : `Synthesizable top-level VHDL. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
+          : `Generated top-level VHDL; synthesis runs in Vivado, outside RedByte. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
     });
     for (const companion of bundle.importedCompanionSources ?? []) {
       const companionHeader = buildProvenanceHeader('--', provenanceBase);
@@ -575,7 +640,9 @@ function buildArtifacts(
         content: normalizeArtifactContent(companionHeader + companion.content),
         preview: buildPreview(companion.content),
         status: blocked ? 'blocked' : 'ready',
-        note: 'Preserved imported companion VHDL (package / subsystem).',
+        note: project.hierarchy?.modules.some((module) => companion.content.includes(`entity ${module.name} is`))
+          ? 'Editable native visual module source.'
+          : 'Preserved imported companion VHDL (package / subsystem).',
       });
     }
     // Constraints
@@ -594,7 +661,7 @@ function buildArtifacts(
     // exist, regardless of whether the last Verify run passed, failed, or is stale.
     const tbHeader = buildProvenanceHeader('--', {
       ...provenanceBase,
-      simulationTop: topAuthority?.simulationTop ?? `${topEntity}_tb`,
+      simulationTop: topAuthority?.simulationTop ?? testbenchEntityNameFor(topEntity),
     });
     if (runtimeBackedTestbench) {
       artifacts.push({
@@ -680,12 +747,29 @@ function buildArtifacts(
       status: blocked ? 'blocked' : 'ready',
       note: 'Hardware manager programming scaffold for Basys3 bring-up.',
     });
+    // The manifest describes final delivered bytes, including provenance headers
+    // and newline normalization. Original authoring sources stay in sourceModel.
+    const deliveredProject: RBProject = {
+      ...projectedProject,
+      hdl: {
+        ...(projectedProject.hdl ?? { top: topEntity, sources: [] }),
+        sources: (projectedProject.hdl?.sources ?? []).map((source: HdlSource) => ({
+          ...source,
+          text: artifacts.find((artifact) => artifact.category === 'design-source' && artifact.path === source.path)?.content ?? source.text,
+        })),
+      },
+      fpga: {
+        ...(projectedProject.fpga ?? { board: 'basys3', top: topEntity }),
+        constraints: { type: 'xdc', text: artifacts.find((artifact) => artifact.path === 'top.xdc')!.content },
+      },
+    };
+    const deliveredProjectJson = encodeRBProject(deliveredProject);
     artifacts.push({
       path: 'project.rbproj.json',
       kind: 'json',
       category: 'build-artifact',
-      content: normalizeArtifactContent(rbprojJson),
-      preview: buildPreview(rbprojJson),
+      content: normalizeArtifactContent(deliveredProjectJson),
+      preview: buildPreview(deliveredProjectJson),
       status: 'ready',
       note: 'Canonical RedByte project snapshot for Save/Load roundtrip.',
     });
@@ -747,7 +831,7 @@ function buildArtifacts(
 /** The only clock behavior permitted across the export-to-HDL boundary. */
 type ExportClockDriveView = Readonly<TestbenchClockDriveView>;
 
-interface ExportVerifyAuthority {
+export interface ExportVerifyAuthority {
   vectors: TestVector[];
   executionVectors: TestVector[];
   clockPolicy?: VerifyClockPolicy;
@@ -774,23 +858,33 @@ function extractExportClockDriveView(
   }) as ExportClockDriveView;
 }
 
+/**
+ * The vectors a Run executes: the active scenario's (or the project's), then the custom rows,
+ * in the order planStudioRun appends them. The custom rows were run and checked by Verify but
+ * left out of the bench, so the plans never matched and every such run read STALE.
+ */
 function getExportVectors(
   project: RBProject,
   activeScenario: VerifyScenario | undefined,
+  customVectors: readonly TestVector[] = [],
 ): TestVector[] {
-  return activeScenario
-    ? materializeScenarioVectors(activeScenario)
-    : (project.vectors ?? []).map((vector) => ({
-        ...vector,
-        inputs: { ...(vector.inputs ?? {}) },
-        expected: { ...(vector.expected ?? {}) },
-      }));
+  const clone = (vector: TestVector): TestVector => ({
+    ...vector,
+    inputs: { ...(vector.inputs ?? {}) },
+    expected: { ...(vector.expected ?? {}) },
+  });
+  const base = activeScenario ? materializeScenarioVectors(activeScenario) : (project.vectors ?? []).map(clone);
+  return [...base, ...customVectors.map(clone)];
 }
 
 function getProjectCircuitHash(project: RBProject): string {
-  // Runtime Verify hashes the live, unflattened circuit. Export must compare
-  // against that same authority before macro flattening changes its shape.
-  return buildVerifyCircuitEvidenceHash(project.circuit);
+  // Runtime Verify evaluates the elaborated hierarchy. Export must compare
+  // against that same semantic circuit; hashing the parent module shell made
+  // every valid hierarchical run appear stale even when its scenario, mapping,
+  // and circuit were unchanged.
+  return buildVerifyCircuitEvidenceHash(
+    elaborateProjectHierarchy(project.circuit, project.hierarchy)
+  );
 }
 
 function canonicalizeScheduleEvidence(contract: VerifyScheduleContract) {
@@ -854,8 +948,7 @@ function canonicalizeExecutionPlanVectors(
           .map((key) => [
             key,
             vector.inputs?.[key] === true ||
-            vector.inputs?.[key] === 1 ||
-            vector.inputs?.[key] === '1'
+            vector.inputs?.[key] === 1
               ? 1
               : 0,
           ])
@@ -866,8 +959,7 @@ function canonicalizeExecutionPlanVectors(
           .map((key) => [
             key,
             vector.expected?.[key] === true ||
-            vector.expected?.[key] === 1 ||
-            vector.expected?.[key] === '1'
+            vector.expected?.[key] === 1
               ? 1
               : 0,
           ])
@@ -886,11 +978,7 @@ function isRuntimeScheduleCurrentForExport(
   clockPolicy: VerifyClockPolicy | undefined,
   vectors: readonly TestVector[]
 ): boolean {
-  const currentSchedule = deriveVerifySchedule(
-    project.circuit,
-    getEffectiveIoMapping(project),
-    project.hdl
-  );
+  const currentSchedule = deriveProjectSchedule(project);
   if (runtimeVerifyRun.schedule !== currentSchedule.schedule) return false;
   if (!runtimeVerifyRun.scheduleContract) return false;
   if (
@@ -1000,12 +1088,19 @@ function getProjectClockIoRows(project: RBProject): ProjectIoRow[] {
   ];
 }
 
+/**
+ * The schedule of the project as the simulator runs it: its elaborated hierarchy, so a register
+ * or latch inside a module is sequential (IdeApp liveScheduleContract and the testbench agree).
+ */
+function deriveProjectSchedule(project: RBProject) {
+  return deriveVerifySchedule(elaborateProjectHierarchy(project.circuit, project.hierarchy), getEffectiveIoMapping(project), project.hdl);
+}
+
 function detectProjectClockPolicy(project: RBProject): VerifyClockPolicy | null {
-  const ioMapping = getEffectiveIoMapping(project);
   return detectVerifyClockPolicy({
-    circuit: project.circuit,
+    circuit: elaborateProjectHierarchy(project.circuit, project.hierarchy),
     ioRows: getProjectClockIoRows(project),
-    scheduleContract: deriveVerifySchedule(project.circuit, ioMapping, project.hdl),
+    scheduleContract: deriveProjectSchedule(project),
   });
 }
 
@@ -1015,11 +1110,7 @@ function resolveExportClockPolicy(
   activeScenario: VerifyScenario | undefined,
   vectors: readonly TestVector[],
 ): VerifyClockPolicy | undefined {
-  const currentSchedule = deriveVerifySchedule(
-    project.circuit,
-    getEffectiveIoMapping(project),
-    project.hdl
-  );
+  const currentSchedule = deriveProjectSchedule(project);
   if (currentSchedule.schedule !== 'clocked_macro') return undefined;
   const savedPolicy = normalizeScenarioSequentialPolicy(activeScenario?.sequentialPolicy);
   const detectedPolicy = detectProjectClockPolicy(project);
@@ -1073,12 +1164,14 @@ function resolveExportClockPolicy(
   return undefined;
 }
 
-function buildExportVerifyAuthority(
+/** The execution plan Export derives for the testbench (exported for the artifact-consistency matrix). */
+export function buildExportVerifyAuthority(
   project: RBProject,
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
   activeScenario: VerifyScenario | undefined,
+  customVectors: readonly TestVector[] = [],
 ): ExportVerifyAuthority {
-  const vectors = getExportVectors(project, activeScenario);
+  const vectors = getExportVectors(project, activeScenario, customVectors);
   const clockPolicy = resolveExportClockPolicy(project, runtimeVerifyRun, activeScenario, vectors);
   const normalizedVectors = normalizeVectorsForLiveIo(
     vectors.map((vector) => ({
@@ -1164,7 +1257,7 @@ function buildTestbenchNote(
     if (runKind === 'trace') {
       return (
         `Scenario '${activeScenario.name}' v${activeScenario.version} (${contentHash})` +
-        ` â€” trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
+        ` — trace-only run recorded (${runtimeVerifyRun?.schedule ?? 'derived'}${clockNote}). ` +
         `Expected-output comparison has not been confirmed yet.`
       );
     }
@@ -1198,7 +1291,7 @@ function buildTestbenchNote(
   const runStatus = runtimeVerifyRun?.status ?? null;
   const scheduleLabel = runtimeVerifyRun?.schedule ?? 'derived';
   if (runKind === 'trace') {
-    return `Vectors from project â€” trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
+    return `Vectors from project — trace-only run recorded (${scheduleLabel}${clockNote}). Expected-output comparison has not been confirmed yet.`;
   }
   if (runStatus === 'pass') {
     return `Deterministic schedule from last Verify PASS (${scheduleLabel}${clockNote}).`;
@@ -1281,9 +1374,12 @@ function buildProvenanceHeader(
   const tbLine = fields.simulationTop
     ? `${c} Board: ${fields.board} | designTop: ${fields.designTop} | simulationTop: ${fields.simulationTop}`
     : `${c} Board: ${fields.board} | designTop: ${fields.designTop}`;
+  // A project name is one comment line: a line break in a loaded name would start an
+  // uncommented line in the shipped HDL.
+  const projectName = fields.projectName.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, ' ').trim();
   const projLine = fields.exportHash
-    ? `${c} Project: ${fields.projectName} | Export hash: ${fields.exportHash}`
-    : `${c} Project: ${fields.projectName}`;
+    ? `${c} Project: ${projectName} | Export hash: ${fields.exportHash}`
+    : `${c} Project: ${projectName}`;
   return [sep, `${c} RedByte IDE Export`, tbLine, projLine, `${c} Generated automatically — do not edit by hand.`, sep, ''].join('\n');
 }
 
@@ -1685,9 +1781,11 @@ function diagnosticCodeFor(
   const lowered = message.toLowerCase();
   if (lowered.includes('unmapped required')) return 'RBEX1001';
   if (lowered.includes('declared but has no basys3 pin assignment')) return 'RBEX1002';
-  if (lowered.includes('unsupported synth subset node type')) return 'RBEX4100';
+  if (lowered.includes('unsupported synth subset node type') || lowered.includes('unknown primitive type')) return 'RBEX4100';
   if (lowered.includes('multiple drivers detected')) return 'RBEX4101';
   if (lowered.includes('combinational loop detected')) return 'RBEX4102';
+  if (lowered.includes('reads no input of that name') || lowered.includes('the module has no input of that name')) return 'RBEX4104';
+  if (lowered.includes('the simulator reads only')) return 'RBEX4105';
   if (
     lowered.includes('floating output detected') ||
     lowered.includes('undriven output') ||
@@ -1754,6 +1852,8 @@ function diagnosticTitleFor(
   if (code === 'RBEX4101') return 'Multiple drivers on input port';
   if (code === 'RBEX4102') return 'Combinational loop detected';
   if (code === 'RBEX4103') return 'Floating output';
+  if (code === 'RBEX4104') return 'Wire into an input the part does not read';
+  if (code === 'RBEX4105') return 'Input wired under two names';
   if (code === 'RBEX4200') return 'Sequential node missing clock';
   if (code === 'RBEX4201') return 'Multiple clock domains';
   if (code === 'RBEX4202') return 'Sequential node has multiple clocks';

@@ -3,10 +3,17 @@ import {
   buildSimulationModel,
   elaborateCircuit,
   injectSimClock,
+  createEvaluationTraceCollector,
+  unavailableEvaluationTrace,
   type Circuit,
   type IRDiagnostic,
   type SimulationModel,
   type SimulationModelPortRef,
+  type EvaluationContext,
+  type EvaluationTrace,
+  type EvaluationTraceCaptureOptions,
+  type EvaluationTraceCollector,
+  type EngineTickObservationOptions,
 } from '@redbyte/rb-logic-core';
 import { CLOCKED_MACRO_SEQUENCE, type IoMapping, type TestVector } from '@redbyte/rb-utils';
 import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
@@ -54,6 +61,21 @@ export interface DeterministicVerifyResult {
   rows: RuntimeVerifyTraceRow[];
   trace: RuntimeSimTraceSample[];
   evidence: Omit<VerifyEvidenceCapsule, 'circuitHash'>;
+  /** Actual evaluations, separately retained from the published sample waveform. */
+  evaluationTrace?: EvaluationTrace;
+}
+
+interface EvaluationCaptureSession {
+  collector: EvaluationTraceCollector;
+  nextEngineTick: number;
+}
+
+function tickObservation(
+  session: EvaluationCaptureSession | undefined,
+  context: EvaluationContext,
+): EngineTickObservationOptions | undefined {
+  if (!session) return undefined;
+  return session.collector.forContext({ ...context, engineTick: session.nextEngineTick++ });
 }
 
 export interface VerifyClockExecutionPolicy {
@@ -316,7 +338,8 @@ export function runDeterministicVerifyFromCircuit(
   circuit: Circuit,
   ioRows: SimulationIoRow[],
   vectors: TestVector[],
-  scheduleContract?: VerifyScheduleContract
+  scheduleContract?: VerifyScheduleContract,
+  observation?: EvaluationTraceCaptureOptions
 ): DeterministicVerifyResult {
   const context = buildDeterministicVerifyContext(
     circuit,
@@ -324,7 +347,7 @@ export function runDeterministicVerifyFromCircuit(
   );
   const model = context.simModel;
   const contract = scheduleContract ?? context.schedule;
-  return runDeterministicVerifyFromModel(circuit, model, ioRows, vectors, contract);
+  return runDeterministicVerifyFromModel(circuit, model, ioRows, vectors, contract, undefined, observation);
 }
 
 export function runDeterministicVerifyFromModel(
@@ -333,16 +356,24 @@ export function runDeterministicVerifyFromModel(
   ioRows: SimulationIoRow[],
   vectors: TestVector[],
   scheduleContract?: VerifyScheduleContract,
-  clockPolicy?: VerifyClockExecutionPolicy
+  clockPolicy?: VerifyClockExecutionPolicy,
+  observation?: EvaluationTraceCaptureOptions,
+  onCaseComplete?: (completedCases: number) => void
 ): DeterministicVerifyResult {
   if (!model.isRunnable) {
-    return buildInvalidIrResult(model, ioRows, vectors);
+    const result = buildInvalidIrResult(model, ioRows, vectors);
+    return observation ? { ...result, evaluationTrace: unavailableEvaluationTrace('invalid-ir', observation) } : result;
   }
 
   const contract = scheduleContract ?? buildDefaultScheduleContract();
   if (contract.hasUnsupportedTemporal) {
-    return buildUnsupportedTemporalResult(ioRows, vectors, contract);
+    const result = buildUnsupportedTemporalResult(ioRows, vectors, contract);
+    return observation ? { ...result, evaluationTrace: unavailableEvaluationTrace('unsupported-temporal', observation) } : result;
   }
+
+  const capture: EvaluationCaptureSession | undefined = observation
+    ? { collector: createEvaluationTraceCollector(observation), nextEngineTick: 0 }
+    : undefined;
 
   const cases = simulateVectorCasesFromModel(
     canonicalizeSemanticCircuit(executionCircuit),
@@ -350,7 +381,9 @@ export function runDeterministicVerifyFromModel(
     ioRows,
     vectors,
     contract,
-    clockPolicy
+    clockPolicy,
+    capture,
+    onCaseComplete
   );
   const traceByTick = new Map<number, RuntimeSimTraceSample>();
   for (const entry of cases) {
@@ -524,6 +557,7 @@ export function runDeterministicVerifyFromModel(
   }));
 
   return {
+    ...(capture ? { evaluationTrace: capture.collector.snapshot() } : {}),
     rows: rows.sort((left, right) => {
       if (left.tick !== right.tick) return left.tick - right.tick;
       const leftCaseIndex = left.caseIndex ?? Number.MAX_SAFE_INTEGER;
@@ -599,7 +633,7 @@ export function simulateExpectedIoRowsFromModel(params: {
   for (const entry of cases) {
     for (const row of outputRows) {
       const value = resolveOutputSymbolFromTraceDetailed(entry.sample, row, params.model);
-      if (value.reason !== 'matched') continue;
+      if (value.reason !== 'matched' || (value.symbol !== '0' && value.symbol !== '1')) continue;
       rows.push({
         tick: entry.tick,
         signal: getCanonicalIoSignalKey(row, outputRows),
@@ -619,7 +653,9 @@ function simulateVectorCasesFromModel(
   ioRows: SimulationIoRow[],
   vectors: TestVector[],
   scheduleContract: VerifyScheduleContract,
-  clockPolicy?: VerifyClockExecutionPolicy
+  clockPolicy?: VerifyClockExecutionPolicy,
+  capture?: EvaluationCaptureSession,
+  onCaseComplete?: (completedCases: number) => void
 ): Array<{
   vectorId: string;
   caseIndex: number;
@@ -653,7 +689,9 @@ function simulateVectorCasesFromModel(
     );
   }
 
-  const engine = new CircuitEngine(simCircuit);
+  const engine = new CircuitEngine(simCircuit, {
+    observation: tickObservation(capture, { phase: 'initialize' }),
+  });
   const inputs = deriveSimulationInputsFromModel(model, simCircuit);
   const resetNodeId = resolveResetNodeIdFromModel(model, ioRows, scheduleContract);
   // Authored timelines own the very first engine transition. Do not settle the
@@ -667,11 +705,11 @@ function simulateVectorCasesFromModel(
       inputs[resetNodeId] = 1;
     }
     applyInputsToEngine(engine, inputs);
-    engine.tick();
+    engine.tick(capture ? tickObservation(capture, { phase: resetNodeId && autoSequenceReset ? 'reset-asserted' : 'prelude-settle' }) : undefined);
     if (resetNodeId && autoSequenceReset) {
       inputs[resetNodeId] = 0;
       applyInputsToEngine(engine, inputs);
-      engine.tick();
+      engine.tick(capture ? tickObservation(capture, { phase: 'reset-released' }) : undefined);
     }
   }
 
@@ -712,13 +750,18 @@ function simulateVectorCasesFromModel(
         inputs[binding.nodeId] = value;
       }
     }
+    const evaluationContext: EvaluationContext | undefined = capture ? {
+      vectorId: entry.vectorId,
+      caseIndex: entry.caseIndex,
+      tick: entry.tick,
+    } : undefined;
     const sample =
       scheduleContract.schedule === 'clocked_macro'
         ? executeClockedMacroVectorCase(engine, model, inputs, entry.tick, {
             clockNodeId,
             authoredClock,
-          })
-        : executeCombinationalVectorCase(engine, model, inputs, entry.tick, combinationalTick);
+          }, capture, evaluationContext)
+        : executeCombinationalVectorCase(engine, model, inputs, entry.tick, combinationalTick, capture, evaluationContext);
     if (scheduleContract.schedule !== 'clocked_macro') {
       combinationalTick = sample.engineTick;
     }
@@ -730,6 +773,7 @@ function simulateVectorCasesFromModel(
       expected: normalizeVectorInputMap(entry.vector.expected ?? {}),
       sample: sample.output,
     });
+    onCaseComplete?.(samples.length);
   }
 
   return samples;
@@ -740,7 +784,9 @@ function executeCombinationalVectorCase(
   model: SimulationModel,
   inputs: Record<string, 0 | 1>,
   sampleTick: number,
-  previousEngineTick: number
+  previousEngineTick: number,
+  capture?: EvaluationCaptureSession,
+  context?: EvaluationContext
 ): { engineTick: number; output: RuntimeSimTraceSample } {
   const targetTick = sampleTick;
   const steps = Math.max(1, targetTick - previousEngineTick);
@@ -748,7 +794,7 @@ function executeCombinationalVectorCase(
   let engineTick = previousEngineTick;
   let sample: RuntimeSimTraceSample | null = null;
   for (let index = 0; index < steps; index += 1) {
-    engine.tick();
+    engine.tick(capture ? tickObservation(capture, { ...context, phase: 'combinational' }) : undefined);
     engineTick += 1;
     sample = {
       tick: engineTick,
@@ -775,14 +821,20 @@ function executeClockedMacroVectorCase(
   input: {
     clockNodeId: string | undefined;
     authoredClock: boolean;
-  }
+  },
+  capture?: EvaluationCaptureSession,
+  context?: EvaluationContext
 ): { engineTick: number; output: RuntimeSimTraceSample } {
   if (input.clockNodeId && !input.authoredClock) {
     let output: RuntimeSimTraceSample | null = null;
+    let phaseIndex = 0;
     for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
       inputs[input.clockNodeId] = clockValue;
       applyInputsToEngine(engine, inputs);
-      engine.tick();
+      engine.tick(capture ? tickObservation(capture, { ...context,
+        phase: phaseIndex === 0 ? 'macro-low-before' : phaseIndex === 1 ? 'macro-high-sample' : 'macro-low-after',
+      }) : undefined);
+      phaseIndex += 1;
       if (clockValue === 1) {
         output = {
           tick: sampleTick,
@@ -800,7 +852,7 @@ function executeClockedMacroVectorCase(
   }
 
   applyInputsToEngine(engine, inputs);
-  engine.tick();
+  engine.tick(capture ? tickObservation(capture, { ...context, phase: 'authored-clock' }) : undefined);
 
   return {
     engineTick: sampleTick,
@@ -972,7 +1024,7 @@ function toIoMappingFromSimulationRows(ioRows: SimulationIoRow[]): IoMapping {
 function buildDefaultScheduleContract(): VerifyScheduleContract {
   return {
     schedule: 'combinational',
-    reason: 'no-sequential',
+    reason: 'combinational',
     analysis: {
       hasClockedMacros: false,
       hasClockNet: false,

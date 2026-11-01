@@ -1,0 +1,91 @@
+// Retained virtual-instrument graph/timeline data; no scene or simulation-store owner.
+export type Vector3 = { x: number; y: number; z: number };
+export type Quaternion = { x: number; y: number; z: number; w: number };
+export type Color = string; // Hex
+
+export interface LabPin {
+    id: string; // "A0", "D13", "VCC", "GND", "row-1-a"
+    type: 'digital' | 'analog' | 'power' | 'ground' | 'nc';
+    direction?: 'input' | 'output' | 'io';
+    position: Vector3; // Relative to part origin
+}
+
+export interface LabPartDefinition {
+    type: string; // "arduino-nano", "led-5mm", "breadboard-half"
+    name: string;
+    pins: LabPin[];
+    dimensions: Vector3; // Bounding box
+}
+
+export interface LabNode {
+    id: string;
+    type: string;
+    pose: {
+        position: Vector3;
+        rotation: Quaternion;
+    };
+    properties: Record<string, unknown>; // value: "10k", color: "red"
+    hardware_target?: string; // e.g., "arduino-uno"
+}
+
+export interface LabWire {
+    id: string;
+    sourceNodeId: string;
+    sourcePinId: string;
+    targetNodeId: string;
+    targetPinId: string;
+    color: Color;
+    path?: Vector3[]; // Control points for 3D bezier
+}
+
+export interface LabNet {
+    id: string;
+    pins: { nodeId: string; pinId: string }[];
+    state: PinState;
+}
+
+export interface LabGraph {
+    nodes: LabNode[];
+    wires: LabWire[];
+    net: Record<string, LabNet>; // Add strict netlist tracking
+}
+
+// Sim State
+export type PinState = 'HIGH' | 'LOW' | 'Z' | number; // 0-1023 for analog
+// --- TIMELINE & SIMULATION EVENTS ---
+
+export type LabEventSource = 'user' | 'engine' | 'import';
+
+export interface BaseLabEvent {
+    tick: number;
+    seq: number;
+    source: LabEventSource;
+    ts?: number; // Wall time, optional
+}
+
+export type LabEvent =
+    | { type: 'PLACE_PART'; part: LabNode } & BaseLabEvent
+    | { type: 'MOVE_PART'; nodeId: string; position: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number; w: number } } & BaseLabEvent
+    | { type: 'ADD_WIRE'; wire: LabWire } & BaseLabEvent
+    | { type: 'REMOVE_WIRE'; wireId: string } & BaseLabEvent
+    | { type: 'SIMULATION_START' } & BaseLabEvent
+    | { type: 'SIMULATION_STOP' } & BaseLabEvent
+    | { type: 'SIM_PIN_DIFF'; pinDiffs: Record<string, number> } & BaseLabEvent
+    | { type: 'SERIAL_OUTPUT'; text: string } & BaseLabEvent
+    | { type: 'SKETCH_LOADED'; sketchHash: string } & BaseLabEvent
+    | { type: 'SKETCH_ERROR'; message: string } & BaseLabEvent
+    | { type: 'INTEGRITY_RECOVERY'; reason: string } & BaseLabEvent
+    | { type: 'FPGA_LOAD_PRESET'; presetId: string; presetHash: string; nodeId: string } & BaseLabEvent;
+
+export interface LabSnapshot {
+    tick: number;
+    graph: LabGraph; // Deep copy at that tick
+    pinStates: Record<string, number>;
+    traceHash?: string; // Fast checksum of canonical state
+    fingerprint?: string; // SHA-256 of canonical state
+}
+
+export interface LabTimeline {
+    events: LabEvent[];
+    snapshots: LabSnapshot[];
+}

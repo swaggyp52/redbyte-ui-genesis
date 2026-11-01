@@ -78,7 +78,7 @@ export async function resolveEventsFromCapsule(capsule, fetchTextOrReadFile) {
         return { events: capsule.events };
     }
     // Look for external reference
-    const eventsRef = capsule.events_ref || capsule.events_ref;
+    const eventsRef = capsule.events_ref;
     if (!eventsRef || typeof eventsRef !== 'string') {
         return { events: [] };
     }

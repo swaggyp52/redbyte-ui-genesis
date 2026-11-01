@@ -1,7 +1,7 @@
 // Copyright Ac 2025 Connor Angiel - RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
-const isDev = import.meta.env.DEV;
+const isDev = import.meta.env?.DEV ?? false;
 const measureBuckets = new Map();
 const renderCounts = new Map();
 const componentRenderCounts = new Map();

@@ -31,11 +31,12 @@ await runIdeGate('IDE Design workspace crash-proof recovery satisfied', async ({
   });
 
   for (const viewport of VIEWPORTS) {
-    let abortedDesignChunk = false;
+    let blockedDesignChunks = 0;
+    let blockDesignChunk = true;
     await page.unroute('**/*').catch(() => null);
     await page.route(/\/assets\/DesignSurface-[^/]+\.js(?:\?.*)?$/, async (route) => {
-      if (!abortedDesignChunk) {
-        abortedDesignChunk = true;
+      if (blockDesignChunk) {
+        blockedDesignChunks += 1;
         await route.abort('failed');
         return;
       }
@@ -51,7 +52,7 @@ await runIdeGate('IDE Design workspace crash-proof recovery satisfied', async ({
     await capture(page, viewport, '01-design-load-failure');
 
     const failure = await readBoundaryState(page);
-    assert(abortedDesignChunk, `${viewport.label}: DesignSurface chunk was not intercepted`);
+    assert(blockedDesignChunks > 0, `${viewport.label}: DesignSurface chunk was not intercepted`);
     assert(
       /Design workspace encountered an error/i.test(failure.text),
       `${viewport.label}: boundary did not identify the Design workspace`
@@ -63,6 +64,9 @@ await runIdeGate('IDE Design workspace crash-proof recovery satisfied', async ({
     assert(failure.reloadButtonVisible, `${viewport.label}: non-destructive reload recovery button was missing`);
     assert(failure.resetButtonVisible, `${viewport.label}: destructive reset escape hatch must remain available`);
 
+    // Hold the fault through prewarming and React.lazy; release only after
+    // the real recovery affordances and surface-load classification are proven.
+    blockDesignChunk = false;
     await page.locator('[data-testid="error-boundary-reload-app"]').first().click();
     await page.waitForLoadState('domcontentloaded', { timeout: 15000 });
     await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });

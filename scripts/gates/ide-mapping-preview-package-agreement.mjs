@@ -28,13 +28,14 @@ await runIdeGate('IDE mapping preview/package agreement satisfied', async ({ pag
 
   const enableRow = page.locator('[data-testid="ide-hw-map-row-en"]').first();
   await enableRow.waitFor({ state: 'visible', timeout: 15000 });
-  const enableRowText = normalize(await enableRow.textContent());
-  assert(/^EN(?:Artifact|\b)/.test(enableRowText), `Map Pins must retain logical signal EN; got "${enableRowText}"`);
-  assert(enableRowText.includes('Artifact SW'), `Map Pins must expose generated artifact port SW; got "${enableRowText}"`);
-  assert(enableRowText.includes('Slide switch SW0'), `Map Pins must expose board resource SW0; got "${enableRowText}"`);
-  assert(enableRowText.includes('V17'), `Map Pins must expose package pin V17; got "${enableRowText}"`);
+  assert(normalize(await enableRow.locator('th[scope="row"]').textContent()) === 'EN', 'Main mapping row must retain logical signal EN');
+  assert(normalize(await page.getByTestId('ide-hw-map-row-binding-en').textContent()) === 'SW0', 'Main mapping row must expose compatible board resource SW0');
+  assert(normalize(await page.getByTestId('ide-hw-map-row-status-en').textContent()) === 'Assigned', 'Main mapping row must expose assignment state');
 
-  await enableRow.click();
+  await page.getByTestId('ide-hw-map-row-action-en').click();
+  assert(normalize(await page.getByTestId('ide-hardware-chain-artifact').locator('strong').textContent()) === 'SW', 'Selected mapping detail must expose generated artifact port SW');
+  assert(normalize(await page.getByTestId('ide-hardware-chain-board').locator('strong').textContent()) === 'SW0', 'Selected mapping detail must expose board resource SW0');
+  assert(normalize(await page.getByTestId('ide-hardware-chain-pin').locator('strong').textContent()) === 'V17', 'Selected mapping detail must expose package pin V17');
   const mapXdc = normalize(
     await page.locator('[data-testid="ide-hardware-basys3-binding-xdc"]').textContent(),
   );
@@ -67,9 +68,9 @@ async function readArtifact(page, path) {
     path,
     { timeout: 10000 },
   );
-  return normalize(
-    await page.locator('[data-testid="ide-export-preview-code"]').first().textContent(),
-  );
+  const contentLines = await page.locator('[data-testid="ide-export-preview-code"] .rb-pkg-code-line > span:last-child').allTextContents();
+  assert(contentLines.length > 0, `Artifact ${path} must render its code content`);
+  return normalize(contentLines.join('\n'));
 }
 
 function normalize(value) {

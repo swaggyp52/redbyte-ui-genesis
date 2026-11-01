@@ -1,3 +1,4 @@
+import { getConnectionNodeId, getConnectionPort } from './connectionUtils';
 // Copyright Ac 2025 Connor Angiel
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
@@ -13,7 +14,7 @@ export interface ProbeHighlight {
 }
 
 export const getWireId = (connection: Connection) =>
-  `${connection.from.nodeId}.${connection.from.portName}-${connection.to.nodeId}.${connection.to.portName}`;
+  `${getConnectionNodeId(connection.from)}.${getConnectionPort(connection, 'from', 'out')}-${getConnectionNodeId(connection.to)}.${getConnectionPort(connection, 'to', 'in')}`;
 
 export const buildProbeWireHighlights = (
   circuit: Circuit,
@@ -31,8 +32,8 @@ export const buildProbeWireHighlights = (
 
   const wireHighlights = new Map<string, string[]>();
   circuit.connections.forEach((connection) => {
-    const fromKey = `${connection.from.nodeId}.${connection.from.portName}`;
-    const toKey = `${connection.to.nodeId}.${connection.to.portName}`;
+    const fromKey = `${getConnectionNodeId(connection.from)}.${getConnectionPort(connection, 'from', 'out')}`;
+    const toKey = `${getConnectionNodeId(connection.to)}.${getConnectionPort(connection, 'to', 'in')}`;
     const colors = new Set<string>();
     (portToColors.get(fromKey) ?? []).forEach((color) => colors.add(color));
     (portToColors.get(toKey) ?? []).forEach((color) => colors.add(color));

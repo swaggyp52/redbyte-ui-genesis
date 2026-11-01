@@ -214,13 +214,19 @@ export function enrichProjectIoRowsWithV2Metadata(
   });
 }
 
+/**
+ * Resource kind from a label. Resource names are matched as whole tokens —
+ * `CARRY` is not a cathode because it starts with `CA`, and `UNCLOCKED` is not a
+ * clock — while a parenthesised alias such as `Reset (BTNC)` still counts.
+ */
 function inferBoardResourceFromLabel(label: string): IdeExampleIoRow['boardResourceType'] | undefined {
   const t = label.trim().toUpperCase();
+  const hasToken = (pattern: string) => new RegExp(`(^|[^A-Z0-9])(${pattern})([^A-Z0-9]|$)`).test(t);
   if (/^SW\d|^SW\[/.test(t) || /^SW$/.test(t)) return 'switch';
   if (/^LD\d|^LD\[/.test(t) || /^LED/.test(t)) return 'led';
-  if (/BTN|^BTN/.test(t)) return 'button';
-  if (/CLK|CLOCK|CLK100/.test(t)) return 'clock_pin';
-  if (/SEG|AN\d|CA|CB|CC|CD|CE|CF|CG|DP/.test(t)) return 'seven_seg';
+  if (hasToken('BTN[UDLRC]?')) return 'button';
+  if (hasToken('CLK\\d*|CLOCK|CLK100MHZ')) return 'clock_pin';
+  if (hasToken('SEG\\d*|AN\\d|C[A-G]|DP')) return 'seven_seg';
   return undefined;
 }
 

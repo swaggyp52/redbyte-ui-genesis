@@ -1,41 +1,14 @@
-/* Unified Workbench v3: Design owns a stable library / canvas / inspector frame. */
 
-/* Supporting prose and metadata must remain readable in the compact workbench.
-   max() preserves larger inherited hierarchy, while interactive descendants
-   keep their separate 14px control contract below. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :where(p, li, td, th, dt, dd, label, small, span, strong, summary):not(button *, a *, [role='button'] *) {
-  font-size: max(13px, 1em) !important;
-}
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(button, input, select, textarea, label) {
-  font-size: 14px !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-toolbar-group.is-mode
-  .ide-design-tool-segment {
-  font-size: 14px !important;
-}
+/* Design controls take their size from the workbench primitives, on the one type scale. */
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
-  grid-template-columns: minmax(188px, 196px) minmax(0, 1fr) minmax(232px, 244px) !important;
+  grid-template-columns:
+    var(--ide-workbench-left-width, 220px)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-width, 280px) !important;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  min-width: 0;
-  max-width: none;
-  overflow: hidden auto;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
-  grid-column: 1;
-  grid-row: 1;
-  width: auto;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
@@ -45,32 +18,15 @@
   overflow: hidden;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  grid-column: 3;
-  grid-row: 1;
-  width: auto;
-  position: relative;
-  z-index: 4;
-  opacity: 1;
-}
-
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel {
   border-radius: 0;
   box-shadow: none;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-header,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel-header {
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-header {
   min-height: 42px;
   padding: 8px 10px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette h3,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel h3,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 14px;
-  line-height: 1.25;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-sections {
@@ -111,20 +67,129 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-subsection-header p,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-summary,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-copy {
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1.4;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-count,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-subsection-count,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-badge {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
+}
+
+/* Interface line on library cards: compact engineering facts, not prose. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-ports {
+  overflow: hidden;
+  color: var(--rb-text-secondary);
+  font-family: var(--rb-font-mono, ui-monospace, 'Cascadia Mono', 'JetBrains Mono', monospace);
+  font-size: var(--rb-text-meta);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Capability chip: only rendered when a part is NOT fully supported. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-cap {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--rb-warning, #b45309) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-warning, #b45309) 12%, transparent);
+  color: var(--rb-warning, #b45309);
+  font-size: var(--rb-text-micro);
+  font-weight: 640;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Instance-of-definition identity in the inspector and breadcrumb. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-instance-identity {
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--rb-action) 32%, transparent);
+  background: color-mix(in srgb, var(--rb-action) 7%, transparent);
+  border-radius: 4px;
+  color: var(--rb-text-primary);
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-breadcrumb-of {
+  color: var(--rb-text-secondary);
+  font-weight: 500;
+}
+
+/* Floating on-canvas rename input, anchored just below the node. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-rename {
+  position: absolute;
+  z-index: 30;
+  width: 160px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-rename-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--rb-action);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+}
+
+/* Zoom readout doubles as a one-click return to 100%. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout {
+  min-width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--rb-text-secondary);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout:hover,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout:focus-visible {
+  color: var(--rb-text-primary);
+  background: color-mix(in srgb, var(--rb-action) 8%, transparent);
+}
+
+/* Section collapse chevron leads the section title, file-tree style. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  order: -1;
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--rb-text-secondary);
+  cursor: pointer;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle:hover,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle:focus-visible {
+  background: color-mix(in srgb, var(--rb-action) 10%, transparent);
+  color: var(--rb-text-primary);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-palette-section[data-collapsed='true'] {
+  padding-block-end: 4px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > span,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > code {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
@@ -133,11 +198,10 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-live-summary
   .ide-kv-row > code {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control {
   min-height: 40px;
 }
@@ -154,8 +218,8 @@
   border-radius: 7px;
   background: rgba(24, 40, 59, 0.92);
   color: #f8fbff;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: var(--rb-text-head);
+  font-weight: 700;
   letter-spacing: 0.02em;
 }
 
@@ -167,57 +231,9 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-title {
   color: #f8fbff;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   font-weight: 700;
   line-height: 1.25;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-width: 0;
-  padding: 7px 8px;
-  border: 1px solid rgba(36, 175, 224, 0.5);
-  border-radius: 6px;
-  background: rgba(14, 35, 58, 0.8);
-  color: #d7e6f6;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  cursor: pointer;
-  transition: background 100ms, border-color 100ms, color 100ms;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:hover:not(:disabled),
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:focus-visible {
-  border-color: rgba(56, 189, 248, 0.78);
-  background: rgba(36, 175, 224, 0.2);
-  color: #f8fbff;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:focus-visible {
-  outline: 2px solid rgba(56, 189, 248, 0.58);
-  outline-offset: 1px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile.is-placement-active {
-  border-color: rgba(226, 232, 240, 0.44);
-  background: rgba(25, 37, 54, 0.92);
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.18);
-  color: #f8fbff;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile.is-placed,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:disabled {
-  border-color: rgba(120, 147, 176, 0.4);
-  background: rgba(15, 26, 40, 0.75);
-  color: rgba(174, 196, 220, 0.7);
-  cursor: not-allowed;
-  opacity: 0.48;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control {
@@ -230,7 +246,7 @@
   border-radius: var(--ide-radius-s);
   background: var(--ide-surface-2);
   color: var(--ide-text-strong);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   line-height: 1.3;
   cursor: pointer;
   transition: background 100ms, border-color 100ms;
@@ -244,11 +260,6 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control:focus-visible {
   outline: 2px solid rgba(56, 189, 248, 0.58);
   outline-offset: 1px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control .ide-design-input-toggle-label,
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control .ide-design-input-toggle-value {
-  font-size: 14px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-control-bar {
@@ -276,8 +287,8 @@
   border-radius: 6px;
   background: rgba(14, 116, 144, 0.2);
   color: #bae6fd;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: var(--rb-text-body);
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -286,8 +297,8 @@
   min-width: 0;
   overflow: hidden;
   color: #e0f2fe;
-  font-size: 14px;
-  font-weight: 650;
+  font-size: var(--rb-text-head);
+  font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -305,7 +316,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-shortcut {
   color: rgba(186, 230, 253, 0.72);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   white-space: nowrap;
 }
 
@@ -320,7 +331,7 @@
   flex-wrap: nowrap !important;
   align-items: center !important;
   gap: 6px !important;
-  padding: 4px 8px !important;
+  padding: 3px 8px !important;
   pointer-events: auto !important;
 }
 
@@ -407,7 +418,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-truth {
   color: #8ca1b6;
-  font-size: 11px !important;
+  font-size: var(--rb-text-meta) !important;
   line-height: 1.2;
   text-align: center;
 }
@@ -432,41 +443,6 @@
   overflow: visible !important;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-row-v3 {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  flex-wrap: wrap !important;
-  row-gap: 4px;
-  overflow: visible !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 38px;
-  padding: 0 8px;
-  border-right: 1px solid rgba(120, 149, 179, 0.18);
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-utils {
-  flex: 1 1 auto;
-  justify-content: flex-end;
-  border-right: 0;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-group-label {
-  color: #71869b;
-  font-size: 10px !important;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-tools,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout {
   display: flex;
   align-items: center;
@@ -477,11 +453,11 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-segment,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-view-btn {
   min-height: 36px;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] [data-testid='ide-design-logical-io-explainer'] {
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty {
@@ -491,6 +467,9 @@
   max-width: 390px;
   gap: 7px;
   padding: 12px;
+  border-color: var(--rb-border);
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-1);
   pointer-events: none;
 }
 
@@ -500,12 +479,23 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
   margin: 0;
+  color: var(--rb-text-primary);
   font-size: 17px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary {
   margin: 0;
-  color: #7f93a8;
+  color: var(--rb-text-secondary);
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-eyebrow { color: var(--rb-text-secondary); }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button.ide-button-ghost {
+  border-color: var(--rb-border);
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-2);
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button.ide-button-ghost:hover {
+  border-color: var(--rb-action);
+  background: var(--rb-surface-2);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions {
@@ -520,32 +510,12 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-logical-io-note,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-steps li {
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-context-disclosure {
   border: 0;
   border-radius: 0;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-starter-context {
-  max-height: 92px;
-  overflow: auto;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-starter-banner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
-  gap: 10px;
-  padding: 8px 10px;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-starter-details-label {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--rb-text-muted, #94a3b8);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live {
@@ -571,64 +541,25 @@
   pointer-events: auto !important;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-tools {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: max-content;
-  flex: 0 0 auto;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 6px;
-  border-right: 1px solid rgba(148, 163, 184, 0.18);
-  color: var(--rb-text-muted, #94a3b8);
-  font-size: 13px;
-  line-height: 1.2;
-  white-space: nowrap;
+@media (max-height: 960px) {
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-authoring-quickstrip {
+    top: 12px !important;
+    bottom: auto !important;
+  }
 }
 
 /* The same indicator is used as an absolute canvas badge in older layouts.
    In v3 it belongs to the toolbar and must not cover the canvas heading. */
-.ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-design-toolbar-view-meta
-  .ide-design-canvas-zoom-indicator {
-  position: static !important;
-  inset: auto !important;
-  z-index: auto !important;
-  font-size: 13px !important;
-}
 
 /* The legacy toolbar and probe strip predate the v3 readability floor. These
    are normal student-facing labels, not diagnostic microcopy. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-text strong,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-probe-pill {
-  font-size: 13px !important;
+  font-size: var(--rb-text-body) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-text strong {
-  font-size: 14px !important;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-canvas-controls {
-  position: static;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-canvas-controls .ide-button {
-  min-height: 36px;
-  padding-inline: 8px;
-  font-size: 14px;
+  font-size: var(--rb-text-head) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-inspector-name-control {
@@ -639,13 +570,15 @@
   border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
+/* The rename control is one field row in the identity card, the height of every other control
+   there; at 40px it was the tallest thing in the inspector and made a 64px block of one button. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-editor .ide-button,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-input {
-  min-height: 40px;
+  min-height: var(--wb-control-h);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-editor > .ide-button {
-  width: 100%;
+  max-width: 100%;
   justify-content: flex-start;
 }
 
@@ -722,13 +655,13 @@
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header span,
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__hint {
   color: #94a3b8;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header strong {
   overflow: hidden;
   color: #f8fafc;
-  font-size: 14px;
+  font-size: var(--rb-text-head);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -740,7 +673,7 @@
   border-radius: 7px;
   background: rgba(15, 29, 44, 0.96);
   color: #e2e8f0;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
   font-weight: 700;
 }
 
@@ -772,7 +705,7 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice code {
   color: #7dd3fc;
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__close:hover,
@@ -824,22 +757,46 @@
     overflow-x: hidden !important;
     overflow-y: auto !important;
   }
-
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
+  
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
     grid-column: 2;
     grid-row: 1;
   }
+  
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-    grid-column: 2;
-    grid-row: 2;
-    border-top: 1px solid rgba(148, 163, 184, 0.2);
-    border-left: 0;
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(420px, 1fr) minmax(180px, 260px) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock)
+    .ide-workbench-workspace,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock)
+    .ide-workbench-dock-right {
+    grid-column: 1;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+    grid-template-columns: minmax(196px, 212px) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock
+    .ide-workbench-workspace {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-pane-row,
@@ -862,7 +819,7 @@
   }
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
-    font-size: 16px;
+    font-size: var(--rb-text-title);
   }
 
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-steps {
@@ -877,50 +834,144 @@
     min-height: 36px;
     padding-inline: 8px;
   }
+
+}
+
+/* The legacy polish layer hid both support docks below 820px without updating
+   shell state, which left visible preferences with no panel or restore action.
+   Keep the real docks mounted; the narrower breakpoint below stacks them. */
+@media (max-width: 820px) {
+  .ide-root:has(.ide-workbench-shell[data-ide-mode-marker='design']) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    :is(.ide-workbench-dock-left, .ide-workbench-dock-right) {
+    display: flex !important;
+  }
 }
 
 @media (max-width: 760px) {
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock),
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock) {
+    grid-template-rows:
+      minmax(160px, 220px)
+      minmax(520px, 1fr)
+      minmax(180px, 260px) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+    grid-template-rows: minmax(520px, 1fr) minmax(180px, 260px) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+    grid-template-rows: minmax(160px, 220px) minmax(520px, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-rows: minmax(520px, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock)
+    .ide-workbench-dock-left {
     grid-column: 1;
     grid-row: 1;
     max-height: 220px;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock)
+    .ide-workbench-workspace {
     grid-column: 1;
     grid-row: 2;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock
+    .ide-workbench-workspace {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock)
+    .ide-workbench-dock-right {
     grid-column: 1;
     grid-row: 3;
     max-height: 260px;
   }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock)
+    .ide-workbench-dock-right {
+    grid-column: 1;
+    grid-row: 2;
+    max-height: 260px;
+  }
+
+  /* Horizontal rail sizes are preserved and resume above this breakpoint;
+     their separators have no meaningful geometry while the rails are stacked. */
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    :is(.ide-workbench-resize-handle--left, .ide-workbench-resize-handle--right) {
+    display: none !important;
+  }
 }
 
-/* Visual System v1: preserve the circuit canvas as the dominant work object. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-left-width: clamp(188px, 13vw, 204px);
-  --ide-workbench-right-width: clamp(196px, 14vw, 216px);
-}
+/* Visual System v1: preserve the circuit canvas as the dominant work object.
+   At desktop widths, the preference authority owns exact dock geometry. The
+   compact breakpoints above deliberately stack support regions instead. */
+@media (min-width: 1180px) {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+    --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 220px);
+    --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px);
+  }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
-  grid-template-columns:
-    minmax(188px, var(--ide-workbench-left-width))
-    minmax(0, 1fr)
-    minmax(210px, var(--ide-workbench-right-width)) !important;
-}
+  /* With both panels open the inspector yields before the circuit does: the sheet keeps at
+     least 60% of the window (plus 8px to spare, inside 8px gutters), and the inspector takes
+     what is left up to its preferred width, never less than 240px. At 1366x768 that is a 250px
+     inspector and a 828px sheet; 1440x900 gives 256px and 896px; 1920x1080 gives 256px and
+     1376px. A resized inspector keeps its width wherever the sheet can still have 60%. */
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock) {
+    grid-template-columns:
+      var(--ide-workbench-left-width)
+      minmax(0, 1fr)
+      clamp(
+        240px,
+        calc(100% - var(--ide-workbench-left-width) - 60vw - 24px),
+        var(--ide-workbench-right-width)
+      ) !important;
+  }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-main.hide-right-dock {
-  grid-template-columns:
-    minmax(188px, var(--ide-workbench-left-width))
-    minmax(0, 1fr) !important;
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+    grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-width) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+    grid-template-columns: var(--ide-workbench-left-width) minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette {
@@ -952,10 +1003,6 @@
   box-shadow: inset 0 0 0 1px rgba(77, 208, 225, 0.04);
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  border-left-color: rgba(77, 208, 225, 0.18);
-  background: #10161f;
-}
 /* Trace-backed circuit replay transport. */
 .ide-root .ide-design-replay-transport {
   display: grid;
@@ -971,13 +1018,13 @@
 
 .ide-root .ide-design-replay-transport-heading strong {
   color: var(--rb-text);
-  font-size: 13px;
+  font-size: var(--rb-text-body);
 }
 
 .ide-root .ide-design-replay-transport-heading span,
 .ide-root .ide-design-replay-speed {
   color: var(--rb-text-muted);
-  font-size: 11px;
+  font-size: var(--rb-text-meta);
 }
 
 .ide-root .ide-design-replay-state-context {
@@ -994,13 +1041,8 @@
   background: var(--rb-surface-2);
   color: var(--rb-text-muted);
   font-family: var(--rb-font-mono);
-  font-size: 10px;
+  font-size: var(--rb-text-micro);
   white-space: nowrap;
-}
-
-.ide-root .ide-toolbar-group.is-simulation {
-  border-color: color-mix(in srgb, var(--ide-accent, #5eb9ff) 42%, var(--ide-border));
-  background: color-mix(in srgb, var(--ide-accent, #5eb9ff) 8%, transparent);
 }
 
 .ide-root .ide-design-live-tick {
@@ -1087,6 +1129,34 @@
   display: none !important;
 }
 
+/* Keep selection tracing informative without adding a second status row at
+   classroom widths. Full wire context remains available in the Inspector. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-main {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-row {
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-label {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-meta {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-sim-story-strip.is-replay-mode
   .ide-design-replay-transport {
@@ -1128,3 +1198,403 @@
   min-width: 46px !important;
   padding: 3px 5px !important;
 }
+
+/* Milestone B2 — light support surfaces around an independently themed canvas. */
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] {
+  --rb-surface: #ffffff;
+  --rb-surface-1: #ffffff;
+  --rb-surface-2: #f8fafc;
+  --rb-surface-3: #eef2f7;
+  --rb-text: #152033;
+  --rb-text-primary: #152033;
+  --rb-text-secondary: #4d5a6b;
+  /* Muted text follows the shared palette. */
+  --ide-surface-1: #ffffff;
+  --ide-surface-2: #f8fafc;
+  --ide-surface-3: #eef2f7;
+  --ide-text-strong: #152033;
+  --ide-text-primary: #152033;
+  --ide-text-secondary: #4d5a6b;
+  --ide-text-muted: #667386;
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] {
+  background: var(--rb-app-bg);
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-component-tile-title, .ide-inspector-title) {
+  color: var(--rb-text-primary);
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-palette-section, .ide-design-selection-inspector, .ide-design-inspector-identity-card, .ide-design-inspector-action-group, .ide-inspector-section, .ide-design-live-summary) {
+  border-color: var(--rb-border);
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-component-tile-glyph, .ide-palette-card-icon) {
+  border-color: var(--rb-border-strong);
+  background: var(--rb-surface-3);
+  color: var(--rb-action);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+  background: var(--rb-app-bg);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-control-bar {
+  padding: 0 !important;
+  border: 0;
+  background: var(--rb-surface);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-header {
+  display: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-header:has(.ide-design-wire-cuebar) {
+  display: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar {
+  min-height: 44px;
+  height: 44px !important;
+  max-height: 44px !important;
+  flex-wrap: nowrap !important;
+  overflow: visible !important;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--rb-border);
+  background: var(--rb-surface) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-control-bar {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ide-design-wire-inline {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  padding: 3px 7px;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--rb-action) 38%, var(--rb-border));
+  border-radius: 6px;
+  color: var(--rb-text-secondary);
+  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface));
+  font-size: var(--rb-text-body);
+}
+.ide-design-wire-inline strong { color: var(--rb-action); font-size: var(--rb-text-body); }
+.ide-design-wire-inline span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-design-wire-inline button {
+  min-height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--rb-border);
+  border-radius: 5px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface);
+  font-weight: 600;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-tool-segment {
+  flex: 0 0 72px !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  box-sizing: border-box;
+  justify-content: center;
+  gap: 5px !important;
+  padding: 4px 7px !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-tool-segmented {
+  grid-template-columns: repeat(2, 72px) !important;
+  width: 144px !important;
+  min-width: 144px !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--board { display: none; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-view-toggle { order: 1; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout { order: 2; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-overflow { order: 4; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-preferences,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-customize {
+  display: none;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout {
+  display: flex !important;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-overflow {
+  display: block !important;
+  flex: 0 0 auto;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-segment kbd { display: none; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-segment,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-view-btn,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-overflow > summary {
+  min-height: 34px;
+  padding: 5px 8px;
+  font-size: var(--rb-text-head);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-icon {
+  width: 20px;
+  min-width: 20px !important;
+  height: 20px;
+  border: 0;
+  font-size: var(--rb-text-head) !important;
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-tool-segment, .ide-design-view-btn, .ide-design-toolbar .ide-button, .ide-design-toolbar-overflow > summary) {
+  border-color: var(--rb-border);
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-tool-segment.is-active, .ide-design-view-btn.is-active) {
+  border-color: color-mix(in srgb, var(--rb-action) 55%, var(--rb-border));
+  background: color-mix(in srgb, var(--rb-action) 10%, var(--rb-surface));
+  color: var(--rb-action-hover);
+}
+
+.ide-design-toolbar-overflow-menu { min-width: 230px; padding: 10px; border-color: var(--rb-border); background: var(--rb-surface); }
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-status-bar {
+  display: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-wrap,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg { background: var(--rb-canvas-dark) !important; }
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg { background: #f8fafc !important; }
+.ide-design-workspace[data-canvas-appearance='system'] .rb-logic-canvas-svg { background: var(--rb-canvas) !important; }
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: var(--rb-text-body); font-weight: 600; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-port-label { font-size: var(--rb-text-meta); }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-sub-label { font-size: var(--rb-text-meta); }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body { stroke: #f59e0b; stroke-width: 2.5px; filter: none; }
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg :is(.logic-node-body, [data-node-selected='1'] .logic-node-body) {
+  filter: none !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg :is(g, rect, path, circle) {
+  filter: none !important;
+}
+/* Light technical canvas owns its node fills, overriding the legacy dark
+   !important rules in ide-root.css so the schematic reads as light cards with
+   a restrained neutral border. State is carried by the output indicator,
+   toggle, and value labels, not by a saturated body fill. */
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg .logic-node-body {
+  fill: #ffffff !important;
+  stroke: #cbd5e1 !important;
+  stroke-width: 1.2 !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg .logic-node-header {
+  fill: #eef2f7 !important;
+  stroke: rgba(100, 116, 139, 0.35) !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+  stroke: #7c3aed !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+  stroke: #2563eb !important;
+  stroke-width: 1.8px !important;
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-palette-header, .ide-palette-section) {
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette {
+  border-color: var(--rb-border);
+  background: var(--rb-surface-2);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section {
+  margin: 0;
+  padding: 10px;
+  gap: 7px;
+  border: 0;
+  border-bottom: 1px solid var(--rb-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-copy {
+  margin: 2px 0 4px;
+  color: var(--rb-text-muted);
+  font-size: var(--rb-text-meta);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  min-height: 48px;
+  align-items: center;
+  padding: 7px 8px;
+  gap: 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface);
+  box-shadow: none;
+  text-align: left;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card:hover,
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card:focus-visible {
+  border-color: var(--rb-action);
+  background: var(--rb-state-info-bg);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-title,
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-title-row strong {
+  color: var(--rb-text-primary);
+  font-size: var(--rb-text-head);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-subtitle {
+  color: var(--rb-text-secondary);
+  font-size: var(--rb-text-meta);
+  line-height: 1.3;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--rb-text-secondary);
+  background: var(--rb-surface-3);
+  font-size: var(--rb-text-meta) !important;
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-palette-header h3, .ide-palette-section h4) {
+  color: var(--rb-text-secondary) !important;
+  font-size: var(--rb-text-body) !important;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-palette-search, .ide-design-palette-search input, .ide-design-search) {
+  border-color: var(--rb-border) !important;
+  background: var(--rb-surface-raised) !important;
+  color: var(--rb-text-primary) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-inspector-action-grid {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-inspector-action-grid .ide-button {
+  width: 100%;
+  min-height: 36px;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-design-inspector-subtitle, .ide-design-inspector-next-step, .ide-kv-row, .ide-design-logical-io-note) {
+  color: var(--rb-text-secondary);
+  font-size: var(--rb-text-body);
+  line-height: 1.45;
+}
+
+/* Hierarchy is a project navigator, so its rows use tree rhythm instead of the
+   legacy inline utility layout. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser {
+  min-height: 100%;
+  background: var(--rb-surface);
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader {
+  padding: 12px;
+  border-bottom: 1px solid var(--rb-border);
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader p {
+  margin: 0;
+  color: var(--rb-text-secondary);
+  font-size: var(--rb-text-meta);
+  line-height: 1.4;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > button,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > article > button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  text-align: left;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > button > span:last-child,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > article > button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser strong { font-size: var(--rb-text-head); }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser small {
+  display: block;
+  color: var(--rb-text-secondary);
+  font-size: var(--rb-text-meta);
+  line-height: 1.35;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 6px 2px 2px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-actions button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface);
+  color: var(--rb-text-secondary);
+  font-size: var(--rb-text-meta);
+}
+
+@media (max-width: 1366px) {
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar { padding-inline: 4px; }
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-tool-segment {
+    flex-basis: 66px !important;
+    width: 66px !important;
+    min-width: 66px !important;
+    padding-inline: 5px !important;
+  }
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-tool-segmented {
+    grid-template-columns: repeat(2, 66px) !important;
+    width: 132px !important;
+    min-width: 132px !important;
+  }
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout .ide-button { padding-inline: 6px; }
+}
+
+/* The exploration note is the shortest true thing the row can say, and it gives way before
+   the circuit's own name does. */
+.ide-root .rb-design-live-note { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

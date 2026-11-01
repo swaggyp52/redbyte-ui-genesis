@@ -46,6 +46,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: true,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -79,11 +80,8 @@ function renderSurface() {
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}

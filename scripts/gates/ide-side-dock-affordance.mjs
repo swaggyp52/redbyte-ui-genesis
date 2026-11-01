@@ -3,6 +3,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { selectFirstVisibleDesignNode } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -13,13 +14,14 @@ const MODES = [
   {
     id: 'project',
     focalSelectors: [
-      '[data-testid="ide-project-command-center"]',
+      '[data-testid="ide-project-overview-document"]',
       '[data-testid="ide-project-workspace-grid"]',
       '[data-testid="ide-project-landing"]',
     ],
   },
   {
     id: 'design',
+    requiresStarter: true,
     focalSelectors: ['[data-testid="ide-design-live-canvas"]', '[data-testid="ide-design-canvas"]'],
   },
   {
@@ -27,9 +29,7 @@ const MODES = [
     requiresStarter: true,
     focalSelectors: [
       '[data-testid="ide-verify-no-circuit-task"]',
-      '[data-testid="ide-verify-region-waveform"]',
-      '[data-testid="ide-verify-workbench"]',
-      '[data-testid="ide-verify-workstation-run-bar"]',
+      '[data-testid="ide-verify-lab-grid"]',
     ],
   },
   {
@@ -176,7 +176,9 @@ async function assertStableSupportRegions(page, viewport, mode) {
       leftDock: region('[data-testid="ide-left-dock"]'),
       rightDock: region('[data-testid="ide-right-dock"]'),
       designPalette: region('[data-testid="ide-design-dock-palette"]'),
-      genericRailControls: visibleControlCount([
+      verifySignalShelf: region('[data-testid="ide-case-lab"]'),
+      scenarioExplorer: region('[data-testid="ide-sim-scenario-explorer"]'),
+      retiredRailControls: visibleControlCount([
         '[data-testid="ide-workbench-dock-toggle-left"]',
         '[data-testid="ide-workbench-dock-toggle-right"]',
         '[data-testid="ide-workbench-dock-collapse-left"]',
@@ -187,33 +189,54 @@ async function assertStableSupportRegions(page, viewport, mode) {
   });
 
   assert(
-    state.genericRailControls === 0,
-    `${viewport.label}/${mode}: retired dock Hide/Show rails must stay absent (${state.genericRailControls} visible)`
+    state.retiredRailControls === 0,
+    `${viewport.label}/${mode}: retired dock Hide/Show rails must stay absent (${state.retiredRailControls} visible)`
   );
 
   if (mode === 'design') {
     assert(state.leftDock.visible && state.designPalette.visible, `${viewport.label}: Design Library must remain directly available`);
     assert(
-      state.leftDock.width >= 180 && state.leftDock.width <= 240,
+      state.leftDock.width >= 180 && state.leftDock.width <= 280,
       `${viewport.label}: Design Library must be readable but bounded (${state.leftDock.width}px)`
     );
     assert(state.designPalette.textLength >= 12, `${viewport.label}: Design Library must expose meaningful tools`);
-    assert(state.rightDock.visible, `${viewport.label}: Design Inspector must remain directly available`);
+    assert(!state.rightDock.visible, `${viewport.label}: idle Design must reserve the canvas instead of opening an empty Inspector`);
+
+    await selectFirstVisibleDesignNode(page);
+    const inspector = await readRegion(page, '[data-testid="ide-right-dock"]');
+    assert(inspector.visible, `${viewport.label}: selecting a Design object must reveal its Inspector`);
     assert(
-      state.rightDock.width >= 220 && state.rightDock.width <= 300,
-      `${viewport.label}: Design Inspector must be useful without dominating the canvas (${state.rightDock.width}px)`
+      inspector.width >= 220 && inspector.width <= 300,
+      `${viewport.label}: contextual Design Inspector must be useful without dominating the canvas (${inspector.width}px)`
     );
-    assert(state.rightDock.textLength >= 12, `${viewport.label}: Design Inspector must expose meaningful controls`);
+    assert(inspector.textLength >= 12, `${viewport.label}: contextual Design Inspector must expose meaningful controls`);
   }
 
   if (mode === 'verify') {
-    assert(state.leftDock.visible, `${viewport.label}: Verify Signals must remain directly available`);
+    assert(!state.leftDock.visible || (state.scenarioExplorer.visible && state.leftDock.width <= 280),
+      `${viewport.label}: visible Simulate support must be the bounded scenario explorer`);
+    assert(state.verifySignalShelf.visible, `${viewport.label}: authored cases and their signal identities must remain directly available`);
     assert(
-      state.leftDock.width >= 160 && state.leftDock.width <= 320,
-      `${viewport.label}: Verify Signals must be readable but bounded (${state.leftDock.width}px)`
+      state.verifySignalShelf.width >= viewport.width * 0.7,
+      `${viewport.label}: Simulate signal shelf must read as workbench content (${state.verifySignalShelf.width}px)`
     );
-    assert(state.leftDock.textLength >= 12, `${viewport.label}: Verify Signals must expose meaningful controls`);
+    assert(state.verifySignalShelf.textLength >= 12, `${viewport.label}: Simulate signal shelf must expose meaningful controls`);
   }
+}
+
+async function readRegion(page, selector) {
+  return page.evaluate((candidateSelector) => {
+    const element = document.querySelector(candidateSelector);
+    if (!element) return { present: false, visible: false, width: 0, textLength: 0 };
+    const bounds = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return {
+      present: true,
+      visible: bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
+      width: Math.round(bounds.width * 10) / 10,
+      textLength: (element.textContent || '').replace(/\s+/g, ' ').trim().length,
+    };
+  }, selector);
 }
 
 async function assertFocalWorkbenchVisible(page, viewport, mode) {

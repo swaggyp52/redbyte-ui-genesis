@@ -1,0 +1,19 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-03-09T00:00:00.000Z",
+  "updatedAt": "2026-03-09T00:00:00.000Z",
+  "name": "Legacy Import",
+  "circuit": {
+    "nodes": [
+      { "id": "in_a", "type": "INPUT", "position": { "x": 12, "y": 24 } },
+      { "id": "out_y", "type": "OUTPUT", "position": { "x": 48, "y": 72 } }
+    ],
+    "connections": [
+      {
+        "from": { "nodeId": "in_a", "portName": "out" },
+        "to": { "nodeId": "out_y", "portName": "in" }
+      }
+    ]
+  }
+}

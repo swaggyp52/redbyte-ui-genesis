@@ -9,6 +9,29 @@ describe('useLabWorkflowStore Invariants', () => {
         });
     });
 
+    it('preserves verification result payloads independently of presentation', () => {
+        const results = [
+            { id: 'vector-0', name: 'SW0', pass: true, observed: { LED: 1 }, expected: { LED: 1 } },
+            { id: 'vector-1', name: 'SW1', pass: false, error: 'LED mismatch', observed: { LED: 0 }, expected: { LED: 2 } },
+        ];
+        useLabWorkflowStore.getState().setVerificationResults(results);
+        expect(useLabWorkflowStore.getState().verificationResults).toEqual(results);
+        useLabWorkflowStore.getState().reset();
+        expect(useLabWorkflowStore.getState().verificationResults).toEqual([]);
+    });
+
+    it('preserves I/O snapshot groups and transport metadata until reset', () => {
+        const snapshot = {
+            timestamp: '2026-10-01T00:00:00.000Z', tick: 7,
+            inputs: { SW: 3, BTN: 0 }, outputs: { LED: 3, SEG: '0011' },
+            source: 'bridge', port: 'COM7',
+        };
+        useLabWorkflowStore.getState().addHardwareSnapshot(snapshot);
+        expect(useLabWorkflowStore.getState().hardwareSnapshots).toEqual([snapshot]);
+        useLabWorkflowStore.getState().reset();
+        expect(useLabWorkflowStore.getState().hardwareSnapshots).toEqual([]);
+    });
+
     it('should start at selection step', () => {
         expect(useLabWorkflowStore.getState().currentStep).toBe('selection');
     });

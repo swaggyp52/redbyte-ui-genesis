@@ -158,7 +158,7 @@ async function assertProject(page, viewport) {
     `${viewport.label}/Project: expected exactly one primary Continue action`,
   );
 
-  const alternatives = page.getByTestId('ide-project-change-project').first();
+  const alternatives = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
   assert(await visible(alternatives), `${viewport.label}/Project: change/recover alternatives are missing`);
   await alternatives.click();
   assert(

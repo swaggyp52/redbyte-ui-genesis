@@ -25,13 +25,15 @@ const normalized = html.replace(/\s+/g, ' ').trim();
 
 const requiredSnippets = [
   'RedByte is a digital logic and FPGA workbench.',
-  'A focused engineering workbench from circuit to handoff.',
+  'Visual digital-logic engineering from circuit to FPGA handoff.',
   'Five-stage workflow',
   'Project',
   'Design',
-  'Verify',
-  'Map Pins',
-  'Export',
+  'Simulate',
+  'Board &amp; Constraints',
+  'Build &amp; Export',
+  'Drive inputs and observe the circuit.',
+  'a run records observed behavior even with zero checks',
   'Browser scope: E0',
   'E0',
   'E1',
@@ -60,6 +62,8 @@ const forbiddenClaims = [
   'switch to HQ in the IDE',
   'pnpm rb:marcus:start',
   'Marcus companion',
+  'Map Pins',
+  'Compare expected and observed behavior',
 ];
 
 for (const claim of forbiddenClaims) {

@@ -99,6 +99,10 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
   assert(named.name === TESTBENCH_NAME, `testbench name was not committed: ${JSON.stringify(named)}`);
   recordStep('Name the active testbench', { id: named.id, name: named.name, version: named.version });
 
+  const generators = page.getByTestId('ide-scenario-generators-disclosure');
+  if ((await generators.getAttribute('open')) === null) await generators.locator('summary').first().click();
+  const clockPanel = page.getByTestId('ide-verify-clock-policy-panel').first();
+  if ((await clockPanel.getAttribute('open')) === null) await clockPanel.locator('summary').click();
   const runCyclesInput = page.getByTestId('ide-verify-clock-run-cycles-input').first();
   await runCyclesInput.fill(String(RUN_CYCLES));
   await page.waitForFunction(
@@ -225,18 +229,24 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
   });
   recordRoute('reloaded-verify', page.url());
 
-  assert(await setVerifyRunMode(page, 'observe'), 'Observe mode must be selectable');
+  await page.getByTestId('ide-verify-details').click();
+  await page.getByTestId('ide-sim-clear-checks').click();
+  await page.getByLabel('Close simulation details').click();
+  const unchecked = await readDocumentState(page);
+  assert(unchecked.vectors.every(vector => Object.keys(vector.expected ?? {}).length === 0), 'Observation must have no configured checks');
+  assert(stable(unchecked.vectors.map(({ tick, inputs }) => ({ tick, inputs }))) === stable(reloaded.vectors.map(({ tick, inputs }) => ({ tick, inputs }))), 'Clearing checks must preserve authored stimulus');
   const observeRun = await runFreshVerification(page, { kind: 'trace' });
   assert(isVerifyTrace(observeRun.summaryText), `Observe did not publish trace authority: ${observeRun.summaryText}`);
   assert(observeRun.waveform.length > 0, 'Observe must publish waveform samples');
-  recordStep('Run Observe without grading saved checks', summarizeRun(observeRun));
+  recordStep('Record outputs without optional checks', summarizeRun(observeRun));
 
-  assert(await setVerifyRunMode(page, 'compare'), 'Compare mode must be selectable');
+  await authorCounterExpectedChecks(page);
+  assert(await setVerifyRunMode(page, 'compare'), 'Authored checks must be configured');
   const compareRun = await runFreshVerification(page, { kind: 'verify', status: 'pass' });
   assert(isVerifyPass(compareRun.summaryText), `Compare did not pass: ${compareRun.summaryText}`);
   const metrics = await assertDistinctRunMetrics(page, compareRun);
   const authoredClockProof = assertCounterClockAuthority(compareRun, reloaded);
-  recordStep('Run Compare and prove distinct result labels', {
+  recordStep('Run authored checks and distinguish events from checks', {
     ...summarizeRun(compareRun),
     metrics,
     authoredClockProof,
@@ -252,23 +262,10 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
 
   const beforePulseEdit = await readDocumentState(page);
   const editedPulseTick = rising.ticks[1];
-  const clockCell = page.getByTestId(`ide-stimulus-cell-${clockRow.id}-t${editedPulseTick}`).first();
-  assert(await visible(clockCell), `pulse cell ${clockRow.id} t${editedPulseTick} must be visible after reload`);
-  const pulseTitleBefore = await clockCell.getAttribute('title');
-  await activateStimulusCellByKeyboard(page, clockCell, 'Edit the authored pulse cell');
-  await page.waitForFunction(
-    ({ testId, previousTitle }) => {
-      const element = document.querySelector(`[data-testid="${testId}"]`);
-      const dirty = window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectHealthCore?.dirtySinceVerify;
-      return Boolean(dirty && element?.getAttribute('title') !== previousTitle);
-    },
-    { testId: `ide-stimulus-cell-${clockRow.id}-t${editedPulseTick}`, previousTitle: pulseTitleBefore },
-    { timeout: 8000 },
-  );
-  await page.waitForFunction(
-    () => document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind') === 'stale',
-    { timeout: 8000 },
-  );
+  const pulseTitleBefore = await readScenarioVectorBit(page, 'inputs', clockRow, editedPulseTick);
+  await setStimulusBit(page, clockRow, editedPulseTick, pulseTitleBefore === 1 ? 0 : 1);
+  assert(await readRuntimeDirty(page), 'Editing an authored pulse must stale prior recording evidence');
+  assert(await page.getByTestId('ide-run-identity').getAttribute('data-currency') === 'differs', 'The visible recording must report that current work differs');
   const afterPulseEdit = await readDocumentState(page);
   assert(afterPulseEdit.id === beforePulseEdit.id, 'pulse edit changed testbench identity');
   assert(
@@ -279,8 +276,8 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
   recordStep('Edit the authored pulse and mark prior evidence stale', {
     tick: editedPulseTick,
     before: pulseTitleBefore,
-    after: await clockCell.getAttribute('title'),
-    summaryKind: await page.getByTestId('ide-verify-results-summary').getAttribute('data-kind'),
+    after: await readScenarioVectorBit(page, 'inputs', clockRow, editedPulseTick),
+    summaryKind: await page.getByTestId('ide-run-identity').getAttribute('data-currency'),
   });
 
   assert(await setVerifyRunMode(page, 'compare'), 'Compare must remain selectable after pulse edit');
@@ -290,13 +287,13 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
 
   await setStimulusBit(page, clockRow, editedPulseTick, 1);
   await page.waitForFunction(
-    () => document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind') === 'stale',
+    () => document.querySelector('[data-testid="ide-run-identity"]')?.getAttribute('data-currency') === 'differs',
     { timeout: 8000 },
   );
   recordStep('Restore the authored rising edge and stale the failed evidence', {
     tick: editedPulseTick,
     restoredValue: 1,
-    summaryKind: await page.getByTestId('ide-verify-results-summary').getAttribute('data-kind'),
+    summaryKind: await page.getByTestId('ide-run-identity').getAttribute('data-currency'),
   });
 
   const pulseRerun = await runFreshVerification(page, { kind: 'verify', status: 'pass' });
@@ -327,8 +324,8 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
   assertSameAuthoredDocument(authoredBeforeBreak, afterBreak, 'after Design break');
   assert(await readRuntimeDirty(page), 'Design break must invalidate prior Verify authority');
   assert(
-    (await page.getByTestId('ide-verify-results-summary').count()) === 0 ||
-      (await page.getByTestId('ide-verify-results-summary').getAttribute('data-kind')) !== 'pass',
+    (await page.getByTestId('ide-run-identity').count()) === 0 ||
+      (await page.getByTestId('ide-run-identity').getAttribute('data-currency')) !== 'current',
     'broken Design must not retain a current PASS summary',
   );
   await capture(page, '05-design-broken-timeline-preserved');
@@ -377,7 +374,7 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
     steps,
     consoleStatus: browserProblems.length === 0 ? 'clean' : 'errors',
     browserProblems,
-    previewLifecycle: 'runIdeGate started a production preview on a reserved port and stopped it in finally',
+    previewLifecycle: process.env.RB_GATE_BASE_URL ? 'Used supplied local built server; lifecycle owned by candidate launcher' : 'runIdeGate started a production preview on a reserved port and stopped it in finally',
     proofBoundary: 'Browser-local UI behavior only; no Vivado, bitstream, board programming, or hardware observation claimed.',
   };
   await writeFile(
@@ -390,6 +387,7 @@ await runIdeGate('IDE sequential testbench authority satisfied', async ({ page, 
 });
 
 async function renameActiveTestbench(page, name) {
+  await page.getByLabel('Manage testbench', { exact: true }).click();
   await clickVisible(page, '[data-testid="ide-scenario-rename-btn"]', 'Rename testbench');
   const input = page.getByTestId('ide-scenario-rename-input').first();
   await input.waitFor({ state: 'visible', timeout: 5000 });
@@ -481,7 +479,11 @@ async function authorCounterExpectedChecks(page) {
 async function setStimulusBit(page, row, tick, target) {
   const current = await readScenarioVectorBit(page, 'inputs', row, tick);
   if (current === target) return 0;
-  const testId = `ide-stimulus-cell-${row.id}-t${tick}`;
+  const output = (await readDocumentState(page)).ioRows.find(field => field.direction === 'out');
+  await page.getByTestId(`ide-timing-check-${output.id}-${tick}`).click();
+  const editor = page.getByTestId('ide-scenario-event-editor-details');
+  if ((await editor.getAttribute('open')) === null) await editor.locator('summary').click();
+  const testId = `ide-scenario-input-${row.id}`;
   const cell = page.getByTestId(testId).first();
   await activateStimulusCellByKeyboard(page, cell, `Set ${row.id} t${tick}=${target}`);
   await page.waitForFunction(
@@ -503,7 +505,10 @@ async function setExpectedBit(page, row, tick, target) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const current = await readScenarioVectorBit(page, 'expected', row, tick);
     if (current === target) return clickCount;
-    const testId = `ide-stimulus-expected-${row.id}-t${tick}`;
+    await page.getByTestId(`ide-timing-check-${row.id}-${tick}`).click();
+    const editor = page.getByTestId('ide-scenario-event-editor-details');
+    if ((await editor.getAttribute('open')) === null) await editor.locator('summary').click();
+    const testId = `ide-scenario-check-${row.id}`;
     const cell = page.getByTestId(testId).first();
     await activateStimulusCellByKeyboard(page, cell, `Set ${row.id} expected t${tick}`);
     clickCount += 1;
@@ -545,51 +550,33 @@ async function readScenarioVectorBit(page, field, row, tick) {
 }
 
 async function waitForPersistedDocument(page, expected) {
-  await page.waitForFunction(
-    ({ scenarioId, name, vectorCount, runCycles }) => {
-      for (const key of Object.keys(localStorage)) {
-        if (!key.startsWith('rb.ide.project.v1:')) continue;
-        try {
-          const snapshot = JSON.parse(localStorage.getItem(key) ?? 'null');
-          const scenario = snapshot?.scenarios?.find((entry) => entry.id === scenarioId);
-          if (
-            scenario?.name === name &&
-            scenario?.vectors?.length === vectorCount &&
-            scenario?.sequentialPolicy?.runCycles === runCycles &&
-            snapshot?.activeScenarioId === scenarioId
-          ) {
-            return true;
-          }
-        } catch {
-          // Ignore unrelated invalid storage entries.
-        }
-      }
-      return false;
-    },
-    {
-      scenarioId: expected.id,
-      name: expected.name,
-      vectorCount: expected.vectors.length,
-      runCycles: expected.sequentialPolicy?.runCycles,
-    },
-    { timeout: 10000 },
-  );
-  return page.evaluate((scenarioId) => {
-    for (const key of Object.keys(localStorage)) {
-      if (!key.startsWith('rb.ide.project.v1:')) continue;
-      try {
-        const snapshot = JSON.parse(localStorage.getItem(key) ?? 'null');
-        if (snapshot?.activeScenarioId === scenarioId) {
-          return { projectId: key.slice('rb.ide.project.v1:'.length), activeScenarioId: scenarioId };
-        }
-      } catch {
-        // Continue looking for the matching snapshot.
-      }
-    }
-    return null;
-  }, expected.id);
+  await page.locator('[data-testid="ide-save-state"][data-state="saved"]').waitFor({ timeout: 20000 });
+  const stored = await page.evaluate(async () => {
+    const projectId = window.__RB_PROJECT_RUNTIME__.getState().projectId;
+    const databases = await indexedDB.databases();
+    if (!databases.some(entry => entry.name === 'redbyte-ide-sessions-v1')) return null;
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('redbyte-ide-sessions-v1');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const value = await new Promise((resolve, reject) => {
+        const transaction = db.transaction('records', 'readonly');
+        const request = transaction.objectStore('records').get(`rb.ide.project.v1:${projectId}`);
+        transaction.oncomplete = () => resolve(request.result?.value ?? null);
+        transaction.onabort = () => reject(transaction.error);
+      });
+      return { projectId, snapshot: value ? JSON.parse(value) : null };
+    } finally { db.close(); }
+  });
+  const snapshot = stored?.snapshot;
+  const scenario = snapshot?.scenarios?.find(entry => entry.id === expected.id);
+  assert(snapshot?.activeScenarioId === expected.id, 'Committed IndexedDB active scenario differs');
+  assert(scenario, 'Committed IndexedDB record must contain the authored scenario');
+  assertSameAuthoredDocument(expected, { ...scenario, steps: scenario.steps ?? [] }, 'committed IndexedDB save');
+  return { projectId: stored.projectId, activeScenarioId: snapshot.activeScenarioId };
 }
-
 async function runFreshVerification(page, expectation) {
   const beforeHistory = await page.evaluate(
     () => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyRunHistory?.length ?? 0,
@@ -603,7 +590,7 @@ async function runFreshVerification(page, expectation) {
   );
   await waitForVerifyResult(page, { timeout: 30000 });
   await page.waitForFunction(
-    () => document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind') !== 'running',
+    () => document.querySelector('[data-testid="ide-run-identity"]')?.getAttribute('data-run-id') === window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.runId,
     { timeout: 10000 },
   );
   const run = await readRunState(page);
@@ -615,44 +602,28 @@ async function runFreshVerification(page, expectation) {
 }
 
 async function assertDistinctRunMetrics(page, run) {
-  const expected = [
-    ['cases', 'Run cases', String(run.report.vectors.length)],
-    ['passed', 'Checks passed', String(run.report.rows.filter((row) => row.status === 'pass').length)],
-    ['failed', 'Checks failed', String(run.report.rows.filter((row) => row.status === 'fail').length)],
-    ['ticks', 'Run ticks', String(run.runTickCount)],
-    ['wave-samples', 'Wave samples', String(run.waveform.length)],
-  ];
-  const metrics = [];
-  for (const [id, label, value] of expected) {
-    const metric = page.getByTestId(`ide-verify-results-summary-metric-${id}`).first();
-    assert(await visible(metric), `${label} metric must be visible`);
-    const metricText = await text(metric);
-    assert(metricText.includes(label), `${id} metric must be labeled "${label}": ${metricText}`);
-    assert(metricText.includes(value), `${id} metric must show ${value}: ${metricText}`);
-    metrics.push({ id, label, value, text: metricText });
-  }
-  const coverage = page.getByTestId('ide-verify-results-summary-metric-coverage').first();
-  assert(await visible(coverage), 'Coverage metric must be visible');
-  const coverageText = await text(coverage);
-  assert(/^Coverage\s*\d+%\s+coverage$/i.test(coverageText), `Coverage metric is not explicit: ${coverageText}`);
-  metrics.push({ id: 'coverage', label: 'Coverage', value: coverageText.replace(/^Coverage\s*/i, ''), text: coverageText });
-
-  const labels = metrics.map((entry) => entry.label);
-  assert(new Set(labels).size === labels.length, `run metric labels must be distinct: ${JSON.stringify(labels)}`);
-  const headline = await text(page.getByTestId('ide-verify-results-summary-headline'));
-  assert(
-    headline.includes(`${run.report.rows.length} asserted check`) &&
-      headline.includes(`${run.report.vectors.length} case`),
-    `headline must distinguish asserted checks from cases: ${headline}`,
-  );
-  return metrics;
+  const settings = page.getByTestId('ide-timing-settings');
+  if ((await settings.getAttribute('open')) === null) await settings.locator('summary').click();
+  const count = page.getByTestId('ide-timing-lab-count');
+  assert(await visible(count), 'Timing event/check counts must be visible on request');
+  const countText = await text(count);
+  const cases = run.report.vectors.length;
+  const checks = run.report.rows.length;
+  assert(countText.includes(`${cases} events`) && countText.includes(`${checks} checks`), `Event/check counts differ from recorded report: ${countText}`);
+  const verdict = await text(page.getByTestId('ide-run-check-result'));
+  const passed = run.report.rows.filter(row => row.status === 'pass').length;
+  const failed = run.report.rows.filter(row => row.status === 'fail').length;
+  assert(verdict === `${passed} checks passed`, `Visible check verdict differs from recorded checks: ${verdict}`);
+  assert(failed === 0 && passed === checks, 'Passing counter must grade every authored check');
+  assert(run.runTickCount === cases && run.waveform.length === cases, 'Authored events, execution ticks and waveform samples must agree');
+  assert(!/coverage/i.test(countText), 'Sequential events must not imply combinational coverage');
+  return { events: cases, checks, passed, failed, executionTicks: run.runTickCount, waveformSamples: run.waveform.length, countText, verdict };
 }
-
 async function assertWaveformAuthority(page, ioRows) {
-  const waveform = page.getByTestId('ide-verify-waveform-svg').first();
+  const waveform = page.getByTestId('ide-timing-lanes').locator('svg').first();
   assert(await visible(waveform), 'waveform SVG must be visible');
-  const lanes = await page.locator('[data-testid^="ide-verify-waveform-row-"]').evaluateAll((elements) =>
-    elements.map((element) => element.querySelector('title')?.textContent?.trim() ?? '').filter(Boolean),
+  const lanes = await page.locator('[data-testid^="ide-timing-lane-"]').evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('data-testid')?.replace('ide-timing-lane-', '') ?? '').filter(Boolean),
   );
   assert(lanes.length > 0, 'waveform must contain signal lanes');
   assert(new Set(lanes.map(normalize)).size === lanes.length, `waveform contains duplicate normalized lanes: ${JSON.stringify(lanes)}`);
@@ -770,7 +741,7 @@ async function readRunState(page) {
       waveform: (run?.waveform ?? []).map((sample) => ({ tick: sample.tick, signals: { ...sample.signals } })),
       runTickCount: ticks.size,
       summaryText: document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
-      resultsKind: document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind') ?? null,
+      resultsKind: document.querySelector('[data-testid="ide-run-identity"]')?.getAttribute('data-currency') ?? null,
       ioRows: (state?.projectIoRows ?? []).map((row) => ({
         id: row.id,
         label: row.label,

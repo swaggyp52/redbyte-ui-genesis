@@ -15,16 +15,16 @@ import {
     hashEvidenceAsync,
 } from './evidenceHash';
 
-// IMPORTANT: keep @redbyte/rb-logic-3d out of the boot graph.
-// This module is imported by 2D lab surfaces, but only needs logic-3d when
+// IMPORTANT: keep ../internal/physicalLabModel out of the boot graph.
+// This module is imported by 2D lab surfaces, but only needs the physical model when
 // exporting evidence (explicit user action).
-let logic3dModulePromise: Promise<typeof import('@redbyte/rb-logic-3d')> | null = null;
+let physicalModelPromise: Promise<typeof import('../internal/physicalLabModel')> | null = null;
 
-async function loadLogic3dModule() {
-    if (!logic3dModulePromise) {
-        logic3dModulePromise = import('@redbyte/rb-logic-3d');
+async function loadPhysicalModel() {
+    if (!physicalModelPromise) {
+        physicalModelPromise = import('../internal/physicalLabModel');
     }
-    return logic3dModulePromise;
+    return physicalModelPromise;
 }
 
 export interface LabEvidenceCapsule {
@@ -77,7 +77,7 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
             embeddedTrace = undefined;
         }
 
-        const { useLabStore: useModelLabStore, evaluateAtTick, fingerprintLabTemplate } = await loadLogic3dModule();
+        const { useLabStore: useModelLabStore, evaluateAtTick, fingerprintLabTemplate, decodeLabTemplate } = await loadPhysicalModel();
         const modelLab = useModelLabStore.getState();
         const recorder = (await import('../stores/runRecorderStore')).useRunRecorderStore.getState();
 
@@ -88,11 +88,12 @@ export async function exportEvidenceCapsule(filename: string): Promise<boolean> 
 
         if (template && modelLab.labSession) {
             try {
-                const templateHash = fingerprintLabTemplate(template);
+                const validatedTemplate = decodeLabTemplate(template);
+                const templateHash = fingerprintLabTemplate(validatedTemplate);
                 const report = evaluateAtTick(
                     modelLab.graph,
                     modelLab.timeline,
-                    template,
+                    validatedTemplate,
                     templateHash,
                     modelLab.simulation.tick
                 );
@@ -362,7 +363,7 @@ export async function loadEvidenceCapsule(fileId: string): Promise<LabEvidenceCa
 // Matches usage in LogicPlaygroundApp.tsx
 export async function exportEvidence(data: any): Promise<void> {
     const fs = useFileSystemStore.getState();
-    const { useLabStore: useModelLabStore } = await loadLogic3dModule();
+    const { useLabStore: useModelLabStore } = await loadPhysicalModel();
     const lab = useModelLabStore.getState();
     const status = lab.getTransportStatus();
 
@@ -384,7 +385,7 @@ export async function exportEvidence(data: any): Promise<void> {
         ...data
     }, null, 2);
 
-    await fs.createFile('/' + filename, content);
+    fs.createFile('home', filename, content);
 
     if (typeof document !== 'undefined') {
         const blob = new Blob([content], { type: 'application/json' });

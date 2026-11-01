@@ -1,4 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+import { STATUS_CONSOLE_SLOT_ID, STATUS_PANEL_SLOT_ID } from './WorkbenchStatusBar';
+import { getIdeModeLabel } from '../workflowStages';
+import {
+  WORKSPACE_DOCK_SIZE_LIMITS,
+  workspacePreferencesStore,
+  type WorkspaceDockId,
+} from '../workspacePreferences';
 
 export type IdeSurfaceMode =
   | 'project'
@@ -38,7 +46,7 @@ export interface IdeWorkbenchShellProps {
   shellDensity?: WorkbenchShellDensity;
   surfaceFrame?: WorkbenchSurfaceFrame;
   layoutIntent?: WorkbenchLayoutIntent;
-  /** Retained for source compatibility. Unified Workbench v3 never collapses docks. */
+  /** Retained for source compatibility; visible docks are also student-collapsible. */
   rightDockCanCollapse?: boolean;
   /** Retained for source compatibility. Selection no longer changes dock geometry. */
   rightDockRevealKey?: string | null;
@@ -51,9 +59,8 @@ export interface IdeWorkbenchShellProps {
 /**
  * Stable page workspace for Unified Workbench v3.
  *
- * A supplied dock is either present at a predictable edge or explicitly
- * omitted by the surface. There are no collapsed rails, floating reveal
- * controls, exclusive side panels, or student-facing chrome switches.
+ * Dock geometry is UI-only state. The shared preference authority persists
+ * visibility and size without owning project, simulation, or mapping data.
  */
 export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   mode,
@@ -72,6 +79,13 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 }) => {
   const shellRef = useRef<HTMLElement | null>(null);
   const [layoutMode, setLayoutMode] = useState<WorkbenchLayoutMode>(() => detectLayoutMode());
+  const [narrowViewport, setNarrowViewport] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900);
+  const preferences = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  );
+  const surfacePreferences = preferences.surfaces[mode];
 
   useEffect(() => {
     const shell = shellRef.current;
@@ -81,30 +95,185 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     }
     const observer = new ResizeObserver((entries) => {
       setLayoutMode(detectLayoutMode(entries[0]?.contentRect.width ?? shell.clientWidth));
+      setNarrowViewport(window.innerWidth < 900);
     });
     observer.observe(shell);
-    setLayoutMode(detectLayoutMode(shell.clientWidth));
-    return () => observer.disconnect();
+    if (shell.clientWidth > 0) setLayoutMode(detectLayoutMode(shell.clientWidth));
+    const rootStyleObserver = new MutationObserver(() => setLayoutMode(detectLayoutMode(shell.clientWidth)));
+    rootStyleObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    return () => { observer.disconnect(); rootStyleObserver.disconnect(); };
   }, []);
 
-  const showLeftDock = Boolean(leftDock) && leftDockMode !== 'hidden';
-  const showRightDock = Boolean(rightDock) && !hideRightDock && rightDockMode !== 'hidden';
-  const showConsole = Boolean(console) && (consoleHasBlocking || consoleMode === 'expanded');
+  const leftDockAllowed = Boolean(leftDock) && leftDockMode !== 'hidden';
+  const rightDockAllowed = Boolean(rightDock) && !hideRightDock && rightDockMode !== 'hidden';
+  const splitDesign = mode === 'design' && preferences.design.view === 'split';
+  const narrowProject = mode === 'project' && narrowViewport;
+  const rightRequested = rightDockAllowed && surfacePreferences.docks.right.visible &&
+    (!splitDesign || surfacePreferences.docks.right.explicitlyToggled === true);
+  const showRightDock = rightRequested && (!narrowProject || surfacePreferences.docks.right.explicitlyToggled === true)
+    // On a small Design viewport, placing/selecting a part must leave the
+    // construction library available. The inspector remains a direct reveal.
+    && !(mode === 'design' && layoutMode === 'compact' && surfacePreferences.docks.right.explicitlyToggled !== true);
+  const showLeftDock = leftDockAllowed && surfacePreferences.docks.left.visible &&
+    (!(splitDesign || (mode === 'verify' && layoutMode === 'compact')) || surfacePreferences.docks.left.explicitlyToggled === true) &&
+    (!narrowProject || surfacePreferences.docks.left.explicitlyToggled === true) &&
+    !(layoutMode === 'compact' && showRightDock);
+
+  useEffect(() => {
+    if (!narrowProject || (!showLeftDock && !showRightDock)) return;
+    const side = showLeftDock ? 'left' : 'right';
+    const dock = shellRef.current?.querySelector<HTMLElement>(`[data-testid="ide-${side}-dock"]`);
+    (dock?.querySelector<HTMLElement>('[role="treeitem"]') ?? dock?.querySelector<HTMLElement>('button'))?.focus();
+  }, [narrowProject, showLeftDock, showRightDock]);
+  // A blocking diagnostic earns the full panel. Anything advisory earns a strip the student
+  // can open. `expanded` mode is an explicit request from the surface and is honoured.
+  const consoleExpanded = surfacePreferences.docks.bottom.expanded;
+  const setConsoleExpanded = React.useCallback(
+    (next: boolean | ((open: boolean) => boolean)) => {
+      const value = typeof next === 'function' ? next(surfacePreferences.docks.bottom.expanded) : next;
+      workspacePreferencesStore.setDock(mode, 'bottom', { expanded: value, visible: true });
+    },
+    [mode, surfacePreferences.docks.bottom.expanded]
+  );
+  const showConsole =
+    Boolean(console) &&
+    (consoleHasBlocking ||
+      consoleMode === 'expanded' ||
+      ((consoleMode === 'auto' || consoleMode === 'collapsed') &&
+        surfacePreferences.docks.bottom.visible));
+  const consoleIsExpanded = consoleMode === 'expanded' || consoleExpanded;
+  const shellStyle = {
+    '--rb-workbench-pref-left-width': `${surfacePreferences.docks.left.sizePx}px`,
+    '--rb-workbench-pref-right-width': `${surfacePreferences.docks.right.sizePx}px`,
+    '--rb-workbench-pref-bottom-height': `${surfacePreferences.docks.bottom.sizePx}px`,
+  } as React.CSSProperties;
+
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    // React intentionally keeps the shared shell mounted between stages. Reset
+    // only the page/workspace scroll owners so a long surface cannot make the
+    // next stage appear to open halfway down. Dock size, visibility, and each
+    // stage's project state remain governed by their existing authorities.
+    const scrollRegions = [
+      shell.closest<HTMLElement>('.ide-surface-column'),
+      shell.querySelector<HTMLElement>('[data-testid="ide-mode-body"]'),
+      ...shell.querySelectorAll<HTMLElement>('.ide-panel-body'),
+    ];
+    scrollRegions.forEach((region) => {
+      if (!region) return;
+      region.scrollTop = 0;
+      region.scrollLeft = 0;
+    });
+  }, [mode]);
+
+  // The status line offers a slot for the collapsed bottom-panel handle. Where there is no
+  // status line (a surface rendered on its own) the handle stays in place, as before.
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  // Show left / right panel join it there: floating over the workspace, they covered its controls
+  // in a short window with enlarged text (Simulate's event Delete at 720x450, 150% text).
+  const [panelSlot, setPanelSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setStatusSlot(window.document.getElementById(STATUS_CONSOLE_SLOT_ID));
+    setPanelSlot(window.document.getElementById(STATUS_PANEL_SLOT_ID));
+  }, []);
+  const setDockVisible = (dockId: WorkspaceDockId, visible: boolean) => {
+    if (visible && dockId !== 'bottom' && (layoutMode === 'compact' || splitDesign)) {
+      workspacePreferencesStore.setDock(mode, dockId === 'left' ? 'right' : 'left', { visible: false });
+    }
+    workspacePreferencesStore.setDock(mode, dockId, { visible });
+    if (!visible) {
+      // The control that hid the panel (or the panel holding focus) is gone; focus goes to the one
+      // that brings it back, which lives in the status line when there is one, outside this shell.
+      const revealRoots = [dockId === 'bottom' ? statusSlot : panelSlot, shellRef.current];
+      requestAnimationFrame(() => {
+        if (document.activeElement && document.activeElement !== document.body) return;
+        const reveal = revealRoots
+          .map((root) => root?.querySelector<HTMLElement>(`[data-testid="ide-show-${dockId}-dock"]`))
+          .find(Boolean);
+        reveal?.focus();
+      });
+    }
+  };
+
+  const closeNarrowProjectPanel = (dockId: 'left' | 'right', event: React.KeyboardEvent) => {
+    if (!narrowProject || event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDockVisible(dockId, false);
+  };
+
+  const resizeDock = (dockId: WorkspaceDockId, sizePx: number) => {
+    workspacePreferencesStore.setDock(mode, dockId, { sizePx });
+  };
+
+  const beginPointerResize = (dockId: WorkspaceDockId, event: React.PointerEvent) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const startCoordinate = dockId === 'bottom' ? event.clientY : event.clientX;
+    const startSize = surfacePreferences.docks[dockId].sizePx;
+    const direction = dockId === 'right' || dockId === 'bottom' ? -1 : 1;
+    const onMove = (moveEvent: PointerEvent) => {
+      const coordinate = dockId === 'bottom' ? moveEvent.clientY : moveEvent.clientX;
+      resizeDock(dockId, startSize + (coordinate - startCoordinate) * direction);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp, { once: true });
+  };
+
+  const handleResizeKey = (dockId: WorkspaceDockId, event: React.KeyboardEvent) => {
+    const isDecrease = event.key === 'ArrowLeft' || event.key === 'ArrowDown';
+    const isIncrease = event.key === 'ArrowRight' || event.key === 'ArrowUp';
+    if (!isDecrease && !isIncrease) return;
+    event.preventDefault();
+    // Keep a focused resize separator authoritative for arrow keys. Without
+    // stopping propagation, Design's canvas shortcut listener also nudges the
+    // selected circuit node while the student resizes a dock.
+    event.stopPropagation();
+    resizeDock(
+      dockId,
+      surfacePreferences.docks[dockId].sizePx + (isIncrease ? 16 : -16)
+    );
+  };
+
+  const inStatusLine = (handle: React.ReactElement, collapsed: boolean) =>
+    collapsed && statusSlot ? createPortal(handle, statusSlot) : handle;
+  const inPanelSlot = (controls: React.ReactElement) => (panelSlot ? createPortal(controls, panelSlot) : controls);
 
   return (
     <section
       ref={shellRef}
+      style={shellStyle}
       className={`ide-surface-shell ide-workbench-shell${showConsole ? '' : ' is-console-hidden'}`}
       data-testid={`ide-mode-${mode}`}
       data-ide-mode-marker={mode}
       data-layout-mode={layoutMode}
+      data-narrow-project={narrowProject ? 'true' : undefined}
       data-left-dock-state={showLeftDock ? 'visible' : 'hidden'}
       data-right-dock-state={showRightDock ? 'visible' : 'hidden'}
-      data-console-state={showConsole ? (consoleHasBlocking ? 'blocking' : 'expanded') : 'hidden'}
+      /* One fact, one answer. The section below publishes collapsed / expanded / blocking
+         from consoleIsExpanded; the root used to say 'expanded' whenever the panel existed,
+         so a reader of the root attribute was told the console was open while the panel
+         itself said it was a 28px strip. */
+      data-console-state={
+        showConsole
+          ? consoleHasBlocking
+            ? 'blocking'
+            : consoleIsExpanded
+              ? 'expanded'
+              : 'collapsed'
+          : 'hidden'
+      }
       data-shell-density={shellDensity}
       data-surface-frame={surfaceFrame}
       data-layout-intent={layoutIntent}
-      data-support-dock-policy="stable"
+      data-support-dock-policy="persistent-configurable"
+      data-workspace-preset={preferences.activePresetId ?? 'custom'}
     >
       <div
         className={`ide-workbench-main${showLeftDock ? '' : ' hide-left-dock'}${
@@ -115,35 +284,150 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         data-layout-mode={layoutMode}
       >
         {showLeftDock ? (
-          <aside className="ide-workbench-dock ide-workbench-dock-left" data-testid="ide-left-dock">
+          <aside className="ide-workbench-dock ide-workbench-dock-left" data-testid="ide-left-dock" onKeyDown={(event) => closeNarrowProjectPanel('left', event)}>
+            <button
+              type="button"
+              className="ide-workbench-dock-collapse ide-workbench-dock-collapse--left"
+              onClick={() => setDockVisible('left', false)}
+              aria-label="Hide left panel"
+              data-testid="ide-hide-left-dock"
+            >
+              &#x2039;
+            </button>
             {leftDock}
+            <div
+              className="ide-workbench-resize-handle ide-workbench-resize-handle--left"
+              role="separator"
+              tabIndex={0}
+              aria-label="Resize left panel"
+              aria-orientation="vertical"
+              aria-valuemin={WORKSPACE_DOCK_SIZE_LIMITS.left.min}
+              aria-valuemax={WORKSPACE_DOCK_SIZE_LIMITS.left.max}
+              aria-valuenow={surfacePreferences.docks.left.sizePx}
+              onPointerDown={(event) => beginPointerResize('left', event)}
+              onKeyDown={(event) => handleResizeKey('left', event)}
+              data-testid="ide-resize-left-dock"
+            />
           </aside>
         ) : null}
 
         <main
           className={`ide-main-area ide-workbench-workspace ide-workbench-workspace--${surfaceFrame}`}
           data-testid="ide-mode-body"
-          aria-label={`${mode} workspace`}
+          // The landmark names the stage a student sees (Simulate, Board, Package), never the route id.
+          aria-label={`${getIdeModeLabel(mode)} workspace`}
         >
           {workspace}
+          {inPanelSlot(<div className="ide-workbench-panel-controls" aria-label="Workspace panels">
+            {leftDockAllowed && !showLeftDock ? (
+              <button type="button" onClick={() => setDockVisible('left', true)} data-testid="ide-show-left-dock">
+                Show left panel
+              </button>
+            ) : null}
+            {rightDockAllowed && !showRightDock ? (
+              <button type="button" onClick={() => setDockVisible('right', true)} data-testid="ide-show-right-dock">
+                Show right panel
+              </button>
+            ) : null}
+          </div>)}
         </main>
 
         {showRightDock ? (
-          <aside className="ide-workbench-dock ide-workbench-dock-right" data-testid="ide-right-dock">
+          <aside className="ide-workbench-dock ide-workbench-dock-right" data-testid="ide-right-dock" onKeyDown={(event) => closeNarrowProjectPanel('right', event)}>
+            <button
+              type="button"
+              className="ide-workbench-dock-collapse ide-workbench-dock-collapse--right"
+              onClick={() => setDockVisible('right', false)}
+              aria-label="Hide right panel"
+              data-testid="ide-hide-right-dock"
+            >
+              &#x203a;
+            </button>
             {rightDock}
+            <div
+              className="ide-workbench-resize-handle ide-workbench-resize-handle--right"
+              role="separator"
+              tabIndex={0}
+              aria-label="Resize right panel"
+              aria-orientation="vertical"
+              aria-valuemin={WORKSPACE_DOCK_SIZE_LIMITS.right.min}
+              aria-valuemax={WORKSPACE_DOCK_SIZE_LIMITS.right.max}
+              aria-valuenow={surfacePreferences.docks.right.sizePx}
+              onPointerDown={(event) => beginPointerResize('right', event)}
+              onKeyDown={(event) => handleResizeKey('right', event)}
+              data-testid="ide-resize-right-dock"
+            />
           </aside>
         ) : null}
       </div>
 
       {showConsole ? (
         <section
-          className={`ide-workbench-console ${consoleHasBlocking ? 'is-blocking' : 'is-expanded'}`}
+          className={`ide-workbench-console ${
+            consoleHasBlocking ? 'is-blocking' : consoleIsExpanded ? 'is-expanded' : 'is-collapsed'
+          }`}
           data-testid="ide-workbench-console"
-          data-console-state={consoleHasBlocking ? 'blocking' : 'expanded'}
+          data-console-state={
+            consoleHasBlocking ? 'blocking' : consoleIsExpanded ? 'expanded' : 'collapsed'
+          }
+          data-console-handle={statusSlot && !consoleHasBlocking && !consoleIsExpanded ? 'status-line' : undefined}
           aria-label={consoleHasBlocking ? 'Blocking diagnostics' : 'Compiler output'}
         >
-          {console}
+          {!consoleHasBlocking ? inStatusLine(
+            <div className="ide-workbench-console-bar">
+              <button
+                type="button"
+                className="ide-workbench-console-toggle"
+                onClick={() => setConsoleExpanded((open) => !open)}
+                aria-expanded={consoleIsExpanded}
+                data-testid="ide-console-toggle"
+              >
+                <span className="ide-workbench-console-toggle-caret" aria-hidden="true">
+                  {consoleIsExpanded ? '\u25BE' : '\u25B8'}
+                </span>
+                <span>Problems and output</span>
+              </button>
+              <button
+                type="button"
+                className="ide-workbench-dock-collapse ide-workbench-dock-collapse--bottom"
+                onClick={() => setDockVisible('bottom', false)}
+                aria-label="Hide bottom panel"
+                data-testid="ide-hide-bottom-dock"
+              >
+                &#x2304;
+              </button>
+            </div>,
+            !consoleIsExpanded,
+          ) : null}
+          <div
+            className="ide-workbench-resize-handle ide-workbench-resize-handle--bottom"
+            role="separator"
+            tabIndex={0}
+            aria-label="Resize bottom panel"
+            aria-orientation="horizontal"
+            aria-valuemin={WORKSPACE_DOCK_SIZE_LIMITS.bottom.min}
+            aria-valuemax={WORKSPACE_DOCK_SIZE_LIMITS.bottom.max}
+            aria-valuenow={surfacePreferences.docks.bottom.sizePx}
+            onPointerDown={(event) => beginPointerResize('bottom', event)}
+            onKeyDown={(event) => handleResizeKey('bottom', event)}
+            data-testid="ide-resize-bottom-dock"
+          />
+          <div className="ide-workbench-console-content">{console}</div>
         </section>
+      ) : null}
+      {console && !showConsole && consoleMode !== 'hidden' ? inStatusLine(
+        <div className="ide-workbench-console-bar ide-workbench-console-bar--restore">
+          <button
+            type="button"
+            className="ide-workbench-console-toggle"
+            onClick={() => setDockVisible('bottom', true)}
+            data-testid="ide-show-bottom-dock"
+          >
+            <span className="ide-workbench-console-toggle-caret" aria-hidden="true">{'\u25B4'}</span>
+            <span>Show bottom panel</span>
+          </button>
+        </div>,
+        true,
       ) : null}
     </section>
   );
@@ -151,12 +435,14 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
 
 function detectLayoutMode(width?: number): WorkbenchLayoutMode {
   const effectiveWidth =
-    typeof width === 'number' && Number.isFinite(width)
+    typeof width === 'number' && Number.isFinite(width) && width > 0
       ? width
       : typeof window !== 'undefined'
         ? window.innerWidth
         : 1366;
-  if (effectiveWidth >= 1600) return 'wide';
-  if (effectiveWidth >= 1180) return 'standard';
+  const textScale = typeof document !== 'undefined'
+    ? (Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16 : 1;
+  if (effectiveWidth / textScale >= 1600) return 'wide';
+  if (effectiveWidth / textScale >= 1280) return 'standard';
   return 'compact';
 }

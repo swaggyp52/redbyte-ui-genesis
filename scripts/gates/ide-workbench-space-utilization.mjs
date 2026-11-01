@@ -11,6 +11,7 @@ import {
   setVerifyRunMode,
   visible,
 } from './_gateHarness.mjs';
+import { assertNoRootOverflow, selectFirstVisibleDesignNode } from './_workbenchReconstructionHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const VIEWPORTS = [
@@ -24,9 +25,9 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_SPACE_SCREENSHOTS_DIR
   : '';
 
 const SPACE_BUDGETS = {
-  // This is the accepted laptop floor. The separate 70% strategic target remains
-  // intentionally unmet at the 1366 and 1440 viewports.
-  designCanvasWidthRatio: 0.62,
+  // Preserve the 80% floor within the document column, including its Library.
+  // The activity rail belongs to the application, outside that workspace.
+  designCanvasWidthRatio: 0.80,
   designCanvasHeightRatio: 0.52,
   verifyWaveformMinWidthRatio: 0.36,
   verifyWaveformMinHeightRatio: 0.30,
@@ -88,13 +89,14 @@ await runIdeGate('IDE workbench space utilization satisfied', async ({ page, bas
       await waitForVerifyResult(page, { timeout: 15000 });
       const status = await normalizedText(page.locator('[data-testid="ide-verify-summary-status"]').first());
       assert(isVerifyPass(status), `${viewport.label}: Verify Compare should PASS, got "${status}"`);
+      await page.getByTestId('ide-verify-view-waveform').click();
       await capture(page, viewport, 'verify-pass-observation');
       await assertVerifySpace(page, viewport, 'PASS observation');
     });
 
     await checkSurface(failures, page, viewport, 'hardware', async () => {
       await openMode(page, 'hardware');
-      await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
+      await page.waitForSelector('.rb-board-grid', { timeout: 15000 });
       await capture(page, viewport, 'hardware');
       await assertHardwareSpace(page, viewport);
     });
@@ -163,14 +165,18 @@ async function checkSurface(failures, page, viewport, surface, callback) {
 async function assertProjectSpace(page, viewport) {
   await assertNoHorizontalOverflow(page, viewport, 'Project');
   await assertVisiblePrimary(page, viewport, 'Project command center', [
+    '[data-testid="ide-project-overview-document"]',
     '[data-testid="ide-project-command-center"]',
     '[data-testid="ide-project-landing"]',
   ]);
   await assertActionInViewport(page, viewport, 'Project primary action', [
+    '[data-testid="ide-project-continue"]',
     '[data-testid="ide-project-command-strip-primary-cta"]',
     '[data-testid="ide-project-path-continue"]',
     '[data-testid="ide-project-build-fresh-primary"]',
-  ]);
+  ], 28);
+  await page.getByTestId('ide-project-continue').click();
+  await page.getByTestId('ide-mode-design').waitFor({ state: 'visible' });
 }
 
 async function assertDesignSpace(page, viewport) {
@@ -179,9 +185,9 @@ async function assertDesignSpace(page, viewport) {
   const canvas = metrics.rects.designCanvas;
   assert(canvas.visible, `${viewport.label}: Design canvas must be visible`);
   assert(
-    canvas.width >= viewport.width * SPACE_BUDGETS.designCanvasWidthRatio,
+    canvas.width >= metrics.rects.workspace.width * SPACE_BUDGETS.designCanvasWidthRatio,
     `${viewport.label}: Design canvas is squeezed to ${canvas.width.toFixed(1)}px; expected at least ${Math.round(
-      viewport.width * SPACE_BUDGETS.designCanvasWidthRatio
+      metrics.rects.workspace.width * SPACE_BUDGETS.designCanvasWidthRatio
     )}px`
   );
   assert(
@@ -199,15 +205,16 @@ async function assertDesignSpace(page, viewport) {
     `${viewport.label}: Design Library must remain a stable 180-230px region (${metrics.rects.leftDock.width.toFixed(1)}px)`
   );
   assert(
-    metrics.rects.rightDock.visible && metrics.rects.rightDock.width >= 210 && metrics.rects.rightDock.width <= 290,
-    `${viewport.label}: Design Inspector must remain a stable 210-290px region (${metrics.rects.rightDock.width.toFixed(1)}px)`
+    !metrics.rects.rightDock.visible,
+    `${viewport.label}: idle Design must reserve width for the canvas instead of an empty Inspector`
   );
-  const availableWidth = metrics.rects.leftDock.width + canvas.width + metrics.rects.rightDock.width;
-  const availableShare = canvas.width / Math.max(1, availableWidth);
-  const minimumAvailableShare = viewport.width >= 1800 ? 0.70 : viewport.width >= 1440 ? 0.66 : 0.64;
+  const workspace = metrics.rects.workspace;
+  assert(workspace.visible, `${viewport.label}: Design workspace must be measurable`);
+  const workspaceShare = canvas.width / Math.max(1, workspace.width);
+  const minimumWorkspaceShare = viewport.width >= 1800 ? 0.85 : 0.80;
   assert(
-    availableShare >= minimumAvailableShare,
-    `${viewport.label}: Design canvas owns ${(availableShare * 100).toFixed(2)}% of the stable workbench; expected at least ${(minimumAvailableShare * 100).toFixed(0)}%`
+    workspaceShare >= minimumWorkspaceShare,
+    `${viewport.label}: idle Design canvas owns ${(workspaceShare * 100).toFixed(2)}% of the complete workspace; expected at least ${(minimumWorkspaceShare * 100).toFixed(0)}%`
   );
   assert(
     metrics.retiredDockControlCount === 0,
@@ -221,9 +228,26 @@ async function assertDesignStableRegions(page, viewport) {
     `${viewport.label}: stable Design Library must expose the component palette`
   );
   assert(
-    await visible(page.locator('[data-testid="ide-right-dock"]').first()),
-    `${viewport.label}: stable Design Inspector must remain visible`
+    !(await visible(page.locator('[data-testid="ide-right-dock"]').first())),
+    `${viewport.label}: empty Design Inspector must not compete with the canvas`
   );
+  await selectFirstVisibleDesignNode(page);
+  const metrics = await readSurfaceMetrics(page);
+  assert(
+    metrics.rects.rightDock.visible && metrics.rects.rightDock.width >= 220 && metrics.rects.rightDock.width <= 300,
+    `${viewport.label}: selected Design object must reveal a bounded 220-300px Inspector (${metrics.rects.rightDock.width.toFixed(1)}px)`
+  );
+  assert(
+    metrics.rects.designCanvas.width >= 820,
+    `${viewport.label}: contextual Inspector leaves only ${metrics.rects.designCanvas.width.toFixed(1)}px for the circuit canvas`
+  );
+  assert(
+    !rectanglesOverlap(metrics.rects.designCanvas, metrics.rects.leftDock) &&
+      !rectanglesOverlap(metrics.rects.designCanvas, metrics.rects.rightDock),
+    `${viewport.label}: contextual Inspector or Library overlaps the circuit canvas`
+  );
+  await assertNoRootOverflow(page, `${viewport.label}/Design contextual Inspector`);
+  await capture(page, viewport, 'design-selected');
 }
 
 async function assertVerifySpace(page, viewport, phase) {
@@ -265,8 +289,16 @@ async function assertVerifySpace(page, viewport, phase) {
 
 function assertStableVerifySignals(metrics, viewport, phase) {
   assert(
-    metrics.rects.leftDock.visible && metrics.rects.verifySignals.visible,
-    `${viewport.label}: Verify ${phase} must keep the stable Signals region visible`
+    metrics.rects.leftDock.visible && metrics.rects.leftDock.width >= 180 && metrics.rects.leftDock.width <= 300,
+    `${viewport.label}: Simulate ${phase} must bound its shared Scenarios/Signals explorer`
+  );
+  assert(
+    metrics.rects.verifySignalShelf.visible && metrics.rects.verifySignalShelfList.visible,
+    `${viewport.label}: Simulate ${phase} must keep its signal list visible`
+  );
+  assert(
+    metrics.rects.verifySignalShelf.width >= 180 && metrics.rects.verifySignalShelf.width <= 300,
+    `${viewport.label}: Simulate ${phase} signal explorer lost its usable bounded width (${metrics.rects.verifySignalShelf.width.toFixed(1)}px)`
   );
   assert(
     metrics.retiredDockControlCount === 0,
@@ -280,7 +312,9 @@ async function assertHardwareSpace(page, viewport) {
   const table = metrics.rects.hardwareTable;
   const board = metrics.rects.hardwareBoard;
   assert(board.visible || table.visible, `${viewport.label}: Hardware board/table focal region must be visible`);
-  const focal = table.visible ? table : board;
+  const focal = metrics.rects.hardwareWorkspace;
+  assert(table.width >= 320 && board.width >= 300, `${viewport.label}: Board must retain usable assignments and board visual widths`);
+  assert(!rectanglesOverlap(table, board), `${viewport.label}: assignments must not cover the board visual`);
   assert(
     focal.width >= viewport.width * SPACE_BUDGETS.hardwareFocalMinWidthRatio,
     `${viewport.label}: Hardware focal width ${focal.width.toFixed(1)}px is below useful size`
@@ -300,8 +334,9 @@ async function assertExportSpace(page, viewport) {
   await assertActionInViewport(page, viewport, 'Export primary handoff action', [
     '[data-testid="ide-export-package-build-v1"]',
     '[data-testid="ide-export-package-download-v1"]',
+    '[data-testid="ide-export-draft-download-v1"]',
     '[data-testid="ide-export-primary-actions"] button',
-  ]);
+  ], 28); // Current desktop document command floor; legacy import retains 40px.
 }
 
 async function assertImportSpace(page, viewport) {
@@ -326,11 +361,11 @@ async function assertVisiblePrimary(page, viewport, label, selectors) {
   assert(rect.visibleHeight >= 96, `${viewport.label}: ${label} is too short in the first viewport`);
 }
 
-async function assertActionInViewport(page, viewport, label, selectors) {
+async function assertActionInViewport(page, viewport, label, selectors, minHeight = 40) {
   const rect = await firstVisibleRect(page, selectors);
   assert(rect.visible, `${viewport.label}: ${label} must be visible`);
   assert(rect.top < viewport.height - 40, `${viewport.label}: ${label} starts below the useful first viewport`);
-  assert(rect.visibleHeight >= 40, `${viewport.label}: ${label} is below the 40px primary-control floor`);
+  assert(rect.visibleHeight >= minHeight, `${viewport.label}: ${label} is below its ${minHeight}px control floor`);
   assert(rect.visibleWidth >= 40, `${viewport.label}: ${label} is clipped horizontally`);
   const textMetrics = await page.evaluate((selector) => {
     const element = selector ? document.querySelector(selector) : null;
@@ -449,17 +484,20 @@ async function readSurfaceMetrics(page) {
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       rects: {
         shell: rect('[data-ide-mode-marker]'),
-        workspace: rect('[data-testid="ide-mode-body"]'),
+        workspace: rect('[data-testid="ide-document-column"]'),
         leftDock: rect('[data-testid="ide-left-dock"]'),
         rightDock: rect('[data-testid="ide-right-dock"]'),
         designCanvas: rect('[data-testid="ide-design-live-canvas"]'),
         verifyStimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
-        verifyGrid: rect('.ide-stimulus-grid-scroll'),
+        verifyGrid: rect('.ide-case-lab-scroll'),
         verifySignals: rect('[data-testid="ide-verify-left-dock"]'),
+        verifySignalShelf: rect('[data-testid="ide-sim-scenario-explorer"]'),
+        verifySignalShelfList: rect('[data-testid="ide-verify-signal-list"]'),
         verifyWaveform: rect(
           '[data-testid="ide-verify-region-waveform"], [data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-svg"]'
         ),
-        hardwareBoard: rect('[data-testid="ide-hw-board-workspace"], [data-testid="ide-hw-map-board"]'),
+        hardwareBoard: rect('[data-testid="ide-hw-map-board"]'),
+        hardwareWorkspace: rect('.rb-board-grid'),
         hardwareTable: rect('[data-testid="ide-hw-map-table"]'),
       },
       design: {
@@ -476,7 +514,7 @@ async function readSurfaceMetrics(page) {
       },
       verify: {
         gridExtraX: (() => {
-          const element = document.querySelector('.ide-stimulus-grid-scroll');
+          const element = document.querySelector('.ide-case-lab-scroll');
           return element ? Math.max(0, element.scrollWidth - element.clientWidth) : 9999;
         })(),
       },
@@ -500,6 +538,13 @@ async function writeMetrics() {
   if (!SCREENSHOT_ROOT) return;
   await fs.mkdir(SCREENSHOT_ROOT, { recursive: true });
   await fs.writeFile(path.join(SCREENSHOT_ROOT, 'metrics.json'), JSON.stringify(metricsLog, null, 2));
+}
+
+function rectanglesOverlap(first, second) {
+  if (!first.visible || !second.visible) return false;
+  const overlapWidth = Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left));
+  const overlapHeight = Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
+  return overlapWidth > 2 && overlapHeight > 2;
 }
 
 async function normalizedText(locator) {

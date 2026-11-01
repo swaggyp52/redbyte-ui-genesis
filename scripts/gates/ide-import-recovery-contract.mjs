@@ -51,24 +51,11 @@ async function openProject(page, baseUrl) {
 }
 
 async function openImportFromProject(page) {
-  const importPrimary = page.locator('[data-testid="ide-project-import-primary"]').first();
-  if (await visible(importPrimary)) {
-    assert(/Import Project/i.test(await text(importPrimary)), 'Project first launch must label the utility action Import Project');
-    await importPrimary.click();
-    await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
-    return;
-  }
-
-  const importPath = page.locator('[data-testid="ide-project-path-import-recover"]').first();
-  if (!(await visible(importPath))) {
-    const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
-    assert(await visible(changeProject), 'Loaded Project must expose Change Project before replacement/recovery paths');
-    await changeProject.click();
-  }
-  assert(await visible(importPath), 'Loaded Project must reveal Import Project after Change Project opens');
-  assert(/Import Project/i.test(await text(importPath)), 'Loaded Project must label the disclosed utility action Import Project');
-  await importPath.click();
-  await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
+  const primary = page.getByTestId('ide-project-import-primary');
+  const action = await visible(primary) ? primary : page.getByTestId('mode-button-import');
+  assert(await visible(action), 'Project must retain a direct Import utility');
+  await action.click();
+  await page.getByTestId('ide-mode-import').waitFor();
 }
 
 async function openMode(page, mode) {
@@ -82,6 +69,27 @@ async function ensureUploadStage(page) {
     await zipSource.click();
   }
   assert(await visible(page.locator('[data-testid="ide-import-zip-dropzone"]').first()), 'Import Upload stage must expose the ZIP dropzone');
+}
+
+async function assertUploadTextReadable(page) {
+  const readings = await page.getByTestId('ide-import-zip-dropzone').evaluate((panel) => {
+    const rgb = (value) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const luminance = (channels) => channels.map((channel) => {
+      const unit = channel / 255;
+      return unit <= 0.04045 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const background = getComputedStyle(panel).backgroundColor;
+    return [...panel.querySelectorAll('strong, p')].map((element) => {
+      const foreground = getComputedStyle(element).color;
+      const a = luminance(rgb(foreground));
+      const b = luminance(rgb(background));
+      return { text: element.textContent, foreground, background, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+    });
+  });
+  assert(readings.length === 2, 'ZIP upload must retain its filename/prompt and recovery guidance');
+  for (const reading of readings) {
+    assert(reading.ratio >= 4.5, `ZIP upload text must remain readable (4.5:1): ${JSON.stringify(reading)}`);
+  }
 }
 
 async function buildManifestZip() {
@@ -227,7 +235,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   const nonZipUpload = await buildNonZipUploadFixture();
 
   await openProject(page, baseUrl);
-  const projectLanding = page.locator('[data-testid="ide-project-command-center"]').first();
+  const projectLanding = page.locator('[data-testid="ide-project-landing"]').first();
   assert(await visible(projectLanding), 'Project command center must be visible before import');
   assert(
     /Import Project/i.test(await text(projectLanding)),
@@ -242,6 +250,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   assert(await visible(firstLook), 'Import must have one clear utility/recovery workbench');
   const stepper = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
   assert(await visible(stepper), 'Import must expose the Upload -> Review -> Apply sequence');
+  await assertUploadTextReadable(page);
   await screenshotIfRequested(page, 'import-empty-1366x768');
   const firstLookText = await text(firstLook);
   assert(
@@ -261,15 +270,9 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await openProject(page, baseUrl);
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await openMode(page, 'project');
-  const loadedProject = page.locator('[data-testid="ide-project-command-center"]').first();
+  const loadedProject = page.locator('[data-testid="ide-project-overview-document"]').first();
   assert(await visible(loadedProject), 'Loaded Project must keep command center visible');
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
-  assert(await visible(changeProject), 'Loaded Project must expose Change Project');
-  await changeProject.click();
-  assert(
-    await visible(page.locator('[data-testid="ide-project-path-import-recover"]').first()),
-    'Loaded Project must reveal Import Project after Change Project opens'
-  );
+  assert(await visible(page.getByTestId('mode-button-import')), 'Loaded Project must retain the Import utility');
   await screenshotIfRequested(page, 'project-loaded-import-recover-entry-1366x768');
 
   await openImportFromProject(page);
@@ -336,6 +339,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
     /manifest restore/i.test(await text(manifestReview)),
     'Review must preserve manifest restore fidelity'
   );
+  await assertUploadTextReadable(page);
   await screenshotIfRequested(page, 'import-redbyte-manifest-inspection-1366x768');
 
   await page.locator('[data-testid="ide-import-replace-project"]').click();
@@ -379,8 +383,8 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   const applyNotice = page.locator('[data-testid="ide-import-verify-reset-notice"]').first();
   if (await visible(applyNotice)) {
     assert(
-      /project replaced|run verify again/i.test(await text(applyNotice)),
-      'Apply must confirm replacement and reset prior Verify authority'
+      /project replaced|run simulate again/i.test(await text(applyNotice)),
+      'Apply must confirm replacement and reset prior Simulate authority'
     );
     await page.locator('[data-testid="ide-import-open-design"]').click();
   }
@@ -388,19 +392,20 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await screenshotIfRequested(page, 'imported-project-design-1366x768');
 
   await openMode(page, 'project');
-  const bridgeText = await text(page.locator('[data-testid="ide-project-bridge"]').first());
-  assert(/full restore/i.test(bridgeText), 'Project must surface full import fidelity after manifest restore');
+  await page.getByTestId('ide-project-details').locator('summary').click();
+  const bridgeText = await text(page.getByTestId('ide-project-fact-kind'));
+  assert(/import full/i.test(bridgeText), 'Project must surface full import fidelity after manifest restore');
   await screenshotIfRequested(page, 'imported-project-project-state-1366x768');
 
   await openMode(page, 'verify');
   assert(
     !(await visible(page.locator('[data-testid="ide-verify-pass-hero"]').first())),
-    'Imported prior Verify PASS must not be treated as current trusted proof'
+    'Imported prior Simulate PASS must not be treated as current trusted proof'
   );
   const verifyText = await text(page.locator('[data-testid="ide-mode-verify"]').first());
   assert(
-    /run|verify|saved checks|vectors/i.test(verifyText),
-    'Imported project Verify state must require a fresh run or review'
+    /run|simulate|saved checks|vectors/i.test(verifyText),
+    'Imported project Simulate state must require a fresh run or review'
   );
   assertNoHardwareOverclaim(verifyText);
   await screenshotIfRequested(page, 'imported-project-verify-state-1366x768');

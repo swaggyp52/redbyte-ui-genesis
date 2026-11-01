@@ -1,7 +1,10 @@
-#!/usr/bin/env node
-
+// Shared gate helpers. Imported by every gate, never executed directly, so it carries no shebang:
+// Vite's SSR transform hoists imports above one, which made the module unloadable in vitest.
 import { spawn, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import net from 'node:net';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const HOST = '127.0.0.1';
@@ -17,6 +20,48 @@ export async function visible(locator) {
   return locator.first().isVisible().catch(() => false);
 }
 
+/**
+ * Turn on the Time instrument's explicit "Edit stimulus" mode (RB-DEBT-020). While a recording
+ * is on screen a click, Space or Enter on a lane cell only selects; a gate that authors stimulus
+ * there presses the toggle first, as a student does. Idempotent.
+ */
+export async function editStimulus(page) {
+  const toggle = page.getByTestId('ide-timing-edit-mode');
+  await toggle.waitFor({ state: 'visible' });
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
+  assert((await toggle.getAttribute('aria-pressed')) === 'true', 'Edit stimulus must turn on through its toolbar toggle');
+}
+
+
+export async function openDesignBoardPalette(page) {
+  const reveal = page.locator('[data-testid="ide-show-left-dock"]').first();
+  if (await visible(reveal)) await reveal.click();
+  await page.locator('[data-testid="ide-design-left-tab-board"]').first().click();
+  const toggle = page.locator('[data-testid="ide-design-library-toggle-board"]').first();
+  if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+  await page.locator('[data-testid="ide-design-board-io-palette"]').first().waitFor({ state: 'visible' });
+}
+
+export async function designInputIds(page) {
+  return page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes
+    .filter((node) => node.type === 'Switch' || node.type === 'INPUT').map((node) => node.id));
+}
+
+export async function selectDesignInput(page, nodeId) {
+  const selectTool = page.locator('[data-testid="ide-design-tool-select"]').first();
+  if (await visible(selectTool)) await selectTool.click();
+  const node = page.locator(`[data-node-id="${nodeId}"]`).first();
+  await node.waitFor({ state: 'visible' });
+  const box = await node.boundingBox();
+  assert(Boolean(box), `input ${nodeId} must be on the canvas`);
+  // The center is a switch handle; the upper body selects its inspector.
+  await node.click({ position: { x: box.width / 2, y: 8 } });
+  await page.waitForFunction((id) => window.__RB_LOGIC_VIEW_STORE__?.getState()?.selection?.nodes?.has(id), nodeId);
+  const toggle = page.locator('[data-testid="ide-design-inspector-input-toggle"]').first();
+  await toggle.waitFor({ state: 'visible' });
+  return toggle;
+}
+
 export function assertBuildFreshReplacementDialog(message, label = 'Build Fresh replacement dialog') {
   assert(/build fresh/i.test(message), `${label} must name Build Fresh, got "${message}"`);
   assert(/fresh blank project/i.test(message), `${label} must describe a fresh blank project, got "${message}"`);
@@ -24,6 +69,31 @@ export function assertBuildFreshReplacementDialog(message, label = 'Build Fresh 
   assert(/confirm means replace current work/i.test(message), `${label} must say Confirm replaces current work, got "${message}"`);
   assert(/current project will be replaced/i.test(message), `${label} must say the current project will be replaced, got "${message}"`);
   assert(/local saved projects stay available/i.test(message), `${label} must say local saved projects stay available, got "${message}"`);
+}
+
+export async function assertBuildFreshReplacementModal(page, label = 'Build Fresh replacement modal') {
+  const dialog = page.locator('[data-testid="ide-project-build-fresh-dialog"]').first();
+  await dialog.waitFor({ state: 'visible', timeout: 5000 });
+
+  const dialogText = (await dialog.innerText()).replace(/\s+/g, ' ').trim();
+  assert(/start a new blank project/i.test(dialogText), `${label} must name the blank-project action, got "${dialogText}"`);
+  assert(
+    /current project will remain unchanged until you confirm/i.test(dialogText),
+    `${label} must keep the current project unchanged before confirmation, got "${dialogText}"`
+  );
+  assert(
+    /save or download a backup/i.test(dialogText),
+    `${label} must offer a save or download recovery path, got "${dialogText}"`
+  );
+
+  const cancel = dialog.locator('[data-testid="ide-project-build-fresh-cancel"]').first();
+  const confirm = dialog.locator('[data-testid="ide-project-build-fresh-confirm"]').first();
+  assert(await visible(cancel), `${label} must expose Cancel`);
+  assert(await visible(confirm), `${label} must expose Start blank project`);
+  assert(/start blank project/i.test(await confirm.innerText()), `${label} confirm action must name the result`);
+
+  await cancel.click();
+  await dialog.waitFor({ state: 'hidden', timeout: 5000 });
 }
 
 export async function loadStarterProject(page, options = {}) {
@@ -107,16 +177,51 @@ async function loadExactExample(page, exampleId) {
 }
 
 async function openStarterCatalogIfPresent(page) {
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  // The loaded v3 Project workspace exposes "Change project" as a contextual
+  // action (ide-project-context-change); the legacy toolbar copy can sit in a
+  // hidden dock panel. Prefer whichever is actually visible, and await the
+  // revealed Open Starter action instead of sampling it instantly.
+  const legacyChange = page.locator('[data-testid="ide-project-change-project"]').first();
+  const contextChange = page.locator('[data-testid="ide-project-context-change"]').first();
   const initialCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-  if (
-    (await changeProject.isVisible().catch(() => false)) &&
-    !(await initialCatalog.isVisible().catch(() => false))
-  ) {
-    await clickLocatorElement(changeProject);
-    const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
-    if (await courseStarter.isVisible().catch(() => false)) {
-      await clickLocatorElement(courseStarter);
+  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const catalogAlreadyVisible =
+    (await initialCatalog.isVisible().catch(() => false)) ||
+    (await examplesDisclosure.isVisible().catch(() => false));
+  if (!catalogAlreadyVisible) {
+    let changeProject = null;
+    if (await contextChange.isVisible().catch(() => false)) {
+      changeProject = contextChange;
+    } else if (await legacyChange.isVisible().catch(() => false)) {
+      changeProject = legacyChange;
+    }
+    if (changeProject) {
+      await clickLocatorElement(changeProject);
+      const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
+      await courseStarter.waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
+      if (await courseStarter.isVisible().catch(() => false)) {
+        await clickLocatorElement(courseStarter);
+      }
+    }
+  }
+
+  // P2.5 Start Center: when the workspace already holds a project and no landing catalog is on
+  // screen, the starter library opens from File → Open Starter… (the same path a student takes).
+  const picker = page.locator('[data-testid="ide-project-starter-picker"]').first();
+  if (!catalogAlreadyVisible && !(await picker.isVisible().catch(() => false))) {
+    const catalogNow = page.locator('[data-testid="ide-project-starter-catalog"]').first();
+    if (!(await catalogNow.isVisible().catch(() => false))) {
+      const fileMenu = page.locator('[data-testid="ide-menu-file"]').first();
+      if (await fileMenu.isVisible().catch(() => false)) {
+        await clickLocatorElement(fileMenu);
+        const openStarterItem = page.locator('[data-testid="ide-menu-item-project.open-starter"]').first();
+        await openStarterItem.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
+        if (await openStarterItem.isVisible().catch(() => false)) {
+          await clickLocatorElement(openStarterItem);
+          await picker.waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
+          if (await picker.isVisible().catch(() => false)) return;
+        }
+      }
     }
   }
 
@@ -214,6 +319,14 @@ async function hasCurrentVerifyVectors(page) {
   const directRunVisible = await page.locator('[data-testid="ide-vcb-run"]').first().isVisible().catch(() => false);
   if (stimulusCellCount > 0 && directRunVisible) return true;
 
+  // The scenario workbench draws authored cases as the case table (Table view) or the timing
+  // grid (Timeline view); either beside a visible Run is a ready scenario. The older stimulus
+  // cells above belong to a retired editor, and eight classroom gates stopped here looking
+  // for them.
+  const caseRowCount = await page.locator('[data-testid^="ide-case-lab-row-"]').count().catch(() => 0);
+  const timingCellCount = await page.locator('[data-testid^="ide-timing-cell-"]').count().catch(() => 0);
+  if ((caseRowCount > 0 || timingCellCount > 0) && directRunVisible) return true;
+
   const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
   if (await vectorTable.isVisible().catch(() => false)) return true;
 
@@ -256,14 +369,33 @@ export async function setVerifyRunMode(page, mode) {
       : '[data-testid="ide-vcb-observe-only"]';
   const button = page.locator(selector).first();
   const isVisible = await button.isVisible().catch(() => false);
-  if (!isVisible) return false;
-  const isDisabled = await button.isDisabled().catch(() => true);
-  if (isDisabled) return false;
-  const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
-  if (!isPressed) {
-    await button.click();
+  if (isVisible) {
+    const isDisabled = await button.isDisabled().catch(() => true);
+    if (isDisabled) return false;
+    const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
+    if (!isPressed) {
+      await button.click();
+    }
+    return true;
   }
-  return true;
+
+  // Product System v3 has one simulation authority: every run records observed
+  // values and automatically evaluates any authored optional checks. Preserve
+  // older gate intent without requiring the retired Observe / Compare toggle.
+  const simulationBar = page.locator(
+    '[data-testid="ide-verify-command-bar"][data-run-mode="simulation"]'
+  ).first();
+  if (!(await simulationBar.isVisible().catch(() => false))) return false;
+  if (mode === 'observe') return true;
+
+  const simulationText = ((await simulationBar.textContent().catch(() => '')) ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Adjacent inline elements can concatenate scenario name + count in
+  // textContent. Read the dedicated count before using historical copy.
+  const currentCount = await simulationBar.locator('[data-testid="ide-vcb-check-count"]').textContent().catch(() => '');
+  if (/^[1-9]\d*\s+optional checks/i.test(currentCount?.trim() ?? '')) return true;
+  return /checks\s+[1-9]\d*|evaluates\s+[1-9]\d*\s+optional check|[1-9]\d*\s+saved checks/i.test(simulationText);
 }
 
 export async function saveObservedOutputs(page) {
@@ -308,11 +440,19 @@ export async function runIdeGate(name, runScenario) {
   let previewLogs = '';
 
   try {
-    const port = await reservePort();
-    const baseUrl = `http://${HOST}:${port}`;
-    previewProcess = startPreviewProcess(port, (chunk) => {
-      previewLogs += chunk;
-    });
+    // Say "there is no build" in those words. A gate that navigates to an empty preview fails
+    // on its first selector, which reads exactly like a product regression and has sent more
+    // than one investigation looking for a test id that was never missing.
+    const externalBaseUrl = process.env.RB_GATE_BASE_URL?.replace(/\/+$/, '');
+    let baseUrl = externalBaseUrl;
+    if (!baseUrl) {
+      assertPreviewBuildExists();
+      const port = await reservePort();
+      baseUrl = `http://${HOST}:${port}`;
+      previewProcess = startPreviewProcess(port, (chunk) => {
+        previewLogs += chunk;
+      });
+    }
 
     await waitForPreview(baseUrl);
 
@@ -396,13 +536,8 @@ async function ensureProjectMode(page) {
 }
 
 async function clickLocatorElement(locator) {
-  await locator.waitFor({ state: 'attached', timeout: 10000 });
-  await locator.evaluate((element) => {
-    if (!(element instanceof HTMLElement)) {
-      throw new Error('expected clickable HTMLElement');
-    }
-    element.click();
-  });
+  await locator.waitFor({ state: 'visible', timeout: 10000 });
+  await locator.click();
 }
 
 async function confirmExampleReplacementIfNeeded(page) {
@@ -411,7 +546,7 @@ async function confirmExampleReplacementIfNeeded(page) {
     return;
   }
 
-  await confirmButton.click({ force: true });
+  await confirmButton.click();
   await page.locator('[data-testid="ide-example-confirm-modal"]').first().waitFor({
     state: 'hidden',
     timeout: 5000,
@@ -483,6 +618,19 @@ function startPreviewProcess(port, onOutput) {
   return child;
 }
 
+const GATE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(GATE_DIR, '..', '..');
+const PREVIEW_ENTRY = path.join(REPO_ROOT, 'apps', 'playground', 'dist', 'index.html');
+
+function assertPreviewBuildExists() {
+  if (existsSync(PREVIEW_ENTRY)) return;
+  throw new Error(
+    `No preview build at ${PREVIEW_ENTRY}. `
+    + 'Run "corepack pnpm --filter @redbyte/playground build" before this gate. '
+    + 'Without it the preview serves 404 and every product selector looks missing.'
+  );
+}
+
 async function waitForPreview(baseUrl) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < START_TIMEOUT_MS) {
@@ -491,8 +639,14 @@ async function waitForPreview(baseUrl) {
       const timeout = setTimeout(() => controller.abort(), 1000);
       const response = await fetch(`${baseUrl}/`, { signal: controller.signal });
       clearTimeout(timeout);
-      if (response.ok || (response.status >= 200 && response.status < 500)) {
-        return;
+      if (response.ok) return;
+      // A 404 means the preview is serving an empty dist, not that it is still warming up.
+      // Say so once rather than letting the caller discover it as a missing selector.
+      if (response.status === 404) {
+        throw new Error(
+          `${baseUrl}/ returns 404 — the preview has nothing to serve. `
+          + `Run "pnpm --filter @redbyte/playground build" before this gate.`
+        );
       }
     } catch {
       // Preview process is still warming up.

@@ -20,9 +20,9 @@ import {
   exportBasys3Bundle,
 } from '../../fpga/boards/basys3/basys3Bundle';
 import type { SimulationIoRow } from '../../apps/ide/sim/simTypes';
-import { CircuitEngine } from '@redbyte/rb-logic-core';
+import { CircuitEngine, toCircuitV1 } from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { CircuitV1, IoMapping } from '@redbyte/rb-utils';
+import type { IoMapping } from '@redbyte/rb-utils';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,33 +34,6 @@ function toSimIoRows(ioRows: { id: string; label: string; direction: 'in' | 'out
     direction: row.direction,
     nodeId: row.nodeId,
   }));
-}
-
-/** Convert Circuit (modern PortRef format) to CircuitV1 legacy format for Verilog generator */
-function toCircuitV1(circuit: Circuit): CircuitV1 {
-  return {
-    nodes: (circuit.nodes as any[]).map((n: any) => ({
-      id: n.id,
-      type: n.type,
-      label: n.label ?? n.id,
-      x: n.x ?? n.position?.x ?? 0,
-      y: n.y ?? n.position?.y ?? 0,
-      config: n.config ?? {},
-    })),
-    connections: (circuit.connections as any[]).map((c: any) => {
-      const fromNodeId = typeof c.from === 'string' ? c.from : c.from.nodeId;
-      const toNodeId = typeof c.to === 'string' ? c.to : c.to.nodeId;
-      const fromPin =
-        typeof c.from === 'string'
-          ? c.fromPin ?? c.fromPort ?? 'out'
-          : c.from.portName ?? c.from.port ?? c.fromPin ?? 'out';
-      const toPin =
-        typeof c.to === 'string'
-          ? c.toPin ?? c.toPort ?? 'in'
-          : c.to.portName ?? c.to.port ?? c.toPin ?? 'in';
-      return { fromNodeId, fromPin, toNodeId, toPin };
-    }),
-  } as CircuitV1;
 }
 
 // ─── GOLDEN GATE 1: Signal Tour ───────────────────────────────────────────────

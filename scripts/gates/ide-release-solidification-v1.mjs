@@ -44,7 +44,7 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
   await openLogicGatesStarter(page, baseUrl, `release-solidification-verify-${viewport.label}`);
   await openMode(page, baseUrl, 'verify', `release-solidification-verify-${viewport.label}`);
   await runComparePass(page);
-  await openSignalsDock(page, viewport.label);
+  await page.getByTestId('ide-verify-view-waveform').click();
   await assertBuildHash(page, `${viewport.label}/Verify`);
 
   const metrics = await page.evaluate(() => {
@@ -65,8 +65,14 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
     }
 
     const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
+    // A control inside a closed <details> is not on screen, but the browser still reports a
+    // rectangle for it where it would be laid out - below the summary, which for the measure
+    // tools at the foot of the trace is below the window. Such a control is not "clipped": it is
+    // not shown. Only rendered controls are counted here; the measure tools are opened and
+    // checked on their own below.
     const bottomClippedButtons = Array.from(document.querySelectorAll('[data-testid="ide-verify-lab-grid"] button'))
       .filter((button) => {
+        if (typeof button.checkVisibility === 'function' && !button.checkVisibility({ contentVisibilityAuto: true })) return false;
         const rect = button.getBoundingClientRect();
         return rect.width > 1 && rect.height > 1 && rect.bottom > window.innerHeight + 1;
       });
@@ -83,9 +89,9 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
       workspace: box('[data-testid="ide-verify-workspace"]'),
       labFrame: box('[data-testid="ide-verify-lab-frame"]'),
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
-      stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
+      scenarioTab: box('[data-testid="ide-verify-view-table"]'),
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
-      signals: box('[data-testid="ide-left-dock"]'),
+      signals: box('[data-testid="ide-sim-scenario-explorer"]'),
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       bottomClippedActions: bottomClippedButtons
         .map((button) => button.textContent?.replace(/\s+/g, ' ').trim() || button.getAttribute('aria-label') || 'button')
@@ -99,25 +105,49 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
 
   assert(metrics.phase === 'post-run', `${viewport.label}: Verify should be in post-run phase for this proof`);
   assert(
-    metrics.signals?.visibleWidth >= 176 && metrics.signals?.visibleWidth <= 196,
-    `${viewport.label}: Signals dock should honor the compact 176-196px support-rail contract ${JSON.stringify(metrics.signals)}`
+    metrics.signals?.visibleWidth >= 180 && metrics.signals?.visibleWidth <= 300,
+    `${viewport.label}: Scenarios and Signals must share one bounded explorer ${JSON.stringify(metrics.signals)}`
   );
   assert(metrics.workspace?.extraX <= 1, `${viewport.label}: Verify workspace has internal horizontal overflow ${JSON.stringify(metrics.workspace)}`);
   assert(metrics.labFrame?.extraX <= 1, `${viewport.label}: Verify lab frame has internal horizontal overflow ${JSON.stringify(metrics.labFrame)}`);
   assert(metrics.labGrid?.extraX <= 1, `${viewport.label}: Verify lab grid has internal horizontal overflow ${JSON.stringify(metrics.labGrid)}`);
+  assert(metrics.scenarioTab?.visibleWidth > 48, `${viewport.label}: Scenario authoring tab must remain reachable after the run ${JSON.stringify(metrics.scenarioTab)}`);
   assert(
-    metrics.stimulus?.visibleWidth >= Math.round(viewport.width * 0.335),
-    `${viewport.label}: testbench lane too narrow with Signals open ${JSON.stringify(metrics.stimulus)}`
-  );
-  assert(
-    metrics.waveform?.visibleWidth >= Math.round(viewport.width * 0.335),
-    `${viewport.label}: waveform lane too narrow with Signals open ${JSON.stringify(metrics.waveform)}`
+    metrics.waveform?.visibleWidth >= Math.round(viewport.width * 0.60),
+    `${viewport.label}: replay waveform must remain the dominant post-run work object ${JSON.stringify(metrics.waveform)}`
   );
   assert(
     metrics.bottomClippedActionsWithoutScrollAuthority.length === 0,
     `${viewport.label}: Verify actions below the first viewport must remain reachable through a direct scroll authority ${metrics.bottomClippedActionsWithoutScrollAuthority.join(', ')}`
   );
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Verify created root overflow ${metrics.rootOverflowX}px`);
+
+  // The measure tools start closed. Opened, every one of their controls must be on screen and
+  // receive the pointer, or sit in something that scrolls.
+  const measureTools = page.getByTestId('ide-verify-waveform-tools').first();
+  assert((await measureTools.evaluate((element) => element.open)) === false, `${viewport.label}: the measure tools start closed`);
+  await measureTools.locator('summary').first().click();
+  await page.waitForTimeout(300);
+  const unreachable = await page.evaluate(() => {
+    const scrolls = (element) => {
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = getComputedStyle(ancestor);
+        if (/(auto|scroll)/.test(style.overflowY) && ancestor.scrollHeight > ancestor.clientHeight + 1) return true;
+      }
+      return false;
+    };
+    const controls = Array.from(document.querySelectorAll('[data-testid="ide-verify-cursor-controls"] button'));
+    const missing = controls.length === 0 ? ['(no cursor controls rendered)'] : [];
+    return missing.concat(controls.filter((button) => {
+      const rect = button.getBoundingClientRect();
+      const inside = rect.width > 1 && rect.height > 1 && rect.top >= 0 && rect.bottom <= window.innerHeight + 1;
+      const hit = inside ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+      const receivesPointer = Boolean(hit) && (hit === button || button.contains(hit));
+      return !(inside && receivesPointer) && !scrolls(button);
+    }).map((button) => button.textContent?.trim() || 'button'));
+  });
+  assert(unreachable.length === 0, `${viewport.label}: opened measure tools must be reachable, these are not: ${unreachable.join(', ')}`);
+  await measureTools.locator('summary').first().click();
 
   await assertNoRootOverflow(page, `${viewport.label}/Verify signals`);
 }
@@ -131,17 +161,29 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
 
   const checklist = page.locator('[data-testid="ide-export-upstream-readiness"]').first();
   const e0Boundary = page.locator('[data-testid="ide-export-e0-boundary-summary"]').first();
+  // Generated files remain the primary document; readiness is a real disclosure.
+  await page.getByTestId('ide-export-readiness-disclosure').locator('summary').click();
   assert(await visible(checklist), `${viewport.label}: Export must expose direct upstream readiness`);
   assert(await visible(e0Boundary), `${viewport.label}: Export must expose the Browser E0 boundary directly`);
   const checklistText = normalized(`${await checklist.textContent()} ${await e0Boundary.textContent()}`);
+  const simulationReadiness = normalized(
+    await page.locator('[data-testid="ide-export-upstream-verify"]').first().textContent()
+  );
+  const mappingReadiness = normalized(
+    await page.locator('[data-testid="ide-export-upstream-mapping"]').first().textContent()
+  );
   assert(/package/i.test(checklistText), `${viewport.label}: Export checklist must name package readiness`);
-  assert(/verify|compare/i.test(checklistText), `${viewport.label}: Export checklist must include Verify state`);
-  assert(/pins|mapping/i.test(checklistText), `${viewport.label}: Export checklist must include pin mapping state`);
+  assert(/simulate/i.test(simulationReadiness), `${viewport.label}: Export checklist must name Simulate ownership`);
+  assert(/validated|simulated|draft|not run|inconclusive/i.test(simulationReadiness), `${viewport.label}: Export checklist must include simulation evidence state`);
+  const mappingOwner = await page.locator('[data-testid="ide-export-upstream-mapping"]').first().getAttribute('data-owner');
+  const mappingOwnerShown = normalized(await page.locator('[data-testid="ide-export-upstream-mapping"] span').first().textContent());
+  assert(mappingOwner === 'Board' && mappingOwnerShown === 'Board', `${viewport.label}: Export checklist must name Board as the owner of mapping, got "${mappingOwner}" / "${mappingOwnerShown}"`);
+  assert(/Ready|required missing|blocker|assign/i.test(mappingReadiness), `${viewport.label}: Export checklist must include mapping readiness state`);
   assert(/E0/i.test(checklistText), `${viewport.label}: Export checklist must state E0 package boundary`);
   assert(/external|Vivado|Basys3/i.test(checklistText), `${viewport.label}: Export checklist must separate external proof`);
 
   const contextualActions = page.locator(
-    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid^="ide-export-blocked-open-"]'
+    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid="ide-export-draft-download-v1"], [data-testid^="ide-export-blocked-open-"]'
   );
   const visibleContextualActions = await contextualActions.evaluateAll((elements) =>
     elements.filter((element) => {
@@ -214,14 +256,6 @@ async function assertImportSourceReview(page, baseUrl, viewport) {
   const reviewAfterReload = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
   assert(await visible(reviewAfterReload), `${viewport.label}: Import recovery sequence should survive reload continuity`);
   await assertNoRootOverflow(page, `${viewport.label}/Import source review`);
-}
-
-async function openSignalsDock(page, label) {
-  if (await page.locator('[data-testid="ide-left-dock"]').first().isVisible().catch(() => false)) return;
-  const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  assert(await visible(toggle), `${label}: collapsed Signals toggle must be visible`);
-  await toggle.click();
-  await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
 }
 
 function normalized(value) {

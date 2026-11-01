@@ -39,7 +39,14 @@ if (!/buildExportViewModel/.test(exportSurface)) {
   fail('ExportSurface must build its UI from buildExportViewModel(project).');
 }
 
-if (/diagnostics\s*=/.test(exportSurface) || /artifacts\s*=/.test(exportSurface)) {
+// Check the workspace's input contract. Child components legitimately receive
+// diagnostics and artifacts from this surface's real view model; matching their
+// JSX attributes would reject the production pipeline this gate protects.
+const surfaceProps = exportSurface.match(/export interface ExportSurfaceProps\s*\{([\s\S]*?)^\}/m)?.[1];
+if (!surfaceProps) {
+  fail('ExportSurface must declare its project-owned input contract.');
+}
+if (/^\s*(?:diagnostics|artifacts)\??\s*:/m.test(surfaceProps)) {
   fail('ExportSurface should not depend on preview diagnostics/artifacts props.');
 }
 

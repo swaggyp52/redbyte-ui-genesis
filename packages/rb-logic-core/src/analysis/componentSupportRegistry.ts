@@ -156,10 +156,18 @@ export const COMPONENT_SUPPORT_REGISTRY: readonly ComponentSupportEntry[] = [
   {
     type: 'MUX4',
     label: '4:1 multiplexer',
-    category: 'logic',
-    capabilities: allCapabilities({ authoring: false, classroom: false, importReconstruction: false }),
-    vhdlKind: 'logic',
+    category: 'unsupported',
+    capabilities: allCapabilities({
+      authoring: false,
+      simulation: false,
+      verification: false,
+      vhdlExport: false,
+      importReconstruction: false,
+      classroom: false,
+    }),
+    vhdlKind: 'none',
     importAliases: ['mux4', 'mux_4', 'mux4_1'],
+    note: 'legacy Lab 4 part with no simulator behaviour; not simulated, verified or exported. Build the 4:1 select from AND, OR and NOT gates',
   },
   {
     type: 'DFlipFlop',
@@ -421,9 +429,24 @@ export function getVerificationSequentialNodeTypes(): ComponentNodeType[] {
     .map((entry) => entry.type);
 }
 
+/**
+ * Design-boundary categories: ports at the design edge, not logic. They do not
+ * block Verify through this list. The legacy Button and CLOCK aliases have no
+ * simulator behaviour; the IR elaborator reports them as unknown primitives
+ * (IR001) instead.
+ */
+const BOUNDARY_CATEGORIES: ReadonlySet<ComponentCategory> = new Set(['io', 'utility']);
+
+/**
+ * Parts whose presence blocks Verify: every non-boundary part the registry
+ * does not simulate or cannot verify, combinational (MUX4) or stateful
+ * (Counter4Bit, Delay). A run of such a design would show values the simulator
+ * never computed, or behaviour Verify cannot check.
+ */
 export function getBlockedVerificationNodeTypes(): ComponentNodeType[] {
   return COMPONENT_SUPPORT_REGISTRY
-    .filter((entry) => entry.isSequential === true && !entry.capabilities.verification)
+    .filter((entry) => !BOUNDARY_CATEGORIES.has(entry.category))
+    .filter((entry) => !entry.capabilities.simulation || !entry.capabilities.verification)
     .map((entry) => entry.type);
 }
 

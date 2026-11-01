@@ -7,6 +7,7 @@ import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 
 /** sw0 fans out to two loads — two wire segments, one driver */
@@ -96,6 +97,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 1,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'x',
@@ -153,11 +155,8 @@ function renderSurface(
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={ioRows}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -170,6 +169,7 @@ beforeEach(() => {
   installResizeObserver(1320);
   useCircuitStore.getState().reset();
   useLayoutStore.getState().resetLayout();
+  workspacePreferencesStore.reset();
   useLogicViewStore.setState({
     camera: { x: 0, y: 0, zoom: 1 },
     selection: { nodes: new Set<string>(), wires: new Set<string>() },
@@ -265,8 +265,10 @@ describe('DesignSurface multi-wire net story', () => {
     });
 
     await waitFor(() => {
-      const el = view.queryByTestId('ide-design-active-trace');
-      expect(el?.textContent).toMatch(/One net/);
+      const trace = view.getByTestId('ide-design-context-trace-state');
+      expect(trace.getAttribute('title') ?? trace.textContent).toMatch(/One net/);
+      expect(view.container.querySelector('[data-wire-id="' + w1 + '"]')?.getAttribute('data-wire-trace-dim')).toBe('0');
+      expect(view.container.querySelector('[data-wire-id="' + w2 + '"]')?.getAttribute('data-wire-trace-dim')).toBe('0');
     });
 
     act(() => {
@@ -274,8 +276,10 @@ describe('DesignSurface multi-wire net story', () => {
     });
 
     await waitFor(() => {
-      const el = view.queryByTestId('ide-design-active-trace');
-      expect(el?.textContent).toMatch(/One net/);
+      const trace = view.getByTestId('ide-design-context-trace-state');
+      expect(trace.getAttribute('title') ?? trace.textContent).toMatch(/One net/);
+      expect(view.container.querySelector('[data-wire-id="' + w1 + '"]')?.getAttribute('data-wire-trace-dim')).toBe('0');
+      expect(view.container.querySelector('[data-wire-id="' + w2 + '"]')?.getAttribute('data-wire-trace-dim')).toBe('0');
     });
   });
 });

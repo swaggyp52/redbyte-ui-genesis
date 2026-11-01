@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { computeRbprojContentHashFromEncoded } from '../rbprojAutosave';
 import { encodeRBProject, type RBProject } from '../../export/projectFormat';
 

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { sourceState } from './source-state.mjs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { prepareEmptyOutputDir } from './merge-dist-lib.mjs';
@@ -71,9 +72,23 @@ async function merge() {
         fs.mkdirSync(osTarget, { recursive: true });
         fs.cpSync(PLAYGROUND_DIST, osTarget, { recursive: true });
 
+        const isProductionEnv = Boolean(
+            process.env.VITE_APP_ENV === 'production' ||
+            process.env.CF_PAGES ||
+            process.env.GITHUB_ACTIONS
+        );
+        let appVersion = '0.0.0';
+        try {
+            appVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version ?? appVersion;
+        } catch {
+            // keep fallback version
+        }
         const versionPayload = {
             sha: resolveGitSha(),
             builtAt: new Date().toISOString(),
+            version: process.env.RB_CANDIDATE_VERSION || appVersion,
+            sourceDigest: sourceState().sourceDigest,
+            env: isProductionEnv ? 'production' : 'dev',
         };
         fs.writeFileSync(
             path.join(osTarget, 'version.json'),

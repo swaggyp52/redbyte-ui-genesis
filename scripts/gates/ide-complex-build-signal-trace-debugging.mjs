@@ -28,9 +28,17 @@ const VIEWPORTS = [
   { label: '1440x900', width: 1440, height: 900 },
 ];
 
+const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-menu-fit'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
+]);
+
 await mkdir(SCREENSHOT_DIR, { recursive: true });
 
 await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ page, baseUrl }) => {
+  try {
   const browserProblems = captureBrowserProblems(page);
   await installCleanStudentContext(page);
 
@@ -49,6 +57,11 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
     await assertSurfaceSafe(page, `${viewport.label} Project startup`);
+    if (await page.getByTestId('ide-project-overview-document').isVisible()) {
+      await page.getByTestId('ide-menu-file').click();
+      await page.getByTestId('ide-menu-item-project.close').click();
+      await page.getByTestId('ide-project-landing').waitFor();
+    }
 
     await clickVisible(
       page,
@@ -61,7 +74,7 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
 
     await renameProject(page, `RB Signal Trace Debug ${viewport.label}`);
     await revealDesignLibrary(page);
-    await exerciseDirectDesignCamera(page);
+    await exerciseDesignCamera(page);
     const nodes = await buildWrongFullAdderSumCircuit(page);
     await capture(page, `${viewport.label}-01-two-stage-wrong-sum.png`);
 
@@ -69,6 +82,7 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
     await assertSurfaceSafe(page, `${viewport.label} Verify startup`);
     const cases = await buildFullAdderSumCases(page);
     await authorInputCases(page, cases);
+    await openExpectedAuthoring(page, cases);
     await authorExpectedCases(page, cases);
     await capture(page, `${viewport.label}-02-full-adder-sum-checks.png`);
 
@@ -82,6 +96,11 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
 
     await page.getByTestId('ide-verify-repair-open-design').click();
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+    const failureDetails = page.getByTestId('ide-design-failure-details');
+    await failureDetails.waitFor({ state: 'visible', timeout: 10000 });
+    if ((await failureDetails.getAttribute('open')) === null) {
+      await failureDetails.locator('summary').click();
+    }
     await page.waitForSelector('[data-testid="ide-design-debug-context-banner"]', { timeout: 10000 });
     await assertComplexSignalTracePanel(page, nodes);
     await capture(page, `${viewport.label}-03-design-signal-trace-panel.png`);
@@ -98,6 +117,11 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
     JSON.stringify(record, null, 2),
   );
   assert(browserProblems.length === 0, `Browser console/page errors: ${JSON.stringify(browserProblems.slice(0, 8))}`);
+  } catch (error) {
+    await capture(page, 'failure.png');
+    console.error(error instanceof Error ? error.stack : String(error));
+    throw error;
+  }
 });
 
 async function installCleanStudentContext(page) {
@@ -133,6 +157,10 @@ async function buildWrongFullAdderSumCircuit(page) {
     [nodes.wrongOr, 'out', nodes.SUM_OUT, 'in'],
   ];
 
+  // Placement and label editing can refit the camera as the sheet changes.
+  // Use the student's Arrange action to separate the complete set of parts
+  // before wiring; screen fractions from earlier camera frames are not a layout.
+  await arrangeCircuit(page);
   for (const wire of wires) {
     await connectPorts(page, ...wire);
   }
@@ -161,6 +189,9 @@ async function buildFullAdderSumCases(page) {
 }
 
 async function assertWrongBuildRepairPanel(page, options) {
+  const details = page.getByTestId('ide-verify-details');
+  if (await details.getAttribute('aria-pressed') !== 'true') await details.click();
+  await page.getByTestId('ide-verify-analysis-tab-nav').getByRole('button', { name: 'Checks', exact: true }).click();
   await page.waitForSelector('[data-testid="ide-verify-repair-panel"]', { timeout: 10000 });
   const panel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const decision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
@@ -253,19 +284,26 @@ async function authorExpectedCases(page, cases) {
   }
 }
 
+async function openExpectedAuthoring(page, cases) {
+  const firstOutputId = Object.keys(cases[0]?.expected ?? {})[0];
+  assert(Boolean(firstOutputId), 'complex-build scenario must define at least one expected output');
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.getByTestId('ide-case-lab-exp-0-' + firstOutputId).waitFor();
+}
+
 async function ensureCaseCount(page, desired) {
-  await page.waitForSelector('[data-testid="ide-stimulus-add-tick"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-case-lab-add"]', { timeout: 15000 });
   for (let guard = 0; guard < desired + 4; guard += 1) {
     const count = await readTickCount(page);
     if (count >= desired) return;
-    await page.locator('[data-testid="ide-stimulus-add-tick"]').first().click();
+    await page.locator('[data-testid="ide-case-lab-add"]').first().click();
     await page.waitForTimeout(120);
   }
   assert(false, `could not create ${desired} Verify cases`);
 }
 
 async function setInputCell(page, fieldId, tick, value) {
-  const testId = `ide-stimulus-cell-${fieldId}-t${tick}`;
+  const testId = `ide-case-lab-input-${tick}-${fieldId}`;
   const cell = page.getByTestId(testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -279,7 +317,7 @@ async function setInputCell(page, fieldId, tick, value) {
 }
 
 async function setExpectedCell(page, fieldId, tick, value) {
-  const testId = `ide-stimulus-expected-${fieldId}-t${tick}`;
+  const testId = `ide-case-lab-exp-${tick}-${fieldId}`;
   const cell = page.getByTestId(testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -293,23 +331,12 @@ async function setExpectedCell(page, fieldId, tick, value) {
 }
 
 async function readCellValue(page, testId) {
-  const title = await page.getByTestId(testId).first().getAttribute('title');
-  if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
-  if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
-  return null;
+  const value = (await page.getByTestId(testId).innerText()).trim();
+  return value === '1' ? 1 : value === '0' ? 0 : null;
 }
 
 async function readTickCount(page) {
-  const ids = await page.locator('[data-testid^="ide-stimulus-cell-"]').evaluateAll((elements) =>
-    Array.from(
-      new Set(
-        elements
-          .map((element) => /-t(\d+)$/.exec(element.getAttribute('data-testid') ?? '')?.[1])
-          .filter(Boolean),
-      ),
-    ).map(Number),
-  );
-  return ids.length;
+  return page.locator('[data-testid^="ide-case-lab-row-"]').count();
 }
 
 async function renameProject(page, name) {
@@ -328,13 +355,10 @@ async function renameProject(page, name) {
 }
 
 async function revealDesignLibrary(page) {
-  const palette = page.locator('[data-testid="ide-design-dock-palette"]').first();
-  if (await palette.isVisible().catch(() => false)) return;
-  const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"], [data-testid="ide-design-library-toggle"]').first();
-  if (await toggle.isVisible().catch(() => false)) {
-    await toggle.click();
-  }
-  await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 10000 });
+  const library = page.getByTestId('ide-left-dock');
+  if (await library.isVisible()) return;
+  await page.getByTestId('ide-show-left-dock').click();
+  await library.waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function placeAndLabel(page, selector, label, position) {
@@ -346,6 +370,7 @@ async function placeAndLabel(page, selector, label, position) {
 
 async function placeFromPalette(page, selector, position) {
   await revealDesignLibrary(page);
+  await page.getByTestId(selector.includes("ide-design-board-") ? "ide-design-left-tab-board" : "ide-design-left-tab-components").click();
   const before = await readNodeIds(page);
   const button = page.locator(selector).first();
   assert(await button.isVisible().catch(() => false), `palette entry ${selector} must be visible`);
@@ -393,7 +418,7 @@ async function editNodeLabel(page, nodeId, label) {
 }
 
 async function clickNode(page, nodeId) {
-  const body = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
+  const body = page.locator(`[data-node-id="${nodeId}"]`).first();
   await body.waitFor({ state: 'visible', timeout: 8000 });
   await body.click();
   if (await activeWireStart(page)) {
@@ -438,8 +463,22 @@ async function waitForConnectionCount(page, expected, label) {
   assert(actual === expected, `${label}: expected ${expected} connections, got ${actual}`);
 }
 
+async function arrangeCircuit(page) {
+  const menu = page.getByTestId('ide-design-toolbar-overflow').first();
+  const wasOpen = (await menu.getAttribute('open')) !== null;
+  if (!wasOpen) await menu.locator('summary').click();
+  const arrange = page.getByTestId('ide-design-arrange');
+  await arrange.waitFor({ state: 'visible', timeout: 5000 });
+  assert(await arrange.isEnabled(), 'Arrange must be available for the six-part circuit');
+  await arrange.click();
+  if (!wasOpen && (await menu.getAttribute('open')) !== null) {
+    await menu.locator('summary').click();
+  }
+  await fitCenterZoom(page);
+}
+
 async function moveNodeToCanvasFraction(page, nodeId, position) {
-  const node = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
+  const node = page.locator(`[data-node-id="${nodeId}"] .rb-sym-body, [data-node-id="${nodeId}"] .logic-node-body`).first();
   const canvas = page.locator('[data-testid="ide-design-live-canvas"]').first();
   const nodeBox = await node.boundingBox();
   const canvasBox = await canvas.boundingBox();
@@ -499,45 +538,31 @@ async function clickVisible(page, selector, label) {
   await locator.click();
 }
 
-async function exerciseDirectDesignCamera(page) {
-  const reset = page.getByTestId('ide-design-zoom-reset').first();
-  const zoomOut = page.getByTestId('ide-design-zoom-out').first();
-  const zoomIn = page.getByTestId('ide-design-zoom-in').first();
-  const fit = page.getByTestId('ide-design-fit-circuit-canvas').first();
-
-  for (const [control, label] of [
-    [reset, 'Reset zoom'],
-    [zoomOut, 'Zoom out'],
-    [zoomIn, 'Zoom in'],
-    [fit, 'Fit circuit'],
-  ]) {
-    await control.waitFor({ state: 'visible', timeout: 5000 });
-    assert(await control.isEnabled(), `${label} camera control must be enabled`);
-  }
+async function exerciseDesignCamera(page) {
   assert(
     !(await page.getByTestId('ide-design-view-tools-toggle').first().isVisible().catch(() => false)),
-    'Design camera controls must remain directly available without a View tools disclosure',
+    'Design camera controls must remain available without the obsolete View tools disclosure',
   );
 
-  await reset.click();
+  await clickCanvasTool(page, 'ide-design-zoom-reset', 'Reset zoom');
   await page.waitForTimeout(180);
   const resetCamera = await readDesignCamera(page, 'reset zoom');
 
-  await zoomOut.click();
+  await clickCanvasTool(page, 'ide-design-zoom-out', 'Zoom out');
   const zoomedOut = await waitForDesignZoomChange(page, resetCamera.zoom, 'zoom out');
   assert(
     zoomedOut.zoom < resetCamera.zoom,
     `Zoom out must reduce the live camera zoom (${resetCamera.zoom} -> ${zoomedOut.zoom})`,
   );
 
-  await zoomIn.click();
+  await clickCanvasTool(page, 'ide-design-zoom-in', 'Zoom in');
   const zoomedIn = await waitForDesignZoomChange(page, zoomedOut.zoom, 'zoom in');
   assert(
     zoomedIn.zoom > zoomedOut.zoom,
     `Zoom in must increase the live camera zoom (${zoomedOut.zoom} -> ${zoomedIn.zoom})`,
   );
 
-  await reset.click();
+  await clickCanvasTool(page, 'ide-design-zoom-reset', 'Reset zoom');
   await page.waitForTimeout(180);
   const readyCamera = await readDesignCamera(page, 'camera reset after direct controls');
   assert(
@@ -547,10 +572,11 @@ async function exerciseDirectDesignCamera(page) {
 }
 
 async function fitCenterZoom(page) {
-  const fit = page.getByTestId('ide-design-fit-circuit-canvas').first();
-  await fit.waitFor({ state: 'visible', timeout: 5000 });
+  const fitted = await readDesignCamera(page, 'before fit exercise');
+  await clickCanvasTool(page, 'ide-design-zoom-out', 'Zoom out before Fit');
+  await waitForDesignZoomChange(page, fitted.zoom, 'fit precondition');
   const before = await readDesignCamera(page, 'before Fit circuit');
-  await fit.click();
+  await clickCanvasTool(page, 'ide-design-fit-circuit-canvas', 'Fit circuit');
   await page.waitForFunction(
     (previous) => {
       const camera = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera;
@@ -568,6 +594,30 @@ async function fitCenterZoom(page) {
     { timeout: 5000 },
   );
   await readDesignCamera(page, 'after Fit circuit');
+}
+
+async function clickCanvasTool(page, primaryTestId, label) {
+  let control = page.getByTestId(primaryTestId).first();
+  let overflow = null;
+  let closeOverflow = false;
+
+  if (!(await control.isVisible().catch(() => false))) {
+    const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
+    assert(Boolean(responsiveTestId), `${label}: missing responsive camera mapping for ${primaryTestId}`);
+    overflow = page.getByTestId('ide-design-toolbar-overflow').first();
+    assert(await overflow.isVisible().catch(() => false), `${label}: View menu must be visible`);
+    closeOverflow = (await overflow.getAttribute('open')) === null;
+    if (closeOverflow) await overflow.locator('summary').click();
+    control = page.getByTestId(responsiveTestId).first();
+  }
+
+  await control.waitFor({ state: 'visible', timeout: 5000 });
+  assert(await control.isEnabled(), `${label} camera control must be enabled`);
+  await control.click();
+
+  if (closeOverflow && overflow && (await overflow.getAttribute('open')) !== null) {
+    await overflow.locator('summary').click();
+  }
 }
 
 async function waitForDesignZoomChange(page, previousZoom, label) {

@@ -9,6 +9,9 @@ import type { MacroDefinition } from '../macros/MacroLibrary';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
+import { COMPONENT_DEFINITION_REGISTRY } from '../componentDefinitions';
+import { deriveLibraryCardFacts } from '../componentLibraryPresentation';
+import { createClockTimingGuidance } from '../timingGuidance';
 
 const BASE_CIRCUIT: Circuit = {
   nodes: [
@@ -131,11 +134,8 @@ function renderSurface(
         { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
         { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -188,29 +188,17 @@ describe('DesignSurface palette dock redesign', () => {
       palette.querySelectorAll<HTMLElement>('[data-testid^="ide-design-palette-section-"]')
     ).map((element) => element.dataset.testid ?? element.getAttribute('data-testid'));
 
+    // Authoring-first order, each primitive listed once: pins, then gates, then
+    // sequential, then the project's own reusable modules. Board resources are
+    // not components — they live under the Board I/O tab.
     expect(sectionOrder).toEqual([
-      'ide-design-palette-section-common',
-      'ide-design-palette-section-board',
       'ide-design-palette-section-io',
       'ide-design-palette-section-logic',
       'ide-design-palette-section-sequential',
       'ide-design-palette-section-reusable',
     ]);
-    expect(
-      Array.from(
-        view
-          .getByTestId('ide-design-palette-section-common')
-          .querySelectorAll<HTMLElement>('[data-testid^="ide-design-common-"]')
-      ).map((element) => element.dataset.testid)
-    ).toEqual([
-      'ide-design-common-input',
-      'ide-design-common-output',
-      'ide-design-common-xor',
-      'ide-design-common-and',
-      'ide-design-common-or',
-      'ide-design-common-not',
-      'ide-design-common-register1',
-    ]);
+    expect(view.queryByTestId('ide-design-palette-section-common')).toBeNull();
+    expect(within(palette).queryByTestId('ide-design-palette-section-board')).toBeNull();
 
     expect(within(palette).getByTestId('ide-macro-library-panel')).toBeTruthy();
     expect(within(palette).getByTestId('ide-palette-group-custom')).toBeTruthy();
@@ -225,12 +213,41 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-design-palette-dflipflop')).toBeTruthy();
     expect(view.getByTestId('ide-design-palette-input')).toBeTruthy();
 
-    // Board Resources section is open on first load — board parts are the primary destination for FPGA work
+    // Board resources are one tab away and open on arrival — board parts are the
+    // primary destination for FPGA work, but they are not components.
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
     // Live Inputs is a runtime debug tool, not a primary authoring surface — stays collapsed
     expect(view.queryByTestId('ide-design-live-inputs-toggle')).toBeNull();
+  });
+
+  it('projects built-in card copy and semantic search from ComponentDefinition', () => {
+    const view = renderSurface();
+    const xnorDefinition = COMPONENT_DEFINITION_REGISTRY.getByRuntimeType('XNOR');
+    expect(xnorDefinition).toBeDefined();
+    const xnorFacts = deriveLibraryCardFacts(xnorDefinition!);
+
+    // The card row shows the part's schematic symbol and its name. Everything a
+    // reader would look up - the prose description, the compact interface
+    // summary and the port-by-port interface - is in the tooltip.
+    const xnorCard = view.getByTestId('ide-design-palette-xnor');
+    expect(xnorCard.getAttribute('title')).toContain(
+      `${xnorDefinition?.displayName} - ${xnorDefinition?.description}`
+    );
+    for (const port of xnorDefinition?.ports ?? []) {
+      expect(xnorCard.getAttribute('title')).toContain(port.displayName);
+    }
+    expect(xnorCard.textContent).toContain(xnorDefinition?.displayName);
+    expect(xnorCard.getAttribute('title')).toContain(xnorFacts.portSummary);
+    expect(xnorCard.querySelector('svg.rb-palette-symbol')).not.toBeNull();
+
+    fireEvent.change(view.getByTestId('ide-design-search'), {
+      target: { value: xnorDefinition?.category },
+    });
+    expect(view.getByTestId('ide-design-palette-xnor')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-palette-and')).toBeNull();
   });
 
   it('groups sequential palette into registers and legacy subsections', () => {
@@ -267,20 +284,23 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-macro-library-card-macro-and-gate')).toBeTruthy();
     expect(view.queryByTestId('ide-design-palette-dflipflop')).toBeNull();
 
+    // The query is shared; each tab filters the list it owns.
     fireEvent.change(search, { target: { value: 'led' } });
-    expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
     expect(view.queryByTestId('ide-macro-library-card-macro-and-gate')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
+    expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
   });
 
   it('board resources remain visible when searching board inventory terms and surfaces the matched item', () => {
     const view = renderSurface();
 
-    // Board inventory is a direct library section on load.
+    // Board inventory is a direct section of the Board I/O tab, open on arrival.
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
-    // Searching for board terms keeps the direct section visible and shows the matching item.
-    fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'led' } });
+    // Searching board terms where the list lives keeps the section visible and shows the match.
+    fireEvent.change(view.getByTestId('ide-design-board-search'), { target: { value: 'led' } });
 
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
@@ -290,11 +310,12 @@ describe('DesignSurface palette dock redesign', () => {
   it('finds the Basys3 board clock by package pin and surfaces the CLK100MHZ board resource', () => {
     const view = renderSurface();
 
-    // CLK100MHZ is visible even before searching (board section is open by default)
+    // CLK100MHZ is visible on arriving at Board I/O (board section is open by default)
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
 
     // Searching by package pin W5 also surfaces CLK100MHZ via search
-    fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'w5' } });
+    fireEvent.change(view.getByTestId('ide-design-board-search'), { target: { value: 'w5' } });
 
     expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
@@ -319,7 +340,85 @@ describe('DesignSurface palette dock redesign', () => {
     }
 
     // CLK100MHZ Board Resource is still surfaceable — that's the canonical clock
-    fireEvent.change(searchInput, { target: { value: 'clock' } });
+    fireEvent.click(view.getByTestId('ide-design-left-tab-board'));
+    fireEvent.change(view.getByTestId('ide-design-board-search'), { target: { value: 'clock' } });
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
+  });
+
+  it('describes an explicitly typed switch clock as a manual clock assignment', () => {
+    useLogicViewStore.setState({
+      selection: { nodes: new Set(['sw0_node']), wires: new Set() },
+    });
+    const view = renderSurface({
+      ioRows: [
+        {
+          id: 'enter',
+          nodeId: 'sw0_node',
+          label: 'ENTER (SW5)',
+          pin: 'V15',
+          port: 'out',
+          direction: 'in',
+          timingRole: 'clock',
+          boardResourceType: 'switch',
+        },
+      ],
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-right-tab-constraints'));
+    const facts = view.getByTestId('ide-design-inline-board-assignment').textContent ?? '';
+    expect(facts).toContain('Manual clock switch');
+    expect(facts).toContain('Manual clock switch SW5 assigned');
+    expect(facts).not.toContain('Clock resource required');
+  });
+
+  it('uses structural timing guidance for the metadata-absent Lab 8 ENTER row', () => {
+    useLogicViewStore.setState({
+      selection: { nodes: new Set(['sw0_node']), wires: new Set() },
+    });
+    const view = renderSurface({
+      ioRows: [
+        {
+          id: 'iom-enter',
+          nodeId: 'sw0_node',
+          label: 'ENTER (SW5)',
+          pin: 'V15',
+          port: 'out',
+          direction: 'in',
+        },
+      ],
+      timingGuidance: createClockTimingGuidance('ENTER (SW5)'),
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-right-tab-constraints'));
+    const facts = view.getByTestId('ide-design-inline-board-assignment').textContent ?? '';
+    expect(facts).toContain('Manual clock switch');
+    expect(facts).toContain('Manual clock switch SW5 assigned');
+    expect(facts).not.toContain('Not a timing-control signal');
+  });
+
+  it('describes a switch-backed reset as a reset switch rather than a button', () => {
+    useLogicViewStore.setState({
+      selection: { nodes: new Set(['sw0_node']), wires: new Set() },
+    });
+    const view = renderSurface({
+      ioRows: [
+        {
+          id: 'reset',
+          nodeId: 'sw0_node',
+          label: 'RESET (SW4)',
+          pin: 'W15',
+          port: 'out',
+          direction: 'in',
+          timingRole: 'reset',
+          boardResourceType: 'switch',
+        },
+      ],
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-right-tab-constraints'));
+    const facts = view.getByTestId('ide-design-inline-board-assignment').textContent ?? '';
+    expect(facts).toContain('Reset-capable switch');
+    expect(facts).toContain('Reset switch SW4 assigned');
+    expect(facts).not.toContain('Reset-capable button');
   });
 });

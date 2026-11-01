@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { SignalRef, SignalSample, SignalSource } from '@redbyte/rb-instruments';
-import type { LabGraph, LabTimeline } from '@redbyte/rb-logic-3d';
-import { computeNetlist, buildNetHistory, sampleNetValue, PART_DEFINITIONS } from '@redbyte/rb-logic-3d';
+import type { LabGraph, LabTimeline } from './virtualLabModel/types';
+import { computeNetlist, buildNetHistory, sampleNetValue } from './virtualLabModel/netlist';
+import { PART_DEFINITIONS } from './virtualLabModel/parts';
 
 interface UseVirtualLabSignalSourceOptions {
   graph: LabGraph;

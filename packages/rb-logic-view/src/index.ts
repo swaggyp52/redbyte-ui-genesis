@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 // Main component
-export { LogicCanvas } from './LogicCanvas';
+export { LogicCanvas, FIT_ZOOM_STEPS } from './LogicCanvas';
 export type { LogicCanvasProps } from './LogicCanvas';
 
 // Store
@@ -28,7 +28,7 @@ export type { ToolbarProps } from './components/Toolbar';
 // Tools
 export { renderGrid } from './tools/grid';
 export type { GridConfig } from './tools/grid';
-export { findSmartSpawnPosition } from './tools/placement';
+export { findSmartSpawnPosition, measureNodeSize, type SpawnFootprint } from './tools/placement';
 export {
   describePortRefForStudents,
   describeWireRejectionForStudents,
@@ -36,3 +36,35 @@ export {
   wirePortState,
   wireRejectionMessage,
 } from './tools/wireGuidance';
+
+// Schematic instrument: symbol geometry, ANSI outlines, orthogonal routing.
+export {
+  GRID as SCHEMATIC_GRID,
+  PIN_PITCH as SCHEMATIC_PIN_PITCH,
+  blockBodySize,
+  buildGeometryIndex,
+  findPin,
+  pinWorldPoint,
+  resolvePortGeometry,
+  symbolKindForNode,
+  unionBounds,
+  type GeometryIndexEntry,
+  type SymbolGeometry,
+  type SymbolKind,
+  type SymbolPin,
+} from './symbols/portGeometry';
+export { outlineFor, type SymbolOutline } from './symbols/ansiSymbols';
+export { placeSchematicLabels, type SchematicLabel } from './symbols/schematicLabels';
+export {
+  connectionEndpoints,
+  polylinePath,
+  routeBounds,
+  routeCircuit,
+  type RoutedNet,
+  type RoutedWire,
+} from './routing/orthogonalRouter';
+export { SchematicNodeView, schematicLodForZoom, DEFAULT_SCHEMATIC_LAYERS, type SchematicLod, type SchematicLayers, type SchematicNodeViewProps } from './components/SchematicNodeView';
+export { SchematicBusBrackets, layoutBusBrackets, type SchematicBusGroup, type BusBracketLayout } from './components/SchematicBusBrackets';
+export { SchematicWireView, type SchematicWireViewProps } from './components/SchematicWireView';
+
+export { getCanvasViewBounds, getVisibleCanvasNodes } from './viewportCulling';

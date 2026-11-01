@@ -137,10 +137,25 @@ async function assertDirectDetailWorkspace(page, viewport, mode) {
   assert(state.visible, `${mode}: direct detail workspace must be visible without a drawer`);
   assert(state.textLength >= 24, `${mode}: direct detail workspace must contain meaningful tools`);
   assert(
-    state.width >= Math.min(720, viewport.width * 0.54),
+    state.width >= (mode === 'hardware' ? 320 : Math.min(720, viewport.width * 0.54)),
     `${mode}: direct detail workspace is too narrow (${state.width}px)`
   );
   assert(state.height >= 160, `${mode}: direct detail workspace is too short (${state.height}px)`);
+  if (mode === 'hardware') {
+    // Board now pairs its mapping list with the board object. Test the actual
+    // row contents and hit targets instead of requiring a retired half-screen
+    // table width that hid the relationship to the board.
+    const row = page.getByTestId('ide-hw-map-row-sw0');
+    await row.click({ trial: true });
+    const cells = await row.locator('td').all();
+    assert(cells.length >= 3, 'Board mapping must retain signal, resource and assignment cells');
+    const tableBox = await detail.boundingBox();
+    for (const cell of cells) {
+      const box = await cell.boundingBox();
+      assert(box && tableBox && box.x >= tableBox.x - 1 && box.x + box.width <= tableBox.x + tableBox.width + 1,
+        'Board mapping cell must remain inside the visible table');
+    }
+  }
   assert(
     state.genericRailControls === 0,
     `${mode}: retired right-rail restore/collapse controls must stay absent (${state.genericRailControls} visible)`

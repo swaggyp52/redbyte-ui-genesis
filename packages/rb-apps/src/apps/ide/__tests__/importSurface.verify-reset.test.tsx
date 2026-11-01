@@ -87,8 +87,8 @@ describe('ImportSurface verify reset notice', () => {
 
     await waitFor(() => {
       const notice = view.getByTestId('ide-import-verify-reset-notice');
-      expect(notice.textContent).toContain('Run Verify again because prior evidence belongs to the replaced design.');
-      expect(notice.textContent).toContain('Open Verify');
+      expect(notice.textContent).toContain('Run Simulate again because prior evidence belongs to the replaced design.');
+      expect(notice.textContent).toContain('Open Simulate');
     });
 
     expect(useProjectRuntime.getState().verifyLastRun).toBeUndefined();

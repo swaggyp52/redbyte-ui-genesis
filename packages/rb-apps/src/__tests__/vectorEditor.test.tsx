@@ -115,7 +115,8 @@ describe('VectorEditor', () => {
         onChange={() => {}}
       />
     );
-    expect(screen.getByText(/No IO mapping/i)).toBeTruthy();
+    // Spelled "I/O", and it says where to fix it.
+    expect(screen.getByText(/No I\/O mapping.*Board/i)).toBeTruthy();
   });
 
   it('renders custom-vectors-panel testid in VerifySurface integration position (smoke)', () => {

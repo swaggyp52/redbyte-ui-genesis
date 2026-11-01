@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
@@ -87,6 +88,13 @@ function makeWaveformPriorityRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'waveform-priority',
+      scenarioName: 'Waveform Priority Scenario',
+      status: 'fail',
+      deterministicHash: 'det_wave_priority',
+      generatedAtIso: '2026-03-08T20:45:00.000Z',
+      reportHash: 'rep_wave_priority',
       vectors: cases.map((entry) => ({
         id: `vec-${String(entry.tick).padStart(2, '0')}`,
         tick: entry.tick,
@@ -128,7 +136,7 @@ function makeWaveformPriorityRun(): RuntimeVerifyRun {
           status: entry.expected.sum === entry.actual.sum ? 'pass' : 'fail',
         },
       ]),
-    } as RuntimeVerifyRun['report'],
+    },
     waveform: cases.map((entry) => ({
       tick: entry.tick,
       signals: {
@@ -158,7 +166,7 @@ function makeWaveformPassRun(): RuntimeVerifyRun {
   return {
     ...base,
     status: 'pass',
-    firstFailingTick: null,
+    firstFailingTick: undefined,
     report: {
       ...base.report,
       rows: base.report.rows.map((row) => ({
@@ -174,16 +182,22 @@ function makeWaveformPassRun(): RuntimeVerifyRun {
   };
 }
 
-function getSignalListOrder(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll('[data-testid="ide-verify-signal-list"] .ide-signal-row')).map(
-    (node) => node.textContent?.trim() ?? ''
+function getWaveformOrder(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('[data-testid^="ide-verify-waveform-row-"]')).map(
+    (node) => (node.querySelector('title')?.textContent ?? '').toLowerCase()
   );
 }
 
-function getWaveformOrder(container: HTMLElement): string[] {
-  return Array.from(container.querySelectorAll('[data-testid^="ide-verify-waveform-row-"]')).map(
-    (node) => node.querySelector('title')?.textContent ?? ''
-  );
+/**
+ * Read the open experiment as its recorded trace.
+ *
+ * Lane ordering is a property of the trace instrument, and the trace is one representation of
+ * one experiment now, chosen with the VIEW switch, rather than a second region under the
+ * timeline. These tests ask for it before reading its lanes; what they protect is unchanged.
+ */
+function showWaveformRepresentation(container: HTMLElement): void {
+  const toggle = container.querySelector('[data-testid="ide-verify-view-waveform"]');
+  if (toggle) fireEvent.click(toggle);
 }
 
 describe('VerifySurface waveform lane priority', () => {
@@ -213,6 +227,7 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
+    showWaveformRepresentation(container);
     const lanes = getWaveformOrder(container);
     expect(lanes).toContain('sw0');
     expect(lanes).toContain('sw1');
@@ -240,6 +255,7 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
+    showWaveformRepresentation(container);
     const lanes = getWaveformOrder(container);
     expect(lanes).toContain('carry');
     expect(lanes).toContain('sum');
@@ -271,6 +287,7 @@ describe('VerifySurface waveform lane priority', () => {
 
     const { container, queryByTestId, rerender } = render(<VerifySurface {...props} />);
 
+    showWaveformRepresentation(container);
     // PASS run auto-expands mapped inputs once.
     expect(getWaveformOrder(container)).toContain('sw0');
     expect(getWaveformOrder(container)).toContain('sw1');
@@ -307,22 +324,24 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    showWaveformRepresentation(container);
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t0-t6 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t1');
 
-    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'carry', 'sum', 'flag']);
+    expect(container.querySelector('[data-testid="ide-verify-signal-list"]')).toBeNull();
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
 
-    fireEvent.click(within(getByTestId('ide-verify-signal-list')).getByText('flag'));
-    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'carry', 'sum', 'flag']);
+    fireEvent.click(getByTestId('ide-verify-waveform-row-flag').querySelector('title')!.parentElement!);
+    expect(getByTestId('ide-verify-waveform-row-flag').getAttribute('data-selected')).toBe('true');
+    expect(container.querySelector('[data-testid="ide-verify-signal-list"]')).toBeNull();
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
 
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     fireEvent.click(getByTestId('ide-verify-mismatch-row-sum_8'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
-    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'sum', 'carry', 'flag']);
+    expect(getByTestId('ide-verify-waveform-row-sum').getAttribute('data-selected')).toBe('true');
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['sum', 'carry', 'flag', 'sw0', 'sw1']);
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t2-t8 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t8');
@@ -352,7 +371,7 @@ describe('VerifySurface waveform lane priority', () => {
     );
 
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
-    fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
+    fireEvent.click(getByTestId('ide-verify-details'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
     fireEvent.click(getByTestId('ide-verify-mismatch-row-sum_8'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));

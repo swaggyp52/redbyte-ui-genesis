@@ -50,6 +50,13 @@ function resolveAliasCandidate(value: string | undefined): string | null {
 }
 
 function resolveAliasFromMetadata(candidate: Basys3SignalBindingCandidate): string | null {
+  if (candidate.boardResourceType && candidate.boardResourceType !== 'clock_pin') {
+    // Explicit physical-resource metadata wins over a logical timing role. A
+    // switch/button may intentionally clock a manual-event lab; an unassigned
+    // row must not be silently rebound to the W5 oscillator merely because it
+    // also carries timingRole="clock".
+    return null;
+  }
   if (candidate.boardResourceType === 'clock_pin' || candidate.timingRole === 'clock') {
     return 'CLK100MHZ';
   }

@@ -48,8 +48,19 @@ await runIdeGate('IDE verify contract satisfied', async ({ page, baseUrl }) => {
     await visible(page.locator('[data-testid="ide-verify-workspace-waveform"]').first()),
     'verify waveform workspace must render after a Compare run'
   );
-  assert(
-    await visible(page.locator('[data-testid^="ide-stimulus-expected-"]').first()),
-    'verify must expose expected-output cells for the current starter checks'
-  );
+  const recordingBefore = await page.evaluate(() => JSON.stringify(window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun));
+  await page.getByTestId('ide-verify-view-table').click();
+  await page.locator('[data-testid^="ide-case-lab-exp-"]').first().waitFor({ state: 'visible' });
+  const checkedCells = await page.evaluate(() => {
+    const vectors = window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors ?? [];
+    return vectors.flatMap(vector => Object.entries(vector.expected ?? {}).map(([id, value]) => {
+      const cell = document.querySelector(`[data-testid="ide-case-lab-exp-${vector.tick}-${id}"]`);
+      return { id, tick: vector.tick, value: String(value), text: cell?.textContent?.trim() ?? '', visible: Boolean(cell && cell.getBoundingClientRect().height > 0) };
+    }));
+  });
+  assert(checkedCells.length > 0, 'starter must retain configured expected-output checks');
+  assert(checkedCells.every(cell => cell.visible && cell.text === cell.value),
+    `case table must expose exact authored expected outputs: ${JSON.stringify(checkedCells)}`);
+  const recordingAfter = await page.evaluate(() => JSON.stringify(window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun));
+  assert(recordingAfter === recordingBefore, 'switching to expected-check authoring must preserve recorded evidence');
 });

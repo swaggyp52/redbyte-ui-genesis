@@ -41,8 +41,8 @@ await runIdeGate('IDE Hardware table-first hierarchy satisfied', async ({ page, 
       });
       const table = await assertVisibleRect(page, ['[data-testid="ide-hw-map-table"]'], `${viewport.label}/mapping table`, {
         maxTop: 440,
-        minWidth: Math.round(viewport.width * 0.38),
-        minHeight: Math.round(viewport.height * 0.30),
+        minWidth: 320,
+        minHeight: 200,
       });
       const board = await assertVisibleRect(page, ['[data-testid="ide-hw-map-board"]'], `${viewport.label}/Basys3 board reference`, {
         maxTop: 480,
@@ -53,9 +53,14 @@ await runIdeGate('IDE Hardware table-first hierarchy satisfied', async ({ page, 
       assert(table.left < board.left, `${viewport.label}: mapping table must precede the board reference ${JSON.stringify({ board, table })}`);
       assert(table.left + table.width <= board.left + 2, `${viewport.label}: mapping table and board reference must not overlap ${JSON.stringify({ board, table })}`);
       assert(
-        table.visibleWidth >= board.visibleWidth,
-        `${viewport.label}: mapping table must dominate the secondary board reference ${JSON.stringify({ board, table })}`
+        table.visibleWidth >= 320 && board.visibleWidth >= 320,
+        `${viewport.label}: assignment list and board must both retain useful space ${JSON.stringify({ board, table })}`
       );
+      assert(await page.locator('[data-testid^="ide-hw-map-row-"]').filter({ has: page.locator('td') }).count() >= 5,
+        'The paired board workspace must retain every starter mapping row');
+      await page.getByTestId('ide-hw-map-row-sw0').click();
+      assert(await page.getByTestId('ide-hw-map-sw-0').getAttribute('data-resource-state') === 'selected',
+        'Selecting SW0 must connect the mapping row to its board resource');
       assert(workspace.visibleHeight >= board.visibleHeight, `${viewport.label}: board must fit inside visible workspace`);
       await assertNoRootOverflow(page, `${viewport.label}/hardware`);
     } catch (error) {

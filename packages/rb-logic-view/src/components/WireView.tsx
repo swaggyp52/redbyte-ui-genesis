@@ -5,17 +5,17 @@
 import React from 'react';
 import type { Connection, Node } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
+import type { LogicDisplayValue } from './NodeView';
+import { getNodePosition } from '../tools/nodePosition';
 import { usePrefersReducedMotion } from '../usePrefersReducedMotion';
 
 const getConnectionKey = (connection: Connection) => {
-  const fromIsString = typeof connection.from === 'string';
-  const toIsString = typeof connection.to === 'string';
-  const fromNodeId = fromIsString ? connection.from : connection.from.nodeId;
-  const toNodeId = toIsString ? connection.to : connection.to.nodeId;
-  const fromPortName = fromIsString
+  const fromNodeId = typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
+  const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+  const fromPortName = typeof connection.from === 'string'
     ? (connection.fromPin ?? connection.fromPort ?? 'out')
     : (connection.from.portName ?? connection.from.port ?? 'out');
-  const toPortName = toIsString
+  const toPortName = typeof connection.to === 'string'
     ? (connection.toPin ?? connection.toPort ?? 'in')
     : (connection.to.portName ?? connection.to.port ?? 'in');
   const wireId = `${fromNodeId}.${fromPortName}-${toNodeId}.${toPortName}`;
@@ -103,7 +103,7 @@ export interface WireViewProps {
   onSelect: (wireId: string, addToSelection: boolean) => void;
   onHover?: (wireId: string | null) => void;
   onContextMenu?: (wireId: string, event: React.MouseEvent<SVGGElement>) => void;
-  signal?: 0 | 1;
+  signal?: LogicDisplayValue;
   probeColors?: string[];
   mismatchColors?: string[];
   /** When a trace or probe path is active on the canvas, de-emphasize other wires to reduce clutter. */
@@ -136,10 +136,10 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   if (!fromNode || !toNode) return null;
 
   // Calculate port positions (assuming ports are on the sides)
-  const fromX = (fromNode.position.x + 24) * camera.zoom + camera.x; // Right side
-  const fromY = fromNode.position.y * camera.zoom + camera.y;
-  const toX = (toNode.position.x - 24) * camera.zoom + camera.x; // Left side
-  const toY = toNode.position.y * camera.zoom + camera.y;
+  const fromX = (getNodePosition(fromNode).x + 24) * camera.zoom + camera.x; // Right side
+  const fromY = getNodePosition(fromNode).y * camera.zoom + camera.y;
+  const toX = (getNodePosition(toNode).x - 24) * camera.zoom + camera.x; // Left side
+  const toY = getNodePosition(toNode).y * camera.zoom + camera.y;
 
   // Create a curved path
   const midX = (fromX + toX) / 2;

@@ -1,3 +1,4 @@
+import { getConnectionNodeId, getConnectionPort } from '../utils/connectionUtils';
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
@@ -103,7 +104,7 @@ export const GUIDED_EXAMPLES: Record<string, GuidedExample> = {
           if (!notNode) return false;
 
           return circuit.connections.some(
-            (c) => c.to.nodeId === notNode.id && c.to.portName === 'in'
+            (c) => getConnectionNodeId(c.to) === notNode.id && getConnectionPort(c, 'to', 'in') === 'in'
           );
         },
       },
@@ -116,7 +117,7 @@ export const GUIDED_EXAMPLES: Record<string, GuidedExample> = {
           if (!notNode || !lamp) return false;
 
           return circuit.connections.some(
-            (c) => c.from.nodeId === notNode.id && c.to.nodeId === lamp.id
+            (c) => getConnectionNodeId(c.from) === notNode.id && getConnectionNodeId(c.to) === lamp.id
           );
         },
       },
@@ -183,7 +184,7 @@ export const GUIDED_EXAMPLES: Record<string, GuidedExample> = {
           if (!xorNode) return false;
 
           const xorInputs = circuit.connections.filter(
-            (c) => c.to.nodeId === xorNode.id && (c.to.portName === 'in1' || c.to.portName === 'in2')
+            (c) => getConnectionNodeId(c.to) === xorNode.id && (getConnectionPort(c, 'to', 'in') === 'in1' || getConnectionPort(c, 'to', 'in') === 'in2')
           );
           return xorInputs.length >= 2;
         },
@@ -197,7 +198,7 @@ export const GUIDED_EXAMPLES: Record<string, GuidedExample> = {
           if (!andNode) return false;
 
           const andInputs = circuit.connections.filter(
-            (c) => c.to.nodeId === andNode.id && (c.to.portName === 'in1' || c.to.portName === 'in2')
+            (c) => getConnectionNodeId(c.to) === andNode.id && (getConnectionPort(c, 'to', 'in') === 'in1' || getConnectionPort(c, 'to', 'in') === 'in2')
           );
           return andInputs.length >= 2;
         },
@@ -214,10 +215,10 @@ export const GUIDED_EXAMPLES: Record<string, GuidedExample> = {
           if (!xorNode || !andNode || lamps.length < 2) return false;
 
           const xorToLamp = circuit.connections.some(
-            (c) => c.from.nodeId === xorNode.id && lamps.some((l) => l.id === c.to.nodeId)
+            (c) => getConnectionNodeId(c.from) === xorNode.id && lamps.some((l) => l.id === getConnectionNodeId(c.to))
           );
           const andToLamp = circuit.connections.some(
-            (c) => c.from.nodeId === andNode.id && lamps.some((l) => l.id === c.to.nodeId)
+            (c) => getConnectionNodeId(c.from) === andNode.id && lamps.some((l) => l.id === getConnectionNodeId(c.to))
           );
 
           return xorToLamp && andToLamp;

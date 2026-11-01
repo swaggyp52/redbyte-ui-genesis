@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import type { RBProject } from '../export/projectFormat';
 import type { RuntimeVerifyRun } from '../apps/ide/projectRuntime';
 import type { VerifyScenario } from '../apps/ide/verifyScenario';
+import type { VerifyReport } from '../apps/ide/verifyReport';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
 import {
   buildVerifySessionViewModel,
@@ -62,6 +63,23 @@ function makeProject(overrides: Partial<RBProject> = {}): RBProject {
   };
 }
 
+function makeReport(): VerifyReport {
+  return {
+    schemaVersion: 'rb.verify-report.v1',
+    scenarioId: 'scenario-abc',
+    scenarioName: 'Default',
+    status: 'pass',
+    deterministicHash: 'abc123',
+    generatedAtIso: '2026-01-01T00:00:00.000Z',
+    reportHash: 'rep123',
+    rows: [],
+    vectors: [],
+    inputsAtTick: {},
+    inputsByVectorId: {},
+    signalRoles: {},
+  };
+}
+
 function makePassRun(overrides: Partial<RuntimeVerifyRun> = {}): RuntimeVerifyRun {
   return {
     scenarioId: 'scenario-abc',
@@ -79,7 +97,7 @@ function makePassRun(overrides: Partial<RuntimeVerifyRun> = {}): RuntimeVerifyRu
       tick0Meaning: null,
       clockSignalName: null,
     },
-    report: {
+    report: { ...makeReport(),
       rows: [],
       vectors: [],
       inputsAtTick: {},
@@ -96,6 +114,8 @@ function makeScenario(overrides: Partial<VerifyScenario> = {}): VerifyScenario {
     id: 'scenario-abc',
     name: 'Default',
     version: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     vectors: [
       { tick: 0, inputs: { SW0: 0 }, expected: { LD0: 0 } },
       { tick: 1, inputs: { SW0: 1 }, expected: { LD0: 1 } },
@@ -139,15 +159,20 @@ describe('ExportViewModel topAuthority', () => {
     expect(vm.topAuthority.designTop).not.toBe(vm.topAuthority.simulationTop);
   });
 
-  it('simulationTop is designTop suffixed with _tb', () => {
+  // Contract changed 2026-10-25 (Defect A): one name authority. The generated
+  // testbench declares tb_<designTop>, and simulationTop is read back from it, so
+  // the header, the .xpr sim_1 top, vivado_import.tcl and the E1 harness agree.
+  it('simulationTop is the entity testbench.vhd declares: tb_<designTop>', () => {
     const vm = buildExportViewModel(makeProject());
-    expect(vm.topAuthority.simulationTop).toBe(`${vm.topAuthority.designTop}_tb`);
+    expect(vm.topAuthority.simulationTop).toBe(`tb_${vm.topAuthority.designTop}`);
+    const tb = vm.artifacts.find((a) => a.path === 'testbench.vhd');
+    expect(tb?.content).toMatch(new RegExp(`^entity ${vm.topAuthority.simulationTop} is$`, 'm'));
   });
 
   it('designTop reflects fpga.top when present', () => {
     const vm = buildExportViewModel(makeProject({ fpga: { board: 'basys3', top: 'my_design' } }));
     expect(vm.topAuthority.designTop).toBe('my_design');
-    expect(vm.topAuthority.simulationTop).toBe('my_design_tb');
+    expect(vm.topAuthority.simulationTop).toBe('tb_my_design');
   });
 
   it('designTop falls back to "top" when no top is specified', () => {
@@ -322,7 +347,7 @@ describe('VerifySessionStatus stimulus-only', () => {
           tick0Meaning: null,
           clockSignalName: null,
         },
-        report: { rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
+        report: { ...makeReport(), rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
         waveform: [],
       },
       nextRunUsesAssertions: false,
@@ -363,7 +388,7 @@ describe('VerifySessionStatus stimulus-only', () => {
         generatedAtIso: '2026-01-01T00:00:00.000Z',
         schedule: 'combinational',
         meta: { circuitKind: 'combinational', clockingProtocol: null, samplePoint: 'steady-state', tick0Meaning: null, clockSignalName: null },
-        report: { rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
+        report: { ...makeReport(), rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
         waveform: [],
       },
       nextRunUsesAssertions: false,
@@ -395,7 +420,7 @@ describe('VerifySessionStatus stimulus-only', () => {
         generatedAtIso: '2026-01-01T00:00:00.000Z',
         schedule: 'combinational',
         meta: { circuitKind: 'combinational', clockingProtocol: null, samplePoint: 'steady-state', tick0Meaning: null, clockSignalName: null },
-        report: { rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
+        report: { ...makeReport(), rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
         waveform: [],
       },
       nextRunUsesAssertions: false,
@@ -587,8 +612,9 @@ describe('Export purity — core HDL content does not depend on RuntimeVerifyRun
     const project = makeProject();
     // Build a pass run with a non-trivial report to ensure it does not leak into HDL
     const runWithReport = makePassRun({
-      report: {
-        rows: [{ tick: 0, signal: 'LD0', expected: '1', actual: '0', pass: false }],
+      report: { ...makeReport(),
+        status: 'fail',
+        rows: [{ tick: 0, signal: 'LD0', expected: '1', actual: '0', status: 'fail' }],
         vectors: [],
         inputsAtTick: {},
         inputsByVectorId: {},
@@ -667,7 +693,7 @@ describe('Export without any Verify context (pure RBProject + activeScenario)', 
   it('topAuthority is always present even without RuntimeVerifyRun', () => {
     const vm = buildExportViewModel(makeProject(), undefined, undefined);
     expect(vm.topAuthority.designTop.length).toBeGreaterThan(0);
-    expect(vm.topAuthority.simulationTop).toBe(`${vm.topAuthority.designTop}_tb`);
+    expect(vm.topAuthority.simulationTop).toBe(`tb_${vm.topAuthority.designTop}`);
   });
 });
 
@@ -723,11 +749,12 @@ describe('Guard tests — export must not depend on RuntimeVerifyRun compare sta
   it('changing runtimeVerifyRun.report does not change top.vhd content', () => {
     const project = makeProject();
     const runA = makePassRun({
-      report: { rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
+      report: { ...makeReport(), rows: [], vectors: [], inputsAtTick: {}, inputsByVectorId: {}, signalRoles: {} },
     });
     const runB = makePassRun({
-      report: {
-        rows: [{ tick: 0, signal: 'LD0', expected: '0', actual: '1', pass: false }],
+      report: { ...makeReport(),
+        status: 'fail',
+        rows: [{ tick: 0, signal: 'LD0', expected: '0', actual: '1', status: 'fail' }],
         vectors: [],
         inputsAtTick: {},
         inputsByVectorId: {},
@@ -743,7 +770,7 @@ describe('Guard tests — export must not depend on RuntimeVerifyRun compare sta
   it('changing runtimeVerifyRun.waveform does not change top.vhd content', () => {
     const project = makeProject();
     const runNoWave = makePassRun({ waveform: [] });
-    const runWithWave = makePassRun({ waveform: [{ tick: 0, signals: { SW0: 0, LD0: 1 } }] });
+    const runWithWave = makePassRun({ waveform: [{ tick: 0, signals: { SW0: '0', LD0: '1' }, mismatches: [] }] });
     const vhdA = buildExportViewModel(project, runNoWave).artifacts.find((a) => a.path === 'top.vhd')?.content ?? '';
     const vhdB = buildExportViewModel(project, runWithWave).artifacts.find((a) => a.path === 'top.vhd')?.content ?? '';
     // Waveform snapshots must never influence synthesizable VHDL

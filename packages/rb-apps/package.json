@@ -11,6 +11,17 @@
       "import": "./dist/rb-apps.js",
       "require": "./dist/rb-apps.js"
     },
+    "./domain": {
+      "types": "./src/domain.ts",
+      "import": "./src/domain.ts"
+    },
+    "./runtime": {
+      "types": "./src/runtime.ts",
+      "import": "./src/runtime.ts"
+    },
+    "./fonts": {
+      "import": "./src/fonts.ts"
+    },
     "./stores/circuitStore": {
       "types": "./src/stores/circuitStore.ts",
       "import": "./src/stores/circuitStore.ts"
@@ -22,6 +33,7 @@
   },
   "scripts": {
     "build": "vite build -c ../../tools/config/vite.lib.config.ts",
+    "typecheck": "node ../../scripts/rb-typecheck-app.mjs",
     "test": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__",
     "test:vhdl": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts",
     "test:ci": "pnpm -w exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__",
@@ -29,8 +41,8 @@
   },
   "dependencies": {
     "@redbyte/rb-board-profiles": "workspace:*",
-    "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-fpga-proof-core": "workspace:*",
+    "@redbyte/rb-fpga-signing": "workspace:*",
     "@redbyte/rb-icons": "workspace:*",
     "@redbyte/rb-instruments": "workspace:*",
     "@redbyte/rb-lab-engine": "workspace:*",
@@ -40,10 +52,17 @@
     "@redbyte/rb-protocol": "workspace:*",
     "@redbyte/rb-theme": "workspace:*",
     "@redbyte/rb-utils": "workspace:*",
+    "immer": "11.1.3",
     "jszip": "3.10.1",
-    "zustand": "5.0.9"
+    "zustand": "5.0.9",
+    "@react-three/fiber": "9.4.2",
+    "@react-three/drei": "10.0.0",
+    "three": "0.172.0",
+    "three-stdlib": "2.35.6"
   },
   "devDependencies": {
+    "@fontsource-variable/ibm-plex-sans": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@types/jszip": "3.4.1",
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
@@ -51,7 +70,8 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "vite": "^7.2.6",
-    "vitest": "2.1.8"
+    "vitest": "2.1.8",
+    "@types/three": "0.172.0"
   },
   "peerDependencies": {
     "react": "19.2.1",

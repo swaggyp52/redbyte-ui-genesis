@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
+import { WorkbenchStatusBar } from '../components/WorkbenchStatusBar';
 import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
@@ -50,6 +51,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: true,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -114,11 +116,8 @@ function renderSurface(overrides: Partial<React.ComponentProps<typeof DesignSurf
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onRuntimeSimSetSelectedSignal={onRuntimeSimSetSelectedSignal}
       onGoToProject={vi.fn()}
@@ -200,18 +199,21 @@ describe('DesignSurface authoring issues', () => {
   });
 
   it('keeps invalid wire feedback sticky and source armed until escape clears it', async () => {
+    const withSecondInput = structuredClone(ISSUE_CIRCUIT);
+    withSecondInput.nodes.push({ id: 'sw1_node', type: 'INPUT', label: 'SW1', position: { x: 120, y: 260 } });
+    useCircuitStore.setState({ circuit: withSecondInput, isDirty: false, past: [], future: [] });
     const view = renderSurface();
 
     await waitFor(() => {
       expect(view.container.querySelector('[data-testid="node-INPUT-sw0_node"]')).not.toBeNull();
-      expect(view.container.querySelector('[data-testid="node-OUTPUT-ld0_node"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-testid="node-INPUT-sw1_node"]')).not.toBeNull();
     });
 
     const sourcePort = view.container.querySelector(
       '[data-testid="node-INPUT-sw0_node"] [data-port-id="out"]'
     ) as Element | null;
     const invalidTargetPort = view.container.querySelector(
-      '[data-testid="node-OUTPUT-ld0_node"] [data-port-id="out"]'
+      '[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]'
     ) as Element | null;
 
     expect(sourcePort).toBeTruthy();
@@ -226,7 +228,7 @@ describe('DesignSurface authoring issues', () => {
         'Outputs cannot be wired directly to each other. Source kept: SW0 out.'
       );
     });
-    expect(view.getByTestId('ide-design-wire-cue').textContent).toContain('Source: SW0 out');
+    expect(view.getByTestId('ide-design-wire-cue').getAttribute('data-wire-source-label')).toBe('SW0 out');
     expect(view.getByTestId('ide-design-wire-cancel')).toBeTruthy();
     expect(useLogicViewStore.getState().editingState.wireStartPort).toEqual({
       nodeId: 'sw0_node',
@@ -239,5 +241,58 @@ describe('DesignSurface authoring issues', () => {
       expect(view.queryByTestId('ide-design-wire-feedback')).toBeNull();
     });
     expect(useLogicViewStore.getState().editingState.wireStartPort).toBeUndefined();
+  });
+
+  it('says what the Wire tool needs, and why a click was refused, in the announced status line', async () => {
+    // Beside the commands the message had 13px of a 1280px window. The status line is always
+    // present, so saying it there moves nothing, and its status role announces each change.
+    const withSecondInput = structuredClone(ISSUE_CIRCUIT);
+    withSecondInput.nodes.push({ id: 'sw1_node', type: 'INPUT', label: 'SW1', position: { x: 120, y: 260 } });
+    useCircuitStore.setState({ circuit: withSecondInput, isDirty: false, past: [], future: [] });
+    const view = render(
+      <>
+        <DesignSurface
+          runtimeSim={makeRuntimeSim()}
+          ioRows={[]}
+          onRuntimeSimStep={vi.fn()}
+          onRuntimeSimReset={vi.fn()}
+          onRuntimeSimToggleProbe={vi.fn()}
+          onRuntimeSimSetSelectedSignal={vi.fn()}
+          onGoToProject={vi.fn()}
+          onGoToVerify={vi.fn()}
+        />
+        <WorkbenchStatusBar problemsCount={0} />
+      </>
+    );
+    await waitFor(() => {
+      expect(view.container.querySelector('[data-testid="node-INPUT-sw1_node"]')).not.toBeNull();
+    });
+    const hint = view.getByTestId('ide-status-hint-slot');
+    expect(hint.getAttribute('role')).toBe('status');
+
+    fireEvent.pointerDown(view.getByTestId('logic-canvas-svg'));
+    fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw0_node"] [data-port-id="out"]')!);
+    fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]')!);
+
+    await waitFor(() => {
+      expect(hint.textContent).toContain('Outputs cannot be wired directly to each other. Source kept: SW0 out.');
+    });
+    expect(hint.contains(view.getByTestId('ide-design-wire-feedback'))).toBe(true);
+    // The same refusal again is a new message, so the status line announces it again.
+    const first = view.getByTestId('ide-design-wire-feedback');
+    fireEvent.click(view.container.querySelector('[data-testid="node-INPUT-sw1_node"] [data-port-id="out"]')!);
+    await waitFor(() => expect(view.getByTestId('ide-design-wire-feedback')).not.toBe(first));
+    expect(view.getByTestId('ide-design-wire-feedback').textContent).toBe(first.textContent);
+    // The whole cue (badge, message, Cancel) is in the status line; the command row holds none of it,
+    // so arming or finishing a wire can never change the row above the canvas.
+    const cue = view.getByTestId('ide-design-wire-cuebar');
+    expect(hint.contains(cue)).toBe(true);
+    expect(cue.contains(view.getByTestId('ide-design-wire-cancel'))).toBe(true);
+    expect(view.getByTestId('ide-design-control-bar').querySelector('[data-testid^="ide-design-wire"]')).toBeNull();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(view.queryByTestId('ide-design-wire-feedback')).toBeNull();
+    });
   });
 });

@@ -56,7 +56,10 @@ function createClassroomModeStore() {
       const param = new URLSearchParams(window.location.search).get('safe');
       if (param === '1') return true;
       if (param === '0') return false;
-      if (localStorage.getItem('rb_safe_mode') === '1') return true;
+      // localStorage access can throw when the browser blocks site data.
+      try {
+        if (localStorage.getItem('rb_safe_mode') === '1') return true;
+      } catch {}
       // Auto-enable safe mode in demo/preview builds via env var
       try {
         if (import.meta.env.VITE_RB_DEMO_SAFE === '1') return true;
@@ -65,7 +68,9 @@ function createClassroomModeStore() {
     })(),
 
     setSafeMode: (enabled: boolean) => {
-      localStorage.setItem('rb_safe_mode', enabled ? '1' : '0');
+      try {
+        localStorage.setItem('rb_safe_mode', enabled ? '1' : '0');
+      } catch {}
       set({ safeMode: enabled });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('rb:safe-mode', { detail: { enabled } }));
@@ -110,7 +115,9 @@ function createClassroomModeStore() {
             isStepOnlyMode: true,
           });
 
-          localStorage.setItem('rb_safe_mode', '1');
+          try {
+            localStorage.setItem('rb_safe_mode', '1');
+          } catch {}
         }
       }
 

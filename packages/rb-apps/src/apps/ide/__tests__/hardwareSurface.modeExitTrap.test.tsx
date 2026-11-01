@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 
 /**
- * Slice N4 — Hardware mode-trap exit
+ * Board secondary-tool recovery.
  *
- * Contract: any time the user is in a non-map sub-mode (Board Check / Pre-flight /
- * Simulation), the surface MUST present an always-visible exit affordance and
- * MUST honor Escape to return to Map Pins. Without these, students reported
- * being "trapped" in the sub-mode with no way back unless they navigated away
- * from the Hardware tab and came back.
+ * The v3 assignment workspace no longer renders the legacy Map tab/rail. Board
+ * Check and the simulated board remain optional after-mapping tools, and each
+ * must return safely to the unified assignment workspace. Pre-flight is gone:
+ * it restated Package's trust state and Vivado handoff on the Board.
  */
 
 import React from 'react';
@@ -17,6 +16,7 @@ import type { ProjectHealth } from '../projectHealth';
 import { deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
+import { BOARD_CONSTRAINTS_STAGE_LABEL } from '../workflowStages';
 
 afterEach(() => {
   cleanup();
@@ -76,48 +76,65 @@ function renderHardware() {
   );
 }
 
-describe('HardwareSurface — Slice N4 mode-trap exit', () => {
-  it('does NOT show the exit banner when in Map Pins mode (the default)', () => {
+describe('HardwareSurface Board recovery navigation', () => {
+  it('opens on the unified assignment workspace without the superseded Map tab', () => {
     const { queryByTestId, getByTestId } = renderHardware();
-    expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
+
+    expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
+    expect(getByTestId('ide-hw-map-table')).toBeTruthy();
+    expect(queryByTestId('ide-hw-mode-btn-map')).toBeNull();
+    expect(queryByTestId('ide-hw-stage-rail')).toBeNull();
     expect(queryByTestId('ide-hw-mode-exit-banner')).toBeNull();
   });
 
-  it('shows the exit banner with a Back-to-Map-Pins button when entering Board Check', () => {
+  it('shows a direct return affordance when entering Board Check', () => {
     const { getByTestId } = renderHardware();
     fireEvent.click(getByTestId('ide-hw-mode-btn-bringup'));
     const banner = getByTestId('ide-hw-mode-exit-banner');
     expect(banner).toBeTruthy();
     const backBtn = getByTestId('ide-hw-mode-exit-back');
-    expect(backBtn.textContent).toMatch(/back to map pins/i);
+    // The return names the Board stage by its one label owner (Board since 64bf7aa93).
+    expect(backBtn.textContent).toMatch(new RegExp(`Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}$`));
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Board Check active/i);
   });
 
-  it('clicking Back returns to Map Pins and hides the exit banner', () => {
+  it('clicking Back returns to the unified assignment workspace', () => {
     const { getByTestId, queryByTestId } = renderHardware();
     fireEvent.click(getByTestId('ide-hw-mode-btn-bringup'));
     expect(getByTestId('ide-hw-mode-exit-banner')).toBeTruthy();
     fireEvent.click(getByTestId('ide-hw-mode-exit-back'));
+
     expect(queryByTestId('ide-hw-mode-exit-banner')).toBeNull();
-    expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
+    expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
+    expect(getByTestId('ide-hw-map-table')).toBeTruthy();
+    expect(queryByTestId('ide-hw-mode-btn-map')).toBeNull();
   });
 
-  it('Escape key returns to Map Pins from any sub-mode', () => {
+  it('Escape returns from a secondary tool to the unified assignment workspace', () => {
     const { getByTestId, queryByTestId } = renderHardware();
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
     expect(getByTestId('ide-hw-mode-exit-banner')).toBeTruthy();
     fireEvent.keyDown(window, { key: 'Escape' });
+
     expect(queryByTestId('ide-hw-mode-exit-banner')).toBeNull();
-    expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
+    expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
+    expect(getByTestId('ide-hw-map-table')).toBeTruthy();
+    expect(queryByTestId('ide-hw-mode-btn-map')).toBeNull();
   });
 
-  it('hint text is mode-specific (Board Check / Pre-flight / Simulation)', () => {
+  it('hint text is mode-specific (Board Check / Simulation)', () => {
     const { getByTestId } = renderHardware();
     fireEvent.click(getByTestId('ide-hw-mode-btn-bringup'));
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Board Check/i);
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
-    expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Pre-flight/i);
     fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
     expect(getByTestId('ide-hw-mode-exit-hint').textContent).toMatch(/Simulation/i);
+  });
+
+  it('offers no Pre-flight: the handoff and its trust state are Package’s', () => {
+    const { queryByTestId, getByTestId } = renderHardware();
+    expect(queryByTestId('ide-hw-mode-btn-proof')).toBeNull();
+    expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
+    // The way on from a complete mapping is Package, on the mapping header itself.
+    expect(getByTestId('ide-hw-continue-export').textContent).toBe('Continue to Package');
   });
 });

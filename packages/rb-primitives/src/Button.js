@@ -1,4 +1,4 @@
-import { jsx as _jsx } from "react/jsx-runtime";
+import React from 'react';
 /**
  * Button - Accessible polymorphic button component
  */
@@ -52,5 +52,13 @@ export function Button({ as, variant = 'primary', size = 'md', disabled, childre
         lg: ['text-[var(--rb-font-size-lg)]', 'px-[var(--rb-spacing-6)]', 'py-[var(--rb-spacing-3)]'],
     };
     const className = [...baseStyles, ...variantStyles[variant], ...sizeStyles[size]].join(' ');
-    return (_jsx(Component, { className: className, disabled: disabled, "aria-disabled": disabled, role: role, "aria-label": ariaLabel, type: props.type || (Component === 'button' ? 'button' : undefined), ...props, children: children }));
+    return React.createElement(Component, {
+        className,
+        disabled,
+        'aria-disabled': disabled,
+        role,
+        'aria-label': ariaLabel,
+        type: Component === 'button' ? 'button' : undefined,
+        ...props,
+    }, children);
 }

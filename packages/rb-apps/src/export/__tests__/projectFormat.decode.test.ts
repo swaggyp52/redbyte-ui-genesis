@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeRBProject } from '../projectFormat';
+import { decodeRBProject, encodeRBProject } from '../projectFormat';
 
 const VALID_PROJECT = {
   kind: 'rb-project',
@@ -74,4 +74,37 @@ describe('decodeRBProject', () => {
       )
     ).toThrow('Invalid project: circuit must include nodes and connections arrays');
   });
+  it.each([
+    { schemaVersion: '2.0', boardId: 'basys3', entries: [{ id: 'broken', kind: 'scalar' }] },
+    { schemaVersion: '2.0', boardId: 'unknown-board', entries: [] },
+  ])('rejects invalid canonical hardware mapping rather than replacing committed assignments', hardwareMappingV2 => {
+    expect(() => decodeRBProject(JSON.stringify({ ...VALID_PROJECT, hardwareMappingV2 })))
+      .toThrow(/Invalid project: hardware mapping/);
+  });
+
+  it('retains macro clipboard origins through portable encode and decode', () => {
+    const decoded = decodeRBProject(JSON.stringify({ ...VALID_PROJECT, macros: [{
+      id: 'macro', name: 'Reusable block', createdAt: 0, inputs: [], outputs: [],
+      cluster: { nodes: [], connections: [], originX: 144, originY: -32 },
+    }] }));
+    const reopened = decodeRBProject(encodeRBProject(decoded));
+    expect(reopened.macros?.[0].cluster).toMatchObject({ originX: 144, originY: -32 });
+  });
+
+  it('supports older Basys3 mapping documents without boardId', () => {
+    const decoded = decodeRBProject(JSON.stringify({ ...VALID_PROJECT,
+      hardwareMappingV2: { schemaVersion: '2.0', entries: [] },
+    }));
+    expect(decoded.hardwareMappingV2).toEqual({ schemaVersion: '2.0', boardId: 'basys3', entries: [] });
+  });
+
+  it.each([
+    { hdl: { sources: [{ path: 'top.vhd', language: 'vhdl', text: 42 }] } },
+    { fpga: { board: 'basys3', constraints: { type: 'xdc', text: {} } } },
+    { traceMetadata: { tickCount: -1 } },
+    { labSpec: { schemaVersion: '1.0', title: 'Lab', objectives: ['Build'], checkpoints: [null] } },
+  ])('refuses malformed optional authoring fields instead of manufacturing a valid owner state', extra => {
+    expect(() => decodeRBProject(JSON.stringify({ ...VALID_PROJECT, ...extra }))).toThrow(/Invalid project:/);
+  });
+
 });

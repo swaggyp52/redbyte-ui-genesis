@@ -42,6 +42,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 6,
     running: false,
+    stepMode: true,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -97,11 +98,8 @@ function renderSurface(
         { id: 'sw0', nodeId: 'sw0_node', label: 'SW0', pin: 'V17', port: 'out', direction: 'in' },
         { id: 'ld0', nodeId: 'ld0_node', label: 'LD0', pin: 'U16', port: 'in', direction: 'out' },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}

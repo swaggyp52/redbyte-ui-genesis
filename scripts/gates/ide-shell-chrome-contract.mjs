@@ -1,55 +1,35 @@
 #!/usr/bin/env node
-
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
 await runIdeGate('IDE shell chrome contract satisfied', async ({ page, baseUrl }) => {
-  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
-  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
-  await page.goto(`${baseUrl}/?mode=verify`, { waitUntil: 'domcontentloaded' });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
-  await page.locator('[data-testid="mode-button-verify"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-
-  const topBar = page.locator('[data-testid="ide-top-bar"]').first();
-  const leftRail = page.locator('[data-testid="ide-left-rail"]').first();
-  assert(await visible(topBar), 'top bar must be visible');
-  assert(await visible(leftRail), 'left rail must be visible');
-  const consoleCount = await page.locator('[data-testid="ide-workbench-console"]').count();
-
-  const [topBarBox, leftRailBox] = await Promise.all([
-    topBar.boundingBox(),
-    leftRail.boundingBox()
-  ]);
-  assert(Boolean(topBarBox), 'top bar bounding box unavailable');
-  assert(Boolean(leftRailBox), 'left rail bounding box unavailable');
-  assert(topBarBox.height <= 52, `top bar must stay compact (<=52px), got ${topBarBox.height}`);
-  assert(
-    leftRailBox.width >= 52 && leftRailBox.width <= 64,
-    `left rail width must stay within compact range 52..64px (canonical: 56px), got ${leftRailBox.width}`
-  );
-  if (consoleCount > 0) {
-    const consolePanel = page.locator('[data-testid="ide-workbench-console"]').first();
-    const consoleStateAttr = await consolePanel.getAttribute('data-console-state');
-    const consoleClass = await consolePanel.getAttribute('class');
-    const consoleState =
-      consoleStateAttr ??
-      (consoleClass?.includes('is-collapsed') ? 'collapsed' : consoleClass?.includes('is-expanded') ? 'expanded' : null);
-    assert(
-      consoleState === 'collapsed',
-      `console should default collapsed in non-blocked mode when it is rendered, got "${consoleState ?? ''}"`
-    );
+  await page.addInitScript(() => localStorage.setItem('rb-onboarding-v1-seen', '1'));
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-testid="ide-root"]').waitFor();
+  const topbar = page.locator('[data-testid="ide-top-bar"]');
+  const rail = page.locator('[data-testid="ide-workspace-rail"]');
+  assert(await visible(topbar) && await visible(rail), 'command bar and stage navigation must be visible');
+  assert((await topbar.boundingBox()).height <= 56, 'command chrome must remain compact');
+  assert((await rail.boundingBox()).width <= 80, 'stage rail must not consume the workspace');
+  const stages = rail.locator('[role="tablist"] [role="tab"]');
+  const expected = ['project', 'design', 'verify', 'hardware', 'export'];
+  assert(await stages.count() === expected.length, 'workflow must contain exactly five ordered stages');
+  const ids = await stages.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-testid')));
+  assert(JSON.stringify(ids) === JSON.stringify(expected.map(mode => `mode-button-${mode}`)), 'workflow order must follow Project to Build & Export');
+  const importUtility = rail.locator('[data-testid="mode-button-import"]');
+  assert(await visible(importUtility), 'Import utility must be reachable');
+  assert(await rail.locator('[role="tablist"] [data-testid="mode-button-import"]').count() === 0, 'Import must remain separate from the five-stage workflow');
+  assert(await visible(page.locator('[data-testid="ide-menubar"]')), 'file and workspace commands must remain accessible');
+  for (const mode of [...expected, 'import']) {
+    const tab = page.locator(`[data-testid="mode-button-${mode}"]`);
+    await tab.focus();
+    await page.keyboard.press('Enter');
+    await page.locator(`[data-testid="ide-mode-${mode}"]`).waitFor({ state: 'visible' });
+    assert(await tab.getAttribute(mode === 'import' ? 'data-state' : 'aria-selected') === (mode === 'import' ? 'current' : 'true'), `${mode}: active navigation must agree with the workspace`);
   }
-
-  const activeButton = page.locator('[data-active="true"]').first();
-  assert(await visible(activeButton), 'active rail mode button marker missing');
-
-  await page.locator('[data-testid="mode-button-export"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  const exportConsole = page.locator('[data-testid="ide-workbench-console"]').first();
-  const exportConsoleState = await exportConsole.getAttribute('data-console-state');
-  assert(
-    exportConsoleState === 'collapsed' || exportConsoleState === 'blocking',
-    `export console should stay collapsed unless a blocking issue is active, got "${exportConsoleState ?? ''}"`
-  );
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('[data-testid="ide-mode-import"]').waitFor();
+  assert(await page.locator('[data-testid="mode-button-import"]').getAttribute('data-state') === 'current', 'reload must preserve active utility navigation');
+  const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
+  assert(overflow <= 1, `shell must remain within viewport (${overflow}px overflow)`);
 });

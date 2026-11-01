@@ -11,4 +11,4 @@ if (import.meta.env.DEV) {
   console.log('[lazy] Loading @redbyte/rb-logic-3d chunk (Logic3DScene)');
 }
 
-export { Logic3DScene } from '@redbyte/rb-logic-3d';
+export { Logic3DScene } from '../internal/logic3d';

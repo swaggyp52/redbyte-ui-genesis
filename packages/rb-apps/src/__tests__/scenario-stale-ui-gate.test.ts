@@ -264,20 +264,9 @@ describe('switch-back CTA guard — only when old scenario exists in library', (
 // ─── Export provenance — view model level ────────────────────────────────────
 
 describe('ExportViewModel scenario provenance', () => {
-  it('exportedScenario present and not stale when scenario matches run', () => {
-    const vhdl = loadFixtureVhdl();
-    const scenario = createDefaultScenario(baseVectors());
-    const project = buildFixtureProject(vhdl, baseVectors());
-    const run = buildFixtureRun(project, scenario, { recordContentHash: true });
-
-    const viewModel = buildExportViewModel(project, run, scenario);
-
-    expect(viewModel.exportedScenario).toBeDefined();
-    expect(viewModel.exportedScenario!.isStaleComparedToLastPass).toBe(false);
-    expect(viewModel.exportedScenario!.name).toBe(scenario.name);
-    expect(viewModel.exportedScenario!.version).toBe(scenario.version);
-    expect(viewModel.exportedScenario!.contentHash).toBe(computeScenarioContentHash(scenario));
-  });
+  // 'exportedScenario present and not stale when scenario matches run' moved to scenario-provenance.productPath.test.ts: a hand-built passing run over an
+  // imported VHDL counter can no longer be current (P0 import refusal + export currency hashes), so
+  // the contract is proven there from a real Run of a native design.
 
   it('exportedScenario.isStaleComparedToLastPass=true when vectors changed post-run', () => {
     const vhdl = loadFixtureVhdl();
@@ -323,19 +312,9 @@ describe('ExportViewModel scenario provenance', () => {
     expect(tb!.note).toMatch(/STALE/i);
   });
 
-  it('testbench artifact note identifies scenario name + version when fresh', () => {
-    const vhdl = loadFixtureVhdl();
-    const scenario = createScenario('My Lab', baseVectors());
-    const project = buildFixtureProject(vhdl, baseVectors());
-    const run = buildFixtureRun(project, scenario, { recordContentHash: true });
-
-    const viewModel = buildExportViewModel(project, run, scenario);
-    const tb = viewModel.artifacts.find((a) => a.path === 'testbench.vhd');
-
-    expect(tb!.note).toContain('My Lab');
-    expect(tb!.note).toContain(`v${scenario.version}`);
-    expect(tb!.note).not.toMatch(/STALE/i);
-  });
+  // 'testbench artifact note identifies scenario name + version when fresh' moved to scenario-provenance.productPath.test.ts: a hand-built passing run over an
+  // imported VHDL counter can no longer be current (P0 import refusal + export currency hashes), so
+  // the contract is proven there from a real Run of a native design.
 });
 
 // ─── Hardware surface provenance contract ─────────────────────────────────────

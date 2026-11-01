@@ -84,7 +84,7 @@ function textBytes(value: string): Uint8Array {
 
 async function sha256Bytes(bytes: Uint8Array): Promise<string> {
   if (typeof globalThis.crypto?.subtle?.digest === 'function') {
-    const buffer = await crypto.subtle.digest('SHA-256', bytes);
+    const buffer = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
     return Array.from(new Uint8Array(buffer))
       .map((value) => value.toString(16).padStart(2, '0'))
       .join('');
@@ -309,7 +309,7 @@ export async function createInstructorProjectArchiveBytes(project: RBProject): P
 }
 
 export async function createInstructorPack(input: InstructorPackExportInput): Promise<InstructorPackExportResult> {
-  const projectArchiveBlob = new Blob([input.projectArchiveBytes], { type: 'application/zip' });
+  const projectArchiveBlob = new Blob([new Uint8Array(input.projectArchiveBytes)], { type: 'application/zip' });
 
   const starterMetadata: InstructorPackMetadata = {
     schema_version: INSTRUCTOR_PACK_SCHEMA_VERSION,
@@ -507,7 +507,7 @@ export async function parseInstructorPack(
 
 export function downloadInstructorPack(bundle: InstructorPackExportResult): void {
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([bundle.bytes], { type: 'application/zip' }));
+  link.href = URL.createObjectURL(new Blob([new Uint8Array(bundle.bytes)], { type: 'application/zip' }));
   link.download = bundle.filename;
   link.click();
   URL.revokeObjectURL(link.href);

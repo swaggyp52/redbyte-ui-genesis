@@ -135,3 +135,35 @@ export function buildBusEntryFromMemberRows(input: {
     bits,
   };
 }
+
+/**
+ * Deterministic resource recommendation for one logical signal: the first free
+ * compatible resource in family order (inputs: switches then buttons; outputs:
+ * LEDs), bit-index aware — A[3] prefers SW3, SUM[2] prefers LD2 — so a bus maps
+ * onto adjacent resources when the student accepts one recommendation after
+ * another. Pure: no store, no randomness.
+ */
+export function recommendBoardResource<R extends { readonly alias: string; readonly packagePin: string }>(input: {
+  readonly row: { readonly id: string; readonly label: string; readonly direction: 'in' | 'out' };
+  readonly compatibleResources: readonly R[];
+  readonly occupiedPins: ReadonlySet<string>;
+}): R | null {
+  const free = input.compatibleResources.filter((resource) => !input.occupiedPins.has(resource.packagePin));
+  if (free.length === 0) return null;
+  const families = input.row.direction === 'in' ? ['SW', 'BTN'] : ['LD'];
+  const indexMatch = /\[(\d+)\]/.exec(input.row.label) ?? /(\d+)$/.exec(input.row.id);
+  const index = indexMatch ? Number(indexMatch[1]) : null;
+  if (index !== null) {
+    for (const family of families) {
+      const exact = free.find((resource) => resource.alias === `${family}${index}`);
+      if (exact) return exact;
+    }
+  }
+  for (const family of families) {
+    const first = free
+      .filter((resource) => resource.alias.startsWith(family))
+      .sort((left, right) => left.alias.localeCompare(right.alias, undefined, { numeric: true }))[0];
+    if (first) return first;
+  }
+  return free[0] ?? null;
+}

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
+import '@testing-library/jest-dom/vitest';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
@@ -60,14 +61,14 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-workspace')).toBeTruthy();
   });
 
-  it('keeps the signal browser stable without collapse or edge toggles', () => {
+  it('keeps signals integrated with the workbench without a separate rail', () => {
     const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
-    const dock = getByTestId('ide-verify-left-dock');
 
-    expect(dock.getAttribute('data-collapsed')).toBe('false');
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    expect(getByTestId('ide-case-lab-table').textContent).toContain('SW0');
+    expect(getByTestId('ide-case-lab-col-ld0').textContent).toContain('LD0');
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
   });
 
   it('keeps the workspace container focused on the paired lab regions without a story banner', () => {
@@ -86,8 +87,10 @@ describe('VerifySurface workspace layout', () => {
     expect(labGrid).toHaveAttribute('data-workspace-mode', 'stimulus-focus');
     expect(labGrid.contains(getByTestId('ide-verify-region-stimulus'))).toBe(true);
     expect(labGrid.contains(getByTestId('ide-verify-region-waveform'))).toBe(true);
-    expect(getByTestId('ide-verify-waveform-placeholder')).toBeTruthy();
-    expect(getByTestId('ide-verify-waveform-placeholder-ready')).toBeTruthy();
+    // Before a run the second region is the run line, and it says so rather than standing in
+    // for a trace instrument that is not the primary working area here.
+    expect(getByTestId('ide-vcb-unrecorded').textContent).toBe('No recording yet');
+    expect(labGrid.contains(getByTestId('ide-verify-selected-result'))).toBe(true);
   });
 
   it('keeps the header and result regions outside the workspace container', () => {
@@ -108,7 +111,7 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-verify-workflow-phase', 'post-run');
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-workspace-mode', 'split');
     expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'stable');
-    expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
+    expect(getByTestId('ide-case-lab-table')).toBeTruthy();
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
   });
 });

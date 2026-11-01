@@ -53,9 +53,13 @@ function buildLab8StarterSequence(
     const unlockedBeforePulse = unlockAtBitIndex !== null && index > unlockAtBitIndex ? 1 : 0;
     const unlockedAfterPulse = unlockAtBitIndex !== null && index >= unlockAtBitIndex ? 1 : 0;
 
+    // Each row is one settled sample and only the 0->1 ENTER row is an edge (manual 4.3), so LOCK, a
+    // Moore output, shows the new state on the row where ENTER rises - the press that completes the
+    // fourth valid group - not on the release row after it (the lab: "LOCK (LED1) should rise only
+    // after the fourth valid 3-bit group finishes"; matrixOracles lockEdge agrees).
     return [
       buildLab8StarterRow(pulseStart, bit, 0, 0, unlockedBeforePulse),
-      buildLab8StarterRow(pulseStart + 1, bit, 1, 0, unlockedBeforePulse),
+      buildLab8StarterRow(pulseStart + 1, bit, 1, 0, unlockedAfterPulse),
       buildLab8StarterRow(pulseStart + 2, bit, 0, 0, unlockedAfterPulse),
     ];
   });

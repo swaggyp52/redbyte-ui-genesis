@@ -46,6 +46,7 @@ await runIdeGate('IDE Verify layout resets across pre-run, pass, fail, and repai
 
   let layout = await readLayoutState(page);
   assert(layout.phase === 'pre-run', `before Run phase must be pre-run, got ${JSON.stringify(layout)}`);
+  assert(layout.studioMode === 'scenario', `before Run studio must open in Scenario, got ${JSON.stringify(layout)}`);
   assert(layout.workspaceMode === 'stimulus-focus', `before Run layout must focus stimulus, got ${JSON.stringify(layout)}`);
   assert(layout.gridExtraX <= 8, `before Run testbench must avoid horizontal mini-scroll, got ${JSON.stringify(layout)}`);
   await capture(page, '01-prerun');
@@ -53,13 +54,20 @@ await runIdeGate('IDE Verify layout resets across pre-run, pass, fail, and repai
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must be selectable for starter checks');
   let status = await runAndReadStatus(page);
   assert(isVerifyPass(status), `first Compare run should PASS, got "${status}"`);
+  await selectStudioMode(page, 'replay');
   await page.waitForSelector('[data-testid="ide-verify-waveform-svg"]', { timeout: 10000 });
   await capture(page, '02-compare-pass');
 
+  await selectStudioMode(page, 'replay');
   layout = await readLayoutState(page);
   assert(layout.phase === 'post-run', `after PASS phase must be post-run, got ${JSON.stringify(layout)}`);
+  assert(layout.studioMode === 'replay', `after PASS Replay must own waveform evidence, got ${JSON.stringify(layout)}`);
   assert(layout.waveform.width >= 520, `after PASS waveform evidence must remain usable, got ${JSON.stringify(layout)}`);
-  assert(layout.stimulus.width >= 360, `after PASS repair/editor lane must remain usable, got ${JSON.stringify(layout)}`);
+
+  await selectStudioMode(page, 'checks');
+  layout = await readLayoutState(page);
+  assert(layout.studioMode === 'scenario', `after PASS Checks must own the repair/editor canvas, got ${JSON.stringify(layout)}`);
+  assert(layout.stimulus.width >= 720, `after PASS Checks authoring canvas must remain usable, got ${JSON.stringify(layout)}`);
   assert(layout.expectedCells >= 12, `after PASS expected-output cells must remain editable, got ${layout.expectedCells}`);
 
   const target = await pickExpectedCell(page);
@@ -67,12 +75,17 @@ await runIdeGate('IDE Verify layout resets across pre-run, pass, fail, and repai
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected edit');
   status = await runAndReadStatus(page);
   assert(isVerifyFail(status), `edited expected output should FAIL Compare, got "${status}"`);
+  await selectStudioMode(page, 'replay');
   await assertDirectFailureGuidance(page, 'edited expected output failure');
   await capture(page, '03-compare-fail');
 
   layout = await readLayoutState(page);
   assert(layout.phase === 'post-run', `after FAIL phase must remain post-run, got ${JSON.stringify(layout)}`);
+  assert(layout.studioMode === 'replay', `after FAIL Replay must remain first-order, got ${JSON.stringify(layout)}`);
   assert(layout.waveform.width >= 520, `after FAIL waveform evidence must remain first-order, got ${JSON.stringify(layout)}`);
+
+  await selectStudioMode(page, 'checks');
+  layout = await readLayoutState(page);
   assert(layout.expectedCells >= 12, `after FAIL expected-output repair cells must remain visible, got ${layout.expectedCells}`);
   assert(layout.gridExtraX <= 8, `after FAIL repair table must avoid horizontal mini-scroll, got ${JSON.stringify(layout)}`);
 
@@ -100,21 +113,25 @@ async function readLayoutState(page) {
     }
 
     const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
-    const grid = box('.ide-stimulus-grid-scroll');
+    const grid = box('.ide-case-lab-scroll');
     const root = document.querySelector('[data-testid="ide-root"]');
     return {
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
+      studioMode: labGrid?.getAttribute('data-studio-mode') ?? '',
       stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
       gridExtraX: Math.max(0, grid.scrollWidth - grid.clientWidth),
-      expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
+      expectedCells: document.querySelectorAll('[data-testid^="ide-case-lab-exp-"]').length,
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
     };
   });
 }
 
 async function assertDirectFailureGuidance(page, label) {
+  const details = page.getByTestId('ide-verify-details');
+  if (await details.getAttribute('aria-pressed') !== 'true') await details.click();
+  await page.getByTestId('ide-verify-analysis-tab-nav').getByRole('button', { name: 'Checks', exact: true }).click();
   const repairPanel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const repairDecision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
   const failedCase = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();
@@ -144,6 +161,7 @@ async function assertDirectFailureGuidance(page, label) {
     await page.locator('[data-testid="ide-verify-fail-nav-summary"]').first().isVisible().catch(() => false),
     `${label}: failed-case evidence control must keep the selected mismatch visible`
   );
+  if (await details.getAttribute('aria-pressed') === 'true') await details.click();
 }
 
 async function runAndReadStatus(page) {
@@ -164,14 +182,14 @@ async function runAndReadStatus(page) {
 }
 
 async function pickExpectedCell(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  await selectStudioMode(page, 'checks');
+  const cells = await page.locator('[data-testid^="ide-case-lab-exp-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') ?? '';
-      const title = element.getAttribute('title') ?? '';
-      const parsedTitle = /:\s*(0|1|not set)\s*-\s*drag/i.exec(title);
+      const value = element.querySelector('code')?.textContent?.trim();
       return {
         testId,
-        value: parsedTitle?.[1] === '1' ? 1 : parsedTitle?.[1] === '0' ? 0 : null,
+        value: value === '1' ? 1 : value === '0' ? 0 : null,
       };
     })
   );
@@ -181,6 +199,7 @@ async function pickExpectedCell(page) {
 }
 
 async function clickExpectedCellToValue(page, target, expectedValue) {
+  await selectStudioMode(page, 'checks');
   const cell = page.getByTestId(target.testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -193,11 +212,21 @@ async function clickExpectedCellToValue(page, target, expectedValue) {
   assert(current === expectedValue, `expected ${target.testId} to become ${expectedValue}, got ${current}`);
 }
 
+async function selectStudioMode(page, mode) {
+  const representation = mode === 'replay' ? 'waveform' : 'table';
+  const tab = page.getByTestId('ide-verify-view-' + representation).first();
+  assert(await tab.isVisible(), representation + ' representation must remain directly available');
+  await tab.click();
+  await page.waitForFunction(
+    expected => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-representation') === expected,
+    representation,
+    { timeout: 5000 },
+  );
+}
+
 async function readExpectedCellValue(page, testId) {
-  const title = await page.getByTestId(testId).first().getAttribute('title');
-  if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
-  if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
-  return null;
+  const value = await page.getByTestId(testId).first().locator('code').textContent();
+  return value === '1' ? 1 : value === '0' ? 0 : null;
 }
 
 async function capture(page, name) {

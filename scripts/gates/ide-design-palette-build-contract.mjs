@@ -103,6 +103,7 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
     await assertOutputBit(page, outputNodeId, scenario.out);
   }
 
+  await page.getByTestId('ide-design-left-tab-board').click();
   await assertUniqueBoardAlias(page, 'SW0', '[data-testid="ide-design-board-input-sw0"]', { x: 0.18, y: 0.22 });
   await assertUniqueBoardAlias(page, 'LD0', '[data-testid="ide-design-board-output-ld0"]', { x: 0.82, y: 0.26 });
   await assertBoardAliasCanDeleteAndReadd(
@@ -185,11 +186,9 @@ async function ensureSimPaused(page) {
 }
 
 async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
-  await ensureLiveInputsExpanded(page);
   for (const nodeId of inputNodeIds) {
-    await page.waitForSelector(`[data-testid="ide-design-input-toggle-${nodeId}"]`, {
-      timeout: 10000,
-    });
+    await selectDesignNode(page, nodeId);
+    await page.waitForSelector('[data-testid="ide-design-inspector-input-toggle"]', { timeout: 10000 });
   }
   await page.waitForSelector(`[data-testid="node-OUTPUT-${outputNodeId}"]`, {
     timeout: 10000,
@@ -198,8 +197,8 @@ async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
 
 async function setInputBit(page, nodeId, value) {
   const target = String(value);
-  const toggleSelector = `[data-testid="ide-design-input-toggle-${nodeId}"]`;
-  await ensureLiveInputsExpanded(page);
+  await selectDesignNode(page, nodeId);
+  const toggleSelector = '[data-testid="ide-design-inspector-input-toggle"]';
   const currentPressed = await page
     .locator(toggleSelector)
     .first()
@@ -231,32 +230,39 @@ async function setInputBit(page, nodeId, value) {
   }
 }
 
-async function ensureLiveInputsExpanded(page) {
-  await revealDesignLibrary(page);
-
-  const firstToggle = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
-  if (await firstToggle.isVisible().catch(() => false)) {
-    return;
-  }
-
-  const disclosureToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
-  const isVisible = await disclosureToggle.isVisible().catch(() => false);
-  assert(isVisible, 'design live inputs toggle must be visible before input editing');
-  await disclosureToggle.click();
-  await firstToggle.waitFor({ state: 'visible', timeout: 5000 });
-}
-
 async function revealDesignLibrary(page) {
   if (await page.locator('[data-testid="ide-left-dock"]').first().isVisible().catch(() => false)) {
     return;
   }
-  const libraryToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  const libraryToggle = page.locator('[data-testid="ide-show-left-dock"]').first();
   assert(
     await libraryToggle.isVisible().catch(() => false),
     'design surface must expose a restorable library rail before palette interaction',
   );
   await libraryToggle.click();
   await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
+}
+
+async function selectDesignNode(page, nodeId) {
+  const selected = await page.evaluate((id) => {
+    const store = window.__RB_LOGIC_VIEW_STORE__?.getState?.();
+    if (!store) return false;
+    if (typeof store.selectMultipleNodes === 'function') {
+      store.selectMultipleNodes([id]);
+    } else if (typeof store.selectNode === 'function') {
+      store.selectNode(id);
+    } else {
+      return false;
+    }
+    return true;
+  }, nodeId);
+  assert(selected, `Design selection store must select ${nodeId}`);
+  await page.waitForFunction(
+    (id) => Boolean(window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes?.has?.(id)),
+    nodeId,
+    { timeout: 5000 },
+  );
+  await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 5000 });
 }
 
 async function assertOutputBit(page, nodeId, expected) {
@@ -322,7 +328,7 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placemen
   const aliasNodeId = await readBoardAliasNodeId(page, alias);
   assert(aliasNodeId, `${alias} should resolve to a node before delete/re-add check`);
 
-  await page.locator(`[data-node-id="${aliasNodeId}"] .logic-node-body`).first().click({ force: true });
+  await page.locator(`[data-node-id="${aliasNodeId}"]`).first().click({ position: { x: 10, y: 10 } });
   await page.waitForFunction(
     (nodeId) => {
       const store = window.__RB_LOGIC_VIEW_STORE__;

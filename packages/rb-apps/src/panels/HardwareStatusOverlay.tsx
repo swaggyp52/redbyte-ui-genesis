@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useLabStore } from '@redbyte/rb-logic-3d';
+import { useLabStore } from '../internal/physicalLabModel';
 
 export const HardwareStatusOverlay: React.FC = () => {
     // Select minimal state needed for rendering using primitives only to avoid infinite loops.

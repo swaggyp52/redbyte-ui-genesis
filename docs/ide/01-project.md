@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-09-30
 owner: Connor Angiel
 used_by_claude: true
 role: Project surface spec
@@ -8,18 +8,59 @@ role: Project surface spec
 
 # Project Mode Spec
 
-Status: Unified Workbench v3 RC source contract - project overview and workflow authority
+Status: local P2.6C candidate - project snapshot, recovery and workflow authority
 Mode ID: `project`
+
+## Current local finish contract (2026-09-30)
+
+The canonical snapshot carries original `sourceModel` and structured `constraintSets`
+alongside the circuit, hierarchy, and effective mapping. Save, Save As, Duplicate,
+explicit reopen, recovery, and complete session backups consume that same projection.
+Generated HDL/XDC is export output and never replaces original authoring sources.
+Format 1 remains additive and compatible; legacy absent source models derive from HDL,
+while explicitly empty models stay empty. Unsupported newer authoring schemas refuse
+to open with a visible reason and preserve the current project.
+
+Browser refresh/restart and explicit Open are separate acceptance paths. Complete
+session backups carry all scenarios, retained recordings, and export receipts;
+plain rbproj files carry the active portable design/stimulus. Recovery opens a separately
+named backup, retaining recordings while rebinding their owner to that backup's identity.
+The current P2.6C finish ticket records the source/build/package evidence boundaries.
+
+
+## Current P2.6B document and ledger ownership (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+The shared bounded starter picker is also reachable directly from an empty Simulate workspace; browsing it does not replace the current project. Earlier command-center and Change Project labels below are historical where they conflict with this current owner.
+
+Overview shows one blocker and an Open Problems action; the complete list lives in the canonical dock. The explorer retains its summary/count. Single-run groups say no repeat yet.
+
+The explorer owns Overview, Sources, Architecture and Runs. Compile Order and the generated
+files are in one group, **Technical files** (`ide-project-explorer-group-generated`), which is
+closed until opened and still found by the filter (2026-10-05, local candidate). Visiting those
+roots creates no tabs; source previews remain genuine secondary documents. Inspectors follow
+Project selections and the active document, including deliberate module/source cross-probes.
+Runs groups the full retained configuration triple and displays output digests, counts and
+an exact-recording Inspect action. The newest entry's currentness uses workflow authority,
+independent of whichever historical recording is selected for investigation. Problems start
+as an explorer count/disclosure; the bottom Problems ledger remains canonical.
 
 ## Purpose
 
-Provide an action-first entry plus a useful engineering overview of the loaded student project. The surface must name project identity and goal, recommend one next action, and show current Design, Verify, Map Pins, and Export truth without becoming a second editor for those stages.
+Provide an action-first entry plus a useful engineering overview of the loaded student project. The surface must name project identity and goal, recommend one next action, and show current Design, Simulate, Board & Constraints, and Build & Export truth without becoming a second editor for those stages.
 
 ## Primary Actions (max 3)
 
 1. Start a lab or follow the loaded project's single recommended next action.
-2. Open the owning Design, Verify, Map Pins, or Export surface from the project workspace row.
+2. Open the owning Design, Simulate, Board & Constraints, or Build & Export workspace from the project workspace row.
 3. Open Change Project for Build Fresh, starter, Import/recovery, or existing-work paths; destructive replacement still requires explicit confirmation.
+
+> **Superseded below (2026-09-07).** "Layout", "Empty State" and the two audit-note sections
+> describe the single action-first screen with a `Change Project` disclosure. Project is now two
+> experiences; read **Two-state Project** at the end of this file first, and treat the older
+> sections as history except where they are restated there. The Error State guards and the Data
+> Contract remain current.
 
 ## Layout
 
@@ -33,14 +74,14 @@ Provide an action-first entry plus a useful engineering overview of the loaded s
 2. Current-project engineering overview
 - Design row reports node/connection counts, top-level inputs and outputs, and opens Design.
 - Verification row reports current Compare truth and opens Verify.
-- Map Pins row reports the authoritative required-signal assignment count and opens Map Pins; Project never edits mapping.
+- Board & Constraints row reports the authoritative required-signal assignment count and opens Board & Constraints; Project never edits mapping.
 - Export row reports blocked, draft-available, or current-package state and opens Export.
 
 3. Secondary content
 - Open-existing / recent-work recovery after the relevant disclosure is opened.
 - Gannon Pilot Labs 1-5 with build, difficulty, submission, proof-scope, and start controls inside the disclosed lab pack.
 - Starter examples and all-lab browsing inside disclosed catalogs; a loaded project keeps these paths behind `Change Project`.
-- Mapping summaries remain read-only and label-first: board/resource labels appear before package pins, with Map Pins as the editing authority.
+- Mapping summaries remain read-only and label-first: board/resource labels appear before package pins, with Board & Constraints as the editing authority.
 
 4. Supporting detail
 - Project warnings, metrics, status evidence, and bridge/determinism copy stay secondary to the current action.
@@ -56,7 +97,7 @@ Neutral state: no circuit loaded; no mapping/export failure copy before a circui
 
 Show blocking issues as callouts with direct destination action:
 
-1. Missing IO mapping -> `Open Map Pins`
+1. Missing IO mapping -> `Open Board & Constraints`
 2. Missing vectors -> `Add Vectors`
 
 Destructive action guard:
@@ -85,9 +126,72 @@ Destructive action guard:
 ## Unified Workbench v3 RC source authority (2026-07-22)
 
 - Project is no longer an empty chooser after work is loaded. `ide-project-professional-overview` is the stable overview workspace for the student's actual project.
-- The full RedByte-owned flow is visible as Project -> Design -> Verify -> Map Pins -> Export. Import / Recover remains a separate recovery utility.
-- Mapping and package state shown here are projections of their owning authorities; all edits route to Map Pins or Export.
+- The full RedByte-owned flow is visible as Project -> Design -> Simulate -> Board & Constraints -> Build & Export. Import / Recover remains a separate recovery utility.
+- Mapping and package state shown here are projections of their owning authorities; all edits route to Board & Constraints or Build & Export.
 - Historical pre-sequential checkpoint `f4f7ca8f35f79258fe8f2ff6ecbc68600784efb7` passed the earlier 36-file/477-test matrix. Current integrated pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab` passes the touched 20-file/258-test authority matrix, typecheck, unified build, and the current focused release gates. Final reconstructed exact-SHA certification remains pending.
+
+## Two-state Project (2026-09-07, current)
+
+Project answers a different question depending on whether work is open. Which state appears is a
+fact about the project's lifecycle - the same judgement the autosave guard makes - and is never
+inferred from whether the circuit has components, whether there are problems, or what the project
+is called. The launcher placeholder nobody chose is not open work; a blank project a person
+deliberately created is.
+
+### Start (`ide-project-landing`) - nothing is open
+
+- Answers "what am I going to work on?".
+- Sections: Recent, Course labs, Starters, Imported, Recover, each with its own count. Peer actions
+  for `Import project…`, `Open saved…` and `Blank project`.
+- The reader's own saved work is the primary section whenever there is any; otherwise Course labs.
+  The default follows the loaded data until the reader chooses a section themselves.
+- Selecting an entry previews it. Browsing is reading: nothing is applied until the entry's own
+  primary action is pressed.
+- A lab preview carries what is needed to choose - the purpose, what is provided, what you will do.
+  Submission instructions, proof scope and the full expected behaviour are behind `Full lab brief`.
+- Nothing is invented. A first visit lists no recent projects, and a reload does not add one.
+
+### Overview (`ide-project-overview-document`) - a project is open
+
+Reads recognise -> resume -> understand -> inspect:
+
+1. `rb-project-identity` - the project's name, its save state, and **one** continuation
+   (`ide-project-continue`) that follows where the reader last worked. Overview never nominates
+   itself and imposes no stage march.
+2. `rb-project-stage` - the circuit at full width, centred, capped at 52vh with a legibility floor,
+   with `Open in Design` and `Architecture` in the canvas footer (the Top entity is edited in
+   `ide-project-details` since the 2026-10-20 candidate seal);
+   and beside it three status lines (`ide-project-fact-simulation`, `-mapping`, `-package`), each
+   linking to the workspace that owns it, plus the single problem most worth attention with a route
+   to the place that fixes it.
+3. Four closed disclosures - `ide-project-details`, `ide-project-io-details`,
+   `ide-project-starter-brief`, `ide-project-problems`. Nothing was deleted to compose this.
+
+The status lines are a projection of the facts the project already derives. Project does not
+calculate readiness a second time, and it never edits mapping or package state.
+
+### Lifecycle
+
+- **Close** saves the project, returns to Start, and leaves nothing open - not a blank project.
+- **Resume** from Start reopens that project with its work and evidence, not a fresh copy of the
+  lab it came from.
+- **Blank** opens on the sheet in Design and gets its own Overview when the reader comes back to
+  Project.
+- Project management (Save, Save As, Duplicate, Open, Build Fresh, Close, Open Starter) lives in the
+  File menu and the command palette. Project does not carry a second command surface.
+
+### Shared panel
+
+The bottom panel is the shell's, not Project's. It exists on every workspace, opens from the status
+bar's problems count, can be put away and got back, and keeps its preference per surface: opening
+Problems on Project is not a statement about Design, and returning to a surface restores what that
+surface was left in.
+
+### Proof
+
+`packages/rb-e2e/project-experience-journey.mjs` drives all of the above through the interface at
+1440x900 and 1280x650; `bottom-panel-zoom-probe.mjs` covers the shared panel on all five workspaces
+at 100/125/150/200% browser zoom.
 
 ## Data Contract (RBProject)
 

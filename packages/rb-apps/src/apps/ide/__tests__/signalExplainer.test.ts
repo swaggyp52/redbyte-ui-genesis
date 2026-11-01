@@ -190,6 +190,122 @@ describe('signalExplainer', () => {
   });
 
   describe('sequential explanation', () => {
+    const recordedDff = (overrides: Partial<ExplainerInput> = {}): ExplainerInput => ({
+      selectedSignal: 'LD0', tick: 1,
+      waveform: makeWaveform({ clk: ['0', '1'], sw0: ['1', '1'], LD0: ['0', '1'] }),
+      signalRoles: { clk: 'clock', sw0: 'input', LD0: 'output' },
+      signalMappings: makeDffMappings(), circuitGraph: makeDffGraph(), clockSignalName: 'clk',
+      ...overrides,
+    });
+
+    it('retains an intervening inverter without attributing its value to register Q', () => {
+      const original = makeDffGraph();
+      const graph: ExplainerCircuitGraph = {
+        nodes: [...original.nodes, { id: 'inv', type: 'NOT' }],
+        connections: [...original.connections.filter((connection) => connection.to.nodeId !== 'led0'),
+          { from: { nodeId: 'dff1', portName: 'Q' }, to: { nodeId: 'inv', portName: 'in' } },
+          { from: { nodeId: 'inv', portName: 'out' }, to: { nodeId: 'led0', portName: 'in' } }],
+      };
+      const result = explainSignal(recordedDff({ circuitGraph: graph,
+        waveform: makeWaveform({ clk: ['0', '1'], sw0: ['1', '1'], LD0: ['1', '0'], stored: ['0', '1'] }),
+        signalMappings: [...makeDffMappings(), { signalName: 'stored', nodeId: 'dff1', direction: 'out', port: 'Q' }],
+      }));
+      expect(result.explanationKind).toBe('partial');
+      expect(result.currentValue).toBe('0');
+      expect(result.sourceNodeIds).toEqual(expect.arrayContaining(['inv', 'dff1']));
+      const details = result.steps.map((step) => step.description).join(' ');
+      expect(details).toContain('NOT gate');
+      expect(details).toContain('stored = 1');
+      expect(details).not.toContain('driven by the Q output');
+      expect(result.relevantClockEdge).toBeUndefined();
+    });
+
+    it('identifies the complementary port for both boundary and internal recordings', () => {
+      const original = makeDffGraph();
+      const graph: ExplainerCircuitGraph = { ...original, connections: original.connections.map((connection) =>
+        connection.from.nodeId === 'dff1' ? { ...connection, from: { ...connection.from, portName: 'Q_inv' } } : connection) };
+      const mappings: ExplainerSignalMapping[] = [...makeDffMappings(),
+        { signalName: 'stored', nodeId: 'dff1', direction: 'out', port: 'Q' },
+        { signalName: 'complement', nodeId: 'dff1', direction: 'out', port: 'Q_inv' }];
+      for (const selectedSignal of ['LD0', 'complement']) {
+        const result = explainSignal(recordedDff({ circuitGraph: graph, signalMappings: mappings, selectedSignal,
+          waveform: makeWaveform({ clk: ['0', '1'], sw0: ['1', '1'], LD0: ['1', '0'], stored: ['0', '1'], complement: ['1', '0'] }),
+        }));
+        expect(result.explanationKind).toBe('sequential');
+        expect(result.currentValue).toBe('0');
+        expect(result.steps.find((step) => step.nodeType === 'DFlipFlop')?.port).toBe('Q_inv');
+        expect(result.steps.map((step) => step.description).join(' ')).toContain('recorded Q_inv value is 0');
+      }
+    });
+
+    it('uses the connected clock instead of an unrelated global clock', () => {
+      const original = makeDffGraph();
+      const graph: ExplainerCircuitGraph = { ...original,
+        nodes: [...original.nodes, { id: 'second_clock', type: 'INPUT' }],
+        connections: original.connections.map((connection) => connection.to.portName === 'CLK'
+          ? { from: { nodeId: 'second_clock', portName: 'out' }, to: { ...connection.to, portName: 'clock' } } : connection),
+      };
+      const result = explainSignal(recordedDff({ tick: 2, circuitGraph: graph,
+        signalMappings: [...makeDffMappings(), { signalName: 'CLK2', nodeId: 'second_clock', direction: 'in' }],
+        waveform: makeWaveform({ clk: ['0', '1', '0'], CLK2: ['0', '0', '1'], sw0: ['1', '1', '1'], LD0: ['0', '0', '1'] }),
+      }));
+      expect(result.relevantClockEdge).toEqual({ clockSignal: 'CLK2', edgeTick: 2, edgeDirection: 'rising' });
+      expect(result.sourceNodeIds).toContain('second_clock');
+    });
+
+    it('resolves the exact output of a multi-output clock source', () => {
+      const original = makeDffGraph();
+      const graph: ExplainerCircuitGraph = { ...original,
+        nodes: [...original.nodes, { id: 'divider', type: 'DFlipFlop' }],
+        connections: original.connections.map((connection) => connection.to.portName === 'CLK'
+          ? { from: { nodeId: 'divider', portName: 'qBar' }, to: connection.to } : connection),
+      };
+      const result = explainSignal(recordedDff({ circuitGraph: graph,
+        signalMappings: [...makeDffMappings(),
+          { signalName: 'divQ', nodeId: 'divider', direction: 'out', port: 'Q' },
+          { signalName: 'divN', nodeId: 'divider', direction: 'out', port: 'Q_inv' }],
+        waveform: makeWaveform({ clk: ['0', '1'], divQ: ['1', '0'], divN: ['0', '1'], sw0: ['1', '1'], LD0: ['0', '1'] }),
+      }));
+      expect(result.relevantClockEdge?.clockSignal).toBe('divN');
+    });
+
+    it('withholds capture context when the actual clock has no sample or competing drivers', () => {
+      const original = makeDffGraph();
+      for (const circuitGraph of [original, { ...original, connections: [...original.connections,
+        { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'dff1', portName: 'CLK' } }] }]) {
+        const result = explainSignal(recordedDff({ circuitGraph,
+          waveform: makeWaveform({ unrelated: ['0', '1'], sw0: ['1', '1'], LD0: ['0', '1'] }), clockSignalName: 'unrelated',
+        }));
+        expect(result.explanationKind).toBe('partial');
+        expect(result.relevantClockEdge).toBeUndefined();
+        expect(result.steps.map((step) => step.description).join(' ')).toContain('No unique recorded driver');
+      }
+    });
+
+    it('does not infer DFF edge or reset semantics for latches and configurable registers', () => {
+      for (const type of ['DLatch', 'RSLatch', 'Register1']) {
+        const original = makeDffGraph();
+        const graph: ExplainerCircuitGraph = { ...original,
+          nodes: original.nodes.map((node) => node.id === 'dff1'
+            ? { ...node, type, config: { resetPolarity: 'active_low', clockPolarity: 'falling_edge' } } : node),
+          connections: [...original.connections, { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'dff1', portName: 'RST' } }],
+        };
+        const result = explainSignal(recordedDff({ circuitGraph: graph }));
+        expect(result.explanationKind).toBe('partial');
+        expect(result.relevantClockEdge).toBeUndefined();
+        expect(result.steps.map((step) => step.description).join(' ')).not.toMatch(/samples on rising|Reset is active|active-high clear/);
+      }
+    });
+
+    it('does not choose one of two possible boundary drivers as the recorded register value', () => {
+      const original = makeDffGraph();
+      const result = explainSignal(recordedDff({ circuitGraph: { ...original, connections: [...original.connections,
+        { from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'led0', portName: 'in' } }] } }));
+      expect(result.explanationKind).toBe('partial');
+      expect(result.sourceNodeIds).toEqual(expect.arrayContaining(['dff1', 'sw0']));
+      expect(result.relevantClockEdge).toBeUndefined();
+    });
+
     it('explains a DFF output referencing clock edge and D input', () => {
       //   tick:  0    1    2    3    4
       //   clk:   0    1    0    1    0
@@ -292,7 +408,7 @@ describe('signalExplainer', () => {
 
       expect(result.changed).toBe(false);
       expect(result.explanationKind).toBe('unchanged');
-      expect(result.summary).toContain('holds');
+      expect(result.summary).toContain('recorded output is unchanged');
       expect(result.steps.every((s) => !s.description.includes('changed from'))).toBe(true);
     });
   });
@@ -380,8 +496,35 @@ describe('signalExplainer', () => {
         signalMappings: [],
       });
 
-      expect(result.currentValue).toBe('-');
+      expect(result.currentValue).toBe('Not recorded');
       expect(result.explanationKind).toBe('partial');
+      expect(result.previousValue).toBeNull();
+      expect(result.steps).toEqual([]);
     });
+  });
+
+  it('uses actual prior samples and does not infer a capture on a falling edge', () => {
+    const waveform = [
+      { tick: 4, signals: { clk: '1', sw0: '0', LD0: '0' }, mismatches: [] },
+      { tick: 9, signals: { clk: '0', sw0: '1', LD0: '0' }, mismatches: [] },
+    ];
+    const result = explainSignal({ selectedSignal: 'LD0', tick: 9, waveform,
+      signalRoles: { clk: 'clock', sw0: 'input', LD0: 'output' },
+      signalMappings: makeDffMappings(), circuitGraph: makeDffGraph(),
+      circuitKind: 'sequential', clockSignalName: 'clk' });
+    expect(result.previousValue).toBe('0');
+    expect(result.relevantPriorState?.tick).toBe(4);
+    expect(result.steps.map((step) => step.description).join(' ')).toContain('No rising clock transition');
+    expect(result.relevantClockEdge).toBeUndefined();
+  });
+
+  it('does not claim unchanged inputs from an unchanged combinational output', () => {
+    const result = explainSignal({ selectedSignal: 'LD0', tick: 1,
+      waveform: makeWaveform({ sw0: ['0', '1'], sw1: ['0', '0'], LD0: ['0', '0'] }),
+      signalRoles: { sw0: 'input', sw1: 'input', LD0: 'output' },
+      signalMappings: makeHalfAdderMappings(), circuitGraph: makeHalfAdderGraph(), circuitKind: 'combinational' });
+    expect(result.changed).toBe(false);
+    expect(result.steps.map((step) => step.description).join(' ')).toContain('sw0 = 1');
+    expect(result.summary).not.toContain('because its inputs');
   });
 });

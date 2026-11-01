@@ -20,7 +20,7 @@ Ask for:
 - operating system and browser
 - whether this is hosted RedByte or a local repo/folder
 - project name or starter/profile used
-- current surface: Project, Design, Verify, Map Pins, Export, Import, Vivado, or board
+- current workspace: Project, Design, Simulate, Board & Constraints, Build & Export, Import, Vivado, or board
 - screenshot of the visible error/state
 - exported ZIP if the issue involves Export, Vivado, or Import
 - Vivado logs if the issue is E1 or E2
@@ -110,10 +110,10 @@ Actions:
 1. Use Fit or Center to inspect the graph.
 2. Confirm connections flow from output ports to input ports.
 3. Check that each required input/output boundary exists.
-4. Fix visible design issues before Verify.
-5. For failed Verify cases, trace the signal named in the first mismatch.
+4. Fix visible design issues before Simulate.
+5. For failed Simulate checks, trace the signal named in the first mismatch.
 
-### Verify
+### Simulate
 
 Symptoms:
 
@@ -131,7 +131,7 @@ Actions:
 5. If observed values are wrong, return to Design and repair the logic.
 6. For board-clocked sequential designs, check `CLK100MHZ` / `W5` clock policy before assuming manual pulses are required.
 
-### Hardware / Map Pins
+### Board & Constraints
 
 Symptoms:
 
@@ -145,7 +145,7 @@ Actions:
 1. Select each required project signal row.
 2. Map inputs to input-capable resources and outputs to output-capable resources.
 3. Check the visible chain: project signal -> Basys3 resource -> package pin -> XDC line.
-4. Re-run Verify or review Export if mapping changed after proof.
+4. Re-run Simulate or review Build & Export if mapping changed after proof.
 5. State plainly that mapping is E0 browser/package evidence, not board programming.
 
 ### Export
@@ -155,14 +155,14 @@ Symptoms:
 - Export is Draft or Needs Review
 - package is blocked
 - expected artifact is missing
-- student wants to submit before Verify passes
+- student wants to submit before Simulate checks pass
 
 Actions:
 
 1. Read the top Export handoff state first.
 2. If Draft, decide whether the assignment accepts draft packages. Most trusted handoffs need Compare PASS and mapping.
 3. If blocked, follow the direct repair path shown by Export.
-4. Rebuild/download after repairing Design, Verify, or mapping drift.
+4. Rebuild/download after repairing Design, Simulate, or mapping drift.
 5. Ask for the fresh ZIP, not edited files from inside an old ZIP.
 
 ### Vivado

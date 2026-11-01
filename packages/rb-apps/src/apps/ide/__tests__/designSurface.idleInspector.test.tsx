@@ -44,6 +44,7 @@ function makePassiveSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: undefined,
     speedHz: 10,
     irHash: 'ir-hash',
@@ -111,11 +112,8 @@ function renderSurface() {
           direction: 'out',
         },
       ]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
@@ -150,7 +148,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface contextual inspector contract', () => {
-  it('keeps authoring, exploratory simulation, and replay as explicit modes on one canvas', () => {
+  it('offers unrecorded Explore from authoring and opens recordings only from Simulate', () => {
     useCircuitStore.setState({
       circuit: structuredClone(BASE_CIRCUIT),
       isDirty: false,
@@ -160,14 +158,15 @@ describe('DesignSurface contextual inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-palette-section-common')).toBeTruthy();
+    expect(view.getByTestId('ide-design-palette-section-io')).toBeTruthy();
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'edit');
-    expect(view.getByTestId('ide-design-learning-mode-replay')).toBeDisabled();
+    expect(view.queryByTestId('ide-design-learning-mode-replay')).toBeNull();
 
-    fireEvent.click(view.getByTestId('ide-design-learning-mode-live'));
+    fireEvent.click(view.getByTestId('ide-design-explore'));
 
     expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'live');
-    expect(view.getByText('Exploratory simulation · not saved evidence')).toBeTruthy();
+    expect(view.getByTestId('ide-design-live-transport')).toBeTruthy();
+    expect(view.getByTestId('ide-design-live-note').textContent).toContain('not recorded');
   });
 
   it('returns idle inspector space to the canvas when nothing is selected', () => {

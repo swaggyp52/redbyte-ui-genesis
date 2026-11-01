@@ -28,6 +28,7 @@ const CIRCUIT_WITH_CENTERED_XOR: Circuit = {
 const passiveSimulation: RuntimeSimState = {
   tick: 0,
   running: false,
+  stepMode: false,
   speedHz: 10,
   irHash: 'ir-hash',
   traceHash: 'trace-hash',
@@ -109,11 +110,8 @@ describe('DesignSurface smart quick placement', () => {
       <DesignSurface
         runtimeSim={passiveSimulation}
         onRuntimeAddNode={onRuntimeAddNode}
-        onRuntimeSimRun={vi.fn()}
-        onRuntimeSimPause={vi.fn()}
         onRuntimeSimStep={vi.fn()}
         onRuntimeSimReset={vi.fn()}
-        onRuntimeSimSetSpeed={vi.fn()}
         onRuntimeSimToggleProbe={vi.fn()}
         onGoToProject={vi.fn()}
         onGoToVerify={vi.fn()}

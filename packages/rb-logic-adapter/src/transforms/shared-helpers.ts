@@ -14,7 +14,7 @@ export function pos(node: { position?: { x: number; y: number } }): { x: number;
 /**
  * Normalize connection endpoint to PortRef
  */
-export function normalizePortRef(ref: any, fallbackPort: string = 'out'): { nodeId: string; portName: string } {
+export function normalizePortRef(ref: Connection['from'], fallbackPort: string = 'out'): { nodeId: string; portName: string } {
   if (typeof ref === 'string') {
     return { nodeId: ref, portName: fallbackPort };
   }

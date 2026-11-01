@@ -1,4 +1,4 @@
-import { jsx as _jsx } from "react/jsx-runtime";
+import React from 'react';
 export function Panel({ as, variant = 'default', padding = 'md', children, ...props }) {
     const Component = as || 'div';
     const baseStyles = [
@@ -17,5 +17,5 @@ export function Panel({ as, variant = 'default', padding = 'md', children, ...pr
         lg: ['p-[var(--rb-spacing-6)]'],
     };
     const className = [...baseStyles, ...variantStyles[variant], ...paddingStyles[padding]].join(' ');
-    return (_jsx(Component, { className: className, ...props, children: children }));
+    return React.createElement(Component, { className, ...props }, children);
 }

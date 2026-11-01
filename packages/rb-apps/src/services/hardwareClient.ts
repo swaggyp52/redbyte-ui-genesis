@@ -57,6 +57,7 @@ interface HardwareClientConfig {
 // Local types for UI state (derived from Bridge types)
 interface Device {
   deviceId: string;
+  manufacturer?: string;
   boardModel: string;
   boardFamily: string;
   serial: string;
@@ -881,6 +882,7 @@ export class HardwareClient {
       return false;
     }
 
+    const socket: WebSocket = this.state.ws;
     try {
       const id = Math.floor(Math.random() * 1000000);
 
@@ -889,7 +891,7 @@ export class HardwareClient {
           try {
             const msg = JSON.parse(event.data.toString());
             if (msg.id === id) {
-              this.state.ws?.removeEventListener('message', handler);
+              socket?.removeEventListener('message', handler);
               if (msg.type === 'SET_PINS_OK' || msg.status === 'ok') {
                 console.debug(`[HardwareClient] Pins set successfully: ${JSON.stringify(pins)}`);
                 resolve(true);
@@ -903,11 +905,11 @@ export class HardwareClient {
           }
         };
 
-        if (this.state.ws) {
-          this.state.ws.addEventListener('message', handler);
+        if (socket) {
+          socket.addEventListener('message', handler);
 
           // Send SET_PINS message via WebSocket
-          this.state.ws.send(JSON.stringify({
+          socket.send(JSON.stringify({
             v: 'rb-bridge.v1',
             id,
             type: 'SET_PINS',
@@ -917,8 +919,8 @@ export class HardwareClient {
 
           // Timeout: resolve false if no response in 2 seconds
           setTimeout(() => {
-            if (this.state.ws) {
-              this.state.ws.removeEventListener('message', handler);
+            if (socket) {
+              socket.removeEventListener('message', handler);
             }
             resolve(false);
           }, 2000);

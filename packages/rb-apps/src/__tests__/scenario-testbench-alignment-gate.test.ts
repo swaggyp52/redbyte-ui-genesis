@@ -43,8 +43,7 @@ import {
   resolveVerifyTick0Meaning,
 } from '../apps/ide/verifyClockPolicy';
 import { buildVerifyReport, buildVerifyWaveSamples } from '../apps/ide/verifyReport';
-import { parseVhdl } from '../import/vhdlImport';
-import { parsedHdlToCircuit } from '../import/hdlToCircuit';
+import { nativeCounterCircuit } from './helpers/nativeCounterFixture';
 import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
 import {
   buildVerifyCircuitEvidenceHash,
@@ -96,9 +95,10 @@ function buildStaleProjectVectors(): TestVector[] {
   ];
 }
 
+// The circuit is a native counter with the imported fixture's ports. The import itself is a port
+// scaffold whose generated top drives no LED (refused since it used to ship tied to '0'; see
+// ide-synth-subset-contract and ide-bringup-contract), so packages here ship real counter logic.
 function buildFixtureProject(vhdl: string, projectVectors: TestVector[]): RBProject {
-  const parsed = parseVhdl(vhdl);
-  const converted = parsedHdlToCircuit(parsed);
   const timestamp = '2026-03-18T00:00:00.000Z';
   return {
     kind: 'rb-project',
@@ -107,7 +107,7 @@ function buildFixtureProject(vhdl: string, projectVectors: TestVector[]): RBProj
     updatedAt: timestamp,
     name: 'scenario-alignment-fixture',
     description: 'Scenario/testbench alignment contract fixture',
-    circuit: converted.circuit,
+    circuit: nativeCounterCircuit(),
     ioMapping: buildFixtureIoMapping(),
     vectors: projectVectors, // ← deliberate compat field; may diverge from scenario
     hdl: {
@@ -149,7 +149,7 @@ function buildFixtureRuntimeVerifyRun(
       id: row.id,
       label: row.label ?? row.id,
       direction: 'in' as const,
-      pin: row.pin,
+      pin: row.pin ?? '',
       nodeId: row.nodeId ?? row.id,
       port: 'out',
       required: true,
@@ -158,7 +158,7 @@ function buildFixtureRuntimeVerifyRun(
       id: row.id,
       label: row.label ?? row.id,
       direction: 'out' as const,
-      pin: row.pin,
+      pin: row.pin ?? '',
       nodeId: row.nodeId ?? row.id,
       port: 'in',
       required: true,

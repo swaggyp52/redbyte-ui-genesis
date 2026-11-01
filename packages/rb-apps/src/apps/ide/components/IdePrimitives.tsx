@@ -105,18 +105,34 @@ export const IdePanel: React.FC<{
   );
 };
 
-export const IdeButton: React.FC<{
-  tone?: ButtonTone;
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  testId?: string;
-  type?: 'button' | 'submit';
-  className?: string;
-  title?: string;
-  hierarchySurface?: string;
-  hierarchyRole?: string;
-}> = ({
+/**
+ * The props were a closed list and the rendered <button> spread nothing, so every `aria-*`
+ * a caller passed was silently dropped. The replay toggle passes `aria-pressed={isPlaying}`
+ * and it never reached the DOM: while a replay was running, assistive technology was told
+ * nothing, and the only signal that the button had become Stop was the visible glyph.
+ * Accessibility attributes now reach the element that needs them.
+ */
+type IdeButtonAriaProps = {
+  [K in keyof React.AriaAttributes]?: React.AriaAttributes[K];
+};
+
+export const IdeButton: React.FC<
+  IdeButtonAriaProps & {
+    tone?: ButtonTone;
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    testId?: string;
+    type?: 'button' | 'submit';
+    className?: string;
+    title?: string;
+    hierarchySurface?: string;
+    hierarchyRole?: string;
+    role?: string;
+    id?: string;
+    tabIndex?: number;
+  }
+> = ({
   tone = 'secondary',
   children,
   onClick,
@@ -127,6 +143,7 @@ export const IdeButton: React.FC<{
   title,
   hierarchySurface,
   hierarchyRole,
+  ...rest
 }) => {
   return (
     <button
@@ -138,6 +155,7 @@ export const IdeButton: React.FC<{
       data-hierarchy-surface={hierarchySurface}
       data-hierarchy-role={hierarchyRole}
       title={title}
+      {...rest}
     >
       {children}
     </button>
@@ -189,7 +207,8 @@ export const IdeModal: React.FC<{
   actions: React.ReactNode;
   onClose?: () => void;
   testId?: string;
-}> = ({ title, body, actions, onClose, testId }) => {
+  className?: string;
+}> = ({ title, body, actions, onClose, testId, className }) => {
   const dialogRef = React.useRef<HTMLElement | null>(null);
   const returnFocusRef = React.useRef<HTMLElement | null>(null);
 
@@ -210,9 +229,10 @@ export const IdeModal: React.FC<{
     (focusable?.[0] ?? dialog)?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && onClose) {
+      if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        event.stopPropagation();
+        onClose?.();
         return;
       }
       if (event.key !== 'Tab' || !dialog) return;
@@ -248,7 +268,7 @@ export const IdeModal: React.FC<{
     <div className="ide-modal-backdrop" role="presentation" onClick={onClose}>
       <section
         ref={dialogRef}
-        className="ide-modal"
+        className={`ide-modal${className ? ` ${className}` : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -316,6 +336,9 @@ export const IdeInspectorSection: React.FC<{
   defaultOpen?: boolean;
   accordionId?: string;
   disableCollapse?: boolean;
+  /** Keep a collapsed section's content in the document, hidden, so opening it does not
+   *  rebuild it and anything that refers to it by id still resolves. */
+  keepMounted?: boolean;
   hierarchySurface?: string;
   hierarchyRole?: string;
 }> = ({
@@ -324,6 +347,7 @@ export const IdeInspectorSection: React.FC<{
   testId,
   collapsible = true,
   defaultOpen = true,
+  keepMounted = false,
   accordionId,
   disableCollapse = false,
   hierarchySurface,
@@ -357,6 +381,7 @@ export const IdeInspectorSection: React.FC<{
           type="button"
           className="ide-inspector-toggle"
           onClick={toggleOpen}
+          aria-expanded={open}
           data-testid={testId ? `${testId}-toggle` : undefined}
         >
           <h4 className="ide-inspector-title">{title}</h4>
@@ -365,7 +390,11 @@ export const IdeInspectorSection: React.FC<{
       ) : (
         <h4 className="ide-inspector-title">{title}</h4>
       )}
-      {open ? <div className="ide-inspector-content">{children}</div> : null}
+      {open ? (
+        <div className="ide-inspector-content">{children}</div>
+      ) : keepMounted ? (
+        <div className="ide-inspector-content" hidden>{children}</div>
+      ) : null}
     </section>
   );
 };

@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/rb-logic-view.js",
       "require": "./dist/rb-logic-view.js"
+    },
+    "./scene": {
+      "types": "./src/scene/index.ts",
+      "import": "./src/scene/index.ts"
     }
   },
   "scripts": {

@@ -6,7 +6,7 @@ import { buildCurrentVerifyProjectHash, buildCurrentVerifyReplayHash } from '../
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { digestValue } from '../../../utils/digest';
 import { projectRuntimeCircuitToEditorStore } from '../circuitProjection';
-import { useProjectRuntime } from '../projectRuntime';
+import { useProjectRuntime, type ProjectIoRow } from '../projectRuntime';
 
 function buildCircuit(seed: string): Circuit {
   return {
@@ -197,7 +197,7 @@ describe('circuitProjection', () => {
 
   it('treats starter input labels and canonical ids as the same replay stimulus', () => {
     const circuit = buildCircuit('verify');
-    const projectIoRows = [
+    const projectIoRows: ProjectIoRow[] = [
       { id: 'clk', nodeId: 'clk_node', port: 'out', label: 'CLK', direction: 'in', pin: 'W5', required: true },
       { id: 'en', nodeId: 'en_node', port: 'out', label: 'SW0', direction: 'in', pin: 'V17', required: true },
       { id: 'rst', nodeId: 'rst_node', port: 'out', label: 'RST (BTNC)', direction: 'in', pin: 'U18', required: true },

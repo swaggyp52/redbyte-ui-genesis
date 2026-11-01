@@ -1,3 +1,4 @@
+import { getConnectionNodeId, getConnectionPort } from '../utils/connectionUtils';
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
@@ -70,8 +71,8 @@ export function analyzeCircuitHealth(circuit: Circuit): CircuitHealth {
   const connectedOutputs = new Set<string>();
 
   circuit.connections.forEach((conn) => {
-    connectedOutputs.add(`${conn.from.nodeId}.${conn.from.portName}`);
-    connectedInputs.add(`${conn.to.nodeId}.${conn.to.portName}`);
+    connectedOutputs.add(`${getConnectionNodeId(conn.from)}.${getConnectionPort(conn, 'from', 'out')}`);
+    connectedInputs.add(`${getConnectionNodeId(conn.to)}.${getConnectionPort(conn, 'to', 'in')}`);
   });
 
   // Check each node for issues
@@ -173,10 +174,10 @@ export function getTracePath(
       if (direction === 'upstream' || direction === 'both') {
         // Find nodes feeding into current
         circuit.connections
-          .filter((conn) => conn.to.nodeId === current.id)
+          .filter((conn) => getConnectionNodeId(conn.to) === current.id)
           .forEach((conn) => {
-            if (!traced.has(conn.from.nodeId)) {
-              queue.push({ id: conn.from.nodeId, hops: current.hops + 1 });
+            if (!traced.has(getConnectionNodeId(conn.from))) {
+              queue.push({ id: getConnectionNodeId(conn.from), hops: current.hops + 1 });
             }
           });
       }
@@ -184,10 +185,10 @@ export function getTracePath(
       if (direction === 'downstream' || direction === 'both') {
         // Find nodes current feeds into
         circuit.connections
-          .filter((conn) => conn.from.nodeId === current.id)
+          .filter((conn) => getConnectionNodeId(conn.from) === current.id)
           .forEach((conn) => {
-            if (!traced.has(conn.to.nodeId)) {
-              queue.push({ id: conn.to.nodeId, hops: current.hops + 1 });
+            if (!traced.has(getConnectionNodeId(conn.to))) {
+              queue.push({ id: getConnectionNodeId(conn.to), hops: current.hops + 1 });
             }
           });
       }

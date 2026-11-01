@@ -32,6 +32,7 @@ import {
 import type {
   CircuitIR,
   ElaborationResult,
+  IRBusPort,
   IRDiagnostic,
   IRFeatures,
   IRNet,
@@ -41,6 +42,20 @@ import type {
   IRPrimitive,
   IRPrimitiveType,
 } from './circuitIR';
+import { compareText } from './simulationModel';
+import { busIndices, busWidth } from '../bus';
+import { inputPinsOf } from '../builtins';
+
+/**
+ * The connection port names a part's clock or reset is read under, exactly as the simulator reads
+ * them (inputPinsOf: a DFlipFlop's clock is CLK, clk, clock or C); the registry's single name for
+ * a part the engine describes no such pin for.
+ */
+function pinNamesForRole(type: string, role: 'clock' | 'reset', registryName: string | undefined): readonly string[] {
+  const pin = inputPinsOf(type)?.find((entry) => entry.role === role);
+  if (pin) return pin.names;
+  return registryName ? [registryName] : [];
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -177,20 +192,22 @@ function djb2Hash(s: string): string {
  * Compute a topology-stable irHash.
  * Input ordering is normalized: primitives and nets are sorted, endpoints
  * within each net are sorted. Timestamps and positions are excluded.
+ * Sorting is by codepoint, never collation, so the hash is the same in every
+ * browser locale (RB-DEBT-016).
  */
 function computeIrHash(primitives: IRPrimitive[], nets: IRNet[]): string {
   const primPart = [...primitives]
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => compareText(a.id, b.id))
     .map(p => `${p.id}:${p.type}`);
 
   const netPart = [...nets]
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => compareText(a.name, b.name))
     .map(n => {
       const drivers = [...n.drivers]
-        .sort((a, b) => `${a.nodeId}.${a.port}`.localeCompare(`${b.nodeId}.${b.port}`))
+        .sort((a, b) => compareText(`${a.nodeId}.${a.port}`, `${b.nodeId}.${b.port}`))
         .map(d => `${d.nodeId}.${d.port}`);
       const sinks = [...n.sinks]
-        .sort((a, b) => `${a.nodeId}.${a.port}`.localeCompare(`${b.nodeId}.${b.port}`))
+        .sort((a, b) => compareText(`${a.nodeId}.${a.port}`, `${b.nodeId}.${b.port}`))
         .map(s => `${s.nodeId}.${s.port}`);
       return `${n.name}[${drivers.join(',')}→${sinks.join(',')}]`;
     });
@@ -385,7 +402,7 @@ function buildNets(
 
     const mergedDrivers: IRNetEndpoint[] = sortedKeys
       .map(dk => byDriver.get(dk)!.driver)
-      .sort((a, b) => `${a.nodeId}.${a.port}`.localeCompare(`${b.nodeId}.${b.port}`));
+      .sort((a, b) => compareText(`${a.nodeId}.${a.port}`, `${b.nodeId}.${b.port}`));
 
     const mergedSinksMap = new Map<string, IRNetEndpoint>();
     for (const dk of driverKeys) {
@@ -507,6 +524,46 @@ export function elaborateCircuit(
     }
   }
 
+  // ─── Pass 1b: Declared bus resolution ──────────────────────────────────────
+  // A declared bus becomes an IRBusPort only when every declared bit resolves
+  // to a boundary port of the matching kind; anything else is diagnosed as
+  // IR007 (width mismatch) and falls back to the scalar members, so every
+  // backend still emits legal output.
+
+  const portById = new Map(ports.map(p => [p.id, p]));
+  const buses: IRBusPort[] = [];
+  for (const declaration of circuit?.buses ?? []) {
+    const wantKind: IRPortKind = declaration.direction === 'input' ? 'input' : 'output';
+    const bitsByIndex = new Map(declaration.bits.map(bit => [bit.index, bit.nodeId]));
+    const resolved: IRBusPort['bits'] = [];
+    let complete = true;
+    for (const index of busIndices(declaration)) {
+      const nodeId = bitsByIndex.get(index);
+      const port = nodeId ? portById.get(nodeId) : undefined;
+      if (!port || port.kind !== wantKind) {
+        diagnostics.push({
+          code: 'IR007',
+          severity: 'warning',
+          message: `Bus ${declaration.name}[${declaration.left}:${declaration.right}] is missing bit ${declaration.name}[${index}]${port ? ` (node is ${port.kind}, expected ${wantKind})` : ''}; exporting its bits as scalars`,
+          nodeId: nodeId ?? undefined,
+        });
+        complete = false;
+        continue;
+      }
+      resolved.push({ index, portId: port.id });
+    }
+    if (!complete) continue;
+    buses.push({
+      id: declaration.id,
+      name: declaration.name,
+      kind: wantKind,
+      left: declaration.left,
+      right: declaration.right,
+      signalType: { width: busWidth(declaration) },
+      bits: resolved,
+    });
+  }
+
   // ─── Pass 2–3: Net construction ────────────────────────────────────────────
 
   const { nets, multiDriverRecords } = buildNets(normedConns, nodeMap);
@@ -527,6 +584,7 @@ export function elaborateCircuit(
   const drivenSinks = new Set<string>(
     normedConns.map(c => `${c.to.nodeId}.${c.to.portName}`)
   );
+  const drivenSinksLower = new Set<string>([...drivenSinks].map((key) => key.toLowerCase()));
 
   const outputPorts = ports.filter(p => p.kind === 'output');
   for (const port of outputPorts) {
@@ -549,8 +607,9 @@ export function elaborateCircuit(
     const clockPort = getClockPortName(prim.type);
     if (!clockPort) continue; // e.g., RSLatch has no dedicated clock port
 
-    const clockSinkKey = `${prim.id}.${clockPort}`;
-    if (!drivenSinks.has(clockSinkKey)) {
+    // The clock is wired under any name the simulator reads it by, the first one wired winning.
+    const wiredClock = pinNamesForRole(prim.type, 'clock', clockPort).find((name) => drivenSinks.has(`${prim.id}.${name}`));
+    if (!wiredClock) {
       diagnostics.push({
         code: 'IR004',
         severity: 'error',
@@ -561,7 +620,7 @@ export function elaborateCircuit(
     } else {
       // Find the net that drives this clock port and set clockBinding
       for (const net of nets) {
-        if (net.sinks.some(s => s.nodeId === prim.id && s.port === clockPort)) {
+        if (net.sinks.some(s => s.nodeId === prim.id && s.port === wiredClock)) {
           prim.clockBinding = net.name;
           break;
         }
@@ -576,10 +635,10 @@ export function elaborateCircuit(
     const resetPort = getResetPortName(prim.type);
     if (!resetPort) continue;
 
-    const resetSinkKey = `${prim.id}.${resetPort}`;
-    if (drivenSinks.has(resetSinkKey)) {
+    const wiredReset = pinNamesForRole(prim.type, 'reset', resetPort).find((name) => drivenSinks.has(`${prim.id}.${name}`));
+    if (wiredReset) {
       for (const net of nets) {
-        if (net.sinks.some(s => s.nodeId === prim.id && s.port === resetPort)) {
+        if (net.sinks.some(s => s.nodeId === prim.id && s.port === wiredReset)) {
           prim.resetBinding = net.name;
           break;
         }
@@ -593,13 +652,20 @@ export function elaborateCircuit(
     const requiredInputs = PRIMITIVE_REQUIRED_INPUTS[prim.type] ?? [];
     const clockPort = getClockPortName(prim.type);
     const resetPort = getResetPortName(prim.type);
+    const pins = inputPinsOf(prim.type);
 
     for (const reqPort of requiredInputs) {
       // Skip clock/reset ports — IR004 covers clock; reset is optional
       if (reqPort === clockPort || reqPort === resetPort) continue;
 
-      const sinkKey = `${prim.id}.${reqPort}`;
-      if (!drivenSinks.has(sinkKey)) {
+      // An input counts as connected when a wire drives one of the names the simulator reads it
+      // by, exactly as written (inputPinsOf): a gate's in1 or a, a FullAdder's Cin but not cin.
+      // This table names the input; parts the engine does not describe keep the old lookup.
+      const pin = pins?.find((entry) => entry.names.some((name) => name.toLowerCase() === reqPort.toLowerCase()));
+      const connected = pin
+        ? [...pin.names, ...(pin.bitNames ?? [])].some((name) => drivenSinks.has(`${prim.id}.${name}`))
+        : drivenSinksLower.has(`${prim.id}.${reqPort}`.toLowerCase());
+      if (!connected) {
         diagnostics.push({
           code: 'IR005',
           severity: 'warning',
@@ -634,13 +700,13 @@ export function elaborateCircuit(
   const clockNets = nets.filter(n =>
     n.sinks.some(s => {
       const node = nodeMap.get(s.nodeId);
-      return node && isSequentialNodeType(node.type) && getClockPortName(node.type) === s.port;
+      return node && isSequentialNodeType(node.type) && pinNamesForRole(node.type, 'clock', getClockPortName(node.type)).includes(s.port);
     })
   );
   const resetNets = nets.filter(n =>
     n.sinks.some(s => {
       const node = nodeMap.get(s.nodeId);
-      return node && isSequentialNodeType(node.type) && getResetPortName(node.type) === s.port;
+      return node && isSequentialNodeType(node.type) && pinNamesForRole(node.type, 'reset', getResetPortName(node.type)).includes(s.port);
     })
   );
 
@@ -688,6 +754,7 @@ export function elaborateCircuit(
     outputs,
     clocks,
     resets,
+    ...(buses.length > 0 ? { buses } : {}),
     primitives,
     nets,
     diagnostics,

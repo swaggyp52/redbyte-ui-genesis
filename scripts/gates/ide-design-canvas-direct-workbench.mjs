@@ -9,6 +9,14 @@ const VIEWPORTS = [
   { width: 1440, height: 900, label: '1440x900' },
 ];
 
+const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-menu-fit'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
+  ['ide-design-center-selection-canvas', 'ide-design-menu-fit-selection'],
+]);
+
 const SCREENSHOT_ROOT = process.env.RB_DESIGN_CANVAS_DIRECT_WORKBENCH_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_DESIGN_CANVAS_DIRECT_WORKBENCH_SCREENSHOTS_DIR)
   : null;
@@ -37,20 +45,20 @@ await runIdeGate('IDE Design canvas direct workbench satisfied', async ({ page, 
     const loadedMetrics = await readDirectCanvasMetrics(page);
     assertDirectCanvas(loadedMetrics, viewport, 'loaded starter direct controls');
 
-    await page.locator('[data-testid="ide-design-zoom-reset"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-reset');
     await page.waitForTimeout(200);
     const resetZoom = await readZoomIndicator(page);
 
-    await page.locator('[data-testid="ide-design-zoom-out"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-out');
     const zoomedOut = await waitForZoomChange(page, resetZoom);
     assertDirectCanvas(await readDirectCanvasMetrics(page), viewport, 'direct zoom out');
 
-    await page.locator('[data-testid="ide-design-zoom-in"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-in');
     await waitForZoomChange(page, zoomedOut);
     await capture(page, viewport, '02-direct-controls-zoomed');
     assertDirectCanvas(await readDirectCanvasMetrics(page), viewport, 'direct zoom in');
 
-    await page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first().click();
+    await clickCanvasTool(page, 'ide-design-fit-circuit-canvas');
     await page.waitForTimeout(250);
     await capture(page, viewport, '03-direct-controls-fitted');
     assertDirectCanvas(await readDirectCanvasMetrics(page), viewport, 'direct fit');
@@ -76,6 +84,7 @@ async function loadStarterDesign(page, baseUrl, viewportLabel) {
 }
 
 function assertDirectCanvas(metrics, viewport, label) {
+  const usesResponsiveTools = viewport.width <= 1500;
   assert(metrics.mode === 'design', `${label}: expected Design mode, got ${metrics.mode}`);
   assert(metrics.rootOverflowX <= 2, `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`);
   assert(metrics.liveCanvas.visible, `${label}: live canvas must be visible`);
@@ -90,22 +99,20 @@ function assertDirectCanvas(metrics, viewport, label) {
   assert(metrics.visibleNodeCount >= 3, `${label}: loaded graph nodes disappeared (${metrics.visibleNodeCount})`);
   assert(metrics.visibleWireCount >= 1, `${label}: loaded graph wires disappeared (${metrics.visibleWireCount})`);
   assert(!metrics.toggle.visible, `${label}: canvas controls must not be hidden behind a view-tools toggle`);
-  assert(metrics.viewTools.visible, `${label}: view tools host must remain visible`);
-  assert(metrics.viewTools.open === true, `${label}: direct view tools host must remain open`);
-  assert(metrics.viewTools.insideToolbar, `${label}: direct view tools must remain inside the Design toolbar`);
-  assert(metrics.controls.visible, `${label}: direct canvas controls must remain visible`);
   assert(!metrics.presets.visible, `${label}: obsolete zoom preset strip must remain absent`);
+  assert(metrics.overflow.visible && metrics.overflow.insideToolbar, `${label}: View menu must remain in the Design toolbar`);
+  assert(!metrics.overflow.open, `${label}: View menu must close after each camera action`);
   for (const [testId, visible] of Object.entries(metrics.directControls)) {
     assert(visible, `${label}: direct canvas control ${testId} must remain visible`);
   }
   assert(!metrics.minimap.visible, `${label}: minimap must not cover starter graph by default`);
   assert(
     metrics.overlap.visibleGraphNodeCount === 0,
-    `${label}: direct view tools overlap visible graph nodes (${metrics.overlap.visibleGraphNodeCount})`
+    `${label}: visible camera controls overlap graph nodes (${metrics.overlap.visibleGraphNodeCount})`
   );
   assert(
     metrics.overlap.visibleWireCount === 0,
-    `${label}: direct view tools overlap visible wires (${metrics.overlap.visibleWireCount})`
+    `${label}: visible camera controls overlap wires (${metrics.overlap.visibleWireCount})`
   );
   assert(metrics.toolbar.visible, `${label}: Design toolbar must remain visible`);
 }
@@ -136,10 +143,14 @@ async function readDirectCanvasMetrics(page) {
     const viewToolsEl = getElement('[data-testid="ide-design-canvas-view-tools"]');
     const toolbarEl = getElement('[data-testid="ide-design-toolbar"]');
     const controlsEl = getElement('[data-testid="ide-design-canvas-controls"]');
+    const overflowEl = getElement('[data-testid="ide-design-toolbar-overflow"]');
+    const overflowSummaryEl = overflowEl?.querySelector('summary') ?? null;
     const presetsEl = getElement('[data-testid="ide-design-zoom-presets"]');
     const toggleEl = getElement('[data-testid="ide-design-view-tools-toggle"]');
     const minimapEl = getElement('.rb-minimap');
     const viewTools = getRect('[data-testid="ide-design-canvas-view-tools"]');
+    const overflowSummary = overflowSummaryEl?.getBoundingClientRect?.() ?? new DOMRect(0, 0, 0, 0);
+    const visibleCameraHost = toolbarEl?.getBoundingClientRect() ?? overflowSummary;
     const visibleNodes = Array.from(document.querySelectorAll('[data-node-id]')).filter((node) => {
       const rect = node.getBoundingClientRect();
       return rect.width > 4 && rect.height > 4 && intersects(rect, liveCanvas) && intersects(rect, viewport);
@@ -169,6 +180,11 @@ async function readDirectCanvasMetrics(page) {
         insideToolbar: Boolean(toolbarEl && viewToolsEl && toolbarEl.contains(viewToolsEl)),
       },
       controls: rectJson(getRect('[data-testid="ide-design-canvas-controls"]'), isVisible(controlsEl)),
+      overflow: {
+        ...rectJson(overflowSummary, isVisible(overflowEl) && isVisible(overflowSummaryEl)),
+        open: overflowEl?.hasAttribute('open') ?? false,
+        insideToolbar: Boolean(toolbarEl && overflowEl && toolbarEl.contains(overflowEl)),
+      },
       presets: rectJson(getRect('[data-testid="ide-design-zoom-presets"]'), isVisible(presetsEl)),
       minimap: rectJson(getRect('.rb-minimap'), isVisible(minimapEl)),
       directControls: Object.fromEntries(
@@ -176,18 +192,50 @@ async function readDirectCanvasMetrics(page) {
           'ide-design-zoom-out',
           'ide-design-zoom-in',
           'ide-design-fit-circuit-canvas',
-          'ide-design-zoom-reset',
+          'ide-design-zoom-readout',
           'ide-design-center-selection-canvas',
         ].map((testId) => [testId, isVisible(getElement(`[data-testid="${testId}"]`))])
+      ),
+      responsiveControls: Object.fromEntries(
+        [
+          'ide-design-menu-zoom-out',
+          'ide-design-menu-zoom-in',
+          'ide-design-menu-fit',
+          'ide-design-zoom-reset',
+          'ide-design-menu-fit-selection',
+        ].map((testId) => [testId, Boolean(getElement(`[data-testid="${testId}"]`))])
       ),
       visibleNodeCount: visibleNodes.length,
       visibleWireCount: visibleWires.length,
       overlap: {
-        visibleGraphNodeCount: visibleNodes.filter((node) => intersects(node.getBoundingClientRect(), viewTools)).length,
-        visibleWireCount: visibleWires.filter((wire) => intersects(wire.getBoundingClientRect(), viewTools)).length,
+        visibleGraphNodeCount: visibleNodes.filter((node) => intersects(node.getBoundingClientRect(), visibleCameraHost)).length,
+        visibleWireCount: visibleWires.filter((wire) => intersects(wire.getBoundingClientRect(), visibleCameraHost)).length,
       },
     };
   });
+}
+
+async function clickCanvasTool(page, primaryTestId) {
+  const primary = page.locator(`[data-testid="${primaryTestId}"]`).first();
+  if (await primary.isVisible().catch(() => false)) {
+    await primary.click();
+    return;
+  }
+
+  const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
+  assert(Boolean(responsiveTestId), `missing responsive camera mapping for ${primaryTestId}`);
+  const overflow = page.locator('[data-testid="ide-design-toolbar-overflow"]').first();
+  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: View menu must be visible`);
+  const wasOpen = (await overflow.getAttribute('open')) !== null;
+  if (!wasOpen) await overflow.locator('summary').click();
+
+  const responsive = page.locator(`[data-testid="${responsiveTestId}"]`).first();
+  await responsive.waitFor({ state: 'visible', timeout: 5000 });
+  await responsive.click();
+
+  if (!wasOpen && (await overflow.getAttribute('open')) !== null) {
+    await overflow.locator('summary').click();
+  }
 }
 
 async function readZoomIndicator(page) {

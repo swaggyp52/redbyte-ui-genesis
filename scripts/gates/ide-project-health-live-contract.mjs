@@ -1,104 +1,6 @@
 #!/usr/bin/env node
-
-import { assert, runIdeGate, setVerifyRunMode } from './_gateHarness.mjs';
+import { assert, runIdeGate, loadStarterProject, clickVerifyRun, setVerifyRunMode } from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
-
-async function text(locator) {
-  return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function dismissOnboardingIfPresent(page) {
-  const skipButton = page.locator('[data-testid="ide-onboarding-skip"]').first();
-  const overlay = page.locator('[data-testid="ide-onboarding-overlay"]').first();
-  const visible = await skipButton.isVisible().catch(() => false);
-  if (!visible) return;
-  await skipButton.click();
-  await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
-}
-
-async function clickVerifyRun(page) {
-  const candidates = [
-    '[data-testid="ide-vcb-run"]',
-    '[data-testid="ide-verify-run"]',
-    '[data-testid="ide-verify-run-secondary"]',
-    '[data-testid="ide-verify-empty-run"]',
-    '[data-testid="ide-verify-stale-primary-rerun"]',
-  ];
-  for (const selector of candidates) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (!isVisible) continue;
-    await button.click();
-    return;
-  }
-  throw new Error('verify run button was not visible in any supported state');
-}
-
-async function authorMinimalVerifyVector(page) {
-  const runAlreadyVisible = await page
-    .locator('[data-testid="ide-vcb-run"], [data-testid="ide-verify-run"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (runAlreadyVisible) {
-    return;
-  }
-
-  const legacyTickInput = page.locator('[data-testid="ide-verify-add-vector-tick"]').first();
-  const legacyTickVisible = await legacyTickInput.isVisible().catch(() => false);
-
-  if (legacyTickVisible) {
-    await legacyTickInput.fill('11');
-    const firstInput = page.locator('[data-testid^="ide-verify-add-vector-input-"]').first();
-    const firstInputVisible = await firstInput.isVisible().catch(() => false);
-    if (firstInputVisible) {
-      await firstInput.selectOption('1');
-    }
-    await page.locator('[data-testid="ide-verify-add-vector-submit"]').first().click();
-    return;
-  }
-
-  const addTickButton = page.locator('[data-testid="ide-stimulus-add-tick"]').first();
-  const addTickVisible = await addTickButton.isVisible().catch(() => false);
-  const guidedGenerateButton = page
-    .locator(
-      '[data-testid="ide-verify-generate-basic-vectors-footer"], [data-testid="ide-verify-generate-all-combos"], [data-testid="ide-verify-guided-clock-pattern"]'
-    )
-    .first();
-  const guidedGenerateVisible = await guidedGenerateButton.isVisible().catch(() => false);
-  if (guidedGenerateVisible) {
-    await guidedGenerateButton.click();
-    return;
-  }
-  if (!addTickVisible) {
-    throw new Error('verify authoring controls unavailable (neither legacy form nor StimulusCanvas found)');
-  }
-
-  await addTickButton.click();
-  const firstStimulusCell = page.locator('[data-testid^="ide-stimulus-cell-"]').first();
-  await firstStimulusCell.waitFor({ state: 'visible', timeout: 10000 });
-  await firstStimulusCell.click();
-}
-
-async function clickGenerateBasicsIfVisible(page) {
-  const button = page
-    .locator(
-      '[data-testid="ide-verify-generate-basic-vectors"], [data-testid="ide-verify-generate-basic-vectors-footer"], [data-testid="ide-verify-generate-all-combos"]'
-    )
-    .first();
-  const isVisible = await button.isVisible().catch(() => false);
-  if (isVisible) {
-    await button.click();
-  }
-}
-
-async function waitForCondition(page, label, predicate, timeout = 30000) {
-  try {
-    await page.waitForFunction(predicate, { timeout });
-  } catch {
-    throw new Error(`timed out waiting for condition: ${label}`);
-  }
-}
 
 async function mutateDesignCircuit(page) {
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
@@ -166,88 +68,48 @@ async function mutateDesignCircuit(page) {
   assert(mutated, 'design mutation did not materialize a new node');
 }
 
+
+// Project reads the same recorded result and marks it stale after a real Design edit.
+// Continuation follows the last working surface; it is not a verification checklist.
 await runIdeGate('IDE project health live contract satisfied', async ({ page, baseUrl }) => {
-  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
-  await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await dismissOnboardingIfPresent(page);
+  await page.addInitScript(() => localStorage.setItem('rb-onboarding-v1-seen', '1'));
+  await page.goto(baseUrl + '/?mode=project&e2e=1');
+  await page.getByTestId('ide-project-landing').waitFor();
+  await loadStarterProject(page, { exactExampleId: 'logic-gates' });
+  await page.getByTestId('mode-button-project').click();
+  const simulation = page.getByTestId('ide-project-fact-simulation');
+  assert(/not run/i.test(await simulation.innerText()), 'A fresh project must not invent a recording');
+  assert(/design/i.test(await page.getByTestId('ide-project-continue').innerText()), 'Continuation must return to the working Design surface');
 
-  const landingVisible = await page
-    .locator('[data-testid="ide-project-landing"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-
-  if (landingVisible) {
-    const firstExample = page.locator('[data-testid^="ide-project-landing-example-"]').first();
-    const exampleVisible = await firstExample.isVisible().catch(() => false);
-    assert(exampleVisible, 'project landing must surface at least one starter example');
-    await firstExample.click();
-    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-    await page.locator('[data-testid="mode-button-project"]').click();
-    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  }
-
-  const initialCta = await text(page.locator('[data-testid="ide-project-command-strip-primary-cta"]'));
-  assert(
-    initialCta.toLowerCase().includes('verify'),
-    `expected initial project continue target to route Verify, got "${initialCta}"`
-  );
-
-  await page.locator('[data-testid="mode-button-verify"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-verify-add-vector-form"]', { timeout: 10000 });
-
-  await authorMinimalVerifyVector(page);
-  await clickGenerateBasicsIfVisible(page);
-  assert(await setVerifyRunMode(page, 'compare'), 'project-health gate requires Compare checks before recording Project verify health');
+  await page.getByTestId('mode-button-verify').click();
+  await page.getByTestId('ide-vcb-run').waitFor();
+  assert(await setVerifyRunMode(page, 'compare'), 'The starter must have authored checks for this run');
   await clickVerifyRun(page);
-  await waitForVerifyResult(page, { timeout: 10000 });
+  await waitForVerifyResult(page);
+  const recorded = await page.evaluate(() => {
+    const state = window.__RB_PROJECT_RUNTIME__.getState();
+    return state.verifyRunArchive.find(run => run.runId === state.verifyLastRun?.runId);
+  });
+  assert(recorded?.runId && recorded.assertionStatus === 'passing' && recorded.report?.status === 'pass' && recorded.report.rows.length > 0,
+    'The checked run must retain a passing report with rows and a run identity');
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForFunction(() => /current.*pass/i.test(document.querySelector('[data-testid="ide-project-fact-simulation"]')?.textContent ?? ''));
+  assert(/simulation/i.test(await page.getByTestId('ide-project-continue').innerText()), 'Continuation must resume the simulation just used');
+  await page.getByTestId('ide-project-details').locator('summary').click();
+  const hash = (await page.getByTestId('ide-project-fact-hash').innerText()).replace('Determinism hash', '').trim();
+  assert(/^[a-f0-9]{8,16}$/i.test(hash), 'Project details must expose the current design digest: ' + hash);
 
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await waitForCondition(
-    page,
-    'project mode reflects verify status/hash and clean marker',
-    () => {
-      const status = document.querySelector('[data-testid="ide-project-last-verify-status"]')?.textContent ?? '';
-      const hash = document.querySelector('[data-testid="ide-project-last-verify-hash"]')?.textContent ?? '';
-      const dirty = document.querySelector('[data-testid="ide-project-dirty-since-verify"]')?.textContent ?? '';
-      return /^(PASS|FAIL)$/i.test(status.trim()) && hash.trim().length > 0 && !/[—-]/.test(hash.trim()) && /^CLEAN$/i.test(dirty.trim());
-    },
-    10000
-  );
-
-  const verifyStatus = await text(page.locator('[data-testid="ide-project-last-verify-status"]'));
-  assert(
-    verifyStatus === 'PASS' || verifyStatus === 'FAIL',
-    `expected project last verify status PASS/FAIL, got "${verifyStatus}"`
-  );
-  const verifyHash = await text(page.locator('[data-testid="ide-project-last-verify-hash"]'));
-  assert(
-    verifyHash.length > 0 && verifyHash.toLowerCase() !== 'pending',
-    `expected project last verify hash to be populated, got "${verifyHash}"`
-  );
-
-  await page.locator('[data-testid="mode-button-design"]').click();
-  await page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 10000 });
+  await page.getByTestId('mode-button-design').click();
   await mutateDesignCircuit(page);
-
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-
-  const dirtySinceVerify = await text(page.locator('[data-testid="ide-project-dirty-since-verify"]'));
-  assert(
-    dirtySinceVerify === 'DIRTY',
-    `expected dirty-since-verify indicator to be DIRTY, got "${dirtySinceVerify}"`
-  );
-  const ctaAfterMutation = await text(page.locator('[data-testid="ide-project-command-strip-primary-cta"]'));
-  assert(
-    ctaAfterMutation.toLowerCase().includes('verify'),
-    `expected project continue target to route Verify after design mutation, got "${ctaAfterMutation}"`
-  );
+  await page.getByTestId('mode-button-project').click();
+  await page.waitForFunction(() => /stale/i.test(document.querySelector('[data-testid="ide-project-fact-simulation"]')?.textContent ?? ''));
+  const retained = await page.evaluate((runId) => window.__RB_PROJECT_RUNTIME__.getState().verifyRunArchive.find(run => run.runId === runId), recorded.runId);
+  assert(JSON.stringify(retained) === JSON.stringify(recorded), 'Editing Design must retain the exact prior recording: ' + JSON.stringify({ present: Boolean(retained), changed: Object.keys(recorded).filter(key => JSON.stringify(recorded[key]) !== JSON.stringify(retained?.[key])) }));
+  const details = page.getByTestId('ide-project-details');
+  if (await details.getAttribute('open') === null) await details.locator('summary').click();
+  assert((await page.getByTestId('ide-project-hash-short').innerText()).trim() !== hash,
+    'A real circuit edit must change the current design digest while retaining the recording');
+  assert(/design/i.test(await page.getByTestId('ide-project-continue').innerText()), 'After editing, continuation must return to Design');
+  console.log('Fresh -> checked PASS -> real Design edit -> stale, with exact recording retained');
 });

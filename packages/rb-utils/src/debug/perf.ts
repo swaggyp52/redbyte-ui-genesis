@@ -2,7 +2,7 @@
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
-const isDev = import.meta.env.DEV;
+const isDev = import.meta.env?.DEV ?? false;
 
 const measureBuckets = new Map<string, number[]>();
 const renderCounts = new Map<string, number>();

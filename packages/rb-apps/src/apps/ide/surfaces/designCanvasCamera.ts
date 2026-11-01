@@ -203,3 +203,122 @@ export function centerDesignSelectionWithContext(
     zoom: camera.zoom,
   };
 }
+
+export interface DesignCanvasRegion {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/**
+ * The smallest pan that brings a world-space region inside the viewport, at the camera's own
+ * zoom. A region already in view returns the camera untouched; one larger than the viewport is
+ * aligned to its leading edge. The zoom is never changed: opening a pane beside the sheet must
+ * not rescale the work a student is looking at.
+ */
+export function keepRegionInView(
+  camera: DesignCanvasCamera,
+  viewport: DesignCanvasViewport,
+  region: DesignCanvasRegion,
+  inset = 24
+): DesignCanvasCamera {
+  if (!isFiniteCamera(camera) || viewport.width <= 0 || viewport.height <= 0) return camera;
+  const shift = (start: number, end: number, size: number): number => {
+    const pad = Math.min(inset, size / 4);
+    if (end - start > size - pad * 2) return pad - start;
+    if (start < pad) return pad - start;
+    if (end > size - pad) return size - pad - end;
+    return 0;
+  };
+  const dx = shift(region.minX * camera.zoom + camera.x, region.maxX * camera.zoom + camera.x, viewport.width);
+  const dy = shift(region.minY * camera.zoom + camera.y, region.maxY * camera.zoom + camera.y, viewport.height);
+  return dx === 0 && dy === 0 ? camera : { x: camera.x + dx, y: camera.y + dy, zoom: camera.zoom };
+}
+
+/**
+ * A sheet and where its top-left sits on the screen. The camera is measured from that corner,
+ * so when the corner moves (the library is shown or hidden) the same camera draws every part
+ * somewhere else on the screen.
+ */
+export interface DesignCanvasFrame extends DesignCanvasViewport {
+  left: number;
+  top: number;
+}
+
+/** The world point drawn at the middle of the sheet, or null for an unusable camera or sheet. */
+export function designCanvasWorldCenter(
+  camera: DesignCanvasCamera,
+  viewport: DesignCanvasViewport
+): DesignCanvasGraphAnchor | null {
+  if (!isFiniteCamera(camera) || viewport.width <= 0 || viewport.height <= 0) return null;
+  return {
+    x: (viewport.width / 2 - camera.x) / camera.zoom,
+    y: (viewport.height / 2 - camera.y) / camera.zoom,
+  };
+}
+
+/**
+ * The camera at `zoom` that draws `point` at the middle of the sheet. A view switch (Schematic,
+ * Split, Code) uses it to keep the part of the circuit the student was looking at in the middle
+ * of the sheet they chose.
+ */
+export function centerDesignCanvasOn(
+  point: DesignCanvasGraphAnchor,
+  viewport: DesignCanvasViewport,
+  zoom: number
+): DesignCanvasCamera {
+  return { x: viewport.width / 2 - point.x * zoom, y: viewport.height / 2 - point.y * zoom, zoom };
+}
+
+/**
+ * Keeps every part where it is on the screen when the sheet's top-left moves: the camera takes
+ * up the move. A sheet whose corner did not move (the inspector opening on the right) returns
+ * the very same camera.
+ */
+export function holdDesignCanvasOnPage(
+  camera: DesignCanvasCamera,
+  previous: DesignCanvasFrame,
+  next: DesignCanvasFrame
+): DesignCanvasCamera {
+  const dx = previous.left - next.left;
+  const dy = previous.top - next.top;
+  if (!isFiniteCamera(camera) || (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5)) return camera;
+  return { x: camera.x + dx, y: camera.y + dy, zoom: camera.zoom };
+}
+
+/**
+ * Where a student was working, per project and module, for this session. Design unmounts when
+ * another workspace is opened; without this it reframed the whole circuit on every return and
+ * discarded a deliberate zoom. It is view state only and is never saved with the project.
+ */
+const workingCameras = new Map<string, DesignCanvasCamera>();
+/** Keys whose remembered camera is the untouched frame of the work, not a view the student chose. */
+const framedCameraKeys = new Set<string>();
+
+export function designCameraKey(projectId: string | null | undefined, moduleId: string): string {
+  return `${projectId?.trim() || 'project'}\u0000${moduleId}`;
+}
+
+export function rememberDesignCamera(key: string, camera: DesignCanvasCamera, framed = false): void {
+  if (!isFiniteCamera(camera)) return;
+  workingCameras.set(key, { x: camera.x, y: camera.y, zoom: camera.zoom });
+  if (framed) framedCameraKeys.add(key);
+  else framedCameraKeys.delete(key);
+}
+
+/** Whether the remembered camera is still the untouched frame (it is framed again for a new sheet). */
+export function wasFramedDesignCamera(key: string): boolean {
+  return framedCameraKeys.has(key);
+}
+
+export function recallDesignCamera(key: string): DesignCanvasCamera | null {
+  const camera = workingCameras.get(key);
+  return camera ? { ...camera } : null;
+}
+
+/** Clears the session memory. Used by tests; the app keeps it for the life of the page. */
+export function forgetDesignCameras(): void {
+  workingCameras.clear();
+  framedCameraKeys.clear();
+}

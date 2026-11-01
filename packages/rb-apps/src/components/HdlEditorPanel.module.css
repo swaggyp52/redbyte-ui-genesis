@@ -1,0 +1,64 @@
+.panelRoot {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--rb-ui-lab-border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-surface-1) 92%, transparent) 0%, color-mix(in srgb, var(--rb-ui-lab-surface-2) 90%, transparent) 100%);
+  box-shadow: var(--rb-ui-lab-shadow-lg);
+}
+
+.panelHeader {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--rb-ui-lab-border) 78%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-surface-2) 90%, transparent) 0%, color-mix(in srgb, var(--rb-ui-lab-surface-1) 88%, transparent) 100%);
+}
+
+.contentArea {
+  flex: 1;
+  overflow: hidden;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.editorPane {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--rb-ui-lab-surface-1) 88%, transparent);
+  padding: 0.5rem;
+}
+
+.constraintsPane {
+  height: 10.5rem;
+  min-height: 10.5rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--rb-ui-lab-surface-1) 88%, transparent);
+  padding: 0.5rem;
+}
+
+.consoleWrap {
+  border-top: 1px solid color-mix(in srgb, var(--rb-ui-lab-border) 76%, transparent);
+  background: color-mix(in srgb, var(--rb-ui-lab-surface-1) 88%, transparent);
+}
+
+.consoleTitle {
+  padding: 0.5rem 1rem;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.consoleBody {
+  padding: 0 1rem 0.75rem;
+  max-height: 10rem;
+  overflow: auto;
+}

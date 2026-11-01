@@ -1,4 +1,4 @@
-import { jsx as _jsx } from "react/jsx-runtime";
+import React from 'react';
 export function Text({ as, size = 'base', weight = 'normal', color = 'default', children, ...props }) {
     const Component = as || 'span';
     const sizeStyles = {
@@ -22,5 +22,5 @@ export function Text({ as, size = 'base', weight = 'normal', color = 'default', 
         accent: 'text-[var(--rb-color-accent-500)]',
     };
     const className = [sizeStyles[size], weightStyles[weight], colorStyles[color]].join(' ');
-    return (_jsx(Component, { className: className, ...props, children: children }));
+    return React.createElement(Component, { className, ...props }, children);
 }

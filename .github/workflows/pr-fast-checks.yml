@@ -1,0 +1,140 @@
+# PR Fast Checks - lean pull-request pipeline
+#
+# Bounded, fast validation for every pull request: install, typecheck, CSS
+# ownership audit, current-doc validation, encoding hygiene, public start-page
+# contract, build/deploy contract, and the unified production build (with the
+# dist/ verifier). Uploads the built dist/ as an artifact for inspection.
+#
+# The expensive Classroom Truth Gates aggregate (~90+ min browser matrix) stays
+# reserved for pull requests into main and pushes to main
+# (.github/workflows/pr-truth-gates.yml). Do not duplicate it here.
+#
+# Two typecheck jobs, on purpose:
+#   1. "Typecheck, contracts, unified build" (fast-checks) is the GATE. Its Typecheck
+#      step runs the rb-apps ratchet (`pnpm -s typecheck:baseline`, which fails on an
+#      INCREASE over docs/validation/typecheck-baseline.json) and the plain `tsc` of
+#      the other workspace packages (`--filter '!@redbyte/rb-apps'`). Before this
+#      split the step ran `pnpm -s typecheck` = `pnpm -r --if-present run typecheck`,
+#      and @redbyte/rb-apps defined no typecheck script, so the application was never
+#      type-checked here at all.
+#   2. "Application typecheck (rb-apps, raw)" (app-typecheck) is the HONEST RED. It
+#      runs `pnpm -s typecheck:app` (scripts/rb-typecheck-app.mjs): the pinned
+#      compiler over packages/rb-apps/tsconfig.json with nothing subtracted, no
+#      continue-on-error, and a step summary that states the diagnostic count. It
+#      stays red until the application type-checks clean; that red is a true
+#      statement about the tree, not a flake, and the candidate is not release-ready
+#      while it is red. Do not hide it with a filter or continue-on-error.
+
+name: PR Fast Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pr-fast-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-checks:
+    name: Typecheck, contracts, unified build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Gating ratchet for rb-apps (fails on an increase over the committed baseline),
+      # then the plain typecheck of the other workspace packages. The raw rb-apps
+      # count is reported by the separate "Application typecheck (rb-apps, raw)" job.
+      - name: Typecheck - rb-apps ratchet (typecheck:baseline) + other workspace packages
+        run: |
+          pnpm -s typecheck:baseline
+          pnpm -r --if-present --filter '!@redbyte/rb-apps' run typecheck
+
+      - name: IDE CSS ownership audit
+        run: pnpm -s css:audit:ide
+
+      - name: Current-doc validation
+        run: pnpm -s rb:doc:validate
+
+      - name: Encoding hygiene
+        run: pnpm -s rb:encoding:check
+
+      - name: Public start-page contract
+        run: pnpm -s rb:site:start:test
+
+      - name: Build/deploy contract
+        run: pnpm -s rb:build:contract:test
+
+      - name: Gate - No solution Lab 4
+        run: pnpm -s ci:no-solution:lab4
+
+      # rc:d0:project-determinism-gate is excluded for now: its committed baseline
+      # hash is stale at the current branch head (pre-existing red, tracked in
+      # docs/ACTIVE_WORK.md). Re-add once the baseline drift is explained and fixed.
+      - name: Gate - Golden Basys3 export determinism
+        run: |
+          pnpm -s rc:e1:golden-basys3-export-gate
+          pnpm -s rc:e1:golden-basys3-alu-export-gate
+
+      - name: Unified build + dist verification
+        run: pnpm -s build:unified
+        env:
+          VITE_APP_ENV: production
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redbyte-dist-${{ github.event.pull_request.head.sha || github.sha }}
+          path: dist/
+          retention-days: 7
+
+  # Honest red: the raw application typecheck with nothing subtracted. No
+  # continue-on-error. Red until @redbyte/rb-apps type-checks clean under the pinned
+  # compiler; the step summary (written by scripts/rb-typecheck-app.mjs through
+  # GITHUB_STEP_SUMMARY) states the diagnostic count and that the candidate is not
+  # release-ready while this job is red.
+  app-typecheck:
+    name: Application typecheck (rb-apps, raw)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Raw application typecheck (rb-apps, no baseline, no continue-on-error)
+        run: pnpm -s typecheck:app

@@ -83,7 +83,7 @@ async function buildCounterManifestFile(): Promise<File> {
   zip.file('counter/counter.srcs/sources_1/new/top.vhd', topVhd);
   zip.file('counter/counter.srcs/constrs_1/new/top.xdc', topXdc);
   const bytes = await zip.generateAsync({ type: 'uint8array' });
-  const file = new File([bytes], 'counter.zip', { type: 'application/zip' });
+  const file = new File([new Uint8Array(bytes)], 'counter.zip', { type: 'application/zip' });
   Object.defineProperty(file, 'arrayBuffer', {
     configurable: true,
     value: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),

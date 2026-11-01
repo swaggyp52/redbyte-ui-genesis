@@ -5,7 +5,7 @@ import type { Connection, PortRef } from '@redbyte/rb-logic-core';
  */
 export function getConnectionNodeId(ref: PortRef | string): string {
     if (typeof ref === 'string') return ref;
-    return (ref as PortRef).nodeId;
+    return ref.nodeId;
 }
 
 /**
@@ -19,8 +19,8 @@ export function getConnectionPort(
     const ref = conn[side];
     if (typeof ref === 'string') {
         // Legacy support for fromPin/toPin properties
-        if (side === 'from') return (conn as any).fromPin || (conn as any).fromPort || fallback;
-        return (conn as any).toPin || (conn as any).toPort || fallback;
+        if (side === 'from') return conn.fromPin || conn.fromPort || fallback;
+        return conn.toPin || conn.toPort || fallback;
     }
-    return (ref as PortRef).portName || (ref as any).port || fallback;
+    return ref.portName || ref.port || fallback;
 }

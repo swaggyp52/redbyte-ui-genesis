@@ -86,6 +86,7 @@ function makePassiveSim(): RuntimeSimState {
   return {
     tick: 0,
     running: false,
+    stepMode: false,
     lastAction: undefined,
     speedHz: 10,
     irHash: 'ir-hash',
@@ -118,11 +119,8 @@ function renderSurface(circuit: Circuit) {
     <DesignSurface
       runtimeSim={makePassiveSim()}
       ioRows={[]}
-      onRuntimeSimRun={vi.fn()}
-      onRuntimeSimPause={vi.fn()}
       onRuntimeSimStep={vi.fn()}
       onRuntimeSimReset={vi.fn()}
-      onRuntimeSimSetSpeed={vi.fn()}
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}

@@ -1,3 +1,5 @@
+> **SUPERSEDED (historical).** This document describes an earlier RedByte era and does not reflect the current five-workspace product (Project / Design / Simulate / Board & Constraints / Build & Export). Current truth: `docs/product/RED_BYTE_V3_PRODUCT_SYSTEM.md` and `docs/manuals/RedByte_Product_Manual.md`.
+
 # RedByte Product Definition
 
 **Last Updated:** 2026-02-18  

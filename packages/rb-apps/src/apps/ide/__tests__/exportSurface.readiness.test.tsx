@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
  * Export surface readiness structure tests.
- * Verifies the five-zone layout and key structural invariants introduced
- * in the export handoff pass.
+ * Verifies the current package workspace, report, and requested technical evidence
+ * while preserving identity, mapping, structural readiness, and receipt boundaries.
  */
 import React from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
@@ -62,7 +62,7 @@ function buildMappedProject(): RBProject {
 
 const passResult: ProjectHealthVerifyResult = {
   status: 'pass',
-  runKind: 'compare',
+  runKind: 'verify',
   hash: 'abc123',
   reportHash: 'rep123',
   ranAtIso: '2026-03-25T00:00:00.000Z',
@@ -100,128 +100,97 @@ function makeWorkflowAuthority(options: { verifyResult?: ProjectHealthVerifyResu
 describe('ExportSurface readiness structure', () => {
   afterEach(() => { cleanup(); });
 
-  it('renders ide-export-readiness-hero as the outer hero section', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    expect(getByTestId('ide-export-readiness-hero')).toBeTruthy();
+  function renderMapped(checked = false) {
+    return render(<ExportSurface project={buildMappedProject()} determinismHash="h1"
+      verifyResult={checked ? passResult : undefined}
+      workflowAuthority={makeWorkflowAuthority({ verifyResult: checked ? passResult : undefined })} />);
+  }
+
+  it('renders the readiness hero as the package workspace', () => {
+    const view = renderMapped();
+    expect(view.getByTestId('ide-export-readiness-hero').getAttribute('data-document')).toBe('artifacts');
   });
 
-  it('ide-export-summary-card is inside ide-export-readiness-hero', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    const hero = getByTestId('ide-export-readiness-hero');
-    expect(within(hero).getByTestId('ide-export-summary-card')).toBeTruthy();
+  it('keeps package identity and decision inside the readiness hero', () => {
+    const view = renderMapped();
+    const hero = view.getByTestId('ide-export-readiness-hero');
+    const decision = within(hero).getByTestId('ide-export-package-inspector-v1');
+    expect(within(decision).getByTestId('ide-export-package-identity').textContent).toBe('readiness-structure-mapped');
   });
 
-  it('ide-export-checks-dock is inside ide-export-readiness-hero', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    const hero = getByTestId('ide-export-readiness-hero');
-    expect(within(hero).getByTestId('ide-export-checks-dock')).toBeTruthy();
+  it('reveals readiness checks through the technical details interaction', () => {
+    const view = renderMapped();
+    expect(view.queryByTestId('ide-export-gate-stack')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-export-open-technical-evidence'));
+    const dialog = view.getByTestId('ide-export-technical-dialog');
+    expect(within(dialog).getByTestId('ide-export-gate-stack')).toBeTruthy();
+    expect(within(dialog).getByTestId('ide-export-gate-mapping').textContent).toContain('2/2 required');
   });
 
-  it('ide-export-design-summary is inside ide-export-readiness-hero', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    const hero = getByTestId('ide-export-readiness-hero');
-    expect(within(hero).getByTestId('ide-export-design-summary')).toBeTruthy();
+  it('shows the current generated design source in the selected preview', () => {
+    const view = renderMapped();
+    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
+    expect(view.getByTestId('ide-export-preview-path').textContent).toBe('top.vhd');
+    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity top is');
   });
 
-  it('ide-export-summary-card eyebrow has no duplicate status pill', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-    const card = getByTestId('ide-export-summary-card');
-    expect(card.textContent).toContain('Export handoff station');
-    // Eyebrow has only the span, no pill
-    const eyebrow = card.querySelector('.ide-export-summary-eyebrow');
-    expect(eyebrow).toBeTruthy();
-    expect(eyebrow!.children).toHaveLength(1);
+  it('keeps a single package eyebrow separate from the derived status', () => {
+    const view = renderMapped(true);
+    const decision = view.getByTestId('ide-export-package-inspector-v1');
+    const eyebrows = decision.querySelectorAll('.ide-surface-block-label');
+    expect(eyebrows).toHaveLength(1);
+    expect(eyebrows[0].textContent).toBe('Vivado package');
+    expect(within(decision).getByTestId('ide-export-derived-state').textContent).toBe('Package current');
   });
 
-  it('ide-export-package-handoff is in the DOM', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    expect(getByTestId('ide-export-package-handoff')).toBeTruthy();
+  it('offers role-specific submission handoff through its collapsed guidance disclosure', () => {
+    const view = renderMapped();
+    const disclosure = view.getByTestId('ide-export-readiness-disclosure');
+    expect(disclosure.hasAttribute('open')).toBe(false);
+    const summary = disclosure.querySelector('summary');
+    if (!summary) throw new Error('Readiness disclosure must have an actionable summary');
+    fireEvent.click(summary);
+    for (const role of ['project', 'source', 'constraints', 'simulation', 'readme']) {
+      expect(within(disclosure).getByTestId(`ide-export-submission-role-${role}`)).toBeTruthy();
+    }
   });
 
-  it('ide-export-build-output and ide-export-artifact-preview both exist', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    expect(getByTestId('ide-export-build-output')).toBeTruthy();
-    expect(getByTestId('ide-export-artifact-preview')).toBeTruthy();
+  it('keeps generation and artifact preview as distinct work objects', () => {
+    const view = renderMapped();
+    expect(view.getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');
+    // The preview is a separate object that exists once a file is chosen.
+    expect(view.queryByTestId('ide-export-artifact-preview')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
+    expect(view.getByTestId('ide-export-artifact-preview')).toBeTruthy();
+    expect(view.getByTestId('ide-export-primary-actions').contains(view.getByTestId('ide-export-artifact-preview'))).toBe(false);
   });
 
-  it('ide-export-mapping-table is in the DOM (collapsed in details)', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    expect(getByTestId('ide-export-mapping-table')).toBeTruthy();
+  it('shows read-only mapping in the explicit handoff report', () => {
+    const view = render(<ExportSurface project={buildMappedProject()} determinismHash="h1" activeDocument={{ kind: 'handoff' }} />);
+    const mapping = view.getByTestId('ide-package-handoff-mapping');
+    expect(mapping.textContent).toContain('V17');
+    expect(mapping.textContent).toContain('U16');
+    expect(within(mapping).queryByRole('textbox')).toBeNull();
   });
 
-  it('ide-export-advanced-details wraps determinism-checks and evidence-details', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        workflowAuthority={makeWorkflowAuthority()}
-      />
-    );
-    const advanced = getByTestId('ide-export-advanced-details');
-    expect(within(advanced).getByTestId('ide-export-determinism-checks')).toBeTruthy();
-    expect(within(advanced).getByTestId('ide-export-evidence-details')).toBeTruthy();
+  it('groups determinism checks and build identity in requested technical evidence', () => {
+    const view = renderMapped();
+    expect(view.queryByTestId('ide-export-deterministic-checks')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-export-open-technical-evidence'));
+    const dialog = view.getByTestId('ide-export-technical-dialog');
+    expect(within(dialog).getByTestId('ide-export-deterministic-checks')).toBeTruthy();
+    expect(within(dialog).getByTestId('ide-export-trust-axes')).toBeTruthy();
+    expect(dialog.textContent).toContain('Build identity');
+    expect(dialog.textContent).toContain('Export hash');
   });
 
-  it('readiness hero contains READY text when export is trusted', () => {
-    const { getByTestId } = render(
-      <ExportSurface
-        project={buildMappedProject()}
-        determinismHash="h1"
-        verifyResult={passResult}
-        dirtySinceVerify={false}
-        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-      />
-    );
-    expect(getByTestId('ide-export-readiness-hero').textContent).toContain('READY');
+  it('shows current checked evidence without claiming a ready download receipt', () => {
+    const view = renderMapped(true);
+    const decision = view.getByTestId('ide-export-package-inspector-v1');
+    expect(decision.getAttribute('data-export-verification-trust')).toBe('trusted');
+    expect(decision.getAttribute('data-export-action-state')).toBe('not-downloaded');
+    expect(decision.getAttribute('data-export-package-state')).toBe('draft');
+    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Package current');
+    expect(view.getByTestId('ide-export-package-build-v1').textContent).toBe('Generate & download checked ZIP');
   });
 });

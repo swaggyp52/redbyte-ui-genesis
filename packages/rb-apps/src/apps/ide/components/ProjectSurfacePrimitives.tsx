@@ -368,6 +368,8 @@ export interface ExamplesBrowserProps {
   activeExampleId?: string | null;
   onLoad: (exampleId: string) => void;
   defaultExpanded?: boolean;
+  /** A picker dialog: search and cards, without the tag toolbar. */
+  compact?: boolean;
   testId?: string;
 }
 
@@ -397,6 +399,7 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
   activeExampleId,
   onLoad,
   defaultExpanded = true,
+  compact = false,
   testId,
 }) => {
   const [query, setQuery] = useState('');
@@ -506,34 +509,39 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
               data-testid="ide-projectx-examples-search"
               aria-label="Search examples"
             />
-            <div
-              className="ide-projectx-examples-tags"
-              data-testid="ide-projectx-examples-tags"
-              role="toolbar"
-              aria-label="Filter by tag"
-            >
-              <button
-                type="button"
-                className={`ide-projectx-tag ${activeTag === null ? 'is-active' : ''}`}
-                onClick={() => setActiveTag(null)}
-                data-testid="ide-projectx-tag-all"
-                aria-pressed={activeTag === null}
+            {/* In a picker dialog the reader is choosing, not browsing a catalogue: the search
+                already covers every tag, and twenty-five chips above the first card were
+                unprioritized density in a 560px column. */}
+            {compact ? null : (
+              <div
+                className="ide-projectx-examples-tags"
+                data-testid="ide-projectx-examples-tags"
+                role="toolbar"
+                aria-label="Filter by tag"
               >
-                All
-              </button>
-              {allTags.map((tag) => (
                 <button
-                  key={tag}
                   type="button"
-                  className={`ide-projectx-tag ${activeTag === tag ? 'is-active' : ''}`}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                  data-testid={`ide-projectx-tag-${slug(tag)}`}
-                  aria-pressed={activeTag === tag}
+                  className={`ide-projectx-tag ${activeTag === null ? 'is-active' : ''}`}
+                  onClick={() => setActiveTag(null)}
+                  data-testid="ide-projectx-tag-all"
+                  aria-pressed={activeTag === null}
                 >
-                  {tag}
+                  All
                 </button>
-              ))}
-            </div>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`ide-projectx-tag ${activeTag === tag ? 'is-active' : ''}`}
+                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                    data-testid={`ide-projectx-tag-${slug(tag)}`}
+                    aria-pressed={activeTag === tag}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="ide-projectx-examples-grid" data-testid="ide-projectx-examples-grid">
             {filtered.length === 0 ? (
@@ -580,21 +588,24 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
                   </div>
                   <div className="ide-projectx-example-card-actions">
                     {/*
-                      Preserve the legacy `ide-project-load-start-*` testid so
-                      lab-day flows that click "Load & Design" on alternate
-                      starters keep working. The new wrapper testid below
-                      (`ide-projectx-example-load-*`) is additive.
+                      Both legacy hooks survive on nested elements, matching the
+                      retired flat list: the clickable button carries
+                      `ide-project-landing-example-*` (the gate harness's
+                      universal project loader) and the label span carries
+                      `ide-project-load-start-*` (lab-day flows); clicks on the
+                      span reach the button. `ide-projectx-example-load-*`
+                      stays additive.
                     */}
                     <span
                       data-testid={`ide-projectx-example-load-${ex.id}`}
                       style={{ display: 'contents' }}
                     >
                       <IdeButton
-                        tone="primary"
+                        tone="secondary"
                         onClick={() => onLoad(ex.id)}
-                        testId={`ide-project-load-start-${ex.id}`}
+                        testId={`ide-project-landing-example-${ex.id}`}
                       >
-                        Load &amp; Design →
+                        <span data-testid={`ide-project-load-start-${ex.id}`}>Load &amp; Design -&gt;</span>
                       </IdeButton>
                     </span>
                   </div>

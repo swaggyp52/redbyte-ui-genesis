@@ -2,6 +2,7 @@
 // Use without permission prohibited.
 
 import React from 'react';
+import { useProjectRuntime } from '../../projectRuntime';
 import { IdeButton } from '../../components/IdePrimitives';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -17,12 +18,18 @@ export interface VerifyCommandBarProps {
 
   /** Run action */
   readonly onRun: () => void;
+  readonly onReproduce?: () => void;
+  readonly reproduceDisabledReason?: string;
+  /** The selected recording's state. It reads in this row, beside the scenario it belongs to. */
+  readonly recordingSlot?: React.ReactNode;
+  readonly runBlockedReason?: string;
   readonly runLabel: string;
   readonly runDisabled: boolean;
   readonly runPulsing?: boolean;
   /**
-   * When cases exist without saved checks, authoring expected outputs becomes
-   * the primary task while Observe remains available as a secondary run.
+   * True when the cases carry no expected outputs. Observe stays primary and runnable in that
+   * state - it is the ordinary way to use the instrument, not a deficiency. This only offers the
+   * optional route to authoring reference values for a reader who wants a comparison.
    */
   readonly needsExpectedOutputs?: boolean;
   readonly onAuthorExpectedOutputs?: () => void;
@@ -90,24 +97,48 @@ export interface VerifyCommandBarProps {
    * (first recovery move + where detail lives).
    */
   readonly failureRecoveryLine?: string;
-  readonly workspaceMode?: 'scenario' | 'replay' | 'checks';
-  readonly onWorkspaceModeChange?: (mode: 'scenario' | 'replay' | 'checks') => void;
+  readonly workspaceMode?: 'scenario' | 'bench' | 'replay' | 'checks' | 'testbench';
+  readonly onWorkspaceModeChange?: (
+    mode: 'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
+  ) => void;
   readonly configuredCheckCount?: number;
   readonly hasReplay?: boolean;
+  /** Live I/O (drive inputs, read outputs) is a toggle over the current document. */
+  readonly liveIoActive?: boolean;
+  readonly onToggleLiveIo?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
+  isCompareMode,
+  onSetObserve,
+  onSetCompare,
+  compareAvailable,
+  compareUnavailableReason,
   onRun,
+  onReproduce,
+  reproduceDisabledReason,
+  recordingSlot,
+  runBlockedReason,
+  experimentScenarioName,
+  runLabel,
   runDisabled,
   runPulsing,
+  needsExpectedOutputs,
+  onAuthorExpectedOutputs,
   workspaceMode = 'scenario',
   onWorkspaceModeChange,
   configuredCheckCount = 0,
   hasReplay = false,
+  liveIoActive = false,
+  onToggleLiveIo,
 }) => {
   const commandBarRef = React.useRef<HTMLDivElement>(null);
+  const status = useProjectRuntime(state => state.verificationExecution.status);
+  const message = useProjectRuntime(state => state.verificationExecution.message);
+  const cancelExecution = useProjectRuntime(state => state.cancelVerification);
+  const computing = ['preparing', 'computing', 'publishing'].includes(status);
   const restoreRunFocusRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -169,64 +200,48 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     onRun();
   };
 
+  const explainerText = runBlockedReason ?? (configuredCheckCount > 0
+    ? configuredCheckCount + ' saved checks are evaluated automatically.'
+    : 'No checks configured · records outputs without a pass/fail verdict.');
   return (
     <div
       ref={commandBarRef}
-      className="ide-verify-command-bar"
+      className="wb-toolbar rb-sim-toolbar"
       data-testid="ide-verify-command-bar"
       data-run-mode="simulation"
       data-workspace-mode={workspaceMode}
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      <div className="ide-vcb-row ide-vcb-row--primary">
-        <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
-          <div className="ide-vcb-mode-toggle" role="tablist" aria-label="Simulation Studio workspace">
-            {(['scenario', 'replay', 'checks'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                role="tab"
-                className={`ide-vcb-mode-btn${workspaceMode === mode ? ' is-active' : ''}`}
-                onClick={() => onWorkspaceModeChange?.(mode)}
-                data-testid={`ide-vcb-workspace-${mode}`}
-                aria-selected={workspaceMode === mode}
-                disabled={mode === 'replay' && !hasReplay}
-                title={mode === 'replay' && !hasReplay ? 'Run the simulation to create a replay.' : undefined}
-              >
-                {mode === 'scenario'
-                  ? 'Scenario'
-                  : mode === 'replay'
-                    ? 'Replay'
-                    : `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div
-          className="ide-vcb-group ide-vcb-group--actions ide-vcb-run-authority"
-          data-testid="ide-vcb-run-authority"
+      <strong className="rb-sim-scenario-name">{experimentScenarioName || 'Current scenario'}</strong>
+      {!recordingSlot && <span className="wb-toolbar-fact" data-testid="ide-vcb-unrecorded">No recording yet</span>}
+      {!recordingSlot && <span className="wb-toolbar-fact" data-testid="ide-vcb-check-count" title={explainerText}>{configuredCheckCount} optional checks</span>}
+      {recordingSlot}
+      {/* Reproduce re-executes this recording's own inputs, so it sits with the recording. Run is
+          the one primary action and uses the scenario as it is now. */}
+      {onReproduce && !recordingSlot && <details className="rb-sim-recording-actions"><summary>Recording actions</summary><IdeButton tone="secondary" onClick={onReproduce} disabled={runDisabled || Boolean(reproduceDisabledReason)} testId="ide-vcb-reproduce"
+        title={reproduceDisabledReason || 'Run this recording\'s own design and stimulus again with the same engine.'}>Reproduce recording</IdeButton>
+        {/* A disabled button's title never reaches keyboard or touch users: the reason is text, as in the recording strip. */}
+        {reproduceDisabledReason && <p className="rb-sim-recording-actions-reason" data-testid="ide-vcb-reproduce-reason">{reproduceDisabledReason}</p>}</details>}
+      <span className="wb-toolbar-spacer" />
+      <div className="wb-toolbar-group rb-sim-run" data-testid="ide-vcb-run-authority">
+        <IdeButton
+          tone="primary"
+          onClick={handleRun}
+          disabled={runDisabled || computing}
+          testId="ide-vcb-run"
+          className={`wb-btn wb-btn--primary${runPulsing ? ' is-pulsing' : ''}`}
+          hierarchySurface="verify"
+          hierarchyRole="next"
         >
-          <IdeButton
-            tone="primary"
-            onClick={handleRun}
-            disabled={runDisabled}
-            testId="ide-vcb-run"
-            className={runPulsing ? 'is-pulsing' : undefined}
-            hierarchySurface="verify"
-            hierarchyRole="next"
-          >
-            Run simulation
-          </IdeButton>
-        </div>
-
-        <p className="ide-vcb-mode-explainer" data-testid="ide-vcb-mode-explainer">
-          {configuredCheckCount > 0
-            ? `Runs the circuit and evaluates ${configuredCheckCount} optional check${configuredCheckCount === 1 ? '' : 's'}.`
-            : 'Runs the circuit and records observed values. No checks are required.'}
-        </p>
+          {runLabel}
+        </IdeButton>
+        {computing ? <IdeButton tone="secondary" testId="ide-verify-cancel-execution" onClick={() => cancelExecution()}>Cancel Run</IdeButton> : null}
       </div>
+      {computing || status === 'cancelled' || status === 'error' ? <span role="status" data-testid="ide-verify-execution-status" data-status={status} className="wb-toolbar-meta">
+        {computing ? `${status === 'preparing' ? 'Preparing' : status === 'publishing' ? 'Publishing' : 'Computing'} · last recording kept` : message}
+      </span> : null}
+      <span className={`wb-toolbar-meta rb-sim-explainer${runBlockedReason ? ' is-blocked-reason' : ''}`} hidden={!runBlockedReason} title={explainerText} data-testid="ide-vcb-mode-explainer">{explainerText}</span>
     </div>
   );
 };

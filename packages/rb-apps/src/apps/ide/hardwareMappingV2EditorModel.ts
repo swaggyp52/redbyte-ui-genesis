@@ -50,6 +50,28 @@ export type HardwareMappingV2EditOperation =
   | {
       type: 'clear_entry_pins';
       entryId: string;
+    }
+  | {
+      /** Set a single assignment's pin (a scalar/bit, or one bit of a bus/slice). */
+      type: 'set_bit_pin';
+      entryId: string;
+      bitIndex?: number;
+      pin: string;
+    }
+  | {
+      /** Swap the pins of two assignments (used to untangle a pin conflict). */
+      type: 'swap_pins';
+      a: { entryId: string; bitIndex?: number };
+      b: { entryId: string; bitIndex?: number };
+    }
+  | {
+      /**
+       * Resolve a pin conflict: clear `pin` from every assignment currently
+       * holding it EXCEPT the one to keep.
+       */
+      type: 'resolve_conflict';
+      pin: string;
+      keep: { entryId: string; bitIndex?: number };
     };
 
 export function buildStructuredHardwareEntryViews(
@@ -119,10 +141,95 @@ export function applyHardwareMappingV2Edit(
       clearPinsOnEntry(entry);
       return next;
     }
+    case 'set_bit_pin': {
+      const entry = next.entries.find((candidate) => candidate.id === operation.entryId);
+      if (!entry) return next;
+      writeAssignmentPin(entry, operation.bitIndex, operation.pin.trim());
+      return next;
+    }
+    case 'swap_pins': {
+      const entryA = next.entries.find((candidate) => candidate.id === operation.a.entryId);
+      const entryB = next.entries.find((candidate) => candidate.id === operation.b.entryId);
+      if (!entryA || !entryB) return next;
+      const pinA = readAssignmentPin(entryA, operation.a.bitIndex);
+      const pinB = readAssignmentPin(entryB, operation.b.bitIndex);
+      writeAssignmentPin(entryA, operation.a.bitIndex, pinB);
+      writeAssignmentPin(entryB, operation.b.bitIndex, pinA);
+      return next;
+    }
+    case 'resolve_conflict': {
+      const target = operation.pin.trim().toUpperCase();
+      if (!target) return next;
+      for (const entry of next.entries) {
+        forEachAssignment(entry, (bitIndex, pin) => {
+          if (pin.trim().toUpperCase() !== target) return;
+          const isKept =
+            entry.id === operation.keep.entryId && bitIndex === operation.keep.bitIndex;
+          if (!isKept) writeAssignmentPin(entry, bitIndex, '');
+        });
+      }
+      return next;
+    }
     default: {
       const exhaustive: never = operation;
       return exhaustive;
     }
+  }
+}
+
+/** Read one assignment's pin (scalar/bit → its pin; bus/slice → its bit's pin). */
+export function readAssignmentPin(
+  entry: HardwareMappingEntryV2,
+  bitIndex: number | undefined
+): string {
+  if (entry.kind === 'scalar' || entry.kind === 'bit') return entry.pin ?? '';
+  if (entry.kind === 'slice') {
+    const index = bitIndex ?? 0;
+    return entry.pins[index] ?? '';
+  }
+  if (entry.kind === 'bus') {
+    const bit = entry.bits.find((candidate) => candidate.bitIndex === bitIndex);
+    return bit?.pin ?? '';
+  }
+  return '';
+}
+
+function writeAssignmentPin(
+  entry: HardwareMappingEntryV2,
+  bitIndex: number | undefined,
+  pin: string
+): void {
+  const value = pin.trim();
+  if (entry.kind === 'scalar' || entry.kind === 'bit') {
+    entry.pin = value;
+    return;
+  }
+  if (entry.kind === 'slice') {
+    const index = bitIndex ?? 0;
+    if (index < 0 || index >= entry.pins.length) return;
+    entry.pins = entry.pins.map((existing, i) => (i === index ? value : existing));
+    return;
+  }
+  if (entry.kind === 'bus') {
+    entry.bits = entry.bits.map((bit) => (bit.bitIndex === bitIndex ? { ...bit, pin: value } : bit));
+  }
+}
+
+/** Visit each (bitIndex, pin) assignment of an entry. bitIndex is undefined for scalar/bit. */
+function forEachAssignment(
+  entry: HardwareMappingEntryV2,
+  visit: (bitIndex: number | undefined, pin: string) => void
+): void {
+  if (entry.kind === 'scalar' || entry.kind === 'bit') {
+    visit(undefined, entry.pin ?? '');
+    return;
+  }
+  if (entry.kind === 'slice') {
+    entry.pins.forEach((pin, index) => visit(index, pin ?? ''));
+    return;
+  }
+  if (entry.kind === 'bus') {
+    entry.bits.forEach((bit) => visit(bit.bitIndex, bit.pin ?? ''));
   }
 }
 

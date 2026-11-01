@@ -9,6 +9,7 @@ import {
   decodeRunRecord,
   encodeRunRecord,
   indexStimulusByTick,
+  type InputToggleStimulusEvent,
   type RunRecord,
 } from '../recording/runRecord';
 import { applyStimulusEvents } from '../recording/stimulus';
@@ -61,7 +62,7 @@ describe('run recorder store', () => {
       nodes: [{ id: 'sw1', type: 'Switch', position: { x: 0, y: 0 }, state: { isOn: 0 } }],
       connections: [],
     };
-    const events = [
+    const events: InputToggleStimulusEvent[] = [
       { tick: 2, type: 'input_toggled' as const, nodeId: 'sw1', portName: 'out', value: 1 },
     ];
     const byTick = indexStimulusByTick(events);
@@ -71,6 +72,18 @@ describe('run recorder store', () => {
 
     const tick2 = applyStimulusEvents(baseCircuit, byTick.get(2) ?? []);
     expect(tick2.nodes[0].state?.isOn ?? 0).toBe(1);
+  });
+
+  it('keeps hardware events in the schedule without treating them as input toggles', () => {
+    const hardwareEvents = [
+      { tick: 2, type: 'hw_connect' as const, deviceId: 'board', target: 'basys3' },
+      { tick: 2, type: 'hw_io' as const, deviceId: 'board', inputs: { SW0: 1 }, outputs: {} },
+    ];
+    const byTick = indexStimulusByTick(hardwareEvents);
+    expect(byTick.get(2)).toEqual(hardwareEvents);
+    const replayed = applyStimulusEvents(TEST_CIRCUIT, byTick.get(2) ?? []);
+    expect(replayed).toEqual(TEST_CIRCUIT);
+    expect(replayed.nodes[0]).toBe(TEST_CIRCUIT.nodes[0]);
   });
 
   it('verifies replay traces against recorded traces', () => {

@@ -33,6 +33,19 @@ export function isDesignOwnedExportDiagnostic(
   return !(code === 'RBEX4200' && timingMode === 'manual_event_driven_lab');
 }
 
+/**
+ * Whether a design-owned export diagnostic also turns checks off for a Run. An output nothing
+ * drives (RBEX4103) blocks the package, but Verify already runs such a design honestly: the
+ * output reads X, its checks fail, and its evidence cannot become validated
+ * (simulationEvidence). A student can still check the outputs already wired.
+ */
+export function blocksCheckedRuns(
+  code: string,
+  timingMode?: DesignAuthorityTimingMode
+): boolean {
+  return isDesignOwnedExportDiagnostic(code, timingMode) && code !== 'RBEX4103';
+}
+
 export interface ProjectWorkflowAuthority {
   truth: ProjectTruthSnapshot;
   truthState: ProjectTruthState;
@@ -202,9 +215,9 @@ export function deriveHardwareExportFailureTruth(
   if (workflowAuthority.verifyState === 'not-run') {
     return advisory(
       'verify-not-run',
-      'Run Verify before relying on this handoff',
-      'No expected-output comparison has been recorded for this design state yet. Open Verify before you rely on the hardware or export handoff.',
-      'Open Verify',
+      'Run Simulate before relying on this handoff',
+      'No expected-output comparison has been recorded for this design state yet. Open Simulate before you rely on the hardware or export handoff.',
+      'Open Simulate',
       'verify'
     );
   }
@@ -212,9 +225,9 @@ export function deriveHardwareExportFailureTruth(
   if (workflowAuthority.verifyState === 'stale') {
     return advisory(
       'verify-stale',
-      'Verify evidence is stale',
-      'The design, testbench, or mapping changed after the last Compare run. Open Verify to rerun the current evidence before you rely on this handoff.',
-      'Open Verify',
+      'Simulation evidence is stale',
+      'The design, testbench, or mapping changed after the last Compare run. Open Simulate to rerun the current evidence before you rely on this handoff.',
+      'Open Simulate',
       'verify'
     );
   }
@@ -223,8 +236,8 @@ export function deriveHardwareExportFailureTruth(
     return advisory(
       'assertions-differ',
       'Review the failing comparison',
-      'The latest comparison differs from observed outputs. Open Verify to inspect the first difference before you rely on this handoff.',
-      'Open Verify',
+      'The latest comparison differs from observed outputs. Open Simulate to inspect the first difference before you rely on this handoff.',
+      'Open Simulate',
       'verify'
     );
   }
@@ -233,8 +246,8 @@ export function deriveHardwareExportFailureTruth(
     return advisory(
       'trace-only',
       'Run Compare checks for current evidence',
-      'Only a trace run is current. Open Verify and run Compare checks when you want current evidence for the export package.',
-      'Open Verify',
+      'Only a trace run is current. Open Simulate and run Compare checks when you want current evidence for the export package.',
+      'Open Simulate',
       'verify'
     );
   }
@@ -256,7 +269,7 @@ export function deriveHardwareExportFailureTruth(
       statusLabel: 'STALE',
       title: 'Rebuild the current bundle',
       message:
-        'Verify is current and passing, but the successful bundle no longer matches the current circuit. Rebuild it in Export so the ZIP matches the current design.',
+        'Simulation evidence is current and passing, but the successful bundle no longer matches the current circuit. Rebuild it in Export so the ZIP matches the current design.',
       primaryCtaLabel: 'Rebuild Current Bundle',
       primaryCtaIntent: 're-export-current-bundle',
     };
@@ -269,7 +282,7 @@ export function deriveHardwareExportFailureTruth(
       statusLabel: 'READY TO BUILD',
       title: 'Build the current bundle',
       message:
-        'Verify, mapping, and design inputs are ready for Export. Build the current Vivado project ZIP, then continue to the hardware handoff.',
+        'Simulation, mapping, and design inputs are ready for Export. Build the current Vivado project ZIP, then continue to the hardware handoff.',
       primaryCtaLabel: 'Build Current Bundle',
       primaryCtaIntent: 'build-current-bundle',
     };
@@ -281,7 +294,7 @@ export function deriveHardwareExportFailureTruth(
       severity: 'ready',
       statusLabel: 'READY',
       title: 'Program with the current handoff',
-      message: 'Verify and export are current. Continue to the program handoff for the Basys3.',
+      message: 'Simulation and export are current. Continue to the program handoff for the Basys3.',
       primaryCtaLabel: 'Open Program Handoff',
       primaryCtaIntent: 'program-handoff',
     };
@@ -289,9 +302,9 @@ export function deriveHardwareExportFailureTruth(
 
   return advisory(
     'verify-not-run',
-    'Run Verify before relying on this handoff',
-    'The handoff is available, but current expected-output evidence is still missing. Open Verify before you rely on this handoff.',
-    'Open Verify',
+    'Run Simulate before relying on this handoff',
+    'The handoff is available, but current expected-output evidence is still missing. Open Simulate before you rely on this handoff.',
+    'Open Simulate',
     'verify'
   );
 }

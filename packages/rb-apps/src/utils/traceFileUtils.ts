@@ -32,7 +32,7 @@ export async function saveTraceToFS(trace: HardwareTraceV1, filename: string): P
         // Let's assume we want to overwrite if user specified name, OR update if it exists.
         // But for MVP, let's just create.
 
-        await fs.createFile('/' + safeName, content);
+        fs.createFile('home', safeName, content);
         console.log('[TraceUtils] Saved trace to:', safeName);
         return true;
     } catch (error) {
@@ -110,7 +110,7 @@ export async function saveCapsuleToFS(capsule: RedByteCapsule, filename: string)
             safeName += '.json';
         }
 
-        await fs.createFile('/' + safeName, content);
+        fs.createFile('home', safeName, content);
         console.log('[TraceUtils] Saved capsule to:', safeName);
         return true;
     } catch (error) {
@@ -133,7 +133,7 @@ export async function loadCapsuleFromFS(fileIdOrName: string): Promise<RedByteCa
 
         if (!file || !file.content) return null;
 
-        let data: any;
+        let data: unknown;
         try {
             data = JSON.parse(file.content);
         } catch {

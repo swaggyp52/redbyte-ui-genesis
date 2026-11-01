@@ -1,3 +1,5 @@
+> **SUPERSEDED (historical).** This document describes an earlier RedByte era and does not reflect the current five-workspace product (Project / Design / Simulate / Board & Constraints / Build & Export). Current truth: `docs/course/INSTRUCTOR_QUICKSTART.md`.
+
 # Classroom Quickstart (Instructor/TA) — Basys3 Lab 4 ALU
 
 ## Pre-class ritual (run 10 minutes before lab)

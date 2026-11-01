@@ -8,6 +8,8 @@ export interface VivadoImportTclInput {
   sourcePaths: string[];
   constraintsPath: string;
   simulationPath?: string;
+  /** Entity declared by the testbench; becomes the sim_1 top so behavioral simulation elaborates it. */
+  simulationTop?: string;
   part?: string;
 }
 
@@ -54,6 +56,9 @@ export function generateVivadoImportTcl(input: VivadoImportTclInput): string {
       '  foreach sim_file [get_files -of_objects [get_filesets sim_1] *.vhd] {',
       '    set_property FILE_TYPE {VHDL 2008} $sim_file',
       '  }',
+      ...(input.simulationTop
+        ? [`  set_property top "${escapeTclString(sanitizeIdentifier(input.simulationTop, 'tb_top'))}" [get_filesets sim_1]`]
+        : []),
       '}'
     );
   }

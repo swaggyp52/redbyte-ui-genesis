@@ -35,7 +35,7 @@ describe('hardwareMappingGuidance', () => {
       expect(bus.msb).toBe(1);
       expect(bus.lsb).toBe(0);
     }
-    expect(scalar?.portName).toBe('y');
+    expect(scalar?.kind === 'scalar' ? scalar.portName : undefined).toBe('y');
   });
 
   it('suggestEntryIdFromHdl returns scalar or bus base name', () => {

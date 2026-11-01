@@ -1,0 +1,12 @@
+.ide-root .rb-live-hierarchy{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--rb-surface,#f7f9fc);z-index:5;min-width:0;min-height:0}
+.ide-root .rb-live-hierarchy-context{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:8px 12px;border-bottom:1px solid var(--rb-border,#bac6d2);font-size:12px}
+.ide-root .rb-live-hierarchy-context nav{display:flex;align-items:center;flex-wrap:wrap}
+.ide-root .rb-live-hierarchy-words{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--rb-font-mono,monospace)}
+.ide-root .rb-live-hierarchy-words strong{margin-left:5px}
+.ide-root .rb-live-hierarchy-work{display:flex;flex:1;min-height:0;min-width:0;overflow:auto;position:relative}
+.ide-root .rb-live-hierarchy-work .rb-schematic-projection{flex:1;min-width:0;min-height:320px;height:100%;margin:0}
+.ide-root .rb-live-hierarchy-work.is-enlarged .rb-schematic-projection{flex:none;width:150%;min-height:500px}
+.ide-root .rb-live-hierarchy-inspect{width:230px;flex:none;padding:14px;border-left:1px solid var(--rb-border,#bac6d2);overflow:auto;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.ide-root .rb-live-hierarchy-inspect p{margin:0;line-height:1.5}
+.ide-root .rb-live-hierarchy-inspect code{font-size:11px;overflow-wrap:anywhere;white-space:normal}
+.ide-root .rb-live-hierarchy-hint{position:absolute;bottom:8px;left:12px;font-size:12px;pointer-events:none;color:var(--rb-text-secondary,#526077)}

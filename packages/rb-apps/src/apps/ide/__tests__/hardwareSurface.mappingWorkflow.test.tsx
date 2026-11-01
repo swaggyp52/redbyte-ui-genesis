@@ -77,7 +77,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-hardware-command-strip"]')).toBeNull();
-    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain('Bind project signals to Basys3 resources');
+    expect(getByTestId('ide-hardware-mapping-progress')).toBeTruthy();
   });
 
   it('shows Complete state and full count when all required signals are mapped', () => {
@@ -101,6 +101,11 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table').getAttribute('data-work-priority')).toBe('primary');
+    // The behaviour this protects is that a zero is stated in words, not left as a bare
+    // digit. The words used to be 'all required mappings assigned' - a verbatim restatement
+    // of the MAPPING COMPLETE headline two chips to its left, in a ribbon that said the same
+    // thing six times. It still says it, once.
+    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain('none outstanding');
   });
 
   it('shows Incomplete state when a required signal has no pin', () => {
@@ -184,9 +189,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     );
 
     const table = getByTestId('ide-hw-map-table');
-    expect(table.getAttribute('data-columns')).toBe('Signal|Purpose|Board resource|Package pin|Status|Action');
-    expect(table.textContent).toContain('Signal');
-    expect(table.textContent).toContain('Purpose');
+    expect(table.getAttribute('data-columns')).toBe('Logical port|Board resource|State|Action');
+    expect(table.textContent).toContain('Logical port');
+    expect(table.textContent).not.toContain('Package pin');
     expect(table.textContent).toContain('Board resource');
     const afterMapping = getByTestId('ide-hw-after-mapping-tools');
     expect(afterMapping.tagName).toBe('SECTION');
@@ -231,7 +236,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     expect(outputs.querySelector('[data-testid="ide-hw-map-row-ld0"]')).toBeTruthy();
   });
 
-  it('keeps the board as a secondary reference after the mapping table', () => {
+  it('makes the board a primary assignment surface backed by the canonical mapping callback', () => {
     // Guide renders during active mapping (at least one row unmapped).
     // Use incomplete rows so mappingReady is false and guide is visible.
     const health = makeHealth();
@@ -239,6 +244,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       { id: 'sw0', label: 'sw0', direction: 'in' as const, pin: 'V17', required: true },
       { id: 'ld0', label: 'ld0', direction: 'out' as const, pin: '', required: true },
     ];
+    const onSetMappingPin = vi.fn();
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -252,15 +258,19 @@ describe('HardwareSurface — mapping workflow primitives', () => {
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
+          onSetMappingPin={onSetMappingPin}
         />
       </BoardSignalProvider>
     );
 
     const table = getByTestId('ide-hw-map-table');
     const board = getByTestId('ide-hw-map-board');
-    expect(board.getAttribute('data-work-priority')).toBe('reference');
+    expect(board.getAttribute('data-work-priority')).toBe('primary');
     expect(table.compareDocumentPosition(board) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('resource selector');
+    fireEvent.click(getByTestId('ide-hw-map-row-sw0'));
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('highlighted compatible resource');
+    fireEvent.click(getByTestId('ide-hw-map-sw-1-hit'));
+    expect(onSetMappingPin).toHaveBeenCalledWith('sw0', 'V16');
   });
 
   it('updates the visible signal-to-board-to-pin chain after a mapped row is selected', () => {
@@ -295,7 +305,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     expect(getByTestId('ide-hardware-chain-pin').textContent).toContain('V17');
   });
 
-  it('renders the export-owned logical-to-artifact projection without re-sanitizing EN', () => {
+  it('labels logical and artifact-port identity separately without re-sanitizing EN', () => {
     const health = makeHealth();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -332,7 +342,8 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     );
 
     expect(getByTestId('ide-hw-map-row-signal-en').textContent).toBe('EN');
-    expect(getByTestId('ide-hw-map-row-binding-en').textContent).toBe('Slide switch SW0');
+    expect(getByTestId('ide-hw-map-row-binding-en').textContent).toBe('SW0');
+    expect(getByTestId('ide-hardware-chain-artifact').textContent).toBe('Artifact portSW');
     fireEvent.click(getByTestId('ide-hw-map-row-en'));
     expect(getByTestId('ide-hardware-chain-artifact').textContent).toContain('SW');
     expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain(
@@ -425,7 +436,8 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     fireEvent.change(getByTestId('ide-hw-direct-resource-select'), { target: { value: 'LD1' } });
     fireEvent.click(getByTestId('ide-hw-assign-selected-resource'));
     expect(onSetMappingPin).toHaveBeenCalledWith('ld0', 'E19');
-    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('package pin E19');
+    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('LD1 selected. Save to update');
+    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).not.toContain('PACKAGE_PIN E19');
   });
 
   it('counts one missing mapping once when the row and Export report the same gap', () => {
@@ -564,7 +576,11 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Inspect the package in Export');
+    // The next line names Package and the package it will offer (draft or checked, with
+    // the reason); the one control beside it goes there and says so.
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toMatch(/Open Package to (inspect|generate|regenerate)|Package will offer/);
+    expect(getByTestId('ide-hw-continue-export').textContent).toBe('Continue to Package');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toMatch(/draft package|checked package/i);
     fireEvent.click(getByTestId('ide-hw-continue-export'));
     expect(onOpenExport).toHaveBeenCalledTimes(1);
   });

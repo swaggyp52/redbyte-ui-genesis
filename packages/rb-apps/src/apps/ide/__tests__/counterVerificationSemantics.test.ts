@@ -43,6 +43,7 @@ describe('2-Bit Up Counter verification semantics', () => {
       ioRows: counter.ioRows,
       scheduleContract: context.schedule,
     });
+    if (!policy) throw new Error('The counter fixture must resolve a clock execution policy');
     const vectors = materializeVectorsForClockPolicy({
       vectors: counter.vectors,
       ioRows: counter.ioRows,

@@ -1,208 +1,164 @@
 # RedByte
 
-**A deterministic FPGA educational IDE for digital logic design and Basys3 deployment**
+**Visual digital-logic engineering from circuit to FPGA handoff — a deterministic browser workbench for the Digilent Basys3.**
 
-**Stable Preview - Browser-E0** (2026-07-27). The canonical source is `main`.
-Browser simulation and generated-package workflows are validated locally; this
-label does not claim Vivado execution, a generated bitstream, board programming,
-or classroom reliability.
+![RedByte Design workbench: half adder circuit with component library, inline Basys3 mapping, and the five-stage navigator](./public/media/redbyte-design-workbench.png)
+
+**Live:** [redbyteapps.dev](https://redbyteapps.dev) · **Open the IDE:** [redbyteapps.dev/os/](https://redbyteapps.dev/os/)
 
 ---
 
 ## What is RedByte?
 
-RedByte is a browser-based IDE for designing, simulating, and verifying digital logic circuits, then exporting them as Vivado-ready project packages for the Digilent Basys3 FPGA board.
+RedByte is a browser-based engineering workbench for digital logic coursework. Students design circuits on a canvas-first workbench, simulate and observe behavior, assign signals to real Basys3 resources, and build a Vivado-ready engineering package — all in the browser, with the proof boundary kept explicit at every step.
 
-It provides:
-
-- Schematic circuit editor with combinational and sequential components
-- Deterministic tick-based simulation (topological sort, integer-only signals)
-- Verification engine with pass/fail semantics, waveform viewer, and diagnostic hints
-- Interactive Basys3 hardware pin mapping
-- Vivado Kit export (VHDL, XDC constraints, testbench, TCL project script)
-- VHDL import with fidelity reporting
-
-**Live:** [redbyteapps.dev](https://redbyteapps.dev)
+RedByte does not replace Vivado. It prepares and proves browser-side project state; AMD Vivado 2024.2 owns synthesis, implementation, timing, and bitstream generation downstream, and the physical board owns observed hardware behavior.
 
 ---
 
-## Public Start Path
+## Five workspaces
 
-The public doorway is:
+One application shell, one project authority, five workspaces:
 
-- [redbyteapps.dev/start.html](https://redbyteapps.dev/start.html) - explains RedByte, the workflow spine, local setup, the standalone Marcus companion, Vivado/Basys3 requirements, and current E0/E1/E2/E3 readiness limits.
-- [redbyteapps.dev/os/](https://redbyteapps.dev/os/) - opens the IDE directly.
+| Workspace | Purpose |
+|-----------|---------|
+| **Project** | Operating center: source explorer, live circuit overview, contextual next actions, recent projects, and recovery |
+| **Design** | Canvas-first circuit authoring with a component library, reusable one-level modules with instances, Canvas/Code/Split views, contextual inspector, and inline Basys3 mapping |
+| **Simulate** | Observe-first simulation: author scenarios, run, and inspect observed waveform truth; expected-output checks are optional and explicit; a testbench lens mirrors the packaged `testbench.vhd` |
+| **Board & Constraints** | Table-first assignment of logical signals to Basys3 resources through one canonical mapping authority, with an interactive board reference and XDC preview |
+| **Build & Export** | Vivado handoff manager: build, validate, inspect, and download the engineering package |
 
-RedByte does not replace Vivado. Vivado remains downstream for synthesis, implementation, bitstream generation, board programming, and hardware logs. Board programming evidence (E2) is not the same as observed board behavior evidence (E3).
+**Import / Recover** is a separate reviewed utility for opening RedByte packages, inspecting HDL/XDC, and restoring recovery checkpoints. It never silently replaces current work.
+
+### Observe-first simulation
+
+A simulation run records observed behavior even when zero checks are configured. Comparison is explicit: you create checks from observed values (or author them directly) only when you want formal pass/fail evidence. A zero-check run is *Simulated* — never silently trusted — and current passing checks are required before an export is treated as trusted.
 
 ---
 
-## Quick Start
+## Key capabilities
 
-For Windows, double-click:
+- Deterministic tick-based simulation (topological evaluation, integer-only signals, no wall-clock or random state in verify/export paths)
+- Combinational and supported sequential design: gates (2/3-input variants), Register (1-bit) with one clock domain, rising-edge capture, and active-high asynchronous reset
+- Reusable modules: create a module from a selection, place instances, open definitions, and see elaborated `instance.internal` signal lanes in simulation
+- Scenario authoring with waveform inspection, markers, per-event inspection, and check authoring from observed values
+- Canonical Basys3 mapping (`SW*`, `LD*`, `BTN*`, `CLK100MHZ`) with conflict detection and XDC truth preview
+- Deterministic 9-file Vivado handoff package: `top.vhd` (plus module sources), `top.xdc`, `testbench.vhd`, `vivado_import.tcl`, `program_and_test.tcl`, `EXPECTED_IO.json`, `project.rbproj.json`, `README.txt`, `BRINGUP.md`
+- Golden-export gates keep the generated package byte-stable across environments
+
+---
+
+## Proof boundary
+
+RedByte is honest about what the browser can prove:
+
+| Tier | Claim | Owner |
+|------|-------|-------|
+| **E0** | The package was generated from the current project state | RedByte (browser) |
+| **E1** | The design synthesizes and implements | AMD Vivado 2024.2 |
+| **E2** | The bitstream programs the board | Vivado + Basys3 |
+| **E3** | The physical board behaves as designed | Human observation |
+
+A physical Basys3 (`xc7a35tcpg236-1`) is required for E2/E3. Browser evidence never claims hardware behavior.
+
+---
+
+## Quick start
+
+Windows (double-click launcher):
 
 ```text
 run.bat
 ```
 
-The launcher checks Node.js and pnpm, installs workspace dependencies with pnpm if
-they are missing, then opens the local RedByte IDE.
-
-From a terminal, the same startup path is:
+From a terminal:
 
 ```bash
-pnpm start
+pnpm install
+pnpm dev          # RedByte IDE at http://localhost:5173
 ```
 
-Developer shortcuts:
+Pinned runtime: Node 20.19.0 (`.nvmrc`) with pnpm 10.24.0 (`corepack pnpm`).
+
+Other useful commands:
 
 ```bash
-corepack pnpm run dev              # Canonical current RedByte at http://localhost:5173
-corepack pnpm start:production     # Build and preview the /os/ production bundle
-corepack pnpm build:unified        # Full production build path
-```
-
-Run tests:
-
-```bash
-pnpm -w exec vitest run
+corepack pnpm build:unified        # Full production build (root doorway + /os IDE) into dist/
+corepack pnpm start:production     # Build and preview the production bundle (Windows launcher)
 ```
 
 ---
 
-## IDE Surfaces
+## Vivado handoff
 
-RedByte uses a focused IDE workbench plus one utility import surface:
-
-| Surface | Purpose |
-|---------|---------|
-| **Project** | Dashboard/home surface for project identity, readiness, next action, and starter/load routes |
-| **Design** | Schematic editor — place, wire, and configure circuit components |
-| **Verify** | Run test scenarios, view pass/fail results, inspect waveforms |
-| **Hardware** | Map Pins / physical board-binding surface for Basys3 resources and package-pin truth |
-| **Export** | Generate and download a Vivado Kit ZIP for synthesis and programming |
-| **Import** | Utility surface for VHDL/ZIP import with fidelity reporting |
-
-Marcus is not an IDE surface. It is a separate local companion command center started with `pnpm rb:marcus:start`.
+1. Finish the browser workflow through **Build & Export** and download the package ZIP.
+2. Open AMD Vivado 2024.2 and source `vivado_import.tcl` to create the project.
+3. Run synthesis and implementation, generate the bitstream, and program the Basys3.
+4. Follow `BRINGUP.md` inside the package to observe and record physical behavior.
 
 ---
 
-## Student Workflow
+## Architecture summary
 
-1. Start on the **Project** dashboard/home surface
-2. Build or revise the circuit on the **Design** surface
-3. Capture evidence on the **Verify** surface
-4. Bind project I/O on the **Hardware / Map Pins** surface
-5. Build and download the handoff package on the **Export** surface
-6. Open the exported project in AMD Vivado, synthesize, and program the board
+Monorepo using pnpm workspaces:
 
-RedByte generates the Vivado project files. Synthesis and board programming happen inside Vivado (requires AMD Vivado WebPACK, free for Basys3).
+```
+redbyte-ui-genesis/
+├── apps/
+│   └── playground/              # IDE host application (builds to /os)
+├── packages/
+│   ├── rb-apps/                 # IDE application: workspaces, workbench shell, surfaces
+│   ├── rb-logic-core/           # Deterministic circuit simulation engine
+│   ├── rb-logic-view/           # 2D circuit canvas
+│   ├── rb-fpga-toolchain/       # VHDL/XDC/TCL package generation
+│   ├── rb-board-profiles/       # Basys3 board/resource truth
+│   ├── rb-primitives/, rb-tokens/, rb-theme/   # Shared UI + design tokens
+│   └── ...
+├── public/                      # Public doorway (start.html), headers, redirects, media
+├── scripts/                     # Build, contract-test, and CI scripts
+└── docs/                        # Documentation (see docs/DOC_INDEX.md)
+```
 
----
+Deployment: GitHub Actions builds `dist/` (`pnpm build:unified`) and deploys to Cloudflare Pages with `wrangler pages deploy` — `main` to production ([redbyteapps.dev](https://redbyteapps.dev)), product branches to previews. Every deploy is verified by comparing `/os/version.json` against the triggering commit SHA. See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-## Instructor Workflow
-
-- Students export submission archives from the **Export** surface
-- Import student projects via the **Project** surface or **Import** surface
-- Submissions include SHA-256 integrity hashes for verification
+**Technology:** React 19 · TypeScript 5 (strict) · Vite · Zustand · Vitest · Playwright.
 
 ---
 
 ## Documentation
 
-### Course Quickstarts
-
-| File | Description |
-|------|-------------|
-| [STUDENT_QUICKSTART.md](./docs/course/STUDENT_QUICKSTART.md) | First-lab path for students: Project -> Design -> Verify -> Map Pins -> Export |
-| [INSTRUCTOR_QUICKSTART.md](./docs/course/INSTRUCTOR_QUICKSTART.md) | Assignment setup, proof tiers, and classroom support boundaries |
-| [TA_TROUBLESHOOTING_GUIDE.md](./docs/course/TA_TROUBLESHOOTING_GUIDE.md) | Stage-by-stage triage for setup, Verify, Export, Vivado, board, and Import issues |
-| [windows-quickstart.md](./docs/course/windows-quickstart.md) | Windows setup, launch, doctor, update, and reset scripts |
-
-### Product Manual
-
-The canonical product reference is maintained in `docs/manuals/`:
-
-| File | Description |
-|------|-------------|
-| [RedByte_Product_Manual.md](./docs/manuals/RedByte_Product_Manual.md) | Canonical reference (Markdown) |
-| [RedByte_Product_Manual_print.html](./docs/manuals/RedByte_Product_Manual_print.html) | Print-polished HTML |
-| [RedByte_Product_Manual.pdf](./docs/manuals/RedByte_Product_Manual.pdf) | Generated PDF |
-| [MANUAL_CLAIM_AUDIT.md](./docs/manuals/MANUAL_CLAIM_AUDIT.md) | Fact-audit — claims verified against source |
-| [MANUAL_TRACEABILITY_MATRIX.md](./docs/manuals/MANUAL_TRACEABILITY_MATRIX.md) | Claim → source file mapping |
-| [MANUAL_CONFORMANCE.md](./docs/manuals/MANUAL_CONFORMANCE.md) | Rules for keeping the manual accurate |
-
-### Architecture & Specs
-
-| File | Description |
-|------|-------------|
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Five-layer architecture (A–E) |
-| [docs/STUDENT_UX_LAYER.md](./docs/STUDENT_UX_LAYER.md) | Student-facing content rules |
-| [docs/VIVADO_INTEGRATION.md](./docs/VIVADO_INTEGRATION.md) | Vivado export workflow and generated files |
+| Entry point | Description |
+|-------------|-------------|
 | [docs/DOC_INDEX.md](./docs/DOC_INDEX.md) | Full documentation navigation hub |
-
-### Product Contract & Gap Audit
-
-| File | Description |
-|------|-------------|
-| [docs/contracts/RedByte_Product_Contract.md](./docs/contracts/RedByte_Product_Contract.md) | Target-state blueprint — what RedByte must become |
-| [docs/roadmap/RedByte_Gap_Audit.md](./docs/roadmap/RedByte_Gap_Audit.md) | Honest product-legitimacy audit |
-
----
-
-## Project Structure
-
-Monorepo using pnpm workspaces:
-
-```
-redbyte-ui/
-├── apps/
-│   └── playground/              # Dev entry point
-├── packages/
-│   ├── rb-apps/                 # IDE application (IdeApp + RedByte workbench surfaces)
-│   ├── rb-logic-core/           # Circuit simulation engine
-│   ├── rb-logic-view/           # 2D circuit canvas
-│   ├── rb-fpga-toolchain/       # VHDL/XDC generation
-│   ├── rb-fpga-bridge/          # Hardware bridge (in development)
-│   ├── rb-primitives/           # Shared UI primitives
-│   ├── rb-tokens/               # Design tokens
-│   └── ...                      # Other packages
-├── docs/                        # Documentation
-├── scripts/                     # Build and CI scripts
-└── CLAUDE.md                    # AI agent instructions
-```
-
-The primary package under active development is `packages/rb-apps`.
+| [docs/manuals/RedByte_Product_Manual.md](./docs/manuals/RedByte_Product_Manual.md) | Canonical product reference |
+| [docs/course/STUDENT_QUICKSTART.md](./docs/course/STUDENT_QUICKSTART.md) | First-lab path for students |
+| [docs/course/INSTRUCTOR_QUICKSTART.md](./docs/course/INSTRUCTOR_QUICKSTART.md) | Assignment setup and proof tiers |
+| [docs/course/TA_TROUBLESHOOTING_GUIDE.md](./docs/course/TA_TROUBLESHOOTING_GUIDE.md) | Stage-by-stage triage |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Architecture layers |
+| [docs/VIVADO_INTEGRATION.md](./docs/VIVADO_INTEGRATION.md) | Vivado export workflow and generated files |
+| [docs/contracts/RedByte_Product_Contract.md](./docs/contracts/RedByte_Product_Contract.md) | Target-state contract |
+| [docs/ACTIVE_WORK.md](./docs/ACTIVE_WORK.md) | Current work cockpit |
 
 ---
 
-## Technology Stack
-
-- **React 19** — UI framework
-- **TypeScript 5** — Strict mode throughout
-- **Vite** — Build tooling
-- **Zustand** — State management
-- **Vitest** — Unit, render, and contract coverage for IDE and toolchain behavior
-
----
-
-## Testing
+## Development
 
 ```bash
-pnpm -w exec vitest run              # Run all tests
-pnpm --filter rb-apps test           # Run rb-apps tests only
-pnpm rc:check                        # Release candidate gate (tests + verify:gates)
+pnpm -w exec vitest run              # Run tests
+corepack pnpm typecheck              # Workspace typecheck
+corepack pnpm css:audit:ide          # IDE CSS ownership audit
+corepack pnpm rb:doc:validate        # Canonical-doc validation
+corepack pnpm rb:site:start:test     # Public doorway contract
+corepack pnpm build:unified          # Production build + dist verification
 ```
 
-Current suite baselines and known pre-existing failures are tracked in `AI_STATE.md`.
+Current suite baselines and known pre-existing failures are tracked in `AI_STATE.md`. CI runs fast checks on every PR and reserves the full classroom gate aggregate for `main` (see [CI_CONTRACT.md](./CI_CONTRACT.md)).
 
 ---
 
 ## License
 
-**RedByte Proprietary License (RPL-1.0)**
-
-Copyright 2025-2026 Connor Angiel.
+**RedByte Proprietary License (RPL-1.0)** — no redistribution. Copyright 2025-2026 Connor Angiel.
 
 ---
 

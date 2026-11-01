@@ -184,7 +184,11 @@ function compareDiagnostic(left: IRDiagnostic, right: IRDiagnostic): number {
   return compareText(left.message, right.message);
 }
 
-function compareText(left: string, right: string): number {
+/**
+ * Codepoint (UTF-16 code unit) text order. Unlike collation it never varies with the
+ * runtime locale or ICU version, so identity, hash, evaluation and persisted orders use it.
+ */
+export function compareText(left: string, right: string): number {
   if (left < right) return -1;
   if (left > right) return 1;
   return 0;

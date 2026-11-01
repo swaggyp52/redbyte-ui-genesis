@@ -48,10 +48,12 @@ await runIdeGate('IDE nested scroll regression guard satisfied', async ({ page, 
 
       await openMode(page, baseUrl, viewport, 'verify');
       await ensureVerifyVectorsReady(page);
+      await selectVerifyWorkspace(page, 'checks');
       await assertVerifyPreRunScrollSpace(page, viewport);
       assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare mode must be selectable`);
       await clickVerifyRun(page);
       await waitForVerifyResult(page, { timeout: 15000 });
+      await selectVerifyWorkspace(page, 'replay');
       await assertVerifyPostRunScrollSpace(page, viewport);
 
       await openMode(page, baseUrl, viewport, 'hardware');
@@ -91,9 +93,21 @@ async function openMode(page, baseUrl, viewport, mode) {
   await page.waitForTimeout(120);
 }
 
+async function selectVerifyWorkspace(page, mode) {
+  const button = page.getByTestId(mode === 'replay' ? 'ide-verify-view-waveform' : 'ide-verify-view-table');
+  assert(await button.isVisible().catch(() => false), `Verify ${mode} workspace control must be visible`);
+  await button.click();
+  await page.waitForFunction(
+    (expectedMode) =>
+      (document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'replay') === (expectedMode === 'replay'),
+    mode,
+    { timeout: 5000 },
+  );
+}
+
 async function assertVerifyPreRunScrollSpace(page, viewport) {
   const state = await page.evaluate(() => {
-    const grid = document.querySelector('.ide-stimulus-grid-scroll');
+    const grid = document.querySelector('.ide-case-lab-scroll');
     const stimulus = document.querySelector('[data-testid="ide-verify-region-stimulus"]');
     const gridRect = grid?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
     const stimulusRect = stimulus?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
@@ -102,7 +116,7 @@ async function assertVerifyPreRunScrollSpace(page, viewport) {
       stimulusHeight: Math.round(stimulusRect.height),
       gridExtraX: grid ? Math.max(0, grid.scrollWidth - grid.clientWidth) : 9999,
       gridExtraY: grid ? Math.max(0, grid.scrollHeight - grid.clientHeight) : 9999,
-      expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
+      expectedCells: document.querySelectorAll('[data-testid^="ide-case-lab-exp-"]').length,
     };
   });
   assert(state.expectedCells >= 12, `${viewport.label}: Verify starter expected cells missing (${state.expectedCells})`);
@@ -121,7 +135,7 @@ async function assertVerifyPostRunScrollSpace(page, viewport) {
   const state = await page.evaluate(() => {
     const waveform = document.querySelector('[data-testid="ide-verify-waveform-scroll"]');
     const waveformRect = waveform?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
-    const grid = document.querySelector('.ide-stimulus-grid-scroll');
+    const grid = document.querySelector('.ide-case-lab-scroll');
     return {
       waveformWidth: Math.round(waveformRect.width),
       waveformHeight: Math.round(waveformRect.height),

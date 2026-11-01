@@ -5,8 +5,42 @@
  * Topics progress from basic gates → adders → multiplexers.
  */
 
-import type { Circuit } from '@redbyte/rb-logic-core';
-import type { CEExample } from '../components/CEUIComponents';
+/**
+ * Historical Classroom Edition data, owned by this example pack.
+ * Its flat endpoints and props are legacy records, not canonical Circuit data.
+ * Consumers must explicitly convert and validate before runtime use.
+ */
+export interface CEExampleNode {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  props: Record<string, unknown>;
+}
+
+export interface CEExampleConnection {
+  fromNodeId: string;
+  fromPort: string;
+  toNodeId: string;
+  toPort: string;
+}
+
+export interface CEExampleCircuit {
+  nodes: CEExampleNode[];
+  connections: CEExampleConnection[];
+}
+
+export interface CEExample {
+  id: string;
+  title: string;
+  description: string;
+  week: 0 | 1 | 2;
+  category: 'orientation' | 'combinational' | 'selection' | 'sequential';
+  circuit: CEExampleCircuit;
+  presetProbes?: Array<{ nodeId: string; port: string; label: string }>;
+  suggestedTickRate?: number;
+  docLink?: string;
+}
 
 // ============ HELPER FUNCTIONS ============
 
@@ -15,8 +49,8 @@ function createNode(
   type: string,
   x: number,
   y: number,
-  props?: Record<string, any>
-): any {
+  props?: Record<string, unknown>
+): CEExampleNode {
   return {
     id,
     type,
@@ -31,7 +65,7 @@ function createConnection(
   fromPort: string,
   toNodeId: string,
   toPort: string
-): any {
+): CEExampleConnection {
   return {
     fromNodeId,
     fromPort,

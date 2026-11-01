@@ -1,0 +1,398 @@
+{
+  "countEvents": [
+    {
+      "t": 0,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 1,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 1,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 2,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 3,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 4,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 2,
+      "COUNT0": 0,
+      "COUNT1": 1,
+      "COUNT2": 0
+    },
+    {
+      "t": 5,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 2,
+      "COUNT0": 0,
+      "COUNT1": 1,
+      "COUNT2": 0
+    },
+    {
+      "t": 6,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 3,
+      "COUNT0": 1,
+      "COUNT1": 1,
+      "COUNT2": 0
+    },
+    {
+      "t": 7,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 3,
+      "COUNT0": 1,
+      "COUNT1": 1,
+      "COUNT2": 0
+    },
+    {
+      "t": 8,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 4,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 1
+    },
+    {
+      "t": 9,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 4,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 1
+    },
+    {
+      "t": 10,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 5,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 1
+    },
+    {
+      "t": 11,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 5,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 1
+    },
+    {
+      "t": 12,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 6,
+      "COUNT0": 0,
+      "COUNT1": 1,
+      "COUNT2": 1
+    },
+    {
+      "t": 13,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 6,
+      "COUNT0": 0,
+      "COUNT1": 1,
+      "COUNT2": 1
+    },
+    {
+      "t": 14,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 7,
+      "COUNT0": 1,
+      "COUNT1": 1,
+      "COUNT2": 1
+    },
+    {
+      "t": 15,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 7,
+      "COUNT0": 1,
+      "COUNT1": 1,
+      "COUNT2": 1
+    },
+    {
+      "t": 16,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 17,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    }
+  ],
+  "holdEvents": [
+    {
+      "t": 0,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 1,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 1,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 2,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 3,
+      "CLK": 0,
+      "EN": 0,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 4,
+      "CLK": 1,
+      "EN": 0,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 5,
+      "CLK": 1,
+      "EN": 0,
+      "RST": 1,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 6,
+      "CLK": 0,
+      "EN": 0,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 7,
+      "CLK": 1,
+      "EN": 0,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 8,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 9,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    }
+  ],
+  "resumeEvents": [
+    {
+      "t": 0,
+      "CLK": 0,
+      "EN": 0,
+      "RST": 1,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 1,
+      "CLK": 0,
+      "EN": 0,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 2,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 3,
+      "CLK": 1,
+      "EN": 0,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 4,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 5,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 6,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 2,
+      "COUNT0": 0,
+      "COUNT1": 1,
+      "COUNT2": 0
+    },
+    {
+      "t": 7,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 1,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 8,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 1,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 9,
+      "CLK": 0,
+      "EN": 1,
+      "RST": 0,
+      "count": 0,
+      "COUNT0": 0,
+      "COUNT1": 0,
+      "COUNT2": 0
+    },
+    {
+      "t": 10,
+      "CLK": 1,
+      "EN": 1,
+      "RST": 0,
+      "count": 1,
+      "COUNT0": 1,
+      "COUNT1": 0,
+      "COUNT2": 0
+    }
+  ]
+}

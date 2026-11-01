@@ -15,6 +15,7 @@ import {
 } from '../../fpga/boards/basys3/basys3Bundle';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { IDE_EXAMPLES } from '../../apps/ide/examplesCatalog';
+import { elaborateProjectHierarchy } from '../../apps/ide/projectHierarchy';
 import { LAB_STARTERS } from '../../apps/ide/labStarters';
 import { runTestVectors } from '../../fpga/boards/basys3/vectorRunner';
 
@@ -370,7 +371,21 @@ const SOLVED_EXAMPLES = IDE_EXAMPLES.filter(
 describe('STOP-SHIP 7 — All IDE examples verify clean', () => {
   for (const example of SOLVED_EXAMPLES) {
     it(`[${example.id}] verifies with 0 failures`, async () => {
-      const result = await runTestVectors(example.circuit, example.vectors);
+      // Native examples carry their module definitions and boundary I/O. Simulate
+      // the same elaborated design as the live project owner, not opaque instances.
+      const circuit = elaborateProjectHierarchy(example.circuit, example.hierarchy);
+      const mappingEntry = (row: (typeof example.ioRows)[number]) => ({
+        id: row.id,
+        nodeId: row.nodeId,
+        port: row.port,
+        label: row.label,
+        pin: row.pin,
+      });
+      const ioMapping: IoMapping = {
+        inputs: example.ioRows.filter(row => row.direction === 'in').map(mappingEntry),
+        outputs: example.ioRows.filter(row => row.direction === 'out').map(mappingEntry),
+      };
+      const result = await runTestVectors(circuit, example.vectors, ioMapping);
       if (result.failures.length > 0) {
         const summary = result.failures
           .map(f => `  tick=${f.tick} signal=${f.signal} expected=${f.expected} actual=${f.actual}`)

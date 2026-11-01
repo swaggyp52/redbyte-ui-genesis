@@ -6,7 +6,7 @@ import React, { useId, useState } from 'react';
 
 export interface TooltipProps {
   content: string;
-  children: React.ReactElement;
+  children: React.ReactElement<React.HTMLAttributes<HTMLElement>>;
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {

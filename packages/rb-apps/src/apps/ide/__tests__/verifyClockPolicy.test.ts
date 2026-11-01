@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import {
   detectVerifyClockPolicy,
   materializeVectorsForClockPolicy,
@@ -91,6 +91,37 @@ describe('verifyClockPolicy', () => {
       resetBehavior: 'custom',
     });
     expect(policy?.manualWarning).toContain('Manual clock source');
+  });
+
+  it('does not promote an unassigned explicit switch clock to the W5 oscillator', () => {
+    const policy = detectVerifyClockPolicy({
+      ioRows: [
+        {
+          id: 'enter',
+          label: 'ENTER (SW5)',
+          direction: 'in',
+          pin: '',
+          timingRole: 'clock',
+          boardResourceType: 'switch',
+        },
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16' },
+      ],
+      scheduleContract: makeClockedContract({
+        timingMode: 'manual_event_driven_lab',
+        needsSimClockInjection: true,
+        clockSignalName: 'ENTER (SW5)',
+      }),
+    });
+
+    expect(policy).toMatchObject({
+      signalId: 'enter',
+      sourceType: 'manual',
+      executionModel: 'manual',
+      overrideMode: 'manual-pulses',
+      autoRunEnabled: false,
+    });
+    expect(policy?.boardAlias).toBeUndefined();
+    expect(policy?.frequencyMHz).toBeUndefined();
   });
 
   it('keeps inferred non-board clock rows in manual pulse mode', () => {

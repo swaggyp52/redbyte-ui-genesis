@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BOARD_CONSTRAINTS_STAGE_LABEL, getOpenStageActionLabel } from '../workflowStages';
 import { choosePrimaryProjectCta, deriveProjectHealth, deriveProjectVerifyState, deriveStageCompletion, hasCurrentPassingVerify } from '../projectHealth';
 
 describe('deriveProjectVerifyState — four canonical verify states (GAP-007)', () => {
@@ -84,7 +85,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
         code: 'RBP1005',
         message:
           'Some required output pins remain unmapped. Finish mapping before relying on hardware behavior.',
-        fixPath: { mode: 'hardware', actionLabel: 'Open Map Pins' },
+        fixPath: { mode: 'hardware', actionLabel: getOpenStageActionLabel('hardware') },
       },
     ]);
     expect(
@@ -94,7 +95,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
         hasVectors: true,
         verifyQualification: 'incomplete-mapping',
       })
-    ).toEqual({ label: 'Map Pins', mode: 'hardware', code: 'RBP1005' });
+    ).toEqual({ label: BOARD_CONSTRAINTS_STAGE_LABEL, mode: 'hardware', code: 'RBP1005' });
   });
 
   it('falls back to core lastVerify qualification when readiness qualification is unavailable', () => {
@@ -147,7 +148,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
 
     expect(health.blockingIssues.map((issue) => issue.code)).toEqual(['RBP1001', 'RBP1005']);
     expect(choosePrimaryProjectCta(health, readiness)).toEqual({
-      label: 'Map Pins',
+      label: BOARD_CONSTRAINTS_STAGE_LABEL,
       mode: 'hardware',
       code: 'RBP1001',
     });

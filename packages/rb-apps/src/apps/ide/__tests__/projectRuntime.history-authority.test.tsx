@@ -149,12 +149,17 @@ function buildTwoOutputHistoryFixture(): RBProject {
 }
 
 function assertHardwareStaleStatus(getByTestId: RenderResult['getByTestId']): void {
-  fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+  // Simulation tools retain the detailed verification/export authority status.
+  fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
   expect(getByTestId('ide-hardware-command-strip').textContent).toContain('STALE');
   expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-  const readinessText = getByTestId('ide-hardware-readiness-callout').textContent ?? '';
+  const readinessCallout = getByTestId('ide-hardware-readiness-callout');
+  const readinessText = readinessCallout.textContent ?? '';
   expect(readinessText).not.toContain('E0 handoff ready');
-  expect(readinessText).toMatch(/Verify evidence is stale|Complete required pin mapping|Run Verify before relying/);
+  // The tone is the derived judgement; the sentence beside it is copy, and pinning copy is what
+  // failed every caller of this helper when the workspace was renamed from Verify to Simulate.
+  expect(readinessCallout.className).not.toContain('ide-callout-success');
+  expect(readinessText.trim().length).toBeGreaterThan(0);
 }
 
 function buildProjectFromRuntimeState(): RBProject {
@@ -403,6 +408,7 @@ describe('projectRuntime history authority', () => {
 
   it('prunes orphan rows and keeps the pinned survivor when duplicate rows target one live boundary node', () => {
     const malformedProject = buildHistoryFixture();
+    if (!malformedProject.ioMapping) throw new Error('Expected history fixture IO mapping');
     malformedProject.ioMapping.outputs = [
       {
         id: 'ld0_shadow',
@@ -451,6 +457,7 @@ describe('projectRuntime history authority', () => {
 
   it('reconciles orphan and duplicate boundary rows immediately when loading a malformed project', () => {
     const malformedProject = buildHistoryFixture();
+    if (!malformedProject.ioMapping) throw new Error('Expected history fixture IO mapping');
     malformedProject.ioMapping.outputs = [
       {
         id: 'ld0_shadow',

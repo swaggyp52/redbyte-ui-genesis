@@ -12,9 +12,10 @@
 
 import type { CircuitIR, SimulationModel } from '@redbyte/rb-logic-core';
 import { exportBasys3Bundle } from './basys3Bundle';
-import { resolveIoMappingFromProjectFields, type IoMapping } from '@redbyte/rb-utils';
-import type { RBProject } from '../../export/projectFormat';
-import { generateTestbenchVhdl } from './testbenchGenerator';
+import { resolveExportIoMapping, resolveProjectIoMapping } from './exportIoMapping';
+import type { IoMapping } from '@redbyte/rb-utils';
+import type { RBProject } from '../../../export/projectFormat';
+import { generateTestbenchVhdl, TESTBENCH_UNRESOLVED_MARKER } from './testbenchGenerator';
 import { parseVhdl } from '../../../import/vhdlImport';
 import { compareCodepoint } from '../../../export/codepointSort';
 import {
@@ -90,11 +91,12 @@ const BASYS3_INPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('input');
 const BASYS3_OUTPUT_ALIAS_LIST = listKnownBasys3AliasesForDirection('output');
 
 /** Prefer structured {@link RBProject.hardwareMappingV2} when present; else legacy {@link RBProject.ioMapping}. */
+/**
+ * Every mapping row the project carries, for validation: a row whose node was deleted still
+ * reports that it is ignored. The artifacts are built from resolveExportIoMapping (live rows).
+ */
 export function getExportIoMapping(project: RBProject): IoMapping | undefined {
-  return resolveIoMappingFromProjectFields({
-    ioMapping: project.ioMapping,
-    hardwareMappingV2: project.hardwareMappingV2,
-  });
+  return resolveProjectIoMapping(project);
 }
 
 interface ExportAuthorityContext {
@@ -342,7 +344,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   // Step 1: Build the semantic projection before validation returns. Map Pins
   // needs exact conflict/missing state even when packaging is blocked.
-  const ioMapping = getExportIoMapping(project);
+  const ioMapping = resolveExportIoMapping(project);
   const entityName = project.hdl?.top ?? project.fpga?.top ?? 'top';
   const exportModel = ioMapping
     ? buildBasys3ExportModel(project.circuit, ioMapping)
@@ -396,13 +398,26 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   result.warnings.push(...filteredBundleWarnings);
 
+  // A port projection's scaffold warnings (its INPUT/OUTPUT boundary nodes) are noise, but only
+  // a preserved import handoff ships the imported HDL: otherwise the generated top ships, and an
+  // error in it is real. An imported counter whose logic was not reconstructed used to ship
+  // here with every LED tied to '0' and status ok.
   const allowProjectionWarnings =
     hdlPortProjection &&
+    bundleResult.errors.length === 0 &&
     bundleResult.warnings.length > 0 &&
     bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
   const preservedHandoff = tryBuildPreservedImportHandoff(project, bundleResult.topXdc);
   const treatBundleValid = bundleResult.valid || allowProjectionWarnings || Boolean(preservedHandoff);
-  if (!treatBundleValid) {
+  // When the generated top.vhd is what ships, every construct it could not
+  // express blocks by name (RBEX4100, RBEX4103 and friends), not as a generic warning.
+  if (!preservedHandoff) {
+    for (const message of bundleResult.errors) {
+      result.errors.push({ type: 'validation', severity: 'error', message });
+    }
+  }
+  // The generic message only when no error above already names why the bundle is invalid.
+  if (!treatBundleValid && (preservedHandoff || bundleResult.errors.length === 0)) {
     result.errors.push({
       type: 'validation',
       severity: 'error',
@@ -596,9 +611,23 @@ export function validateArtifactConsistency(topVhd: string, testbenchVhd: string
 
   inconsistencies.push(
     ...validateTestbenchSignalTargets(testbenchVhd, entityPorts),
+    ...validateTestbenchUnresolvedKeys(testbenchVhd),
   );
 
   return inconsistencies;
+}
+
+/** A testbench that could not check or drive a vector key must never be exported as trustworthy. */
+function validateTestbenchUnresolvedKeys(testbenchVhd: string): string[] {
+  return Array.from(testbenchVhd.matchAll(TESTBENCH_UNRESOLVED_MARKER), (match) => {
+    const [, kind, vector, key, reason] = match;
+    const role = kind === 'EXPECTATION' ? 'expected key' : 'stimulus key';
+    const problem =
+      reason === 'non-binary'
+        ? 'has a value that is not 0 or 1'
+        : `does not match any top-level ${kind === 'EXPECTATION' ? 'output' : 'input'} port`;
+    return `Artifact consistency: testbench vector ${vector} ${role} "${key}" ${problem}. Fix: map the signal in Board & Constraints or correct the vector.`;
+  });
 }
 
 function extractVhdlEntityPortNames(vhdlText: string): string[] {
@@ -619,7 +648,8 @@ interface VhdlSignalInfo {
 }
 
 function extractVhdlEntityPortInfos(vhdlText: string): VhdlPortInfo[] {
-  const portBlock = vhdlText.match(/Port\s*\(([^]*?)\)\s*;\s*end\s+entity/i);
+  // `end entity top;`, `end top;` and `end;` are all legal VHDL-93 entity endings.
+  const portBlock = vhdlText.match(/Port\s*\(([^]*?)\)\s*;\s*end\b/i);
   if (!portBlock) return [];
   return parseVhdlPortInfos(portBlock[1]);
 }
@@ -852,7 +882,11 @@ function validateMultipleDrivers(project: RBProject): Basys3ExportError[] {
   const driverCount = new Map<string, number>();
 
   for (const conn of project.circuit?.connections ?? []) {
-    const key = `${conn.to?.nodeId ?? (conn as Record<string, unknown>).toNodeId}.${conn.to?.portName ?? (conn as Record<string, unknown>).toPort}`;
+    const nodeId = typeof conn.to === 'string' ? conn.to : conn.to.nodeId;
+    const portName = typeof conn.to === 'string'
+      ? conn.toPin ?? conn.toPort ?? 'in'
+      : conn.to.portName ?? conn.to.port ?? conn.toPin ?? conn.toPort ?? 'in';
+    const key = `${nodeId}.${portName}`;
     driverCount.set(key, (driverCount.get(key) ?? 0) + 1);
   }
 

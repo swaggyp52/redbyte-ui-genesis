@@ -18,7 +18,10 @@ await runIdeGate('IDE export artifact explorer contract satisfied', async ({ pag
   const tree = page.locator('[data-testid="ide-export-artifact-tabs"]').first();
   const preview = page.locator('[data-testid="ide-export-artifact-preview"]').first();
   assert(await visible(tree), 'export artifact tree must render');
-  assert(await visible(preview), 'export artifact preview must render');
+  // Nothing is previewed until a file is chosen; choosing the first one must render it.
+  assert((await preview.count()) === 0, 'no artifact preview may be mounted before a file is chosen');
+  await page.locator('[data-testid="ide-export-artifact-tabs"] button').first().click();
+  assert(await visible(preview), 'export artifact preview must render once a file is chosen');
 
   const treeItems = page.locator('[data-testid="ide-export-artifact-tabs"] button');
   const itemCount = await treeItems.count();

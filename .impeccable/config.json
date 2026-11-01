@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.v3.css"
+        ],
+        "createdAt": "2026-09-01T02:43:43.082Z",
+        "reason": "Claude decided: .ide-project-v3-circuit-preview is a digital-logic schematic/circuit preview — a canvas/blueprint/measurement surface, exactly where the rule allows a grid; the hairline grid reads as schematic paper, not decoration."
+      }
+    ]
+  }
+}

@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  centerDesignCanvasOn,
   centerDesignSelectionWithContext,
+  designCameraKey,
+  designCanvasWorldCenter,
+  forgetDesignCameras,
+  holdDesignCanvasOnPage,
+  keepRegionInView,
+  recallDesignCamera,
+  rememberDesignCamera,
   readDesignCanvasViewport,
   reconcileDesignCanvasCamera,
 } from '../surfaces/designCanvasCamera';
@@ -132,5 +140,158 @@ describe('Design canvas camera resize contract', () => {
     const screenX = (anchor: { x: number }) => anchor.x * nextCamera!.zoom + nextCamera!.x;
     expect(screenX(graph[0])).toBeGreaterThanOrEqual(48);
     expect(screenX(graph[2])).toBeLessThanOrEqual(viewport.width - 48);
+  });
+});
+
+// Opening the inspector narrows the sheet. The view may slide to keep the selected part on
+// it, but it is never rescaled: that is what turned a readable schematic into a small one.
+describe('Design canvas camera: a narrower sheet keeps its scale', () => {
+  const camera = { x: 40, y: 30, zoom: 1.32 };
+  const part = { minX: 100, minY: 100, maxX: 220, maxY: 180 };
+
+  it('returns the very same camera when the selection is already on the sheet', () => {
+    expect(keepRegionInView(camera, { width: 900, height: 600 }, part)).toBe(camera);
+  });
+
+  it('slides the least distance that brings an off-sheet selection back, at the same zoom', () => {
+    // The part's right edge is at 220 * 1.32 + 40 = 330.4; a 300px sheet with a 24px inset ends at 276.
+    const next = keepRegionInView(camera, { width: 300, height: 600 }, part);
+    expect(next.zoom).toBe(camera.zoom);
+    expect(next.y).toBe(camera.y);
+    expect(part.maxX * next.zoom + next.x).toBeCloseTo(276, 6);
+    expect(next.x - camera.x).toBeCloseTo(276 - 330.4, 6);
+  });
+
+  it('slides the other way for a selection left of or above the sheet', () => {
+    const offLeft = { x: -400, y: -300, zoom: 1.32 };
+    const next = keepRegionInView(offLeft, { width: 900, height: 600 }, part);
+    expect(next.zoom).toBe(1.32);
+    expect(part.minX * next.zoom + next.x).toBeCloseTo(24, 6);
+    expect(part.minY * next.zoom + next.y).toBeCloseTo(24, 6);
+  });
+
+  it('shows the leading edge of a selection wider than the sheet instead of zooming out', () => {
+    const wide = { minX: 0, minY: 100, maxX: 2000, maxY: 180 };
+    const next = keepRegionInView(camera, { width: 600, height: 600 }, wide);
+    expect(next.zoom).toBe(camera.zoom);
+    expect(wide.minX * next.zoom + next.x).toBeCloseTo(24, 6);
+  });
+
+  it('leaves an unusable camera or sheet alone rather than inventing a view', () => {
+    const broken = { x: Number.NaN, y: 0, zoom: 1 };
+    expect(keepRegionInView(broken, { width: 900, height: 600 }, part)).toBe(broken);
+    expect(keepRegionInView(camera, { width: 0, height: 600 }, part)).toBe(camera);
+  });
+});
+
+// Switching Schematic, Split and Code is the student's choice of sheet: the part of the circuit
+// they were looking at stays in the middle of whichever sheet they chose, at their zoom.
+describe('Design canvas camera: a view switch keeps the middle of the work', () => {
+  const zoomed = { x: -212.5, y: -87.25, zoom: 1.2544 };
+  const canvas = { width: 1078, height: 561 };
+  const split = { width: 762, height: 561 };
+
+  it('reads the world point drawn at the middle of the sheet', () => {
+    const middle = designCanvasWorldCenter(zoomed, canvas);
+    expect(middle).not.toBeNull();
+    expect(middle!.x * zoomed.zoom + zoomed.x).toBeCloseTo(canvas.width / 2, 6);
+    expect(middle!.y * zoomed.zoom + zoomed.y).toBeCloseTo(canvas.height / 2, 6);
+  });
+
+  it('draws that point at the middle of the next sheet without changing the zoom', () => {
+    const middle = designCanvasWorldCenter(zoomed, canvas)!;
+    const next = centerDesignCanvasOn(middle, split, zoomed.zoom);
+    expect(next.zoom).toBe(zoomed.zoom);
+    expect(designCanvasWorldCenter(next, split)!.x).toBeCloseTo(middle.x, 6);
+    expect(designCanvasWorldCenter(next, split)!.y).toBeCloseTo(middle.y, 6);
+  });
+
+  it('comes back to the very same view after Canvas, Split and Canvas again', () => {
+    let camera = zoomed;
+    for (let round = 0; round < 20; round += 1) {
+      camera = centerDesignCanvasOn(designCanvasWorldCenter(camera, canvas)!, split, camera.zoom);
+      camera = centerDesignCanvasOn(designCanvasWorldCenter(camera, split)!, canvas, camera.zoom);
+    }
+    expect(camera.x).toBeCloseTo(zoomed.x, 6);
+    expect(camera.y).toBeCloseTo(zoomed.y, 6);
+    expect(camera.zoom).toBe(zoomed.zoom);
+  });
+
+  it('has no middle to keep for an unusable camera or sheet', () => {
+    expect(designCanvasWorldCenter({ x: 0, y: 0, zoom: 0 }, canvas)).toBeNull();
+    expect(designCanvasWorldCenter(zoomed, { width: 0, height: 561 })).toBeNull();
+  });
+});
+
+// The camera is measured from the sheet's top-left. Showing or hiding the library moves that
+// corner, so the same camera would draw every part somewhere else on the screen.
+describe('Design canvas camera: showing or hiding the library leaves the parts where they are', () => {
+  const camera = { x: 40, y: 30, zoom: 1.2544 };
+  const onPage = (cam: { x: number; y: number; zoom: number }, frame: { left: number; top: number }, point: { x: number; y: number }) => ({
+    x: frame.left + point.x * cam.zoom + cam.x,
+    y: frame.top + point.y * cam.zoom + cam.y,
+  });
+  const withLibrary = { left: 280, top: 103, width: 828, height: 561 };
+  const withoutLibrary = { left: 72, top: 103, width: 1036, height: 561 };
+  const part = { x: 310, y: 180 };
+
+  it('takes up the move of the sheet so every part stays put on the screen', () => {
+    const next = holdDesignCanvasOnPage(camera, withLibrary, withoutLibrary);
+    expect(next.zoom).toBe(camera.zoom);
+    expect(onPage(next, withoutLibrary, part).x).toBeCloseTo(onPage(camera, withLibrary, part).x, 6);
+    expect(onPage(next, withoutLibrary, part).y).toBeCloseTo(onPage(camera, withLibrary, part).y, 6);
+    const back = holdDesignCanvasOnPage(next, withoutLibrary, withLibrary);
+    expect(back.x).toBeCloseTo(camera.x, 6);
+    expect(back.y).toBeCloseTo(camera.y, 6);
+  });
+
+  it('returns the very same camera when the sheet did not move (the inspector opens on the right)', () => {
+    const inspectorOpen = { ...withLibrary, width: 572 };
+    expect(holdDesignCanvasOnPage(camera, withLibrary, inspectorOpen)).toBe(camera);
+  });
+
+  it('leaves an unusable camera alone', () => {
+    const broken = { x: Number.NaN, y: 0, zoom: 1 };
+    expect(holdDesignCanvasOnPage(broken, withLibrary, withoutLibrary)).toBe(broken);
+  });
+});
+
+describe('Design canvas camera: the working view belongs to a project and a module', () => {
+  beforeEach(() => forgetDesignCameras());
+
+  it('keeps one view per project and module', () => {
+    const counterTop = designCameraKey('rb-counter', 'top');
+    const counterCopyTop = designCameraKey('rb-counter-copy', 'top');
+    const counterAdder = designCameraKey('rb-counter', 'adder');
+    expect(new Set([counterTop, counterCopyTop, counterAdder]).size).toBe(3);
+
+    rememberDesignCamera(counterTop, { x: 10, y: 20, zoom: 1.5 });
+    rememberDesignCamera(counterCopyTop, { x: -5, y: 0, zoom: 0.8 });
+    expect(recallDesignCamera(counterTop)).toEqual({ x: 10, y: 20, zoom: 1.5 });
+    expect(recallDesignCamera(counterCopyTop)).toEqual({ x: -5, y: 0, zoom: 0.8 });
+    expect(recallDesignCamera(counterAdder)).toBeNull();
+  });
+
+  it('cannot confuse a project id with a module id that spells the same text', () => {
+    expect(designCameraKey('a', 'b:c')).not.toBe(designCameraKey('a:b', 'c'));
+    expect(designCameraKey('a', 'b')).not.toBe(designCameraKey('ab', ''));
+  });
+
+  it('hands back a copy, so a caller cannot move the remembered view by accident', () => {
+    const key = designCameraKey('rb-counter', 'top');
+    const given = { x: 1, y: 2, zoom: 1 };
+    rememberDesignCamera(key, given);
+    given.zoom = 9;
+    const first = recallDesignCamera(key)!;
+    first.x = 999;
+    expect(recallDesignCamera(key)).toEqual({ x: 1, y: 2, zoom: 1 });
+  });
+
+  it('does not remember a view that is not a real camera', () => {
+    const key = designCameraKey('rb-counter', 'top');
+    rememberDesignCamera(key, { x: 0, y: 0, zoom: 1.2 });
+    rememberDesignCamera(key, { x: Number.NaN, y: 0, zoom: 1 });
+    rememberDesignCamera(key, { x: 0, y: 0, zoom: 0 });
+    expect(recallDesignCamera(key)).toEqual({ x: 0, y: 0, zoom: 1.2 });
   });
 });

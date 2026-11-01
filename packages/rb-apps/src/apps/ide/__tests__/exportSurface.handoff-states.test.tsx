@@ -118,13 +118,18 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const hero = getByTestId('ide-export-readiness-hero');
-    expect(hero.textContent).toContain('E0 export package ready');
+    expect(hero.textContent).toContain('Package current');
     const inspector = getByTestId('ide-export-package-inspector-v1');
     expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
     expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-trusted');
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
-    expect(getByTestId('ide-export-package-download-v1').textContent).toBe('Download Package');
+    expect(actions.textContent).toContain('Generate & download checked ZIP');
+    expect(actions.textContent).toContain('Technical details');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Generate & download checked ZIP');
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    fireEvent.click(getByTestId('ide-export-validate-package'));
+    expect(getByTestId('ide-export-validation-result').textContent).toContain('files structurally valid');
+    expect(inspector.getAttribute('data-export-action-state')).toBe('not-downloaded');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
     expect(getByTestId('ide-export-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
@@ -132,7 +137,7 @@ describe('ExportSurface handoff states', () => {
 
   // ── Advisory state ───────────────────────────────────────────────────────────
 
-  it('advisory: readiness hero shows a draft when Verify has not run', () => {
+  it('advisory: readiness hero shows a draft when Simulate has not run', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -152,7 +157,7 @@ describe('ExportSurface handoff states', () => {
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
   });
 
-  it('advisory: Verify repair stays primary while a structurally valid draft remains downloadable', () => {
+  it('advisory: draft generation and Simulate repair remain separate actionable choices', () => {
     const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <ExportSurface
@@ -163,11 +168,12 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(2);
-    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
-    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(actions.textContent).toContain('Generate & download draft ZIP');
+    const repair = within(getByTestId('ide-export-state-summary')).getByRole('button', { name: 'Open Simulate' });
+    expect(actions.contains(repair)).toBe(false);
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');
     expect((getByTestId('ide-export-draft-download-v1') as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(getByTestId('ide-export-package-build-v1'));
+    fireEvent.click(repair);
     expect(onOpenVerify).toHaveBeenCalledTimes(1);
   });
 
@@ -182,8 +188,9 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Draft export available');
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare FAIL');
-    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Simulated');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('expected outputs differ');
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Generate & download draft ZIP');
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('draft');
     expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
     expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
@@ -210,15 +217,15 @@ describe('ExportSurface handoff states', () => {
       expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
     }
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
-    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Mapping');
+    expect(actions.textContent).toContain('Open Board');
+    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Board');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
 
   // ── Provenance rows ───────────────────────────────────────────────────────────
 
-  it('readiness details show Not run when verifyResult is absent', () => {
+  it('readiness details show a draft Simulate state when no result exists', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -226,10 +233,34 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Draft');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Run the current scenario in Simulate');
   });
 
-  it('readiness details show current Compare PASS when verify passed and not stale', () => {
+  it('keeps stale behavioral currentness distinct from the draft evidence tier', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="current-design-hash"
+        verifyResult={passVerify}
+        dirtySinceVerify={true}
+        workflowAuthority={makeAuthority({
+          verifyResult: passVerify,
+          dirtySinceVerify: true,
+          exportHash: 'current-design-hash',
+        })}
+      />
+    );
+
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    expect(getByTestId('ide-export-simulation-evidence-tier').textContent).toContain('Draft');
+    const verifyReadiness = getByTestId('ide-export-upstream-verify');
+    expect(verifyReadiness.textContent).toContain('Stale - rerun Simulate');
+    expect(verifyReadiness.textContent).toContain('Prior simulation evidence exists');
+    expect(verifyReadiness.textContent).not.toContain('create behavioral evidence');
+  });
+
+  it('readiness details show validated simulation evidence when Compare passed and is current', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -239,7 +270,8 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'abc999' })}
       />
     );
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Current Compare PASS');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Validated');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('optional checks passed');
   });
 
   it('shows a truthful rebuild action when export hash predates the current design hash', () => {
@@ -253,13 +285,14 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-readiness-hero').textContent).toMatch(/stale|build/i);
-    expect(getByTestId('ide-export-package-build-v1').textContent).toMatch(/build|rebuild/i);
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Generate & download checked ZIP');
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-action-state')).toBe('not-downloaded');
   });
 
   // ── ExportVivadoInstructions ──────────────────────────────────────────────────
 
   it('keeps the generated file list and selected preview visible', () => {
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="h1"
@@ -267,16 +300,22 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    // Arriving shows the package's contents, not a file's source.
+    expect(queryByTestId('ide-export-selected-preview-v1')).toBeNull();
+    fireEvent.click(getByTestId('ide-export-file-top-vhd'));
     expect(getByTestId('ide-export-selected-preview-v1')).toBeTruthy();
-    expect(getByTestId('ide-export-preview-path').textContent).toBeTruthy();
+    expect(getByTestId('ide-export-preview-path').textContent).toBe('top.vhd');
+    fireEvent.click(getByTestId('ide-export-close-file'));
+    expect(queryByTestId('ide-export-selected-preview-v1')).toBeNull();
+    fireEvent.click(getByTestId('ide-export-file-top-vhd'));
     for (const role of ['project', 'source', 'constraints', 'simulation', 'readme']) {
       expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
       expect(getByTestId(`ide-export-submission-role-${role}`)).toBeTruthy();
     }
   });
 
-  it('answers what to submit in the package decision while retaining the detailed role guide', () => {
-    const { getByTestId } = render(
+  it('keeps the detailed role guide without a narration card in the package decision', () => {
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="h1"
@@ -284,12 +323,8 @@ describe('ExportSurface handoff states', () => {
       />
     );
 
-    const inspector = getByTestId('ide-export-package-inspector-v1');
-    const answer = within(inspector).getByTestId('ide-export-submission-answer');
-    expect(answer.textContent).toContain('What should I submit?');
-    expect(answer.textContent).toContain('top.vhd');
-    expect(answer.textContent).toContain('top.xdc');
-    expect(answer.textContent).toContain('testbench.vhd');
+    // The decision block states the package's derived state; the role guide answers "what to submit".
+    expect(queryByTestId('ide-export-submission-answer')).toBeNull();
 
     const detailedGuide = getByTestId('ide-export-submission-guidance');
     expect(detailedGuide.textContent).toContain('Choose files by requested role');
@@ -394,7 +429,7 @@ describe('ExportSurface handoff states', () => {
       fireEvent.click(view.getByTestId('ide-export-draft-download-v1'));
     });
     await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(1));
-    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Downloaded unverified');
+    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Downloaded unverified package');
 
     const trustedRun: Parameters<typeof ExportSurface>[0]['verifyLastRun'] = {
       scenarioId: 'trusted-scenario',
@@ -413,12 +448,19 @@ describe('ExportSurface handoff states', () => {
         clockSignalName: null,
       },
       report: {
+        schemaVersion: 'rb.verify-report.v1',
+        scenarioId: 'trusted-scenario',
+        scenarioName: 'Trusted Scenario',
+        status: 'pass',
+        deterministicHash: passVerify.hash,
+        generatedAtIso: passVerify.ranAtIso!,
+        reportHash: passVerify.reportHash!,
         vectors: [],
         inputsAtTick: {},
         inputsByVectorId: {},
         signalRoles: {},
         rows: [],
-      } as NonNullable<Parameters<typeof ExportSurface>[0]['verifyLastRun']>['report'],
+      },
       waveform: [],
     };
     view.rerender(
@@ -440,7 +482,7 @@ describe('ExportSurface handoff states', () => {
     expect(view.getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
 
     await act(async () => {
-      fireEvent.click(view.getByTestId('ide-export-package-download-v1'));
+      fireEvent.click(view.getByTestId('ide-export-package-build-v1'));
     });
     await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(2));
     expect(inspector.getAttribute('data-export-derived-state')).toBe('downloaded-trusted');
@@ -469,7 +511,16 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(queryByTestId('ide-export-technical-dialog')).toBeNull();
-    expect(getByTestId('ide-export-readiness-hero').querySelector('details, summary')).toBeNull();
+    const hero = getByTestId('ide-export-readiness-hero');
+    // This used to assert that the hero contained no <details> at all, which was a proxy
+    // for "nothing technical unfolds in the default flow" — true only because the surface
+    // had no disclosures at the time. Provenance is now a disclosure precisely so that it
+    // stops occupying the top of the surface, so the tag-name proxy would forbid the
+    // improvement it was written to protect. The behaviour itself is asserted directly:
+    // nothing is expanded on arrival, and the technical evidence is not in the flow at all.
+    expect([...hero.querySelectorAll('details')].filter((el) => el.hasAttribute('open'))).toHaveLength(0);
+    expect(within(hero).queryByTestId('ide-export-gate-stack')).toBeNull();
+    expect(within(hero).queryByTestId('ide-export-deterministic-checks')).toBeNull();
     fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
     expect(getByTestId('ide-export-technical-dialog')).toBeTruthy();
   });

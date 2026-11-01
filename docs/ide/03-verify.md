@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-10-08
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -8,12 +8,249 @@ role: Verify surface spec
 
 # Verify Mode Spec
 
-Status: Unified Workbench v3 RC authority source; final exact-SHA certification pending
+## Inspection is read-only; stimulus editing is explicit (2026-10-26, RB-DEBT-020)
+
+Scrubbing time, selecting lanes, cells, recorded values and checks, Space/Enter on the time grid,
+and opening Details, Recorded circuit or Follow signal never change the authored scenario: its
+version and content hash stay as they were and the selected recording stays current. The Meridian
+studio is read-only in the same way (Time, Logic, Source and Board lenses, sheet and board
+selection, stage switches); it offers no stimulus editing at all.
+
+Editing stimulus in the Time instrument is the explicit **Edit stimulus** mode, a toggle in the
+Timing Lab toolbar (`ide-timing-edit-mode`, `aria-pressed`). It is on while no recording is on
+screen, so a new scenario is still authored one click per value. It turns off whenever a recording
+is selected (Run, Reproduce, history, another scenario) or opened in Recorded circuit, and only the
+student turns it on again. While it is off, a click or Space/Enter on a lane cell selects that
+signal and tick, Delete on the instrument removes nothing, the draft heading reads "cells select
+while inspecting" and the draft cells are `aria-readonly`. While it is on, a click or Space/Enter drives
+the selected authored input as before; the editable lanes carry an accent band, an edge rule and
+the cell cursor, and the heading reads "editing". Recorded lanes are read-only in both modes. An
+edit is one scenario revision and marks the selected recording stale exactly as before; it never
+changes a recording, and design undo/redo neither rewinds nor restamps it. The labelled editors
+(+ Event, Duplicate, Delete, Edit event at tN, the generators) and the combinational Table's input
+toggles are explicit commands and are unchanged, so the heading names the cells, not the whole
+draft. Stimulus edits have no undo of their own (only the design has undo/redo); a student reverses
+one by editing it back. Proof: `timingLab.inspectMode`,
+`verifySurface.inspectionReadOnly` and `studio.inspectionReadOnly` tests; the counter proof gate
+asserts that a click on EN at t5 while inspecting leaves the scenario unchanged.
+
+## Cancellable execution contract (2026-10-08)
+
+Explicit Run prepares an owned request and executes the same browser-v2 engine and schedule
+inside a dedicated module worker. Preparing, Computing and Publishing are transient statuses;
+the last complete recording stays inspectable. Cancel Run invalidates admission and terminates
+the actual worker. Playback Pause controls retained observations separately.
+
+One Run is admitted at a time. A completed response publishes its report, samples, bounded
+capture, execution input, generated source, identity, history and ledger in one guarded runtime
+update. Project/design/case/mapping/scenario edits, same-ID reopening, result clearing, cancellation
+and leaving Simulate invalidate a pending request. Late results cannot replace retained evidence.
+Worker/transfer failures report an error and allow a new Run; unavailable workers do not fall
+back to a blocking execution disguised as cancellable. Transient progress does not serialize
+or persist the recording archive. Completed recording persistence keeps the existing envelope.
+
+Timing evidence distinguishes preparation, request copy, engine compute, response transfer,
+artifact construction, admission/persistence and subsequent paint opportunities. Paint opportunity
+is a measured browser scheduling boundary, not an assertion that every later effect has rendered.
+Whole UI actions and heartbeat gaps remain separate browser measurements. Preparation, artifact
+construction and durable admission are synchronous; their measured stalls remain explicit.
+
+## Signal Journey - local connected inspection (2026-10-07)
+
+Run can opt into bounded evaluation steps from the actual execution path. Follow signal opens
+an immutable investigation inside Simulate; the experiment remains mounted and Return to experiment
+preserves its instrument/history state. This adds no workspace. A shared inspection carries the
+retained project/revision/run, tick, globally unique captured event, exact node/port/bit and instance
+ID path. Friendly labels are presentation. The original followed cone remains available while
+stepping or selecting internal objects. Hover preview does not commit selection.
+Workspace navigation closes the investigation without discarding its identity; Resume signal
+reopens the same object and phase. Return restores the retained run, signal and tick even after
+another recording was selected while the investigation was closed.
+
+Circuit is the primary atlas. Gate/module identity, actual input values, a local rule such as
+`0 OR 1 = 1`, and whether the output changed lead the explanation. Revision, engine, scheduler,
+raw aliases and evaluation provenance are available in details. Sequential explanations retain
+data, clock/control and prior/next state separately; only genuine native aliases share a row.
+Pending captured state is explicitly distinguished from the prior state still drawn on the circuit.
+Logic promotes the bounded local equation and lets the student expand one input branch at a time.
+Input-port selection derives its exact driver; output-port selection derives the gate rule.
+Selecting a drawn connection commits its exact retained port while keeping the paused phase.
+Negation groups the complete NAND/NOR rule rather than only its first operand. Table
+or recorded time uses published samples and retained binary/decimal word lanes. Generated HDL uses
+retained deterministic emitter spans, with the mapped statement visible on entry and reverse selection
+qualified by module instance. Board boundary reads retained mapping and simulated values at the chosen
+phase; missing phase values remain unrecorded. Workbench problems are labeled as current editable
+design diagnostics during historical inspection. Inspection never commands a board output.
+
+Playback uses captured inputs, driver provenance, prior/result outputs and actual state boundaries.
+Native edge devices capture against a common prior-Q boundary, publish together, then combinational
+logic settles. Pending capture results and published samples are distinct. Logical execution order
+does not establish physical delay or hazards. Cases keep stable tick-order labels even when the table
+is displayed by input combination; authored checks are independent of derived expressions.
+
+Capture is bounded to 10,000 events/4 MiB in the app; drawings focus at most 256 nodes and expressions
+at most 48 terms. Registers, feedback and unsupported primitives stop Boolean expansion. Legacy
+recordings retain their samples; unsupported old-engine reproduction and missing exact source maps
+are explicit. Do not attach a newly reconstructed trace or current source to an old recording.
+Large instances offer a recoverable four-node local focus with explicit omitted-graph counts;
+all actual loads remain reachable in 24-destination pages. Generated source uses 120-line pages,
+and cases/recorded time use 50-sample pages without changing the recording or inspection phase.
+Current Design live exploration says it is not recorded. Authored cases require an explicit Run
+for a new recording; recorded playback neither drives those inputs nor advances a live clock.
+Supported combinational module circuits now allow live Design exploration using the parent engine.
+Exact repeated/nested instance projection and ordinary authored reusable modules have separate proof.
+Sequential module hierarchy exploration remains explicitly unqualified and directs students to
+authored clock/reset cases in Simulate.
+
+Status: local uncommitted candidate; exact source digest and current evidence are in docs/ACTIVE_WORK.md.
 Mode ID: `verify`
+
+## Current local selected-result contract (2026-10-05, milestone 4)
+
+Simulate has three levels: experiment (scenario, one recorded verdict/currentness and Run),
+instrument (Table or Time), and selected result (exact signal/case/tick, retained expected and
+observed values, recorded inputs, one failure navigator, Inspect circuit and Edit expectation).
+The old bottom run line and repeated timing-value inventory are retired. The experiment says
+No recording yet before execution; absent observations remain missing. Case counts describe
+rows, check counts describe checked outputs. Zero-check recordings are not passing tests.
+
+Recordings & details holds history, Reproduce, repetition, comparison and hashes as secondary
+actions. Selecting history does not execute; opening investigation preserves the instrument,
+selected tick and signal. Draft input/expectation edits remain distinct from retained observations
+and mismatch marks. Edit expectation changes the owned authored scenario; Edit in Design
+carries the investigation to the editable circuit. Neither changes a historical recording.
+
+The recorded schematic uses that recording's topology, full names and samples. Selected nets
+and upstream connectivity are an inspection region, not a root-cause verdict. Clicking an
+available gate exposes exact retained values beside its pins. A local rule is explicitly derived
+and requires supported binary inputs. Sequential readouts use actual sampled prior/current
+states; an edge requires adjacent recorded clock values. Missing/unknown evidence stays missing
+or unknown. Whole circuit, instance selection, explicit Fit and Enlarge remain reachable;
+manual viewing is not reset by sample changes. Shared local label placement changes no wiring
+or saved node positions. Save As copies the current scenario view into an independently scoped
+session preference only after the repository save succeeds.
+
+This section supersedes the older run-line, failure-navigation and toolbar composition below.
+Local production evidence and remaining limits are recorded in docs/ACTIVE_WORK.md.
+
+## Earlier local recording/comparison contract (2026-09-30)
+
+The runtime ledger remains oldest-first. The shared recording read model scopes comparison
+to project, scenario, and selected recording, then finds its preceding compatible run.
+The identity strip and case table use that same selection. An older recording, another
+scenario, or a stale recording never certifies the current draft. Human case labels start
+at Case 1; the execution tick is separate and unchanged. PASS-to-FAIL-to-PASS, longer history,
+scenario switching, older selections, stale edits, reopen, and restored sessions are acceptance paths.
+
+
+## Current P2.6B experiment model (2026-09-12)
+
+Evidence checkpoint: built 0f941296e passes the complete 15-journey product campaign; matched captures were personally reviewed. This is Browser E0 implementation proof, not owner acceptance or a claim that broader release gates pass. The P2.6B ticket records remaining debt.
+
+With no circuit, the instrument yields to the start instructions. Design, the existing starter picker and Import/Recover are direct actions; external VCD import stays available. Browsing starters preserves current work. The current instrument stylesheet owns this empty-state rule.
+
+The linked investigation reserves its shared controls above two independently scrolling panes. Focusing Time must not obscure the recording header; the trace retains a useful minimum height, and its event-editor disclosure stays below it. One recorded execution says no repeat yet; identical counts describe comparisons after reproduction.
+
+Review refinement: Time uses Up/Down to select a lane and Left/Right to move the tick. In **Edit stimulus** mode Space/Enter edits only the selected authored input; while inspecting a recording it only selects (see the 2026-10-26 section). Generated clock and recorded output lanes cannot mutate stimulus. Child controls retain their own keyboard actions. Combinational Table inputs remain directly editable. Pre-run check context says no recording.
+
+This section supersedes the representation/run-line/mode descriptions below where they conflict.
+Run evaluates saved optional checks automatically; no Observe/Compare fork or Live I/O peer.
+Reproduce executes the selected recording's retained design/stimulus/engine, leaving edits intact.
+The visible identity strip owns digest, check result, repetition count and recording selection.
+Full values and the FNV-1a/sample-comparison definition are under Run details. Legacy records
+without execution inputs cannot be reproduced and explain why.
+
+Sequential work stays in Time: authored lanes, actual recorded output/internal lanes, cursor,
+A/B measurement, transition/failure navigation and recorded playback. Expected values are an
+optional overlay, never substituted for observations. Table remains the combinational default;
+Recorded trace is its alternative. Details and circuit investigation are mutually exclusive,
+explicit auxiliary views. No default lower Inspect/Checks/Vectors deck.
+
+Circuit investigation uses retained topology and samples. Driver, capturing edge and authored
+stimulus are clickable only when topology and chronology support them; missing/ambiguous
+evidence stops the chain. Imported VCD is a separate disclosure and always external evidence.
 
 ## Purpose
 
 Provide a simulation-first workspace: author a scenario, run deterministic simulation, inspect waveform or circuit replay, and add expected-output assertions when useful.
+
+## One experiment, one primary working area (2026-09-07)
+
+This section supersedes the deck/splitter composition described below and the three-document
+Cases / Timing / Waveform vocabulary wherever they conflict.
+
+A scenario is **one experiment**, drawn one way at a time in **one primary region**:
+
+| Representation | What it draws | Default for |
+|---|---|---|
+| **Timeline** (`ide-verify-view-timeline`) | `TimingLab` / `TimingLanes`: one lane per signal on a time axis, events where the reader places them, outputs as expected-over-observed | a clocked circuit |
+| **Table** (`ide-verify-view-table`) | `CaseLab`: one row per case, inputs beside expected and observed | a combinational circuit |
+| **Waveform** (`ide-verify-view-waveform`) | `WaveformViewer`: the recorded trace, with cursors and measurement | never a default; enabled once a run exists |
+
+The circuit chooses the default; a reader who says otherwise says it for that scenario, and it is
+remembered while the scenario is open. The switch renders inside whichever region is currently
+primary - the stimulus region for Timeline and Table, the trace region for Waveform - so the way
+back is where the way in was. Switching representation never opens a document and never a tab.
+
+**The run line** (`ide-verify-run-line`) sits under the instrument in every representation and
+holds what the last run did: the verdict summary with its details disclosure and `Inspect with
+circuit`, the live readout, edge navigation, the failure focus, and the tail actions
+(`Check…` / `Watch` / `Inspect run`). Its grid track is `fit-content(34%)`, so however much it has
+to say the instrument keeps two thirds of the workspace. Before a run it renders
+`ide-verify-run-line-empty`: "No run recorded yet", with the authored case count.
+
+**The trace toolbar** (`ide-verify-waveform-cmd`) is rendered only in the Waveform representation
+and holds what describes a drawn trace: case stepping, the tick range (`All ticks` / `Fail window`
+/ `Selected`), the radix, the expected overlay, the tick scrubber, and playback. `View and measure`
+(zoom, row density, A/B cursors) is a disclosure in the same representation.
+
+**Retired with this composition:** the Cases/Evidence deck splitter (`ide-verify-deck-handle`), its
+collapse and maximize controls, the collapsed evidence strip, and the persisted deck fraction.
+Simulate no longer reads or writes `workspacePreferences.simulate`.
+
+**Measured** at 1280x650 on the two-bit counter after a run: primary region 376px, run line 91px,
+timeline lanes 244px, 0 tabs, 0 document overflow. At 1440x900 in the Waveform representation the
+canvas fills 527px of its 717px region.
+
+**Input combinations** is stated for a combinational circuit and withheld for a clocked one: 2^n is
+the size of a truth table, which is the specification of a combinational circuit, and says nothing
+about a design whose output depends on the state it is in.
+
+**Direct editing and the cursor.** Every column the ruler draws holds the cursor, including the
+spare columns past the last authored event - the readout, the header chip and the drawn cursor
+always name the same tick. Clicking the tick number selects that tick: the number, the grid line
+and the edge marker are decoration and do not take the click. A click on a stimulus cell drives
+that input only in **Edit stimulus** mode; otherwise it selects that cell like any other. The event
+editor edits the event at the cursor and says so when there is none ("No event at t7. Click a
+stimulus cell in that column to drive an input there, or use + Add event", and while inspecting
+"Turn on Edit stimulus, then click a stimulus cell ..."), rather than silently editing the first
+event in the scenario. The ruler's spare columns follow the experiment, not the cursor, so selecting
+one column does not re-fit the tick width and move the rest.
+
+**The alternate editors are bounded.** "Event table", "Edit event at tN" and "Generators and full
+event editor" are disclosures the reader opens. An open one takes a bounded, scrolling share
+(55% of the region) and the instrument keeps a 132px floor: opening the generators takes the
+lanes from 432px to 153px, not to 1px, and every control in the composer bar above still answers
+at its own coordinates.
+
+**At hostile scales the instrument is floored and the workspace scrolls.** At 1024x720, at 200%
+text and at 720x450 (a 1440x900 machine at 200% browser zoom) the trace canvas keeps a 160px
+floor, the case table's failure navigation is painted rather than clipped, and the stacked
+template gives the primary instrument 180-220px before the contextual inspector gets anything.
+Where the floors add up to more than the window, `.rb-sim-lab-frame` scrolls.
+
+**Imported evidence.** `VcdAnalyzerPanel` is always mounted and compacts itself: with nothing
+imported it is one row naming the provider and offering Load, and it is the only `.vcd` route on
+the surface. `SimulationProviderBar` appears once there is a second source to choose between.
+
+**Signal identity.** The rail groups a lane as Inputs / Outputs / Internal by name. A normalised
+name claimed by more than one thing in the circuit resolves to nothing and cannot credit a lane to
+the boundary; only a lane carrying the boundary's own display name may do that. The two-bit
+counter is the case: its io row for the board pin is `{ id: 'q0', label: 'LD0' }` and the D
+flip-flop driving it is labelled `Q0`, so the register used to be counted as a board output
+("Outputs 4 / Internal 0" for a circuit with two pins and two registers). Owners come from
+`buildWaveformSignalAliasOwners`; `buildCanonicalWaveformSignalAliases` is the subset that resolves
+and `buildAmbiguousWaveformSignalKeys` the subset that does not.
 
 ## Simulation & Replay Studio v1 current contract (2026-07-26)
 
@@ -55,6 +292,14 @@ Scenario -> Run simulation -> Inspect replay -> Optional checks
 Rows and cases in Verify are authored **ticks/testbench steps**. In **auto board clock** mode, Verify starts the shared vector sequence at cycle 0 and materializes `max(runCycles, authored-row count, 1)` rows; every visible Auto result row is sampled post-rising-edge. When automatic reset applies, its assertion is materialized in cycle 0 and its later deassertion remains in the same sequence—there is no hidden runtime reset prelude. In **manual** or **custom pattern** mode, each authored row is one settled sample and drives the actual resolved clock input from the authored value. Only a low-to-high transition advances the supported rising-edge state model; repeated high, high-to-low, repeated low, and flat-low rows hold state. Manual/custom execution also injects no hidden reset.
 
 ## Named document and sequential policy authority
+
+For native structural hierarchy, establish data/enable during the preceding
+low-clock event before the capturing edge. Module combinational values settle
+between authored events; asserting data and clock simultaneously is not a setup
+guarantee. The modulo-8 counter sample demonstrates this stimulus repair while
+keeping its independently specified output checks unchanged. An authored scenario
+may contain no events; Add Event then creates a first row with zero inputs and no
+inherited checks. Recorded-run views remain read-only.
 
 Each named testbench is one browser-local authored document. The document owns:
 
@@ -173,3 +418,15 @@ Writes (guarded):
 3. `recorder`
 4. `probes`
 5. `oscilloscope`
+
+
+The 512-case hierarchical 4-bit adder import now records 39 native signals and evaluates
+2560 authored checks. Reproduce retains digest 140ba365; explicit save and reload preserve
+both recordings. The browser journey measured 4.049 s to run and 1.017 s to open/select linked
+inspection on this machine. A real quota failure led to lossless packing of waveform columns,
+check rows and repeated normalization metadata at existing runtime/repository storage boundaries.
+The two-run fixture uses about 5.00 million stored characters; larger retained sets still face
+the browser quota and must report save failure. No evidence is silently discarded. Older plain
+JSON saves remain readable; portable format 1 and existing storage keys are unchanged.
+The storage/repository owner batch passes 23/23, including exact mixed X/Z/missing samples and
+both long recordings after rehydration. The latest focused UI/owner batch passes 72/72.

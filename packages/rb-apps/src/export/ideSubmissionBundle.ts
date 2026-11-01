@@ -86,7 +86,7 @@ function textBytes(text: string): Uint8Array {
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   if (typeof globalThis.crypto?.subtle?.digest === 'function') {
-    const buffer = await crypto.subtle.digest('SHA-256', bytes);
+    const buffer = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
     return Array.from(new Uint8Array(buffer))
       .map((v) => v.toString(16).padStart(2, '0'))
       .join('');

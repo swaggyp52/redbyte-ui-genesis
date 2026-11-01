@@ -1,5 +1,5 @@
 
-import { useLabStore } from '@redbyte/rb-logic-3d';
+import { useLabStore } from '../internal/physicalLabModel';
 
 export const useHardwareStatus = () => {
     const activeTransport = useLabStore((state) => state.activeTransport);

@@ -1,382 +1,154 @@
-/* --------------------------------------------------------------------------
-   Unified Workbench v3: one horizontal flow and stable page workspaces.
-   This shell-owned layer retires the legacy workflow rail and transient
-   hide/show dock geometry without changing surface data contracts.
-   -------------------------------------------------------------------------- */
+/* RedByte workbench pane system.
+   The application frame (command bar, workspace rail, document tabs, status
+   bar) is owned by workbench-instrument-system.css. This file owns the shared
+   three-pane workbench geometry every surface mounts through IdeWorkbenchShell:
+   left dock / workspace / right dock / bottom console, splitters, collapse
+   controls, and the lazy-chunk loading frame. */
 
-:root[data-redbyte-mode='ide'] {
-  --ide-stage-nav-height: 44px;
-}
-
-.ide-root {
-  --ide-topbar-height: 52px;
-  grid-template-rows:
-    var(--ide-topbar-height)
-    var(--ide-stage-nav-height)
-    minmax(0, 1fr);
-}
-
-.ide-root .ide-top-bar {
-  grid-row: 1;
-  gap: var(--rb-space-4);
-}
-
-.ide-root .ide-top-right {
-  gap: var(--rb-space-2);
-}
-
-.ide-root .ide-topbar-fact,
-.ide-root .ide-topbar-fact-label,
-.ide-root .ide-topbar-fact strong,
-.ide-root .ide-build-badge,
-.ide-root .ide-build-badge-sha,
-.ide-root .ide-save-label {
-  font-size: 13px;
-}
-
-.ide-root .ide-topbar-action,
-.ide-root .ide-topbar-help-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: var(--rb-radius-control);
-  color: var(--rb-text-primary);
-  background: transparent;
-  box-shadow: none;
-  font: 600 var(--rb-type-control) / 1 var(--rb-font-ui);
-}
-
-.ide-root .ide-topbar-action:hover,
-.ide-root .ide-topbar-help-btn:hover,
-.ide-root .ide-topbar-action:focus-visible,
-.ide-root .ide-topbar-help-btn:focus-visible {
-  border-color: var(--rb-border-strong);
-  background: var(--rb-surface-raised);
-}
-
-.ide-root .ide-stage-nav-frame {
-  grid-row: 2;
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  min-height: 0;
-  padding: 0 var(--rb-space-4);
-  border-bottom: 1px solid var(--rb-border-subtle);
-  background: color-mix(in srgb, var(--rb-shell) 88%, var(--rb-surface-raised));
-}
-
-.ide-root .ide-stage-nav {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(128px, 1fr));
-  width: min(100%, 880px);
-  min-width: 0;
-  margin: 0 auto;
-}
-
-.ide-root .ide-stage-nav-button {
-  position: relative;
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  align-items: center;
-  min-width: 0;
-  padding: 4px 12px;
-  gap: 9px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  color: var(--rb-text-secondary);
-  background: transparent;
-  box-shadow: none;
-  text-align: left;
-}
-
-.ide-root .ide-stage-nav-button:hover,
-.ide-root .ide-stage-nav-button:focus-visible {
-  color: var(--rb-text-primary);
-  background: var(--rb-surface-raised);
-}
-
-.ide-root .ide-stage-nav-button[data-state='current'] {
-  border-bottom-color: var(--rb-focus);
-  color: var(--rb-text-primary);
-  background: var(--rb-state-info-bg);
-}
-
-.ide-root .ide-stage-nav-button[data-state='blocked'] {
-  color: var(--rb-text-muted);
-}
-
-.ide-root .ide-stage-nav-number {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--rb-border-default);
-  border-radius: 50%;
-  color: inherit;
-  font: 600 13px / 1 var(--rb-font-mono);
-}
-
-.ide-root .ide-stage-nav-button[data-state='current'] .ide-stage-nav-number {
-  border-color: var(--rb-focus);
-  color: var(--rb-focus);
-}
-
-.ide-root .ide-stage-nav-button[data-state='complete'] .ide-stage-nav-number {
-  border-color: var(--rb-success-border);
-  color: var(--rb-state-success);
-}
-
-.ide-root .ide-stage-nav-copy {
-  display: grid;
-  min-width: 0;
-  gap: 1px;
-}
-
-.ide-root .ide-stage-nav-label {
-  overflow: hidden;
-  color: inherit;
-  font-size: var(--rb-type-control);
-  font-weight: 650;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ide-root .ide-stage-nav-state {
-  overflow: hidden;
-  color: var(--rb-text-muted);
-  font-size: 13px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ide-root .ide-stage-nav-state {
-  color: var(--rb-state-success);
-  font-weight: 600;
-}
-
-.ide-root .ide-stage-nav-button[data-state='blocked'] .ide-stage-nav-state {
-  color: var(--rb-state-warning);
-}
-
-.ide-root .ide-layout-shell {
-  grid-row: 3;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-}
-
-.ide-root .ide-surface-column {
-  grid-column: 1;
-}
-
+/* Shared three-pane workbench geometry. */
 .ide-root .ide-workbench-shell {
-  --ide-workbench-left-width: 216px;
-  --ide-workbench-right-width: 252px;
+  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 236px);
+  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 300px);
   --ide-workbench-left-slot-width: var(--ide-workbench-left-width);
   --ide-workbench-right-slot-width: var(--ide-workbench-right-width);
+  position: relative;
+  display: grid;
   grid-template-rows: minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--rb-app-bg, var(--rb-bg));
 }
-
-.ide-root .ide-workbench-shell:has(> .ide-workbench-console) {
-  grid-template-rows: minmax(0, 1fr) minmax(96px, auto);
-}
-
+/* The console's remembered height belongs to the console when it is open. A collapsed one
+   is a 28px strip, and the track has to know that: measured with a single informational
+   problem, the strip drew itself 28px tall inside a 220px reserved row and handed the other
+   192px to nobody - a fifth of the workbench held for a panel that had folded itself away. */
+.ide-root .ide-workbench-shell:has(> .ide-workbench-console) { grid-template-rows: minmax(0, 1fr) minmax(96px, var(--rb-workbench-pref-bottom-height, 220px)); }
+.ide-root .ide-workbench-shell:has(> .ide-workbench-console.is-collapsed) { grid-template-rows: minmax(0, 1fr) auto; }
+.ide-root .ide-workbench-panel-controls { position: absolute; z-index: 30; right: 8px; bottom: 8px; display: flex; min-height: 0; align-items: center; justify-content: flex-end; padding: 3px; gap: 6px; border: 1px solid var(--rb-border-subtle); border-radius: 7px; background: color-mix(in srgb, var(--rb-surface-raised) 92%, transparent); box-shadow: 0 4px 16px rgba(15, 23, 42, .1); pointer-events: none; }
+.ide-root .ide-workbench-panel-controls:empty { display: none; }
+.ide-root .ide-workbench-panel-controls button { min-height: 28px; pointer-events: auto; }
 .ide-root .ide-workbench-main {
-  grid-template-columns:
-    var(--ide-workbench-left-slot-width)
-    minmax(0, 1fr)
-    var(--ide-workbench-right-slot-width) !important;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: var(--ide-workbench-left-slot-width) minmax(0, 1fr) var(--ide-workbench-right-slot-width) !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-root .ide-workbench-main.hide-left-dock { --ide-workbench-left-slot-width: 0px; }
+.ide-root .ide-workbench-main.hide-right-dock { --ide-workbench-right-slot-width: 0px; }
+.ide-root .ide-workbench-main.hide-left-dock.hide-right-dock { grid-template-columns: minmax(0, 1fr) !important; }
+.ide-root .ide-workbench-main.hide-left-dock:not(.hide-right-dock) { grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-slot-width) !important; }
+.ide-root .ide-workbench-main:not(.hide-left-dock).hide-right-dock { grid-template-columns: var(--ide-workbench-left-slot-width) minmax(0, 1fr) !important; }
+.ide-root .ide-workbench-dock { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--rb-surface-raised); }
+.ide-root .ide-workbench-dock-left { grid-column: 1; border-right: 1px solid var(--rb-border-subtle); }
+.ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-workspace { grid-column: 2; }
+.ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-dock-right { grid-column: 3; }
+.ide-root .ide-workbench-main.hide-left-dock .ide-workbench-workspace { grid-column: 1; }
+.ide-root .ide-workbench-main.hide-left-dock .ide-workbench-dock-right { grid-column: 2; }
+.ide-root .ide-workbench-workspace { min-width: 0; min-height: 0; overflow: hidden; }
+.ide-root .ide-workbench-dock-right { border-left: 1px solid var(--rb-border-subtle); }
+/* The panel is a column: its bar keeps its height and its content takes the rest and scrolls.
+   Without this the bar, the resize handle and the problems list were three block children of a
+   fixed-height section with `overflow: hidden`, so a short track did not shorten the list - it
+   pushed the list out of the section and clipped it, which is how an "expanded" panel came to
+   show 17px of nothing. */
+.ide-root .ide-workbench-console { position: relative; grid-row: 2; display: flex; flex-direction: column; min-height: 0; overflow: hidden; border-top: 1px solid var(--rb-border-subtle); background: var(--rb-surface-raised); }
+.ide-root .ide-workbench-console > .ide-workbench-console-bar { flex: none; }
+.ide-root .ide-workbench-console > .ide-workbench-console-content { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.ide-root .ide-workbench-dock-collapse { position: absolute; z-index: 15; top: 7px; display: grid; width: 28px; min-height: 28px; place-items: center; padding: 0; border: 1px solid var(--rb-border-default); border-radius: 6px; color: var(--rb-text-secondary); background: var(--rb-surface-raised); }
+.ide-root .ide-workbench-dock-collapse--left { right: 7px; }
+.ide-root .ide-workbench-dock-collapse--right { left: 7px; }
+.ide-root .ide-workbench-dock-collapse--bottom { top: 6px; right: 8px; }
+.ide-root .ide-workbench-resize-handle { position: absolute; z-index: 16; background: transparent; touch-action: none; }
+.ide-root .ide-workbench-resize-handle::after { content: ''; position: absolute; background: var(--rb-action); opacity: 0; transition: opacity 120ms ease; }
+.ide-root .ide-workbench-resize-handle:hover::after,
+.ide-root .ide-workbench-resize-handle:focus-visible::after { opacity: 0.8; }
+.ide-root .ide-workbench-resize-handle--left,
+.ide-root .ide-workbench-resize-handle--right { top: 0; bottom: 0; width: 9px; cursor: col-resize; }
+.ide-root .ide-workbench-resize-handle--left { right: -5px; }
+.ide-root .ide-workbench-resize-handle--right { left: -5px; }
+.ide-root .ide-workbench-resize-handle--left::after,
+.ide-root .ide-workbench-resize-handle--right::after { top: 0; bottom: 0; left: 4px; width: 1px; }
+.ide-root .ide-workbench-resize-handle--bottom { top: -5px; right: 0; left: 0; height: 9px; cursor: row-resize; }
+.ide-root .ide-workbench-resize-handle--bottom::after { top: 4px; right: 0; left: 0; height: 1px; }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] { --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 220px); --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 236px); }
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] { --ide-workbench-left-width: clamp(220px, var(--rb-workbench-pref-left-width, 240px), 300px); --ide-workbench-right-width: clamp(260px, var(--rb-workbench-pref-right-width, 296px), 340px); }
+
+/* Ordinary desktop widths come from the saved preference. Text-responsive chrome
+   may grow a dock with its text, capped so the document keeps useful width. Keeping
+   this policy here avoids the old unconditional 15rem/16rem minimums overriding
+   fresh 220px/236px Design preferences with 240px/256px tracks. */
+:root[data-rb-chrome='compact'] .ide-root .ide-workbench-shell {
+  --ide-workbench-left-width: min(max(var(--rb-workbench-pref-left-width, 236px), 15rem), 21vw);
+  --ide-workbench-right-width: min(max(var(--rb-workbench-pref-right-width, 300px), 16rem), 19vw);
 }
 
-.ide-root .ide-workbench-main.hide-left-dock {
-  --ide-workbench-left-slot-width: 0px;
+.ide-root:is([data-ide-stage='project'], [data-ide-stage='verify'], [data-ide-stage='hardware'], [data-ide-stage='export']) .ide-main-area {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
 }
 
-.ide-root .ide-workbench-main.hide-right-dock {
-  --ide-workbench-right-slot-width: 0px;
-}
+/* Lazy chunks retain a real workplane rather than flashing an empty page. */
+.ide-surface-loading-shell { display: grid; box-sizing: border-box; width: 100%; min-height: 100%; padding: 12px; }
+.ide-surface-loading-workbench { position: relative; display: grid; grid-template-rows: 42px minmax(280px, 1fr); min-height: 100%; overflow: hidden; border: 1px solid var(--rb-border-default); border-radius: 8px; background: var(--rb-surface-raised); }
+.ide-surface-loading-taskbar { border-bottom: 1px solid var(--rb-border-subtle); background: var(--rb-surface-subtle); }
+.ide-surface-loading-grid { display: grid; grid-template-columns: minmax(180px, 0.2fr) minmax(420px, 1fr) minmax(240px, 0.25fr); min-height: 0; }
+.ide-surface-loading-grid > span + span { border-left: 1px solid var(--rb-border-subtle); }
+.ide-surface-loading-workbench > p { position: absolute; top: 50%; left: 50%; margin: 0; padding: 9px 13px; border: 1px solid var(--rb-border-default); border-radius: 7px; background: var(--rb-surface-raised); transform: translate(-50%, -50%); }
 
-.ide-root .ide-workbench-main.hide-left-dock.hide-right-dock {
-  grid-template-columns: minmax(0, 1fr) !important;
-}
-
-.ide-root .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
-  grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-slot-width) !important;
-}
-
-.ide-root .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
-  grid-template-columns: var(--ide-workbench-left-slot-width) minmax(0, 1fr) !important;
-}
-
-.ide-root .ide-workbench-dock-left {
-  grid-column: 1;
-}
-
-.ide-root .ide-workbench-main.hide-left-dock .ide-workbench-workspace {
-  grid-column: 1;
-}
-
-.ide-root .ide-workbench-main.hide-left-dock .ide-workbench-dock-right {
-  grid-column: 2;
-}
-
-.ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-workspace {
-  grid-column: 2;
-}
-
-.ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-dock-right {
-  grid-column: 3;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-left-width: clamp(196px, 15vw, 224px) !important;
-  --ide-workbench-right-width: clamp(228px, 18vw, 264px) !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] {
-  --ide-workbench-left-width: clamp(184px, 14vw, 208px) !important;
-  --ide-workbench-right-width: clamp(224px, 18vw, 264px) !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='hardware'] {
-  --ide-workbench-left-width: clamp(220px, 18vw, 268px) !important;
-  --ide-workbench-right-width: clamp(252px, 20vw, 300px) !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='export'],
-.ide-root .ide-workbench-shell[data-ide-mode-marker='import'] {
-  --ide-workbench-right-width: clamp(280px, 23vw, 340px) !important;
-}
-
-.ide-root .ide-workbench-console {
-  grid-row: 2;
-  min-height: 96px;
-  max-height: 180px;
-  border-width: 1px 0 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-@media (max-width: 1040px) {
-  :root[data-redbyte-mode='ide'] {
-    --ide-stage-nav-height: 52px;
-  }
-
-  .ide-root .ide-stage-nav {
-    grid-template-columns: repeat(5, minmax(92px, 1fr));
-  }
-
-  .ide-root .ide-stage-nav-button {
-    grid-template-columns: 20px minmax(0, 1fr);
-    padding: 7px 9px;
-    gap: 6px;
-  }
-
-  .ide-root .ide-stage-nav-state {
-    display: none;
-  }
-
-  .ide-root .ide-topbar-fact,
-  .ide-root .ide-save-label {
-    display: none;
-  }
-}
-
-@media (max-width: 760px) {
-  .ide-root .ide-top-bar {
-    padding-inline: var(--rb-space-2);
-  }
-
-  .ide-root .ide-stage-nav-frame {
-    overflow-x: auto;
-    padding-inline: 0;
-  }
-
-  .ide-root .ide-stage-nav {
-    width: max-content;
-    min-width: 620px;
-  }
-
+@media (max-width: 860px) {
   .ide-root .ide-workbench-main,
   .ide-root .ide-workbench-main.hide-left-dock,
   .ide-root .ide-workbench-main.hide-right-dock,
-  .ide-root .ide-workbench-main.hide-left-dock.hide-right-dock {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    overflow: auto;
-  }
-
+  .ide-root .ide-workbench-main.hide-left-dock.hide-right-dock { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: auto minmax(0, 1fr) auto; overflow: auto; }
   .ide-root .ide-workbench-dock-left,
   .ide-root .ide-workbench-main.hide-left-dock .ide-workbench-dock-right,
   .ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-dock-right,
   .ide-root .ide-workbench-main.hide-left-dock .ide-workbench-workspace,
-  .ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-workspace {
-    grid-column: 1;
+  .ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-workspace { grid-column: 1; }
+  .ide-root .ide-workbench-dock-left { grid-row: 1; max-height: 220px; }
+  .ide-root .ide-workbench-workspace { grid-row: 2; min-height: 500px; }
+  .ide-root .ide-workbench-dock-right { grid-row: 3; max-height: 300px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ide-root *, .ide-root *::before, .ide-root *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* Narrow viewports (200% zoom on a laptop, ~720px CSS): the document takes the whole
+   width; support docks collapse and come back through View > panels when wider. */
+@media (max-width: 899px) {
+  .ide-root .ide-workbench-main,
+  .ide-root .ide-workbench-main.hide-left-dock,
+  .ide-root .ide-workbench-main.hide-right-dock,
+  .ide-root .ide-workbench-main.hide-left-dock.hide-right-dock,
+  .ide-root .ide-workbench-main.hide-left-dock:not(.hide-right-dock),
+  .ide-root .ide-workbench-main:not(.hide-left-dock).hide-right-dock { grid-template-columns: minmax(0, 1fr) !important; }
+  .ide-root .ide-workbench-main .ide-workbench-workspace { grid-column: 1; }
+  .ide-root .ide-workbench-main .ide-workbench-dock-left,
+  .ide-root .ide-workbench-main .ide-workbench-dock-right { display: none; }
+  /* Project's existing explorer and inspector can be explicitly restored over
+     the document. Their React visibility owns both the panel and its restore
+     control; CSS must not silently hide a panel the shell considers open. */
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock {
+    display: block;
+    position: absolute;
+    z-index: 40;
+    top: 0;
+    bottom: 0;
+    width: min(320px, 100%);
+    max-height: none;
+    box-shadow: 4px 0 16px rgb(15 23 42 / 18%);
   }
-
-  .ide-root .ide-workbench-dock-left {
-    grid-row: 1;
-    max-height: 220px;
-  }
-
-  .ide-root .ide-workbench-workspace {
-    grid-row: 2;
-    min-height: 520px;
-  }
-
-  .ide-root .ide-workbench-dock-right {
-    grid-row: 3;
-    max-height: 280px;
-  }
-}
-/* Surface chunk transitions retain a full workplane instead of flashing an
-   empty column while a lazy stage resolves. Chunks are also prefetched by the
-   shell; this fallback covers cold/direct stage entry and slow networks. */
-.ide-surface-loading-shell {
-  box-sizing: border-box;
-  display: grid;
-  min-height: 100%;
-  width: 100%;
-  padding: 12px;
-}
-
-.ide-surface-loading-workbench {
-  position: relative;
-  display: grid;
-  grid-template-rows: 44px minmax(280px, 1fr);
-  min-height: 100%;
-  overflow: hidden;
-  border: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
-  background: var(--rb-surface-1, #0c1420);
-}
-
-.ide-surface-loading-taskbar {
-  border-bottom: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), transparent 42%);
-}
-
-.ide-surface-loading-grid {
-  display: grid;
-  grid-template-columns: minmax(160px, 0.22fr) minmax(420px, 1fr) minmax(180px, 0.24fr);
-  min-height: 0;
-}
-
-.ide-surface-loading-grid > span + span {
-  border-left: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
-}
-
-.ide-surface-loading-workbench > p {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  margin: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
-  background: var(--rb-surface-2, #111c2a);
-  transform: translate(-50%, -50%);
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock-left { left: 0; }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock-right { right: 0; }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .ide-workbench-dock-collapse { display: grid; }
+  .ide-root .ide-workbench-shell[data-narrow-project='true'] .wb-toolwindow-header { padding-right: 40px; }
 }

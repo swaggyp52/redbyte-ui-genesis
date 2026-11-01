@@ -52,7 +52,7 @@ async function computeHash(input: Uint8Array | Blob): Promise<string | undefined
       } else if ((input as any)._buffer) {
         const raw = (input as any)._buffer;
         if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
-          buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+          buffer = new Uint8Array(raw).buffer;
         } else if (raw instanceof ArrayBuffer) {
           buffer = raw;
         } else {
@@ -67,7 +67,7 @@ async function computeHash(input: Uint8Array | Blob): Promise<string | undefined
         buffer = new Uint8Array(0).buffer;
       }
     } else {
-      buffer = input.buffer;
+      buffer = new Uint8Array(input).buffer;
     }
     const bufferSource = (buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer))
       ? buffer
@@ -108,7 +108,7 @@ async function toUint8Array(input: string | Uint8Array | Blob): Promise<Uint8Arr
   } else if ((input as any)._buffer) {
     const raw = (input as any)._buffer;
     if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
-      buffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+      buffer = new Uint8Array(raw).buffer;
     } else if (raw instanceof ArrayBuffer) {
       buffer = raw;
     } else {

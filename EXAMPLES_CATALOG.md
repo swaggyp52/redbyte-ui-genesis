@@ -1,3 +1,5 @@
+> **SUPERSEDED (historical).** This document describes an earlier RedByte era and does not reflect the current five-workspace product (Project / Design / Simulate / Board & Constraints / Build & Export). Current truth: the in-app starter catalog and `docs/manuals/RedByte_Product_Manual.md`.
+
 # RedByte OS Examples Catalog
 
 ## Overview

@@ -15,6 +15,8 @@ import {
   type VerifySchedule,
 } from './verifySchedule';
 import { buildTopLevelBindingRefs, toSignalName } from './basys3ExportModel';
+import { normalizeBoardRowId } from '@redbyte/rb-utils';
+import { resolveExportIoMapping } from './exportIoMapping';
 
 interface SignalCatalog {
   inputs: string[];
@@ -57,6 +59,17 @@ interface EntityPortInfo {
   vectorWidth?: number;
 }
 
+
+/**
+ * The mapping the package is built from: the structured V2 document when the
+ * project carries one, else the legacy ioMapping — the same rule the export
+ * service applies. Reading only the legacy field left V2-only projects with no
+ * name aliases, so every stimulus and assertion target fell back to a raw name
+ * the entity never declared.
+ */
+function resolveProjectIoMapping(project: RBProject): RBProject['ioMapping'] {
+  return resolveExportIoMapping(project);
+}
 function parseEntityPortInfos(topVhd: string): EntityPortInfo[] {
   // Match Port block ending with "  );" on its own line (handles nested parens in vector types)
   const m = topVhd.match(/\bPort\s*\(([\s\S]*?)\n\s*\);/i);
@@ -115,18 +128,30 @@ function buildLabelToEntityRef(
     }
   };
 
-  const registerAlias = (alias: string | undefined, ref: string, allowAmbiguous = true) => {
+  // A key resolves through the closest spelling any row registered: exact, then a case variant,
+  // then punctuation stripped; at each, a row's own identity (id, node, pin, port) before a name
+  // derived from a label. Rows that differ only by punctuation (Y_1, Y1) or case keep their own
+  // ports, and a key two rows claim at the same closeness resolves to neither: an unresolved key
+  // blocks the export by name instead of checking another output (review P0-1).
+  const candidates = new Map<string, Array<Set<string>>>();
+  const registerAlias = (alias: string | undefined, ref: string, allowAmbiguous = true, fromLabel = false) => {
     const trimmed = alias?.trim() ?? '';
     if (!trimmed) return;
     if (!allowAmbiguous && ambiguousLabels.has(trimmed.toLowerCase())) return;
 
     const normalized = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '');
-    const variants = [trimmed, trimmed.toUpperCase(), trimmed.toLowerCase(), normalized].filter(Boolean);
-    for (const variant of variants) {
-      const existing = result.get(variant);
-      if (!existing || existing === ref) {
-        result.set(variant, ref);
-      }
+    const spellings: Array<[number, string]> = [[0, trimmed], [1, trimmed.toUpperCase()], [1, trimmed.toLowerCase()], [2, normalized]];
+    for (const [closeness, variant] of spellings) {
+      if (!variant) continue;
+      const byTier = candidates.get(variant) ?? Array.from({ length: 6 }, () => new Set<string>());
+      byTier[closeness * 2 + (fromLabel ? 1 : 0)].add(ref);
+      candidates.set(variant, byTier);
+    }
+  };
+  const settleAliases = () => {
+    for (const [variant, byTier] of candidates) {
+      const closest = byTier.find((refs) => refs.size > 0);
+      if (closest?.size === 1) result.set(variant, [...closest][0]);
     }
   };
 
@@ -185,10 +210,11 @@ function buildLabelToEntityRef(
   };
 
   const allEntries = [
-    ...(project.ioMapping?.inputs ?? []).map((entry) => ({ ...entry, direction: 'in' as const })),
-    ...(project.ioMapping?.outputs ?? []).map((entry) => ({ ...entry, direction: 'out' as const })),
+    ...(resolveProjectIoMapping(project)?.inputs ?? []).map((entry) => ({ ...entry, direction: 'in' as const })),
+    ...(resolveProjectIoMapping(project)?.outputs ?? []).map((entry) => ({ ...entry, direction: 'out' as const })),
   ];
-  const bindingRefs = project.ioMapping ? buildTopLevelBindingRefs(project.ioMapping) : null;
+  const resolvedIoMapping = resolveProjectIoMapping(project);
+  const bindingRefs = resolvedIoMapping ? buildTopLevelBindingRefs(resolvedIoMapping) : null;
   const bindingRefByEntryId = new Map(
     [...(bindingRefs?.inputRefs ?? []), ...(bindingRefs?.outputRefs ?? [])].map((ref) => [ref.entryId, ref] as const)
   );
@@ -230,28 +256,52 @@ function buildLabelToEntityRef(
       registerAlias(bindingRef?.signalRef, ref);
       registerAlias(bindingRef?.xdcRef, ref);
       registerAlias(bindingRef?.portName, ref);
-      registerAlias(canonicalPortHint, ref);
+      registerAlias(canonicalPortHint, ref, true, Boolean(entry.label?.trim()));
       registerAlias(basys3Alias, ref);
       registerAlias(entry.pin, ref);
       registerAlias(entry.id, ref);
       registerAlias(entry.nodeId, ref);
       registerAlias(toVhdlIdentifier(`${entry.nodeId ?? ''}_${entry.port ?? ''}`), ref);
-      registerAlias(entry.label, ref, false);
-      registerAlias(nodeLabel, ref, false);
+      registerAlias(entry.label, ref, false, true);
+      registerAlias(nodeLabel, ref, false, true);
+      // The runtime keys rows, vectors and checks by the label-derived row id
+      // (SUM[0] -> sum_0); a project whose rows were derived that way must
+      // resolve its assertion targets to the same port.
+      registerAlias(entry.label ? normalizeBoardRowId(entry.label) : undefined, ref, true, true);
+      registerAlias(nodeLabel ? normalizeBoardRowId(nodeLabel) : undefined, ref, true, true);
     }
   };
 
-  processEntries(project.ioMapping?.inputs ?? [], 'in');
-  processEntries(project.ioMapping?.outputs ?? [], 'out');
+  processEntries(resolveProjectIoMapping(project)?.inputs ?? [], 'in');
+  processEntries(resolveProjectIoMapping(project)?.outputs ?? [], 'out');
+  settleAliases();
   return result;
 }
+
+/**
+ * The single authority for a generated testbench's entity name. The Vivado
+ * project's sim_1 top, the provenance header and the E1 harness all derive it
+ * from here or read it back from the testbench text.
+ */
+export function testbenchEntityNameFor(designTop: string): string {
+  return `tb_${toVhdlIdentifier(designTop.trim() || 'top')}`;
+}
+
+/** The entity a testbench text declares, read back from the text itself. */
+export function detectTestbenchEntityName(testbenchVhd: string): string | undefined {
+  return testbenchVhd.match(/^\s*entity\s+([A-Za-z][A-Za-z0-9_]*)\s+is\b/im)?.[1];
+}
+
+/** Marker lines a generated testbench carries for keys it could not check or drive. */
+export const TESTBENCH_UNRESOLVED_MARKER =
+  /--\s*RB_UNRESOLVED_(EXPECTATION|STIMULUS) vector=(\d+) key="([^"\n]*)" reason=([a-z-]+)/g;
 
 export function generateTestbenchVhdl(
   project: RBProject,
   vectors: TestVector[],
   options?: TestbenchGenerationOptions
 ): string {
-  const derivedSchedule = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
+  const derivedSchedule = deriveVerifySchedule(project.circuit, resolveProjectIoMapping(project), project.hdl);
   const scheduleContract =
     options?.scheduleOverride
       ? {
@@ -259,8 +309,8 @@ export function generateTestbenchVhdl(
           ...options.scheduleOverride,
         }
       : derivedSchedule;
-  const topModule = (project.fpga?.top || project.hdl?.top || 'top').trim() || 'top';
-  const resolvedEntityVhd = options?.entityVhd ?? resolveCanonicalEntityVhd(project);
+  const topModule = resolveDesignTop(project);
+  const resolvedEntityVhd = options?.entityVhd ?? resolveCanonicalEntityVhd(project, topModule);
 
   // Entity-based path: derive component ports directly from the entity VHDL
   // to guarantee testbench/entity consistency. Used when entity uses vector ports.
@@ -318,6 +368,9 @@ export function generateTestbenchVhdl(
     ...declaredOutputs.map((name) => `      ${vhdlNameByLogical.get(name)} : out std_logic`),
   ].join(';\n');
 
+  const dutEntity = toVhdlIdentifier(topModule);
+  const names = allocateSelfCheckNames([dutEntity, ...vhdlNameByLogical.values(), 'CLK_HALF_PERIOD']);
+
   const signalDecls = [
     ...declaredInputs.map((name) =>
       `  signal ${vhdlNameByLogical.get(name)} : std_logic := '${
@@ -340,52 +393,245 @@ export function generateTestbenchVhdl(
     scheduleContract.schedule,
     signalCatalog.clock,
     vhdlNameByLogical,
-    authoredClock
+    authoredClock,
+    names,
+    authoredClockStartLevel,
   );
   const clockProcess = authoredClock
     ? ''
-    : buildClockProcess(scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
+    : buildClockProcess(scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical, names);
+
+  return renderTestbench({
+    dutEntity,
+    componentPorts,
+    signalDecls,
+    portMapEntries,
+    clockProcess,
+    stimulus,
+    scheduleContract,
+    authoredClock,
+    names,
+    expectedChecks: countExpectedChecks(vectors),
+  });
+}
+
+/**
+ * Identifiers for the self-check bookkeeping. Each one is suffixed until it
+ * cannot collide with a DUT port or another testbench name (VHDL is
+ * case-insensitive).
+ */
+interface SelfCheckNames {
+  done: string;
+  checks: string;
+  failures: string;
+  expectedChecks: string;
+  checkVar: string;
+  failureVar: string;
+  resultFile: string;
+  finish: string;
+}
+
+function allocateSelfCheckNames(taken: Iterable<string>): SelfCheckNames {
+  const used = new Set(Array.from(taken, (name) => name.toLowerCase()));
+  const pick = (base: string): string => {
+    let candidate = base;
+    let suffix = 1;
+    while (used.has(candidate.toLowerCase())) {
+      candidate = `${base}_${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  };
+  return {
+    done: pick('rb_tb_done'),
+    checks: pick('rb_tb_checks'),
+    failures: pick('rb_tb_failures'),
+    expectedChecks: pick('RB_TB_EXPECTED_CHECKS'),
+    checkVar: pick('rb_checks'),
+    failureVar: pick('rb_failures'),
+    resultFile: pick('rb_result_file'),
+    finish: pick('rb_finish'),
+  };
+}
+
+/**
+ * The file every generated testbench writes its one summary line to, in the
+ * simulator's working directory. Harnesses read this file instead of guessing
+ * which log a simulator routes report messages to.
+ */
+export const TESTBENCH_RESULT_FILE = 'redbyte_tb_result.txt';
+
+function countExpectedChecks(vectors: TestVector[]): number {
+  return vectors.reduce((total, vector) => total + Object.keys(vector.expected ?? {}).length, 0);
+}
+
+interface TestbenchTemplate {
+  dutEntity: string;
+  componentPorts: string;
+  signalDecls: string;
+  portMapEntries: string;
+  clockProcess: string;
+  stimulus: string;
+  scheduleContract: ReturnType<typeof deriveVerifySchedule>;
+  authoredClock: boolean;
+  names: SelfCheckNames;
+  expectedChecks: number;
+}
+
+/**
+ * Shared body for both generator paths. Every testbench counts its checks and
+ * failures, stops its own clock and ends with exactly one summary line, both
+ * reported and written to TESTBENCH_RESULT_FILE:
+ *   REDBYTE_TB_RESULT v=1 tb=<entity> status=PASS|FAIL|NO_CHECKS checks=<n> failures=<m>
+ * FAIL and NO_CHECKS report at severity failure, so a simulator exits nonzero
+ * and a testbench without checks can never read as a pass.
+ */
+function renderTestbench(t: TestbenchTemplate): string {
+  const tbEntity = testbenchEntityNameFor(t.dutEntity);
+  const { names } = t;
+  const sequence = t.authoredClock
+    ? 'authored-vectors'
+    : t.scheduleContract.schedule === 'clocked_macro'
+      ? CLOCKED_MACRO_SEQUENCE.join('->')
+      : 'single-tick';
 
   return `library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
-entity tb_${toVhdlIdentifier(topModule)} is
-end entity tb_${toVhdlIdentifier(topModule)};
+entity ${tbEntity} is
+end entity ${tbEntity};
 
-architecture sim of tb_${toVhdlIdentifier(topModule)} is
-  component ${toVhdlIdentifier(topModule)} is
+architecture sim of ${tbEntity} is
+  component ${t.dutEntity} is
     port (
-${componentPorts}
+${t.componentPorts}
     );
   end component;
 
-${signalDecls}
+${t.signalDecls}
+  signal ${names.done} : boolean := false;
+  signal ${names.checks} : natural := 0;
+  signal ${names.failures} : natural := 0;
+  constant ${names.expectedChecks} : natural := ${t.expectedChecks};
 begin
   -- Deterministic schedule contract with Verify runner:
-  -- schedule=${scheduleContract.schedule}
-  -- reason=${scheduleContract.reason}
-  -- sequence=${authoredClock ? 'authored-vectors' : scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
-  dut: ${toVhdlIdentifier(topModule)}
+  -- schedule=${t.scheduleContract.schedule}
+  -- reason=${t.scheduleContract.reason}
+  -- sequence=${sequence}
+  -- Self-check: ends with one REDBYTE_TB_RESULT line; FAIL and NO_CHECKS stop at severity failure.
+  dut: ${t.dutEntity}
     port map (
-${portMapEntries}
+${t.portMapEntries}
     );
 
-${clockProcess}
+${t.clockProcess}
   stim: process
+    variable ${names.checkVar} : natural := 0;
+    variable ${names.failureVar} : natural := 0;
+    file ${names.resultFile} : text open write_mode is "${TESTBENCH_RESULT_FILE}";
+    procedure ${names.finish}(status : in string; level : in severity_level) is
+      constant summary : string := "REDBYTE_TB_RESULT v=1 tb=${tbEntity} status=" & status
+        & " checks=" & integer'image(${names.checkVar}) & " failures=" & integer'image(${names.failureVar});
+      variable result_line : line;
+    begin
+      write(result_line, summary);
+      writeline(${names.resultFile}, result_line);
+      file_close(${names.resultFile});
+      report summary severity level;
+    end procedure;
   begin
-${stimulus}
+${t.stimulus}
+    ${names.checks} <= ${names.checkVar};
+    ${names.failures} <= ${names.failureVar};
+    ${names.done} <= true;
+    wait for 0 ns;
+    if ${names.failureVar} /= 0 or ${names.checkVar} /= ${names.expectedChecks} then
+      ${names.finish}("FAIL", failure);
+    elsif ${names.expectedChecks} = 0 then
+      ${names.finish}("NO_CHECKS", failure);
+    else
+      ${names.finish}("PASS", note);
+    end if;
     wait;
   end process;
 end architecture sim;
 `;
 }
 
-function resolveCanonicalEntityVhd(project: RBProject): string | undefined {
-  if (!project.ioMapping) return undefined;
+function emitExpectationCheck(
+  lines: string[],
+  names: SelfCheckNames,
+  index: number,
+  ref: string,
+  literal: BitLiteral,
+): void {
+  lines.push(`    ${names.checkVar} := ${names.checkVar} + 1;`);
+  lines.push(`    if ${ref} /= ${literal} then`);
+  lines.push(`      ${names.failureVar} := ${names.failureVar} + 1;`);
+  lines.push('    end if;');
+  lines.push(`    assert ${ref} = ${literal}`);
+  lines.push(`      report "Vector ${index} failed on ${ref}: expected ${literal}, got " & std_logic'image(${ref})`);
+  lines.push('      severity error;');
+}
+
+/**
+ * A key the generator cannot check is a counted failure in the simulator and a
+ * marker that validateArtifactConsistency turns into a blocking export error.
+ */
+function emitUnresolvedExpectation(
+  lines: string[],
+  names: SelfCheckNames,
+  index: number,
+  key: string,
+  reason: 'unmapped' | 'non-binary',
+): void {
+  const display = displayKey(key);
+  lines.push(`    -- RB_UNRESOLVED_EXPECTATION vector=${index} key="${display}" reason=${reason}`);
+  lines.push(`    ${names.checkVar} := ${names.checkVar} + 1;`);
+  lines.push(`    ${names.failureVar} := ${names.failureVar} + 1;`);
+  lines.push(
+    `    report "Vector ${index} cannot check ${display}: ${
+      reason === 'unmapped' ? 'no testbench signal matches this key' : 'the expected value is not 0 or 1'
+    }" severity error;`,
+  );
+}
+
+function emitUnresolvedStimulus(
+  lines: string[],
+  names: SelfCheckNames,
+  index: number,
+  key: string,
+  reason: 'unmapped' | 'non-binary',
+): void {
+  const display = displayKey(key);
+  lines.push(`    -- RB_UNRESOLVED_STIMULUS vector=${index} key="${display}" reason=${reason}`);
+  lines.push(`    ${names.failureVar} := ${names.failureVar} + 1;`);
+  lines.push(
+    `    report "Vector ${index} cannot drive ${display}: ${
+      reason === 'unmapped' ? 'no testbench signal matches this key' : 'the input value is not 0 or 1'
+    }" severity error;`,
+  );
+}
+
+/** Keys can be arbitrary authored text; keep only characters safe in a VHDL comment and string. */
+function displayKey(key: string): string {
+  return key.replace(/[^A-Za-z0-9 _.:()[\]-]/g, '?').slice(0, 80);
+}
+
+/** Same precedence as the export service (hdl.top, then fpga.top), so top.vhd and the DUT component agree. */
+function resolveDesignTop(project: RBProject): string {
+  return project.hdl?.top?.trim() || project.fpga?.top?.trim() || 'top';
+}
+
+function resolveCanonicalEntityVhd(project: RBProject, topModule: string): string | undefined {
+  const exportIoMapping = resolveProjectIoMapping(project);
+  if (!exportIoMapping) return undefined;
   try {
-    return exportBasys3Bundle(project.circuit, project.ioMapping, {
-      entityName: project.hdl?.top,
+    return exportBasys3Bundle(project.circuit, exportIoMapping, {
+      entityName: topModule,
     }).topVhd;
   } catch {
     return undefined;
@@ -457,6 +703,8 @@ function generateTestbenchFromEntity(
     .map((p) => `      ${p.name} => ${p.name}`)
     .join(',\n');
 
+  const dutEntity = resolveDutEntityName(topVhd, topModule);
+  const names = allocateSelfCheckNames([dutEntity, ...entityPorts.map((p) => p.name), 'CLK_HALF_PERIOD']);
   const stimulus = generateEntityStimulus(
     vectors,
     scheduleContract.schedule,
@@ -464,44 +712,36 @@ function generateTestbenchFromEntity(
     labelToRef,
     entityPorts,
     authoredClock,
+    names,
+    authoredClock && clockDrive?.startLevel === 1 ? 1 : 0,
   );
   const clockProcess = authoredClock
     ? ''
-    : buildEntityClockProcess(scheduleContract.schedule, clockPortRef);
+    : buildEntityClockProcess(scheduleContract.schedule, clockPortRef, names);
 
-  return `library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
+  return renderTestbench({
+    dutEntity,
+    componentPorts,
+    signalDecls,
+    portMapEntries,
+    clockProcess,
+    stimulus,
+    scheduleContract,
+    authoredClock,
+    names,
+    expectedChecks: countExpectedChecks(vectors),
+  });
+}
 
-entity tb_${toVhdlIdentifier(topModule)} is
-end entity tb_${toVhdlIdentifier(topModule)};
-
-architecture sim of tb_${toVhdlIdentifier(topModule)} is
-  component ${toVhdlIdentifier(topModule)} is
-    port (
-${componentPorts}
-    );
-  end component;
-
-${signalDecls}
-begin
-  -- Deterministic schedule contract with Verify runner:
-  -- schedule=${scheduleContract.schedule}
-  -- reason=${scheduleContract.reason}
-  -- sequence=${authoredClock ? 'authored-vectors' : scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
-  dut: ${toVhdlIdentifier(topModule)}
-    port map (
-${portMapEntries}
-    );
-
-${clockProcess}
-  stim: process
-  begin
-${stimulus}
-    wait;
-  end process;
-end architecture sim;
-`;
+/**
+ * The DUT component must name the entity top.vhd declares. Keep the project's
+ * top when the text declares it; otherwise trust the text's first entity.
+ */
+function resolveDutEntityName(topVhd: string, topModule: string): string {
+  const requested = toVhdlIdentifier(topModule);
+  const declared = Array.from(topVhd.matchAll(/^\s*entity\s+([A-Za-z][A-Za-z0-9_]*)\s+is\b/gim), (m) => m[1]);
+  if (declared.some((name) => name.toLowerCase() === requested.toLowerCase())) return requested;
+  return declared[0] ?? requested;
 }
 
 function buildEntityInputInitializer(
@@ -540,41 +780,46 @@ function generateEntityStimulus(
   labelToRef: Map<string, string>,
   entityPorts: EntityPortInfo[],
   authoredClock: boolean,
+  names: SelfCheckNames,
+  clockStartLevel: 0 | 1 = 0,
 ): string {
-  const outputPortNames = new Set(
-    entityPorts.filter((p) => p.direction === 'out').map((p) => p.name.toLowerCase()),
-  );
   const lines: string[] = [];
+  let clockLevel = clockStartLevel === 1 ? "'1'" : "'0'";
+  const resolve = (key: string): string | undefined =>
+    labelToRef.get(key) ?? labelToRef.get(key.trim()) ?? labelToRef.get(key.trim().toUpperCase());
 
   vectors.forEach((vector, index) => {
     lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
+    let clockLine: string | undefined;
 
     for (const key of uniqueSorted(Object.keys(vector.inputs))) {
-      const ref = labelToRef.get(key) ?? labelToRef.get(key.toUpperCase()) ?? key;
+      const ref = resolve(key);
+      if (!ref) {
+        emitUnresolvedStimulus(lines, names, index, key, 'unmapped');
+        continue;
+      }
       // Skip clock — handled by clock process below
       if (!authoredClock && clockPortRef && ref === clockPortRef) continue;
-      lines.push(`    ${ref} <= ${toBitLiteral(vector.inputs[key])};`);
+      const literal = toBitLiteral(vector.inputs[key]);
+      if (!literal) {
+        emitUnresolvedStimulus(lines, names, index, key, 'non-binary');
+        continue;
+      }
+      const isClock = authoredClock && Boolean(clockPortRef) && ref === clockPortRef;
+      if (isClock && literal === "'1'" && clockLevel !== "'1'") clockLine = `    ${ref} <= ${literal};`;
+      else lines.push(`    ${ref} <= ${literal};`);
+      if (isClock) clockLevel = literal;
     }
+    lines.push(...authoredEdgeLines(clockLine));
 
-    if (schedule === 'clocked_macro' && clockPortRef && !authoredClock) {
-      lines.push(`    wait until rising_edge(${clockPortRef});`);
-      lines.push('    wait for 0 ns;');
-      lines.push('    wait for 0 ns;');
-    } else {
-      lines.push('    wait for 10 ns;');
-    }
+    lines.push(...settleLines(schedule, clockPortRef, authoredClock));
 
     for (const expectedKey of uniqueSorted(Object.keys(vector.expected ?? {}))) {
-      const ref =
-        labelToRef.get(expectedKey) ??
-        labelToRef.get(expectedKey.toUpperCase()) ??
-        expectedKey;
-      const expectedLiteral = toBitLiteral(vector.expected[expectedKey]);
-      lines.push(`    assert ${ref} = ${expectedLiteral}`);
-      lines.push(
-        `      report "Vector ${index} failed on ${ref}: expected ${expectedLiteral}"`,
-      );
-      lines.push('      severity error;');
+      const ref = resolve(expectedKey);
+      const literal = toBitLiteral(vector.expected[expectedKey]);
+      if (!ref) emitUnresolvedExpectation(lines, names, index, expectedKey, 'unmapped');
+      else if (!literal) emitUnresolvedExpectation(lines, names, index, expectedKey, 'non-binary');
+      else emitExpectationCheck(lines, names, index, ref, literal);
     }
 
     lines.push('');
@@ -583,43 +828,80 @@ function generateEntityStimulus(
   return lines.join('\n');
 }
 
+/**
+ * Auto board clock: sample 1 ns after the rising edge (well inside the 5 ns
+ * half period), so logic after a register has settled like the runtime's
+ * post-edge sample. Two delta cycles only covered one assignment past the
+ * flip-flop. Authored and combinational schedules settle for 10 ns.
+ */
+function settleLines(
+  schedule: 'combinational' | 'clocked_macro',
+  clockRef: string | undefined,
+  authoredClock: boolean,
+): string[] {
+  if (schedule === 'clocked_macro' && clockRef && !authoredClock) {
+    return [`    wait until rising_edge(${clockRef});`, '    wait for 1 ns;'];
+  }
+  return ['    wait for 10 ns;'];
+}
+
+/**
+ * A row that raises an authored clock lane drives the edge after the row's data has settled:
+ * the browser engine settles a row's logic from its new inputs, then captures on that edge (a
+ * student sets the switches, then presses the button). Driving both in one delta made the bench
+ * capture the previous data (review P0-2). Every other change is driven at once: a latch whose
+ * enable falls in a row holds its value in the engine, as it does in VHDL when both change in
+ * one delta.
+ */
+function authoredEdgeLines(clockLine: string | undefined): string[] {
+  return clockLine ? ['    wait for 1 ns;', clockLine] : [];
+}
+
 function generateStimulus(
   vectors: TestVector[],
   schedule: 'combinational' | 'clocked_macro',
   clockSignal: string | undefined,
   nameMap: Map<string, string>,
   authoredClock: boolean,
+  names: SelfCheckNames,
+  clockStartLevel: 0 | 1 = 0,
 ): string {
   const lines: string[] = [];
+  let clockLevel = clockStartLevel === 1 ? "'1'" : "'0'";
   const safeClock = clockSignal ? nameMap.get(clockSignal) : undefined;
+  const resolve = (key: string): string | undefined => nameMap.get(key) ?? nameMap.get(key.trim());
 
   vectors.forEach((vector, index) => {
     lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
+    let clockLine: string | undefined;
 
     for (const inputName of uniqueSorted(Object.keys(vector.inputs))) {
-      if (!authoredClock && safeClock && nameMap.get(inputName) === safeClock) continue;
-      const signalName = nameMap.get(inputName);
-      if (!signalName) continue;
-      lines.push(`    ${signalName} <= ${toBitLiteral(vector.inputs[inputName])};`);
+      const signalName = resolve(inputName);
+      if (!signalName) {
+        emitUnresolvedStimulus(lines, names, index, inputName, 'unmapped');
+        continue;
+      }
+      if (!authoredClock && safeClock && signalName === safeClock) continue;
+      const literal = toBitLiteral(vector.inputs[inputName]);
+      if (!literal) {
+        emitUnresolvedStimulus(lines, names, index, inputName, 'non-binary');
+        continue;
+      }
+      const isClock = authoredClock && Boolean(safeClock) && signalName === safeClock;
+      if (isClock && literal === "'1'" && clockLevel !== "'1'") clockLine = `    ${signalName} <= ${literal};`;
+      else lines.push(`    ${signalName} <= ${literal};`);
+      if (isClock) clockLevel = literal;
     }
+    lines.push(...authoredEdgeLines(clockLine));
 
-    if (schedule === 'clocked_macro' && safeClock && !authoredClock) {
-      lines.push(`    wait until rising_edge(${safeClock});`);
-      lines.push('    wait for 0 ns;');
-      lines.push('    wait for 0 ns;');
-    } else {
-      lines.push('    wait for 10 ns;');
-    }
+    lines.push(...settleLines(schedule, safeClock, authoredClock));
 
     for (const expectedName of uniqueSorted(Object.keys(vector.expected ?? {}))) {
-      const signalName = nameMap.get(expectedName);
-      if (!signalName) continue;
-      const expectedLiteral = toBitLiteral(vector.expected[expectedName]);
-      lines.push(`    assert ${signalName} = ${expectedLiteral}`);
-      lines.push(
-        `      report "Vector ${index} failed on ${signalName}: expected ${expectedLiteral}, got " & std_logic'image(${signalName})`
-      );
-      lines.push('      severity error;');
+      const signalName = resolve(expectedName);
+      const literal = toBitLiteral(vector.expected[expectedName]);
+      if (!signalName) emitUnresolvedExpectation(lines, names, index, expectedName, 'unmapped');
+      else if (!literal) emitUnresolvedExpectation(lines, names, index, expectedName, 'non-binary');
+      else emitExpectationCheck(lines, names, index, signalName, literal);
     }
 
     lines.push('');
@@ -631,43 +913,38 @@ function generateStimulus(
 function buildClockProcess(
   schedule: 'combinational' | 'clocked_macro',
   logicalClockName: string | undefined,
-  nameMap: Map<string, string>
+  nameMap: Map<string, string>,
+  names: SelfCheckNames,
 ): string {
   if (schedule !== 'clocked_macro' || !logicalClockName) return '';
   const clockRef = nameMap.get(logicalClockName);
   if (!clockRef) return '';
+  return renderClockProcess(clockRef, names);
+}
+
+function buildEntityClockProcess(
+  schedule: 'combinational' | 'clocked_macro',
+  clockPortRef: string | undefined,
+  names: SelfCheckNames,
+): string {
+  if (schedule !== 'clocked_macro' || !clockPortRef) return '';
+  return renderClockProcess(clockPortRef, names);
+}
+
+/** The free-running board clock stops once the stimulus is done, so `run all` terminates. */
+function renderClockProcess(clockRef: string, names: SelfCheckNames): string {
   return [
     '  clock_gen: process',
     '  begin',
     `    ${clockRef} <= '0';`,
     '    wait for CLK_HALF_PERIOD;',
-    '    loop',
+    `    while not ${names.done} loop`,
     `      ${clockRef} <= '1';`,
     '      wait for CLK_HALF_PERIOD;',
     `      ${clockRef} <= '0';`,
     '      wait for CLK_HALF_PERIOD;',
     '    end loop;',
-    '  end process;',
-    '',
-  ].join('\n');
-}
-
-function buildEntityClockProcess(
-  schedule: 'combinational' | 'clocked_macro',
-  clockPortRef: string | undefined
-): string {
-  if (schedule !== 'clocked_macro' || !clockPortRef) return '';
-  return [
-    '  clock_gen: process',
-    '  begin',
-    `    ${clockPortRef} <= '0';`,
-    '    wait for CLK_HALF_PERIOD;',
-    '    loop',
-    `      ${clockPortRef} <= '1';`,
-    '      wait for CLK_HALF_PERIOD;',
-    `      ${clockPortRef} <= '0';`,
-    '      wait for CLK_HALF_PERIOD;',
-    '    end loop;',
+    '    wait;',
     '  end process;',
     '',
   ].join('\n');
@@ -688,8 +965,8 @@ function collectSignals(
     const logicalToCanonical = new Map<string, string>();
 
     const hasIoMapping =
-      (project.ioMapping?.inputs?.length ?? 0) > 0 ||
-      (project.ioMapping?.outputs?.length ?? 0) > 0;
+      (resolveProjectIoMapping(project)?.inputs?.length ?? 0) > 0 ||
+      (resolveProjectIoMapping(project)?.outputs?.length ?? 0) > 0;
 
     if (hasIoMapping) {
       const addLogicalAlias = (alias: string | undefined, canonical: string) => {
@@ -701,7 +978,7 @@ function collectSignals(
 
       // Derive canonical port names from ioMapping — label takes precedence,
       // matching basys3Bundle.toSignalName() and verilog-generator.ts exactly.
-      for (const entry of project.ioMapping?.inputs ?? []) {
+      for (const entry of resolveProjectIoMapping(project)?.inputs ?? []) {
         // Use toSignalName (same sanitizer as basys3ExportModel/top.vhd) so the
         // fallback testbench path emits identical identifiers to the entity.
         const canonical = toSignalName(entry);
@@ -715,7 +992,7 @@ function collectSignals(
         const node = (project.circuit.nodes ?? []).find((n) => n.id === entry.nodeId);
         addLogicalAlias(node?.label, canonical);
       }
-      for (const entry of project.ioMapping?.outputs ?? []) {
+      for (const entry of resolveProjectIoMapping(project)?.outputs ?? []) {
         // Use toSignalName (same sanitizer as basys3ExportModel/top.vhd) so the
         // fallback testbench path emits identical identifiers to the entity.
         const canonical = toSignalName(entry);
@@ -817,11 +1094,13 @@ function toVhdlIdentifier(raw: string): string {
   return cleaned;
 }
 
-function toBitLiteral(value: unknown): "'0'" | "'1'" {
-  if (value === true) return "'1'";
-  if (value === false) return "'0'";
-  if (typeof value === 'number') return value === 0 ? "'0'" : "'1'";
-  return "'0'";
+type BitLiteral = "'0'" | "'1'";
+
+/** Only an unambiguous bit becomes a literal; anything else is reported, never coerced. */
+function toBitLiteral(value: unknown): BitLiteral | undefined {
+  if (value === true || value === 1 || value === '1') return "'1'";
+  if (value === false || value === 0 || value === '0') return "'0'";
+  return undefined;
 }
 
 function uniqueSorted(values: string[]): string[] {

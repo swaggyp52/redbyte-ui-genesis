@@ -35,11 +35,11 @@ Avoid: flat gray-on-gray and decorative chrome.
 3. Typography
 - UI font: `IBM Plex Sans`, fallback `Segoe UI`, sans-serif.
 - Mono font: `IBM Plex Mono`, fallback `Consolas`, monospace.
-- Size tiers:
-1. Page title: 20-22px
-2. Section headers: 14-16px
-3. Body: 13-14px
-4. Secondary/meta: 12px
+- Size tiers (rem tokens in `theme/redbyte-type.css`, shown at a 16px root):
+1. Project and document title: 24px (`--rb-text-doc`); document heading: 20px (`--rb-text-title`)
+2. Section headers: 18px (`--rb-text-section`); prominent labels and pane titles: 16px (`--rb-text-head`)
+3. Body, commands and controls: 15px (`--rb-text-body`); signal names and dense values: 14px (`--rb-text-dense`)
+4. Secondary readouts: 13px (`--rb-text-meta`); ornament only: 12px (`--rb-text-micro`)
 
 4. Radius and depth
 - Radius: 8px default, 12px large containers.

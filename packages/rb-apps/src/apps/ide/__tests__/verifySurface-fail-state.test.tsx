@@ -23,8 +23,19 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
-      rows: [{ tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail' }],
-    } as RuntimeVerifyRun['report'],
+      schemaVersion: 'rb.verify-report.v1',
+      scenarioId: 'test',
+      scenarioName: 'Test Vectors',
+      status: 'fail',
+      deterministicHash: 'abc123',
+      generatedAtIso: new Date().toISOString(),
+      reportHash: 'rep456',
+      vectors: [{ id: 'vec-01', tick: 0, inputs: {}, expected: { out_led: 1 }, caseIndex: 0 }],
+      inputsAtTick: { 0: {} },
+      inputsByVectorId: { 'vec-01': {} },
+      signalRoles: { out_led: 'output' },
+      rows: [{ tick: 0, signal: 'out_led', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01', caseIndex: 0 }],
+    },
     waveform: [],
   };
 }
@@ -45,9 +56,12 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failed|Checks need review/i);
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toHaveAttribute('data-collapsed', 'false');
+    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
+    expect(queryByTestId('ide-verify-left-dock')).toBeNull();
+    const failure = getByTestId('ide-verify-fail-nav-summary');
+    expect(failure.textContent).toContain('out_led');
+    expect(failure.textContent).toContain('Case 1');
+    expect(failure.closest('details')).toBeNull();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
@@ -67,11 +81,21 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getAllByTestId('ide-verify-fail-nav-first').length).toBeGreaterThan(0);
-    expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-pressed')).toBe('false');
+    expect(getAllByTestId('ide-verify-details')[0]?.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
-    expect(container.querySelector('details')).toBeNull();
-    expect(container.querySelector('summary')).toBeNull();
+    // This used to assert that the surface contained no <details> at all - a tag-name proxy for
+    // "the mismatch is not hidden behind an expander", true only while the surface had no
+    // disclosures. The waveform's view and measurement tools are a disclosure now, precisely so
+    // that the evidence they sat on top of gets the room, so the proxy would forbid the change
+    // it was written to protect. The behaviour is asserted where it lives: the failure focus and
+    // the path out of it are on screen, and neither is inside a disclosure.
+    for (const failNav of getAllByTestId('ide-verify-fail-nav-first')) {
+      expect(failNav.closest('details')).toBeNull();
+    }
+    const focus = container.querySelector('[data-testid="ide-verify-fail-nav"]');
+    expect(focus).not.toBeNull();
+    expect(focus?.closest('details')).toBeNull();
   });
 
   it('keeps fail evidence visible after switching the next-run toggle back to trace intent', () => {
@@ -95,7 +119,7 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
       fireEvent.click(observe);
       expect(observe.className).toContain('is-active');
     }
-    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failed|Checks need review/i);
+    expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failing|Checks failed|Checks need review/i);
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
   });

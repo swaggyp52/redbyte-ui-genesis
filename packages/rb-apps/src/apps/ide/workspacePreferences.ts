@@ -1,0 +1,688 @@
+import {
+  DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS,
+  REQUIRED_DESIGN_TOOLBAR_COMMAND_IDS,
+  type IdeCommandId,
+} from './ideCommandRegistry';
+
+/**
+ * UI-only workbench preferences. Project, simulation, mapping, and package
+ * authority must never be added to this envelope.
+ */
+export const WORKSPACE_PREFERENCES_STORAGE_KEY = 'rb.ide.workspace.preferences.v2';
+export const WORKSPACE_PREFERENCES_VERSION = 1 as const;
+
+export const WORKSPACE_SURFACE_IDS = [
+  'project',
+  'design',
+  'verify',
+  'hardware',
+  'export',
+  'import',
+] as const;
+export type WorkspaceSurfaceId = (typeof WORKSPACE_SURFACE_IDS)[number];
+
+export const WORKSPACE_DOCK_IDS = ['left', 'right', 'bottom'] as const;
+export type WorkspaceDockId = (typeof WORKSPACE_DOCK_IDS)[number];
+
+export const WORKSPACE_PRESET_IDS = ['authoring', 'simulation', 'board', 'code'] as const;
+export type WorkspacePresetId = (typeof WORKSPACE_PRESET_IDS)[number];
+
+export type DesignWorkspaceView = 'canvas' | 'code' | 'split';
+export type DesignLayerId = 'netLabels' | 'values' | 'boardBindings' | 'diagnostics' | 'hierarchy' | 'buses' | 'minimap';
+export type DesignLayers = Readonly<Record<DesignLayerId, boolean>>;
+export const DESIGN_LAYER_IDS: readonly DesignLayerId[] = ['netLabels', 'values', 'boardBindings', 'diagnostics', 'hierarchy', 'buses', 'minimap'];
+export const DEFAULT_DESIGN_LAYERS: DesignLayers = Object.freeze({
+  netLabels: true,
+  values: true,
+  boardBindings: true,
+  diagnostics: true,
+  hierarchy: true,
+  buses: true,
+  // Off by default. Every other layer draws on the sheet; this one sits on top of it and takes
+  // the pointer, so a part in the bottom-right corner could not be wired while it was there.
+  // A reader who wants an overview turns it on and knows why the corner behaves differently.
+  minimap: false,
+});
+function normalizeDesignLayers(raw: unknown): DesignLayers {
+  const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const next: Record<DesignLayerId, boolean> = { ...DEFAULT_DESIGN_LAYERS };
+  for (const id of DESIGN_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
+  return Object.freeze(next);
+}
+export type BoardLayerId = 'labels' | 'mapped' | 'compatible' | 'conflicts' | 'values';
+export type BoardLayers = Readonly<Record<BoardLayerId, boolean>>;
+export const BOARD_LAYER_IDS: readonly BoardLayerId[] = ['labels', 'mapped', 'compatible', 'conflicts', 'values'];
+export const DEFAULT_BOARD_LAYERS: BoardLayers = Object.freeze({ labels: true, mapped: true, compatible: true, conflicts: true, values: true });
+function normalizeBoardLayers(raw: unknown): BoardLayers {
+  const source = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const next: Record<BoardLayerId, boolean> = { ...DEFAULT_BOARD_LAYERS };
+  for (const id of BOARD_LAYER_IDS) if (typeof source[id] === 'boolean') next[id] = source[id] as boolean;
+  return Object.freeze(next);
+}
+/** Cases/Timing + evidence deck composition in Simulate (persisted with the workspace). */
+export type SimulateDeckMaximized = 'cases' | 'waveform' | null;
+export interface SimulateWorkspacePreferences {
+  /** Share of the lab grid height given to the evidence deck (waveform / verdict). */
+  readonly evidenceFraction: number;
+  /** The deck is folded to a one-line strip; the cases take the height. */
+  readonly evidenceCollapsed: boolean;
+  /** One pane takes the whole grid; null = split. */
+  readonly maximized: SimulateDeckMaximized;
+}
+export const SIMULATE_EVIDENCE_FRACTION_MIN = 0.15;
+export const SIMULATE_EVIDENCE_FRACTION_MAX = 0.85;
+export const DEFAULT_SIMULATE_EVIDENCE_FRACTION = 0.36;
+export const DEFAULT_SIMULATE_LAYOUT: SimulateWorkspacePreferences = Object.freeze({
+  evidenceFraction: DEFAULT_SIMULATE_EVIDENCE_FRACTION,
+  evidenceCollapsed: false,
+  maximized: null,
+});
+export function clampSimulateEvidenceFraction(value: unknown): number {
+  const fraction = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_SIMULATE_EVIDENCE_FRACTION;
+  const clamped = Math.min(SIMULATE_EVIDENCE_FRACTION_MAX, Math.max(SIMULATE_EVIDENCE_FRACTION_MIN, fraction));
+  return Math.round(clamped * 1000) / 1000;
+}
+export function normalizeSimulateLayout(raw: unknown): SimulateWorkspacePreferences {
+  const record = isRecord(raw) ? raw : {};
+  const maximized = record.maximized === 'cases' || record.maximized === 'waveform' ? record.maximized : null;
+  return Object.freeze({
+    evidenceFraction: clampSimulateEvidenceFraction(record.evidenceFraction),
+    evidenceCollapsed: record.evidenceCollapsed === true,
+    maximized,
+  });
+}
+export interface SimulateLayoutUpdate {
+  readonly evidenceFraction?: number;
+  readonly evidenceCollapsed?: boolean;
+  readonly maximized?: SimulateDeckMaximized;
+}
+
+/** Board document camera: zoom factor over the native board frame and a pan in board units. */
+export interface BoardCameraPreferences {
+  readonly zoom: number;
+  readonly x: number;
+  readonly y: number;
+}
+export const BOARD_CAMERA_ZOOM_MIN = 0.5;
+export const BOARD_CAMERA_ZOOM_MAX = 4;
+export const DEFAULT_BOARD_CAMERA: BoardCameraPreferences = Object.freeze({ zoom: 1, x: 0, y: 0 });
+export function normalizeBoardCamera(raw: unknown): BoardCameraPreferences {
+  const record = isRecord(raw) ? raw : {};
+  const zoomRaw = typeof record.zoom === 'number' && Number.isFinite(record.zoom) ? record.zoom : DEFAULT_BOARD_CAMERA.zoom;
+  const zoom = Math.round(Math.min(BOARD_CAMERA_ZOOM_MAX, Math.max(BOARD_CAMERA_ZOOM_MIN, zoomRaw)) * 1000) / 1000;
+  const clampPan = (value: unknown) =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.round(Math.min(2000, Math.max(-2000, value)) * 10) / 10 : 0;
+  return Object.freeze({ zoom, x: clampPan(record.x), y: clampPan(record.y) });
+}
+export interface BoardWorkspacePreferences {
+  /** Board twin presentation layers (persisted with the workspace). */
+  readonly layers: BoardLayers;
+  readonly camera: BoardCameraPreferences;
+}
+export type DesignCanvasAppearance = 'dark' | 'light' | 'system';
+export type DesignCanvasDensity = 'comfortable' | 'compact';
+
+export interface WorkspaceDockPreferences {
+  readonly visible: boolean;
+  /** A deliberate panel toggle, as distinct from the default layout. */
+  readonly explicitlyToggled?: boolean;
+  readonly sizePx: number;
+  /** Bottom dock only: whether the panel is open rather than showing its strip. */
+  readonly expanded: boolean;
+}
+
+export interface WorkspaceSurfacePreferences {
+  readonly docks: Readonly<Record<WorkspaceDockId, WorkspaceDockPreferences>>;
+}
+
+export interface DesignWorkspacePreferences {
+  readonly view: DesignWorkspaceView;
+  readonly toolbarCommandIds: readonly IdeCommandId[];
+  readonly canvasAppearance: DesignCanvasAppearance;
+  /** Schematic presentation layers (persisted with the workspace). */
+  readonly layers: DesignLayers;
+  readonly canvasDensity: DesignCanvasDensity;
+}
+
+export interface WorkspacePreferencesV1 {
+  readonly version: typeof WORKSPACE_PREFERENCES_VERSION;
+  /** Null means a student manually changed at least one dock after applying a preset. */
+  readonly activePresetId: WorkspacePresetId | null;
+  readonly surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>;
+  readonly design: DesignWorkspacePreferences;
+  readonly board: BoardWorkspacePreferences;
+  readonly simulate: SimulateWorkspacePreferences;
+}
+
+export interface WorkspacePresetDefinition {
+  readonly id: WorkspacePresetId;
+  readonly name: string;
+  readonly description: string;
+  /** Presets change presentation only; Design view and project semantics are preserved. */
+  readonly surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>;
+}
+
+export interface WorkspaceDockUpdate {
+  readonly visible?: boolean;
+  readonly sizePx?: number;
+  readonly expanded?: boolean;
+}
+
+export type WorkspacePreferencesStorage = Pick<Storage, 'getItem' | 'setItem'>;
+export type WorkspacePreferencesListener = (preferences: WorkspacePreferencesV1) => void;
+
+export const WORKSPACE_DOCK_SIZE_LIMITS: Readonly<
+  Record<WorkspaceDockId, { readonly min: number; readonly max: number }>
+> = Object.freeze({
+  left: Object.freeze({ min: 180, max: 480 }),
+  right: Object.freeze({ min: 220, max: 520 }),
+  bottom: Object.freeze({ min: 140, max: 440 }),
+});
+
+/** The Design inspector's default width before 2026-10-30; see normalizeWorkspacePreferences. */
+const LEGACY_DESIGN_INSPECTOR_SIZE_PX = 280;
+
+const AUTHORING_SURFACES = createSurfacePreferences({
+  project: {
+    left: { visible: true, sizePx: 248, expanded: false },
+    right: { visible: true, sizePx: 288, expanded: false },
+  },
+  design: {
+    // The library's narrow composition puts the interface below the part name.
+    // Keep both supports usable while leaving the circuit most of a laptop workspace.
+    // Existing user-resized docks retain their saved dimensions.
+    // A compact, labeled library: symbol and name on one line. It keeps this form through
+    // selection, wiring and inspection; widening it is the student's explicit, remembered choice.
+    left: { visible: true, sizePx: 208, expanded: false },
+    // 256px holds the inspector's labels and buttons; at laptop widths it narrows to 240px so
+    // the circuit keeps 60% of the window (design-workbench-v3.css). A stored 280, the default
+    // before 2026-10-30, is read as this one (normalizeWorkspacePreferences).
+    right: { visible: true, sizePx: 256, expanded: false },
+  },
+  verify: {
+    left: { visible: true, sizePx: 240, expanded: false },
+    bottom: { visible: true, sizePx: 260, expanded: false },
+  },
+  hardware: { right: { visible: true, sizePx: 300, expanded: false } },
+  export: { left: { visible: true, sizePx: 240, expanded: false } },
+  import: { right: { visible: true, sizePx: 300, expanded: false } },
+});
+
+export const WORKSPACE_PRESETS: Readonly<Record<WorkspacePresetId, WorkspacePresetDefinition>> =
+  deepFreeze({
+    authoring: {
+      id: 'authoring',
+      name: 'Authoring',
+      description: 'Keep project tools and Design authoring support close to the main work object.',
+      surfaces: AUTHORING_SURFACES,
+    },
+    simulation: {
+      id: 'simulation',
+      name: 'Simulation',
+      description: 'Give waveform, replay, and problems more room without changing simulation state.',
+      surfaces: createSurfacePreferences({
+        ...toOverrides(AUTHORING_SURFACES),
+        design: {
+          left: { visible: false, sizePx: 220, expanded: false },
+          right: { visible: true, sizePx: 280, expanded: false },
+          bottom: { visible: true, sizePx: 300, expanded: false },
+        },
+        verify: {
+          left: { visible: true, sizePx: 240, expanded: false },
+          right: { visible: false, sizePx: 300, expanded: false },
+          bottom: { visible: true, sizePx: 340, expanded: false },
+        },
+      }),
+    },
+    board: {
+      id: 'board',
+      name: 'Board',
+      description: 'Prioritize board resources, assignments, and constraint consequences.',
+      surfaces: createSurfacePreferences({
+        ...toOverrides(AUTHORING_SURFACES),
+        design: {
+          left: { visible: true, sizePx: 240, expanded: false },
+          right: { visible: true, sizePx: 320, expanded: false },
+          bottom: { visible: false, sizePx: 220, expanded: false },
+        },
+        hardware: {
+          left: { visible: true, sizePx: 280, expanded: false },
+          right: { visible: true, sizePx: 340, expanded: false },
+          bottom: { visible: false, sizePx: 220, expanded: false },
+        },
+      }),
+    },
+    code: {
+      id: 'code',
+      name: 'Code',
+      description: 'Return support-rail width to the source and generated-code workspace.',
+      surfaces: createSurfacePreferences({
+        ...toOverrides(AUTHORING_SURFACES),
+        design: {
+          left: { visible: false, sizePx: 220, expanded: false },
+          right: { visible: false, sizePx: 280, expanded: false },
+          bottom: { visible: true, sizePx: 220, expanded: false },
+        },
+      }),
+    },
+  });
+
+export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze({
+  version: WORKSPACE_PREFERENCES_VERSION,
+  activePresetId: 'authoring',
+  surfaces: cloneSurfacePreferences(WORKSPACE_PRESETS.authoring.surfaces),
+  design: {
+    view: 'canvas',
+    toolbarCommandIds: [...DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS],
+    // Default to a light technical canvas so Design reads as one instrument
+    // inside the light Studio shell rather than a separate dark application.
+    canvasAppearance: 'light',
+    canvasDensity: 'compact',
+    layers: DEFAULT_DESIGN_LAYERS,
+  },
+  board: { layers: DEFAULT_BOARD_LAYERS, camera: DEFAULT_BOARD_CAMERA },
+  simulate: DEFAULT_SIMULATE_LAYOUT,
+});
+
+export function parseWorkspacePreferences(raw: string | null | undefined): WorkspacePreferencesV1 {
+  if (!raw) return createDefaultWorkspacePreferences();
+  try {
+    return normalizeWorkspacePreferences(JSON.parse(raw));
+  } catch {
+    return createDefaultWorkspacePreferences();
+  }
+}
+
+export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferencesV1 {
+  const defaults = createDefaultWorkspacePreferences();
+  if (!isRecord(value) || value.version !== WORKSPACE_PREFERENCES_VERSION) return defaults;
+
+  const rawSurfaces = isRecord(value.surfaces) ? value.surfaces : {};
+  const surfaces = {} as Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>;
+  for (const surfaceId of WORKSPACE_SURFACE_IDS) {
+    surfaces[surfaceId] = normalizeSurfacePreferences(
+      rawSurfaces[surfaceId],
+      defaults.surfaces[surfaceId]
+    );
+  }
+  // 280px was the Design inspector's default until 2026-10-30, and any saved preference carried
+  // it (a view switch writes the whole object). The circuit now keeps 60% of the window beside a
+  // 256px inspector; a stored 280 is that old default, not a width the student chose, and kept it
+  // left the sheet 1352px at 1920x1080.
+  const designInspector = surfaces.design.docks.right;
+  if (designInspector.sizePx === LEGACY_DESIGN_INSPECTOR_SIZE_PX) {
+    surfaces.design = deepFreeze({
+      docks: {
+        ...surfaces.design.docks,
+        right: Object.freeze({ ...designInspector, sizePx: defaults.surfaces.design.docks.right.sizePx }),
+      },
+    });
+  }
+
+  const rawDesign = isRecord(value.design) ? value.design : {};
+  const rawBoard = isRecord(value.board) ? value.board : {};
+  const rawSimulate = isRecord(value.simulate) ? value.simulate : {};
+  const activePresetId = isWorkspacePresetId(value.activePresetId)
+    ? value.activePresetId
+    : value.activePresetId === null
+      ? null
+      : defaults.activePresetId;
+
+  return deepFreeze({
+    version: WORKSPACE_PREFERENCES_VERSION,
+    activePresetId,
+    surfaces,
+    design: {
+      view: isDesignWorkspaceView(rawDesign.view) ? rawDesign.view : defaults.design.view,
+      toolbarCommandIds: normalizeToolbarCommandIds(rawDesign.toolbarCommandIds),
+      canvasAppearance: isDesignCanvasAppearance(rawDesign.canvasAppearance)
+        ? rawDesign.canvasAppearance
+        : defaults.design.canvasAppearance,
+      canvasDensity: isDesignCanvasDensity(rawDesign.canvasDensity)
+        ? rawDesign.canvasDensity
+        : defaults.design.canvasDensity,
+      layers: normalizeDesignLayers(rawDesign.layers),
+    },
+    board: { layers: normalizeBoardLayers(rawBoard.layers), camera: normalizeBoardCamera(rawBoard.camera) },
+    simulate: normalizeSimulateLayout(rawSimulate),
+  });
+}
+
+export function readWorkspacePreferences(
+  storage: WorkspacePreferencesStorage | null | undefined
+): WorkspacePreferencesV1 {
+  if (!storage) return createDefaultWorkspacePreferences();
+  try {
+    return parseWorkspacePreferences(storage.getItem(WORKSPACE_PREFERENCES_STORAGE_KEY));
+  } catch {
+    return createDefaultWorkspacePreferences();
+  }
+}
+
+export function writeWorkspacePreferences(
+  storage: WorkspacePreferencesStorage | null | undefined,
+  preferences: WorkspacePreferencesV1
+): boolean {
+  if (!storage) return false;
+  try {
+    storage.setItem(
+      WORKSPACE_PREFERENCES_STORAGE_KEY,
+      JSON.stringify(normalizeWorkspacePreferences(preferences))
+    );
+    return true;
+  } catch {
+    // Private browsing, quota, or policy failures must not break the workbench.
+    return false;
+  }
+}
+
+export class WorkspacePreferencesStore {
+  #preferences: WorkspacePreferencesV1;
+  readonly #storage: WorkspacePreferencesStorage | null;
+  readonly #listeners = new Set<WorkspacePreferencesListener>();
+
+  constructor(storage: WorkspacePreferencesStorage | null = resolveBrowserStorage()) {
+    this.#storage = storage;
+    this.#preferences = readWorkspacePreferences(storage);
+  }
+
+  getSnapshot = (): WorkspacePreferencesV1 => this.#preferences;
+
+  subscribe = (listener: WorkspacePreferencesListener): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+
+  applyPreset(presetId: WorkspacePresetId): WorkspacePreferencesV1 {
+    const preset = WORKSPACE_PRESETS[presetId];
+    return this.#replace({
+      ...this.#preferences,
+      activePresetId: presetId,
+      surfaces: cloneSurfacePreferences(preset.surfaces),
+    });
+  }
+
+  setDock(
+    surfaceId: WorkspaceSurfaceId,
+    dockId: WorkspaceDockId,
+    update: WorkspaceDockUpdate
+  ): WorkspacePreferencesV1 {
+    const currentDock = this.#preferences.surfaces[surfaceId].docks[dockId];
+    const nextDock = normalizeDockPreferences(
+      {
+        visible: update.visible ?? currentDock.visible,
+        explicitlyToggled: update.visible !== undefined || currentDock.explicitlyToggled === true,
+        sizePx: update.sizePx ?? currentDock.sizePx,
+        expanded: update.expanded ?? currentDock.expanded,
+      },
+      dockId,
+      currentDock
+    );
+
+    return this.#replace({
+      ...this.#preferences,
+      activePresetId: null,
+      surfaces: {
+        ...this.#preferences.surfaces,
+        [surfaceId]: {
+          docks: {
+            ...this.#preferences.surfaces[surfaceId].docks,
+            [dockId]: nextDock,
+          },
+        },
+      },
+    });
+  }
+
+  setSimulateLayout(update: SimulateLayoutUpdate): WorkspacePreferencesV1 {
+    const current = this.#preferences.simulate;
+    return this.#replace({
+      ...this.#preferences,
+      simulate: normalizeSimulateLayout({
+        evidenceFraction: update.evidenceFraction ?? current.evidenceFraction,
+        evidenceCollapsed: update.evidenceCollapsed ?? current.evidenceCollapsed,
+        maximized: update.maximized === undefined ? current.maximized : update.maximized,
+      }),
+    });
+  }
+
+  resetSimulateLayout(): WorkspacePreferencesV1 {
+    return this.#replace({ ...this.#preferences, simulate: DEFAULT_SIMULATE_LAYOUT });
+  }
+
+  setBoardLayer(id: BoardLayerId, on: boolean): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      board: { ...this.#preferences.board, layers: Object.freeze({ ...this.#preferences.board.layers, [id]: on }) },
+    });
+  }
+
+  setBoardCamera(camera: Partial<BoardCameraPreferences>): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      board: {
+        ...this.#preferences.board,
+        camera: normalizeBoardCamera({ ...this.#preferences.board.camera, ...camera }),
+      },
+    });
+  }
+
+  resetBoardCamera(): WorkspacePreferencesV1 {
+    return this.setBoardCamera(DEFAULT_BOARD_CAMERA);
+  }
+
+  setDesignLayer(id: DesignLayerId, on: boolean): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, layers: Object.freeze({ ...this.#preferences.design.layers, [id]: on }) },
+    });
+  }
+
+  setDesignView(view: DesignWorkspaceView): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, view },
+    });
+  }
+
+  setDesignToolbarCommandIds(commandIds: readonly IdeCommandId[]): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: {
+        ...this.#preferences.design,
+        toolbarCommandIds: normalizeToolbarCommandIds(commandIds),
+      },
+    });
+  }
+
+  setDesignCanvasAppearance(canvasAppearance: DesignCanvasAppearance): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, canvasAppearance },
+    });
+  }
+
+  setDesignCanvasDensity(canvasDensity: DesignCanvasDensity): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, canvasDensity },
+    });
+  }
+
+  restoreDesignToolbarDefaults(): WorkspacePreferencesV1 {
+    return this.setDesignToolbarCommandIds(DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS);
+  }
+
+  reset(): WorkspacePreferencesV1 {
+    return this.#replace(createDefaultWorkspacePreferences());
+  }
+
+  #replace(value: unknown): WorkspacePreferencesV1 {
+    this.#preferences = normalizeWorkspacePreferences(value);
+    writeWorkspacePreferences(this.#storage, this.#preferences);
+    for (const listener of this.#listeners) listener(this.#preferences);
+    return this.#preferences;
+  }
+}
+
+export function createWorkspacePreferencesStore(
+  storage: WorkspacePreferencesStorage | null = resolveBrowserStorage()
+): WorkspacePreferencesStore {
+  return new WorkspacePreferencesStore(storage);
+}
+
+/** Shared UI-only preference authority for the mounted IDE workbench. */
+export const workspacePreferencesStore = createWorkspacePreferencesStore();
+
+export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
+  return deepFreeze({
+    version: WORKSPACE_PREFERENCES_VERSION,
+    activePresetId: DEFAULT_WORKSPACE_PREFERENCES.activePresetId,
+    surfaces: cloneSurfacePreferences(DEFAULT_WORKSPACE_PREFERENCES.surfaces),
+    design: {
+      view: DEFAULT_WORKSPACE_PREFERENCES.design.view,
+      toolbarCommandIds: [...DEFAULT_WORKSPACE_PREFERENCES.design.toolbarCommandIds],
+      canvasAppearance: DEFAULT_WORKSPACE_PREFERENCES.design.canvasAppearance,
+      canvasDensity: DEFAULT_WORKSPACE_PREFERENCES.design.canvasDensity,
+      layers: DEFAULT_WORKSPACE_PREFERENCES.design.layers,
+    },
+    board: { layers: DEFAULT_WORKSPACE_PREFERENCES.board.layers, camera: DEFAULT_WORKSPACE_PREFERENCES.board.camera },
+    simulate: DEFAULT_WORKSPACE_PREFERENCES.simulate,
+  });
+}
+
+function normalizeSurfacePreferences(
+  value: unknown,
+  fallback: WorkspaceSurfacePreferences
+): WorkspaceSurfacePreferences {
+  const rawDocks = isRecord(value) && isRecord(value.docks) ? value.docks : {};
+  const docks = {} as Record<WorkspaceDockId, WorkspaceDockPreferences>;
+  for (const dockId of WORKSPACE_DOCK_IDS) {
+    docks[dockId] = normalizeDockPreferences(rawDocks[dockId], dockId, fallback.docks[dockId]);
+  }
+  return deepFreeze({ docks });
+}
+
+function normalizeDockPreferences(
+  value: unknown,
+  dockId: WorkspaceDockId,
+  fallback: WorkspaceDockPreferences
+): WorkspaceDockPreferences {
+  const record = isRecord(value) ? value : {};
+  const visible = typeof record.visible === 'boolean' ? record.visible : fallback.visible;
+  const sizePx = typeof record.sizePx === 'number' && Number.isFinite(record.sizePx)
+    ? clampDockSize(dockId, record.sizePx)
+    : fallback.sizePx;
+  const expanded = typeof record.expanded === 'boolean' ? record.expanded : fallback.expanded;
+  const explicitlyToggled = record.explicitlyToggled === true;
+  return Object.freeze({ visible, sizePx, expanded, ...(explicitlyToggled ? { explicitlyToggled: true } : {}) });
+}
+
+function normalizeToolbarCommandIds(value: unknown): readonly IdeCommandId[] {
+  if (!Array.isArray(value)) return Object.freeze([...DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS]);
+
+  const requested = [...new Set(value.filter(isIdeCommandId))];
+  const required = REQUIRED_DESIGN_TOOLBAR_COMMAND_IDS.filter((id) => !requested.includes(id));
+  const normalized = [...required, ...requested];
+  return Object.freeze(
+    normalized.length > 0 ? normalized : [...DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS]
+  );
+}
+
+function clampDockSize(dockId: WorkspaceDockId, sizePx: number): number {
+  const limits = WORKSPACE_DOCK_SIZE_LIMITS[dockId];
+  return Math.min(limits.max, Math.max(limits.min, Math.round(sizePx)));
+}
+
+function createSurfacePreferences(
+  overrides: Partial<
+    Record<WorkspaceSurfaceId, Partial<Record<WorkspaceDockId, WorkspaceDockPreferences>>>
+  > = {}
+): Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>> {
+  const surfaces = {} as Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>;
+  for (const surfaceId of WORKSPACE_SURFACE_IDS) {
+    const surfaceOverrides = overrides[surfaceId] ?? {};
+    surfaces[surfaceId] = {
+      docks: {
+        left: surfaceOverrides.left ?? { visible: false, sizePx: 220, expanded: false },
+        right: surfaceOverrides.right ?? { visible: false, sizePx: 280, expanded: false },
+        // Present and collapsed: 28px that names itself, with the count in the status bar to
+        // open it. Hiding it is the reader's choice, and a layout reset undoes that choice.
+        bottom: surfaceOverrides.bottom ?? { visible: true, sizePx: 220, expanded: false },
+      },
+    };
+  }
+  return deepFreeze(surfaces);
+}
+
+function cloneSurfacePreferences(
+  surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>
+): Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>> {
+  const clone = {} as Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>;
+  for (const surfaceId of WORKSPACE_SURFACE_IDS) {
+    clone[surfaceId] = {
+      docks: {
+        left: { ...surfaces[surfaceId].docks.left },
+        right: { ...surfaces[surfaceId].docks.right },
+        bottom: { ...surfaces[surfaceId].docks.bottom },
+      },
+    };
+  }
+  return deepFreeze(clone);
+}
+
+function toOverrides(
+  surfaces: Readonly<Record<WorkspaceSurfaceId, WorkspaceSurfacePreferences>>
+): Record<WorkspaceSurfaceId, Record<WorkspaceDockId, WorkspaceDockPreferences>> {
+  const overrides = {} as Record<
+    WorkspaceSurfaceId,
+    Record<WorkspaceDockId, WorkspaceDockPreferences>
+  >;
+  for (const surfaceId of WORKSPACE_SURFACE_IDS) {
+    overrides[surfaceId] = {
+      left: { ...surfaces[surfaceId].docks.left },
+      right: { ...surfaces[surfaceId].docks.right },
+      bottom: { ...surfaces[surfaceId].docks.bottom },
+    };
+  }
+  return overrides;
+}
+
+function resolveBrowserStorage(): WorkspacePreferencesStorage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function isWorkspacePresetId(value: unknown): value is WorkspacePresetId {
+  return typeof value === 'string' && WORKSPACE_PRESET_IDS.includes(value as WorkspacePresetId);
+}
+
+function isDesignWorkspaceView(value: unknown): value is DesignWorkspaceView {
+  return value === 'canvas' || value === 'code' || value === 'split';
+}
+
+function isDesignCanvasAppearance(value: unknown): value is DesignCanvasAppearance {
+  return value === 'dark' || value === 'light' || value === 'system';
+}
+
+function isDesignCanvasDensity(value: unknown): value is DesignCanvasDensity {
+  return value === 'comfortable' || value === 'compact';
+}
+
+function isIdeCommandId(value: unknown): value is IdeCommandId {
+  return typeof value === 'string' && /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}

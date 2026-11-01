@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { STUDENT_WORKFLOW_STAGES } from '../workflowStages';
 
 interface ShortcutRow {
   action: string;
@@ -14,11 +15,7 @@ const SHORTCUT_SECTIONS: ShortcutSection[] = [
   {
     label: 'Global',
     rows: [
-      { action: 'Switch to Design', keys: '1' },
-      { action: 'Switch to Verify', keys: '2' },
-      { action: 'Switch to Export', keys: '3' },
-      { action: 'Switch to Map Pins', keys: '4' },
-      { action: 'Switch to Import', keys: '5' },
+      ...STUDENT_WORKFLOW_STAGES.map(stage => ({ action: `Switch to ${stage.label}`, keys: String(stage.step) })),
       { action: 'Save project', keys: 'Ctrl+S' },
       { action: 'Undo', keys: 'Ctrl+Z' },
       { action: 'Redo', keys: 'Ctrl+Shift+Z' },
@@ -42,7 +39,7 @@ const SHORTCUT_SECTIONS: ShortcutSection[] = [
     ],
   },
   {
-    label: 'Verify',
+    label: 'Simulate',
     rows: [
       { action: 'Next failure', keys: 'J / \u2193' },
       { action: 'Previous failure', keys: 'K / \u2191' },

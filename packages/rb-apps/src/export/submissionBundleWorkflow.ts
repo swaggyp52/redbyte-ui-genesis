@@ -81,7 +81,7 @@ export async function generateProjectSubmissionBundle(
 
 export function downloadSubmissionBundle(bundle: SubmissionBundleResult): void {
   const downloadLink = document.createElement('a');
-  downloadLink.href = URL.createObjectURL(new Blob([bundle.bytes], { type: 'application/zip' }));
+  downloadLink.href = URL.createObjectURL(new Blob([new Uint8Array(bundle.bytes)], { type: 'application/zip' }));
   downloadLink.download = bundle.downloadFilename;
   downloadLink.click();
   URL.revokeObjectURL(downloadLink.href);

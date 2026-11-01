@@ -41,11 +41,13 @@ describe('IDE chrome contracts', () => {
   });
 
   it('declares the Hardware sub-mode exit paths covered by the N4 Back affordance', () => {
-    expect(HARDWARE_CHROME_CONTRACT.exitPaths).toHaveLength(3);
+    // Two sub-modes have a way back. There were three until Pre-flight ("proof") was retired
+    // (a26378370, "Board Check is the one after-mapping check"); this expectation was not
+    // updated with it and has failed since. hardwareSurface.modeExitTrap asserts the retirement.
+    expect(HARDWARE_CHROME_CONTRACT.exitPaths).toHaveLength(2);
     expect(HARDWARE_CHROME_CONTRACT.exitPaths.map((path) => path.fromMode).sort()).toEqual([
       'bringup',
       'live',
-      'proof',
     ]);
 
     for (const path of HARDWARE_CHROME_CONTRACT.exitPaths) {

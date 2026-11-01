@@ -50,12 +50,13 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await ensureVerifyVectorsReady(page);
   assert(
-    await page.locator('[data-testid="ide-vcb-observe-only"]').first().isVisible().catch(() => false),
-    'Verify must expose Observe only in the student run-mode selector'
+    await page.getByTestId("ide-case-lab").isVisible() &&
+      await page.locator('[data-testid="ide-vcb-run"]').first().isVisible().catch(() => false),
+    'Simulate must expose Scenario, Checks, and one Run simulation authority'
   );
   assert(
     await setVerifyRunMode(page, 'compare'),
-    'trusted export proof requires Verify to expose Compare checks'
+    'export evidence requires Simulate to recognize authored optional checks'
   );
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
@@ -63,7 +64,7 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
   const verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
   assert(
     isVerifyPass(verifyStatus),
-    `trusted export must require a current Compare PASS, got "${verifyStatus}"`
+    `export evidence must require a current simulation whose authored checks pass, got "${verifyStatus}"`
   );
 
   await page.locator('[data-testid="mode-button-export"]').click();
@@ -75,7 +76,7 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
     .evaluateAll((elements) =>
       elements.map((element) =>
         (
-          element.querySelector('span')?.textContent ??
+          element.querySelector('.rb-pkg-file-name')?.textContent ??
           element.textContent ??
           ''
         ).trim()
@@ -209,7 +210,12 @@ async function readPreviewByPath(page, artifactPath) {
     { timeout: 10000 }
   );
 
-  const preview = await page.locator('[data-testid="ide-export-preview-code"]').first().textContent().catch(() => '');
+  const preview = await page.locator('[data-testid="ide-export-preview-code"] .rb-pkg-code-line').evaluateAll((lines) =>
+    lines.map((line) => {
+      const code = line.querySelector('span:last-child')?.textContent ?? '';
+      return code === ' ' ? '' : code;
+    }).join('\n')
+  ).catch(() => '');
   return normalizeArtifactText(preview);
 }
 

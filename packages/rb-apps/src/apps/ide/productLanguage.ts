@@ -1,3 +1,5 @@
+import { STUDENT_WORKFLOW_SPINE } from './workflowStages';
+
 export const SIGNAL_LANGUAGE = {
   inputSignal: 'A value your circuit reads.',
   outputSignal: 'A value your circuit drives.',
@@ -36,7 +38,7 @@ export const PROOF_LANGUAGE = {
 } as const;
 
 export const WORKFLOW_LANGUAGE = {
-  stages: ['Project', 'Design', 'Verify', 'Map Pins', 'Export'],
+  stages: STUDENT_WORKFLOW_SPINE,
   importUtility: 'Import / Recovery',
   importBoundary: 'Import is a review-gated utility, not a required workflow stage.',
 } as const;

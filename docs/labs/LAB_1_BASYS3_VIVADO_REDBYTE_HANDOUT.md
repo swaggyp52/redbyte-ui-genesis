@@ -103,12 +103,12 @@ the palette (left side) or using the Add menu.
 
 9. If you see a green connection indicator, the wire is correctly connected.
 
-### Step 3 — Enter Test Vectors in the Verify Surface
+### Step 3 — Enter Test Vectors in the Simulate Workspace
 
-The Verify surface replaces ModelSim's HDL Bencher. You enter input combinations
+The Simulate workspace replaces ModelSim's HDL Bencher. You enter input combinations
 and expected outputs as rows in a truth table.
 
-1. Click the Verify surface icon on the left rail.
+1. Open the Simulate workspace from the top navigator.
 
 2. You will see input columns (A, B) and an output column (F).
 
@@ -152,7 +152,7 @@ Common issues if a row fails:
 1. Your hand-drawn circuit schematic (from pre-lab).
 2. The completed truth table (from pre-lab).
 3. The simplified Boolean expression for F.
-4. A screenshot of the RedByte Verify surface showing all 4 rows as PASS.
+4. A screenshot of the RedByte Simulate workspace showing all 4 rows as PASS.
 5. Explanation: for the row (A=0, B=1) → F=0: why does the circuit produce 0?
    Walk through each gate step by step.
 
@@ -163,7 +163,7 @@ Common issues if a row fails:
 - [ ] Truth table is correct (all 4 input combinations covered)
 - [ ] Boolean expression for F is correct and simplified
 - [ ] Circuit in RedByte correctly implements F = NOT(NOT(A) AND B)
-- [ ] Verify surface shows PASS on all 4 rows
+- [ ] Simulate workspace shows PASS on all 4 rows
 - [ ] Submission ZIP exported and submitted
 
 ---
@@ -171,7 +171,7 @@ Common issues if a row fails:
 ## Troubleshooting
 
 **"I can't see the gate palette."**
-Make sure you are on the Design surface (pencil icon), not the Verify or Project surface.
+Make sure you are on the Design surface (pencil icon), not the Simulate or Project workspace.
 
 **"My output is always 0."**
 Check that all wires are fully connected. A dangling wire (not attached to a node port)
@@ -183,4 +183,4 @@ first NOT gate to the AND gate input 1.
 
 **"I don't see F in the verify surface."**
 The output node must be labeled "F". Double-click the output node on the canvas and set
-its label. Then return to Verify.
+its label. Then return to Simulate.

@@ -1,12 +1,25 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
+import { ThemeProvider } from '@redbyte/rb-theme';
 import type { RBProject } from '../../../export/projectFormat';
 import { IdeApp } from '../../IdeApp';
 import { useProjectRuntime } from '../projectRuntime';
 import { computeScenarioContentHash } from '../verifyScenario';
+import { workspacePreferencesStore } from '../workspacePreferences';
+import { InlineVerificationWorker } from './inlineVerificationWorker';
+
+// The active mode is no longer a top-bar label (`ide-topbar-mode-label` was
+// removed when the stage-nav became the single workflow authority). The current
+// authority is the active stage-nav button (aria-current="step"); read its label.
+function activeModeText(view: { container: HTMLElement }): string {
+  const active =
+    view.container.querySelector('[data-testid^="mode-button-"][aria-current="step"]') ??
+    view.container.querySelector('[data-testid^="mode-button-"][data-active="true"]');
+  return active?.textContent ?? '';
+}
 
 function buildSemanticClockProject(): RBProject {
   return {
@@ -212,7 +225,6 @@ function buildDraftAuthoringProject(): RBProject {
     meta: {
       projectId: 'rb-draft-authoring-project',
       projectKind: 'custom',
-      activeExampleId: null,
       sourceExampleId: null,
       scenarioAuthority: 'none',
     },
@@ -273,8 +285,11 @@ describe('IdeApp lab-day wiring', () => {
     sessionStorage.clear();
     useProjectRuntime.persist.clearStorage();
     useProjectRuntime.setState(useProjectRuntime.getInitialState(), true);
+    workspacePreferencesStore.reset();
     localStorage.setItem('rb-onboarding-v1-seen', '1');
     seedIdeRoute('project');
+    // Run executes in a module worker (64bf7aa93); jsdom has none, so the real computation runs inline.
+    vi.stubGlobal('Worker', InlineVerificationWorker);
   });
 
   afterEach(() => {
@@ -284,12 +299,14 @@ describe('IdeApp lab-day wiring', () => {
     localStorage.clear();
     sessionStorage.clear();
     window.history.replaceState({}, '', '/');
+    useProjectRuntime.getState().cancelVerification();
+    vi.unstubAllGlobals();
   });
 
   // SKIP: Import nav button removed from left rail in Phase-1 (Import demoted to utility action).
   // Rewrite when Import is repositioned as a modal/action with its new navigation contract.
   it.skip('routes the ports-only rescue CTA from Import to Export', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     fireEvent.click(await view.findByTestId('mode-button-import'));
     await view.findByTestId('ide-import-panel', {}, { timeout: 5000 });
@@ -304,7 +321,7 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.click(view.getByTestId('ide-import-go-to-export'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Export');
+      expect(activeModeText(view)).toContain('Export');
     });
 
     await waitFor(() => {
@@ -312,8 +329,8 @@ describe('IdeApp lab-day wiring', () => {
     }, { timeout: 10000 });
   });
 
-  it('propagates Project top and part edits into the Export handoff summary', async () => {
-    const view = render(<IdeApp />);
+  it('propagates the Project top edit and keeps the FPGA part board-owned in the Export handoff', async () => {
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
@@ -322,22 +339,31 @@ describe('IdeApp lab-day wiring', () => {
     fireEvent.change(await view.findByTestId('ide-project-fpga-top'), {
       target: { value: 'lab_day_top' },
     });
-    fireEvent.change(view.getByTestId('ide-project-fpga-part'), {
-      target: { value: 'xc7a100tcsg324-1' },
-    });
+
+    // The FPGA part is board-owned (Basys3 -> xc7a35tcpg236-1) and displayed
+    // read-only — not a freeform field the export would silently ignore.
+    const partField = view.getByTestId('ide-project-fpga-part');
+    expect(partField.tagName).not.toBe('INPUT');
+    expect(partField.getAttribute('data-board-owned')).toBe('true');
+    expect(partField.textContent).toContain('xc7a35tcpg236-1');
 
     fireEvent.click(view.getByTestId('mode-button-export'));
 
     await view.findByTestId('ide-export-panel', {}, { timeout: 15000 });
 
-    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
+    // Package opens on its generated files; the report is an explicit second document.
+    await view.findByTestId('ide-export-package-files', {}, { timeout: 15000 });
+    fireEvent.click(await view.findByTestId('ide-export-file-top-vhd', {}, { timeout: 15000 }));
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity lab_day_top is');
     fireEvent.click(view.getByTestId('ide-export-file-vivado-import-tcl'));
-    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a100tcsg324-1');
+    // Every generated artifact derives the target from the board authority.
+    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a35tcpg236-1');
   });
 
-  it('resets inherited top authority when Build Fresh is renamed', async () => {
-    const view = render(<IdeApp />);
+  // Manual, Milestone 4 (2026-10-05): friendly names leave the HDL top, ports and constraints
+  // intact. This test predates that decision (19ad3997f expected the top to follow the name).
+  it('keeps the HDL top when Build Fresh is renamed, and changes it only where it is edited', async () => {
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     fireEvent.click(await view.findByTestId('ide-project-build-fresh-primary'));
     await waitFor(() => {
@@ -377,52 +403,57 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     fireEvent.click(view.getByTestId('mode-button-project'));
-    await waitFor(() => {
-      expect((view.getByTestId('ide-project-fpga-top') as HTMLInputElement).value).toBe(
-        'full_adder'
-      );
-    });
+    const top = (await view.findByTestId('ide-project-fpga-top')) as HTMLInputElement;
+    expect(useProjectRuntime.getState().projectName).toBe('Full Adder');
+    expect(top.value).toBe('untitled_project');
+    expect(useProjectRuntime.getState().activeTop).toBe('untitled_project');
+    // The top changes where it is shown, and the export reads it live.
+    fireEvent.change(top, { target: { value: 'full_adder' } });
+    await waitFor(() => expect(useProjectRuntime.getState().activeTop).toBe('full_adder'));
+    expect(top.value).toBe('full_adder');
   }, 15000);
 
   it('keeps a structural Design blocker dominant over missing Compare evidence', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
     });
 
+    // The Overview's lead problem keeps the structural blocker and its repair owner dominant.
+    // An undriven board output now blocks the package by name (RBEX4103, titled Floating output).
     await waitFor(() => {
-      expect(view.getByTestId('ide-projectx-next-status').textContent).toBe('DESIGN BLOCKED');
+      expect(view.getByTestId('ide-project-attention').textContent).toMatch(/floating-output|Output not|Floating output/);
     });
-
-    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Design blocked');
-    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Compiler error');
-    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Output');
-    expect(view.getByTestId('ide-project-command-strip-primary-cta').textContent).toContain(
-      'Open Design'
-    );
+    const attention = view.getByTestId('ide-project-attention');
+    // The lead problem is the RBEX4103 output blocker ("Floating output"), not missing evidence.
+    expect(attention.textContent).toContain('Floating output');
+    expect(attention.textContent).not.toMatch(/Compare|no evidence/i);
+    expect(view.getByTestId('ide-project-fact-problems').textContent).not.toContain('none');
+    fireEvent.click(within(attention).getByRole('button', { name: /^Open Design$/ }));
+    await waitFor(() => expect(view.getByTestId('ide-root').getAttribute('data-ide-stage')).toBe('design'));
   });
 
   it('renders Project home on first load at /', async () => {
     window.history.replaceState({}, '', '/');
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await expectProjectHomeVisible(view);
   });
 
   it('renders Project home on first load at /os/', async () => {
     window.history.replaceState({}, '', '/os/');
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await expectProjectHomeVisible(view);
   });
 
   it('falls back to Project home when URL mode is invalid', async () => {
     window.history.replaceState({}, '', '/os/?mode=invalid');
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
     await expectProjectHomeVisible(view);
   });
 
   it('derives live semantic clock mapping in Hardware before any verify run exists', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildSemanticClockProject());
@@ -434,14 +465,23 @@ describe('IdeApp lab-day wiring', () => {
     await waitFor(() => {
       expect(view.getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
       expect(view.getByTestId('ide-hw-map-row-phase_driver').textContent?.toLowerCase()).toContain('phase_driver');
-      expect(view.getByTestId('ide-hw-map-row-phase_driver').textContent).toContain('W5');
+      expect(view.getByTestId('ide-hw-map-row-binding-phase_driver').textContent).toBe('CLK100MHZ');
     });
+    // Compact mapping rows name the board resource. Its saved package pin belongs
+    // to the selected binding chain, reached through the row's actual Edit control.
+    fireEvent.click(view.getByTestId('ide-hw-map-row-action-phase_driver'));
+    await waitFor(() => {
+      expect(view.getByTestId('ide-hardware-chain-board').textContent).toContain('CLK100MHZ');
+      expect(view.getByTestId('ide-hardware-chain-pin').textContent).toContain('W5');
+      expect(view.getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN W5');
+    });
+    expect(useProjectRuntime.getState().verifyLastRun).toBeUndefined();
   });
 
   it(
     'wires authoritative scenario provenance through Verify, Export, and Hardware in normal flow',
     async () => {
-      const view = render(<IdeApp />);
+      const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
       await act(async () => {
         useProjectRuntime.getState().loadFromProject(buildScenarioAuthorityProject());
@@ -461,8 +501,11 @@ describe('IdeApp lab-day wiring', () => {
 
       fireEvent.click(await view.findByTestId('mode-button-verify'));
       await view.findByTestId('ide-verify-panel', {}, { timeout: 5000 });
-      const useSaved = await view.findByTestId('ide-vcb-use-saved-checks');
-      fireEvent.click(useSaved);
+      // The current Run action evaluates authored checks automatically.
+      expect(view.getByTestId('ide-vcb-check-count').textContent).toBe('3 optional checks');
+      expect(view.getByTestId('ide-vcb-check-count').getAttribute('title')).toBe(
+        '3 saved checks are evaluated automatically.'
+      );
 
       await act(async () => {
         fireEvent.click(await findVerifyRunAction(view));
@@ -506,6 +549,7 @@ describe('IdeApp lab-day wiring', () => {
         stateAfterRun.verifyLastRun?.deterministicHash
       );
 
+      fireEvent.click(view.getByTestId('ide-export-close-technical-evidence'));
       await act(async () => {
         useProjectRuntime.getState().setVectors([
           { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
@@ -518,16 +562,22 @@ describe('IdeApp lab-day wiring', () => {
       await view.findByTestId('ide-hardware-panel', {}, { timeout: 15000 });
 
       await waitFor(() => {
-        expect(view.getByTestId('ide-hardware-readiness-callout').textContent).toContain(
-          'changed after the last Compare run'
+        expect(view.getByTestId('ide-hw-mapping-next-reason').textContent).toBe(
+          'The recorded run is stale. Rerun it in Simulate for a checked package.'
         );
       });
+      const editedState = useProjectRuntime.getState();
+      const editedScenario = editedState.scenarios.find(scenario => scenario.id === editedState.activeScenarioId);
+      expect(editedScenario).toBeTruthy();
+      expect(editedState.verifyLastRun?.runId).toBe(stateAfterRun.verifyLastRun?.runId);
+      expect(editedState.verifyLastRun?.scenarioContentHash).not.toBe(computeScenarioContentHash(editedScenario!));
+      expect(editedState.projectHealthCore.dirtySinceVerify).toBe(true);
     },
     20_000
   );
 
   it('wires the Verify scenario library header into runtime create and switch actions', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildScenarioAuthorityProject());
@@ -539,6 +589,9 @@ describe('IdeApp lab-day wiring', () => {
       fireEvent.click(await findVerifyRunAction(view));
     });
 
+    // The compact workbench reveals its scenario explorer on demand.
+    const revealScenarios = view.queryByTestId('ide-show-left-dock');
+    if (revealScenarios) fireEvent.click(revealScenarios);
     await waitFor(() => {
       expect(view.getByTestId('ide-testbench-documents')).toBeTruthy();
     });
@@ -579,7 +632,7 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('keeps Verify Generate Basics in trace-authoring mode for custom projects', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await act(async () => {
       useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
@@ -591,7 +644,7 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
     });
 
-    fireEvent.click(view.getByTestId('ide-verify-generate-basic-vectors'));
+    fireEvent.click(view.getByTestId('ide-case-lab-generate'));
 
     await waitFor(() => {
       const state = useProjectRuntime.getState();
@@ -605,10 +658,12 @@ describe('IdeApp lab-day wiring', () => {
   });
 
   it('detaches starter examples without leaving Verify stuck in starter compare mode', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await view.findByTestId('ide-project-landing');
+    fireEvent.click(await view.findByTestId('ide-project-open-starter-primary'));
     fireEvent.click(await view.findByTestId('ide-project-landing-example-logic-gates'));
+    fireEvent.click(await view.findByTestId('ide-project-start-open-logic-gates'));
 
     await waitFor(() => {
       expect(view.queryByTestId('ide-example-confirm-modal')).toBeNull();
@@ -635,77 +690,99 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.queryByTestId('ide-verify-auto-vector-notice')).toBeNull();
     });
 
-    expect(view.getByTestId('ide-vcb-author-expected')).toBeTruthy();
-    expect(view.getByTestId('ide-vcb-use-saved-checks')).toBeDisabled();
+    expect(view.getByTestId('ide-vcb-check-count').textContent).toBe('0 optional checks');
+    expect(view.getByTestId('ide-vcb-check-count').getAttribute('title')).toBe(
+      'No checks configured · records outputs without a pass/fail verdict.'
+    );
+    fireEvent.click(view.getByTestId('ide-verify-view-table'));
+    const expectedCell = view.getByTestId('ide-case-lab').querySelector<HTMLButtonElement>(
+      '[data-testid^="ide-case-lab-exp-"]'
+    );
+    expect(expectedCell).toBeTruthy();
+    if (!expectedCell) throw new Error('Detached scenario must retain its optional check editor');
+    expect(expectedCell).toBeEnabled();
+    fireEvent.click(expectedCell);
+    await waitFor(() => {
+      expect(view.getByTestId('ide-vcb-check-count').textContent).toBe('1 optional checks');
+      expect(useProjectRuntime.getState().projectVectors.some(vector =>
+        Object.values(vector.expected ?? {}).includes(1))).toBe(true);
+    });
+    expect(useProjectRuntime.getState().activeExampleId).toBeNull();
+    expect(useProjectRuntime.getState().projectKind).toBe('custom');
     expect(view.queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(view.queryByTestId('ide-verify-session-title')).toBeNull();
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();
   });
 
   it('loads the Lab 8 starter directly into Design with visible starter authority', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await view.findByTestId('ide-project-landing');
+    fireEvent.click(await view.findByTestId('ide-project-open-starter-primary'));
     fireEvent.click(await view.findByTestId('ide-project-lab-card-lab8-security-lock-fsm'));
+    fireEvent.click(await view.findByTestId('ide-project-start-open-lab8-security-lock-fsm'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+      expect(activeModeText(view)).toContain('Design');
     });
 
     await waitFor(() => {
       expect(useProjectRuntime.getState().activeExampleId).toBe('23_lab8-fsm-lock-starter-basys3');
     });
 
-    const starterTitle = (await view.findByTestId('ide-design-starter-banner-title', {}, { timeout: 5000 }))
-      .textContent;
-    expect(starterTitle).toMatch(/Lab 8|Security Lock/);
-
-    expect((await view.findByTestId('ide-design-starter-banner-lab', {}, { timeout: 5000 })).textContent).toContain('Lab 8');
-    const nextAction = (await view.findByTestId('ide-design-starter-banner-next-action', {}, { timeout: 5000 })).textContent;
-    expect(nextAction).toMatch(/Connect ENTER|DFlipFlop|final-project reference|bridge/i);
+    // The starter brief is project context now: it lives in the Project Overview, not on the canvas.
     expect(view.queryByTestId('ide-design-empty-state')).toBeNull();
+    fireEvent.click(await view.findByTestId('mode-button-project'));
+    const starterTitle = (await view.findByTestId('ide-project-starter-name', {}, { timeout: 5000 })).textContent;
+    expect(starterTitle).toMatch(/Lab 8|Security Lock/);
+    expect((await view.findByTestId('ide-project-starter-lab', {}, { timeout: 5000 })).textContent).toContain('Lab 8');
+    const nextAction = (await view.findByTestId('ide-project-starter-next-action', {}, { timeout: 5000 })).textContent;
+    expect(nextAction).toMatch(/Connect ENTER|DFlipFlop|final-project reference|bridge/i);
     expect(useProjectRuntime.getState().circuit.nodes.some((node) => node.label === 'IN0 (SW6)')).toBe(true);
     expect(useProjectRuntime.getState().circuit.nodes.some((node) => node.label === 'LOCK (LED1)')).toBe(true);
-  });
+  }, 15000);
 
   it('holds starter replacement on Project until overwrite is confirmed', async () => {
-    const view = render(<IdeApp />);
+    const view = render(<ThemeProvider><IdeApp /></ThemeProvider>);
 
     await view.findByTestId('ide-project-landing');
+    fireEvent.click(await view.findByTestId('ide-project-open-starter-primary'));
     fireEvent.click(await view.findByTestId('ide-project-landing-example-half-adder'));
+    fireEvent.click(await view.findByTestId('ide-project-start-open-half-adder'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+      expect(activeModeText(view)).toContain('Design');
     });
 
     fireEvent.click(await view.findByTestId('mode-button-project'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Project');
+      expect(activeModeText(view)).toContain('Project');
     });
 
     await view.findByTestId('ide-project-panel', {}, { timeout: 5000 });
+    fireEvent.click(await view.findByTestId('ide-menu-file'));
+    fireEvent.click(await view.findByTestId('ide-menu-item-project.open-starter'));
     fireEvent.click(await view.findByTestId('ide-project-load-start-logic-gates', {}, { timeout: 5000 }));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-example-confirm-modal')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Project');
+    expect(activeModeText(view)).toContain('Project');
     expect(useProjectRuntime.getState().activeExampleId).not.toBe('logic-gates');
 
     fireEvent.click(view.getByTestId('ide-example-confirm'));
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');
+      expect(activeModeText(view)).toContain('Design');
     });
 
     await waitFor(() => {
       expect(useProjectRuntime.getState().activeExampleId).toBe('logic-gates');
     });
 
-    expect((await view.findByTestId('ide-design-starter-banner-title', {}, { timeout: 5000 })).textContent).toContain(
-      'Logic Gates'
-    );
-  });
+    fireEvent.click(await view.findByTestId('mode-button-project'));
+    expect((await view.findByTestId('ide-project-starter-name', {}, { timeout: 5000 })).textContent).toContain('Logic Gates');
+  }, 15000);
 });

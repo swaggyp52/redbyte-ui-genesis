@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
+import type { TestVector } from '@redbyte/rb-utils';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
@@ -252,7 +253,7 @@ describe('projectRuntime verify authority', () => {
   it('preserves high authored start state until an explicit rising transition', () => {
     const runtime = useProjectRuntime.getState();
     runtime.loadFromProject(buildSequentialAuthorityFixture());
-    const vectors = [
+    const vectors: TestVector[] = [
       { tick: 0, inputs: { d: 1, clk: 1 }, expected: { q: 0 } },
       { tick: 1, inputs: { d: 1 }, expected: { q: 0 } },
       { tick: 2, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
@@ -1253,8 +1254,8 @@ describe('projectRuntime verify authority', () => {
     disconnectedCircuit.connections = disconnectedCircuit.connections.filter(
       (connection) =>
         !(
-          connection.from.nodeId === 'ff_node' &&
-          connection.to.nodeId === 'q_node'
+          (typeof connection.from === 'string' ? connection.from : connection.from.nodeId) === 'ff_node' &&
+          (typeof connection.to === 'string' ? connection.to : connection.to.nodeId) === 'q_node'
         )
     );
 
@@ -1309,7 +1310,8 @@ describe('projectRuntime verify authority', () => {
     const reducedCircuit = structuredClone(useProjectRuntime.getState().circuit);
     reducedCircuit.nodes = reducedCircuit.nodes.filter((node) => node.id !== 'ld0_node');
     reducedCircuit.connections = reducedCircuit.connections.filter(
-      (connection) => connection.to.nodeId !== 'ld0_node' && connection.from.nodeId !== 'ld0_node'
+      (connection) => (typeof connection.to === 'string' ? connection.to : connection.to.nodeId) !== 'ld0_node' &&
+        (typeof connection.from === 'string' ? connection.from : connection.from.nodeId) !== 'ld0_node'
     );
 
     useProjectRuntime.getState().applyCircuitMutation(reducedCircuit);

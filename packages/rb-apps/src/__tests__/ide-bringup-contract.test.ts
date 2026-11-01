@@ -3,15 +3,17 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
+import type { Circuit } from '@redbyte/rb-logic-core';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
 import type { RBProject } from '../export/projectFormat';
-import type { RuntimeVerifyRun } from '../apps/ide/projectRuntime';
+import { useProjectRuntime, type RuntimeVerifyRun } from '../apps/ide/projectRuntime';
 import { generateBringUpVectors } from '../apps/ide/bringupArtifacts';
 import { buildVerifyReport, buildVerifyWaveSamples } from '../apps/ide/verifyReport';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
 import { parseVhdl } from '../import/vhdlImport';
 import { parsedHdlToCircuit } from '../import/hdlToCircuit';
 import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
+import { nativeCounterCircuit } from './helpers/nativeCounterFixture';
 
 const FIXTURE_DIR = join(
   process.cwd(),
@@ -40,18 +42,15 @@ function buildFixtureIoMapping(): IoMapping {
   };
 }
 
-function buildFixtureProject(vhdl: string): RBProject {
-  const parsed = parseVhdl(vhdl);
-  const converted = parsedHdlToCircuit(parsed);
+/**
+ * A bring-up project around `circuit` with the counter's ports and generated bring-up vectors.
+ * `importedSource` keeps the imported VHDL the port-only projection came from.
+ */
+function buildFixtureProject(circuit: Circuit, importedSource?: string): RBProject {
   const ioMapping = buildFixtureIoMapping();
   const ioRows = buildBringUpIoRows(ioMapping);
   const timestamp = '2026-02-21T00:00:00.000Z';
-  const vectors = generateBringUpVectors({
-    ioRows,
-    circuit: converted.circuit,
-    existingVectors: [],
-  });
-
+  const vectors = generateBringUpVectors({ ioRows, circuit, existingVectors: [] });
   return {
     kind: 'rb-project',
     version: 1,
@@ -59,18 +58,19 @@ function buildFixtureProject(vhdl: string): RBProject {
     updatedAt: timestamp,
     name: 'bringup-contract-counter',
     description: 'Bring-up contract fixture',
-    circuit: converted.circuit,
+    circuit,
     ioMapping,
     vectors,
-    hdl: {
-      top: 'top',
-      sources: [{ path: 'top.vhd', language: 'vhdl', text: vhdl }],
-    },
+    hdl: { top: 'top', sources: importedSource ? [{ path: 'top.vhd', language: 'vhdl', text: importedSource }] : [] },
     fpga: { board: 'basys3', top: 'top' },
-    meta: {
-      projectId: 'bringup-contract-counter-fixture',
-    },
+    meta: { projectId: 'bringup-contract-counter-fixture' },
   };
+}
+
+/** The imported counter: a process the importer keeps as a port scaffold (INPUT/OUTPUT, no logic). */
+function importedCounterProject(): RBProject {
+  const vhdl = loadFixtureVhdl();
+  return buildFixtureProject(parsedHdlToCircuit(parseVhdl(vhdl)).circuit, vhdl);
 }
 
 function buildBringUpIoRows(ioMapping: IoMapping) {
@@ -128,50 +128,11 @@ function buildSignalRoles(ioMapping: IoMapping) {
 }
 
 function buildFixtureRuntimeVerifyRun(project: RBProject): RuntimeVerifyRun {
-  const scheduleContract = deriveVerifySchedule(project.circuit, project.ioMapping, project.hdl);
-  const outputSignals = (project.ioMapping?.outputs ?? []).map((entry) => entry.label ?? entry.id);
-  const rows = (project.vectors ?? []).flatMap((vector) =>
-    outputSignals.map((signal) => {
-      const expected = normalizeBitSymbol(vector.expected?.[signal]);
-      return {
-        tick: vector.tick,
-        signal,
-        expected,
-        actual: expected,
-      };
-    })
-  );
-  const report = buildVerifyReport({
-    scenarioId: 'bringup-contract-fixture',
-    scenarioName: 'Bring-up Contract Fixture',
-    status: 'pass',
-    deterministicHash: 'verify_bringup_contract_fixture',
-    rows,
-    vectors: buildVerifyVectors(project.vectors ?? []),
-    generatedAtIso: GENERATED_AT_ISO,
-    signalRoles: buildSignalRoles(project.ioMapping ?? buildFixtureIoMapping()),
-  });
-
-  return {
-    scenarioId: report.scenarioId,
-    scenarioName: report.scenarioName,
-    status: report.status,
-    deterministicHash: report.deterministicHash,
-    reportHash: report.reportHash,
-    firstFailingTick: report.firstFailingTick,
-    generatedAtIso: report.generatedAtIso,
-    schedule: scheduleContract.schedule,
-    scheduleContract,
-    meta: {
-      circuitKind: scheduleContract.schedule === 'clocked_macro' ? 'sequential' : 'combinational',
-      clockingProtocol: scheduleContract.schedule === 'clocked_macro' ? 'clocked_macro' : null,
-      samplePoint: scheduleContract.samplePoint,
-      tick0Meaning: scheduleContract.tick0Meaning,
-      clockSignalName: scheduleContract.clockSignalName ?? null,
-    },
-    report,
-    waveform: buildVerifyWaveSamples(report),
-  };
+  useProjectRuntime.getState().loadFromProject(project);
+  const state = useProjectRuntime.getState();
+  return state.runVerification({ scenarioId: state.activeScenarioId, scenarioName: 'Bring-up Contract Fixture',
+    deterministicHash: 'verify_bringup_contract_fixture', rows: [], assertionMode: true,
+    ranAtIso: GENERATED_AT_ISO });
 }
 
 async function buildVivadoKitZip(artifacts: ReturnType<typeof buildExportViewModel>['artifacts']) {
@@ -204,20 +165,11 @@ function normalizeBitSymbol(value: unknown): string {
 }
 
 describe('IDE bring-up contract', () => {
-  it('builds deterministic bring-up vectors and exports the canonical bring-up proof artifacts', async () => {
-    const project = buildFixtureProject(loadFixtureVhdl());
+  it('never treats a port-only HDL projection as browser proof, and never packages its tied-low scaffold', async () => {
+    const project = importedCounterProject();
     const ioRows = buildBringUpIoRows(project.ioMapping ?? buildFixtureIoMapping());
-    const vectorsA = generateBringUpVectors({
-      ioRows,
-      circuit: project.circuit,
-      existingVectors: [],
-    });
-    const vectorsB = generateBringUpVectors({
-      ioRows,
-      circuit: project.circuit,
-      existingVectors: [],
-    });
-
+    const vectorsA = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
+    const vectorsB = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
     expect(vectorsA).toEqual(vectorsB);
     expect(vectorsA).toHaveLength(18);
     expect(vectorsA[0]).toMatchObject({
@@ -227,9 +179,35 @@ describe('IDE bring-up contract', () => {
     });
 
     const runtimeVerifyRun = buildFixtureRuntimeVerifyRun(project);
-    expect(runtimeVerifyRun.status).toBe('pass');
-    expect(runtimeVerifyRun.schedule).toBe('clocked_macro');
+    expect(runtimeVerifyRun.status).toBe('fail');
+    // This imported HDL fixture provides a port projection, not simulated counter logic.
+    // Its disconnected outputs are unknown. A test must not manufacture actual=expected.
+    expect(runtimeVerifyRun.evidence?.preflight.filter(issue => issue.kind === 'floating-output')).toHaveLength(4);
+    expect(runtimeVerifyRun.report.rows.every(row => row.actual === 'X')).toBe(true);
+    expect(runtimeVerifyRun.schedule).toBe('combinational');
 
+    // The generated top of a port scaffold drives no LED. It used to export ok, with bring-up
+    // steps and EXPECTED_IO telling a student the LEDs count while the top tied them to '0'.
+    // Every output is now refused by name, and no package or bring-up reference is ready.
+    const exportViewModel = buildExportViewModel(project, runtimeVerifyRun);
+    expect(exportViewModel.status).toBe('blocked');
+    expect(exportViewModel.errors.map((error) => error.code)).toEqual(['RBEX4103', 'RBEX4103', 'RBEX4103', 'RBEX4103']);
+    const top = exportViewModel.artifacts.find((artifact) => artifact.path === 'top.vhd');
+    expect(top?.status).toBe('blocked');
+    expect(top?.content ?? '').not.toMatch(/<=\s*'0'/);
+    for (const path of ['BRINGUP.md', 'EXPECTED_IO.json', 'program_and_test.tcl']) {
+      expect(exportViewModel.artifacts.find((artifact) => artifact.path === path)?.status, path).not.toBe('ready');
+    }
+  });
+
+  it('exports deterministic bring-up references for a counter that ships its logic', async () => {
+    const project = buildFixtureProject(nativeCounterCircuit());
+    const ioRows = buildBringUpIoRows(project.ioMapping ?? buildFixtureIoMapping());
+    const vectorsA = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
+    const vectorsB = generateBringUpVectors({ ioRows, circuit: project.circuit, existingVectors: [] });
+    expect(vectorsA).toEqual(vectorsB);
+
+    const runtimeVerifyRun = buildFixtureRuntimeVerifyRun(project);
     const exportViewModel = buildExportViewModel(project, runtimeVerifyRun);
     expect(exportViewModel.status).toBe('ok');
     expect(exportViewModel.errors).toEqual([]);
@@ -271,19 +249,16 @@ describe('IDE bring-up contract', () => {
     };
     expect(expectedIo.schemaVersion).toBe('rb.expected-io.v1');
     expect(expectedIo.evidenceLevel).toBe('E0');
-    expect(expectedIo.source).toBe('verify-run');
-    expect(expectedIo.generatedAtIso).toBe(GENERATED_AT_ISO);
-    expect(expectedIo.verifyHash).toBe(runtimeVerifyRun.deterministicHash);
-    expect(expectedIo.verifyReportHash).toBe(runtimeVerifyRun.reportHash);
+    expect(expectedIo.source).toBe('project-vectors');
+    expect(expectedIo.generatedAtIso).toBe(project.updatedAt);
+    expect(expectedIo.verifyHash).toBeUndefined();
+    expect(expectedIo.verifyReportHash).toBeUndefined();
     expect(expectedIo.signals).toHaveLength(4);
     const q0Signal = expectedIo.signals?.find((entry) => entry.signal === 'q0' && entry.pin === 'LD0');
     expect(q0Signal?.packagePin).toBe('U16');
-    expect(q0Signal?.values).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ tick: 0, expected: '0' }),
-        expect.objectContaining({ tick: 3, expected: '1' }),
-      ])
-    );
+    expect(q0Signal?.values).toEqual((project.vectors ?? []).map(vector => ({
+      tick: vector.tick, expected: normalizeBitSymbol(vector.expected?.q0),
+    })));
 
     expect(programArtifact?.content).toContain('open_hw_manager');
     expect(programArtifact?.content).toContain('connect_hw_server');
@@ -306,7 +281,7 @@ describe('IDE bring-up contract', () => {
     const programText = await zip.file('program_and_test.tcl')!.async('string');
     expect(bringupText).toContain('# Basys3 Bring-Up');
     const zippedExpectedIo = JSON.parse(expectedIoText) as { source?: string };
-    expect(zippedExpectedIo.source).toBe('verify-run');
+    expect(zippedExpectedIo.source).toBe('project-vectors');
     expect(programText).toContain('open_hw_manager');
   });
 });

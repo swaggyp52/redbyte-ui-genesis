@@ -1,0 +1,71 @@
+.card {
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-border) 76%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 90% at 10% -20%, color-mix(in srgb, var(--rb-ui-lab-accent) 14%, transparent), transparent 52%),
+    linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-surface-2) 88%, transparent) 0%, color-mix(in srgb, var(--rb-ui-lab-surface-1) 90%, transparent) 100%);
+  box-shadow: var(--rb-ui-lab-shadow-md);
+  padding: 0.75rem 0.8rem;
+}
+
+.inner {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.headline {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--rb-ui-lab-text-primary);
+}
+
+.description {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.actions {
+  margin-top: 0.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  border: 1px solid color-mix(in srgb, var(--rb-ui-lab-accent) 58%, var(--rb-ui-lab-border));
+  border-radius: 9px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rb-ui-lab-accent) 28%, var(--rb-ui-lab-surface-2)) 0%, color-mix(in srgb, var(--rb-ui-lab-surface-2) 92%, transparent) 100%);
+  color: var(--rb-ui-lab-text-primary);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.38rem 0.55rem;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  box-shadow: var(--rb-ui-lab-shadow-soft);
+}
+
+.secondaryText {
+  font-size: 10px;
+  color: var(--rb-ui-lab-text-muted);
+}
+
+.secondaryButton {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: 10px;
+  color: var(--rb-ui-lab-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

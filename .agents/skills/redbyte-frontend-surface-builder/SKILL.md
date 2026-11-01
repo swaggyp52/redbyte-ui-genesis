@@ -9,12 +9,12 @@ Use this skill before changing RedByte UI source under `packages/rb-apps/src/app
 
 ## Startup
 
-Read `AGENTS.md`, `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and the relevant surface contract before editing. For product/UX work, also read `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/IDE_SYSTEM_MAP.md`, and `docs/ide/SURFACE_CONFORMANCE.md`.
+Read root `AGENTS.md`, the newest complete status sections in `AI_STATE.md` and `docs/ACTIVE_WORK.md`, and the relevant current contract. Use `docs/DOC_INDEX.md` on demand; search older history by topic. Consult the system map and conformance contract for work spanning surfaces.
 
 ## Product Direction
 
 - Build the usable workbench, not a landing page.
-- Make the current work object dominant: graph, waveform/evidence, board/table, handoff package, recovery candidate, or Project identity/action.
+- Make the current work object dominant and connect useful counterparts through the existing runtime owner. For signal inspection, use `redbyte-linked-representations`; do not create another simulator or selection authority.
 - Avoid card walls, nested cards, persistent dead side space, duplicate status authorities, and decorative chrome that does not help a student act.
 - Use existing RedByte primitives and CSS patterns before creating new component styles.
 - Keep fixed-format controls dimensionally stable with explicit sizing, min/max constraints, and overflow handling.
@@ -27,4 +27,4 @@ Do not change simulation, Verify semantics, pin mapping semantics, VHDL/XDC/test
 
 ## Proof
 
-For a UI/product slice, add or update one focused browser gate that reproduces the observed user behavior. Capture before/after screenshots under `.redbyte/product-immersion/**`, verify the visible build hash matches HEAD, run affected surface gates, `classroom:gate`, `build:unified`, docs validation, encoding check, and `git diff --check`.
+Iterate in the running browser before expensive fixed-candidate checks. Reuse maintained gates and add focused regression proof where it protects real behavior. Identify the actual dirty build inputs and served candidate; HEAD alone cannot identify an uncommitted build. Follow root AGENTS required tiers: focused tests, relevant package/boundary checks, `verify:gates`, `build:unified`, and applicable docs/encoding checks. Broaden only for unresolved risk or new failures. Keep full logs locally and distinguish prior failures from regressions. Visual comprehension, interaction, correctness, deployment and physical proof are separate verdicts.

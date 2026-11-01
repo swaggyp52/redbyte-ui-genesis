@@ -2,6 +2,29 @@
 import { describe, expect, it, vi } from 'vitest';
 
 describe('merge-dist cleanup retries', () => {
+  it('classifies only Windows lock codes and preserves directory recovery guidance', async () => {
+    const { isRetryableWindowsLockError, formatLockedDirectoryGuidance } = await import('../../../../scripts/merge-dist-lib.mjs');
+    expect(isRetryableWindowsLockError({ code: 'EPERM' }, 'win32')).toBe(true);
+    expect(isRetryableWindowsLockError({ code: 'EBUSY' }, 'win32')).toBe(true);
+    expect(isRetryableWindowsLockError({ code: 'EPERM' }, 'linux')).toBe(false);
+    expect(isRetryableWindowsLockError({ code: 'ENOENT' }, 'win32')).toBe(false);
+    expect(isRetryableWindowsLockError(null, 'win32')).toBe(false);
+    const guidance = formatLockedDirectoryGuidance('dist with spaces');
+    expect(typeof guidance).toBe('string');
+    expect(guidance).toContain('dist with spaces');
+    expect(guidance).toContain('Close any preview/dev servers or file watchers');
+  });
+
+  it('does not retry unrelated filesystem failures', async () => {
+    const { removeDirWithRetries } = await import('../../../../scripts/merge-dist-lib.mjs');
+    const error = Object.assign(new Error('not found'), { code: 'ENOENT' });
+    const remove = vi.fn<(dirPath: string) => void>().mockImplementation(() => { throw error; });
+    const wait = vi.fn<(delayMs: number) => Promise<void>>().mockResolvedValue(undefined);
+    await expect(removeDirWithRetries('dist', { platform: 'win32', remove, wait })).rejects.toBe(error);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(wait).not.toHaveBeenCalled();
+  });
+
   it('retries Windows EPERM removals before succeeding', async () => {
     const remove = vi
       .fn<() => void>()

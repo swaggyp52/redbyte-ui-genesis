@@ -1,107 +1,32 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
-
-async function text(locator) {
-  return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function dismissOnboardingIfPresent(page) {
-  const skipButton = page.locator('[data-testid="ide-onboarding-skip"]').first();
-  const overlay = page.locator('[data-testid="ide-onboarding-overlay"]').first();
-  const visible = await skipButton.isVisible().catch(() => false);
-  if (!visible) return;
-  await skipButton.click();
-  await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
-}
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assertBuildHash, captureBrowserProblems } from './_workbenchReconstructionHarness.mjs';
 
 await runIdeGate('IDE project overview contract satisfied', async ({ page, baseUrl }) => {
-  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
-  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
-  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await dismissOnboardingIfPresent(page);
-
-  const landingVisible = await page
-    .locator('[data-testid="ide-project-landing"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-
-  if (landingVisible) {
-    const landingTitle = await text(page.locator('.ide-project-landing-title'));
-    assert(
-      /project command center|project home|start your lab/i.test(landingTitle),
-      `project landing title should explain the start state, got "${landingTitle}"`
-    );
-
-    const buildFreshVisible = await page
-      .locator('[data-testid="ide-project-build-fresh-primary"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    assert(buildFreshVisible, 'project landing must offer Build Fresh as a primary action');
-
-    const importUtilityVisible = await page
-      .locator('[data-testid="ide-project-import-primary"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-
-    assert(importUtilityVisible, 'project landing must offer Import HDL as a primary action');
-
-    const importCardVisible = await page
-      .locator('[data-testid="ide-project-landing-import"]')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    assert(!importCardVisible, 'project landing must not promote import as a peer start card');
-
-    return;
+  const problems = captureBrowserProblems(page);
+  await page.addInitScript(() => localStorage.setItem('rb-onboarding-v1-seen', '1'));
+  await page.goto(baseUrl + '/?mode=project&e2e=1');
+  await page.getByTestId('ide-project-landing').waitFor();
+  await assertBuildHash(page, 'Project Overview');
+  assert(await visible(page.getByRole('heading', { name: 'Course labs', exact: true })), 'Start must explain the selected starting context');
+  for (const id of ['ide-project-build-fresh-primary', 'ide-project-import-primary', 'ide-project-open-existing-primary']) {
+    assert(await visible(page.getByTestId(id)), 'Start must expose ' + id);
   }
-
-  const identityVisible = await page
-    .locator('[data-testid="ide-project-panel-identity"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(identityVisible, 'project identity panel must render');
-
-  const mappingVisible = await page
-    .locator('[data-testid="ide-project-panel-mapping"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(mappingVisible, 'project mapping panel must render');
-
-  const readinessVisible = await page
-    .locator('[data-testid="ide-project-panel-readiness"], [data-testid="ide-project-readiness-summary"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(readinessVisible, 'project readiness panel must render');
-
-  const unmappedText = await text(page.locator('[data-testid="ide-project-unmapped-count"]'));
-  assert(unmappedText.toLowerCase().includes('unmapped'), 'project unmapped count must be visible');
-
-  const continueVisible = await page
-    .locator('[data-testid="ide-project-continue-cta"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(continueVisible, 'project primary Continue CTA must render');
-
-  await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();
-  await page.waitForSelector('[data-testid="ide-project-mapping-table"]', { timeout: 10000 });
-  assert(
-    await page.locator('[data-testid="ide-project-open-map-pins"]').first().isVisible().catch(() => false),
-    'project must route mapping edits to Map Pins'
-  );
-  assert(
-    await page.locator('[data-testid^="ide-project-pin-field-"]').first().isVisible().catch(() => false),
-    'project must show read-only mapping summaries in the loaded state'
-  );
-  const projectMapInputCount = await page.locator('[data-testid^="ide-project-map-input-"]').count().catch(() => 0);
-  assert(projectMapInputCount === 0, 'project must not expose direct editable pin inputs in the loaded state');
+  await loadStarterProject(page, { exactExampleId: 'logic-gates' });
+  await page.getByTestId('mode-button-project').click();
+  await page.getByTestId('ide-project-overview-document').waitFor();
+  assert(/Logic Gates/.test(await page.getByTestId('ide-project-overview-title').innerText()), 'Loaded Overview must identify the project');
+  assert(await visible(page.getByTestId('ide-project-circuit-preview')), 'Loaded Overview must expose real circuit context');
+  assert(/5\/5.*mapped/i.test(await page.getByTestId('ide-project-fact-mapping').innerText()), 'Overview mapping summary must match the loaded five mapped signals');
+  assert(await visible(page.getByTestId('ide-project-continue')), 'Loaded Overview must retain direct continuation');
+  await page.getByTestId('ide-project-io-details').locator('summary').click();
+  const boundary = page.getByTestId('ide-project-io-table');
+  assert(await visible(boundary), 'I/O disclosure must reveal mapping summaries');
+  assert(await boundary.locator('tbody tr').count() === 5, 'I/O disclosure must retain all five signals');
+  assert(await boundary.locator('input, select').count() === 0, 'Overview must not introduce a second pin-editing authority');
+  await page.getByTestId('ide-project-io-row-sw0').dblclick();
+  await page.getByTestId('ide-mode-hardware').waitFor();
+  assert(await visible(page.getByTestId('ide-hw-map-table')), 'Opening an I/O object must route to Board mapping');
+  assert(problems.length === 0, 'Overview browser errors: ' + JSON.stringify(problems));
 });

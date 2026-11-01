@@ -41,7 +41,7 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
   await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { state: 'visible', timeout: 10000 });
 
   const statusStrip = await text(page.locator('[data-testid="ide-export-gate-stack"]'));
-  assert(statusStrip.toUpperCase().includes('VERIFY'), 'export gate stack must include verify gate row');
+  assert(statusStrip.toUpperCase().includes('SIMULATE'), 'export gate stack must include Simulate evidence gate row');
   assert(
     /PASS|READY|CURRENT|COMPLETE/i.test(statusStrip),
     `export status strip must report a ready verify state, got "${statusStrip}"`
@@ -66,7 +66,7 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
     );
   }
 
-  const summaryDownloadButton = page.locator('[data-testid="ide-export-package-download-v1"]').first();
+  const summaryDownloadButton = page.locator('[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"]').first();
   assert(await visible(summaryDownloadButton), 'trusted package download button must be visible in export hero');
   const summaryDownloadEnabled = await summaryDownloadButton.isEnabled().catch(() => false);
   assert(summaryDownloadEnabled, 'trusted package download must be enabled once export has no blockers');

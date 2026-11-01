@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-08
+last_validated: 2026-08-28
 owner: Connor Angiel
 used_by_claude: true
 role: public start path and local-run contract
@@ -46,9 +46,10 @@ The IDE remains available at:
 The page must preserve these public truths:
 
 - RedByte is a proof-backed digital logic and FPGA workbench.
-- The workflow spine is `Project -> Design -> Verify -> Map Pins -> Export`.
+- The workflow spine is `Project -> Design -> Simulate -> Board & Constraints -> Build & Export`.
+- Simulate is observe-first: a run records observed behavior even with zero checks; expected-output checks are optional and explicit.
 - Vivado is downstream and is not replaced by RedByte.
-- Trusted Export requires current Verify evidence and current mapping.
+- Trusted Export requires a current Simulate run with all checks passing and current mapping.
 - Draft Export is allowed but must not be described as trusted.
 - E0, E1, E2, and E3 remain separate.
 - E2 board programming does not imply E3 observed behavior.

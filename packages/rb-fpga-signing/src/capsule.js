@@ -13,7 +13,7 @@ async function sha256Hex(bytes) {
     if (!globalThis.crypto?.subtle) {
         throw new Error("WebCrypto unavailable for SHA-256.");
     }
-    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", new Uint8Array(bytes));
     return bytesToHex(new Uint8Array(digest));
 }
 export async function buildCapsule(inputs) {

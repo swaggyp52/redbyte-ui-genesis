@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
@@ -67,26 +67,7 @@ async function waitForProjectSurface(page, label) {
 }
 
 async function loadLogicGatesStarter(page) {
-  const openStarter = page.locator('[data-testid="ide-project-open-starter-primary"]').first();
-  if (await visible(openStarter)) {
-    await openStarter.click();
-  }
-  const selectors = [
-    '[data-testid="ide-project-landing-example-logic-gates"]',
-    '[data-testid="ide-project-load-start-logic-gates"]',
-    '[data-testid="ide-projectx-path-step-logic-gates"]',
-  ];
-  for (const selector of selectors) {
-    const candidate = page.locator(selector).first();
-    if (!(await visible(candidate))) continue;
-    await candidate.click();
-    await Promise.race([
-      page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 }),
-      page.waitForSelector('[data-node-id]', { timeout: 10000 }),
-    ]).catch(() => null);
-    return;
-  }
-  throw new Error('Logic Gates starter was not available from Project');
+  await loadStarterProject(page, { exactExampleId: 'logic-gates' });
 }
 
 async function assertBuildMatchesHead(page) {
@@ -105,28 +86,15 @@ async function renameFromTopBar(page, nextName, commitMode) {
     return;
   }
   if (commitMode === 'blur') {
-    await page.locator('[data-testid="ide-board-chip"]').first().click();
+    await input.press('Tab');
     return;
   }
   await input.press('Enter');
 }
 
+// Project rename uses the single top-bar owner; Overview reflects its committed value.
 async function renameFromProjectStrip(page, nextName, commitMode) {
-  const stripTitle = page.locator('[data-testid="ide-project-identity-strip-title"]').first();
-  assert(await visible(stripTitle), 'upper Project identity strip title must be visible');
-  await stripTitle.dblclick();
-  const input = page.locator('[data-testid="ide-project-identity-strip-input"]').first();
-  assert(await visible(input), 'double-clicking the upper Project identity strip title must open inline rename');
-  await input.fill(nextName);
-  if (commitMode === 'escape') {
-    await input.press('Escape');
-    return;
-  }
-  if (commitMode === 'blur') {
-    await page.locator('[data-testid="ide-project-command-strip"]').first().click();
-    return;
-  }
-  await input.press('Enter');
+  await renameFromTopBar(page, nextName, commitMode);
 }
 
 async function assertTitleEverywhere(page, expectedName, options = {}) {
@@ -137,7 +105,7 @@ async function assertTitleEverywhere(page, expectedName, options = {}) {
   const topbar = await text(page.locator('[data-testid="ide-top-bar"]').first());
   assert(topbar.includes(expectedName), `top-bar title must show "${expectedName}", got "${topbar}"`);
   if (loadedProject) {
-    const identityStrip = await text(page.locator('[data-testid="ide-project-identity-strip"]').first());
+    const identityStrip = await text(page.locator('[data-testid="ide-project-overview-title"]').first());
     assert(
       identityStrip.includes(expectedName),
       `loaded Project identity strip must show "${expectedName}", got "${identityStrip}"`
@@ -156,18 +124,21 @@ async function runViewport(page, baseUrl, viewport) {
   await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=project-identity-editing-${label}`, {
     waitUntil: 'domcontentloaded',
   });
-  await page.evaluate(() => localStorage.clear());
-  await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=project-identity-editing-${label}`, {
-    waitUntil: 'domcontentloaded',
-  });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await waitForProjectSurface(page, `${label}/fresh-project`);
   await assertBuildMatchesHead(page);
   await dismissOnboarding(page);
+  if (await visible(page.getByTestId('ide-project-overview-document'))) {
+    await page.getByTestId('ide-menu-file').click();
+    await page.getByTestId('ide-menu-item-project.close').click();
+    await page.getByTestId('ide-project-landing').waitFor();
+  }
+  const initialTitle = await text(page.getByTestId('ide-topbar-project-rename'));
+  assert(initialTitle.length > 0, 'fresh Project must have a readable title');
 
   await renameFromTopBar(page, `Canceled ${label}`, 'escape');
   assert(
-    (await text(page.locator('[data-testid="ide-top-bar"]').first())).includes('Untitled Project'),
+    (await text(page.getByTestId('ide-topbar-project-rename'))) === initialTitle,
     'Escape from top-bar rename must keep the original project title'
   );
 
@@ -177,15 +148,15 @@ async function runViewport(page, baseUrl, viewport) {
   await ensureProjectMode(page);
   await loadLogicGatesStarter(page);
   await ensureProjectMode(page);
-  await page.waitForSelector('[data-testid="ide-project-command-center"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-project-overview-document"]', { timeout: 10000 });
 
-  const titleBefore = await text(page.locator('[data-testid="ide-project-identity-strip-title"]').first());
+  const titleBefore = await text(page.locator('[data-testid="ide-project-overview-title"]').first());
   assert(
     titleBefore.includes('Logic Gates'),
     `loaded starter Project title must be visible before rename, got "${titleBefore}"`
   );
   assert(
-    await visible(page.locator('[data-testid="ide-project-identity-strip-title"]').first()),
+    await visible(page.locator('[data-testid="ide-project-overview-title"]').first()),
     'loaded Project title must remain an obvious inline Rename affordance'
   );
 
@@ -196,7 +167,7 @@ async function runViewport(page, baseUrl, viewport) {
   await renameFromProjectStrip(page, savedName, 'enter');
   await assertTitleEverywhere(page, savedName);
 
-  const sourceOverview = page.locator('[data-testid="ide-project-workspace-context"]').first();
+  const sourceOverview = page.locator('[data-testid="ide-project-starter-brief"]').first();
   assert(await visible(sourceOverview), 'renamed starter project must keep its current project overview visible');
   const sourceText = await text(sourceOverview);
   assert(

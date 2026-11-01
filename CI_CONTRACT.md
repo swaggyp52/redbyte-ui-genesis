@@ -4,18 +4,28 @@ This file defines which checks are allowed to block PRs, which checks run nightl
 
 ## PR Gates (required)
 
+Fast lane — every pull request. Workflow: `.github/workflows/pr-fast-checks.yml`
+
+- `pnpm -s typecheck`
+- `pnpm -s css:audit:ide`
+- `pnpm -s rb:doc:validate`
+- `pnpm -s rb:encoding:check`
+- `pnpm -s rb:site:start:test`
+- `pnpm -s rb:build:contract:test`
+- `pnpm -s ci:no-solution:lab4`
+- `pnpm -s rc:e1:golden-basys3-export-gate` + `pnpm -s rc:e1:golden-basys3-alu-export-gate`
+- `pnpm -s build:unified` (+ dist artifact upload)
+
+Full lane — pull requests into `main` and pushes to `main`.
 Workflow: `.github/workflows/pr-truth-gates.yml`
 
-Required commands:
-
-- `pnpm -s verify:gates:classroom`
-- `pnpm -s build:unified`
+- `pnpm -s classroom:gate` aggregate (browser matrix, ~90+ min)
 
 Policy:
 
-- PR checks must remain fast and deterministic.
-- Legacy, flaky, or long-running suites do not run on PR by default.
-- Branch protection on `main` requires only `Classroom Truth Gates`.
+- The fast lane must remain fast and deterministic on every PR.
+- The expensive classroom aggregate is reserved for the release path into `main`.
+- Branch protection on `main` requires `Classroom Truth Gates`.
 
 ## Nightly / Manual Gates (non-PR)
 
@@ -33,16 +43,23 @@ Consolidated jobs include:
 
 No other workflows run on `pull_request`.
 
-## Deploy Gate (main)
+## Deploy Gate
 
 Workflow: `.github/workflows/deploy-cloudflare.yml`
+(modern path: `cloudflare/wrangler-action@v3` + `wrangler pages deploy dist
+--project-name=redbyte-ui-genesis`; the archived `cloudflare/pages-action@v1`
+is retired)
 
 Required behavior:
 
-- Build and upload unified `dist/`
-- Deploy root + `/os`
-- Verify deployed commit truth by checking `https://redbyteapps.dev/os/version.json`
-- Fail workflow if deployed `sha` does not match triggering `GITHUB_SHA`
+- Build unified `dist/` (`pnpm build:unified` with `GIT_SHA` + `VITE_APP_ENV=production`)
+- push to `main` → production deploy (`--branch=main`) → `https://redbyteapps.dev`
+- push to `product/**` or `claude/**` → preview deploy (`--branch=<ref>`) → `*.pages.dev`
+- Verify deployed commit truth by polling `<deployed base>/os/version.json`
+- Fail the workflow if deployed `sha` does not match the triggering `GITHUB_SHA`
+- Run an HTTP smoke against the deployed base (`/`, `/start.html`, `/os/`, one hashed asset)
+- Missing Cloudflare credentials → explicit `SKIPPED - credentials unavailable` job,
+  never a green job pretending it deployed
 
 ## Quarantine Policy
 

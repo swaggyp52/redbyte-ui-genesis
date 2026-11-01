@@ -1,5 +1,5 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { toCircuitV1 } from '@redbyte/rb-logic-core';
+import { isNodeTypeSupportedFor, toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
@@ -10,19 +10,29 @@ import {
 import { buildBasys3ExportModel, type Basys3ExportModel } from './basys3ExportModel';
 import {
   buildExportContract,
+  validateExportContract,
   type Basys3ExportContract,
   type Basys3PortContract,
 } from './basys3ExportContract';
 import { lintBasys3ProjectPorts } from './portLint';
+import { deriveVerifyScheduleFromStructure } from './verifySchedule';
 
 export { buildVhdlTopLevelBindings } from './basys3ExportModel';
 
 export interface Basys3BundleResult {
+  /** Legacy Verilog projection; its unsupported-node warnings remain advisory. */
   topV: string;
   topVhd: string;
   topXdc: string;
   readme: string;
   warnings: string[];
+  /**
+   * Specific reasons top.vhd/top.xdc cannot be trusted: parts the VHDL emitter
+   * could not express, unresolved drivers, and entity/XDC port disagreement.
+   * Callers that ship this top.vhd must report each one as a blocking error.
+   */
+  errors: string[];
+  /** Canonical VHDL/XDC handoff validity, not legacy Verilog support. */
   valid: boolean;
 }
 
@@ -194,6 +204,30 @@ function extractXdcPortNames(xdcText: string): string[] {
   return [...xdcText.matchAll(/\[get_ports\s+\{([^}]+)\}\]/g)].map((match) => match[1].trim());
 }
 
+/**
+ * Entity ports without a constraint and constrained ports the entity does not
+ * declare. Applied to whichever top.vhd ships (flat or hierarchical) against the
+ * packaged top.xdc.
+ */
+export function findVhdlXdcPortMismatches(vhdlText: string, xdcText: string): string[] {
+  const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdlText));
+  const xdcPortRefs = extractXdcPortNames(xdcText).filter((port) => !port.startsWith('sys_clk'));
+  const xdcBaseNames = new Set(xdcPortRefs.map((port) => port.replace(/\[\d+\]$/, '')));
+  const mismatches: string[] = [];
+  for (const port of vhdlEntityPorts) {
+    if (!xdcBaseNames.has(port)) {
+      mismatches.push(`VHDL entity port "${port}" has no XDC constraint`);
+    }
+  }
+  for (const port of xdcPortRefs) {
+    const base = port.replace(/\[\d+\]$/, '');
+    if (!vhdlEntityPorts.has(base)) {
+      mismatches.push(`XDC get_ports "${port}" not found in VHDL entity`);
+    }
+  }
+  return mismatches;
+}
+
 export function exportBasys3Bundle(
   circuit: Circuit,
   ioMapping: IoMapping,
@@ -208,6 +242,18 @@ export function exportBasys3Bundle(
   const entityName = options?.entityName ?? 'top';
   const contract = options?.contract ?? buildExportContract(exportModel, ioMapping, entityName);
 
+  const contractErrors = validateExportContract(contract).filter((error) => error.severity === 'error');
+  warnings.push(...contractErrors.map((error) => `[${error.code}] ${error.message}`));
+  const unsupportedVhdlNodes = exportModel.netlist.nodes.filter(
+    (node) => !isNodeTypeSupportedFor(node.type, 'vhdlExport')
+  );
+  // Use the same current scalar-register and temporal policy as the project
+  // service, including register configurations inside elaborated modules.
+  const temporalIssues = deriveVerifyScheduleFromStructure(
+    exportModel.ir, exportModel.simModel, ioMapping, undefined,
+    { ...circuit, nodes: exportModel.netlist.nodes }
+  ).temporalIssues;
+  warnings.push(...temporalIssues.map((issue) => issue.message));
   const vhdl = vhdlFromNetlist(exportModel.netlist, {
     entityName,
     topPorts: exportModel.topPorts,
@@ -247,12 +293,10 @@ export function exportBasys3Bundle(
     if (!lint.verilogModuleFound) {
       warnings.push('top module not found in generated verilog');
     }
-    if (lint.missingInHdl.length > 0) {
-      warnings.push(`XDC ports missing in HDL: ${lint.missingInHdl.join(', ')}`);
-    }
-    if (lint.missingInXdc.length > 0) {
-      warnings.push(`HDL ports missing in XDC: ${lint.missingInXdc.join(', ')}`);
-    }
+    // The raw-Verilog port cross-check compared node ids (ld0_node_in) against
+    // artifact ports (LD0_CARRY) — two namespaces that never match under the
+    // canonical naming — so it reported two false mismatches on every scalar
+    // starter. Port parity is decided by the VHDL/XDC contract below.
   }
 
   const xdcPinWarnings = topXdc
@@ -263,21 +307,7 @@ export function exportBasys3Bundle(
     .map((pin) => `Unknown Basys3 package pin in XDC: ${pin}`);
   warnings.push(...xdcPinWarnings);
 
-  const vhdlEntityPorts = new Set(extractVhdlEntityPorts(vhdl.vhd));
-  const xdcPortRefs = extractXdcPortNames(topXdc).filter((port) => !port.startsWith('sys_clk'));
-  const xdcBaseNames = new Set(xdcPortRefs.map((port) => port.replace(/\[\d+\]$/, '')));
-  const vhdlXdcMismatches: string[] = [];
-  for (const port of vhdlEntityPorts) {
-    if (!xdcBaseNames.has(port)) {
-      vhdlXdcMismatches.push(`VHDL entity port "${port}" has no XDC constraint`);
-    }
-  }
-  for (const port of xdcPortRefs) {
-    const base = port.replace(/\[\d+\]$/, '');
-    if (!vhdlEntityPorts.has(base)) {
-      vhdlXdcMismatches.push(`XDC get_ports "${port}" not found in VHDL entity`);
-    }
-  }
+  const vhdlXdcMismatches = findVhdlXdcPortMismatches(vhdl.vhd, topXdc);
   warnings.push(...vhdlXdcMismatches);
 
   const readme = buildReadme(contract, warnings);
@@ -287,9 +317,16 @@ export function exportBasys3Bundle(
 
   const valid =
     xdcPinWarnings.length === 0 &&
-    verilog.unsupportedNodes.length === 0 &&
+    // The student kit is top.vhd + top.xdc. Legacy Verilog cannot express every
+    // supported VHDL primitive (notably Register1), and is advisory above.
+    unsupportedVhdlNodes.length === 0 &&
+    temporalIssues.length === 0 &&
+    contractErrors.length === 0 &&
+
     vhdlXdcMismatches.length === 0 &&
+    vhdl.errors.length === 0 &&
     exportModel.blockingDiagnostics.length === 0;
+  const errors = Array.from(new Set([...vhdl.errors, ...vhdlXdcMismatches])).sort(compareCodepoint);
 
   return {
     topV: verilog.verilog,
@@ -297,6 +334,7 @@ export function exportBasys3Bundle(
     topXdc,
     readme,
     warnings: uniqueWarnings,
+    errors,
     valid,
   };
 }

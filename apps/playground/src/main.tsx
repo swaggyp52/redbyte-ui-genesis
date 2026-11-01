@@ -10,6 +10,8 @@ const isBisect = params.get('boot') === 'bisect' || import.meta.env.VITE_BOOT_BI
 const bisectStep = Number(params.get('step') || '0');
 const isE2E = params.get('e2e') === '1' || import.meta.env.VITE_E2E === '1';
 const isAudit = isAuditEnabled(params);
+// Meridian studio (flag-gated vertical slice): its own entry, never the classic workbench.
+const isStudio = params.get('studio') === 'meridian';
 
 // 3) Temporary Crash Beacon for Playwright triage
 const isGoldenPath = import.meta.env.VITE_GOLDEN_PATH === '1' || params.get('golden') === '1';
@@ -127,10 +129,37 @@ if (isBisect && bisectStep === -1) {
       }
     });
   });
+} else if (isStudio) {
+  import('./boot/studio-bootstrap').then(m => m.bootstrapStudio()).catch(renderBootLoadFailure);
 } else if (isBisect) {
   // BISECT MODE: conditional steps
-  import('./boot/bisect-steps').then(m => m.runBisect(bisectStep));
+  import('./boot/bisect-steps').then(m => m.runBisect(bisectStep)).catch(renderBootLoadFailure);
 } else {
   // NORMAL MODE: full bootstrap
-  import('./boot/full-bootstrap').then(m => m.bootstrap());
+  import('./boot/full-bootstrap').then(m => m.bootstrap()).catch(renderBootLoadFailure);
+}
+
+// A stale deployment window can 404 the hashed boot chunk. Without this the
+// student gets a blank page; render a visible reload path instead.
+function renderBootLoadFailure(error: unknown) {
+  console.error('RB_BOOT_CHUNK_LOAD_FAILED', error);
+  const root = document.getElementById('root');
+  if (!root) return;
+  root.innerHTML = '';
+  const panel = document.createElement('div');
+  panel.setAttribute('data-testid', 'rb-boot-load-failure');
+  panel.style.cssText = 'max-width:520px;margin:15vh auto 0;padding:24px;border:1px solid #b8c3cd;border-radius:8px;background:#f7f8fa;color:#1c2732;font-family:system-ui,sans-serif;';
+  const title = document.createElement('h1');
+  title.textContent = 'RedByte did not finish loading';
+  title.style.cssText = 'margin:0 0 8px;font-size:20px;';
+  const body = document.createElement('p');
+  body.textContent = 'Part of the application could not be downloaded. This usually resolves after a reload, which fetches the current files.';
+  body.style.cssText = 'margin:0 0 16px;font-size:14px;color:#526170;';
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.textContent = 'Reload RedByte';
+  reload.style.cssText = 'min-height:40px;padding:0 18px;border:1px solid #2b5f92;border-radius:6px;background:#356fa8;color:#fff;font-size:14px;font-weight:600;cursor:pointer;';
+  reload.addEventListener('click', () => window.location.reload());
+  panel.append(title, body, reload);
+  root.appendChild(panel);
 }

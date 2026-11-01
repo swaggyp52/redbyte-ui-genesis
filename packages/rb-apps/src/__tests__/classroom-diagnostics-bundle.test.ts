@@ -1,10 +1,10 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { generateClassroomDiagnosticsBundle } from '../export/classroomDiagnosticsBundle';
+import { generateClassroomDiagnosticsBundle, type ClassroomDiagnosticsBundleInput } from '../export/classroomDiagnosticsBundle';
 
 describe('classroomDiagnosticsBundle', () => {
   it('generates deterministic bundle id and required entries', async () => {
-    const input = {
+    const input: ClassroomDiagnosticsBundleInput = {
       source: 'toolchain-setup' as const,
       mode: 'ta' as const,
       app: {

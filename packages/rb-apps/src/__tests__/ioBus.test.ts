@@ -6,6 +6,7 @@ import type { RuntimeSimState } from '../apps/ide/sim/simTypes';
 const baseSim: RuntimeSimState = {
   tick: 0,
   running: false,
+  stepMode: false,
   speedHz: 1,
   irHash: '',
   traceHash: '',

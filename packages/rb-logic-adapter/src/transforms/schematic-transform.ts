@@ -1,10 +1,11 @@
+import { normalizeConnection } from '@redbyte/rb-logic-core';
 // Copyright © 2025 Connor Angiel — RedByte OS Genesis
 // Use without permission prohibited.
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { ViewState, ViewNode, ViewWire } from '../types';
-import { calculatePortPosition, getNodeDimensions, manhattanRoute, pos, normalizePortRef } from './shared-helpers';
+import { calculatePortPosition, getNodeDimensions, manhattanRoute, pos } from './shared-helpers';
 
 /**
  * Schematic transform - symbolic representation with Manhattan routing
@@ -43,8 +44,7 @@ export function schematicTransform(circuit: Circuit): ViewState {
   });
 
   const wires: ViewWire[] = circuit.connections.map((conn, idx) => {
-    const fromRef = normalizePortRef(conn.from, conn.fromPin ?? conn.fromPort ?? 'out');
-    const toRef = normalizePortRef(conn.to, conn.toPin ?? conn.toPort ?? 'in');
+    const { from: fromRef, to: toRef } = normalizeConnection(conn);
     
     const fromNode = circuit.nodes.find((n) => n.id === fromRef.nodeId);
     const toNode = circuit.nodes.find((n) => n.id === toRef.nodeId);

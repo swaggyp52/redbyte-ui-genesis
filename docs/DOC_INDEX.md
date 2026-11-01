@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-10-01
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-07-22
+**Last Updated:** 2026-10-01
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -16,22 +16,10 @@ Navigation hub for current RedByte documentation. Start with the startup order b
 
 ## Startup Reading Order
 
-For a normal agent session:
-
-1. `AGENTS.md`
-2. `AI_STATE.md`
-3. `CLAUDE.md`
-4. `docs/ACTIVE_WORK.md`
-5. `docs/DOC_INDEX.md`
-6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
-7. `docs/product/RED_BYTE_WORK_QUEUE.md`
-8. `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
-9. `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`
-10. `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`
-11. `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`
-12. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
-13. `docs/STUDENT_RELEASE_READINESS.md`
-14. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
+For a normal agent session, follow `AGENTS.md`: inspect Git status and the newest complete
+status sections of `AI_STATE.md` and `docs/ACTIVE_WORK.md`, then read task-relevant contracts.
+The files below are navigation targets, not a mandatory reading queue. Do not read the
+entire chronological history or reload `CLAUDE.md` after its `AGENTS.md` import.
 
 For docs-only work, prefer `corepack pnpm rb:doc:validate` and `corepack pnpm rb:encoding:check`. For app/source/gate work, follow the proof obligations in the relevant surface and release docs.
 
@@ -41,9 +29,9 @@ For docs-only work, prefer `corepack pnpm rb:doc:validate` and `corepack pnpm rb
 
 When docs conflict:
 
-1. Code and focused tests
-2. `AGENTS.md` and `AI_STATE.md`
-3. `docs/ACTIVE_WORK.md`
+1. Current owner instructions and applicable `AGENTS.md` scope
+2. Current code, contracts and relevant tests establish implemented behavior
+3. Newest complete sections of `AI_STATE.md` and `docs/ACTIVE_WORK.md` record status and evidence
 4. `docs/product/RED_BYTE_CURRENT_TRUTH.md` and `docs/product/RED_BYTE_WORK_QUEUE.md`
 5. `docs/STUDENT_RELEASE_READINESS.md` and tracked release proof docs
 6. Current product manual and product contract
@@ -62,6 +50,8 @@ When docs conflict:
 |------|---------|
 | [ACTIVE_WORK.md](./ACTIVE_WORK.md) | Current cockpit: branch posture, top priorities, blockers, latest proof, next target |
 | [../AI_STATE.md](../AI_STATE.md) | Latest repo posture and factual change history |
+| [release/local-candidate-quickstart.md](./release/local-candidate-quickstart.md) | Current local Windows candidate launch, portable-session boundaries and owner circuit walkthrough |
+| [release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md](./release/product-hardening-ticket-2026-09-12-p2-6c-studio-finish.md) | Current finite finish checklist, measured evidence and historical dispositions |
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
@@ -150,7 +140,7 @@ If a tracked doc references a generated pack that is missing locally, do not tre
 
 | File | Purpose |
 |------|---------|
-| [course/STUDENT_QUICKSTART.md](./course/STUDENT_QUICKSTART.md) | Current student first-lab quickstart for Project -> Design -> Verify -> Map Pins -> Export |
+| [course/STUDENT_QUICKSTART.md](./course/STUDENT_QUICKSTART.md) | Current student first-lab quickstart for Project -> Design -> Simulate -> Board & Constraints -> Build & Export |
 | [course/INSTRUCTOR_QUICKSTART.md](./course/INSTRUCTOR_QUICKSTART.md) | Current instructor setup/support quickstart and proof-tier boundary |
 | [course/TA_TROUBLESHOOTING_GUIDE.md](./course/TA_TROUBLESHOOTING_GUIDE.md) | Current TA triage guide for setup, RedByte surfaces, Vivado, board, and Import |
 | [course/windows-quickstart.md](./course/windows-quickstart.md) | Current Windows course launcher and doctor reference |
@@ -209,12 +199,13 @@ The manual describes current behavior. The contract describes target-state oblig
 | [ide/00-ide-layout.md](./ide/00-ide-layout.md) | IDE layout contract |
 | [ide/01-project.md](./ide/01-project.md) | Project surface spec |
 | [ide/02-design.md](./ide/02-design.md) | Design surface spec |
-| [ide/03-verify.md](./ide/03-verify.md) | Verify surface spec |
-| [ide/04-export.md](./ide/04-export.md) | Export surface spec |
+| [ide/03-verify.md](./ide/03-verify.md) | Simulate workspace spec (internal id: verify) |
+| [ide/04-export.md](./ide/04-export.md) | Build & Export workspace spec (internal id: export) |
 | [ide/05-import.md](./ide/05-import.md) | Import surface spec |
 | [ide/ui-contract.md](./ide/ui-contract.md) | Pixel-level UI contract |
 | [ide/style-guide.md](./ide/style-guide.md) | Design tokens and component catalog |
 | [ide/design-system-v1.md](./ide/design-system-v1.md) | Frozen design system contract |
+| [ide/studio/MERIDIAN_DESIGN_SYSTEM.md](./ide/studio/MERIDIAN_DESIGN_SYSTEM.md) | Meridian studio design authority (flag-gated P1 slice; classic workbench unaffected) |
 
 ---
 

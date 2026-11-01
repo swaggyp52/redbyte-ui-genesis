@@ -1,52 +1,41 @@
-/**
- * IDE Default Launcher Hidden Gate
- *
- * Verifies that the launcher modal is NOT shown by default on fresh load.
- * The app should go directly to Logic Playground fullscreen.
- *
- * Success: Launcher modal not visible on fresh load
- * Failure: Launcher modal is visible (should only open with ?launcher=1 param)
- */
+#!/usr/bin/env node
 
-import { chromium } from 'playwright';
+import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
-async function main() {
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  try {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
-  // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
-  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
-    await page.goto(baseUrl, { waitUntil: 'networkidle' });
-
-    // Give UI time to settle
-    await page.waitForTimeout(2000);
-
-    // Check that launcher modal/app is NOT visible
-    const launcherApp = page.locator('[data-app-id="launcher"]');
-    const launcherVisible = await launcherApp.isVisible().catch(() => false);
-
-    // Also check by looking for the common launcher UI elements
-    const appGrid = page.locator('[data-testid="app-grid"]');
-    const appGridVisible = await appGrid.isVisible().catch(() => false);
-
-    if (launcherVisible || appGridVisible) {
-      throw new Error('Launcher unexpectedly visible on default load');
-    }
-
-    console.log('✅ IDE Default Launcher Hidden gate PASS');
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ IDE Default Launcher Hidden gate FAIL:', error.message);
-    process.exit(1);
-  } finally {
-    await browser.close();
+// Default student entries must boot the current IDE without exposing the retired
+// launcher modal. The harness owns a preview when no explicit gate URL is given.
+await runIdeGate('IDE default launcher hidden contract satisfied', async ({ page, baseUrl }) => {
+  const consoleLines = [];
+  page.on('console', message => consoleLines.push(message.text()));
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem('rb-onboarding-v1-seen', '1');
+  });
+  const origin = new URL(baseUrl).origin;
+  for (const entryPath of ['/', '/os/']) {
+    const consoleStart = consoleLines.length;
+    await page.goto(origin + entryPath, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+    await page.getByTestId('ide-root').waitFor({ state: 'visible', timeout: 15000 });
+    const rail = page.getByTestId('ide-workspace-rail');
+    assert(await visible(rail), entryPath + ': current IDE navigation must be visible');
+    const stageIds = await rail.locator('[role="tablist"] [role="tab"]').evaluateAll(elements =>
+      elements.map(element => element.getAttribute('data-testid')));
+    assert(JSON.stringify(stageIds) === JSON.stringify(['project', 'design', 'verify', 'hardware', 'export'].map(mode => 'mode-button-' + mode)),
+      entryPath + ': exactly five ordered student workflow stages must be available');
+    assert(await visible(rail.getByTestId('mode-button-import')), entryPath + ': Import / Recover utility must be reachable');
+    assert(await rail.locator('[role="tablist"] [data-testid="mode-button-import"]').count() === 0,
+      entryPath + ': Import / Recover utility must stay separate from student stages');
+    const mode = await page.evaluate(() => document.documentElement.getAttribute('data-redbyte-mode'));
+    assert(mode === 'ide', entryPath + ': default route must boot IDE mode, got ' + mode);
+    assert(consoleLines.slice(consoleStart).some(line => line.includes('[RB_BOOT] mode=IDE') &&
+      line.includes('entry=ide-bootstrap.ts') && line.includes('config=vite.config.ts')),
+      entryPath + ': fresh IDE boot proof must identify its current entry and config');
+    assert(!await visible(page.locator('[data-app-id="launcher"]')),
+      entryPath + ': launcher app must remain hidden on default load');
+    assert(!await visible(page.getByTestId('app-grid')),
+      entryPath + ': launcher app grid must remain hidden on default load');
+    assert(await page.getByTestId('desktop-shell').count() === 0,
+      entryPath + ': retired desktop shell must not mount');
   }
-}
-
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
 });

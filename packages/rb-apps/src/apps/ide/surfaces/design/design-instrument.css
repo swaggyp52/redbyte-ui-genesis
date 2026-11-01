@@ -1,0 +1,854 @@
+/* Design instrument chrome — the schematic document header, its toolbar,
+   the compact component library rows, and the starter strip. Composes the
+   shared wb-* primitives; owns only what is specific to Design. No !important. */
+
+/* One command line. The tools sit on the left and Explore / Test on the right of the same row;
+   they were two full-width strips, the upper one mostly a module name and a health chip. A
+   wire cue or a narrow pane still wraps the right-hand group onto its own line. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+}
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-toolbar { order: 1; flex: 0 1 auto; min-width: 0; border-bottom: 0; background: transparent; }
+/* The command row keeps its height whatever the design's state. Explore and Test never
+   shrink and are never clipped. The status chip beside them lives in a slot that claims no
+   width of its own and is given whatever the row has left: with room it shows in full, with
+   less it drops its words and keeps the counts, with none it is absent - the same count is in
+   the status bar and the detail is in Problems. Measured at 1440x900 with the inspector open
+   on an unfinished design: the chip made the group 380px, the row wrapped, and the command
+   area went from 47px to 91px the moment the first part was placed. The row wraps only when
+   the commands themselves cannot fit. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header { order: 2; flex: 1 0 auto; min-width: 0; justify-content: flex-end; flex-wrap: nowrap; border-bottom: 0; background: transparent; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > * { flex: none; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > .rb-design-health-slot { flex: 1 1 0; display: flex; justify-content: flex-end; width: 0; min-width: 0; container-type: inline-size; }
+.ide-root .rb-design-health-slot > .rb-design-health { max-width: 100%; overflow: hidden; white-space: nowrap; }
+.ide-root .rb-design-health-slot .rb-design-health-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-design-health-slot .rb-design-health-dot,
+.ide-root .rb-design-health-slot .rb-design-health-counts { flex: none; }
+@container (max-width: 11rem) { .ide-root .rb-design-health-slot .rb-design-health-label { display: none; } }
+@container (max-width: 4.5rem) { .ide-root .rb-design-health-slot > .rb-design-health { display: none; } }
+/* The command row never holds a tool's cue: Wire and placement say what to do next in the status
+   line (DesignSurface inStatusHint). On a row of its own (2026-10-20) the cue pushed the canvas down
+   44px; sharing the row with its message (rc.6) left the message 13px of a 1280px window; and with
+   the badge and Cancel still in the row (rc.7) the row wrapped wherever the inspector was open at
+   1366 or 1440, so each armed and each finished wire moved the canvas 44px between two clicks.
+   The rules below serve only a surface rendered without the workbench's status line. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > :not(.rb-design-toolbar):not(.rb-design-header) { order: 3; flex: 1 0 100%; }
+/* At the top level the trail is the project's own name, which the application bar already
+   shows. It appears once there is a module to come back from. */
+.ide-root .rb-design-header .rb-design-breadcrumb:not(:has(.wb-sep)) { display: none; }
+/* A clean design needs no badge; anything that needs attention keeps its place. */
+.ide-root .rb-design-header .rb-design-health.is-clean { display: none; }
+.ide-root .rb-design-header > .wb-toolbar-spacer { display: none; }
+.ide-root .rb-design-mode .wb-btn--primary { padding-inline: 16px; font-size: var(--rb-text-body); }
+
+/* Header: module trail · wire cue · mode segment. */
+.ide-root .rb-design-header { padding-left: var(--wb-space-3); }
+.ide-root .rb-design-header:has(.rb-design-wirecue) { flex-wrap: nowrap; }
+.ide-root .rb-design-header:has(.rb-design-wirecue) .rb-design-breadcrumb { flex: 0 1 180px; overflow: hidden; }
+.ide-root .rb-design-breadcrumb { display: inline-flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
+.ide-root .rb-design-breadcrumb button {
+  height: var(--wb-control-h);
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: transparent;
+  font: 600 var(--wb-text-md) var(--wb-font-mono);
+  cursor: pointer;
+}
+.ide-root .rb-design-breadcrumb button:hover { background: var(--wb-hover-bg); color: var(--wb-text); }
+.ide-root .rb-design-breadcrumb button.is-current { color: var(--wb-text); cursor: default; }
+.ide-root .rb-design-breadcrumb .wb-sep { color: var(--wb-text-3); }
+.ide-root .rb-design-breadcrumb .ide-design-breadcrumb-of { color: var(--wb-text-3); font-weight: 500; }
+.ide-root .rb-design-wirecue { display: inline-flex; flex: 1 1 120px; min-width: 0; align-items: center; gap: 8px; margin-left: var(--wb-space-3); padding-left: var(--wb-space-3); border-left: 1px solid var(--wb-border-strong); font-size: var(--wb-text-sm); color: var(--wb-text-2); white-space: nowrap; }
+.ide-root .rb-design-wirecue-msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Esc cancels and Cancel share one cell sized to the wider of the two, so arming a wire cannot
+   change the row's width and make it wrap (or unwrap) under the pointer. */
+.ide-root .rb-design-wirecue-end { display: inline-grid; align-items: center; }
+.ide-root .rb-design-wirecue-end > * { grid-area: 1 / 1; justify-self: start; }
+.ide-root .rb-design-wirecue-end > .rb-design-wirecue-sizer { visibility: hidden; }
+.ide-root .rb-design-wirecue :is(button, .rb-design-wirecue-badge) { flex-shrink: 0; }
+.ide-root .rb-design-wirecue-badge { padding: 1px 6px; border-radius: var(--wb-radius); color: var(--wb-accent-text); background: var(--rb-action); font: 600 var(--wb-text-xs) var(--wb-font-ui); }
+.ide-root .rb-design-wirecue-msg code { font: var(--wb-text-sm) var(--wb-font-mono); color: var(--wb-text); }
+.ide-root .rb-design-wirecue-msg.is-error { color: var(--wb-err); }
+.ide-root .rb-design-mode .wb-btn { min-width: 52px; }
+.ide-root .rb-design-mode .wb-btn[aria-pressed='true'] { color: var(--wb-text); }
+.ide-root .rb-design-mode[data-mode='live'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-ok) 16%, transparent); border-color: var(--wb-ok); }
+.ide-root .rb-design-mode[data-mode='replay'] .wb-btn[aria-pressed='true'] { background: color-mix(in srgb, var(--wb-warn) 18%, transparent); border-color: var(--wb-warn); }
+
+/* Investigation remains available without covering the circuit being repaired. */
+.ide-root :is(.ide-design-replay-controls, .ide-design-failure-details) {
+  min-width: 0; border-bottom: 1px solid var(--wb-border); background: var(--wb-surface);
+  color: var(--wb-text); font-size: var(--wb-text-sm);
+}
+.ide-root :is(.ide-design-replay-controls, .ide-design-failure-details) > summary {
+  padding: var(--wb-space-2) var(--wb-space-3); cursor: pointer; color: var(--wb-text); font-weight: 600;
+}
+.ide-root .ide-design-failure-details > .ide-design-debug-context-banner {
+  position: static; inset: auto; width: auto; max-height: 180px; overflow: auto;
+  margin: 0; border-radius: 0; background: var(--wb-surface-2); color: var(--wb-text); box-shadow: none;
+}
+.ide-root .ide-design-replay-controls .ide-design-replay-transport {
+  max-height: 180px; overflow: auto; color: var(--wb-text); background: var(--wb-surface);
+}
+.ide-root .ide-design-replay-controls :is(button, select, input) { color: var(--wb-text); background: var(--wb-surface); }
+
+/* Toolbar. */
+.ide-root .rb-design-toolbar { padding-left: var(--wb-space-2); gap: 4px; }
+.ide-root .rb-design-toolbar .wb-toolbar-sep { margin-inline: 2px; }
+.ide-root .rb-design-toolbar .wb-btn svg { flex: none; }
+.ide-root .rb-design-zoom { min-width: 48px; }
+.ide-root .rb-design-zoom code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-design-menu { position: relative; }
+.ide-root .rb-design-menu > summary { list-style: none; cursor: pointer; }
+.ide-root .rb-design-menu > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-design-menu[open] > summary { background: var(--wb-accent-bg); }
+.ide-root .rb-design-menu-popup { left: 0; top: calc(100% + 4px); min-width: 260px; }
+.ide-root .rb-design-menu-field { cursor: default; }
+.ide-root .rb-design-menu-field select {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+}
+
+/* Starter strip: one line, the brief behind a disclosure. */
+.ide-root .rb-design-starter { flex: none; }
+.ide-root .rb-design-starter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: var(--wb-row-h);
+  padding: 0 var(--wb-space-3);
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-2);
+  white-space: nowrap;
+}
+.ide-root .rb-design-starter-title { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-design-starter-tag { padding: 0 5px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); font: var(--wb-text-xs) var(--wb-font-mono); color: var(--wb-text-2); }
+.ide-root .rb-design-starter-brief { position: relative; }
+.ide-root .rb-design-starter-brief > summary { list-style: none; cursor: pointer; font-size: var(--wb-text-sm); }
+.ide-root .rb-design-starter-brief > summary::-webkit-details-marker { display: none; }
+.ide-root .rb-design-starter-brief-body {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(520px, 60vw);
+  padding: 8px 12px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  background: var(--wb-surface);
+  box-shadow: var(--wb-overlay-shadow);
+  white-space: normal;
+  color: var(--wb-text);
+  font-size: var(--wb-text-md);
+  line-height: 1.45;
+}
+.ide-root .rb-design-starter-brief-body p { margin: 0 0 6px; }
+.ide-root .rb-design-starter-next { overflow: hidden; text-overflow: ellipsis; }
+
+/* Component library rows (28px): glyph · name · pin signature. */
+.ide-root .rb-lib-row {
+  display: grid;
+  /* The glyph is a type chip, and NAND3/XNOR are five characters wide: a fixed 34px cut the
+     last letter off the longest of them. */
+  grid-template-columns: 2.75rem minmax(6rem, 1fr);
+  /* A row may also carry a capability badge and a palette badge; let them take
+     implicit columns on the same line instead of wrapping into the next row. */
+  grid-auto-flow: column;
+  /* Shrinkable. `max-content` made every badge column unshrinkable, which set the row's
+     minimum width above the pane's and clipped the name and the port signature away. */
+  grid-auto-columns: minmax(0, max-content);
+  overflow: hidden;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 var(--wb-space-2) 0 10px;
+  border: 0;
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--rb-text-body) / 1 var(--rb-font-ui);
+  text-align: left;
+  white-space: nowrap;
+  cursor: grab;
+}
+.ide-root .rb-lib-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-lib-row:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+.ide-root .rb-lib-row.is-placement-active { background: var(--wb-accent-bg-strong); }
+/* The glyph is the part's schematic symbol, drawn in the schematic's own ink. */
+.ide-root .rb-lib-glyph { display: inline-grid; place-items: center; width: 2.75rem; height: 1.75rem; color: var(--rb-schematic-ink, var(--wb-text)); }
+.ide-root .rb-palette-symbol { width: 100%; height: 100%; overflow: visible; }
+.ide-root .rb-palette-symbol :is(path, rect, circle) { fill: var(--rb-schematic-fill, var(--wb-surface)); stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ide-root .rb-palette-symbol line { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.ide-root .rb-palette-symbol text { fill: currentColor; stroke: none; font: 600 7px var(--wb-font-mono); }
+.ide-root .rb-lib-row:hover .rb-palette-symbol,
+.ide-root .rb-lib-row.is-placement-active .rb-palette-symbol { color: var(--wb-accent); }
+/* The interface of the part in focus: its name, then its ports, in a strip of fixed height
+   under the list. On one line the ports - the point of the strip - were the part cut off. */
+.ide-root .rb-lib-detail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 3.25rem;
+  margin: 0;
+  padding: 0 var(--wb-space-2) 0 10px;
+  overflow: hidden;
+  border-top: 1px solid var(--wb-border);
+  color: var(--wb-text-2);
+  font: var(--rb-text-meta) / 1.35 var(--wb-font-ui);
+}
+.ide-root .rb-lib-detail > * { white-space: nowrap; }
+.ide-root .rb-lib-detail strong { flex: none; color: var(--wb-text); font-weight: var(--rb-weight-strong); }
+.ide-root .rb-lib-detail code,
+.ide-root .rb-lib-detail > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ide-root .rb-lib-detail code { font: var(--rb-text-meta) var(--wb-font-mono); }
+/* Variants one step away: the same gates with a third input. */
+.ide-root .rb-lib-more > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 2.25rem;
+  padding: 0 var(--wb-space-2) 0 10px;
+  color: var(--wb-text-2);
+  font: var(--rb-weight-medium) var(--rb-text-dense) var(--wb-font-ui);
+  cursor: pointer;
+}
+.ide-root .rb-lib-more > summary:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .rb-lib-more > summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: -2px; }
+/* Names wrap at the saved pane width; rows grow with them rather than clipping or overlapping. */
+.ide-root .rb-lib-row { height: auto; min-height: 2.5rem; padding-block: 6px; }
+.ide-root .rb-lib-name { min-width: 0; overflow-wrap: anywhere; white-space: normal; line-height: 1.35; font-size: var(--rb-text-body); font-weight: 500; }
+.ide-root .rb-lib-pins { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-cap,
+.ide-root .rb-lib-badge {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--wb-text-3);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  text-overflow: ellipsis;
+}
+/* The library composes against its own width, like the toolbar above the sheet. A capability
+   chip and a limits badge earn their place beside the name and the port signature only while
+   there is room for all of them; when there is not, they are the first to go, and the same words
+   stay reachable - every row's title already names the interface and the capability. */
+.ide-root .rb-lib-list { container-type: inline-size; container-name: design-lib; width: 100%; }
+@container design-lib (max-width: 15rem) {
+  .ide-root .rb-lib-cap,
+  .ide-root .rb-lib-badge { display: none; }
+  /* Even without the chips a narrow pane cannot hold "Register (Bus)" and "4 in -> 2 out" on
+     one line: the name would keep its floor and the signature would be cut to "4 in ->". A part
+     is its name and its interface, so below this width the row gives each of them a line of its
+     own rather than showing half of both. */
+  .ide-root .rb-lib-row {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(34px, auto) minmax(0, 1fr);
+    grid-template-areas: 'glyph name' 'glyph pins';
+    align-content: center;
+    height: auto;
+    min-height: 2.5rem;
+    row-gap: 0;
+  }
+  .ide-root .rb-lib-glyph { grid-area: glyph; }
+  .ide-root .rb-lib-name { grid-area: name; }
+  .ide-root .rb-lib-pins { grid-area: pins; }
+}
+
+/* Library tool window: search row, sections with 24px headers, board chips. */
+.ide-root .rb-design-dock-tabs { flex: none; }
+.ide-root .rb-lib-toolbar { flex: none; display: flex; flex-direction: column; }
+.ide-root .rb-lib-toolbar .wb-search { color: var(--wb-text-3); }
+.ide-root .rb-lib-search-input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0; color: var(--wb-text); background: transparent; font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-lib-search-input:focus { outline: none; }
+.ide-root .rb-lib-search-input::-webkit-search-cancel-button { appearance: none; }
+.ide-root .rb-lib-bus { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-lib-results { margin: 0 var(--wb-space-3) 4px; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-lib-sections { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-lib-section { display: block; margin: 0; padding: 0; border: 0; }
+.ide-root .rb-lib-section-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* A heading may wrap in a narrow library (1440x900 with the inspector open): the row grows
+     with it instead of drawing its second line over the next heading. */
+  min-height: 24px;
+  padding: 2px var(--wb-space-2) 2px 6px;
+  border-top: 1px solid var(--wb-border);
+  background: var(--wb-surface-2);
+}
+.ide-root .rb-lib-section:first-child .rb-lib-section-header { border-top: 0; }
+.ide-root .rb-lib-section-title { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.ide-root .rb-lib-section-meta { display: flex; align-items: center; gap: 6px; }
+.ide-root .rb-lib-section-header h4,
+.ide-root .rb-lib-subheader h5 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--wb-text-2);
+  font: 600 var(--wb-text-xs) / 1.35 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.ide-root .rb-lib-count { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-lib-toggle {
+  order: -1;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-3);
+  background: transparent;
+  font-size: var(--rb-text-micro);
+  cursor: pointer;
+}
+.ide-root .rb-lib-toggle:hover { color: var(--wb-text); background: var(--wb-hover-bg); }
+.ide-root .rb-lib-toggle:disabled { opacity: 0.4; cursor: default; }
+.ide-root .rb-lib-section[data-collapsed='true'] .rb-lib-section-header { color: var(--wb-text-3); }
+.ide-root .rb-lib-list { display: block; padding: 2px 0; }
+.ide-root .rb-lib-subsection { display: block; }
+.ide-root .rb-lib-subheader { display: flex; align-items: center; gap: 6px; min-height: 22px; padding: 2px var(--wb-space-2) 2px 12px; }
+.ide-root .rb-lib-board-groups { display: block; }
+.ide-root .rb-lib-board-group { display: block; }
+.ide-root .rb-lib-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px var(--wb-space-2) 6px 12px; }
+.ide-root .rb-lib-chip {
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+  cursor: grab;
+}
+.ide-root .rb-lib-chip:hover { border-color: var(--wb-accent); background: var(--wb-accent-bg); }
+.ide-root .rb-lib-chip.is-placed { color: var(--wb-text-3); background: var(--wb-surface-2); cursor: default; text-decoration: line-through; }
+.ide-root .rb-lib-chip.is-placement-active { border-color: var(--wb-accent); background: var(--wb-accent-bg-strong); }
+.ide-root .rb-lib-row--module { grid-template-columns: 34px minmax(0, 1fr) auto auto; cursor: default; }
+.ide-root .rb-lib-row-actions { display: inline-flex; gap: 2px; }
+.ide-root .rb-lib-row-actions .wb-btn { height: 20px; padding: 0 6px; font-size: var(--wb-text-xs); }
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab { padding: 0 8px; }
+
+/* Inspector grammar: flat sections, 24px key/value rows, compact actions.
+   Narration stays available but reads as secondary text, not cards. */
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-title {
+  margin: 0;
+  padding: 0 var(--wb-space-3);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 24px var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inspector-content { padding: 4px var(--wb-space-3) 8px; }
+.ide-root .rb-insp-sel-inspector,
+.ide-root .rb-insp-props,
+.ide-root .rb-insp-canvas-default,
+.ide-root .rb-insp-board { display: block; padding: 0; }
+/* The inspector's body is the container its rows measure (see the design-inspector query below). */
+.ide-root .ide-workbench-dock-right .rb-design-dock-body { container: design-inspector / inline-size; }
+.ide-root .rb-insp-identity-card,
+.ide-root .rb-insp-idle-card,
+.ide-root .rb-insp-empty-card,
+.ide-root .rb-insp-section,
+.ide-root .rb-insp-diagnostics,
+.ide-root .rb-insp-io-state,
+.ide-root .rb-insp-section-stack,
+.ide-root .rb-insp-signal-model {
+  display: block;
+  margin: 0;
+  padding: 6px var(--wb-space-3) 8px;
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* Inside a section the content already carries the 12px inset; a stack that added its own left
+   the controls 180px of a 228px section, which is why "Copy · Duplicate · Delete" and
+   "Focus path · Trace net · Pin" each wrapped onto a second row. */
+.ide-root .ide-inspector-content > .rb-insp-section-stack { padding-left: 0; padding-right: 0; border-bottom: 0; }
+.ide-root .rb-insp-eyebrow,
+.ide-root .rb-insp-idle-eyebrow,
+.ide-root .rb-insp-group-label,
+.ide-root .rb-insp-io-state-kicker {
+  display: block;
+  margin: 4px 0 2px;
+  color: var(--wb-text-3);
+  font: 600 var(--wb-text-xs) / 16px var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-insp-identity-row { display: flex; align-items: flex-start; gap: 8px; }
+.ide-root .rb-insp-title-block { flex: 1; min-width: 0; }
+.ide-root .rb-insp-sel-identity strong,
+.ide-root .rb-insp-idle-card h4,
+.ide-root .rb-insp-io-state-header strong { color: var(--wb-text); font: 600 var(--wb-text-lg) / 18px var(--wb-font-ui); }
+.ide-root .rb-insp-subtitle { margin: 1px 0 0; color: var(--wb-text-3); font: var(--wb-text-sm) / 16px var(--wb-font-ui); }
+.ide-root .rb-insp-subtitle code,
+.ide-root .rb-insp-sel-identity code { font: var(--wb-text-sm) var(--wb-font-mono); }
+.ide-root .rb-insp-sep { color: var(--wb-text-3); }
+.ide-root .rb-insp-status {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: 600 var(--wb-text-xs) / 14px var(--wb-font-ui);
+  white-space: nowrap;
+}
+.ide-root .rb-insp-status.is-ok { color: var(--wb-ok); border-color: color-mix(in srgb, var(--wb-ok) 50%, transparent); }
+.ide-root .rb-insp-status.is-warn { color: var(--wb-warn); border-color: color-mix(in srgb, var(--wb-warn) 50%, transparent); }
+.ide-root .rb-insp-status.is-error { color: var(--wb-err); border-color: color-mix(in srgb, var(--wb-err) 50%, transparent); }
+.ide-root .rb-insp-next-step,
+.ide-root .rb-insp-hint,
+.ide-root .rb-insp-meaning,
+.ide-root .rb-insp-what-it-is,
+.ide-root .rb-insp-structure-hint,
+.ide-root .rb-insp-guidance,
+.ide-root .rb-insp-idle-tip,
+.ide-root .rb-insp-proof-boundary,
+.ide-root .rb-insp-sel-issues-hint,
+.ide-root .rb-insp-sel-issues-message,
+.ide-root .rb-insp-io-state-label {
+  margin: 3px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) / 15px var(--wb-font-ui);
+}
+.ide-root .rb-insp-inline-editor { display: block; margin-top: 4px; }
+/* The name control is a field row (label | control) like every other editable fact, and the
+   editor inside it lays its input and buttons on one line. */
+.ide-root .rb-insp-name-control.rb-insp-field { margin-top: 6px; grid-template-columns: 4.5rem minmax(0, 1fr); }
+.ide-root .rb-insp-name-control .ide-design-label-editor { min-width: 0; }
+.ide-root .rb-insp-name-control .ide-design-label-editor-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ide-root .rb-insp-name-control .ide-design-label-editor-row input { flex: 1 1 96px; min-width: 0; }
+/* The button names the part it renames, so a long name wraps onto a second line rather than being
+   cut ("Rename LD0 (CARR..."); a short one keeps the single compact row. */
+.ide-root .rb-insp-name-control .ide-design-label-editor > .ide-button { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+/* Side by side, the term takes 6rem (96px at 100% text) and the value the rest. Terms and
+   values wrap instead of being cut, and a value breaks inside a word only when that word alone is
+   wider than its column. With enlarged text in the 256px inspector the term sits above its value
+   instead (design-inspector container, below): side by side at 150%, 6rem left values 37px and
+   pins read "U1" over "6". */
+.ide-root .rb-insp-field { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: 6px; min-height: 26px; margin: 0; }
+.ide-root .rb-insp-field > label,
+.ide-root .rb-insp-field > span:first-child { color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); }
+.ide-root .rb-insp-field--checkbox { grid-template-columns: auto minmax(0, 1fr); }
+.ide-root .rb-insp-name-control input,
+.ide-root .rb-insp-field input:not([type='checkbox']),
+.ide-root .rb-insp-field select,
+.ide-root .rb-insp-inline-editor input,
+.ide-root .rb-insp-inline-editor select {
+  width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  font: var(--wb-text-sm) var(--wb-font-mono);
+}
+.ide-root .rb-insp-facts { display: block; margin: 2px 0 0; padding: 0; }
+.ide-root .rb-insp-facts > div,
+.ide-root .rb-insp-row,
+.ide-root .rb-insp-idle-stat,
+.ide-root .rb-insp-io-state-list > * {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-insp-facts > div:last-child,
+.ide-root .rb-insp-row:last-child,
+.ide-root .rb-insp-idle-stat:last-child { border-bottom: 0; }
+/* The signal model is a BLOCK of rows inside the facts list, not a row itself. It declares
+   `display: block` two hundred lines above, but `.rb-insp-facts > div` matches it too and
+   outranks that on its element selector, so its four rows became grid ITEMS in a 96px / 1fr
+   pair - and each row, no longer a grid of its own, printed its term hard against its value
+   with no separator at all:
+       LabelLD0        Logical directionOutput signal - A value your circuit drives.
+       Board resourceLD1   Package pinE19
+   The block is a block again, and its rows are the grid. The value may wrap, because one of
+   them is a sentence about what the signal is for. */
+.ide-root .rb-insp-facts > .rb-insp-signal-model { display: block; }
+.ide-root .rb-insp-signal-model > div {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
+  min-height: 24px;
+  margin: 0;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--wb-border);
+}
+.ide-root .rb-insp-signal-model > div:last-child { border-bottom: 0; }
+.ide-root .rb-insp-signal-model > div > span {
+  margin: 0;
+  min-width: 0;
+  color: var(--wb-text-3);
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  overflow-wrap: break-word;
+}
+.ide-root .rb-insp-signal-model > div > strong {
+  margin: 0;
+  min-width: 0;
+  color: var(--wb-text);
+  font: var(--wb-text-sm) var(--wb-font-mono);
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+.ide-root .rb-insp-facts dt,
+.ide-root .rb-insp-row > :first-child,
+.ide-root .rb-insp-idle-stat > :first-child,
+.ide-root .rb-insp-io-state-list > * > :first-child { margin: 0; min-width: 0; color: var(--wb-text-3); font: var(--wb-text-sm) var(--wb-font-ui); overflow-wrap: break-word; }
+.ide-root .rb-insp-facts dd,
+.ide-root .rb-insp-row > :last-child,
+.ide-root .rb-insp-idle-stat > :last-child,
+.ide-root .rb-insp-io-state-value { margin: 0; min-width: 0; color: var(--wb-text); font: var(--wb-text-sm) var(--wb-font-mono); overflow-wrap: break-word; }
+/* A term over its value once the inspector's body is narrower than 12rem: never at 100% text
+   (the body is 205-211px beside a 250-256px inspector), always at 125% and 150%, where side by
+   side a 6rem term left too little for a pin, a board resource or CLK100MHZ to stay whole. */
+@container design-inspector (max-width: 12rem) {
+  .ide-root .rb-insp-field:not(.rb-insp-field--checkbox),
+  .ide-root .rb-insp-facts > div,
+  .ide-root .rb-insp-row,
+  .ide-root .rb-insp-idle-stat,
+  .ide-root .rb-insp-io-state-list > *,
+  .ide-root .rb-insp-signal-model > div { grid-template-columns: minmax(0, 1fr); row-gap: 1px; }
+}
+.ide-root .rb-insp-idle-stats { display: block; }
+/* An action group stacks its label over its controls. A label-left column was measured and
+   rejected: in a 238px dock it left 108px for the controls, so the five swap chips wrapped onto
+   four rows and the Actions section grew from 226px to 334px. */
+.ide-root .rb-insp-action-group { display: block; margin: 4px 0 0; padding: 0; border: 0; background: transparent; }
+.ide-root .rb-insp-action-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.ide-root .rb-insp-action-grid .ide-button,
+.ide-root .rb-insp-sel-inspector .ide-button,
+.ide-root .rb-insp-props .ide-button,
+.ide-root .rb-insp-board .ide-button,
+.ide-root .rb-insp-canvas-default .ide-button,
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right .ide-inline-actions .ide-button {
+  width: auto;
+  min-height: 0;
+  height: var(--wb-control-h);
+  padding: 0 8px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  box-shadow: none;
+  font: 500 var(--wb-text-sm) / 1 var(--wb-font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ide-root .rb-insp-action-grid .ide-button:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-action-grid .ide-button-primary { border-color: var(--rb-action); color: var(--wb-accent-text); background: var(--rb-action); }
+.ide-root .rb-insp-action-grid .ide-button:disabled { opacity: 0.45; }
+.ide-root .rb-insp-group--danger .ide-button { color: var(--wb-err); }
+.ide-root .rb-insp-sel-pins { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ide-root .rb-insp-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius);
+  color: var(--wb-text-2);
+  background: var(--wb-surface-2);
+  font: var(--wb-text-xs) var(--wb-font-mono);
+}
+.ide-root .rb-insp-pin-value { color: var(--wb-text); font-weight: 600; }
+.ide-root .rb-insp-sel-issues-list,
+.ide-root .rb-insp-diagnostic-list { margin: 2px 0 0; padding: 0; list-style: none; }
+.ide-root .rb-insp-sel-issues-list li,
+.ide-root .rb-insp-diagnostic-list li { padding: 3px 0; border-bottom: 1px solid var(--wb-border); font-size: var(--wb-text-sm); }
+.ide-root .rb-insp-sel-issues-header { display: flex; align-items: center; gap: 6px; }
+.ide-root .rb-insp-sel-issues-pill { padding: 0 5px; border-radius: var(--wb-radius); color: var(--wb-err); background: color-mix(in srgb, var(--wb-err) 12%, transparent); font: 600 var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-insp-subgroup { margin-top: 6px; }
+
+.ide-root .rb-insp-live-summary { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ide-root .rb-design-health { display: inline-flex; align-items: center; gap: 6px; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .rb-design-health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-ok); }
+.ide-root .rb-design-health.is-warn .rb-design-health-dot,
+.ide-root .rb-design-health.is-warning .rb-design-health-dot { background: var(--wb-warn); }
+.ide-root .rb-design-health.is-error .rb-design-health-dot,
+.ide-root .rb-design-health.is-blocking .rb-design-health-dot { background: var(--wb-err); }
+.ide-root .rb-design-health-counts { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Header health chip: always visible; the bottom Problems panel holds the list. */
+.ide-root .rb-design-health { display: inline-flex; align-items: center; gap: 6px; height: var(--wb-control-h); padding: 0 8px; border: 1px solid var(--wb-border); border-radius: var(--wb-radius); color: var(--wb-text-2); font-size: var(--wb-text-sm); white-space: nowrap; }
+.ide-root .rb-design-health-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wb-ok); }
+.ide-root .rb-design-health.has-warnings .rb-design-health-dot { background: var(--wb-warn); }
+.ide-root .rb-design-health.has-errors .rb-design-health-dot { background: var(--wb-err); }
+.ide-root .rb-design-health.has-errors { color: var(--wb-text); }
+.ide-root .rb-design-health-counts { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+
+/* Bottom panel: Problems as 24px rows; Output / Simulation as compact readouts. */
+.ide-root .ide-design-bottom-workspace { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ide-root .ide-design-bottom-content { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ide-root .rb-problems { display: block; padding: 0; }
+.ide-root .rb-problems-row {
+  display: grid;
+  grid-template-columns: 14px minmax(120px, 0.6fr) minmax(0, 1.6fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0 var(--wb-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--wb-border);
+  border-radius: 0;
+  color: var(--wb-text);
+  background: transparent;
+  font: var(--wb-text-sm) var(--wb-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .rb-problems-row:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-problems-sev { width: 8px; height: 8px; border-radius: 50%; background: var(--wb-text-3); }
+.ide-root .rb-problems-row[data-severity='error'] .rb-problems-sev { background: var(--wb-err); }
+.ide-root .rb-problems-row[data-severity='warn'] .rb-problems-sev,
+.ide-root .rb-problems-row[data-severity='warning'] .rb-problems-sev { background: var(--wb-warn); }
+.ide-root .rb-problems-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-problems-msg { color: var(--wb-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-root .rb-problems-ref { color: var(--wb-text-3); font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .ide-design-console-readout,
+.ide-root .ide-design-simulation-readout { display: grid; gap: 4px; padding: 8px var(--wb-space-3); font-size: var(--wb-text-sm); color: var(--wb-text-2); }
+.ide-root .ide-design-console-readout strong,
+.ide-root .ide-design-simulation-readout strong { color: var(--wb-text); font-weight: 600; }
+.ide-root .ide-design-console-readout p { margin: 0; }
+
+.ide-root .rb-design-generated-note { margin: 0; padding: 6px 10px; color: #c0d0e3; background: #101e2d; font: var(--wb-text-sm) / 1.5 var(--wb-font-ui); }
+
+/* Probe readout: light chips, not a dark HUD. */
+.ide-root .ide-design-probe-bar { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; max-width: 60%; padding: 0; border: 0; background: transparent; box-shadow: none; pointer-events: none; }
+.ide-root .ide-design-probe-pill { display: inline-flex; align-items: baseline; gap: 6px; height: 20px; padding: 0 6px; border: 1px solid var(--wb-border-strong); border-radius: var(--wb-radius); color: var(--wb-text-2); background: var(--wb-surface); font: var(--wb-text-xs) var(--wb-font-mono); box-shadow: none; }
+.ide-root .ide-design-probe-pill code { color: var(--wb-text); font: inherit; }
+.ide-root .ide-design-probe-value { color: var(--wb-text); font-weight: 700; }
+.ide-root .rb-design-dock-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: auto;
+  overflow: visible;
+}
+.ide-root .rb-design-dock-tabs .wb-toolwindow-tab {
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 4px 6px;
+  font-size: var(--rb-text-meta);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The library and the inspector get the width their labels need. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: clamp(200px, var(--rb-workbench-pref-left-width, 208px), 400px);
+  --ide-workbench-right-width: clamp(256px, var(--rb-workbench-pref-right-width, 256px), 440px);
+}
+
+/* An input's value is a switch. It is the same unrecorded Explore value the canvas toggles. */
+.ide-root .ide-design-input-control {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 12px;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 8px 12px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  color: var(--wb-text);
+  background: var(--wb-surface);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-root .ide-design-input-control:hover { border-color: var(--wb-accent); }
+.ide-root .ide-design-input-control:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+.ide-root .rb-bit-switch-track { grid-row: 1 / span 2; position: relative; width: 3rem; height: 1.625rem; border: 1.5px solid var(--rb-schematic-ink, var(--wb-text)); border-radius: 999px; background: var(--wb-surface-2); }
+.ide-root .rb-bit-switch-thumb { position: absolute; top: 2px; left: 2px; width: calc(1.625rem - 7px); height: calc(1.625rem - 7px); border-radius: 50%; background: var(--rb-schematic-ink, var(--wb-text)); transition: transform var(--rb-motion-fast, 120ms) var(--rb-ease-standard, ease); }
+.ide-root .ide-design-input-control.is-on .rb-bit-switch-track { border-color: var(--rb-schematic-high, var(--wb-ok)); background: color-mix(in srgb, var(--rb-schematic-high, var(--wb-ok)) 18%, var(--wb-surface)); }
+.ide-root .ide-design-input-control.is-on .rb-bit-switch-thumb { transform: translateX(1.375rem); background: var(--rb-schematic-high, var(--wb-ok)); }
+.ide-root .rb-bit-switch-value { grid-row: 1 / span 2; font: var(--rb-weight-title) var(--rb-text-doc) / 1 var(--wb-font-mono); }
+.ide-root .rb-bit-switch-word { align-self: end; font: var(--rb-weight-strong) var(--rb-text-body) / 1.2 var(--wb-font-ui); }
+.ide-root .rb-bit-switch-note { grid-column: 3; align-self: start; color: var(--wb-text-2); font: var(--rb-text-meta) / 1.2 var(--wb-font-ui); }
+@media (prefers-reduced-motion: reduce) { .ide-root .rb-bit-switch-thumb { transition: none; } }
+
+/* The explanation of a part is reference: named, closed, one step away. */
+.ide-root .rb-insp-about > summary { min-height: 2rem; color: var(--wb-text-2); font: var(--rb-weight-medium) var(--rb-text-dense) var(--wb-font-ui); cursor: pointer; }
+.ide-root .rb-insp-about > summary:hover { color: var(--wb-text); }
+.ide-root .rb-insp-about > summary:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 2px; }
+
+/* The toolbar wraps before it clips: every control keeps its width; a narrow dock pushes the trailing groups to a second row. */
+/* ── The command row is one row, with or without the inspector ───────────────
+   The tools a student edits with (Select, Wire, undo, redo, the representation switch, View)
+   and Explore / Test fit beside each other at laptop widths because the view controls - Fit,
+   Selection and zoom - are on the sheet itself, in its lower left corner. They used to be in
+   this bar, where they were folded away one by one as the bar narrowed and made it wrap to a
+   second and third row whenever a part was selected. Wrapping remains only as the fallback for
+   a genuinely narrow window. */
+.ide-root .rb-design-toolbar {
+  min-width: 0;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--wb-toolbar-h);
+  row-gap: 2px;
+}
+/* Lower left, not lower right: the sheet's left edge does not move when the inspector opens,
+   so the dock stays exactly where it was when the inspector opens or closes. */
+.ide-root .rb-design-viewdock {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--wb-border-strong);
+  border-radius: var(--wb-radius-lg);
+  background: var(--wb-surface);
+}
+.ide-root .rb-design-viewdock .wb-btn { height: var(--wb-control-h); }
+.ide-root .rb-design-viewdock-sep { width: 1px; height: 1.25rem; margin-inline: 2px; background: var(--wb-border-strong); }
+.ide-root .rb-design-toolbar .wb-btn, .ide-root .rb-design-toolbar .wb-segment, .ide-root .rb-design-toolbar .rb-design-menu, .ide-root .rb-design-toolbar .rb-design-trace { flex: none; }
+
+/* Inspector named sections: mapping constraint lines, source lines, related documents. */
+.ide-root .rb-insp-xdc { margin: 6px 0 0; padding: 6px 8px; border: 1px solid var(--wb-border); border-radius: 3px; background: var(--wb-surface-2); color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ide-root .rb-insp-note { margin: 6px 0 0; color: var(--wb-text-3); font-size: var(--wb-text-xs); }
+.ide-root .rb-insp-source-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ide-root .rb-insp-source-line { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; align-items: baseline; font: var(--wb-text-xs) var(--wb-font-mono); }
+.ide-root .rb-insp-source-ln { color: var(--wb-text-3); }
+.ide-root .rb-insp-source-line code { color: var(--wb-text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ide-root .rb-insp-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ide-root .rb-insp-link { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; padding: 3px 4px; border: 0; border-radius: 3px; background: transparent; color: var(--wb-text); font: var(--wb-text-xs) var(--wb-font-ui); text-align: left; cursor: pointer; }
+.ide-root .rb-insp-link:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+.ide-root .rb-insp-link-label { font-weight: 600; }
+.ide-root .rb-insp-link-detail { color: var(--wb-text-3); white-space: nowrap; }
+/* A fact row that is also a navigation: the driver rows select the driving part. */
+.ide-root .rb-insp-row--link { width: 100%; border: 0; border-radius: 3px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ide-root .rb-insp-row--link:hover { background: var(--wb-hover-bg); }
+.ide-root .rb-insp-row--link:focus-visible { outline: 2px solid var(--wb-focus); outline-offset: 1px; }
+
+/* Measured at 1366x768: the component library rendered a 276px grid column inside a 175px
+   box whose overflow is hidden, so 101px of every row - the port signature, and on badge-
+   carrying rows part of the name - was cut away with no scrollbar to reveal it. The palette
+   declared a grid with no column track, so the implicit auto track took the content's
+   min-content width and the container could not push back. The track follows the pane now. */
+.ide-root .ide-design-palette { grid-template-columns: minmax(0, 1fr); }
+.ide-root .ide-design-palette > * { min-width: 0; }
+
+/* Layers and Layout were two adjacent dropdown buttons in a toolbar that had to wrap to a
+   second row to hold them. They are one View menu now, and each half keeps a label. */
+.ide-root .wb-menu-group-label {
+  margin: 4px 0 2px;
+  padding: 0 8px;
+  color: var(--wb-text-3);
+  font: var(--rb-weight-strong) var(--rb-text-meta) / var(--rb-lh-tight) var(--rb-font-ui);
+}
+.ide-root .wb-menu-group-label:first-child { margin-top: 0; }
+
+/* The inspector reads its own subject. Measured with a gate selected: the dock itself was
+   the scroller, 1083px of content in a 779px box, so scrolling to a section carried the
+   tab strip and the identity of the thing being inspected off the top of the screen. The
+   tabs and the identity card are a head that does not move, the sections are a body that
+   does, and exactly one of the three scrolls. */
+.ide-root [data-ide-mode-marker="design"] .ide-workbench-dock-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-root .rb-design-dock-head {
+  flex: none;
+  border-bottom: 1px solid var(--wb-border-strong);
+  background: var(--wb-surface);
+}
+.ide-root .rb-design-dock-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Split budgets the source header to its own pane. Actions wrap as a group
+   instead of extending underneath the pane's clipped edge. */
+.ide-root [data-design-view='split'] .ide-design-hdl-header {
+  flex-wrap: wrap;
+}
+.ide-root [data-design-view='split'] .ide-design-hdl-actions {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 20rem;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip {
+  background: var(--wb-surface-2) !important;
+  border-color: var(--wb-border-strong) !important;
+  box-shadow: var(--wb-shadow, none) !important;
+  color: var(--wb-text) !important;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip strong,
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip-copy p {
+  color: var(--wb-text) !important;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip-label {
+  color: var(--wb-accent) !important;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-authoring-quickstrip .ide-button {
+  color: var(--wb-text) !important;
+  background: var(--wb-surface-1) !important;
+  border-color: var(--wb-border-strong) !important;
+}
+
+/* Exploring is a mode, and its controls have a row of their own - as the wire cue does. At
+   1366px with the inspector open the clock controls, "Finish exploring" and Test need 365px
+   beside tools that leave 276px, so on one row they wrapped or not depending on whether a part
+   was selected. Now the height changes once, when the student presses Explore, and is the same
+   at every width and with or without a selection. When even that row is narrower than its
+   controls (720px, or 1280px at double text size), "Finish exploring" and Test move to a second
+   line: the clock buttons used to spill out of their shrunk group underneath them, so a click
+   on Reset values landed on Finish exploring. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header:has([data-testid='ide-design-live-transport']) { flex: 1 0 100%; flex-wrap: wrap; row-gap: 2px; border-top: 1px solid var(--wb-border); }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; }
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] > * { flex: none; }
+/* "Exploring - not recorded" is the claim that keeps this honest, so it stays whole; when the
+   strip is short of room the running count of clock edges gives way, number first. */
+.ide-root [data-ide-mode-marker='design'] .ide-surface-command-stack > .rb-design-header > [data-testid='ide-design-live-transport'] > [data-testid='ide-design-live-tick'] { flex: 0 1 auto; min-width: 2.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

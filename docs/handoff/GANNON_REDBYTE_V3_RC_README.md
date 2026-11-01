@@ -34,14 +34,14 @@ The candidate remains local until the freeze, reconstruction, exact-SHA evidence
 
 The RedByte-owned workflow has exactly five numbered stages:
 
-`Project -> Design -> Verify -> Map Pins -> Export`
+`Project -> Design -> Simulate -> Board & Constraints -> Build & Export`
 
 **Import / Recover** is a separate utility for restoring RedByte work or reviewing HDL/XDC. It is not a sixth progress stage.
 
-1. **Project:** Start or open work, review project identity and goal, see current Design/Verify/Map Pins/Export truth, and follow one recommended next action.
+1. **Project:** Start or open work, review project identity and goal, see current Design/Simulate/Board & Constraints/Build & Export truth, and follow one recommended next action.
 2. **Design:** Build the supported circuit on the dominant grid. Place components, connect explicit port targets, inspect issues, and repair structural blockers.
-3. **Verify:** Create or choose a named testbench document, author stimulus and expected checks, configure its sequential execution policy when needed, then Observe or Compare. Treat stale or historical runs as non-current evidence.
-4. **Map Pins:** Select each logical signal, choose a compatible Basys3 resource in the selected-signal editor, and save the assignment. Use the board graphic as a reference only.
+3. **Simulate:** Create or choose a named testbench document, author stimulus and expected checks, configure its sequential execution policy when needed, then Observe or Compare. Treat stale or historical runs as non-current evidence.
+4. **Board & Constraints:** Select each logical signal, choose a compatible Basys3 resource in the selected-signal editor, and save the assignment. Use the board graphic as a reference only.
 5. **Export:** Read **What should I submit?**, distinguish trusted/current from draft, inspect generated files, and download only the package kind allowed by the assignment.
 6. **Import / Recover:** Prefer a RedByte ZIP for lossless restore. Review fidelity and replacement consequences before Apply; Cancel preserves current work.
 
@@ -51,20 +51,20 @@ The RedByte-owned workflow has exactly five numbered stages:
 |------|---------------------|
 | Project overview | Loaded projects show identity, summary/goal, professional facts, current stage truth, and one recommended next action. |
 | Design workspace | Circuit grid is primary. Sparse port targets are at least 24×24px; dense targets are at least 32×24px, with current dense targets 32×36px. Wiring is keyboard reachable. |
-| Verify documents | Document identity, cases, stimulus, expected checks, sequential steps, and sequential policy remain attached to the named browser-local document through save/reload/duplicate/rename and compatible repair. |
+| Simulate documents | Document identity, cases, stimulus, expected checks, sequential steps, and sequential policy remain attached to the named browser-local document through save/reload/duplicate/rename and compatible repair. |
 | Sequential policy | Execution override, run cycles, active edge, reset behavior, source type, execution model, resolved clock/control identity, and starting level belong to the active document. The policy remains outside portable `RBProject`. |
 | Sequential execution | Manual/custom rows drive the authored clock and settle once. Only low-to-high advances rising-edge state; repeated high, falling, repeated low, and flat-low hold it. Auto materializes cycle 0 and the selected run cycles; every Auto report row and VHDL assertion is post-rising-edge. Auto reset, when selected, is explicit in materialized cycle 0 and later deassertion—not a hidden runtime prelude. Manual/custom mode also injects no hidden reset. |
-| Verify evidence | `current`, `missing`, `stale`, and `failed` evidence currentness remain distinct. A truth-affecting Design or scenario-policy change revokes current Compare/waveform authority. Layout-only movement does not. Observe-only and failed evidence never support trusted Export classification. |
+| Simulate evidence | `current`, `missing`, `stale`, and `failed` evidence currentness remain distinct. A truth-affecting Design or scenario-policy change revokes current Compare/waveform authority. Layout-only movement does not. Observe-only and failed evidence never support trusted Export classification. |
 | Waveform usability | Post-run lanes use 36×36px interaction targets and labels remain at least 13px. |
 | Mapping projection | Logical signal ID/label, direction, artifact port, board resource ID/label, package pin, I/O standard, exact XDC line, required state, and conflict state form one coherent projection. |
-| Export trust | Structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded` are separate. Verify evidence currentness is upstream and is not an Export enum. |
-| Sequential package authority | Runtime Verify, bring-up expectations, and `testbench.vhd` consume the same materialized execution vectors plus the resolved clock/schedule projection. Auto `runCycles` and automatic reset behavior can change those vectors and package bytes. Auto VHDL uses a free-running generator and samples/asserts each materialized row post-rising-edge; manual/custom assigns authored clock values and settles without that scaffold. |
-| Package receipt | The current receipt binds source fingerprint, project/Verify hashes, mapping currentness, download kind, trust state, and SHA-256 to the exact downloaded package. |
+| Export trust | Structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded` are separate. Simulate evidence currentness is upstream and is not an Export enum. |
+| Sequential package authority | Runtime Simulate, bring-up expectations, and `testbench.vhd` consume the same materialized execution vectors plus the resolved clock/schedule projection. Auto `runCycles` and automatic reset behavior can change those vectors and package bytes. Auto VHDL uses a free-running generator and samples/asserts each materialized row post-rising-edge; manual/custom assigns authored clock values and settles without that scaffold. |
+| Package receipt | The current receipt binds source fingerprint, project/Simulate hashes, mapping currentness, download kind, trust state, and SHA-256 to the exact downloaded package. |
 | Package manifest | The embedded `project.rbproj.json` is generated with the package and contains the exact generated `top.vhd` and `top.xdc` projection. |
 | Import recovery | A valid embedded RedByte manifest is authoritative; loose sibling HDL/XDC cannot override it. Scalar/vector-bit identities such as `SW[1]` and `LED[1]` remain exact. |
 | HDL reconstruction | The supported RedByte-generated concurrent-assignment subset reconstructs its supported graph. Arbitrary behavioral/process HDL remains partial or blocked; the manifest is required for lossless RedByte metadata. |
 
-Named Verify documents and their sequential policies are browser-local workspace sidecar state. This candidate does not claim that a new portable `RBProject` field transfers them between browsers or arbitrary archives.
+Named Simulate documents and their sequential policies are browser-local workspace sidecar state. This candidate does not claim that a new portable `RBProject` field transfers them between browsers or arbitrary archives.
 
 That storage boundary does not make the policy package-neutral. The materialized execution vectors and resolved clock/schedule projection are byte-bearing inputs to generated `testbench.vhd`, package fingerprinting, Export freshness, and receipt authority.
 
@@ -92,7 +92,7 @@ The assignment or LMS instruction remains authoritative. In RedByte:
 - A RedByte ZIP with a valid `project.rbproj.json` is the lossless recovery path.
 - The embedded manifest must agree with the generated `top.vhd` and `top.xdc` in the same package.
 - Loose sibling files cannot silently replace manifest authority.
-- Supported RedByte-generated `top.vhd` can reconstruct the supported graph without its manifest, but layout, named Verify documents, mapping, and other RedByte metadata are not losslessly recovered that way.
+- Supported RedByte-generated `top.vhd` can reconstruct the supported graph without its manifest, but layout, named Simulate documents, mapping, and other RedByte metadata are not losslessly recovered that way.
 - A failed or canceled import leaves the active project unchanged.
 
 ## Candidate evidence ledger
@@ -112,9 +112,9 @@ They are required outside the uninterrupted 72-step `classroom:gate`; the aggreg
 | Sequential policy persistence | **RESULT-DEPENDENT** | Browser-local document lifecycle; no portable `RBProject` field claim |
 | Sequential runtime execution | **RESULT-DEPENDENT** | Manual/custom authored-clock, rising-edge-only, flat/falling hold, and report/waveform/check agreement |
 | Sequential generated-testbench/package parity | **RESULT-DEPENDENT** | E0 byte/freshness authority only; no Vivado execution claim |
-| Mapping preview/package agreement | **RESULT-DEPENDENT** | E0 Map Pins, XDC, package, manifest, and manifest-first recovery agreement |
+| Mapping preview/package agreement | **RESULT-DEPENDENT** | E0 Board & Constraints mapping, XDC, package, manifest, and manifest-first recovery agreement |
 | Host ZIP byte inspection | **RESULT-DEPENDENT** | Deterministic archive inspection is required; an in-app download record alone is insufficient |
-| Design/Verify interaction proof | **RESULT-DEPENDENT** | Interaction geometry and browser usability do not substitute for simulator authority |
+| Design/Simulate interaction proof | **RESULT-DEPENDENT** | Interaction geometry and browser usability do not substitute for simulator authority |
 | Export submission-answer contract | **RESULT-DEPENDENT** | Browser action/trust language only |
 | ZIP Import recovery contract | **RESULT-DEPENDENT** | Browser recovery/identity only |
 

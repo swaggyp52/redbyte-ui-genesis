@@ -27,4 +27,34 @@ describe('basys3SignalSemantics', () => {
     expect(binding?.alias).toBe('BTNC');
     expect(binding?.role).toBe('reset');
   });
+
+  it('does not invent the W5 oscillator for an unassigned manual switch clock', () => {
+    const binding = resolveBasys3SignalBinding({
+      id: 'enter',
+      label: 'ENTER',
+      pin: '',
+      direction: 'in',
+      timingRole: 'clock',
+      boardResourceType: 'switch',
+    });
+
+    expect(binding).toBeNull();
+  });
+
+  it('retains the metadata fallback for an explicit dedicated clock row', () => {
+    const binding = resolveBasys3SignalBinding({
+      id: 'clk',
+      label: 'System clock',
+      pin: '',
+      direction: 'in',
+      timingRole: 'clock',
+      boardResourceType: 'clock_pin',
+    });
+
+    expect(binding).toMatchObject({
+      alias: 'CLK100MHZ',
+      packagePin: 'W5',
+      role: 'clock',
+    });
+  });
 });

@@ -13,6 +13,10 @@ import type { RBProject } from '../export/projectFormat';
 describe('export sequential boundary enforcement', () => {
   it('blocks export when HDL contains falling_edge()', () => {
     const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       name: 'falling-edge-test',
       circuit: {
         nodes: [
@@ -66,6 +70,10 @@ end architecture;
 
   it('blocks export when reset signal uses active-low naming convention', () => {
     const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       name: 'active-low-reset-test',
       circuit: {
         nodes: [
@@ -102,6 +110,10 @@ end architecture;
 
   it('allows export for supported rising-edge single-clock circuit', () => {
     const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       name: 'rising-edge-ok-test',
       circuit: {
         nodes: [
@@ -139,6 +151,10 @@ end architecture;
 
   it('blocks export for sim-only Clock components and gives the CLK100MHZ migration path', () => {
     const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       name: 'sim-clock-import-only-test',
       circuit: {
         nodes: [
@@ -174,6 +190,10 @@ end architecture;
 
   it('does not tell students to add a Clock node when a sequential circuit has no clock', () => {
     const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       name: 'missing-clock-guidance-test',
       circuit: {
         nodes: [
@@ -203,6 +223,10 @@ end architecture;
 
   it('blocks export when source constraints request create_generated_clock', () => {
     const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       name: 'generated-clock-xdc-test',
       circuit: {
         nodes: [
@@ -231,6 +255,7 @@ end architecture;
         board: 'basys3',
         top: 'top',
         constraints: {
+          type: 'xdc',
           text: 'create_generated_clock -name div2_clk -source [get_ports {clk}] [get_pins {u_div/Q}]',
         },
       },

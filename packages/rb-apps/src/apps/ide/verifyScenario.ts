@@ -1,4 +1,5 @@
 import type { TestVector } from '@redbyte/rb-utils';
+import { compareCodepoint } from '../../export/codepointSort';
 import { digestValue } from '../../utils/digest';
 import {
   materializeVectorsFromScenarioSteps,
@@ -134,7 +135,8 @@ export function normalizeScenarioProbes(
     const label = typeof probe.label === 'string' ? probe.label.trim() : '';
     normalized.set(key, label && label !== key ? { key, label } : { key });
   }
-  return [...normalized.values()].sort((left, right) => left.key.localeCompare(right.key));
+  // Persisted with the scenario: codepoint order, never collation (RB-DEBT-016).
+  return [...normalized.values()].sort((left, right) => compareCodepoint(left.key, right.key));
 }
 
 export function toggleScenarioProbe(
@@ -159,7 +161,14 @@ export function computeScenarioContentHash(scenario: VerifyScenario): string {
   return `scn_${digestValue({
     id: scenario.id,
     version: scenario.version,
-    vectors: materializeScenarioVectors(scenario),
+    // Content is what will execute — tick, stimulus and checks. A vector's id is
+    // authoring identity, not execution content. Preserve it through cloning/persistence
+    // for stable exported bytes, while older vectors without ids execute identically.
+    vectors: materializeScenarioVectors(scenario).map((vector) => ({
+      tick: vector.tick,
+      inputs: vector.inputs,
+      expected: vector.expected,
+    })),
     steps: scenario.steps ?? [],
     ...(scenario.sequentialPolicy ? { sequentialPolicy: scenario.sequentialPolicy } : {}),
   }).slice(0, 12)}`;
@@ -390,6 +399,7 @@ function normalizeOptionalText(value: unknown): string | undefined {
 
 function cloneVector(v: TestVector): TestVector {
   return {
+    ...(typeof v.id === 'string' && v.id.length > 0 ? { id: v.id } : {}),
     tick: v.tick,
     inputs: { ...v.inputs },
     expected: { ...(v.expected ?? {}) },
@@ -418,7 +428,7 @@ function normalizeStimulusRecord(
 ): Record<string, 0 | 1> {
   return Object.fromEntries(
     Object.entries(record)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareCodepoint(left, right))
       .map(([key, value]) => [key, normalizeStimulusBit(value)])
   );
 }

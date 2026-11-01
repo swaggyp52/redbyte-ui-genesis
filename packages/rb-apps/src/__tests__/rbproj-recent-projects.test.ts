@@ -102,6 +102,7 @@ describe('rbproj recent project persistence', () => {
   it('marks project clean and records last submission checkpoint metadata', () => {
     const projectId = 'proj-submit';
     const project = createRBProject({
+      createdAt: '2026-03-08T00:00:00.000Z',
       name: 'Submission Ready',
       circuit: { nodes: [], connections: [] },
       meta: {

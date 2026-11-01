@@ -10,6 +10,22 @@ const VIEWPORTS = [
   { width: 1440, height: 900, label: '1440x900' },
 ];
 
+const RESPONSIVE_CANVAS_TOOL_IDS = new Map([
+  ['ide-design-zoom-out', 'ide-design-menu-zoom-out'],
+  ['ide-design-zoom-in', 'ide-design-menu-zoom-in'],
+  ['ide-design-fit-circuit-canvas', 'ide-design-menu-fit'],
+  ['ide-design-zoom-reset', 'ide-design-zoom-reset'],
+]);
+
+// Each direct Design control and the group that holds it. Select and Wire are in the command
+// row; Fit, Selection and zoom are the view dock in the sheet's lower left corner, "not in the
+// toolbar" since the 2026-10-05 Studio restart (docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md,
+// docs/ide/02-design.md). Every control must still be whole inside its group and actionable.
+const DIRECT_CONTROL_OWNERS = [
+  ['ide-design-toolbar', ['ide-design-tool-select', 'ide-design-tool-wire']],
+  ['ide-design-viewdock', ['ide-design-fit-circuit-canvas', 'ide-design-center-selection-canvas', 'ide-design-zoom-out', 'ide-design-zoom-readout', 'ide-design-zoom-in']],
+];
+
 const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR)
   : null;
@@ -41,24 +57,24 @@ await runIdeGate('IDE workbench stability overhaul satisfied', async ({ page, ba
     await loadStarterProject(page, { exactExampleId: 'logic-gates' });
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
     await page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 15000 });
-    await page.waitForSelector('[data-testid="ide-design-canvas-view-tools"]', { timeout: 15000 });
+    await waitForCameraAccess(page);
     await capture(page, viewport, '02-design-loaded');
     await assertCleanWorkbench(page, viewport, 'Design after starter load');
     await assertDirectDesignControls(page, viewport);
 
-    await page.locator('[data-testid="ide-design-zoom-reset"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-reset');
     await page.waitForTimeout(200);
     const resetZoom = await readZoomIndicator(page);
 
-    await page.locator('[data-testid="ide-design-zoom-out"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-out');
     const zoomedOut = await waitForZoomChange(page, resetZoom);
     await assertCleanWorkbench(page, viewport, 'Design after direct zoom out');
 
-    await page.locator('[data-testid="ide-design-zoom-in"]').first().click();
+    await clickCanvasTool(page, 'ide-design-zoom-in');
     await waitForZoomChange(page, zoomedOut);
     await assertCleanWorkbench(page, viewport, 'Design after direct zoom in');
 
-    await page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first().click();
+    await clickCanvasTool(page, 'ide-design-fit-circuit-canvas');
     await page.waitForTimeout(200);
     await assertCleanWorkbench(page, viewport, 'Design after direct fit');
 
@@ -112,43 +128,58 @@ async function assertCleanWorkbench(page, viewport, label) {
 }
 
 async function assertDirectDesignControls(page, viewport) {
-  const state = await page.evaluate(() => {
-    const isVisible = (element) => {
+  const fits = (inner, outer) => Boolean(inner && outer && inner.x >= outer.x && inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width + 1 && inner.y + inner.height <= outer.y + outer.height + 1);
+  const sheet = await page.getByTestId('ide-design-canvas-wrap').boundingBox();
+  for (const [ownerId, ids] of DIRECT_CONTROL_OWNERS) {
+    const box = await page.getByTestId(ownerId).boundingBox();
+    assert(box, `${viewport.label}: ${ownerId} must be measurable`);
+    if (ownerId === 'ide-design-viewdock') assert(fits(box, sheet), `${viewport.label}: the view dock must fit the sheet it acts on`);
+    for (const id of ids) {
+      const control = page.getByTestId(id);
+      assert(fits(await control.boundingBox(), box), `${viewport.label}: direct control ${id} must fit ${ownerId}`);
+      if (await control.isEnabled()) await control.click({ trial: true });
+    }
+  }
+  const viewMenu = page.getByTestId('ide-design-toolbar-overflow');
+  assert(await viewMenu.isVisible(), 'View menu must remain reachable');
+  assert(await viewMenu.getAttribute('open') === null, 'View menu must close after camera operations');
+  assert(!(await page.getByTestId('ide-design-zoom-presets').isVisible()), 'Retired zoom presets must remain absent');
+}
+
+async function waitForCameraAccess(page) {
+  await page.waitForFunction(() => {
+    const visible = (element) => {
       if (!(element instanceof HTMLElement)) return false;
       const style = window.getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 1 && rect.height > 1;
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 1 && rect.height > 1;
     };
-    const byTestId = (testId) => document.querySelector(`[data-testid="${testId}"]`);
-    const host = byTestId('ide-design-canvas-view-tools');
-    const toolbar = byTestId('ide-design-toolbar');
-    return {
-      toggleVisible: isVisible(byTestId('ide-design-view-tools-toggle')),
-      presetsVisible: isVisible(byTestId('ide-design-zoom-presets')),
-      hostVisible: isVisible(host),
-      hostOpen: host?.getAttribute('data-open') === 'true',
-      hostInsideToolbar: Boolean(host && toolbar?.contains(host)),
-      controlsVisible: isVisible(byTestId('ide-design-canvas-controls')),
-      directControls: Object.fromEntries(
-        [
-          'ide-design-zoom-out',
-          'ide-design-zoom-in',
-          'ide-design-fit-circuit-canvas',
-          'ide-design-zoom-reset',
-          'ide-design-center-selection-canvas',
-        ].map((testId) => [testId, isVisible(byTestId(testId))])
-      ),
-    };
-  });
+    return visible(document.querySelector('[data-testid="ide-design-canvas-view-tools"]')) ||
+      visible(document.querySelector('[data-testid="ide-design-toolbar-overflow"]'));
+  }, undefined, { timeout: 15000 });
+}
 
-  assert(!state.toggleVisible, `${viewport.label}: canvas controls must not be hidden behind a view-tools toggle`);
-  assert(!state.presetsVisible, `${viewport.label}: obsolete zoom preset strip must remain absent`);
-  assert(state.hostVisible, `${viewport.label}: direct canvas view-tools host must remain visible`);
-  assert(state.hostOpen, `${viewport.label}: direct canvas view-tools host must remain open`);
-  assert(state.hostInsideToolbar, `${viewport.label}: direct canvas view tools must remain inside the Design toolbar`);
-  assert(state.controlsVisible, `${viewport.label}: direct canvas controls must remain visible`);
-  for (const [testId, visible] of Object.entries(state.directControls)) {
-    assert(visible, `${viewport.label}: direct canvas control ${testId} must remain visible`);
+async function clickCanvasTool(page, primaryTestId) {
+  const primary = page.locator(`[data-testid="${primaryTestId}"]`).first();
+  if (await primary.isVisible().catch(() => false)) {
+    await primary.click();
+    return;
+  }
+
+  const responsiveTestId = RESPONSIVE_CANVAS_TOOL_IDS.get(primaryTestId);
+  assert(Boolean(responsiveTestId), `missing responsive camera mapping for ${primaryTestId}`);
+  const overflow = page.locator('[data-testid="ide-design-toolbar-overflow"]').first();
+  assert(await overflow.isVisible().catch(() => false), `${primaryTestId}: View menu must be visible`);
+  const wasOpen = (await overflow.getAttribute('open')) !== null;
+  if (!wasOpen) await overflow.locator('summary').click();
+
+  const responsive = page.locator(`[data-testid="${responsiveTestId}"]`).first();
+  await responsive.waitFor({ state: 'visible', timeout: 5000 });
+  await responsive.click();
+
+  if (!wasOpen && (await overflow.getAttribute('open')) !== null) {
+    await overflow.locator('summary').click();
   }
 }
 

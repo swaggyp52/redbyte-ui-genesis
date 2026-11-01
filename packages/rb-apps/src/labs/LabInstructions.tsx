@@ -8,7 +8,7 @@ import { LABS } from './labContent';
 import { useHardwareStore } from '../stores/hardwareStore';
 import { getSignalMap } from './signalMap';
 import { exportEvidenceCapsule } from '../utils/evidenceExport';
-import { PanelLayout } from '../components/PanelLayout';
+import { LabPanelLayout } from './LabPanelLayout';
 
 // Styled Markdown Renderer
 const SimpleMarkdown: React.FC<{ content?: string }> = ({ content }) => {
@@ -193,7 +193,7 @@ export const LabInstructions: React.FC = () => {
     };
 
     return (
-        <PanelLayout
+        <LabPanelLayout
             className="bg-[#081018]"
             header={
                 <div className="bg-[#0a1520] border-b border-[#1a2a3a] -m-4 p-4">
@@ -373,6 +373,6 @@ export const LabInstructions: React.FC = () => {
                     </button>
                 </div>
             </div>
-        </PanelLayout>
+        </LabPanelLayout>
     );
 };

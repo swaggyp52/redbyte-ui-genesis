@@ -8,7 +8,11 @@ import {
 } from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
-export const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
+// A fixed candidate may be tested while documentation or a disjoint source slice
+// is being prepared. The caller must name that build explicitly; ordinary gates
+// continue to require the current checkout's revision.
+export const CURRENT_SHA = process.env.RB_GATE_EXPECTED_SHA?.slice(0, 7)
+  || execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 
 export const CLASSROOM_VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -54,7 +58,7 @@ export async function openLogicGatesStarter(page, baseUrl, gateLabel) {
 }
 
 export async function openMode(page, baseUrl, mode, gateLabel) {
-  const button = page.locator(`[data-testid="mode-button-${mode}"]`).first();
+  const button = page.locator(`[data-testid="mode-button-${mode}"]:visible`).first();
   if (await button.isVisible().catch(() => false)) {
     await button.click();
   } else {
@@ -76,7 +80,9 @@ export async function assertBuildHash(page, label) {
   const shellSha = await page.evaluate(() =>
     document.querySelector('[data-testid="ide-top-bar"]')?.getAttribute('data-build-sha')?.trim() ?? ''
   );
-  const legacyVisibleSha = ((await page.locator('.ide-build-badge-sha').first().textContent().catch(() => '')) ?? '').trim();
+  const legacyVisibleSha = shellSha ? '' : await page.evaluate(() =>
+    document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? ''
+  );
   const actualSha = shellSha || legacyVisibleSha;
   assert(actualSha === CURRENT_SHA, `${label}: shell build sha ${actualSha || 'missing'} != ${CURRENT_SHA}`);
 }
@@ -139,4 +145,41 @@ export async function assertVisibleRect(page, selectors, label, options = {}) {
     assert(rect.visibleHeight >= options.minHeight, `${label}: too short (${rect.visibleHeight}px < ${options.minHeight}px)`);
   }
   return rect;
+}
+
+export async function selectFirstVisibleDesignNode(page) {
+  const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
+  assert(canvas, 'Design live canvas must have a browser-visible bounding box');
+
+  const nonInputIds = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().circuit.nodes.filter(node => !['INPUT', 'Switch'].includes(node.type)).map(node => node.id));
+  const nodes = page.locator(nonInputIds.map(id => `[data-node-id="${id}"]`).join(', '));
+  const count = await nodes.count();
+  for (let index = 0; index < count; index += 1) {
+    const node = nodes.nth(index);
+    const box = await node.boundingBox();
+    if (!box || box.width <= 4 || box.height <= 4 || !rectanglesIntersect(box, canvas)) continue;
+    const nodeId = await node.getAttribute('data-node-id');
+    if (!nodeId) continue;
+
+    await node.click({ position: { x: box.width / 2, y: box.height / 2 } });
+    const revealInspector = page.locator('[data-testid="ide-show-right-dock"]').first();
+    if (await revealInspector.isVisible().catch(() => false)) await revealInspector.click();
+    await page.waitForSelector('[data-testid="ide-right-dock"]', { state: 'visible', timeout: 5000 });
+    await page.waitForFunction(
+      (expectedNodeId) => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes?.has?.(expectedNodeId) === true,
+      nodeId,
+    );
+    return nodeId;
+  }
+
+  throw new Error('Design canvas must expose a visible node that can be selected with a real click');
+}
+
+function rectanglesIntersect(first, second) {
+  return (
+    first.x + first.width > second.x &&
+    first.x < second.x + second.width &&
+    first.y + first.height > second.y &&
+    first.y < second.y + second.height
+  );
 }

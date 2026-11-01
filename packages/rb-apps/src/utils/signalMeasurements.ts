@@ -126,7 +126,7 @@ export function detectTrigger(
       const prev = samples[i - 1].value;
       const curr = samples[i].value;
 
-      if (prev < level && curr >= level) {
+      if (typeof prev === 'number' && typeof curr === 'number' && prev < level && curr >= level) {
         return samples[i].timestamp;
       }
     }

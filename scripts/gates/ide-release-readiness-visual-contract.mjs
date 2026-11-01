@@ -40,9 +40,11 @@ await runIdeGate('IDE release-readiness visual contract satisfied', async ({ pag
 
       await openHardwareMapPins(page, baseUrl, `release-readiness-hardware-${viewport.label}`);
       const boardSvg = await getRequiredRect(page, '[data-testid="ide-hw-board-map"]', `${viewport.label}/Basys3 board visual`);
-      const table = await getRequiredRect(page, '[data-testid="ide-hw-map-table"]', `${viewport.label}/Hardware mapping table`);
+      const table = await getRequiredRect(page, '.rb-board-assignments', `${viewport.label}/Hardware assignments workspace`);
+      const tableRows = await getRequiredRect(page, '[data-testid="ide-hw-map-table"]', `${viewport.label}/Hardware mapping table`);
       const resourceSummary = await getRequiredRect(page, '[data-testid="ide-hw-board-resource-summary"]', `${viewport.label}/Hardware resource summary`);
       assert(table.visibleHeight >= 320, `${viewport.label}: Hardware table below release height target ${JSON.stringify(table)}`);
+      assert(tableRows.visibleWidth >= 320, `${viewport.label}: every mapping row must retain readable signal/resource/action columns ${JSON.stringify(tableRows)}`);
       assert(boardSvg.visibleWidth >= 300, `${viewport.label}: Basys3 board below release width target ${JSON.stringify(boardSvg)}`);
       assert(boardSvg.visibleHeight >= 120, `${viewport.label}: Basys3 board below release height target ${JSON.stringify(boardSvg)}`);
       assert(!rectsOverlap(resourceSummary, boardSvg), `${viewport.label}: Hardware resource summary covers board ${JSON.stringify({ resourceSummary, boardSvg })}`);

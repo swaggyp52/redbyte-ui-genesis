@@ -7,3 +7,8 @@ onlyBuiltDependencies:
   - '@serialport/bindings-cpp'
   - esbuild
   - core-js
+
+# wrangler's workerd runtime is only needed for local `wrangler dev`; `wrangler pages deploy`
+# does not use it, so its install script stays off deliberately.
+ignoredBuiltDependencies:
+  - workerd
