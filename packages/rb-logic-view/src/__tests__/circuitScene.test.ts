@@ -59,7 +59,7 @@ describe('CircuitScene', () => {
     expect(visible.netIds.has('b.out')).toBe(false);
   });
 
-  it('routes a net around a symbol body its horizontal leg would otherwise cross, only when asked', () => {
+  it('routes a net around a symbol body its horizontal leg would otherwise cross, unless legacy routes are asked for', () => {
     // A clock-like net: the driver sits left of a gate at the same height and loads lie far right.
     const crossing: Circuit = {
       nodes: [
@@ -80,9 +80,10 @@ describe('CircuitScene', () => {
         && point.y === wire.points[i - 1].y && point.y > box.minY && point.y < box.maxY
         && Math.max(point.x, wire.points[i - 1].x) > box.minX && Math.min(point.x, wire.points[i - 1].x) < box.maxX));
     };
-    expect(crossesGate(buildCircuitScene(crossing, undefined, {}))).toBe(true); // legacy routes, unchanged
+    expect(crossesGate(buildCircuitScene(crossing, undefined, { avoidBodiesOnLegs: false }))).toBe(true); // legacy routes
     const avoided = buildCircuitScene(crossing);
     expect(crossesGate(avoided)).toBe(false);
+    expect(crossesGate(buildCircuitScene(crossing, undefined, {}))).toBe(false); // the router's own default since 2026-10-31
     expect(sceneFingerprint(avoided)).toBe(sceneFingerprint(buildCircuitScene(crossing)));
   });
 

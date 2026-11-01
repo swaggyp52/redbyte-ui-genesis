@@ -23,6 +23,7 @@ This file owns IDE product debt. The current composition is the P2.6C Studio con
 - 2026-10-25: the Meridian Atlas completion pass filed RB-DEBT-028 (below).
 - 2026-10-28: owner acceptance of 1.0.0-rc.7 fixed RB-DEBT-030 in rc.8 and filed RB-DEBT-032 to RB-DEBT-034 (below; decision document `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md`).
 - 2026-10-30: PR #88's classroom chain (12 stages red since the 2026-10-20 seal) filed RB-DEBT-035 and RB-DEBT-036 (below); the space, status-line and camera fixes are recorded in the V1 contract entry of that date and in `docs/validation/test-debt.md`.
+- 2026-10-31: the schematic wiring check of PR #88 filed RB-DEBT-037 (below).
 
 ## Historical July 2026 stable truths
 
@@ -449,4 +450,15 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Severity: Low (the Review buttons remain reachable by keyboard; part of the column is not drawn)
 - Current evidence (2026-10-30): in Details > Checks the mismatch table's five unbreakable columns need 367px at the 15/16px type scale, wider than the inspector-hosted panel (313-347px at 1093-1440 widths), whose `overflow: hidden` clips the Review column by about 54px at 1093x614, 44px at 1366x768 and 20px at 1440x900 (24px already at a46d7ed01). PR #88 gave the panel one `minmax(0, 1fr)` column, so the repair panel and its actions now fit; the table itself still overflows its cell.
 - Next step: wrap the table in the existing `.ide-table-wrap` horizontal scroller, or tighten its inspector padding, and add the Review column to `ide-verify-postrun-workbench-usability`'s reachable controls.
+- Status: Open
+
+### RB-DEBT-037 - Schematic: a wire can still be drawn through a symbol in its row, and Lab 8's reset wires are not drawn (C)
+
+- Severity: Medium (misleading drawing; the netlist, simulator and HDL are unaffected)
+- Current evidence (2026-10-31, old/new router comparison of PR #88): the orthogonal router draws each wire as an H-V-H run, or H-V-H-V-H for feedback, and only chooses where the vertical lane goes. A horizontal run on a load's own row therefore crosses every symbol on that row. The shipped cases are:
+  - the 4-Bit Ripple Carry Adder: 13 runs through gates, mostly carry wires through the next stage's SUM output and the AND gates;
+  - FullAdderCell: a1 to o1 through a2;
+  - the Lab 8 lock: 4 clock runs through flip-flops.
+  A synthetic 8-stage LFSR draws its clock through every flip-flop in the row. The Lab 8 lock also wires its flip-flops to `RST`, which `DFlipFlop` does not declare, so 8 of its 18 wires cannot be placed and are drawn degenerate. Distinct nets no longer share a line in any shipped drawing (`schematicNetTopology.test.ts`).
+- Next step: route a leg that would cross a body around it with an extra jog, as the feedback detour already does, and assert no body crossings in `schematicNetTopology.test.ts`. Separately, give `DFlipFlop` its reset pin or correct the Lab 8 starter's wiring. Then remove that starter's exception from the test.
 - Status: Open

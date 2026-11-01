@@ -8,6 +8,21 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## PR #88 schematic wiring - legs avoid symbols - 2026-10-31
+
+The owner asked for a bounded check of the 82e2233 router fix on dense, feedback and wide drawings. It compared the 9f7ffe0 and 82e2233 routers on every starter, module and lab starter, plus a synthetic 8-bit ripple adder and an 8-stage LFSR. Wire length, bends, crossings, shared runs, foreign dots, body crossings, detour ratio and time were measured. Findings:
+- 82e2233 never made a drawing worse except for added plain crossings, which is the expected trade for removing overlaps. It cut the counter's worst detour from 24.7x to 1.5x and FullAdderCell's from 15x to 1x, and routing stays under 1.3ms for 89 wires.
+- Its regression test resolved parts without their definitions, so flip-flop and module-instance wires went unchecked. With the real definitions, the 2-Bit Counter's CLK still ran through XOR0 and along its output.
+
+Fix: every caller now uses the leg body-avoidance option the studio scene already used. Only the 2-Bit Counter and FullAdderCell drawings change. On the synthetic adder:
+- shared runs: 112 to 4;
+- body crossings: 124 to 2;
+- dots on a crossing: 19 to 0.
+
+`schematicNetTopology.test.ts` now uses the schematic's part and module definitions and fails on unplaced wires. It fails on the previous default. Remaining limits are filed as RB-DEBT-037. Comparison images: `.redbyte/work/router-compare/compare-*.png` (local, ignored).
+
+Delivery: committed locally; not pushed until the owner authorizes it.
+
 ## PR #88 classroom chain - the circuit gets the room - 2026-10-30
 
 Branch `claude/redbyte-v1-reliability-vszl4j` (PR #88, draft). The branch was pushed for the first

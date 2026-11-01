@@ -49,8 +49,9 @@ export interface RouteOptions {
   readonly grid?: number;
   /**
    * Also count symbol bodies crossed by the horizontal legs (driver to channel, channel to each
-   * load) when choosing a net's vertical channel. Off by default so existing drawings stay
-   * byte-identical; the studio scene opts in.
+   * load) when choosing a net's vertical channel. On by default since 2026-10-31: without it a
+   * driver leg could run through a symbol in its row and along that symbol's output (the 2-Bit
+   * Counter's CLK through XOR0). Pass `false` only to reproduce the legacy routes.
    */
   readonly avoidBodiesOnLegs?: boolean;
 }
@@ -267,7 +268,7 @@ export function routeCircuit(
       const yLo = Math.min(s.y, ...forwardLoads.map((load) => load.point!.y));
       const yHi = Math.max(s.y, ...forwardLoads.map((load) => load.point!.y));
       const channel = chooseChannel(boxes, s.x, nearestX, yLo, yHi, grid,
-        options.avoidBodiesOnLegs ? { source: s, loads: forwardLoads.map((load) => load.point!) } : undefined, claimed);
+        options.avoidBodiesOnLegs !== false ? { source: s, loads: forwardLoads.map((load) => load.point!) } : undefined, claimed);
       claim(channel, yLo, yHi);
       const trunkOwners = forwardLoads.length;
       for (const load of forwardLoads) {
