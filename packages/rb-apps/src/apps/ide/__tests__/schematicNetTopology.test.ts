@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Circuit, Node } from '@redbyte/rb-logic-core';
-import { buildGeometryIndex, routeCircuit } from '@redbyte/rb-logic-view';
+import { inputPinsOf, type Circuit, type Node } from '@redbyte/rb-logic-core';
+import { buildGeometryIndex, findPin, pinWorldPoint, routeCircuit } from '@redbyte/rb-logic-view';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import { IDE_EXAMPLES } from '../examplesCatalog';
+import { LAB_STARTERS } from '../labStarters';
 import { getDesignChipMetadataForNode } from '../registerFamilyChipMetadata';
 
 /**
@@ -17,6 +18,10 @@ import { getDesignChipMetadataForNode } from '../registerFamilyChipMetadata';
  *
  * Parts resolve their pins exactly as SchematicProjection does: without the chip and module
  * definitions, flip-flop and module-instance wires come out degenerate and would go unchecked.
+ *
+ * Every connection must also be drawn, between the two pins it names. Until 2026-11-01 the Lab 8
+ * lock's eight flip-flop resets (a real connection the simulator and the VHDL both honour) were
+ * drawn as dashed stubs into each flip-flop's corner, because the drawing's DFlipFlop had no RST.
  */
 type Point = { x: number; y: number };
 type Segment = { net: string; wire: string; a: Point; b: Point };
@@ -24,17 +29,20 @@ type Segment = { net: string; wire: string; a: Point; b: Point };
 type ModulePorts = { name: string; displayName?: string; ports: Array<{ name: string; direction: string }> };
 type Drawing = { name: string; circuit: Circuit; modules: ModulePorts[] };
 
-const drawings: Drawing[] = IDE_EXAMPLES.flatMap((example) => {
-  const modules = (example.hierarchy?.modules ?? []) as unknown as ModulePorts[];
-  return [
-    { name: example.id, circuit: example.circuit, modules },
-    ...(example.hierarchy?.modules ?? []).map((module) => ({ name: `${example.id}/${module.name}`, circuit: module.circuit, modules })),
-  ];
-});
+const drawings: Drawing[] = [
+  ...IDE_EXAMPLES.flatMap((example) => {
+    const modules = (example.hierarchy?.modules ?? []) as unknown as ModulePorts[];
+    return [
+      { name: example.id, circuit: example.circuit, modules },
+      ...(example.hierarchy?.modules ?? []).map((module) => ({ name: `${example.id}/${module.name}`, circuit: module.circuit, modules })),
+    ];
+  }),
+  ...LAB_STARTERS.map((lab) => ({ name: `lab:${lab.id}`, circuit: lab.example.circuit as Circuit, modules: [] })),
+];
 
-function route({ circuit, modules }: Drawing) {
+function geometryOf({ circuit, modules }: Drawing) {
   const byName = new Map(modules.map((module) => [module.name, module]));
-  const geometry = buildGeometryIndex(circuit.nodes, (type: string, node?: Node) => {
+  return buildGeometryIndex(circuit.nodes, (type: string, node?: Node) => {
     const definitionId = node && typeof node.config?.moduleDefinitionId === 'string' ? node.config.moduleDefinitionId : null;
     const definition = (definitionId ? byName.get(definitionId) : undefined) ?? byName.get(type);
     if (definition) {
@@ -48,19 +56,47 @@ function route({ circuit, modules }: Drawing) {
     }
     return node ? getDesignChipMetadataForNode(node) ?? getDesignChipMetadata(type) : getDesignChipMetadata(type);
   });
-  return routeCircuit(circuit, geometry);
+}
+
+function route(drawing: Drawing) {
+  return routeCircuit(drawing.circuit, geometryOf(drawing));
+}
+
+/**
+ * Connections the drawing does not show between the pins they name: a wire missing from the
+ * routed nets, drawn degenerate, ending anywhere but its two pins, or ending on a pin the
+ * simulator reads as a different input (a port-name alias landing on the wrong pin).
+ */
+function misdrawnConnections(drawing: Drawing): string[] {
+  const geometry = geometryOf(drawing);
+  const wires = new Map(routeCircuit(drawing.circuit, geometry).flatMap((net) => net.wires).map((wire) => [`${wire.fromNodeId}.${wire.fromPort}>${wire.toNodeId}.${wire.toPort}`, wire]));
+  return drawing.circuit.connections.flatMap((connection) => {
+    const { from, to } = connection;
+    if (typeof from === 'string' || typeof to === 'string') return [`${String(connection.id)}: not a canonical { nodeId, portName } connection`];
+    const label = `${from.nodeId}.${from.portName} -> ${to.nodeId}.${to.portName}`;
+    const wire = wires.get(`${from.nodeId}.${from.portName}>${to.nodeId}.${to.portName}`);
+    if (!wire) return [`${label}: not drawn`];
+    if (wire.degenerate) return [`${label}: no pin to draw it to`];
+    const start = pinWorldPoint(geometry.get(from.nodeId), from.portName);
+    const end = pinWorldPoint(geometry.get(to.nodeId), to.portName);
+    const [first, last] = [wire.points[0], wire.points[wire.points.length - 1]];
+    const problems: string[] = [];
+    if (!start || start.pin.direction !== 'out' || start.x !== first.x || start.y !== first.y) problems.push(`${label}: does not start on ${from.portName}`);
+    if (!end || end.pin.direction !== 'in' || end.x !== last.x || end.y !== last.y) problems.push(`${label}: does not end on ${to.portName}`);
+    const target = geometry.get(to.nodeId)!;
+    const reads = inputPinsOf(target.node.type, target.node.config as Record<string, unknown> | undefined);
+    const pin = findPin(target.geometry, to.portName);
+    if (reads && pin && !reads.some((input) => input.names.includes(to.portName) && input.names.includes(pin.id))) {
+      problems.push(`${label}: drawn to ${pin.id}, which the simulator does not read as ${to.portName}`);
+    }
+    return problems;
+  });
 }
 
 function segmentsOf(nets: ReturnType<typeof routeCircuit>): Segment[] {
   return nets.flatMap((net) => net.wires.filter((wire) => !wire.degenerate).flatMap((wire) =>
     wire.points.slice(1).map((b, i) => ({ net: net.netId, wire: wire.wireId, a: wire.points[i], b }))));
 }
-
-/**
- * Wires whose pin the part does not declare, so the router cannot place them. The Lab 8 lock's
- * flip-flops are wired to RST, which DFlipFlop does not expose; that is a separate defect.
- */
-const UNRESOLVED_PINS = new Map([['23_lab8-fsm-lock-starter-basys3', /\.RST$/]]);
 
 const vertical = (s: Segment) => s.a.x === s.b.x && s.a.y !== s.b.y;
 const overlap = (a1: number, a2: number, b1: number, b2: number) =>
@@ -101,14 +137,27 @@ function junctionsOnOtherNets(nets: ReturnType<typeof routeCircuit>, segments: S
 }
 
 describe('schematic net topology of every starter', () => {
-  it.each(drawings)('$name draws every wire, no two nets along one line and no junction on another net', (drawing) => {
+  it.each(drawings)('$name draws every connection between its two pins, no two nets along one line and no junction on another net', (drawing) => {
     const nets = route(drawing);
     const segments = segmentsOf(nets);
-    expect(nets.flatMap((net) => net.wires.filter((wire) => wire.degenerate).map((wire) => wire.wireId))
-      .filter((wireId) => !UNRESOLVED_PINS.has(drawing.name) || !UNRESOLVED_PINS.get(drawing.name)!.test(wireId))).toEqual([]);
+    expect(misdrawnConnections(drawing)).toEqual([]);
     expect(sharedVerticalRuns(segments)).toEqual([]);
     expect(sharedHorizontalRuns(segments)).toEqual([]);
     expect(junctionsOnOtherNets(nets, segments)).toEqual([]);
+  });
+
+  it('draws the Lab 8 lock\'s eight flip-flop resets to their RST pins', () => {
+    const drawing = drawings.find((d) => d.name === '23_lab8-fsm-lock-starter-basys3')!;
+    const geometry = geometryOf(drawing);
+    const resets = route(drawing).flatMap((net) => net.wires).filter((wire) => wire.toPort === 'RST');
+    expect(resets).toHaveLength(8);
+    for (const wire of resets) {
+      const pin = pinWorldPoint(geometry.get(wire.toNodeId), 'RST')!;
+      expect(wire.degenerate).toBe(false);
+      expect(pin.pin.id).toBe('RST');
+      const end = wire.points[wire.points.length - 1];
+      expect({ x: end.x, y: end.y }).toEqual({ x: pin.x, y: pin.y });
+    }
   });
 
   it('keeps the 2-Bit Counter clock off XOR0 and its output', () => {

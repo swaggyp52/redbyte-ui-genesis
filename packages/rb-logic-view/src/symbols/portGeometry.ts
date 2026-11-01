@@ -146,7 +146,7 @@ export function symbolKindForNode(node: Pick<Node, 'type' | 'config'>, metadata?
   }
 }
 
-function inputsOf(node: Pick<Node, 'type'>, metadata?: ChipMetadata): { id: string; name: string }[] {
+function inputsOf(node: Pick<Node, 'type'>, metadata?: ChipMetadata): { id: string; name: string; optional?: boolean }[] {
   if (metadata) return metadata.inputs;
   switch (node.type) {
     case 'AND':
@@ -193,8 +193,8 @@ function isClockPin(id: string): boolean {
 }
 
 /** Vector port display: `D[7:0]` when the metadata carries a bracketed bit set. */
-function collapseVectorPins(ports: { id: string; name: string }[]): { id: string; name: string; width: number }[] {
-  const scalar: { id: string; name: string; width: number }[] = [];
+function collapseVectorPins(ports: { id: string; name: string; optional?: boolean }[]): { id: string; name: string; width: number; optional?: boolean }[] {
+  const scalar: { id: string; name: string; width: number; optional?: boolean }[] = [];
   const vectors = new Map<string, { bits: number[]; first: number }>();
   ports.forEach((port, index) => {
     const match = /^([A-Za-z_][A-Za-z0-9_]*)\[(\d+)\]$/.exec(port.id);
@@ -233,11 +233,14 @@ export function blockBodySize(input: {
   typeLabel: string;
   inputPortNames: readonly string[];
   outputPortNames: readonly string[];
+  /** Further pin names that widen the body but add no rows (optional inputs drawn below it). */
+  widthPortNames?: readonly string[];
 }): { width: number; height: number; headerH: number } {
   const rows = Math.max(1, input.inputPortNames.length, input.outputPortNames.length);
   const longestPortName = Math.max(
     input.inputPortNames.reduce((a, name) => Math.max(a, name.length), 0),
-    input.outputPortNames.reduce((a, name) => Math.max(a, name.length), 0)
+    input.outputPortNames.reduce((a, name) => Math.max(a, name.length), 0),
+    (input.widthPortNames ?? []).reduce((a, name) => Math.max(a, name.length), 0)
   );
   const width =
     GRID *
@@ -338,21 +341,28 @@ export function resolvePortGeometry(node: Node, metadata?: ChipMetadata): Symbol
     case 'module':
     case 'block':
     default: {
-      // Rectangular block with named pins inside; header row for the identity.
+      // Rectangular block with named pins inside; header row for the identity. Optional inputs
+      // (an asynchronous reset or enable) take rows below the body the other pins size, which
+      // keeps the origin and every other pin where a drawing without them had it.
+      const required = inputs.filter((port) => !port.optional);
+      const optional = inputs.filter((port) => port.optional);
       const { width: bodyW, height: bodyH, headerH } = blockBodySize({
         kind,
         instanceName,
         typeLabel,
-        inputPortNames: inputs.map((port) => port.name),
+        inputPortNames: required.map((port) => port.name),
         outputPortNames: outputs.map((port) => port.name),
+        widthPortNames: optional.map((port) => port.name),
       });
       const minX = -bodyW / 2;
       const maxX = bodyW / 2;
       const minY = -bodyH / 2;
-      const maxY = bodyH / 2;
+      const maxY = bodyH / 2 + optional.length * PIN_PITCH;
       const rowY = (index: number) => minY + headerH + PIN_PITCH * (index + 0.5);
-      inputs.forEach((port, index) => {
-        push({ id: port.id, name: port.name, direction: 'in', side: 'left', x: minX - STUB, y: rowY(index), width: port.width, clock: isClockPin(port.id), invert: false });
+      const requiredRows = Math.max(1, required.length, outputs.length);
+      [...required, ...optional].forEach((port, index) => {
+        const row = index < required.length ? index : requiredRows + index - required.length;
+        push({ id: port.id, name: port.name, direction: 'in', side: 'left', x: minX - STUB, y: rowY(row), width: port.width, clock: isClockPin(port.id), invert: false });
       });
       outputs.forEach((port, index) => {
         push({ id: port.id, name: port.name, direction: 'out', side: 'right', x: maxX + STUB, y: rowY(index), width: port.width, clock: false, invert: /_inv$|^QN$/i.test(port.id) });

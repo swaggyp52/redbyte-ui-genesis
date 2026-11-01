@@ -23,7 +23,7 @@ This file owns IDE product debt. The current composition is the P2.6C Studio con
 - 2026-10-25: the Meridian Atlas completion pass filed RB-DEBT-028 (below).
 - 2026-10-28: owner acceptance of 1.0.0-rc.7 fixed RB-DEBT-030 in rc.8 and filed RB-DEBT-032 to RB-DEBT-034 (below; decision document `docs/validation/v1-owner-acceptance-dossier-2026-10-28.md`).
 - 2026-10-30: PR #88's classroom chain (12 stages red since the 2026-10-20 seal) filed RB-DEBT-035 and RB-DEBT-036 (below); the space, status-line and camera fixes are recorded in the V1 contract entry of that date and in `docs/validation/test-debt.md`.
-- 2026-10-31: the schematic wiring check of PR #88 filed RB-DEBT-037 (below).
+- 2026-10-31: the schematic wiring check of PR #88 filed RB-DEBT-037 (below). Its Lab 8 reset-pin part was resolved on 2026-11-01.
 
 ## Historical July 2026 stable truths
 
@@ -452,13 +452,16 @@ Filed from the Meridian architecture investigation and the P1 studio slice (loca
 - Next step: wrap the table in the existing `.ide-table-wrap` horizontal scroller, or tighten its inspector padding, and add the Review column to `ide-verify-postrun-workbench-usability`'s reachable controls.
 - Status: Open
 
-### RB-DEBT-037 - Schematic: a wire can still be drawn through a symbol in its row, and Lab 8's reset wires are not drawn (C)
+### RB-DEBT-037 - Schematic: a wire can still be drawn through a symbol in its row (C)
 
 - Severity: Medium (misleading drawing; the netlist, simulator and HDL are unaffected)
 - Current evidence (2026-10-31, old/new router comparison of PR #88): the orthogonal router draws each wire as an H-V-H run, or H-V-H-V-H for feedback, and only chooses where the vertical lane goes. A horizontal run on a load's own row therefore crosses every symbol on that row. The shipped cases are:
   - the 4-Bit Ripple Carry Adder: 13 runs through gates, mostly carry wires through the next stage's SUM output and the AND gates;
   - FullAdderCell: a1 to o1 through a2;
   - the Lab 8 lock: 4 clock runs through flip-flops.
-  A synthetic 8-stage LFSR draws its clock through every flip-flop in the row. The Lab 8 lock also wires its flip-flops to `RST`, which `DFlipFlop` does not declare, so 8 of its 18 wires cannot be placed and are drawn degenerate. Distinct nets no longer share a line in any shipped drawing (`schematicNetTopology.test.ts`).
-- Next step: route a leg that would cross a body around it with an extra jog, as the feedback detour already does, and assert no body crossings in `schematicNetTopology.test.ts`. Separately, give `DFlipFlop` its reset pin or correct the Lab 8 starter's wiring. Then remove that starter's exception from the test.
-- Status: Open
+  A synthetic 8-stage LFSR draws its clock through every flip-flop in the row. Distinct nets no longer share a line in any shipped drawing (`schematicNetTopology.test.ts`). Two cases can read as a false attachment and need the routing fix:
+  - FullAdderCell: a1's output jogs at a2's left edge and runs through a2 to o1, so it can look like an input to a2;
+  - 2-Bit Counter: CLK's trunk runs down the column where the XOR inputs start, and its horizontal run stops at XOR0's back arc.
+- Resolved 2026-11-01: Lab 8's eight reset wires. The starter was valid: the simulator's `DFlipFlop` reads RST and EN (`inputPinsOf`), and the exported VHDL gives each flip-flop an asynchronous reset. The drawing's `DFlipFlop` declared only D and CLK. It now declares RST and EN as optional inputs, drawn below D and CLK so that no existing wire moves. `designChipMetadata.pinContract.test.ts` holds every simulated part's drawn pins to what the simulator reads. The topology test now fails on any connection not drawn between its two pins, and it has no exception.
+- Next step: route a leg that would cross a body around it with an extra jog, as the feedback detour already does, and assert no body crossings in `schematicNetTopology.test.ts`.
+- Status: Open (routing only)

@@ -30,7 +30,12 @@ function estimateLabelWidth(label: string, fontSize: number): number {
 
 export interface ChipMetadata {
   name: string;
-  inputs: Array<{ id: string; name: string }>;
+  /**
+   * `optional`: an input the part works without (an asynchronous reset or enable). A block symbol
+   * draws optional inputs in rows below the others, so declaring one never moves a pin an
+   * existing drawing already wires.
+   */
+  inputs: Array<{ id: string; name: string; optional?: boolean }>;
   outputs: Array<{ id: string; name: string }>;
   color?: string;
   layer?: number;
