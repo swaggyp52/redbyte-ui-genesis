@@ -98,6 +98,23 @@ function segmentsOf(nets: ReturnType<typeof routeCircuit>): Segment[] {
     wire.points.slice(1).map((b, i) => ({ net: net.netId, wire: wire.wireId, a: wire.points[i], b }))));
 }
 
+/** Pairs of symbols whose bodies overlap: the lower one hides the other's pins and the wires on them. */
+function overlappingSymbols(drawing: Drawing): string[] {
+  const boxes = [...geometryOf(drawing).values()].map((entry) => ({
+    id: entry.node.id,
+    minX: entry.x + entry.geometry.body.minX, maxX: entry.x + entry.geometry.body.maxX,
+    minY: entry.y + entry.geometry.body.minY, maxY: entry.y + entry.geometry.body.maxY,
+  }));
+  const found: string[] = [];
+  for (let i = 0; i < boxes.length; i += 1) for (let j = i + 1; j < boxes.length; j += 1) {
+    const [p, q] = [boxes[i], boxes[j]];
+    const dx = Math.min(p.maxX, q.maxX) - Math.max(p.minX, q.minX);
+    const dy = Math.min(p.maxY, q.maxY) - Math.max(p.minY, q.minY);
+    if (dx > 0 && dy > 0) found.push(`${p.id} and ${q.id} overlap by ${dx}x${dy}px`);
+  }
+  return found;
+}
+
 const vertical = (s: Segment) => s.a.x === s.b.x && s.a.y !== s.b.y;
 const overlap = (a1: number, a2: number, b1: number, b2: number) =>
   Math.min(Math.max(a1, a2), Math.max(b1, b2)) - Math.max(Math.min(a1, a2), Math.min(b1, b2));
@@ -141,6 +158,7 @@ describe('schematic net topology of every starter', () => {
     const nets = route(drawing);
     const segments = segmentsOf(nets);
     expect(misdrawnConnections(drawing)).toEqual([]);
+    expect(overlappingSymbols(drawing)).toEqual([]);
     expect(sharedVerticalRuns(segments)).toEqual([]);
     expect(sharedHorizontalRuns(segments)).toEqual([]);
     expect(junctionsOnOtherNets(nets, segments)).toEqual([]);

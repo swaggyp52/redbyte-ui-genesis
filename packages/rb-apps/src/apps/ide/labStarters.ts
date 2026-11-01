@@ -421,22 +421,23 @@ export const LAB_STARTERS: LabStarter[] = [
           { id: 'sw_enter',    type: 'INPUT',     x: 80,   y: 320, label: 'ENTER (SW5)',      config: {}, state: {} },
           { id: 'sw_reset',    type: 'INPUT',     x: 80,   y: 400, label: 'RESET (SW4)',      config: {}, state: {} },
 
+          // Flip-flops are 176px apart: the symbol is 160px tall with its RST and EN rows.
           { id: 'cap_p0_ff',   type: 'DFlipFlop', x: 320,  y: 120, label: 'CAP p0',           config: {}, state: {} },
-          { id: 'cap_p1_ff',   type: 'DFlipFlop', x: 320,  y: 220, label: 'CAP p1',           config: {}, state: {} },
-          { id: 'pos0_ff',     type: 'DFlipFlop', x: 320,  y: 360, label: 'POS0',             config: {}, state: {} },
-          { id: 'pos1_ff',     type: 'DFlipFlop', x: 320,  y: 460, label: 'POS1',             config: {}, state: {} },
+          { id: 'cap_p1_ff',   type: 'DFlipFlop', x: 320,  y: 296, label: 'CAP p1',           config: {}, state: {} },
+          { id: 'pos0_ff',     type: 'DFlipFlop', x: 320,  y: 504, label: 'POS0',             config: {}, state: {} },
+          { id: 'pos1_ff',     type: 'DFlipFlop', x: 320,  y: 680, label: 'POS1',             config: {}, state: {} },
 
-          { id: 'xor_valid',   type: 'XOR',       x: 520,  y: 170, label: '010 / 100 XOR',    config: {}, state: {} },
-          { id: 'not_last',    type: 'NOT',       x: 520,  y: 290, label: 'Last bit = 0',     config: {}, state: {} },
-          { id: 'valid_group', type: 'AND',       x: 520,  y: 410, label: 'GROUP VALID',      config: {}, state: {} },
+          { id: 'xor_valid',   type: 'XOR',       x: 520,  y: 208, label: '010 / 100 XOR',    config: {}, state: {} },
+          { id: 'not_last',    type: 'NOT',       x: 520,  y: 592, label: 'Last bit = 0',     config: {}, state: {} },
+          { id: 'valid_group', type: 'AND',       x: 520,  y: 400, label: 'GROUP VALID',      config: {}, state: {} },
 
           { id: 'm1_ff',       type: 'DFlipFlop', x: 760,  y: 110, label: 'M1',               config: {}, state: {} },
-          { id: 'm2_ff',       type: 'DFlipFlop', x: 760,  y: 210, label: 'M2',               config: {}, state: {} },
-          { id: 'm3_ff',       type: 'DFlipFlop', x: 760,  y: 310, label: 'M3',               config: {}, state: {} },
-          { id: 'm4_ff',       type: 'DFlipFlop', x: 760,  y: 410, label: 'M4',               config: {}, state: {} },
+          { id: 'm2_ff',       type: 'DFlipFlop', x: 760,  y: 286, label: 'M2',               config: {}, state: {} },
+          { id: 'm3_ff',       type: 'DFlipFlop', x: 760,  y: 462, label: 'M3',               config: {}, state: {} },
+          { id: 'm4_ff',       type: 'DFlipFlop', x: 760,  y: 638, label: 'M4',               config: {}, state: {} },
 
-          { id: 'lock_drive',  type: 'OR',        x: 960,  y: 260, label: 'OPEN / LOCK',      config: {}, state: {} },
-          { id: 'led_lock',    type: 'OUTPUT',    x: 1140, y: 260, label: 'LOCK (LED1)',      config: {}, state: {} },
+          { id: 'lock_drive',  type: 'OR',        x: 960,  y: 374, label: 'OPEN / LOCK',      config: {}, state: {} },
+          { id: 'led_lock',    type: 'OUTPUT',    x: 1140, y: 374, label: 'LOCK (LED1)',      config: {}, state: {} },
         ],
         connections: [
           { from: { nodeId: 'sw_enter', portName: 'out' }, to: { nodeId: 'cap_p0_ff', portName: 'CLK' } },
