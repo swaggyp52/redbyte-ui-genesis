@@ -6375,6 +6375,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         >
                           Show at cursor
                         </IdeButton>
+                        {lastRun && onOpenSignalJourney && (
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() => {
+                              applyFailureSelection(selectedFailureCase);
+                              onOpenSignalJourney(selectedFailureCase.signal, selectedFailureCase.tick);
+                            }}
+                            testId="ide-verify-explainer-trace"
+                          >
+                            Trace cause
+                          </IdeButton>
+                        )}
                         <IdeButton
                           tone="secondary"
                           onClick={focusMismatchLanes}
@@ -6445,17 +6457,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             <td><code className="ide-verify-mismatch-actual--fail">{row.actual}</code></td>
                           {onFixPath && (
                               <td>
-                                <button
-                                  type="button"
-                                  className="ide-verify-mismatch-fix-btn"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    reviewFailureInVerify(row);
-                                  }}
-                                  title={`Review ${getFailureSignalLabel(row)} in Verify`}
-                                >
-                                  Review
-                                </button>
+                                {lastRun && onOpenSignalJourney ? (
+                                  <button
+                                    type="button"
+                                    className="ide-verify-mismatch-fix-btn"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      applyFailureSelection(row);
+                                      onOpenSignalJourney(row.signal, row.tick);
+                                    }}
+                                    title={`Trace what drove ${getFailureSignalLabel(row)} at t${row.tick} in Signal Journey`}
+                                    data-testid={`ide-verify-mismatch-trace-${toTestId(`${row.signal}-${row.tick}`)}`}
+                                  >
+                                    Trace cause
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="ide-verify-mismatch-fix-btn"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      reviewFailureInVerify(row);
+                                    }}
+                                    title={`Review ${getFailureSignalLabel(row)} in Verify`}
+                                  >
+                                    Review
+                                  </button>
+                                )}
                               </td>
                             )}
                           </tr>

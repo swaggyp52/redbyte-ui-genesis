@@ -9,7 +9,7 @@ import {
   type VerifyRunLedgerEntry,
   type VerifyRunMeta,
 } from '../projectRuntime';
-import { deriveRunScope, restampRunEvidenceProject, scopeRunEvidenceToProject } from '../runScope';
+import { deriveRecordingScope, deriveRunScope, restampRunEvidenceProject, scopeRunEvidenceToProject } from '../runScope';
 import { buildVerifyCircuitEvidenceHash, buildVerifyMappingEvidenceHash, toProjectIoMapping } from '../verifyProjectHash';
 import { computeScenarioContentHash } from '../verifyScenario';
 import type { IoMapping } from '@redbyte/rb-utils';
@@ -164,6 +164,39 @@ describe('runScope — currency', () => {
     expect(scope.kind).toBe('current');
     expect(scope.reasons).toEqual([]);
     expect(scope.detail).toBeNull();
+  });
+
+  describe('a retained recording that is not the latest (Signal Journey playback)', () => {
+    const older = { ...currentRun, runId: 'run-older' };
+    const recording = (overrides: Partial<Parameters<typeof deriveRecordingScope>[0]>) =>
+      deriveRecordingScope({ ...base, run: older, latestRunId: 'run-latest', ...overrides });
+
+    it('takes the latest run\'s own verdict when it is the latest', () => {
+      expect(deriveRecordingScope({ ...base, run: older, latestRunId: 'run-older' })).toEqual(deriveRunScope({ ...base, run: older }));
+    });
+
+    it('is current only when its own ledger hash is the live project hash', () => {
+      expect(recording({ latestVerifyLedgerEntry: makeEntry({ runId: 'run-older', projectHash: 'p-current' }) }).kind).toBe('current');
+    });
+
+    it('is not made current by a clean dirty flag or a missing ledger entry, which describe the latest run', () => {
+      const scope = recording({ latestVerifyLedgerEntry: null, simulationCircuit: circuitB });
+      expect(scope.kind).toBe('stale');
+      expect(scope.reasons).toEqual(['design']);
+    });
+
+    it('names what changed when its ledger hash differs', () => {
+      const scope = recording({
+        latestVerifyLedgerEntry: makeEntry({ runId: 'run-older', projectHash: 'p-older' }),
+        simulationCircuit: circuitB,
+      });
+      expect(scope.kind).toBe('stale');
+      expect(scope.detail).toBe('The design changed after this run.');
+    });
+
+    it('stays foreign when another project produced it', () => {
+      expect(recording({ run: { ...older, projectId: 'rb-b' } }).kind).toBe('foreign');
+    });
   });
 
   it('names the design when the circuit changed', () => {

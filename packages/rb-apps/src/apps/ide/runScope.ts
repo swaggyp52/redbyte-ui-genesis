@@ -21,6 +21,7 @@ import type { HardwareMappingDocumentV2, IoMapping } from '@redbyte/rb-utils';
 import { resolveIoMappingFromProjectFields } from '@redbyte/rb-utils';
 import type { ProjectIoRow, RuntimeVerifyRun, VerifyRunLedgerEntry } from './projectRuntime';
 import { deriveVerifyCurrent } from './projectWorkflowAuthority';
+import { getRuntimeVerifyRunId } from './runArchive';
 import { computeScenarioContentHash, type VerifyScenario } from './verifyScenario';
 import {
   buildVerifyCircuitEvidenceHash,
@@ -54,6 +55,18 @@ export interface DeriveRunScopeInput {
   readonly dirtySinceVerify: boolean;
   readonly latestVerifyLedgerEntry?: Pick<VerifyRunLedgerEntry, 'projectHash'> | null;
   readonly currentVerifyProjectHash?: string | null;
+}
+
+/**
+ * The pin mapping the project uses now: the V2 hardware mapping when it has entries, else the
+ * IO rows. The same resolution the run's mapping hash is compared against.
+ */
+export function liveIoMapping(
+  projectIoRows: readonly ProjectIoRow[],
+  hardwareMappingV2?: HardwareMappingDocumentV2 | null,
+): IoMapping {
+  const ioMapping = toProjectIoMapping([...projectIoRows]) as IoMapping;
+  return resolveIoMappingFromProjectFields({ ioMapping, hardwareMappingV2: hardwareMappingV2 ?? undefined }) ?? ioMapping;
 }
 
 const NONE: RunScope = { kind: 'none', run: null, reasons: [], detail: null };
@@ -106,12 +119,7 @@ export function deriveRunScope(input: DeriveRunScopeInput): RunScope {
   }
 
   if (hasHash(run.mappingEvidenceHash)) {
-    const ioMapping = toProjectIoMapping([...input.projectIoRows]) as IoMapping;
-    const liveMapping =
-      resolveIoMappingFromProjectFields({
-        ioMapping,
-        hardwareMappingV2: input.hardwareMappingV2 ?? undefined,
-      }) ?? ioMapping;
+    const liveMapping = liveIoMapping(input.projectIoRows, input.hardwareMappingV2);
     if (buildVerifyMappingEvidenceHash(liveMapping) !== run.mappingEvidenceHash) reasons.push('mapping');
   }
 
@@ -127,6 +135,30 @@ export function deriveRunScope(input: DeriveRunScopeInput): RunScope {
 
   if (reasons.length === 0) reasons.push('edited');
   return { kind: 'stale', run, reasons, detail: describeReasons(reasons, scenarioMissing) };
+}
+
+/**
+ * Scope for any retained recording, not only the latest one: what a recording a student
+ * replays (Signal Journey, an archived run) may claim about the design being edited.
+ *
+ * The latest run takes the workflow authority's verdict unchanged. An older recording is
+ * current only when its ledger entry's project hash equals the live one: the dirty flag and a
+ * missing ledger entry describe the latest run, so they must not make an older recording look
+ * current. When it is not current, the reasons are the same input-by-input comparison
+ * deriveRunScope makes.
+ */
+export function deriveRecordingScope(
+  input: DeriveRunScopeInput & { readonly latestRunId: string | null },
+): RunScope {
+  const run = input.run ?? null;
+  if (!run) return NONE;
+  if (getRuntimeVerifyRunId(run) === input.latestRunId) return deriveRunScope(input);
+  const ledgerHash = input.latestVerifyLedgerEntry?.projectHash;
+  if (hasHash(ledgerHash) && hasHash(input.currentVerifyProjectHash) && ledgerHash === input.currentVerifyProjectHash) {
+    const owned = deriveRunScope(input);
+    return owned.kind === 'foreign' ? owned : { kind: 'current', run, reasons: [], detail: null };
+  }
+  return deriveRunScope({ ...input, dirtySinceVerify: true });
 }
 
 export interface ScopedRunEvidence {
