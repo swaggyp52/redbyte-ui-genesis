@@ -115,6 +115,30 @@ function overlappingSymbols(drawing: Drawing): string[] {
   return found;
 }
 
+/**
+ * Runs that read as wired to a part they do not connect to: a horizontal run through another
+ * symbol's body at the height of one of its pins (until 2026-11-01 FullAdderCell's a1 output
+ * crossed a2 on a2's input row, and the 4-bit adder's carries crossed the next SUM output).
+ */
+function falseAttachments(drawing: Drawing): string[] {
+  const geometry = geometryOf(drawing);
+  const symbols = [...geometry.values()].map((entry) => ({
+    id: entry.node.id,
+    minX: entry.x + entry.geometry.body.minX, maxX: entry.x + entry.geometry.body.maxX,
+    minY: entry.y + entry.geometry.body.minY, maxY: entry.y + entry.geometry.body.maxY,
+    pinRows: entry.geometry.pins.map((pin) => ({ id: pin.id, y: entry.y + pin.y })),
+  }));
+  return routeCircuit(drawing.circuit, geometry).flatMap((net) => net.wires.filter((wire) => !wire.degenerate).flatMap((wire) =>
+    wire.points.slice(1).flatMap((b, i) => {
+      const a = wire.points[i];
+      if (a.y !== b.y) return [];
+      return symbols.filter((symbol) => symbol.id !== wire.fromNodeId && symbol.id !== wire.toNodeId
+        && a.y > symbol.minY && a.y < symbol.maxY && Math.max(a.x, b.x) > symbol.minX && Math.min(a.x, b.x) < symbol.maxX)
+        .flatMap((symbol) => symbol.pinRows.filter((pin) => Math.abs(pin.y - a.y) <= 4)
+          .map((pin) => `${wire.wireId} crosses ${symbol.id} on its ${pin.id} row`));
+    })));
+}
+
 const vertical = (s: Segment) => s.a.x === s.b.x && s.a.y !== s.b.y;
 const overlap = (a1: number, a2: number, b1: number, b2: number) =>
   Math.min(Math.max(a1, a2), Math.max(b1, b2)) - Math.max(Math.min(a1, a2), Math.min(b1, b2));
@@ -159,6 +183,7 @@ describe('schematic net topology of every starter', () => {
     const segments = segmentsOf(nets);
     expect(misdrawnConnections(drawing)).toEqual([]);
     expect(overlappingSymbols(drawing)).toEqual([]);
+    expect(falseAttachments(drawing)).toEqual([]);
     expect(sharedVerticalRuns(segments)).toEqual([]);
     expect(sharedHorizontalRuns(segments)).toEqual([]);
     expect(junctionsOnOtherNets(nets, segments)).toEqual([]);
