@@ -110,7 +110,13 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     assert(broken.status === 'fail', 'Removing a2 → o1 must break the carry chain');
     const failing = broken.report.rows.find((row) => row.tick === CARRY_TICK && row.signal === carrySignal && row.expected !== row.actual);
     assert(failing && String(failing.expected) === '1' && String(failing.actual) === '0', `CARRY at t${CARRY_TICK} must now be observed 0 against expected 1: ${JSON.stringify(broken.report.rows.filter((row) => row.tick === CARRY_TICK))} carryRow=${carryRow}`);
-    await traceCause(page, failing);
+    // A student lands on the selected-result bar; selecting CARRY's failing case puts it there.
+    await page.getByTestId(`ide-case-lab-obs-${CARRY_TICK}-${carryRow}`).click();
+    const result = page.getByTestId('ide-verify-selected-result');
+    assert(await result.getAttribute('data-tick') === String(CARRY_TICK) && await result.getAttribute('data-mismatch') === 'true',
+      'Selecting CARRY at the failing tick must show that mismatch as the selected result');
+    await capture(page, receipt, '04b-failing-check');
+    await result.getByTestId('ide-selected-result-trace').click();
     await journey.waitFor({ state: 'visible' });
     assert(await journey.getAttribute('data-node-id') === 'carry-out' && await journey.getAttribute('data-tick') === String(CARRY_TICK)
       && await journey.getAttribute('data-run-id') === broken.runId, 'Trace cause must open the failing signal at the failing tick of the new recording');

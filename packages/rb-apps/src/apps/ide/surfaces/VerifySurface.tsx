@@ -6792,6 +6792,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     recorded={Boolean(resultSample && selectedSignal && resultSample.signals[selectedSignal] != null)} inputs={resultInputs} mismatch={Boolean(resultFailure)} navigator={failureNavigator}
     onInspect={lastRun ? inspectCircuit ? () => setInspectCircuit(false) : openCircuitInvestigation : undefined} inspecting={inspectCircuit}
     onEditDesign={lastRun && (onEditCurrentDesign || onGoToDesign) ? handleEditCurrentDesign : undefined}
+    onTraceCause={lastRun && onOpenSignalJourney && resultFailure ? () => onOpenSignalJourney(selectedSignal, selectedTick) : undefined}
     draftExpected={caseLabFocusFieldId ? selectedDraftCase?.expected?.[caseLabFocusFieldId] : undefined}
     onSetExpected={!isWrongScenario && onVectorsChange && caseLabFocusFieldId && selectedDraftCase && selectedTick != null
       ? value => handleCaseSetExpected(selectedTick, caseLabFocusFieldId, value) : undefined}
