@@ -2,7 +2,7 @@
 
 // The Signal Journey acceptance demonstration, through visible controls only:
 //   1. open the hierarchical 4-bit adder and record its scenario;
-//   2. select CARRY at the tick where it rises and follow it;
+//   2. select CARRY in the case where it is 1 (15 + 1) and follow it;
 //   3. follow its driver into the FullAdderCell instance and see the waveform transition,
 //      generated HDL and board mapping for that same object;
 //   4. introduce a mistake in the module, run, and trace the failing check to its cause;
@@ -18,7 +18,7 @@ const OUT = path.resolve(process.env.RB_JOURNEY_ACCEPTANCE_OUT ?? '.redbyte/sign
 assert(process.env.RB_GATE_BASE_URL, 'Set RB_GATE_BASE_URL to the candidate server for this external-server proof');
 await mkdir(OUT, { recursive: true });
 
-const CARRY_TICK = 3; // 15 + 1: every stage carries, so CARRY rises from 0 at t2 to 1 at t3.
+const CARRY_TICK = 3; // Case 4, 15 + 1: every stage carries, so CARRY is 1.
 
 await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to cause to fix', async ({ page, baseUrl }) => {
   const receipt = { baseUrl, node: process.version, startedAt: new Date().toISOString(), steps: [], captures: [], pageErrors: [] };
@@ -48,7 +48,7 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     receipt.steps.push({ step: 'recorded the starter scenario', runId: first.runId });
     await capture(page, receipt, '01-recorded');
 
-    stage = '2 select CARRY where it rises and follow it';
+    stage = '2 select CARRY in case 4 and follow it';
     await page.getByTestId(`ide-case-lab-obs-${CARRY_TICK}-${carryRow}`).click();
     assert(await page.getByTestId('ide-verify-selected-result').getAttribute('data-tick') === String(CARRY_TICK), 'Selecting CARRY must select its tick');
     await page.getByTestId('ide-follow-signal').click();
@@ -57,13 +57,15 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
       && await journey.getAttribute('data-run-id') === first.runId, 'The journey must open on CARRY at the selected tick of this recording');
     assert(await journey.getByTestId('ide-journey-currency').getAttribute('data-currency') === 'current', 'A fresh recording of the open design is current');
     const transition = journey.getByTestId('ide-journey-transition');
-    assert(await transition.getAttribute('data-value') === '1' && await transition.getAttribute('data-since') === String(CARRY_TICK)
-      && /0\s*→\s*1/.test(await transition.innerText()), `CARRY must rise 0 → 1 at t${CARRY_TICK}: ${await transition.innerText()}`);
+    // A combinational recording's ticks are independent cases: the journey must not present
+    // CARRY's value as a change over time.
+    assert(await transition.getAttribute('data-value') === '1' && /in case 4 \(t3\); cases are independent/.test(await transition.innerText()),
+      `CARRY must read 1 in case 4 (t${CARRY_TICK}), as an independent case: ${await transition.innerText()}`);
     const checks = journey.getByTestId('ide-journey-checks');
     assert(Number(await checks.getAttribute('data-checks')) === carryChecks.length && await checks.getAttribute('data-failed') === '0',
       `Every recorded CARRY check must be counted and match: ${await checks.innerText()}`);
     receipt.steps.push({ step: 'followed CARRY', transition: await transition.innerText(), checks: await checks.innerText() });
-    await capture(page, receipt, '02-carry-rises');
+    await capture(page, receipt, '02-carry-case-4');
 
     stage = '3 follow the driver into the module and across lenses';
     await journey.locator('.rb-journey-connections button').first().click();
@@ -209,24 +211,11 @@ async function deleteWire(page, wireId) {
   await page.keyboard.press('Delete');
   await page.waitForFunction((id) => document.querySelector(`[data-wire-id="${id}"]`) === null, wireId, { timeout: 4000 });
 }
-async function traceCause(page, failing) {
-  const explainer = page.getByTestId('ide-verify-explainer-trace');
-  if (await explainer.isVisible().catch(() => false)) { await explainer.click(); return; }
-  const id = `${failing.signal}-${failing.tick}`.replace(/[^a-zA-Z0-9_-]/g, '-');
-  const row = page.locator(`[data-testid^="ide-verify-mismatch-trace-"][data-testid$="${failing.tick}"]`).first();
-  if (!(await row.isVisible().catch(() => false))) {
-    const tab = page.getByRole('tab', { name: /Mismatches|Details/ }).first();
-    if (await tab.isVisible().catch(() => false)) await tab.click();
-  }
-  const exact = page.getByTestId(`ide-verify-mismatch-trace-${id}`);
-  await ((await exact.isVisible().catch(() => false)) ? exact : row).click();
-}
 async function selectRecording(page, run) {
+  // The "Recorded run" select lives in the run details disclosure; open it when it is closed.
   const history = page.getByRole('combobox', { name: 'Recorded run', exact: true });
-  if (await history.isVisible().catch(() => false)) { await history.selectOption(run.runId); return; }
-  const recording = page.getByRole('button', { name: `Recording ${run.sequence ?? 1}`, exact: true });
-  if (!(await recording.isVisible().catch(() => false))) await page.getByTestId('ide-run-details').locator('summary').click();
-  await recording.click();
+  if (!(await history.isVisible().catch(() => false))) await page.getByTestId('ide-run-details').locator('summary').click();
+  await history.selectOption(run.runId);
 }
 async function capture(page, receipt, name) {
   const viewport = page.viewportSize();

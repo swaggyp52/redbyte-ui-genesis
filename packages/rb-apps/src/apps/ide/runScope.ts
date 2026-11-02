@@ -144,8 +144,9 @@ export function deriveRunScope(input: DeriveRunScopeInput): RunScope {
  * The latest run takes the workflow authority's verdict unchanged. An older recording is
  * current only when its ledger entry's project hash equals the live one: the dirty flag and a
  * missing ledger entry describe the latest run, so they must not make an older recording look
- * current. When it is not current, the reasons are the same input-by-input comparison
- * deriveRunScope makes.
+ * current. An older recording whose stamped design, mapping and scenario all equal the project's
+ * now is also current, even when another scenario is active. Otherwise the reasons are the same
+ * input-by-input comparison deriveRunScope makes.
  */
 export function deriveRecordingScope(
   input: DeriveRunScopeInput & { readonly latestRunId: string | null },
@@ -158,7 +159,16 @@ export function deriveRecordingScope(
     const owned = deriveRunScope(input);
     return owned.kind === 'foreign' ? owned : { kind: 'current', run, reasons: [], detail: null };
   }
-  return deriveRunScope({ ...input, dirtySinceVerify: true });
+  const compared = deriveRunScope({ ...input, dirtySinceVerify: true });
+  // The project hash is built from the active scenario, so a recording of another scenario never
+  // matches it. When every input the run stamped (design, pin mapping, scenario content) compares
+  // equal to the project now, the recording describes the current design whatever is active.
+  const stampedAll = hasHash(run.evidence?.circuitHash) && !!input.simulationCircuit
+    && hasHash(run.mappingEvidenceHash) && hasHash(run.scenarioContentHash);
+  if (compared.kind === 'stale' && stampedAll && compared.reasons.length === 1 && compared.reasons[0] === 'edited') {
+    return { kind: 'current', run, reasons: [], detail: null };
+  }
+  return compared;
 }
 
 export interface ScopedRunEvidence {

@@ -14,7 +14,9 @@ Each image shows the same steps on two builds at 1440x900. On the left is PR #88
 
 What each image shows:
 - `1-carry-t3-before-after.png`: the evidence line is new. It says the recording is current for
-  the design being edited, that CARRY went 0 -> 1 at t3, and that 6 checks on CARRY all match.
+  the design being edited, the value of CARRY in this case, and that 6 checks on CARRY all match.
+  The capture (c3561b7) reads "0 -> 1 at t3"; after the independent review a combinational
+  recording says "1 in case 4 (t3); cases are independent" instead, as its ticks are separate cases.
 - `2-board-before-after.png`: the board lens sets the recorded LD4 · W18 against the live mapping.
 - `3-failing-result-before-after.png`: Simulate's selected failing result now offers Trace cause.
 - `4-cause-o1-before-after.png`: the cause at o1 in u_fa3.

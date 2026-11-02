@@ -113,7 +113,9 @@ adds no state:
   `deriveRunScope` does for Simulate. A historical recording says its values are what that
   recording observed and that Run records the current design again.
 - **The value's change:** `journeyTransition` reports the selected signal's value and the last
-  recorded sample where it changed, for example CARRY 0 → 1 at t3. Nothing is interpolated.
+  recorded sample where it changed. Nothing is interpolated. A combinational recording's ticks are
+  independent cases, so there it gives the value in its case (CARRY 1 in case 4, t3) and says the
+  cases are independent rather than presenting a change over time.
 - **The signal's checks:** `journeyChecks` counts the recording's authored checks on this
   signal and names the first mismatch with its expected and observed values. The case table
   uses the same function.
@@ -130,7 +132,7 @@ boundary. A failed check leads to its cause:
 Acceptance gate: `scripts/gates/ide-signal-journey-acceptance.mjs`. It works on the
 hierarchical adder:
 1. Record the scenario.
-2. Follow CARRY rising at t3 into o1 of `u_fa3` and through its HDL and LD4.
+2. Follow CARRY (1 in case 4, t3: 15 + 1) into o1 of `u_fa3` and through its HDL and LD4.
 3. Delete `a2 → o1` in FullAdderCell; the same recording now reads historical.
 4. Run, then Trace cause from the CARRY t3 mismatch to the same o1.
 5. Undo and Run; the new recording is current and the failing one historical.

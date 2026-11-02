@@ -27,7 +27,7 @@ The owner moved the work from reliability to product, saying: "Start with the fl
   - Trace cause from the selected failing result, mismatch rows and the explainer.
   - Inputs nothing drives stated at the simulator's level.
   - Simulate's tick carried to a waiting journey.
-  - Gate: `scripts/gates/ide-signal-journey-acceptance.mjs`. It records, follows CARRY 0 -> 1 at t3 into o1 of u_fa3 and through HDL and LD4, deletes a2 -> o1 in the editor, traces the failing check to "Input B is not connected", then undoes and reruns: old evidence historical, new current.
+  - Gate: `scripts/gates/ide-signal-journey-acceptance.mjs`. It records, follows CARRY (1 in case 4, t3) into o1 of u_fa3 and through HDL and LD4, deletes a2 -> o1 in the editor, traces the failing check to "Input B is not connected", then undoes and reruns: old evidence historical, new current.
 
 Found, not fixed:
 - Generated VHDL names signals by part type (`or_0`), not by the part (`o1`); dossier V1.1 item 5.

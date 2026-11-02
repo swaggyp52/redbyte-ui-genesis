@@ -59,13 +59,29 @@ describe('Signal Journey evidence', () => {
         ],
       },
     } as unknown as RuntimeVerifyRun;
-    expect(journeyChecks(adder, 'carry-out', 'carry-out.in').map((row) => row.signal)).toEqual(['carry']);
-    expect(journeyChecks(adder, 'u-fa3__o1', 'u-fa3__o1.out')).toEqual([]);
+    expect(journeyChecks(adder, 'carry-out', 'in', 'carry-out.in').map((row) => row.signal)).toEqual(['carry']);
+    expect(journeyChecks(adder, 'u-fa3__o1', 'out', 'u-fa3__o1.out')).toEqual([]);
   });
 
   it('finds the checks on a signal by its lane or its boundary row, and only those', () => {
-    expect(journeyChecks(run, 'carry-out', 'carry').map((row) => `${row.signal}@${row.tick}`)).toEqual(['carry@0', 'carry@2', 'carry_row@3']);
-    expect(journeyChecks(run, 'elsewhere', null)).toEqual([]);
+    expect(journeyChecks(run, 'carry-out', 'in', 'carry').map((row) => `${row.signal}@${row.tick}`)).toEqual(['carry@0', 'carry@2', 'carry_row@3']);
+    expect(journeyChecks(run, 'elsewhere', 'out', null)).toEqual([]);
+  });
+
+  it('keeps two boundary rows on one part apart (Q and Q_inv), as the independent review found they were not', () => {
+    const ff = {
+      waveform: [],
+      report: { rows: [
+        { tick: 1, signal: 'q_led', expected: '1', actual: '1' },
+        { tick: 1, signal: 'qn_led', expected: '1', actual: '0' },
+      ] },
+      executionInput: { ioRows: [
+        { id: 'q_led', label: 'Q', direction: 'out', nodeId: 'ff', port: 'Q', pin: 'U16' },
+        { id: 'qn_led', label: 'QN', direction: 'out', nodeId: 'ff', port: 'Q_inv', pin: 'E19' },
+      ] },
+    } as unknown as RuntimeVerifyRun;
+    expect(journeyChecks(ff, 'ff', 'Q', 'ff.Q').map((row) => row.signal)).toEqual(['q_led']);
+    expect(journeyChecks(ff, 'ff', 'Q_inv', 'ff.Q_inv').map((row) => row.signal)).toEqual(['qn_led']);
   });
 
   it('sets each recorded board resource against the live mapping', () => {

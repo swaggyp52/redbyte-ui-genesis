@@ -3061,7 +3061,8 @@ const IdeWorkspace: React.FC = () => {
   // same recording moves the journey there too, so resuming never shows a different moment.
   useEffect(() => {
     if (verifySelectedTick === null || !journeySelection || journeyOpen || !verifyLastRun) return;
-    if (journeySelection.runId !== getRuntimeVerifyRunId(verifyLastRun) || journeySelection.tick === verifySelectedTick) return;
+    // The journey names a run as selectJourney does (runId, else reportHash).
+    if (journeySelection.runId !== (verifyLastRun.runId ?? verifyLastRun.reportHash) || journeySelection.tick === verifySelectedTick) return;
     if (!verifyLastRun.waveform.some((sample) => sample.tick === verifySelectedTick)) return;
     useEngineeringSelection.getState().seekJourney({ tick: verifySelectedTick, eventOrder: null });
   }, [journeyOpen, journeySelection, verifyLastRun, verifySelectedTick]);

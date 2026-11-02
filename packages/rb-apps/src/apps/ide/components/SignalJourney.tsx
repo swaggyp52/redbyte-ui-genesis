@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { describeInputPin, type Circuit } from '@redbyte/rb-logic-core';
-import { connectionEndpoints } from '@redbyte/rb-logic-view';
+import { connectionEndpoints, findPin } from '@redbyte/rb-logic-view';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { SchematicProjection } from './SchematicProjection';
@@ -76,7 +76,7 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn, curr
   const boundaryValue = selectedSignal ? sample?.signals[selectedSignal] : undefined;
 
   const words = useMemo(() => deriveRecordedWordLanes(run), [run]);
-  const checks = useMemo(() => journeyChecks(run, selection.nodeId, selectedSignal), [run, selection.nodeId, selectedSignal]);
+  const checks = useMemo(() => journeyChecks(run, selection.nodeId, selection.port, selectedSignal), [run, selection.nodeId, selection.port, selectedSignal]);
   const failedChecks = checks.filter(row => row.expected !== row.actual);
   const mismatch = failedChecks.find(row => row.tick === selection.tick);
   const transition = journeyTransition(run, selectedSignal, selection.tick);
@@ -177,10 +177,12 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn, curr
   // Inputs nothing drives in this recording, at the level the simulator reads for them: the cause
   // of a missing wire, stated from the retained circuit and the simulator's pin contract.
   const unconnected = new Map<string, 0 | 1>();
-  if (node) for (const pin of pins) {
-    if (pin.direction !== 'in' || connections.some(w => w.to.nodeId === node.id && w.to.port === pin.id)) continue;
-    const level = describeInputPin(node.type, pin.id, node.config as Record<string, unknown> | undefined)?.unconnectedLevel;
-    if (level !== undefined) unconnected.set(pin.id, level);
+  const symbol = geometry.get(selection.nodeId)?.geometry;
+  if (node && symbol) for (const pin of pins) {
+    // A wire counts for the pin it resolves to, by any alias the symbol accepts (in1 for a, D[0]).
+    if (pin.direction !== 'in' || connections.some(w => w.to.nodeId === node.id && findPin(symbol, w.to.port)?.id === pin.id)) continue;
+    const reading = describeInputPin(node.type, pin.id, node.config as Record<string, unknown> | undefined);
+    if (reading?.used) unconnected.set(pin.id, reading.unconnectedLevel);
   }
   const learning = node ? presentSignalJourney({ node: localNode ? { ...node, label: localNode.label } : node, source: currentInstance, selected: selection, unconnected,
     observation: objectEvent, values, publishedValue: boundaryValue, revision: selection.revision,
@@ -223,6 +225,7 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn, curr
       <p data-testid="ide-journey-transition" data-value={transition.value ?? 'unrecorded'} data-since={transition.since ?? ''}>
         {selectedSignal === null ? <>This object is not a recorded lane; its values come from the captured evaluation.</>
           : transition.value === null ? <>No sample of this signal at t{selection.tick}.</>
+          : run.schedule === 'combinational' ? <><code>{transition.value}</code> in case {run.waveform.findIndex(sample => sample.tick === selection.tick) + 1} (t{selection.tick}); cases are independent, not a change over time</>
           : transition.previous === null ? <><code>{transition.value}</code> from the first recorded moment through t{selection.tick}</>
           : <><code>{transition.previous}</code> → <code>{transition.value}</code> at <button type="button" onClick={() => seekTick(transition.since!)}>t{transition.since}</button>{transition.since !== selection.tick ? `, unchanged through t${selection.tick}` : ''}</>}
       </p>

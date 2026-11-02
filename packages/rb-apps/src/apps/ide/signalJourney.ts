@@ -8,7 +8,7 @@ import { generateHierarchicalVhdlProject } from './hierarchicalVhdl';
 import type { ProjectHierarchyDocument, ElaborationSources } from './projectHierarchy';
 import type { ProjectIoRow, RuntimeVerifyRun } from './projectRuntime';
 import { createRecordedPortResolver, buildRecordedCircuitGeometry } from './surfaces/verify/recordedCircuitGeometry';
-import { buildFieldSignalResolver, normalizeSignalId } from './signalIdentity';
+import { buildFieldSignalResolver } from './signalIdentity';
 
 export interface JourneySelection {
   projectId: string;
@@ -192,14 +192,16 @@ export function journeyLocalDrawing(circuit: Circuit, nodeId: string, limit = 4)
  * row is `carry-out`: the run's own evidence relates them, through buildFieldSignalResolver, and
  * an ambiguous or unresolved field contributes no check rather than a guessed one.
  */
-export function journeyChecks(run: RuntimeVerifyRun, nodeId: string, signal: string | null) {
-  const fields = run.executionInput?.ioRows.filter(io => io.nodeId === nodeId).map(io => io.id) ?? [];
-  const resolver = buildFieldSignalResolver({ fieldIds: fields, evidence: run.evidence,
+export function journeyChecks(run: RuntimeVerifyRun, nodeId: string, port: string, signal: string | null) {
+  const rows = run.executionInput?.ioRows ?? [];
+  // The selected port's own boundary rows only: Q and Q_inv on one flip-flop are separate rows.
+  const fields = rows.filter(io => io.nodeId === nodeId && (io.port || (io.direction === 'in' ? 'out' : 'in')) === port).map(io => io.id);
+  // Resolve against every boundary field, so a run signal two fields claim is ambiguous, not shared.
+  const resolver = buildFieldSignalResolver({ fieldIds: rows.map(io => io.id), evidence: run.evidence,
     reportSignals: [...new Set(run.report.rows.map(row => row.signal))] });
-  const judged = new Set([...fields, ...(signal === null ? [] : [signal]),
-    ...fields.map(field => resolver.resolve(field).runSignal).filter((value): value is string => value !== null)]
-    .map(normalizeSignalId));
-  return run.report.rows.filter(row => judged.has(normalizeSignalId(row.signal)));
+  const judged = new Set([...(signal === null ? [] : [signal]),
+    ...fields.map(field => resolver.resolve(field).runSignal).filter((value): value is string => value !== null)]);
+  return run.report.rows.filter(row => judged.has(row.signal));
 }
 
 /**

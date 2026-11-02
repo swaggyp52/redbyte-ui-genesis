@@ -194,6 +194,15 @@ describe('runScope — currency', () => {
       expect(scope.detail).toBe('The design changed after this run.');
     });
 
+    it('is current when every stamped input still matches, though another scenario is active', () => {
+      expect(recording({ latestVerifyLedgerEntry: makeEntry({ runId: 'run-older', projectHash: 'p-scenario-b' }) }).kind).toBe('current');
+      expect(recording({ latestVerifyLedgerEntry: null }).kind).toBe('current');
+    });
+
+    it('stays historical when a stamp is missing and nothing proves it current', () => {
+      expect(recording({ run: { ...older, scenarioContentHash: undefined }, latestVerifyLedgerEntry: null }).kind).toBe('stale');
+    });
+
     it('stays foreign when another project produced it', () => {
       expect(recording({ run: { ...older, projectId: 'rb-b' } }).kind).toBe('foreign');
     });
