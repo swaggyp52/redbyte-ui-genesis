@@ -3,7 +3,7 @@ import { WorkbenchDisclosure } from '../../components/WorkbenchDisclosure';
 
 /** Presentation of the existing selected recording and authored-scenario authorities. */
 export function SelectedResult({ signal, position, tick, expected, observed, inputs, mismatch, recorded,
-  navigator, onInspect, inspecting, onEditDesign, draftExpected, onSetExpected, tools }: {
+  navigator, onInspect, inspecting, onEditDesign, onTraceCause, draftExpected, onSetExpected, tools }: {
   signal: string | null;
   position: string;
   tick: number | null;
@@ -16,6 +16,8 @@ export function SelectedResult({ signal, position, tick, expected, observed, inp
   onInspect?: () => void;
   inspecting?: boolean;
   onEditDesign?: () => void;
+  /** Open Signal Journey on this signal at this moment of this recording (a mismatch only). */
+  onTraceCause?: () => void;
   draftExpected?: unknown;
   onSetExpected?: (value: 0 | 1 | null) => void;
   tools?: React.ReactNode;
@@ -30,6 +32,8 @@ export function SelectedResult({ signal, position, tick, expected, observed, inp
         {mismatch && <strong className="rb-selected-result-mismatch">≠ Mismatch</strong>}
       </div>
       <div className="rb-selected-result-actions">
+        {mismatch && onTraceCause && <button type="button" className="wb-btn wb-btn--primary" data-testid="ide-selected-result-trace" onClick={onTraceCause}
+          title="Follow this signal at this moment through the circuit, its logic, HDL and board">Trace cause</button>}
         {onInspect && <button type="button" className="wb-btn" data-testid="ide-selected-result-inspect" aria-pressed={inspecting} onClick={onInspect}>Inspect circuit</button>}
         {onSetExpected && <WorkbenchDisclosure className="rb-selected-result-check" summary="Edit expectation" data-testid="ide-selected-result-check-editor">
           <span>Current draft · {signal} · {position} · expected {draftExpected == null ? 'unset' : String(draftExpected)}</span>

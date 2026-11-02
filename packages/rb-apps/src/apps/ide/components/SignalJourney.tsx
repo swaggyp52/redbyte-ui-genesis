@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Circuit } from '@redbyte/rb-logic-core';
-import { connectionEndpoints } from '@redbyte/rb-logic-view';
+import { describeInputPin, type Circuit } from '@redbyte/rb-logic-core';
+import { connectionEndpoints, findPin } from '@redbyte/rb-logic-view';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { useEngineeringSelection } from '../engineeringSelection';
 import { SchematicProjection } from './SchematicProjection';
 import { buildRecordedCircuitGeometry, buildRecordedInstanceDrawing } from '../surfaces/verify/recordedCircuitGeometry';
 import { deriveRecordedWordLanes } from '../surfaces/verify/recordedWordLanes';
 import { journeyEvents, journeyValues, journeyExpression, journeySourceSpans, journeySignal, journeyInstanceKey,
-  journeyLocalDrawing, journeyOverviewEndpoint, selectJourney, type BooleanTerm, type JourneySelection } from '../signalJourney';
+  journeyLocalDrawing, journeyOverviewEndpoint, selectJourney, journeyChecks, journeyTransition,
+  type BooleanTerm, type JourneyBoardRow, type JourneySelection } from '../signalJourney';
+import type { RunScope } from '../runScope';
 import { presentSignalJourney } from '../signalJourneyPresentation';
 import './signal-journey.css';
 
@@ -35,9 +37,15 @@ function ExpressionBranch({ term, onSelect, initiallyOpen = false }: {
     {open && <ul>{term.children.map((child, i) => <li key={`${child.nodeId}.${child.port}.${i}`}><ExpressionBranch term={child} onSelect={onSelect} /></li>)}</ul>}
   </div>;
 }
-export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
+/**
+ * `currency` is the recording's scope against the design being edited (deriveRecordingScope);
+ * `board` is its boundary set against the live pin mapping (journeyBoardBoundary). Both come
+ * from the project's own authorities; without them the journey makes no claim either way.
+ */
+export function SignalJourney({ run, selection, onSignal, onTick, onReturn, currency, board }: {
   run: RuntimeVerifyRun; selection: JourneySelection; onSignal: (signal: string | null) => void;
   onTick: (tick: number) => void; onReturn: () => void;
+  currency?: Pick<RunScope, 'kind' | 'detail'>; board?: readonly JourneyBoardRow[];
 }) {
   const seek = useEngineeringSelection(state => state.seekJourney);
   const [lens, setLens] = useState<Lens>('circuit');
@@ -66,8 +74,12 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
   const sample = run.waveform.find(s => s.tick === selection.tick);
   const selectedSignal = journeySignal(run, selection.nodeId, selection.port);
   const boundaryValue = selectedSignal ? sample?.signals[selectedSignal] : undefined;
-  const mismatch = sample?.mismatches.find(m => m.signal === selectedSignal || run.executionInput?.ioRows.some(r => r.id === m.signal && r.nodeId === selection.nodeId));
+
   const words = useMemo(() => deriveRecordedWordLanes(run), [run]);
+  const checks = useMemo(() => journeyChecks(run, selection.nodeId, selection.port, selectedSignal), [run, selection.nodeId, selection.port, selectedSignal]);
+  const failedChecks = checks.filter(row => row.expected !== row.actual);
+  const mismatch = failedChecks.find(row => row.tick === selection.tick);
+  const transition = journeyTransition(run, selectedSignal, selection.tick);
   const select = (id: string, port?: string) => {
     const pins = geometry.get(id)?.geometry.pins ?? [];
     const resolvedPort = port ?? pins.find(pin => pin.direction === 'out')?.id ?? pins[0]?.id ?? 'out';
@@ -162,7 +174,17 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
   const pins = geometry.get(selection.nodeId)?.geometry.pins ?? [];
   const retainedDefinition = run.hierarchySnapshot?.hierarchy?.modules.find(module => module.id === currentInstance?.definitionId);
   const localNode = retainedDefinition?.circuit.nodes.find(item => item.id === currentInstance?.localNodeId);
-  const learning = node ? presentSignalJourney({ node: localNode ? { ...node, label: localNode.label } : node, source: currentInstance, selected: selection,
+  // Inputs nothing drives in this recording, at the level the simulator reads for them: the cause
+  // of a missing wire, stated from the retained circuit and the simulator's pin contract.
+  const unconnected = new Map<string, 0 | 1>();
+  const symbol = geometry.get(selection.nodeId)?.geometry;
+  if (node && symbol) for (const pin of pins) {
+    // A wire counts for the pin it resolves to, by any alias the symbol accepts (in1 for a, D[0]).
+    if (pin.direction !== 'in' || connections.some(w => w.to.nodeId === node.id && findPin(symbol, w.to.port)?.id === pin.id)) continue;
+    const reading = describeInputPin(node.type, pin.id, node.config as Record<string, unknown> | undefined);
+    if (reading?.used) unconnected.set(pin.id, reading.unconnectedLevel);
+  }
+  const learning = node ? presentSignalJourney({ node: localNode ? { ...node, label: localNode.label } : node, source: currentInstance, selected: selection, unconnected,
     observation: objectEvent, values, publishedValue: boundaryValue, revision: selection.revision,
     inputPorts: pins.filter(pin => pin.direction === 'in').map(pin => pin.id),
     outputPorts: pins.filter(pin => pin.direction === 'out').map(pin => pin.id),
@@ -195,6 +217,24 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
         <p>{run.evaluationTrace?.events.length ?? 0} captured evaluations · {run.evaluationTrace?.status ?? 'samples only'}</p>
       </div></details>
       <button type="button" className="wb-btn" onClick={() => { setPlaying(false); onReturn(); }} data-testid="ide-journey-return">Return to experiment</button></header>
+    <div className="rb-journey-evidence" data-testid="ide-journey-evidence">
+      {currency && currency.kind !== 'none' && <p className={`rb-journey-currency is-${currency.kind}`} data-testid="ide-journey-currency" data-currency={currency.kind}>
+        {currency.kind === 'current' ? <><strong>Current recording</strong><span>It matches the design you are editing.</span></>
+          : <><strong>Historical recording</strong><span>{currency.detail ?? 'The project changed after this recording.'} Values here are what this recording observed, not your current design. Return to the experiment and Run to record it again.</span></>}
+      </p>}
+      <p data-testid="ide-journey-transition" data-value={transition.value ?? 'unrecorded'} data-since={transition.since ?? ''}>
+        {selectedSignal === null ? <>This object is not a recorded lane; its values come from the captured evaluation.</>
+          : transition.value === null ? <>No sample of this signal at t{selection.tick}.</>
+          : run.schedule === 'combinational' ? <><code>{transition.value}</code> in case {run.waveform.findIndex(sample => sample.tick === selection.tick) + 1} (t{selection.tick}); cases are independent, not a change over time</>
+          : transition.previous === null ? <><code>{transition.value}</code> from the first recorded moment through t{selection.tick}</>
+          : <><code>{transition.previous}</code> → <code>{transition.value}</code> at <button type="button" onClick={() => seekTick(transition.since!)}>t{transition.since}</button>{transition.since !== selection.tick ? `, unchanged through t${selection.tick}` : ''}</>}
+      </p>
+      <p data-testid="ide-journey-checks" data-checks={checks.length} data-failed={failedChecks.length}>
+        {checks.length === 0 ? 'No authored check judges this signal.'
+          : failedChecks.length === 0 ? `${checks.length} check${checks.length === 1 ? '' : 's'} on this signal · all match`
+          : <>{checks.length} check{checks.length === 1 ? '' : 's'} on this signal · <strong>{failedChecks.length} mismatch{failedChecks.length === 1 ? '' : 'es'}</strong> · first at <button type="button" onClick={() => seekTick(failedChecks[0].tick)}>t{failedChecks[0].tick}</button>: expected {failedChecks[0].expected}, observed {failedChecks[0].actual}</>}
+      </p>
+    </div>
     <div className="rb-journey-toolbar"><nav aria-label="Connected representations">{(['circuit', 'logic', 'table', 'hdl', 'board'] as const).map(item =>
       <button type="button" key={item} aria-pressed={lens === item} onClick={() => { setLens(item); setPlaying(false); }}>{item === 'hdl' ? 'Generated HDL' : item === 'table' ? (run.schedule === 'combinational' ? 'Case table' : 'Recorded time') : item === 'logic' ? 'Logic' : item === 'board' ? 'Board boundary' : 'Circuit'}</button>)}</nav>
       <label>Moment <select value={selection.tick} onChange={e => seekTick(Number(e.target.value))}>{run.waveform.map((s, i) => <option key={s.tick} value={s.tick}>{run.schedule === 'combinational' ? `Case ${i + 1} · ` : ''}t{s.tick}</option>)}</select></label>
@@ -240,7 +280,7 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
           <strong>{learning?.sequential && learning.sequential.kind !== 'unavailable' ? learning.sequential.label : learning?.rule.text ?? 'Values unavailable at this step'}</strong>
           <p>{learning?.outcome.text}</p>
           {learning?.sequential && <p>{learning.sequential.reason}</p>}
-          <dl>{learning?.inputs.map(input => <div key={input.key}><dt>{input.label}</dt><dd><code>{input.value.text}</code></dd></div>)}</dl>
+          <dl>{learning?.inputs.map(input => <div key={input.key} data-unconnected={input.unconnected ? 'true' : undefined}><dt>{input.label}</dt><dd><code>{input.value.text}</code>{input.unconnected && <small> not connected</small>}</dd></div>)}</dl>
           <div className="rb-journey-state" data-testid="ide-journey-canonical-outputs">{learning?.outputs.filter(output => output.role !== 'metadata').map(output => <div key={output.key} data-output-ports={output.ports.join(',')}>
             <span>{output.label}</span><code>{objectEvent ? `${output.previousValue?.text ?? '?'} → ` : ''}{output.value.text}</code></div>)}</div>
           {objectEvent?.commitPhase === 'after-capture' && <p>Captured result shown here; the circuit still shows the previous output until all registers publish together.</p>}
@@ -270,7 +310,7 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
         <thead><tr><th>Moment</th><th>{node?.label}</th>{words.map(w => <th key={w.id}>{w.label} · binary / decimal</th>)}<th>Expected</th><th>Check</th></tr></thead>
         <tbody>{visibleSamples.map((s, i) => {
           const value = selectedSignal ? s.signals[selectedSignal] : undefined;
-          const row = run.report.rows.find(r => r.tick === s.tick && (r.signal === selectedSignal || run.executionInput?.ioRows.some(io => io.id === r.signal && io.nodeId === selection.nodeId)));
+          const row = checks.find(r => r.tick === s.tick);
           return <tr key={s.tick} aria-selected={s.tick === selection.tick}><td><button type="button" onClick={() => seekTick(s.tick)}>{run.schedule === 'combinational' ? `Case ${casePage * 50 + i + 1} · ` : ''}t{s.tick}</button></td><td><code>{value ?? 'unrecorded'}</code></td>
             {words.map(w => { const word = w.valueByTick.get(s.tick); return <td key={w.id}><code>{word ? `${word.bits} / ${word.value}` : 'unrecorded'}</code></td>; })}
             <td>{row?.expected ?? 'no check'}</td><td>{row ? row.expected === row.actual ? 'match' : 'mismatch' : 'recorded'}</td></tr>;
@@ -291,10 +331,16 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn }: {
           const id = source ? Object.entries(run.elaborationSources ?? {}).find(([, s]) => s.definitionId === source.definitionId && s.localNodeId === source.nodeId && JSON.stringify(s.instancePath) === JSON.stringify(currentInstance?.instancePath ?? []))?.[0] ?? (selection.instancePath.length === 0 ? source.nodeId : null) : null;
           return <span className={i + 1 >= hdlSpan.startLine && i + 1 <= hdlSpan.endLine ? 'is-selected' : ''} key={i}>{id ? <button type="button" onClick={() => select(id)} aria-label={`Select source object at line ${i + 1}`}><b>{i + 1}</b>{line}</button> : <><b>{i + 1}</b>{line}</>}</span>;
         })}</pre></>}</div>}
-    {lens === 'board' && <div className="rb-journey-board"><h3>Recorded board boundary</h3><p>Assigned pins from this recording · {event ? 'values visible at the paused evaluation phase' : `published simulated sample at t${selection.tick}`} · no physical board observation.</p>
-      <table><thead><tr><th>Signal</th><th>Assigned resource</th><th>{event ? 'Paused phase value' : `Published value at t${selection.tick}`}</th></tr></thead><tbody>{run.executionInput?.ioRows.map(row => {
-        const port = row.port || (row.direction === 'in' ? 'out' : 'in'); const value = row.nodeId ? values.get(`${row.nodeId}.${port}`) : undefined;
-        return <tr key={row.id} aria-selected={row.nodeId === selection.nodeId}><td><button type="button" onClick={() => row.nodeId && select(row.nodeId, port)}>{row.label}</button></td><td>{row.pin || 'unassigned'}</td><td><code>{value ?? 'unrecorded at this phase'}</code></td></tr>;
+    {lens === 'board' && <div className="rb-journey-board"><h3>Recorded board boundary</h3><p>Board resources from this recording, set against the project's pin mapping now · {event ? 'values visible at the paused evaluation phase' : `published simulated sample at t${selection.tick}`} · browser simulation, no physical board observation.</p>
+      <table><thead><tr><th>Signal</th><th>Recorded on</th>{board && <th>Mapped now</th>}<th>{event ? 'Paused phase value' : `Published value at t${selection.tick}`}</th></tr></thead><tbody>{(board ?? run.executionInput?.ioRows.map(row => ({
+        id: row.id, label: row.label, nodeId: row.nodeId ?? null, port: row.port || (row.direction === 'in' ? 'out' : 'in'), direction: row.direction,
+        recorded: row.pin ? { pin: row.pin, resource: null } : null, current: null, removed: false, changed: false })) ?? []).map(row => {
+        const value = row.nodeId ? values.get(`${row.nodeId}.${row.port}`) : undefined;
+        const where = (assignment: JourneyBoardRow['recorded']) => assignment ? `${assignment.resource ? `${assignment.resource} · ` : ''}${assignment.pin}` : 'unassigned';
+        return <tr key={row.id} aria-selected={row.nodeId === selection.nodeId} data-testid={`ide-journey-board-row-${row.id}`} data-changed={row.changed ? 'true' : 'false'}>
+          <td><button type="button" onClick={() => row.nodeId && select(row.nodeId, row.port)}>{row.label}</button></td><td>{where(row.recorded)}</td>
+          {board && <td>{row.removed ? 'no longer a boundary signal' : row.changed ? <strong>{where(row.current)} · changed since this recording</strong> : `${where(row.current)} · same`}</td>}
+          <td><code>{value ?? 'unrecorded at this phase'}</code></td></tr>;
       })}</tbody></table></div>}
   </section>;
 }

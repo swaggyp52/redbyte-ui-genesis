@@ -1,11 +1,14 @@
 import type { Circuit, EngineEvaluationObservation } from '@redbyte/rb-logic-core';
 import { connectionEndpoints } from '@redbyte/rb-logic-view/scene';
 import { vhdlFromNetlist, type VhdlNodeSourceSpan } from '../../export/vhdlExport';
+import type { IoMapping } from '@redbyte/rb-utils';
 import { buildBasys3ExportModel } from '../../fpga/boards/basys3/basys3ExportModel';
+import { resolveBasys3BoardAlias, resolveBasys3PackagePin } from '../../fpga/boards/basys3/basys3Pins';
 import { generateHierarchicalVhdlProject } from './hierarchicalVhdl';
 import type { ProjectHierarchyDocument, ElaborationSources } from './projectHierarchy';
 import type { ProjectIoRow, RuntimeVerifyRun } from './projectRuntime';
 import { createRecordedPortResolver, buildRecordedCircuitGeometry } from './surfaces/verify/recordedCircuitGeometry';
+import { buildFieldSignalResolver } from './signalIdentity';
 
 export interface JourneySelection {
   projectId: string;
@@ -181,6 +184,86 @@ export function journeyLocalDrawing(circuit: Circuit, nodeId: string, limit = 4)
   const connections = circuit.connections.filter((_, index) => ids.has(wires[index].from.nodeId) && ids.has(wires[index].to.nodeId));
   return { circuit: { ...circuit, nodes, connections }, omittedNodes: circuit.nodes.length - nodes.length,
     omittedConnections: circuit.connections.length - connections.length };
+}
+
+/**
+ * The authored checks of a recording that judge this object. Report rows name a check by its run
+ * signal (CARRY's is `carry`), the journey selects a port lane (`carry-out.in`) and the boundary
+ * row is `carry-out`: the run's own evidence relates them, through buildFieldSignalResolver, and
+ * an ambiguous or unresolved field contributes no check rather than a guessed one.
+ */
+export function journeyChecks(run: RuntimeVerifyRun, nodeId: string, port: string, signal: string | null) {
+  const rows = run.executionInput?.ioRows ?? [];
+  // The selected port's own boundary rows only: Q and Q_inv on one flip-flop are separate rows.
+  const fields = rows.filter(io => io.nodeId === nodeId && (io.port || (io.direction === 'in' ? 'out' : 'in')) === port).map(io => io.id);
+  // Resolve against every boundary field, so a run signal two fields claim is ambiguous, not shared.
+  const resolver = buildFieldSignalResolver({ fieldIds: rows.map(io => io.id), evidence: run.evidence,
+    reportSignals: [...new Set(run.report.rows.map(row => row.signal))] });
+  const judged = new Set([...(signal === null ? [] : [signal]),
+    ...fields.map(field => resolver.resolve(field).runSignal).filter((value): value is string => value !== null)]);
+  return run.report.rows.filter(row => judged.has(row.signal));
+}
+
+/**
+ * The selected signal's recorded value at a tick and the last recorded change that produced it:
+ * the latest earlier sample with a different value. Null fields where the recording has no
+ * sample; never interpolated.
+ */
+export function journeyTransition(run: RuntimeVerifyRun, signal: string | null, tick: number) {
+  const samples = signal ? run.waveform.filter(sample => sample.tick <= tick && sample.signals[signal] !== undefined) : [];
+  const at = samples.length && samples[samples.length - 1].tick === tick ? samples[samples.length - 1] : undefined;
+  if (!signal || !at) return { value: null, since: null, previous: null };
+  const value = String(at.signals[signal]);
+  let since = at.tick;
+  for (let i = samples.length - 2; i >= 0; i -= 1) {
+    if (String(samples[i].signals[signal]) !== value) return { value, since, previous: String(samples[i].signals[signal]) };
+    since = samples[i].tick;
+  }
+  return { value, since, previous: null };
+}
+
+/** One boundary signal on the board: where the recording put it and where the project puts it now. */
+export interface JourneyBoardRow {
+  id: string;
+  label: string;
+  nodeId: string | null;
+  port: string;
+  direction: 'in' | 'out';
+  /** Package pin and board resource (LD4) the recording ran with; null when it was unassigned. */
+  recorded: { pin: string; resource: string | null } | null;
+  /** The live mapping's pin and resource; null when unassigned now or the signal no longer exists. */
+  current: { pin: string; resource: string | null } | null;
+  /** The signal is no longer a boundary row of the project. */
+  removed: boolean;
+  /** Recorded and current assignments differ (including assigned versus unassigned). */
+  changed: boolean;
+}
+
+function boardAssignment(pin: string | undefined | null) {
+  const trimmed = (pin ?? '').trim();
+  if (!trimmed) return null;
+  const packagePin = resolveBasys3PackagePin(trimmed) ?? trimmed;
+  return { pin: packagePin, resource: resolveBasys3BoardAlias(packagePin) };
+}
+
+/**
+ * The recording's board boundary set against the project's live mapping. Recorded values stay
+ * the recording's; this only says whether each signal still lands on the same board resource,
+ * so the board lens never presents a recorded pin as the current one or invents a resource.
+ */
+export function journeyBoardBoundary(run: RuntimeVerifyRun, live: IoMapping): JourneyBoardRow[] {
+  const entries = [...live.inputs.map(entry => ({ ...entry, direction: 'in' as const })),
+    ...live.outputs.map(entry => ({ ...entry, direction: 'out' as const }))];
+  return (run.executionInput?.ioRows ?? []).map(row => {
+    const direction: 'in' | 'out' = row.direction === 'in' ? 'in' : 'out';
+    const port = row.port || (direction === 'in' ? 'out' : 'in');
+    const now = entries.find(entry => entry.id === row.id)
+      ?? entries.find(entry => entry.direction === direction && entry.nodeId === row.nodeId && (entry.port || port) === port);
+    const recorded = boardAssignment(row.pin);
+    const current = now ? boardAssignment(now.pin) : null;
+    return { id: row.id, label: row.label, nodeId: row.nodeId ?? null, port, direction, recorded, current,
+      removed: !now, changed: !now || (recorded?.pin ?? null) !== (current?.pin ?? null) };
+  });
 }
 
 /** Resolve a top-level module boundary only through its retained definition references. */

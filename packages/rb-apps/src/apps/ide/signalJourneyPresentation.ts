@@ -18,6 +18,8 @@ export interface JourneyPresentedPort {
   role: 'input' | 'output' | 'state' | 'complement' | 'metadata';
   selected: boolean;
   conflict?: boolean;
+  /** Nothing drives this input in the recording; `value` is the simulator's unconnected level. */
+  unconnected?: boolean;
 }
 export interface SignalJourneyPresentationInput {
   node: Node;
@@ -30,6 +32,11 @@ export interface SignalJourneyPresentationInput {
   /** Supply actual recorded geometry ports for custom devices. */
   inputPorts?: readonly string[];
   outputPorts?: readonly string[];
+  /**
+   * Input pins nothing drives in the retained circuit, with the level the simulator reads for an
+   * unconnected pin (describeInputPin). Structural facts of the recording, not inferred values.
+   */
+  unconnected?: ReadonlyMap<string, 0 | 1>;
   publication?: 'published-sample' | 'evaluation' | 'awaiting-common-publication';
   revision?: string;
 }
@@ -140,18 +147,21 @@ function makeInputs(input: SignalJourneyPresentationInput, event?: EngineEvaluat
     ? event.inputs[name] : input.values?.get(`${input.node.id}.${name}`);
   const used = new Set<string>();
   const rows: JourneyPresentedPort[] = [];
-  const append = (key: string, label: string, name: string, value: unknown) => {
-    used.add(name);
+  const append = (key: string, label: string, name: string, value: unknown, aliases: readonly string[] = [name]) => {
+    for (const alias of aliases) used.add(alias);
     const read = event?.inputReads.find(item => item.portName === name);
-    rows.push({ key, label, ports: [name], value: presentJourneyValue(value), role: 'input', selected: input.selected.nodeId === input.node.id && input.selected.port === name,
-      ...(read ? { driver: { ...read.driver }, origin: read.origin } : {}) });
+    const level = value == null ? input.unconnected?.get(name) : undefined;
+    rows.push({ key, label, ports: [name], value: presentJourneyValue(level ?? value), role: 'input', selected: input.selected.nodeId === input.node.id && input.selected.port === name,
+      ...(read ? { driver: { ...read.driver }, origin: read.origin } : {}), ...(level !== undefined ? { unconnected: true } : {}) });
   };
   for (const role of inputRoles(input.node)) {
+    // With no recorded value, name the row after the pin the symbol actually draws (b, not its alias in2).
     const name = role.names.find(candidate => raw(candidate) != null && (!event || !role.numeric || typeof raw(candidate) === 'number'))
-      ?? role.names.find(candidate => raw(candidate) != null) ?? role.names[0];
+      ?? role.names.find(candidate => raw(candidate) != null) ?? role.names.find(candidate => input.inputPorts?.includes(candidate)) ?? role.names[0];
     // Optional controls and packed-data bit alternatives are shown only when recorded.
     if (['EN', 'RST'].includes(role.key) && raw(name) == null || /^D\[/.test(role.key) && raw(name) == null) continue;
-    append(role.key, role.label, name, raw(name));
+    // Aliases with nothing recorded are the same pin; a recorded spelling keeps its own row.
+    append(role.key, role.label, name, raw(name), role.names.filter(alias => alias === name || raw(alias) == null));
   }
   for (const name of names) if (!used.has(name) && (event && name in event.inputs || input.inputPorts?.includes(name))) append(name, `Input ${name}`, name, raw(name));
   return rows.slice(0, MAX_PORTS);
@@ -331,6 +341,7 @@ export function presentSignalJourney(input: SignalJourneyPresentationInput): Sig
     : unchanged ? { kind: 'unchanged', text: comparable.length === 1 ? `The output stayed at ${comparable[0].value.text}.` : 'The outputs stayed the same.' }
       : { kind: 'changed', text: pending ? 'The evaluated result changes an output; common publication is still pending.' : 'This evaluation changes a recorded output.' };
   const notices: string[] = [];
+  for (const row of inputs) if (row.unconnected) notices.push(`${row.label} is not connected; the simulator reads an unconnected ${row.ports[0]} as ${row.value.text}.`);
   if (observation && !event && !published) notices.push('The selected object is not the captured evaluation. No change or storage action is inferred for it.');
   if (outputs.some(row => row.conflict)) notices.push('Recorded aliases disagree; their value remains unrecorded rather than choosing one.');
   if (event?.invalidOutputPorts.length) notices.push('The engine recorded invalid raw output values. Normalized outputs and raw values remain separate in details.');

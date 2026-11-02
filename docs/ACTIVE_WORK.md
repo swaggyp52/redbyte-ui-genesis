@@ -8,6 +8,40 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
+## Product advancement: representation truth and Signal Journey - 2026-11-02
+
+The owner moved the work from reliability to product, saying: "Start with the flip-flop pin truth defect, then implement the complete hierarchical-adder Signal Journey." PR #88 stays as tested at 1b9ab05. New work is on two stacked local branches, not pushed, with no merge or deploy:
+
+- `claude/redbyte-flipflop-pin-truth` (53c7a51, 379f1ae, ede7766). Representation truth.
+  - DFlipFlop draws the RST and EN pins the simulator reads, as optional rows below D and CLK, so no existing wire moves.
+  - Lab 8's eight resets now end on their RST pins; its flip-flops are re-spaced, by position only.
+  - No wire crosses a part on one of that part's pin rows (FullAdderCell a1 -> o1 through a2; flat 4-bit adder 13 -> 0).
+  - Tests:
+    - `designChipMetadata.pinContract.test.ts` checks drawn pins against `inputPinsOf` for every simulated part.
+    - `schematicNetTopology.test.ts` now also fails on an undrawn or misdrawn connection, overlapping symbols, or a false attachment.
+  - Classification: RB-DEBT-037 (hidden runs remain).
+- `claude/redbyte-signal-journey` (3e99734, 3f46958, bef013f, c3561b7). The journey closes its gaps through existing authorities:
+  - Currency of the replayed recording (`deriveRecordingScope`).
+  - The value's last change and its checks, resolved through the run evidence (`journeyChecks`). Report rows call CARRY `carry`.
+  - Board resources against the live mapping (`liveIoMapping`).
+  - Trace cause from the selected failing result, mismatch rows and the explainer.
+  - Inputs nothing drives stated at the simulator's level.
+  - Simulate's tick carried to a waiting journey.
+  - Gate: `scripts/gates/ide-signal-journey-acceptance.mjs`. It records, follows CARRY (1 in case 4, t3) into o1 of u_fa3 and through HDL and LD4, deletes a2 -> o1 in the editor, traces the failing check to "Input B is not connected", then undoes and reruns: old evidence historical, new current.
+
+Found, not fixed:
+- Generated VHDL names signals by part type (`or_0`), not by the part (`o1`); dossier V1.1 item 5.
+- After returning from a journey, the Design inspector shows raw ids ("Verify focus u-fa3__o1.out", "Signal: Selected part", "Samples 0").
+- The journey's evaluation trace is not shown for the selected gate at a published sample. Its rule then cannot compare previous and result outputs.
+
+Validation at c3561b7a5:
+- Classroom chain 71/71.
+- The design gates and all four Signal Journey proofs (hierarchy, counter, first use, acceptance).
+- The nested-adder, Meridian-preview and recorded-investigation journeys.
+- Unit tests: 4,615 passed.
+
+Evidence boundary: cloud container, Node 22; browser E0 only.
+
 ## PR #88 schematic wiring - legs avoid symbols - 2026-10-31
 
 The owner asked for a bounded check of the 82e2233 router fix on dense, feedback and wide drawings. It compared the 9f7ffe0 and 82e2233 routers on every starter, module and lab starter, plus a synthetic 8-bit ripple adder and an 8-stage LFSR. Wire length, bends, crossings, shared runs, foreign dots, body crossings, detour ratio and time were measured. Findings:

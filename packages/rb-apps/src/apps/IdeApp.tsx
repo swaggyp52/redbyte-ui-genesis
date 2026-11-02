@@ -45,12 +45,12 @@ import { WorkbenchDocumentTabStrip } from './ide/components/WorkbenchDocumentTab
 import { useWorkbenchDocumentHost } from './ide/useWorkbenchDocumentHost';
 import { describeEngineeringObject, useEngineeringSelection } from './ide/engineeringSelection';
 import { SignalJourney } from './ide/components/SignalJourney';
-import { journeyEndpoint, journeySignal, selectJourney } from './ide/signalJourney';
+import { journeyBoardBoundary, journeyEndpoint, journeySignal, selectJourney } from './ide/signalJourney';
 import { describeSignalRelationPath, useEngineeringRelationshipIndex } from './ide/engineeringRelationships';
 import { useWorkbenchNavigation } from './ide/workbenchNavigation';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { buildEngineeringProblems, countProblems, useEngineeringProblems } from './ide/engineeringProblems';
-import { deriveRunScope } from './ide/runScope';
+import { deriveRecordingScope, deriveRunScope, liveIoMapping } from './ide/runScope';
 import { buildNavigatorIndex, type NavigatorEntry } from './ide/workbenchNavigator';
 import { computeDesignIssues } from './ide/designIssues';
 import { useWorkbenchDocuments } from './ide/workbenchDocumentStore';
@@ -3034,6 +3034,38 @@ const IdeWorkspace: React.FC = () => {
     ]
   );
   const runIsStale = runScope.kind === 'stale';
+  // The journey may replay any retained recording, so it takes that recording's own scope and
+  // its boundary against the live mapping: the same authorities Simulate and Board read.
+  const journeyScope = useMemo(
+    () =>
+      deriveRecordingScope({
+        projectId,
+        run: journeyRun,
+        latestRunId: verifyLastRun ? getRuntimeVerifyRunId(verifyLastRun) : null,
+        simulationCircuit,
+        projectIoRows,
+        hardwareMappingV2,
+        scenarios,
+        dirtySinceVerify: projectHealthCore.dirtySinceVerify,
+        latestVerifyLedgerEntry: findVerifyRunLedgerEntry(verifyRunHistory, journeyRun) ?? null,
+        currentVerifyProjectHash,
+      }),
+    [currentVerifyProjectHash, hardwareMappingV2, journeyRun, projectHealthCore.dirtySinceVerify, projectId,
+      projectIoRows, scenarios, simulationCircuit, verifyLastRun, verifyRunHistory]
+  );
+  const journeyBoard = useMemo(
+    () => (journeyRun ? journeyBoardBoundary(journeyRun, liveIoMapping(projectIoRows, hardwareMappingV2)) : undefined),
+    [hardwareMappingV2, journeyRun, projectIoRows]
+  );
+  // One moment: while the journey waits behind "Resume signal", a tick chosen in Simulate on the
+  // same recording moves the journey there too, so resuming never shows a different moment.
+  useEffect(() => {
+    if (verifySelectedTick === null || !journeySelection || journeyOpen || !verifyLastRun) return;
+    // The journey names a run as selectJourney does (runId, else reportHash).
+    if (journeySelection.runId !== (verifyLastRun.runId ?? verifyLastRun.reportHash) || journeySelection.tick === verifySelectedTick) return;
+    if (!verifyLastRun.waveform.some((sample) => sample.tick === verifySelectedTick)) return;
+    useEngineeringSelection.getState().seekJourney({ tick: verifySelectedTick, eventOrder: null });
+  }, [journeyOpen, journeySelection, verifyLastRun, verifySelectedTick]);
   // One ledger over every authority. ProjectSurface, the status bar, the
   // navigator and the Problems tool window all read this list.
   const projectProblems = useMemo(
@@ -3431,6 +3463,7 @@ const IdeWorkspace: React.FC = () => {
           <button type="button" className="wb-btn" onClick={()=>inspectJourney(journeySelection)}>Resume signal</button>
         </div>}
         {journeyOpen && journeyRun && journeySelection && <SignalJourney run={journeyRun} selection={journeySelection}
+          currency={journeyScope} board={journeyBoard}
           onSignal={setVerifySelectedSignal} onTick={setVerifySelectedTick} onReturn={() => {
             useEngineeringSelection.getState().closeJourney();
             documentHost.openDocument({ kind: 'scenario', scenarioId: journeyRun.scenarioId });

@@ -237,3 +237,17 @@ describe('student-facing explanations of retained evaluations', () => {
     expect(Object.keys(result.details.observation!.outputs)).toHaveLength(150);
   });
 });
+
+describe('Signal Journey presentation of an input nothing drives', () => {
+  it('shows the simulator level for an unconnected input once, under the pin the symbol draws, and says why', () => {
+    const node = { id: 'u-fa3__o1', type: 'OR', label: 'o1', config: {}, state: {} } as never;
+    const view = presentSignalJourney({
+      node, selected: { nodeId: 'u-fa3__o1', port: 'out' }, publication: 'published-sample',
+      values: new Map<string, unknown>([['u-fa3__o1.a', 0], ['u-fa3__o1.out', 0]]),
+      inputPorts: ['a', 'b'], outputPorts: ['out'], unconnected: new Map([['b', 0 as const]]),
+    });
+    expect(view.inputs.map((row) => `${row.label}:${row.ports[0]}:${row.value.text}${row.unconnected ? ':unconnected' : ''}`))
+      .toEqual(['Input A:a:0', 'Input B:b:0:unconnected']);
+    expect(view.notices).toContain('Input B is not connected; the simulator reads an unconnected b as 0.');
+  });
+});

@@ -90,3 +90,15 @@
 @media(max-width:1050px){.ide-root .rb-journey-atlas{grid-template-columns:1fr}.ide-root .rb-journey-rule{border-left:0;border-top:1px solid var(--rb-border,#bac6d2)}.ide-root .rb-journey-heading{flex-wrap:wrap;gap:8px}.ide-root .rb-journey-sheet{min-height:300px}.ide-root .rb-journey-playback>small{margin-left:0}.ide-root .rb-journey-atlas.is-logic-primary{grid-template-columns:1fr}.ide-root .rb-journey-atlas.is-logic-primary .rb-journey-rule{grid-column:1;grid-row:1;border-right:0}.ide-root .rb-journey-atlas.is-logic-primary .rb-journey-drawing{grid-column:1;grid-row:2}.ide-root .rb-journey-source{overflow:auto;min-height:400px}.ide-root .rb-journey-source pre{min-height:240px}.ide-root .rb-journey-provenance>div{left:8px;right:8px;max-width:none}}
 @media(prefers-reduced-motion:reduce){.ide-root .rb-signal-journey *{animation:none;transition:none}}
 @media(max-width:1050px){.ide-root .rb-journey-atlas,.ide-root .rb-journey-atlas.is-logic-primary{display:flex;flex-direction:column;flex:0 0 auto;min-height:0}.ide-root .rb-journey-drawing{flex:0 0 auto;min-height:420px}.ide-root .rb-journey-sheet{height:320px;flex:0 0 320px}.ide-root .rb-journey-rule{flex:0 0 auto;overflow:visible}.ide-root .rb-journey-atlas.is-logic-primary .rb-journey-rule{order:-1}}
+/* Evidence line: whether the recording describes the design being edited, the value's last
+   recorded change, and the checks that judge this signal. One quiet row under the heading. */
+.ide-root .rb-journey-evidence{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 22px;padding:7px 16px;border-bottom:1px solid var(--rb-border,#bac6d2);font-size:12px;line-height:1.5}
+.ide-root .rb-journey-evidence p{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;min-width:0}
+.ide-root .rb-journey-evidence code{font:600 12px var(--rb-font-mono,ui-monospace,monospace)}
+.ide-root .rb-journey-evidence button{padding:0 5px;font-size:12px}
+.ide-root .rb-journey-currency{flex-basis:100%}
+.ide-root .rb-journey-currency strong{padding:1px 7px;border-radius:3px;border:1px solid currentColor;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.ide-root .rb-journey-currency.is-current strong{color:var(--rb-schematic-high,#176a59)}
+.ide-root .rb-journey-currency.is-stale strong,.ide-root .rb-journey-currency.is-foreign strong{color:var(--rb-warning-text,#8a4b08)}
+.ide-root .rb-journey-currency.is-stale,.ide-root .rb-journey-currency.is-foreign{color:var(--rb-text,#23344b)}
+.ide-root .rb-journey-board tr[data-changed=true] td:nth-child(3) strong{color:var(--rb-warning-text,#8a4b08);font-weight:600}

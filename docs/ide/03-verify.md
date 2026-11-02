@@ -102,6 +102,41 @@ Exact repeated/nested instance projection and ordinary authored reusable modules
 Sequential module hierarchy exploration remains explicitly unqualified and directs students to
 authored clock/reset cases in Simulate.
 
+### One recording, one moment, its evidence (2026-11-01)
+
+The journey's heading is followed by one evidence line. It reads only existing authorities and
+adds no state:
+- **Currency:** whether the replayed recording describes the design being edited.
+  `deriveRecordingScope` in `runScope.ts` answers this. The latest run takes the workflow
+  authority's verdict unchanged. An older recording is current only when its own ledger hash
+  equals the live project hash; otherwise the reason names the design, mapping or scenario, as
+  `deriveRunScope` does for Simulate. A historical recording says its values are what that
+  recording observed and that Run records the current design again.
+- **The value's change:** `journeyTransition` reports the selected signal's value and the last
+  recorded sample where it changed. Nothing is interpolated. A combinational recording's ticks are
+  independent cases, so there it gives the value in its case (CARRY 1 in case 4, t3) and says the
+  cases are independent rather than presenting a change over time.
+- **The signal's checks:** `journeyChecks` counts the recording's authored checks on this
+  signal and names the first mismatch with its expected and observed values. The case table
+  uses the same function.
+
+Board boundary sets each recorded pin and resource (LD4 · W18) against the live mapping.
+`liveIoMapping`, the resolution the run's mapping hash is compared against, supplies it, and
+`journeyBoardBoundary` marks a signal whose assignment changed or that is no longer a
+boundary. A failed check leads to its cause:
+- **In Simulate:** the mismatch rows and the selected-failure explainer offer **Trace cause**,
+  which opens the journey on that signal at that tick of that recording.
+- **While the journey is waiting** behind Resume signal, a tick chosen in Simulate on the same
+  recording becomes the journey's tick.
+
+Acceptance gate: `scripts/gates/ide-signal-journey-acceptance.mjs`. It works on the
+hierarchical adder:
+1. Record the scenario.
+2. Follow CARRY (1 in case 4, t3: 15 + 1) into o1 of `u_fa3` and through its HDL and LD4.
+3. Delete `a2 → o1` in FullAdderCell; the same recording now reads historical.
+4. Run, then Trace cause from the CARRY t3 mismatch to the same o1.
+5. Undo and Run; the new recording is current and the failing one historical.
+
 Status: local uncommitted candidate; exact source digest and current evidence are in docs/ACTIVE_WORK.md.
 Mode ID: `verify`
 
