@@ -22,7 +22,7 @@ crossing; wire length; routing time):
 | FullAdderCell | 1 -> 0 | 0 | +1% | 0.19 ms |
 | Flat 4-bit adder | 13 -> 0 | 0 | +6% | 2.9 ms |
 | Lab 8 | 8 -> 2 | 0 | +7% | 0.26 ms |
-| 2-Bit Counter | 1 -> 1 | 0 | -5% | 0.8 ms |
+| 2-Bit Counter | 1 -> 0 | 0 | +16% | 3.0 ms |
 
 Local validation at 379f1ae (pin fix, before the routing commit):
 - Classroom chain 70/71. `design-workbench-v1` failed in the chain while a parallel typecheck
