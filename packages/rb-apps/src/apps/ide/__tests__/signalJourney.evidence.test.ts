@@ -43,6 +43,26 @@ describe('Signal Journey evidence', () => {
     expect(journeyTransition(run, null, 2)).toEqual({ value: null, since: null, previous: null });
   });
 
+  it('finds a boundary output\'s checks through the run evidence, as the hierarchical adder names CARRY', () => {
+    const adder = {
+      waveform: [],
+      report: { rows: [
+        { tick: 3, signal: 'carry', expected: '1', actual: '0' },
+        { tick: 3, signal: 'sum_3', expected: '0', actual: '1' },
+      ] },
+      executionInput: { ioRows: [{ id: 'carry-out', label: 'CARRY', direction: 'out', nodeId: 'carry-out', port: 'in', pin: 'W18' }] },
+      evidence: {
+        ioRows: [{ id: 'carry-out', label: 'CARRY', nodeId: 'carry-out', direction: 'out' }],
+        normalizationMap: [
+          { role: 'expected', rawKey: 'carryout', normalizedKey: 'carryout', matchedSignal: 'carry' },
+          { role: 'output', rawKey: 'carry', normalizedKey: 'carry', matchedSignal: 'carry-out.in' },
+        ],
+      },
+    } as unknown as RuntimeVerifyRun;
+    expect(journeyChecks(adder, 'carry-out', 'carry-out.in').map((row) => row.signal)).toEqual(['carry']);
+    expect(journeyChecks(adder, 'u-fa3__o1', 'u-fa3__o1.out')).toEqual([]);
+  });
+
   it('finds the checks on a signal by its lane or its boundary row, and only those', () => {
     expect(journeyChecks(run, 'carry-out', 'carry').map((row) => `${row.signal}@${row.tick}`)).toEqual(['carry@0', 'carry@2', 'carry_row@3']);
     expect(journeyChecks(run, 'elsewhere', null)).toEqual([]);

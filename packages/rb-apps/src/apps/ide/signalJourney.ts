@@ -8,6 +8,7 @@ import { generateHierarchicalVhdlProject } from './hierarchicalVhdl';
 import type { ProjectHierarchyDocument, ElaborationSources } from './projectHierarchy';
 import type { ProjectIoRow, RuntimeVerifyRun } from './projectRuntime';
 import { createRecordedPortResolver, buildRecordedCircuitGeometry } from './surfaces/verify/recordedCircuitGeometry';
+import { buildFieldSignalResolver, normalizeSignalId } from './signalIdentity';
 
 export interface JourneySelection {
   projectId: string;
@@ -185,10 +186,20 @@ export function journeyLocalDrawing(circuit: Circuit, nodeId: string, limit = 4)
     omittedConnections: circuit.connections.length - connections.length };
 }
 
-/** The authored checks of a recording that judge this signal (by its waveform lane or its boundary row). */
+/**
+ * The authored checks of a recording that judge this object. Report rows name a check by its run
+ * signal (CARRY's is `carry`), the journey selects a port lane (`carry-out.in`) and the boundary
+ * row is `carry-out`: the run's own evidence relates them, through buildFieldSignalResolver, and
+ * an ambiguous or unresolved field contributes no check rather than a guessed one.
+ */
 export function journeyChecks(run: RuntimeVerifyRun, nodeId: string, signal: string | null) {
-  return run.report.rows.filter(row => (signal !== null && row.signal === signal)
-    || (run.executionInput?.ioRows.some(io => io.id === row.signal && io.nodeId === nodeId) ?? false));
+  const fields = run.executionInput?.ioRows.filter(io => io.nodeId === nodeId).map(io => io.id) ?? [];
+  const resolver = buildFieldSignalResolver({ fieldIds: fields, evidence: run.evidence,
+    reportSignals: [...new Set(run.report.rows.map(row => row.signal))] });
+  const judged = new Set([...fields, ...(signal === null ? [] : [signal]),
+    ...fields.map(field => resolver.resolve(field).runSignal).filter((value): value is string => value !== null)]
+    .map(normalizeSignalId));
+  return run.report.rows.filter(row => judged.has(normalizeSignalId(row.signal)));
 }
 
 /**

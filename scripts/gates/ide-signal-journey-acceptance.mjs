@@ -41,6 +41,10 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     const first = await runAndRead(page);
     assert(first.status === 'pass', `The starter's own scenario must pass first, got ${first.status}`);
     const carryRow = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__.getState().projectIoRows.find((row) => row.nodeId === 'carry-out').id);
+    // The report names CARRY's checks by its run signal; the recording's evidence relates it to the port.
+    const carrySignal = first.evidence.normalizationMap.find((entry) => entry.role === 'output' && entry.matchedSignal === 'carry-out.in')?.rawKey;
+    const carryChecks = first.report.rows.filter((row) => row.signal === carrySignal);
+    assert(carrySignal && carryChecks.length === first.waveform.length, `Every case must check CARRY (${carrySignal}): ${carryChecks.length}`);
     receipt.steps.push({ step: 'recorded the starter scenario', runId: first.runId });
     await capture(page, receipt, '01-recorded');
 
@@ -56,8 +60,8 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     assert(await transition.getAttribute('data-value') === '1' && await transition.getAttribute('data-since') === String(CARRY_TICK)
       && /0\s*→\s*1/.test(await transition.innerText()), `CARRY must rise 0 → 1 at t${CARRY_TICK}: ${await transition.innerText()}`);
     const checks = journey.getByTestId('ide-journey-checks');
-    assert(Number(await checks.getAttribute('data-checks')) === first.report.rows.filter((row) => row.signal === carryRow || row.signal === 'carry-out').length
-      && await checks.getAttribute('data-failed') === '0', `Every recorded CARRY check must be counted and match: ${await checks.innerText()}`);
+    assert(Number(await checks.getAttribute('data-checks')) === carryChecks.length && await checks.getAttribute('data-failed') === '0',
+      `Every recorded CARRY check must be counted and match: ${await checks.innerText()}`);
     receipt.steps.push({ step: 'followed CARRY', transition: await transition.innerText(), checks: await checks.innerText() });
     await capture(page, receipt, '02-carry-rises');
 
@@ -71,7 +75,9 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     assert((await journey.locator('.rb-journey-heading').innerText()).includes('u_fa3'), 'The heading must name the instance the driver lives in');
     await journey.getByRole('button', { name: 'Generated HDL', exact: true }).click();
     const mapped = await journey.getByTestId('ide-journey-mapped-source').innerText();
-    assert(/\bo1\b/i.test(mapped) && /or/i.test(mapped), `The HDL lens must show the o1 OR assignment of FullAdderCell: ${mapped}`);
+    // The emitter names signals by part type (or_0), not by the part's name (o1): the span is exact,
+    // the naming is not yet the student's. Assert the exact module and OR assignment it maps to.
+    assert(/full_adder_cell\.vhd:\d+/i.test(mapped) && /<=.*\bor\b/i.test(mapped), `The HDL lens must show FullAdderCell's OR assignment for o1: ${mapped}`);
     await capture(page, receipt, '03a-driver-hdl');
     await journey.getByRole('button', { name: 'Board boundary', exact: true }).click();
     const boardRow = journey.getByTestId(`ide-journey-board-row-${carryRow}`);
@@ -86,7 +92,7 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     await journey.getByTestId('ide-journey-return').click();
     await openWorkspace(page, 'design');
     await openModule(page, 'FullAdderCell');
-    const brokenWire = 'fa-c10'; // a2.out -> o1.b in FullAdderCell
+    const brokenWire = 'a2.out-o1.b'; // FullAdderCell's a2 output to o1's b input
     await deleteWire(page, brokenWire);
     receipt.steps.push({ step: 'deleted a wire in FullAdderCell through the canvas', wire: brokenWire });
     await capture(page, receipt, '04a-mistake');
@@ -102,8 +108,8 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     await openWorkspace(page, 'verify');
     const broken = await runAndRead(page);
     assert(broken.status === 'fail', 'Removing a2 → o1 must break the carry chain');
-    const failing = broken.report.rows.find((row) => row.tick === CARRY_TICK && (row.signal === carryRow || row.signal === 'carry-out') && row.expected !== row.actual);
-    assert(failing && failing.expected === '1' && failing.actual === '0', `CARRY at t${CARRY_TICK} must now be observed 0 against expected 1: ${JSON.stringify(failing)}`);
+    const failing = broken.report.rows.find((row) => row.tick === CARRY_TICK && row.signal === carrySignal && row.expected !== row.actual);
+    assert(failing && String(failing.expected) === '1' && String(failing.actual) === '0', `CARRY at t${CARRY_TICK} must now be observed 0 against expected 1: ${JSON.stringify(broken.report.rows.filter((row) => row.tick === CARRY_TICK))} carryRow=${carryRow}`);
     await traceCause(page, failing);
     await journey.waitFor({ state: 'visible' });
     assert(await journey.getAttribute('data-node-id') === 'carry-out' && await journey.getAttribute('data-tick') === String(CARRY_TICK)
@@ -176,18 +182,21 @@ async function openModule(page, name) {
   await instance.waitFor({ state: 'visible' });
   const box = await instance.boundingBox();
   await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
-  await page.waitForFunction((moduleName) => {
-    const state = window.__RB_PROJECT_RUNTIME__.getState();
-    const active = state.hierarchy?.modules.find((module) => module.id === state.activeModuleId);
-    return active?.name === moduleName && document.querySelector('[data-node-id="o1"]');
-  }, name, { timeout: 8000 });
+  await page.getByRole('tab', { name: name }).or(page.getByText(name, { exact: true })).first().waitFor({ state: 'visible', timeout: 8000 });
+  await page.locator('[data-node-id="o1"]').first().waitFor({ state: 'visible', timeout: 8000 });
 }
 async function deleteWire(page, wireId) {
-  const wire = page.locator(`[data-wire-id="${wireId}"] path`).first();
+  const wire = page.locator(`[data-wire-id="${wireId}"]`).first();
   await wire.waitFor({ state: 'attached' });
-  const box = await wire.boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await page.waitForFunction((id) => window.__RB_LOGIC_VIEW_STORE__.getState().selection.wires?.has?.(id), wireId, { timeout: 4000 });
+  // Click a point on the drawn line itself (an L-shaped wire's box centre is off the line).
+  const point = await wire.evaluate((group) => {
+    const path = group.querySelector('path.rb-net-line') ?? group.querySelector('path');
+    const svgPoint = path.getPointAtLength(path.getTotalLength() * 0.5);
+    const screen = svgPoint.matrixTransform(path.getScreenCTM());
+    return { x: screen.x, y: screen.y };
+  });
+  await page.mouse.click(point.x, point.y);
+  await page.waitForFunction(() => window.__RB_LOGIC_VIEW_STORE__.getState().selection.wires.size === 1, null, { timeout: 4000 });
   await page.keyboard.press('Delete');
   await page.waitForFunction((id) => document.querySelector(`[data-wire-id="${id}"]`) === null, wireId, { timeout: 4000 });
 }

@@ -74,10 +74,11 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn, curr
   const sample = run.waveform.find(s => s.tick === selection.tick);
   const selectedSignal = journeySignal(run, selection.nodeId, selection.port);
   const boundaryValue = selectedSignal ? sample?.signals[selectedSignal] : undefined;
-  const mismatch = sample?.mismatches.find(m => m.signal === selectedSignal || run.executionInput?.ioRows.some(r => r.id === m.signal && r.nodeId === selection.nodeId));
+
   const words = useMemo(() => deriveRecordedWordLanes(run), [run]);
   const checks = useMemo(() => journeyChecks(run, selection.nodeId, selectedSignal), [run, selection.nodeId, selectedSignal]);
   const failedChecks = checks.filter(row => row.expected !== row.actual);
+  const mismatch = failedChecks.find(row => row.tick === selection.tick);
   const transition = journeyTransition(run, selectedSignal, selection.tick);
   const select = (id: string, port?: string) => {
     const pins = geometry.get(id)?.geometry.pins ?? [];
