@@ -31,3 +31,23 @@ describe('drawn input pins match what the simulator reads', () => {
     expect(DESIGN_CHIP_METADATA.DFlipFlop.inputs.map((pin) => pin.id)).toEqual(['D', 'CLK', 'RST', 'EN']);
   });
 });
+
+describe('optional inputs are not reported as missing', () => {
+  it('reports no "not wired yet" issue for an unwired DFlipFlop RST or EN, and still for D', async () => {
+    const { computeDesignIssues } = await import('../designIssues');
+    const circuit = {
+      nodes: [
+        { id: 'clk', type: 'INPUT', x: 0, y: 0, config: {}, state: {} },
+        { id: 'ff', type: 'DFlipFlop', x: 200, y: 0, config: {}, state: {} },
+        { id: 'led', type: 'OUTPUT', x: 400, y: 0, config: {}, state: {} },
+      ],
+      connections: [
+        { id: 'c1', from: { nodeId: 'clk', portName: 'out' }, to: { nodeId: 'ff', portName: 'CLK' } },
+        { id: 'c2', from: { nodeId: 'ff', portName: 'Q' }, to: { nodeId: 'led', portName: 'in' } },
+      ],
+    };
+    const ids = computeDesignIssues(circuit as never).all.filter((issue: { kind: string }) => issue.kind === 'unconnected-input').map((issue: { portKey: string }) => issue.portKey);
+    expect(ids.filter((id: string) => /ff\.(RST|EN)$/.test(id))).toEqual([]);
+    expect(ids.some((id: string) => /ff\.D$/.test(id))).toBe(true);
+  });
+});

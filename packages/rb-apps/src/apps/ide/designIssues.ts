@@ -1,5 +1,5 @@
 import type { Circuit, Connection } from '@redbyte/rb-logic-core';
-import { getDesignIssueSemantics } from './designChipMetadata';
+import { getDesignChipMetadata, getDesignIssueSemantics } from './designChipMetadata';
 
 export type DesignIssueKind = 'floating-output' | 'multiple-drivers' | 'unconnected-input';
 export type DesignIssueSeverity = 'error' | 'warn' | 'draft';
@@ -170,7 +170,9 @@ function getRequiredInputPorts(
   declaredPorts: string[]
 ): string[] {
   if (node.type !== 'Register1' && node.type !== 'RegisterBus' && node.type !== 'StateBank') {
-    return declaredPorts;
+    // An input the part works without (DFlipFlop's RST and EN) is never "not wired yet".
+    const optional = new Set(getDesignChipMetadata(node.type)?.inputs.filter((port) => port.optional).map((port) => port.id));
+    return declaredPorts.filter((portName) => !optional.has(portName));
   }
 
   const hasEnable = node.config?.hasEnable === true;

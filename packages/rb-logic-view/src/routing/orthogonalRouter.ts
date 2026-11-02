@@ -227,6 +227,17 @@ export function routeCircuit(
   const claimAcross = (y: number, x1: number, x2: number) => {
     if (x1 !== x2) claimedAcross.push({ x: y, lo: Math.min(x1, x2), hi: Math.max(x1, x2) });
   };
+  // Every horizontal run drawn so far, with its net, so a detour's crossing run is never laid
+  // along another net's branch (claimedAcross holds only the runs back across a corridor).
+  const drawnAcross: Array<ClaimedRun & { net: string }> = [];
+  const alongOtherBranch = (net: string, y: number, x1: number, x2: number) =>
+    sharedRuns(drawnAcross.filter((run) => run.net !== net), y, x1, x2) > 0;
+  const recordAcross = (net: string, points: readonly Point[]) => {
+    for (let i = 1; i < points.length; i += 1) {
+      const [a, b] = [points[i - 1], points[i]];
+      if (a.y === b.y && a.x !== b.x) drawnAcross.push({ x: a.y, lo: Math.min(a.x, b.x), hi: Math.max(a.x, b.x), net });
+    }
+  };
   for (const [netId, group] of Array.from(byDriver.entries()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
     const source = pinWorldPoint(index.get(group.driver.nodeId), group.driver.port);
     const sourceEntry = index.get(group.driver.nodeId);
@@ -291,7 +302,7 @@ export function routeCircuit(
         const x2 = snap(Math.min(t.x - grid, tBox.minX - grid), grid);
         const starts: number[] = [];
         if (horizontalCollisions(bodies, s.y, s.x, channel) === 0) starts.push(channel);
-        if (forwardLoads.length === 1) {
+        if (loads.length === 1) {
           const sBox = sourceEntry ? bodyBox(sourceEntry) : { minX: s.x, minY: s.y, maxX: s.x, maxY: s.y };
           for (let x = snap(Math.max(s.x + grid, sBox.maxX + grid), grid); x < x2 && starts.length < 6; x += grid) {
             if (x !== channel && horizontalCollisions(bodies, s.y, s.x, x) === 0) starts.push(x);
@@ -302,9 +313,11 @@ export function routeCircuit(
           for (let k = 0; k <= 24; k += 1) {
             const laneY = snap(t.y, grid) + (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * grid;
             const points = dedupe([s, { x: x1, y: s.y }, { x: x1, y: laneY }, { x: x2, y: laneY }, { x: x2, y: t.y }, t]);
-            if (crossesAny(points, bodies)) continue;
+            // Clear of every body, the wire's own two included, and of every other net's run.
+            if (crossesAny(points, boxes)) continue;
             if (x1 !== channel && sharedRuns(claimed, x1, s.y, laneY) > 0) continue;
-            if (sharedRuns(claimed, x2, laneY, t.y) > 0 || sharedRuns(claimedAcross, laneY, x1, x2) > 0) continue;
+            if (x1 === channel && (laneY < yLo ? sharedRuns(claimed, channel, laneY, yLo) : laneY > yHi ? sharedRuns(claimed, channel, yHi, laneY) : 0) > 0) continue;
+            if (sharedRuns(claimed, x2, laneY, t.y) > 0 || sharedRuns(claimedAcross, laneY, x1, x2) > 0 || alongOtherBranch(netId, laneY, x1, x2)) continue;
             if (x1 !== channel) claim(x1, s.y, laneY);
             claim(x2, laneY, t.y);
             claimAcross(laneY, x1, x2);
@@ -319,6 +332,7 @@ export function routeCircuit(
       claim(channel, trunkLo, trunkHi);
       for (const { load, points, branchY, x1 } of routes) {
         for (let i = 1; i < points.length; i += 1) trackRun(points[i - 1], points[i]);
+        recordAcross(netId, points);
         wires.push({
           wireId: load.wireId,
           netId,
@@ -409,8 +423,8 @@ export function routeCircuit(
           for (let i = 0; i < 8; i += 1) for (let j = 0; j < 8; j += 1) {
             const [a, b] = [legs.x1 + i * grid, legs.x2 - j * grid];
             const candidate = dedupe([s, { x: a, y: s.y }, { x: a, y }, { x: b, y }, { x: b, y: t.y }, t]);
-            if (crossesAny(candidate, others) || sharedRuns(claimed, a, s.y, y) > 0 || sharedRuns(claimed, b, y, t.y) > 0
-              || sharedRuns(claimedAcross, y, a, b) > 0) continue;
+            if (crossesAny(candidate, boxes) || sharedRuns(claimed, a, s.y, y) > 0 || sharedRuns(claimed, b, y, t.y) > 0
+              || sharedRuns(claimedAcross, y, a, b) > 0 || alongOtherBranch(netId, y, a, b)) continue;
             [x1, x2, clearY, points] = [a, b, y, candidate];
             break search;
           }
@@ -419,6 +433,7 @@ export function routeCircuit(
       claim(x1, s.y, clearY);
       claim(x2, clearY, t.y);
       claimAcross(clearY, x1, x2);
+      recordAcross(netId, points);
       for (let i = 1; i < points.length; i += 1) trackRun(points[i - 1], points[i]);
       wires.push({
         wireId: load.wireId,
