@@ -405,8 +405,8 @@ function resolvePortWidth(runtimeType: string, portId: string): ComponentPortWid
 }
 
 function isOptionalPort(runtimeType: string, portId: string): boolean {
-  return ['Register1', 'RegisterBus', 'StateBank'].includes(runtimeType) &&
-    (portId === 'EN' || portId === 'RST');
+  return (['Register1', 'RegisterBus', 'StateBank'].includes(runtimeType) && (portId === 'EN' || portId === 'RST'))
+    || getDesignChipMetadata(runtimeType)?.inputs.some((port) => port.id === portId && port.optional) === true;
 }
 
 function buildPorts(runtimeType: string): readonly ComponentPortDefinition[] {

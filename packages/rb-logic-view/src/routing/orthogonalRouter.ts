@@ -196,6 +196,15 @@ export function routeCircuit(
 ): RoutedNet[] {
   const grid = options.grid ?? GRID;
   const boxes = Array.from(index.values()).map((entry) => bodyBox(entry));
+  const boxById = new Map(Array.from(index.entries()).map(([id, entry]) => [id, bodyBox(entry)]));
+  /** Bodies a wire may not pass: every symbol but the two it connects. */
+  const bodiesBetween = (fromId: string, toId: string) =>
+    Array.from(boxById.entries()).filter(([id]) => id !== fromId && id !== toId).map(([, box]) => box);
+  const crossesAny = (points: readonly Point[], bodies: readonly Box[]) =>
+    points.slice(1).some((b, i) => {
+      const a = points[i];
+      return a.x === b.x ? verticalCollisions(bodies, a.x, a.y, b.y) > 0 : horizontalCollisions(bodies, a.y, a.x, b.x) > 0;
+    });
 
   // Group by driver pin.
   const byDriver = new Map<string, { driver: Endpoint; loads: { to: Endpoint; wireId: string }[] }>();
@@ -217,6 +226,17 @@ export function routeCircuit(
   const claimedAcross: ClaimedRun[] = [];
   const claimAcross = (y: number, x1: number, x2: number) => {
     if (x1 !== x2) claimedAcross.push({ x: y, lo: Math.min(x1, x2), hi: Math.max(x1, x2) });
+  };
+  // Every horizontal run drawn so far, with its net, so a detour's crossing run is never laid
+  // along another net's branch (claimedAcross holds only the runs back across a corridor).
+  const drawnAcross: Array<ClaimedRun & { net: string }> = [];
+  const alongOtherBranch = (net: string, y: number, x1: number, x2: number) =>
+    sharedRuns(drawnAcross.filter((run) => run.net !== net), y, x1, x2) > 0;
+  const recordAcross = (net: string, points: readonly Point[]) => {
+    for (let i = 1; i < points.length; i += 1) {
+      const [a, b] = [points[i - 1], points[i]];
+      if (a.y === b.y && a.x !== b.x) drawnAcross.push({ x: a.y, lo: Math.min(a.x, b.x), hi: Math.max(a.x, b.x), net });
+    }
   };
   for (const [netId, group] of Array.from(byDriver.entries()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
     const source = pinWorldPoint(index.get(group.driver.nodeId), group.driver.port);
@@ -269,12 +289,50 @@ export function routeCircuit(
       const yHi = Math.max(s.y, ...forwardLoads.map((load) => load.point!.y));
       const channel = chooseChannel(boxes, s.x, nearestX, yLo, yHi, grid,
         options.avoidBodiesOnLegs !== false ? { source: s, loads: forwardLoads.map((load) => load.point!) } : undefined, claimed);
-      claim(channel, yLo, yHi);
-      const trunkOwners = forwardLoads.length;
-      for (const load of forwardLoads) {
+      // A load whose three runs would cross a part between its two ends is drawn through the
+      // nearest clear lane instead (H-V-H-V-H, as a feedback detour is): crossing a part on one
+      // of its pin rows read as wired to that pin, as FullAdderCell's a1 output did through a2.
+      // Where no lane is clear the three runs stay, so no drawing gets worse.
+      const routes = forwardLoads.map((load) => {
         const t = load.point!;
-        const points = dedupe([s, { x: channel, y: s.y }, { x: channel, y: t.y }, t]);
+        const direct = dedupe([s, { x: channel, y: s.y }, { x: channel, y: t.y }, t]);
+        const bodies = bodiesBetween(group.driver.nodeId, load.to.nodeId);
+        if (options.avoidBodiesOnLegs === false || !crossesAny(direct, bodies)) return { load, points: direct, branchY: t.y, x1: channel };
+        const tBox = load.entry ? bodyBox(load.entry) : { minX: t.x, minY: t.y, maxX: t.x, maxY: t.y };
+        const x2 = snap(Math.min(t.x - grid, tBox.minX - grid), grid);
+        const starts: number[] = [];
+        if (horizontalCollisions(bodies, s.y, s.x, channel) === 0) starts.push(channel);
+        if (loads.length === 1) {
+          const sBox = sourceEntry ? bodyBox(sourceEntry) : { minX: s.x, minY: s.y, maxX: s.x, maxY: s.y };
+          for (let x = snap(Math.max(s.x + grid, sBox.maxX + grid), grid); x < x2 && starts.length < 6; x += grid) {
+            if (x !== channel && horizontalCollisions(bodies, s.y, s.x, x) === 0) starts.push(x);
+          }
+        }
+        for (const x1 of starts) {
+          if (x1 >= x2) continue;
+          for (let k = 0; k <= 24; k += 1) {
+            const laneY = snap(t.y, grid) + (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * grid;
+            const points = dedupe([s, { x: x1, y: s.y }, { x: x1, y: laneY }, { x: x2, y: laneY }, { x: x2, y: t.y }, t]);
+            // Clear of every body, the wire's own two included, and of every other net's run.
+            if (crossesAny(points, boxes)) continue;
+            if (x1 !== channel && sharedRuns(claimed, x1, s.y, laneY) > 0) continue;
+            if (x1 === channel && (laneY < yLo ? sharedRuns(claimed, channel, laneY, yLo) : laneY > yHi ? sharedRuns(claimed, channel, yHi, laneY) : 0) > 0) continue;
+            if (sharedRuns(claimed, x2, laneY, t.y) > 0 || sharedRuns(claimedAcross, laneY, x1, x2) > 0 || alongOtherBranch(netId, laneY, x1, x2)) continue;
+            if (x1 !== channel) claim(x1, s.y, laneY);
+            claim(x2, laneY, t.y);
+            claimAcross(laneY, x1, x2);
+            return { load, points, branchY: laneY, x1 };
+          }
+        }
+        return { load, points: direct, branchY: t.y, x1: channel };
+      });
+      const trunk = routes.filter((route) => route.x1 === channel);
+      const trunkLo = Math.min(s.y, ...trunk.map((route) => route.branchY));
+      const trunkHi = Math.max(s.y, ...trunk.map((route) => route.branchY));
+      claim(channel, trunkLo, trunkHi);
+      for (const { load, points, branchY, x1 } of routes) {
         for (let i = 1; i < points.length; i += 1) trackRun(points[i - 1], points[i]);
+        recordAcross(netId, points);
         wires.push({
           wireId: load.wireId,
           netId,
@@ -286,14 +344,14 @@ export function routeCircuit(
           degenerate: false,
         });
         // A branch leaving a trunk end is an L corner, not a T junction.
-        if (trunkOwners > 1 && t.y !== s.y && t.y !== yLo && t.y !== yHi) junctions.push({ x: channel, y: t.y });
+        if (x1 === channel && trunk.length > 1 && branchY !== s.y && branchY !== trunkLo && branchY !== trunkHi) junctions.push({ x: channel, y: branchY });
       }
-      if (trunkOwners > 1) {
+      if (trunk.length > 1) {
         // The source enters the trunk at s.y; that corner is a junction only when
         // branches leave in both directions (otherwise it is a plain corner).
-        const above = forwardLoads.some((load) => load.point!.y < s.y);
-        const below = forwardLoads.some((load) => load.point!.y > s.y);
-        const level = forwardLoads.some((load) => load.point!.y === s.y);
+        const above = trunk.some((route) => route.branchY < s.y);
+        const below = trunk.some((route) => route.branchY > s.y);
+        const level = trunk.some((route) => route.branchY === s.y);
         if ((above && below) || ((above || below) && level)) junctions.push({ x: channel, y: s.y });
       }
     }
@@ -353,10 +411,29 @@ export function routeCircuit(
       // feedback wire is not drawn on top of a forward net's trunk beside the same target.
       for (let step = 0; step < 4 && sharedRuns(claimed, x1, s.y, clearY) > 0; step += 1) x1 += grid;
       for (let step = 0; step < 4 && sharedRuns(claimed, x2, clearY, t.y) > 0; step += 1) x2 -= grid;
-      const points = dedupe([s, { x: x1, y: s.y }, { x: x1, y: clearY }, { x: x2, y: clearY }, { x: x2, y: t.y }, t]);
+      let points = dedupe([s, { x: x1, y: s.y }, { x: x1, y: clearY }, { x: x2, y: clearY }, { x: x2, y: t.y }, t]);
+      // That detour only clears its own two parts. When it crosses another, take the nearest legs
+      // and crossing height that cross none and share no other net's run; the 4-bit adder's
+      // carries otherwise crossed the next stage's XOR output and SUM pin on their rows.
+      const others = bodiesBetween(group.driver.nodeId, load.to.nodeId);
+      if (options.avoidBodiesOnLegs !== false && crossesAny(points, others)) {
+        search: for (let k = 0; k <= 24; k += 1) {
+          const y = baseClearY + (k % 2 === 1 ? 1 : -1) * Math.ceil(k / 2) * grid;
+          const legs = legsAt(y);
+          for (let i = 0; i < 8; i += 1) for (let j = 0; j < 8; j += 1) {
+            const [a, b] = [legs.x1 + i * grid, legs.x2 - j * grid];
+            const candidate = dedupe([s, { x: a, y: s.y }, { x: a, y }, { x: b, y }, { x: b, y: t.y }, t]);
+            if (crossesAny(candidate, boxes) || sharedRuns(claimed, a, s.y, y) > 0 || sharedRuns(claimed, b, y, t.y) > 0
+              || sharedRuns(claimedAcross, y, a, b) > 0 || alongOtherBranch(netId, y, a, b)) continue;
+            [x1, x2, clearY, points] = [a, b, y, candidate];
+            break search;
+          }
+        }
+      }
       claim(x1, s.y, clearY);
       claim(x2, clearY, t.y);
       claimAcross(clearY, x1, x2);
+      recordAcross(netId, points);
       for (let i = 1; i < points.length; i += 1) trackRun(points[i - 1], points[i]);
       wires.push({
         wireId: load.wireId,

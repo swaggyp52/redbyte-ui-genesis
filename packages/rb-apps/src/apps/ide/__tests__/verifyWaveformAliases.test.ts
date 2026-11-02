@@ -79,7 +79,8 @@ describe('Verify waveform signal aliases', () => {
     expect(aliases.get('ff_q')).toBe('State');
     expect(aliases.get('ff_q_inv')).toBe('ff.Q_inv');
     const geometry = buildRecordedCircuitGeometry(nodes);
-    expect(geometry.get('ff')?.geometry.pins.map((pin) => pin.id)).toEqual(['D', 'CLK', 'Q', 'Q_inv']);
+    expect(geometry.get('ff')?.geometry.pins.map((pin) => pin.id)).toEqual(['D', 'CLK', 'RST', 'EN', 'Q', 'Q_inv']);
+    expect(findPin(geometry.get('ff')!.geometry, 'RST')?.id).toBe('RST');
     expect(findPin(geometry.get('ff')!.geometry, 'CLK')?.id).toBe('CLK');
     const routed = routeCircuit({ nodes, connections: [{ from: { nodeId: 'clock', portName: 'out' }, to: { nodeId: 'ff', portName: 'CLK' } }] }, geometry);
     expect(routed.flatMap((net) => net.wires).every((wire) => !wire.degenerate)).toBe(true);

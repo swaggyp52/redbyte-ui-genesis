@@ -176,7 +176,15 @@ export const DESIGN_CHIP_METADATA: Record<string, ChipMetadata> = {
   },
   DFlipFlop: {
     name: 'DFlipFlop',
-    inputs: [{ id: 'D', name: 'D' }, { id: 'CLK', name: 'CLK' }],
+    // The simulator's DFlipFlop reads RST (active high, unconnected 0) and EN (unconnected 1);
+    // the exported VHDL uses both, and Lab 8 wires all eight resets. Both are optional, so they
+    // are drawn below D and CLK and leave every existing D, CLK and Q wire where it was.
+    inputs: [
+      { id: 'D', name: 'D' },
+      { id: 'CLK', name: 'CLK' },
+      { id: 'RST', name: 'RST', optional: true },
+      { id: 'EN', name: 'EN', optional: true },
+    ],
     outputs: [{ id: 'Q', name: 'Q' }, { id: 'Q_inv', name: 'Q_inv' }],
     color: '#ec4899',
     layer: 3,
