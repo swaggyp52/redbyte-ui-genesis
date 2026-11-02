@@ -129,6 +129,9 @@ await runIdeGate('Signal Journey acceptance: one signal, one moment, mistake to 
     const cause = await journey.getByTestId('ide-journey-understand').innerText();
     const o1Reads = broken.circuitSnapshot.connections.filter((wire) => wire.to.nodeId === brokenDriver).map((wire) => wire.to.portName);
     assert(!o1Reads.includes('b'), `The recording must show o1 has no driver on b: ${JSON.stringify(o1Reads)}`);
+    assert(/Input B is not connected; the simulator reads an unconnected b as 0/.test(cause)
+      && await journey.locator('[data-testid="ide-journey-understand"] [data-unconnected="true"]').count() === 1,
+      `The journey must state the cause: o1's b input is not connected and reads 0: ${cause}`);
     receipt.steps.push({ step: 'traced CARRY t3 mismatch to o1 in u_fa3', o1Inputs: o1Reads, cause: cause.slice(0, 200) });
     await capture(page, receipt, '04c-cause');
     await journey.getByTestId('ide-journey-return').click();

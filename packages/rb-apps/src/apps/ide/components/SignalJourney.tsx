@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Circuit } from '@redbyte/rb-logic-core';
+import { describeInputPin, type Circuit } from '@redbyte/rb-logic-core';
 import { connectionEndpoints } from '@redbyte/rb-logic-view';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { useEngineeringSelection } from '../engineeringSelection';
@@ -174,7 +174,15 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn, curr
   const pins = geometry.get(selection.nodeId)?.geometry.pins ?? [];
   const retainedDefinition = run.hierarchySnapshot?.hierarchy?.modules.find(module => module.id === currentInstance?.definitionId);
   const localNode = retainedDefinition?.circuit.nodes.find(item => item.id === currentInstance?.localNodeId);
-  const learning = node ? presentSignalJourney({ node: localNode ? { ...node, label: localNode.label } : node, source: currentInstance, selected: selection,
+  // Inputs nothing drives in this recording, at the level the simulator reads for them: the cause
+  // of a missing wire, stated from the retained circuit and the simulator's pin contract.
+  const unconnected = new Map<string, 0 | 1>();
+  if (node) for (const pin of pins) {
+    if (pin.direction !== 'in' || connections.some(w => w.to.nodeId === node.id && w.to.port === pin.id)) continue;
+    const level = describeInputPin(node.type, pin.id, node.config as Record<string, unknown> | undefined)?.unconnectedLevel;
+    if (level !== undefined) unconnected.set(pin.id, level);
+  }
+  const learning = node ? presentSignalJourney({ node: localNode ? { ...node, label: localNode.label } : node, source: currentInstance, selected: selection, unconnected,
     observation: objectEvent, values, publishedValue: boundaryValue, revision: selection.revision,
     inputPorts: pins.filter(pin => pin.direction === 'in').map(pin => pin.id),
     outputPorts: pins.filter(pin => pin.direction === 'out').map(pin => pin.id),
@@ -269,7 +277,7 @@ export function SignalJourney({ run, selection, onSignal, onTick, onReturn, curr
           <strong>{learning?.sequential && learning.sequential.kind !== 'unavailable' ? learning.sequential.label : learning?.rule.text ?? 'Values unavailable at this step'}</strong>
           <p>{learning?.outcome.text}</p>
           {learning?.sequential && <p>{learning.sequential.reason}</p>}
-          <dl>{learning?.inputs.map(input => <div key={input.key}><dt>{input.label}</dt><dd><code>{input.value.text}</code></dd></div>)}</dl>
+          <dl>{learning?.inputs.map(input => <div key={input.key} data-unconnected={input.unconnected ? 'true' : undefined}><dt>{input.label}</dt><dd><code>{input.value.text}</code>{input.unconnected && <small> not connected</small>}</dd></div>)}</dl>
           <div className="rb-journey-state" data-testid="ide-journey-canonical-outputs">{learning?.outputs.filter(output => output.role !== 'metadata').map(output => <div key={output.key} data-output-ports={output.ports.join(',')}>
             <span>{output.label}</span><code>{objectEvent ? `${output.previousValue?.text ?? '?'} → ` : ''}{output.value.text}</code></div>)}</div>
           {objectEvent?.commitPhase === 'after-capture' && <p>Captured result shown here; the circuit still shows the previous output until all registers publish together.</p>}
